@@ -397,24 +397,44 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
   );
 }
 
+// Normalize display types for consistent categorization (module scope: it's
+// used inside memo factories that run before the component body finishes).
+const normalizeDisplayType = (type: string) => {
+  if (type === "painting") return "photo";
+  if (type === "voice") return "interview";
+  return type;
+};
+
+// A memory's date, wherever it lives — every date path must use the same fallback.
+const memDate = (m: Mem) => m.createdAt || (m as { date?: string }).date || "";
+
 export default function LibraryView() {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
-  const { getWings, getWingRooms } = useRoomStore();
+  const { getWings, getWingRooms: getWingRoomsStore } = useRoomStore();
+  const customWings = useRoomStore(s => s.customWings);
+  const extraWings = useRoomStore(s => s.extraWings);
+  const customRooms = useRoomStore(s => s.customRooms);
   const { userMems, fetchRoomMemories } = useMemoryStore();
   const { setNavMode, enterCorridor, enterWingRoom, enterEntrance, activeWing: storeActiveWing } = usePalaceStore();
 
   const { addMemory, updateMemory, deleteMemory, moveMemory } = useMemoryStore();
 
-  const wings = getWings();
+  // Stable identities: the store getters build fresh arrays/objects per call,
+  // which used to invalidate every palace-wide memo (and re-pack the whole
+  // wall) on ANY render. Key them on the underlying store state instead.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const wings = useMemo(() => getWings(), [getWings, customWings, extraWings]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getWingRooms = useCallback((wingId: string) => getWingRoomsStore(wingId), [getWingRoomsStore, customRooms]);
   const [selectedWing, setSelectedWing] = useState<string>("__all__");
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
-  const [facet, setFacet] = useState<null | "place" | "described" | "onthisday" | "unplaced">(null);
+  const [facet, setFacet] = useState<null | "place" | "described" | "onthisday">(null);
   const [detailMem, setDetailMem] = useState<{ mem: Mem; wingId: string; roomId: string } | null>(null);
   const [showUploadFor, setShowUploadFor] = useState<{ wingId: string; roomId: string } | null>(null);
   const [movingMem, setMovingMem] = useState<{ mem: Mem; fromRoom: string } | null>(null);
@@ -423,13 +443,18 @@ export default function LibraryView() {
   const [movedToast, setMovedToast] = useState(false);
   const [showWingManager, setShowWingManager] = useState(false);
   const [showRoomManager, setShowRoomManager] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "list" | "timeline">(() => {
+  // List view is retired (redundant beside wall + timeline) — validate the
+  // persisted value so a stale 'list' can never strand the user viewless.
+  const [viewMode, setViewMode] = useState<"grid" | "timeline">(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("libraryViewMode") as "grid" | "list" | "timeline") || "grid";
+      return localStorage.getItem("libraryViewMode") === "timeline" ? "timeline" : "grid";
     }
     return "grid";
   });
   const [cloudBrowserProvider, setCloudBrowserProvider] = useState<string | null>(null);
+  // Destination room for a cloud import — set from ImportHub's Destination
+  // selector so the choice is honored even when no room is open.
+  const [cloudImportRoom, setCloudImportRoom] = useState<string | null>(null);
   const [pickerStatus, setPickerStatus] = useState<"idle" | "opening" | "waiting" | "importing" | "done" | "error">("idle");
   const [pickerError, setPickerError] = useState<string>("");
   const [pickerUri, setPickerUri] = useState<string>("");
@@ -446,6 +471,8 @@ export default function LibraryView() {
   const [toolbarHint, setToolbarHint] = useState(false);
   const [storyText, setStoryText] = useState("");
   const [aiLabelProcessing, setAiLabelProcessing] = useState(false);
+  // Monotonic run id: any close/cancel bumps it, orphaning in-flight label loops
+  const aiLabelRunRef = useRef(0);
   const [aiLabelSelected, setAiLabelSelected] = useState<Set<string>>(new Set());
   const [aiLabelProgress, setAiLabelProgress] = useState<{ current: number; total: number } | null>(null);
   const [aiLabelResults, setAiLabelResults] = useState<Record<string, { description: string; labels: string[]; saved?: boolean }>>({});
@@ -504,15 +531,16 @@ export default function LibraryView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [libraryTarget]);
 
-  // Brief loading state when entering a room to avoid skeleton+empty flash
+  // Loading state when entering a room: 300ms skeleton floor, but hold while
+  // the room's memories are still in flight (cap 1.5s) so a slow fetch never
+  // flashes the false "this room is empty" state.
+  const roomFetched = !selectedRoom || userMems[selectedRoom] !== undefined;
   useEffect(() => {
-    if (selectedRoom) {
-      setRoomLoading(true);
-      const timer = setTimeout(() => setRoomLoading(false), 300);
-      return () => clearTimeout(timer);
-    }
-    setRoomLoading(false);
-  }, [selectedRoom]);
+    if (!selectedRoom) { setRoomLoading(false); return; }
+    setRoomLoading(true);
+    const timer = setTimeout(() => setRoomLoading(false), roomFetched ? 300 : 1500);
+    return () => clearTimeout(timer);
+  }, [selectedRoom, roomFetched]);
 
   // Persist viewMode to localStorage (P1 #11)
   useEffect(() => {
@@ -534,6 +562,7 @@ export default function LibraryView() {
         "write-stories": "writeStory",
         "organize": "addLocation",
         "import-upload": "importUpload",
+        "import-cloud": "importUpload",
       };
       const mapped = spotlightMap[target] || target;
       // Small delay to let the Library UI render first
@@ -556,11 +585,21 @@ export default function LibraryView() {
     setShowManualSortBanner(false);
   }, []);
 
-  const handleCloudProvider = useCallback(async (provider: string) => {
+  const handleCloudProvider = useCallback(async (provider: string, targetRoomId?: string | null) => {
     setShowImportHub(false);
+    // ImportHub's Destination selector wins; fall back to the open room.
+    const importRoom = targetRoomId || selectedRoom;
+    setCloudImportRoom(importRoom);
 
     // Google Photos uses the Picker API (popup/tab flow) instead of CloudBrowser
     if (provider === "google_photos") {
+      // Refuse BEFORE sending the user through the external picker — the
+      // "no room" error used to surface only after they finished picking.
+      if (!importRoom) {
+        setPickerError(t("googlePhotosPickerNoRoom"));
+        setPickerStatus("error");
+        return;
+      }
       setPickerStatus("opening");
       setPickerError("");
       try {
@@ -580,7 +619,7 @@ export default function LibraryView() {
 
         // Save session to localStorage so we can resume if page reloads
         localStorage.setItem("gphoto_picker_session", JSON.stringify({
-          sessionId, roomId: selectedRoom, ts: Date.now(),
+          sessionId, roomId: importRoom, ts: Date.now(),
         }));
 
         // 2. Show picker link in overlay — user opens it themselves
@@ -588,7 +627,7 @@ export default function LibraryView() {
         setPickerStatus("waiting");
 
         // 3. Start polling
-        startPickerPolling(sessionId, selectedRoom);
+        startPickerPolling(sessionId, importRoom);
       } catch (err) {
         setPickerError(err instanceof Error ? err.message : t("gpUnknownError"));
         setPickerStatus("error");
@@ -683,8 +722,9 @@ export default function LibraryView() {
       const saved = localStorage.getItem("gphoto_picker_session");
       if (!saved) return;
       const { sessionId, roomId, ts } = JSON.parse(saved);
-      // Only resume if session is less than 10 minutes old
-      if (Date.now() - ts > 10 * 60 * 1000) {
+      // Only resume if session is fresh AND has a target room — a roomless
+      // session can only end in the "no room" error after picking.
+      if (Date.now() - ts > 10 * 60 * 1000 || !roomId) {
         localStorage.removeItem("gphoto_picker_session");
         return;
       }
@@ -728,6 +768,10 @@ export default function LibraryView() {
       }
     }
     if (targetRoom !== selectedRoom) {
+      // Align the wing scope with the room's real wing (roomWingMap isn't
+      // declared yet at this point in the component, so resolve inline).
+      const targetWing = wings.find(w => getWingRooms(w.id).some(r => r.id === targetRoom))?.id;
+      if (targetWing && targetWing !== selectedWing) setSelectedWing(targetWing);
       setSelectedRoom(targetRoom);
       await fetchRoomMemories(targetRoom);
     }
@@ -849,10 +893,11 @@ export default function LibraryView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Get memories for a room
+  // Get memories for a room. Demo visibility flows through React state so
+  // "Clear examples" takes effect immediately (not on the next remount).
   const getMemsForRoom = useCallback((roomId: string): Mem[] => {
-    return userMems[roomId] || getDemoMems(roomId);
-  }, [userMems]);
+    return userMems[roomId] || (showDemos ? getDemoMems(roomId) : []);
+  }, [userMems, showDemos]);
 
   // All memories across selected wing
   const allWingMems = useMemo(() => {
@@ -879,6 +924,35 @@ export default function LibraryView() {
 
   // Filtered memories
   const q = query.toLowerCase();
+
+  // ONE shared search predicate + ONE shared narrowing predicate, so the room
+  // wall, the All-Memories wall and the cross-wing results always agree on
+  // what matches (and every count shows the same number).
+  const matchesQuery = useCallback((m: Mem) => (
+    m.title.toLowerCase().includes(q)
+    || (m.desc || "").toLowerCase().includes(q)
+    || (m.locationName || "").toLowerCase().includes(q)
+    || (m.historicalContext || "").toLowerCase().includes(q)
+    || m.type.toLowerCase().includes(q)
+  ), [q]);
+  const matchesFilters = useCallback((m: Mem) => {
+    if (filterType && normalizeDisplayType(m.type) !== filterType) return false;
+    if (facet === "place" && !m.locationName) return false;
+    if (facet === "described" && !((m.desc || "").trim() || m.historicalContext)) return false;
+    if (facet === "onthisday") {
+      // month+day match in a PAST year — today's uploads are not anniversaries
+      const raw = memDate(m);
+      if (!raw) return false;
+      const d = new Date(raw), now = new Date();
+      if (Number.isNaN(d.getTime()) || d.getMonth() !== now.getMonth() || d.getDate() !== now.getDate() || d.getFullYear() === now.getFullYear()) return false;
+    }
+    if (filterYear) {
+      const raw = memDate(m);
+      if (!raw || String(new Date(raw).getFullYear()) !== filterYear) return false;
+    }
+    return true;
+  }, [filterType, facet, filterYear]);
+
   const filteredRoomMems = useMemo(() => {
     // Base scope: a selected room, else the whole library on "__all__", else
     // empty (a specific wing with no room falls through to the room overview).
@@ -886,31 +960,20 @@ export default function LibraryView() {
     if (selectedRoom) mems = getMemsForRoom(selectedRoom);
     else if (selectedWing === "__all__") mems = libAllMems;
     else mems = allWingMems; // a wing shows a wall of ALL its media
-    if (q) mems = mems.filter(m =>
-      m.title.toLowerCase().includes(q)
-      || (m.desc || "").toLowerCase().includes(q)
-      || (m.locationName || "").toLowerCase().includes(q)
-      || (m.historicalContext || "").toLowerCase().includes(q)
-      || m.type.toLowerCase().includes(q)
-    );
-    if (filterType) mems = mems.filter(m => normalizeDisplayType(m.type) === filterType);
-    if (facet === "place") mems = mems.filter(m => !!m.locationName);
-    else if (facet === "described") mems = mems.filter(m => !!(m.desc || "").trim() || !!m.historicalContext);
-    else if (facet === "onthisday") { const now = new Date(), mo = now.getMonth(), da = now.getDate(); mems = mems.filter(m => { const r = m.createdAt || (m as { date?: string }).date; if (!r) return false; const d = new Date(r); return !Number.isNaN(d.getTime()) && d.getMonth() === mo && d.getDate() === da; }); }
-    else if (facet === "unplaced") mems = mems.filter(m => !memRoomMap.get(m.id)?.roomId);
-    if (filterYear) mems = mems.filter(m => { const r = m.createdAt || (m as { date?: string }).date; return r ? String(new Date(r).getFullYear()) === filterYear : false; });
+    if (q) mems = mems.filter(matchesQuery);
+    mems = mems.filter(matchesFilters);
     // Sort (P1 #7)
     mems = [...mems].sort((a, b) => {
       switch (sortMode) {
-        case "newest": return (b.createdAt || "").localeCompare(a.createdAt || "");
-        case "oldest": return (a.createdAt || "").localeCompare(b.createdAt || "");
-        case "alpha": return a.title.localeCompare(b.title);
-        case "type": return a.type.localeCompare(b.type);
+        case "newest": return memDate(b).localeCompare(memDate(a));
+        case "oldest": return memDate(a).localeCompare(memDate(b));
+        case "alpha": return a.title.localeCompare(b.title) || memDate(b).localeCompare(memDate(a));
+        case "type": return normalizeDisplayType(a.type).localeCompare(normalizeDisplayType(b.type)) || memDate(b).localeCompare(memDate(a));
         default: return 0;
       }
     });
     return mems;
-  }, [selectedRoom, selectedWing, libAllMems, allWingMems, getMemsForRoom, q, filterType, facet, filterYear, memRoomMap, sortMode]);
+  }, [selectedRoom, selectedWing, libAllMems, allWingMems, getMemsForRoom, q, matchesQuery, matchesFilters, sortMode]);
 
   // Backfill missing video thumbnails for the selected room (background, throttled)
   useThumbnailBackfill(selectedRoom, filteredRoomMems);
@@ -923,20 +986,15 @@ export default function LibraryView() {
       for (const r of getWingRooms(w.id)) {
         const mems = getMemsForRoom(r.id);
         for (const m of mems) {
-          if (
-            m.title.toLowerCase().includes(q)
-            || (m.desc || "").toLowerCase().includes(q)
-            || (m.locationName || "").toLowerCase().includes(q)
-            || (m.historicalContext || "").toLowerCase().includes(q)
-            || m.type.toLowerCase().includes(q)
-          ) {
+          // Same predicates as the wall — active type/facet/year filters compound
+          if (matchesQuery(m) && matchesFilters(m)) {
             results.push({ wing: w, room: r, mem: m });
           }
         }
       }
     }
     return results.length > 0 ? results : null;
-  }, [q, selectedRoom, selectedWing, wings, getWingRooms, getMemsForRoom]);
+  }, [q, selectedRoom, selectedWing, wings, getWingRooms, getMemsForRoom, matchesQuery, matchesFilters]);
 
   // ── Warmth per wing (ports src/lib/warmth.ts): the sidebar seals glow by
   //    recency — quiet / ember / candlelit — like the Atrium board. ──
@@ -963,7 +1021,10 @@ export default function LibraryView() {
     const out: { mem: Mem; wing: Wing; room: WingRoom; yearsAgo: number }[] = [];
     for (const w of wings) {
       for (const r of getWingRooms(w.id)) {
-        for (const m of getMemsForRoom(r.id)) {
+        // Demo/sample memories must never masquerade as personal anniversaries
+        const mems = userMems[r.id];
+        if (!mems) continue;
+        for (const m of mems) {
           const raw = m.createdAt || (m as { date?: string }).date;
           if (!raw) continue;
           const d = new Date(raw);
@@ -975,16 +1036,9 @@ export default function LibraryView() {
       }
     }
     return out.sort((a, b) => a.yearsAgo - b.yearsAgo).slice(0, 8);
-  }, [wings, getWingRooms, getMemsForRoom]);
+  }, [wings, getWingRooms, userMems]);
 
   // Get unique types in room for filter chips + counts
-  // Normalize display types for consistent categorization
-  const normalizeDisplayType = (type: string) => {
-    if (type === "painting") return "photo";
-    if (type === "voice") return "interview";
-    return type;
-  };
-
   const roomTypes = useMemo(() => {
     if (!selectedRoom) return [];
     const mems = getMemsForRoom(selectedRoom);
@@ -994,10 +1048,12 @@ export default function LibraryView() {
   // Result count for search badge
   const searchResultCount = useMemo(() => {
     if (!query) return undefined;
-    if (selectedRoom) return filteredRoomMems.length;
+    // Room scope and the default All-Memories wall both render
+    // filteredRoomMems — count what's actually on screen.
+    if (selectedRoom || selectedWing === "__all__") return filteredRoomMems.length;
     if (crossWingResults) return crossWingResults.length;
     return 0;
-  }, [query, selectedRoom, filteredRoomMems, crossWingResults]);
+  }, [query, selectedRoom, selectedWing, filteredRoomMems, crossWingResults]);
 
   // Wing memory count
   const wingMemCount = useCallback((wingId: string) => {
@@ -1027,6 +1083,38 @@ export default function LibraryView() {
     setSelectedMemIds(new Set());
     setShowBatchTag(false);
   }, [selectedRoom, selectedWing]);
+
+  // The wall is the only view outside a room — a persisted timeline choice
+  // must never strand the default All-Memories scope where the toggle is hidden.
+  const effectiveView = selectedRoom ? viewMode : "grid";
+
+  // Stable PhotoWall props: PhotoWall is React.memo'd, so inline lambdas
+  // would defeat it and re-pack the wall on every unrelated render.
+  const tileAccentOf = useCallback((id: string) => { const wid = memRoomMap.get(id)?.wingId; return wid ? (wings.find(w => w.id === wid)?.accent || null) : null; }, [memRoomMap, wings]);
+  const roomLabelOf = useCallback((id: string) => { const rid = memRoomMap.get(id)?.roomId; if (!rid) return t("undated") !== "undated" ? t("undated") : "Undated"; const wid = memRoomMap.get(id)?.wingId; const r = wid ? getWingRooms(wid).find(rr => rr.id === rid) : null; return r ? translateRoomName(r, tWings) : rid; }, [memRoomMap, getWingRooms, t, tWings]);
+  const toggleSelectMem = useCallback((id: string) => setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }), []);
+  const openMediaAt = useCallback((i: number) => setMediaPlayerIndex(i), []);
+  const monthLabelOf = useCallback((d: Date) => d.toLocaleDateString(undefined, { month: "long", year: "numeric" }), []);
+  const countLabelOf = useCallback((n: number) => `${n}`, []);
+  const handleTileDragEnd = useCallback(() => setDraggingMemId(null), []);
+
+  // Room-scoped spotlight targets (AI label / write story / location) only
+  // render their pill inside a room — auto-enter the fullest room so the
+  // Atrium CTA actually lands on a pulsing control instead of nothing.
+  useEffect(() => {
+    if (!spotlightTarget || selectedRoom) return;
+    if (spotlightTarget === "aiLabel" || spotlightTarget === "writeStory" || spotlightTarget === "addLocation") {
+      let best: string | null = null, bestCount = -1;
+      for (const w of wings) for (const r of getWingRooms(w.id)) {
+        const c = getMemsForRoom(r.id).length;
+        if (c > bestCount) { bestCount = c; best = r.id; }
+      }
+      if (best) {
+        if (roomWingMap[best]) setSelectedWing(roomWingMap[best]);
+        setSelectedRoom(best);
+      }
+    }
+  }, [spotlightTarget, selectedRoom, wings, getWingRooms, getMemsForRoom, roomWingMap]);
 
   const { setShowSharedWithMe } = useUIPanelStore();
   const globalShowImportHub = useUIPanelStore((s) => s.showImportHub);
@@ -1064,30 +1152,55 @@ export default function LibraryView() {
     return result;
   }, [wings, getWingRooms, tWings]);
 
+  // One shared close for the tool panels (Escape, ✕, scope change). Bumping
+  // the run id orphans any in-flight AI-label loop so a closed panel can
+  // never keep spending API calls or resurrect stale "Done!" state.
+  const closeToolPanel = useCallback(() => {
+    aiLabelRunRef.current++;
+    setActiveToolPanel(null);
+    setAiLabelProcessing(false);
+    setAiLabelSelected(new Set());
+    setAiLabelResults({});
+    setAiLabelProgress(null);
+    setAiLabelError(null);
+    setAiLabelDone(false);
+    setAiLabelEditing(null);
+  }, []);
+
   const handleBackToRooms = useCallback(() => {
     setSelectedRoom(null);
     setQuery("");
     setFilterType(null);
     setVisibleMemCount(50);
-  }, []);
+    closeToolPanel();
+  }, [closeToolPanel]);
 
-  // Keyboard: Escape to go back
+  // Keyboard: Escape closes the topmost surface first
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (showImportHub) setShowImportHub(false);
-        else if (mediaPlayerIndex !== null) setMediaPlayerIndex(null);
-        else if (lightboxMem) setLightboxMem(null);
-        else if (detailPanelMem) setDetailPanelMem(null);
-        else if (movingMem) setMovingMem(null);
-        else if (detailMem) setDetailMem(null);
-        else if (showUploadFor) setShowUploadFor(null);
-        else if (selectedRoom) handleBackToRooms();
-      }
+      if (e.key !== "Escape") return;
+      // Text fields cancel their own edit on Escape — never hijack it
+      const el = e.target as HTMLElement | null;
+      if (el && (el.closest?.("input, textarea, select") || el.isContentEditable)) return;
+      if (showImportHub) setShowImportHub(false);
+      else if (cloudBrowserProvider) setCloudBrowserProvider(null);
+      else if (pickerStatus !== "idle") { setPickerStatus("idle"); if (pickerPollRef.current) { clearInterval(pickerPollRef.current); pickerPollRef.current = null; } }
+      else if (showPublishModal) setShowPublishModal(false);
+      else if (activeToolPanel) closeToolPanel();
+      else if (bulkMoving) { setBulkMoving(false); setExpandedMoveWing(null); }
+      else if (mediaPlayerIndex !== null) setMediaPlayerIndex(null);
+      else if (lightboxMem) setLightboxMem(null);
+      else if (detailPanelMem) setDetailPanelMem(null);
+      else if (movingMem) setMovingMem(null);
+      else if (detailMem) setDetailMem(null);
+      else if (showUploadFor) setShowUploadFor(null);
+      else if (mobileSortOpen) setMobileSortOpen(false);
+      else if (selectMode) { setSelectMode(false); setSelectedMemIds(new Set()); setShowBatchTag(false); }
+      else if (selectedRoom) handleBackToRooms();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showImportHub, mediaPlayerIndex, lightboxMem, detailPanelMem, movingMem, detailMem, showUploadFor, selectedRoom, handleBackToRooms]);
+  }, [showImportHub, cloudBrowserProvider, pickerStatus, showPublishModal, activeToolPanel, closeToolPanel, bulkMoving, mediaPlayerIndex, lightboxMem, detailPanelMem, movingMem, detailMem, showUploadFor, mobileSortOpen, selectMode, selectedRoom, handleBackToRooms]);
 
   const handleAddMemory = useCallback((mem: Mem) => {
     if (showUploadFor) {
@@ -1198,14 +1311,14 @@ export default function LibraryView() {
                 wings={wings}
                 selectedWing={selectedWing}
                 onSelectWing={(wingId: string) => { if (selectedWing === wingId) { setSelectedWing("__all__"); } else { setSelectedWing(wingId); } setSelectedRoom(null); setMobileSidebarOpen(false); }}
-                onSelectRoom={(roomId: string) => { setSelectedRoom(selectedRoom === roomId ? null : roomId); setMobileSidebarOpen(false); }}
+                onSelectRoom={(roomId: string) => { const next = selectedRoom === roomId ? null : roomId; if (next && roomWingMap[next]) setSelectedWing(roomWingMap[next]); setSelectedRoom(next); setMobileSidebarOpen(false); }}
                 selectedRoom={selectedRoom}
                 wingWarmth={wingWarmth}
                 wingMemCount={wingMemCount}
                 onEnter3D={handleEnter3D}
                 isMobile={isMobile}
                 onAddWing={() => setShowWingManager(true)}
-                onAddRoom={() => setShowRoomManager(true)}
+                onAddRoom={selectedWing === "__all__" ? undefined : () => setShowRoomManager(true)}
                 selectedWingName={selectedWing === "__all__" ? undefined : currentWing.id === "attic" ? t("storageRoom") : translateWingName(currentWing, tWings)}
                 selectedRoomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
                 sharedCount={sharedCount}
@@ -1225,14 +1338,14 @@ export default function LibraryView() {
           wings={wings}
           selectedWing={selectedWing}
           onSelectWing={(wingId: string) => { if (selectedWing === wingId) { setSelectedWing("__all__"); } else { setSelectedWing(wingId); } setSelectedRoom(null); }}
-          onSelectRoom={(roomId: string) => { setSelectedRoom(selectedRoom === roomId ? null : roomId); }}
+          onSelectRoom={(roomId: string) => { const next = selectedRoom === roomId ? null : roomId; if (next && roomWingMap[next]) setSelectedWing(roomWingMap[next]); setSelectedRoom(next); }}
           selectedRoom={selectedRoom}
           wingWarmth={wingWarmth}
           wingMemCount={wingMemCount}
           onEnter3D={handleEnter3D}
           isMobile={isMobile}
           onAddWing={() => setShowWingManager(true)}
-          onAddRoom={() => setShowRoomManager(true)}
+          onAddRoom={selectedWing === "__all__" ? undefined : () => setShowRoomManager(true)}
           selectedWingName={selectedWing === "__all__" ? undefined : currentWing.id === "attic" ? t("storageRoom") : translateWingName(currentWing, tWings)}
           selectedRoomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
           sharedCount={sharedCount}
@@ -1334,6 +1447,7 @@ export default function LibraryView() {
               {(sharedCount ?? 0) > 0 && (
                 <button
                   onClick={() => setShowSharedWithMe(true)}
+                  aria-label={`${t("sharedWithMe")} (${sharedCount})`}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: "0.25rem",
                     padding: "0.375rem 0.75rem",
@@ -1345,7 +1459,7 @@ export default function LibraryView() {
                     transition: "all 0.2s ease",
                   }}
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.color.sage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.color.sage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
                     <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
                   </svg>
@@ -1417,7 +1531,7 @@ export default function LibraryView() {
                 return (
                   <button
                     key={room.id}
-                    onClick={() => { setSelectedRoom(selectedRoom === room.id ? null : room.id); }}
+                    onClick={() => { const next = selectedRoom === room.id ? null : room.id; if (next && roomWingMap[next]) setSelectedWing(roomWingMap[next]); setSelectedRoom(next); }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "0.25rem",
                       padding: "0.375rem 0.75rem",
@@ -1440,7 +1554,9 @@ export default function LibraryView() {
                   </button>
                 );
               })}
-              {/* Add room pill */}
+              {/* Add room pill — hidden on the All scope: a room needs a real
+                  wing to be created in, not a silent wings[0] fallback */}
+              {selectedWing !== "__all__" && (
               <button
                 onClick={() => setShowRoomManager(true)}
                 style={{
@@ -1456,6 +1572,7 @@ export default function LibraryView() {
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               </button>
+              )}
             </div>
 
             {/* ── Search bar + sort toggle ── */}
@@ -1497,6 +1614,8 @@ export default function LibraryView() {
               <button
                 onClick={() => setMobileSortOpen(prev => !prev)}
                 aria-label={t("sortLabel")}
+                aria-haspopup="menu"
+                aria-expanded={mobileSortOpen}
                 style={{
                   width: "2.5rem", height: "2.5rem", borderRadius: "0.75rem",
                   border: `0.0625rem solid ${mobileSortOpen ? currentWing.accent : T.color.cream}`,
@@ -1510,9 +1629,12 @@ export default function LibraryView() {
                   <path d="M3 6h18M6 12h12M9 18h6" />
                 </svg>
               </button>
-              {/* Sort popup */}
+              {/* Sort popup — transparent backdrop dismisses on outside tap */}
               {mobileSortOpen && (
-                <div style={{
+                <div onClick={() => setMobileSortOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 19, background: "transparent" }} />
+              )}
+              {mobileSortOpen && (
+                <div role="menu" style={{
                   position: "absolute", top: "100%", right: "0.75rem", zIndex: 20,
                   background: T.color.white, borderRadius: "0.75rem",
                   border: `0.0625rem solid ${T.color.cream}`,
@@ -1523,6 +1645,8 @@ export default function LibraryView() {
                   {(["newest", "oldest", "alpha", "type"] as const).map((mode) => (
                     <button
                       key={mode}
+                      role="menuitemradio"
+                      aria-checked={sortMode === mode}
                       onClick={() => { setSortMode(mode); setMobileSortOpen(false); }}
                       style={{
                         display: "flex", alignItems: "center", gap: "0.5rem",
@@ -1598,13 +1722,14 @@ export default function LibraryView() {
             ACTION pills (right, terracotta) + the ink+gold Import keystone. ── */}
         {(() => {
           const base = selectedRoom ? getMemsForRoom(selectedRoom) : (selectedWing === "__all__" ? libAllMems : allWingMems);
-          const now = new Date(), mo = now.getMonth(), da = now.getDate();
-          const isOtd = (m: Mem) => { const r = m.createdAt || (m as { date?: string }).date; if (!r) return false; const d = new Date(r); return !Number.isNaN(d.getTime()) && d.getMonth() === mo && d.getDate() === da; };
-          const defs: { key: "place" | "described" | "onthisday" | "unplaced"; label: string; count: number; icon: React.ReactNode }[] = [
+          const now = new Date(), mo = now.getMonth(), da = now.getDate(), yr = now.getFullYear();
+          // Anniversaries only: month+day match in a PAST year (same semantics
+          // as the gilt strip and the facet predicate).
+          const isOtd = (m: Mem) => { const r = memDate(m); if (!r) return false; const d = new Date(r); return !Number.isNaN(d.getTime()) && d.getMonth() === mo && d.getDate() === da && d.getFullYear() !== yr; };
+          const defs: { key: "place" | "described" | "onthisday"; label: string; count: number; icon: React.ReactNode }[] = [
             { key: "place", label: t("facetPlace") !== "facetPlace" ? t("facetPlace") : "Has place", count: base.filter(m => !!m.locationName).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> },
             { key: "described", label: t("facetDescribed") !== "facetDescribed" ? t("facetDescribed") : "Described", count: base.filter(m => !!(m.desc || "").trim() || !!m.historicalContext).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> },
             { key: "onthisday", label: t("onThisDay") !== "onThisDay" ? t("onThisDay") : "On this day", count: base.filter(isOtd).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.2 5.6L20 9.3l-4.4 3.7L17 19l-5-3.2L7 19l1.4-6L4 9.3l5.8-.7z"/></svg> },
-            { key: "unplaced", label: t("facetUnplaced") !== "facetUnplaced" ? t("facetUnplaced") : "Unplaced", count: base.filter(m => !memRoomMap.get(m.id)?.roomId).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2.5"/></svg> },
           ];
           const anyActive = !!facet || !!filterType || !!q || !!filterYear;
           const roomTools = ([{ key: "writeStory" as const, label: t("writeStory") }, { key: "aiLabel" as const, label: t("aiLabel") }, { key: "addLocation" as const, label: t("addLocation") }]);
@@ -1628,6 +1753,32 @@ export default function LibraryView() {
 
               <span style={{ flex: 1, minWidth: "0.75rem" }} />
 
+              {/* Type filter — the state always existed; now it has a control */}
+              {(() => {
+                const typesInScope = [...new Set(base.map(m => normalizeDisplayType(m.type)))].sort();
+                if (typesInScope.length < 2 && !filterType) return null;
+                const typeLabel = (ty: string) => {
+                  const k = `type${ty.charAt(0).toUpperCase() + ty.slice(1)}`;
+                  const v = t(k as "sortNewest");
+                  return v !== k ? v : ty;
+                };
+                return (
+                  <select value={filterType || ""} onChange={e => setFilterType(e.target.value || null)} aria-label={t("filterAllTypes") !== "filterAllTypes" ? t("filterAllTypes") : "All types"} className="lib-pill" style={{ flexShrink: 0, minHeight: "1.9rem", padding: "0 0.6rem", borderRadius: "2rem", border: `0.0625rem solid ${filterType ? "#B85C38" : "#E3D6BC"}`, background: filterType ? "#B85C38" : "#FCFAF5", color: filterType ? "#FCFAF5" : "#403B36", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, WebkitAppearance: "none", MozAppearance: "none", appearance: "none" }}>
+                    <option value="">{t("filterAllTypes") !== "filterAllTypes" ? t("filterAllTypes") : "All types"}</option>
+                    {typesInScope.map(ty => <option key={ty} value={ty}>{typeLabel(ty)}</option>)}
+                  </select>
+                );
+              })()}
+
+              {/* Sort — desktop control for the state the mobile popup drives */}
+              {!isMobile && (
+                <select value={sortMode} onChange={e => setSortMode(e.target.value as typeof sortMode)} aria-label={t("sortLabel")} className="lib-pill" style={{ flexShrink: 0, minHeight: "1.9rem", padding: "0 0.6rem", borderRadius: "2rem", border: `0.0625rem solid ${sortMode !== "newest" ? "#B85C38" : "#E3D6BC"}`, background: sortMode !== "newest" ? "#B85C38" : "#FCFAF5", color: sortMode !== "newest" ? "#FCFAF5" : "#403B36", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, WebkitAppearance: "none", MozAppearance: "none", appearance: "none" }}>
+                  {(["newest", "oldest", "alpha", "type"] as const).map(m => (
+                    <option key={m} value={m}>{t(`sort${m.charAt(0).toUpperCase() + m.slice(1)}` as "sortNewest")}</option>
+                  ))}
+                </select>
+              )}
+
               {libYears.length > 1 && (
                 <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="lib-pill" style={{ flexShrink: 0, minHeight: "1.9rem", padding: "0 0.6rem", borderRadius: "2rem", border: `0.0625rem solid ${filterYear ? "#B85C38" : "#E3D6BC"}`, background: filterYear ? "#B85C38" : "#FCFAF5", color: filterYear ? "#FCFAF5" : "#403B36", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, WebkitAppearance: "none", MozAppearance: "none", appearance: "none" }}>
                   <option value="">{t("allYears") !== "allYears" ? t("allYears") : "All years"}</option>
@@ -1648,10 +1799,10 @@ export default function LibraryView() {
                 <button type="button" onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("demoBannerClear")}</button>
               )}
               {selectedRoom && roomTools.map(a => (
-                <button key={a.key} type="button" onClick={() => setActiveToolPanel(a.key)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{a.label}</button>
+                <button key={a.key} type="button" data-spotlight-id={a.key} onClick={() => { setActiveToolPanel(a.key); if (spotlightTarget === a.key) setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === a.key ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>{a.label}</button>
               ))}
               <button type="button" onClick={() => setShowPublishModal(true)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("publish")}</button>
-              <button type="button" data-spotlight-id="importUpload" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)" }}>
+              <button type="button" data-spotlight-id="importUpload" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", animation: spotlightTarget === "importUpload" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
                 {t("importButton")}
               </button>
@@ -1730,9 +1881,6 @@ export default function LibraryView() {
               }}>
                 <button onClick={() => setViewMode("grid")} aria-label={t("gridView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "grid" ? T.color.white : "transparent", boxShadow: viewMode === "grid" ? "0 0.0625rem 0.25rem rgba(64,59,54,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "grid" ? "#403B36" : "#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-                </button>
-                <button onClick={() => setViewMode("list")} aria-label={t("listView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "list" ? T.color.white : "transparent", boxShadow: viewMode === "list" ? "0 0.0625rem 0.25rem rgba(64,59,54,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "list" ? "#403B36" : "#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                 </button>
                 <button onClick={() => setViewMode("timeline")} aria-label={t("timelineView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "timeline" ? T.color.white : "transparent", boxShadow: viewMode === "timeline" ? "0 0.0625rem 0.25rem rgba(64,59,54,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "timeline" ? "#403B36" : "#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
@@ -2241,96 +2389,26 @@ export default function LibraryView() {
                 </div>
               )}
               {!roomLoading && filteredRoomMems.length > 0 ? (
-                viewMode === "grid" ? (
+                effectiveView === "grid" ? (
                   <PhotoWall
                     mems={filteredRoomMems}
                     isMobile={isMobile}
-                    tileAccent={(id) => { const wid = memRoomMap.get(id)?.wingId; return wid ? (wings.find(w => w.id === wid)?.accent || null) : null; }}
+                    tileAccent={tileAccentOf}
                     groupBy={wallGroupBy}
-                    roomLabelOf={(id) => { const rid = memRoomMap.get(id)?.roomId; if (!rid) return t("undated") !== "undated" ? t("undated") : "Undated"; const wid = memRoomMap.get(id)?.wingId; const r = wid ? getWingRooms(wid).find(rr => rr.id === rid) : null; return r ? translateRoomName(r, tWings) : rid; }}
+                    sortMode={sortMode}
+                    roomLabelOf={roomLabelOf}
                     selectMode={selectMode}
                     selectedMemIds={selectedMemIds}
-                    onToggleSelect={(id) => setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
-                    onOpen={(i) => setMediaPlayerIndex(i)}
-                    monthLabel={(d) => d.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+                    onToggleSelect={toggleSelectMem}
+                    onOpen={openMediaAt}
+                    monthLabel={monthLabelOf}
                     undatedLabel={t("undated") !== "undated" ? t("undated") : "Undated"}
-                    countLabel={(n) => `${n}`}
+                    countLabel={countLabelOf}
                     draggableTiles={!isMobile}
                     onTileDragStart={handleTileDragStart}
-                    onTileDragEnd={() => setDraggingMemId(null)}
+                    onTileDragEnd={handleTileDragEnd}
                   />
-                ) : viewMode === "list" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }} role="list">
-                  {filteredRoomMems.slice(0, visibleMemCount).map((mem, i) => (
-                    <button
-                      key={mem.id}
-                      role="listitem"
-                      onClick={() => {
-                        if (selectMode) {
-                          setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(mem.id)) next.delete(mem.id); else next.add(mem.id); return next; });
-                        } else {
-                          setMediaPlayerIndex(i);
-                        }
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.75rem",
-                        padding: "0.625rem 0.875rem",
-                        borderRadius: "0.625rem",
-                        border: `0.0625rem solid ${selectedMemIds.has(mem.id) ? currentWing.accent : T.color.cream}`,
-                        background: selectedMemIds.has(mem.id) ? `${currentWing.accent}08` : "rgba(255,255,255,0.75)",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        fontFamily: T.font.body,
-                        transition: "all 0.2s ease",
-                        animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(0.03 + i * 0.03, 0.25)}s both`,
-                      }}
-                    >
-                      {selectMode && (
-                        <div style={{
-                          width: "1.25rem", height: "1.25rem", borderRadius: "0.25rem", flexShrink: 0,
-                          background: selectedMemIds.has(mem.id) ? currentWing.accent : T.color.white,
-                          border: `0.0625rem solid ${selectedMemIds.has(mem.id) ? currentWing.accent : T.color.sandstone}`,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          {selectedMemIds.has(mem.id) && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                          )}
-                        </div>
-                      )}
-                      {mem.dataUrl && (
-                        <Image
-                          src={mem.dataUrl}
-                          alt=""
-                          width={40}
-                          height={40}
-                          unoptimized
-                          style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.375rem", objectFit: "cover", flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{
-                          display: "block",
-                          fontSize: "0.875rem",
-                          fontWeight: 500,
-                          color: "#403B36",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}>
-                          {mem.title}
-                        </span>
-                        {mem.type && (
-                          <span style={{ fontSize: "0.6875rem", color: "#716A5E" }}>
-                            {mem.type}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                ) : viewMode === "timeline" ? (
+                ) : effectiveView === "timeline" ? (
                 /* P2 #3: Timeline view */
                 <div style={{ position: "relative", paddingLeft: "2rem" }}>
                   {/* Vertical line */}
@@ -2339,12 +2417,18 @@ export default function LibraryView() {
                     width: "0.125rem", background: `linear-gradient(to bottom, ${currentWing.accent}59, #E3D6BC)`,
                   }} />
                   {(() => {
-                    const sorted = [...filteredRoomMems.slice(0, visibleMemCount)].sort((a, b) =>
-                      (b.createdAt || "").localeCompare(a.createdAt || ""));
+                    // Timeline is chronological by nature: honor newest/oldest,
+                    // and sort the FULL array BEFORE paginating so "Load more"
+                    // extends the ordering instead of interleaving into it.
+                    const dir = sortMode === "oldest" ? 1 : -1;
+                    const sorted = [...filteredRoomMems]
+                      .sort((a, b) => dir * memDate(a).localeCompare(memDate(b)))
+                      .slice(0, visibleMemCount);
                     let lastDate = "";
                     return sorted.map((mem, i) => {
-                      const dateStr = mem.createdAt
-                        ? new Date(mem.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+                      const rawDate = memDate(mem);
+                      const dateStr = rawDate
+                        ? new Date(rawDate).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
                         : "";
                       const showDate = dateStr !== lastDate;
                       if (showDate) lastDate = dateStr;
@@ -2377,7 +2461,10 @@ export default function LibraryView() {
                               if (selectMode) {
                                 setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(mem.id)) next.delete(mem.id); else next.add(mem.id); return next; });
                               } else {
-                                setMediaPlayerIndex(i);
+                                // Open by identity: the player receives the
+                                // un-resorted filteredRoomMems, so a positional
+                                // index from this locally-sorted list is wrong.
+                                setMediaPlayerIndex(filteredRoomMems.findIndex(m => m.id === mem.id));
                               }
                             }}
                             style={{
@@ -2420,16 +2507,16 @@ export default function LibraryView() {
                 ) : null
               ) : !roomLoading ? (
                 <LibraryEmptyState
-                  type={(!!q || !!filterType) ? "search" : "room"}
+                  type={(!!q || !!filterType || !!facet || !!filterYear) ? "search" : "room"}
                   accent={currentWing.accent}
                   onAdd={() => setShowImportHub(true)}
                   query={query || undefined}
                 />
               ) : null}
 
-              {/* Load more pagination — list/timeline only; the grid wall
+              {/* Load more pagination — timeline only; the grid wall
                   renders every row (content-visibility keeps it cheap) */}
-              {viewMode !== "grid" && filteredRoomMems.length > visibleMemCount && (
+              {effectiveView !== "grid" && filteredRoomMems.length > visibleMemCount && (
                 <div style={{
                   display: "flex", flexDirection: "column", alignItems: "center",
                   gap: "0.5rem", marginTop: "1.5rem",
@@ -2687,6 +2774,7 @@ export default function LibraryView() {
           onClose={() => setShowRoomManager(false)}
           onEnterRoom={(roomId: string) => {
             setShowRoomManager(false);
+            if (roomWingMap[roomId]) setSelectedWing(roomWingMap[roomId]);
             setSelectedRoom(roomId);
             fetchRoomMemories(roomId);
           }}
@@ -2851,13 +2939,14 @@ export default function LibraryView() {
           provider={cloudBrowserProvider}
           onClose={() => setCloudBrowserProvider(null)}
           onImport={async (items) => {
-            if (items.length > 0 && !selectedRoom) {
-              // No target room (default All-Memories scope): keep the modal —
-              // and the user's selection — alive instead of silently discarding.
+            const importRoom = cloudImportRoom || selectedRoom;
+            if (items.length > 0 && !importRoom) {
+              // No target room: keep the modal — and the user's selection —
+              // alive instead of silently discarding.
               await confirmDialog({ message: t("selectRoomFirst") });
               return;
             }
-            if (selectedRoom && items.length > 0) {
+            if (importRoom && items.length > 0) {
               const provider = items[0].provider;
               const endpointMap: Record<string, string> = {
                 dropbox: "/api/integrations/dropbox/import",
@@ -2869,13 +2958,13 @@ export default function LibraryView() {
               if (endpoint) {
                 let body: Record<string, unknown>;
                 if (provider === "dropbox") {
-                  body = { filePaths: items.map((i) => i.path || i.id), roomId: selectedRoom };
+                  body = { filePaths: items.map((i) => i.path || i.id), roomId: importRoom };
                 } else if (provider === "googlePhotos") {
-                  body = { photoIds: items.map((i) => i.id), roomId: selectedRoom };
+                  body = { photoIds: items.map((i) => i.id), roomId: importRoom };
                 } else if (provider === "onedrive") {
-                  body = { itemIds: items.map((i) => i.id), roomId: selectedRoom };
+                  body = { itemIds: items.map((i) => i.id), roomId: importRoom };
                 } else {
-                  body = { fileIds: items.map((i) => i.id), roomId: selectedRoom };
+                  body = { fileIds: items.map((i) => i.id), roomId: importRoom };
                 }
                 try {
                   const res = await fetch(endpoint, {
@@ -2884,7 +2973,7 @@ export default function LibraryView() {
                     body: JSON.stringify(body),
                   });
                   if (res.ok) {
-                    await fetchRoomMemories(selectedRoom);
+                    await fetchRoomMemories(importRoom);
                   }
                 } catch { /* ignore */ }
               }
@@ -3051,19 +3140,34 @@ export default function LibraryView() {
         const handleStartLabeling = async () => {
           const selectedPhotos = photoMems.filter(m => aiLabelSelected.has(m.id));
           if (selectedPhotos.length === 0) { setAiLabelError(t("aiLabelNoSelection")); return; }
+          // Run-id guard: closing the panel bumps the ref, and this loop stops
+          // spending paid API calls and never writes state from a dead run.
+          const run = ++aiLabelRunRef.current;
           setAiLabelProcessing(true); setAiLabelError(null); setAiLabelDone(false); setAiLabelResults({});
-          let failCount = 0;
+          let failCount = 0, successCount = 0;
           for (let i = 0; i < selectedPhotos.length; i++) {
+            if (run !== aiLabelRunRef.current) return;
             const mem = selectedPhotos[i];
             setAiLabelProgress({ current: i + 1, total: selectedPhotos.length });
             try {
               const res = await fetch("/api/ai-label", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl: mem.dataUrl, memoryTitle: mem.title }) });
-              if (!res.ok) { if (res.status === 403) { setAiLabelError(t("aiLabelConsentRequired")); setAiLabelProcessing(false); setAiLabelProgress(null); return; } failCount++; continue; }
+              if (run !== aiLabelRunRef.current) return;
+              if (!res.ok) {
+                if (res.status === 403) { setAiLabelError(t("aiLabelConsentRequired")); setAiLabelProcessing(false); setAiLabelProgress(null); return; }
+                // These statuses will fail every remaining call too — stop the loop
+                if (res.status === 401 || res.status === 429 || res.status === 503) { failCount += selectedPhotos.length - i; break; }
+                failCount++; continue;
+              }
               const data = await res.json();
+              if (run !== aiLabelRunRef.current) return;
+              successCount++;
               setAiLabelResults(prev => ({ ...prev, [mem.id]: { description: data.description, labels: data.labels } }));
             } catch { failCount++; }
           }
-          setAiLabelProcessing(false); setAiLabelProgress(null); setAiLabelDone(true);
+          if (run !== aiLabelRunRef.current) return;
+          setAiLabelProcessing(false); setAiLabelProgress(null);
+          // Total failure keeps the selection grid visible for retry — no green "Done!"
+          setAiLabelDone(successCount > 0);
           if (failCount > 0) setAiLabelError(t("aiLabelFailed", { count: String(failCount) }));
         };
         const handleSaveResult = (memId: string, description: string, labels: string[]) => {
@@ -3073,7 +3177,7 @@ export default function LibraryView() {
           updateMemory(rid, memId, { desc: description + tagSuffix });
           setAiLabelResults(prev => ({ ...prev, [memId]: { ...prev[memId], saved: true } }));
         };
-        const handleClosePanel = () => { setActiveToolPanel(null); setAiLabelProcessing(false); setAiLabelSelected(new Set()); setAiLabelResults({}); setAiLabelProgress(null); setAiLabelError(null); setAiLabelDone(false); setAiLabelEditing(null); };
+        const handleClosePanel = closeToolPanel;
         return (
         <div role="button" tabIndex={0} onClick={handleClosePanel} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClosePanel(); } }} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(64,59,54,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)", display: "flex", alignItems: "center", justifyContent: "center", animation: "libFadeIn 0.2s ease both" }}>
           <div onClick={e => e.stopPropagation()} style={{ position: "relative", background: CREAM, borderRadius: "1.25rem", boxShadow: "0 1.5rem 3rem rgba(64,59,54,0.18), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", border: `0.0625rem solid ${HAIRLINE}`, width: "min(32rem, 92vw)", maxHeight: "min(40rem, 88vh)", display: "flex", flexDirection: "column", overflow: "hidden", animation: "libSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both" }}>
@@ -3105,7 +3209,7 @@ export default function LibraryView() {
                   <div style={{ marginBottom: "1rem" }}>
                     <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#716A5E", marginBottom: "0.375rem" }}>{t("aiLabelProgress", { current: String(aiLabelProgress.current), total: String(aiLabelProgress.total) })}</p>
                     <div style={{ height: "0.25rem", borderRadius: "0.125rem", background: T.color.cream, overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: "0.125rem", background: T.color.sandstone, transition: "width 0.3s ease", width: `${(aiLabelProgress.current / aiLabelProgress.total) * 100}%` }} />
+                      <div style={{ height: "100%", borderRadius: "0.125rem", background: EMBER, transition: "width 0.3s ease", width: `${(aiLabelProgress.current / aiLabelProgress.total) * 100}%` }} />
                     </div>
                   </div>
                 )}
@@ -3129,9 +3233,9 @@ export default function LibraryView() {
                           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (aiLabelProcessing) return; setAiLabelSelected(prev => { const next = new Set(prev); if (next.has(m.id)) next.delete(m.id); else next.add(m.id); return next; }); } }}
                           aria-label={m.title}
                           aria-pressed={isSelected}
-                          style={{ position: "relative", borderRadius: "0.5rem", overflow: "hidden", aspectRatio: "1", cursor: aiLabelProcessing ? "default" : "pointer", outline: isSelected ? `0.125rem solid ${T.color.sandstone}` : "0.125rem solid transparent", outlineOffset: "-0.125rem", opacity: aiLabelProcessing && !isSelected ? 0.4 : 1, transition: "outline 0.15s ease, opacity 0.15s ease" }}>
+                          style={{ position: "relative", borderRadius: "0.5rem", overflow: "hidden", aspectRatio: "1", cursor: aiLabelProcessing ? "default" : "pointer", outline: isSelected ? `0.125rem solid ${EMBER}` : "0.125rem solid transparent", outlineOffset: "-0.125rem", opacity: aiLabelProcessing && !isSelected ? 0.4 : 1, transition: "outline 0.15s ease, opacity 0.15s ease" }}>
                           <Image src={m.dataUrl || ""} alt={m.title} fill unoptimized style={{ objectFit: "cover" }} />
-                          <div style={{ position: "absolute", top: "0.25rem", left: "0.25rem", width: "1.125rem", height: "1.125rem", borderRadius: "0.25rem", background: isSelected ? T.color.sandstone : "rgba(255,255,255,.7)", border: isSelected ? "none" : `0.0625rem solid ${"#716A5E"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.6875rem", color: "#FFF", fontWeight: 700 }}>{isSelected && "\u2713"}</div>
+                          <div style={{ position: "absolute", top: "0.25rem", left: "0.25rem", width: "1.125rem", height: "1.125rem", borderRadius: "0.25rem", background: isSelected ? EMBER : "rgba(255,255,255,.7)", border: isSelected ? "none" : `0.0625rem solid ${"#716A5E"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.6875rem", color: "#FFF", fontWeight: 700 }}>{isSelected && "\u2713"}</div>
                           {hasDesc && (<div style={{ position: "absolute", top: "0.25rem", right: "0.25rem", width: "1rem", height: "1rem", borderRadius: "50%", background: "rgba(76,175,80,.85)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.5625rem", color: "#FFF" }}>{"\u2713"}</div>)}
                           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,.5)", padding: "0.125rem 0.25rem", fontSize: "0.5rem", color: "#FFF", fontFamily: T.font.body, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</div>
                         </div>
@@ -3154,7 +3258,7 @@ export default function LibraryView() {
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
                                 <textarea value={aiLabelEditText} onChange={e => setAiLabelEditText(e.target.value)} style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", border: `0.0625rem solid ${T.color.cream}`, borderRadius: "0.375rem", padding: "0.375rem 0.5rem", resize: "vertical", minHeight: "2.5rem", background: "#FFF", outline: "none", lineHeight: 1.4, width: "100%" }} />
                                 <div style={{ display: "flex", gap: "0.375rem" }}>
-                                  <button onClick={() => { setAiLabelResults(prev => ({ ...prev, [memId]: { ...prev[memId], description: aiLabelEditText } })); setAiLabelEditing(null); }} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: "0.25rem", background: T.color.sandstone, color: "#FFF", border: "none", cursor: "pointer" }}>{t("aiLabelSave")}</button>
+                                  <button onClick={() => { setAiLabelResults(prev => ({ ...prev, [memId]: { ...prev[memId], description: aiLabelEditText } })); setAiLabelEditing(null); }} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: "0.25rem", background: EMBER, color: "#FCFAF5", border: "none", cursor: "pointer" }}>{t("aiLabelSave")}</button>
                                   <button onClick={() => setAiLabelEditing(null)} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", padding: "0.25rem 0.625rem", borderRadius: "0.25rem", background: "rgba(64,59,54,.06)", color: "#716A5E", border: "none", cursor: "pointer" }}>{tc("cancel")}</button>
                                 </div>
                               </div>
@@ -3163,7 +3267,7 @@ export default function LibraryView() {
                               {result.labels.length > 0 && (<div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginBottom: "0.375rem" }}>{result.labels.map((label, i) => (<span key={i} style={{ fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.0625rem 0.375rem", borderRadius: "0.25rem", background: `${T.color.sandstone}20`, color: "#716A5E" }}>{label}</span>))}</div>)}
                               <div style={{ display: "flex", gap: "0.375rem" }}>
                                 <button onClick={() => { setAiLabelEditing(memId); setAiLabelEditText(result.description); }} style={{ fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.125rem 0.375rem", borderRadius: "0.25rem", background: "none", color: "#716A5E", border: `0.0625rem solid ${T.color.cream}`, cursor: "pointer" }}>{t("aiLabelEditDesc")}</button>
-                                {!result.saved && (<button onClick={() => handleSaveResult(memId, result.description, result.labels)} style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "0.25rem", background: T.color.sandstone, color: "#FFF", border: "none", cursor: "pointer" }}>{t("aiLabelSave")}</button>)}
+                                {!result.saved && (<button onClick={() => handleSaveResult(memId, result.description, result.labels)} style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "0.25rem", background: EMBER, color: "#FCFAF5", border: "none", cursor: "pointer" }}>{t("aiLabelSave")}</button>)}
                                 {result.saved && (<span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: "#2e7d32", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.125rem" }}>{"\u2713"} {t("aiLabelSaved")}</span>)}
                               </div>
                             </>)}
@@ -3178,9 +3282,9 @@ export default function LibraryView() {
             <div style={{ padding: "0.75rem 1.5rem", borderTop: `0.0625rem solid ${HAIRLINE}`, display: "flex", justifyContent: "flex-end", gap: "0.625rem", flexShrink: 0 }}>
               <button onClick={handleClosePanel} style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(64,59,54,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#716A5E" }}>{tc("cancel")}</button>
               {!aiLabelDone ? (
-                <button disabled={aiLabelProcessing || aiLabelSelected.size === 0 || photoMems.length === 0} onClick={handleStartLabeling} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: (aiLabelProcessing || aiLabelSelected.size === 0) ? `${T.color.sandstone}40` : T.color.sandstone, color: (aiLabelProcessing || aiLabelSelected.size === 0) ? "#716A5E" : "#FFF", border: "none", cursor: (aiLabelProcessing || aiLabelSelected.size === 0) ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: (aiLabelProcessing || aiLabelSelected.size === 0) ? 0.6 : 1, transition: "background 0.15s ease, opacity 0.15s ease" }}>{aiLabelProcessing ? t("aiLabelProcessing") : t("aiLabelStart")}</button>
+                <button disabled={aiLabelProcessing || aiLabelSelected.size === 0 || photoMems.length === 0} onClick={handleStartLabeling} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: (aiLabelProcessing || aiLabelSelected.size === 0) ? "rgba(184,92,56,0.35)" : EMBER, color: (aiLabelProcessing || aiLabelSelected.size === 0) ? "#716A5E" : "#FCFAF5", border: "none", cursor: (aiLabelProcessing || aiLabelSelected.size === 0) ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: (aiLabelProcessing || aiLabelSelected.size === 0) ? 0.6 : 1, transition: "background 0.15s ease, opacity 0.15s ease" }}>{aiLabelProcessing ? t("aiLabelProcessing") : t("aiLabelStart")}</button>
               ) : (
-                <button onClick={() => { Object.entries(aiLabelResults).forEach(([memId, result]) => { if (!result.saved) handleSaveResult(memId, result.description, result.labels); }); }} disabled={Object.values(aiLabelResults).every(r => r.saved)} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: Object.values(aiLabelResults).every(r => r.saved) ? `${T.color.sandstone}40` : T.color.sandstone, color: Object.values(aiLabelResults).every(r => r.saved) ? "#716A5E" : "#FFF", border: "none", cursor: Object.values(aiLabelResults).every(r => r.saved) ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: Object.values(aiLabelResults).every(r => r.saved) ? 0.6 : 1 }}>{Object.values(aiLabelResults).every(r => r.saved) ? t("aiLabelSaved") : t("aiLabelSave")}</button>
+                <button onClick={() => { Object.entries(aiLabelResults).forEach(([memId, result]) => { if (!result.saved) handleSaveResult(memId, result.description, result.labels); }); }} disabled={Object.values(aiLabelResults).every(r => r.saved)} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: Object.values(aiLabelResults).every(r => r.saved) ? "rgba(184,92,56,0.35)" : EMBER, color: Object.values(aiLabelResults).every(r => r.saved) ? "#716A5E" : "#FCFAF5", border: "none", cursor: Object.values(aiLabelResults).every(r => r.saved) ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: Object.values(aiLabelResults).every(r => r.saved) ? 0.6 : 1 }}>{Object.values(aiLabelResults).every(r => r.saved) ? t("aiLabelSaved") : t("aiLabelSave")}</button>
               )}
             </div>
           </div>

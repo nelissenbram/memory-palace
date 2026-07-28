@@ -167,8 +167,13 @@ export async function GET(
     return redirectToR2(bucket, filePath);
   }
 
-  // Fallback: stream from Supabase (for legacy files not yet migrated to R2)
-  return streamFromSupabase(request, bucket, filePath);
+  // Fallback: stream from Supabase (for legacy files not yet migrated to R2).
+  // Pass the admin-or-session client chosen above: storage RLS has no policy
+  // for published-wing visitors, so a session-client download would 404 for
+  // authorized non-owners. With a service-role key this is the admin client;
+  // without one (e.g. Vercel Preview) it falls back to the session client,
+  // which still works for owners.
+  return streamFromSupabase(request, bucket, filePath, adminClient);
 }
 
 /**
@@ -250,10 +255,17 @@ async function streamFromSupabase(
   request: NextRequest,
   bucket: "memories" | "busts",
   filePath: string,
+  client?: Awaited<ReturnType<typeof createClient>>,
 ): Promise<NextResponse> {
   try {
-    const { createClient: createServerClient } = await import("@/lib/supabase/server");
-    const supabase = await createServerClient();
+    // Use the caller-provided client when given (memories route passes the
+    // admin client when available, else the session client). Otherwise
+    // (public busts) create a session client here.
+    let supabase = client;
+    if (!supabase) {
+      const { createClient: createServerClient } = await import("@/lib/supabase/server");
+      supabase = await createServerClient();
+    }
     const { data, error } = await supabase.storage.from(bucket).download(filePath);
     if (error || !data) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });

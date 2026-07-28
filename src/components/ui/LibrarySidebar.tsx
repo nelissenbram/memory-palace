@@ -471,6 +471,10 @@ export default function LibrarySidebar({
 
           return (
             <div key={w.id}>
+            {/* Relative wrapper so the color-dot button can overlay the row's
+                right side as a SIBLING — a button nested inside the row button
+                is invalid HTML (hydration hazard, invisible to AT). */}
+            <div style={{ position: "relative" }}>
             <button
               onClick={() => onSelectWing(w.id)}
               onMouseEnter={() => setHoveredWing(w.id)}
@@ -486,7 +490,10 @@ export default function LibrarySidebar({
                 display: "flex",
                 alignItems: "center",
                 gap: "0.75rem",
-                padding: "0.875rem 1rem",
+                // Extra right padding reserves room for the overlaid color-dot
+                // button (1.5rem hit box at right: 0.625rem) so text/badge/chevron
+                // never underlap it.
+                padding: "0.875rem 2.375rem 0.875rem 1rem",
                 width: "100%",
                 borderRadius: "0.75rem",
                 background: active
@@ -625,23 +632,6 @@ export default function LibrarySidebar({
                 </span>
               )}
 
-              {/* P2 #4: Wing color dot */}
-              <button
-                onClick={e => { e.stopPropagation(); setColorPickerWing(colorPickerWing === w.id ? null : w.id); }}
-                aria-label={t("customizeColor")}
-                style={{
-                  width: "0.75rem", height: "0.75rem", borderRadius: "50%",
-                  background: wingColors[w.id] || w.accent,
-                  border: `0.0625rem solid rgba(64,59,54,0.15)`,
-                  cursor: "pointer", flexShrink: 0,
-                  transition: `all 0.2s ${EASE_OUT_EXPO}`,
-                  transform: (hovered || active) ? "scale(1.15)" : "scale(1)",
-                  opacity: (hovered || active) ? 1 : 0.6,
-                  padding: 0, font: "inherit",
-                }}
-                title={t("customizeColor")}
-              />
-
               {/* Chevron — slides right on hover */}
               <span
                 style={{
@@ -658,6 +648,41 @@ export default function LibrarySidebar({
                 {"\u203A"}
               </span>
             </button>
+            {/* P2 #4: Wing color dot \u2014 absolutely positioned SIBLING of the row
+                button (visual dot 0.75rem inside a 1.5rem transparent hit box). */}
+            <button
+              onClick={e => { e.stopPropagation(); setColorPickerWing(colorPickerWing === w.id ? null : w.id); }}
+              onMouseEnter={() => setHoveredWing(w.id)}
+              onMouseLeave={() => setHoveredWing(null)}
+              aria-label={t("customizeColor")}
+              title={t("customizeColor")}
+              style={{
+                position: "absolute",
+                right: "0.625rem",
+                top: "50%",
+                marginTop: "-0.75rem",
+                width: "1.5rem", height: "1.5rem",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "transparent", border: "none",
+                cursor: "pointer", padding: 0, font: "inherit",
+                // While dragging, let dragover events fall through to the row
+                // button underneath so wing spring-open keeps working.
+                pointerEvents: dragActive ? "none" : "auto",
+              }}
+            >
+              <span
+                style={{
+                  width: "0.75rem", height: "0.75rem", borderRadius: "50%",
+                  background: wingColors[w.id] || w.accent,
+                  border: `0.0625rem solid rgba(64,59,54,0.15)`,
+                  transition: `all 0.2s ${EASE_OUT_EXPO}`,
+                  transform: (hovered || active) ? "scale(1.15)" : "scale(1)",
+                  opacity: (hovered || active) ? 1 : 0.6,
+                  display: "block",
+                }}
+              />
+            </button>
+            </div>
             {/* P2 #4: Color swatches row */}
             {colorPickerWing === w.id && (
               <div style={{

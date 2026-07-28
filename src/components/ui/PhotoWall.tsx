@@ -41,7 +41,7 @@ function tileSources(mem: Mem): string[] {
 /** Chromeless tile media: real <img> with source fallback, else the MediaThumb
  *  type glyph (story/audio/document). On load it reports the real aspect ratio
  *  so the wall re-packs to organic widths. Zero card/shadow/gradient. */
-function TileMedia({ mem, iconSize, onMeasured }: { mem: Mem; iconSize: number; onMeasured: (id: string, ar: number) => void }) {
+function TileMedia({ mem, iconSize, onMeasured }: { mem: Mem; iconSize: number; onMeasured: (id: string, type: Mem["type"], ar: number) => void }) {
   const sources = React.useMemo(() => tileSources(mem), [mem]);
   const [idx, setIdx] = useState(0);
   const src = sources[idx];
@@ -55,7 +55,7 @@ function TileMedia({ mem, iconSize, onMeasured }: { mem: Mem; iconSize: number; 
         decoding="async"
         onLoad={(e) => {
           const el = e.currentTarget;
-          if (el.naturalWidth > 0 && el.naturalHeight > 0) onMeasured(mem.id, el.naturalWidth / el.naturalHeight);
+          if (el.naturalWidth > 0 && el.naturalHeight > 0) onMeasured(mem.id, mem.type, el.naturalWidth / el.naturalHeight);
         }}
         onError={() => setIdx((i) => i + 1)}
         style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
@@ -81,6 +81,10 @@ interface PhotoWallProps {
   tileAccent?: (memId: string) => string | null;
   /** grouping: chronological month bands (default) or the Rooms lens (same tiles, re-banded by room) */
   groupBy?: "month" | "room";
+  /** how the parent sorted `mems`; drives section ordering ("oldest") or disables
+   *  month banding entirely ("alpha"/"type" render one unbanded section in the
+   *  incoming order). Ignored by the Rooms lens. Default "newest". */
+  sortMode?: "newest" | "oldest" | "alpha" | "type";
   /** room label for a memory, used by the Rooms lens */
   roomLabelOf?: (memId: string) => string;
   /** HTML5 drag of a tile into a sidebar room (desktop pointer only) */
@@ -89,9 +93,9 @@ interface PhotoWallProps {
   onTileDragEnd?: () => void;
 }
 
-type Section = { key: string; label: string; items: (Mem & { ar: number; _i: number })[] };
+type Section = { key: string; label: string; items: (Mem & { ar: number; _i: number })[]; band?: boolean };
 
-export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent, groupBy = "month", roomLabelOf, draggableTiles, onTileDragStart, onTileDragEnd }: PhotoWallProps) {
+function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent, groupBy = "month", sortMode = "newest", roomLabelOf, draggableTiles, onTileDragStart, onTileDragEnd }: PhotoWallProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
 
@@ -119,8 +123,10 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
   // without layout thrash.
   const [arVersion, setArVersion] = useState(0);
   const pendingRepack = useRef(false);
-  const onMeasured = React.useCallback((id: string, ar: number) => {
-    const prev = getAspect(id);
+  const onMeasured = React.useCallback((id: string, type: Mem["type"], ar: number) => {
+    // compare against the same typed fallback the wall actually packed with,
+    // otherwise square photos never repack and correct-AR photos repack for nothing
+    const prev = getAspect(id, type);
     setAspect(id, ar);
     if (Math.abs(prev - ar) > 0.02 && !pendingRepack.current) {
       pendingRepack.current = true;
@@ -131,6 +137,16 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
   // Group by month (newest first), preserving each memory's original index so
   // the viewer opens the right one.
   const sections = useMemo<Section[]>(() => {
+    // alpha/type sorts have no chronology — one unbanded section in the
+    // parent's already-sorted order (Rooms lens keeps its own banding).
+    if (groupBy !== "room" && (sortMode === "alpha" || sortMode === "type")) {
+      return [{
+        key: "all",
+        label: "",
+        band: false,
+        items: mems.map((mem, _i) => ({ ...(mem as Mem), ar: getAspect(mem.id, mem.type), _i })),
+      }];
+    }
     const byKey = new Map<string, Section>();
     const order: string[] = []; // preserve first-seen order for the room lens
     mems.forEach((mem, _i) => {
@@ -153,13 +169,13 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
       // rooms in first-appearance order (mems already sorted), undated last
       return order.map(k => byKey.get(k)!).sort((a, b) => (a.key === "·" ? 1 : b.key === "·" ? -1 : 0));
     }
-    // month: undated last, others newest→oldest by key
+    // month: undated last, others by key — newest→oldest by default, ascending for "oldest"
     return [...byKey.values()].sort((a, b) => {
       if (a.key === "undated") return 1;
       if (b.key === "undated") return -1;
-      return b.key.localeCompare(a.key);
+      return sortMode === "oldest" ? a.key.localeCompare(b.key) : b.key.localeCompare(a.key);
     });
-  }, [mems, monthLabel, undatedLabel, groupBy, roomLabelOf]);
+  }, [mems, monthLabel, undatedLabel, groupBy, sortMode, roomLabelOf]);
 
   const rowH = targetRowHeight(effWidth);
   const packed = useMemo(
@@ -179,25 +195,96 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
   const sectionEls = useRef<Map<string, HTMLElement>>(new Map());
   const [scrubHover, setScrubHover] = useState<string | null>(null);
 
+  // Rail ticks — one per section, but condensed to YEAR ticks when a multi-year
+  // library would overflow the viewport (>24 sections). `target` is the section
+  // key the tick scrolls to (the year's first section when condensed).
+  const ticks = useMemo(() => {
+    const base = sections.map((s) => ({ key: s.key, label: s.label, target: s.key }));
+    if (groupBy === "room" || base.length <= 24) return base;
+    const out: typeof base = [];
+    const seen = new Set<string>();
+    for (const s of sections) {
+      const year = s.key === "undated" ? "undated" : s.key.slice(0, 4);
+      if (!seen.has(year)) { seen.add(year); out.push({ key: year, label: s.key === "undated" ? s.label : year, target: s.key }); }
+    }
+    return out;
+  }, [sections, groupBy]);
+  const showRail = ticks.length > 1;
+
+  // Touch-friendly scrubbing: pointer-drag along the rail maps Y → nearest tick,
+  // shows its label bubble, and scrolls there on release. Plain click still works.
+  const railColRef = useRef<HTMLDivElement | null>(null);
+  const dragState = useRef<{ ticks: { key: string; target: string; y: number }[]; active: boolean }>({ ticks: [], active: false });
+  const scrubClearT = useRef<number | null>(null);
+  useEffect(() => () => { if (scrubClearT.current !== null) window.clearTimeout(scrubClearT.current); }, []);
+  const nearestTick = (clientY: number) => {
+    let best: { key: string; target: string; y: number } | null = null;
+    for (const t of dragState.current.ticks) {
+      if (!best || Math.abs(t.y - clientY) < Math.abs(best.y - clientY)) best = t;
+    }
+    return best;
+  };
+  const onRailPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = railColRef.current;
+    if (!el) return;
+    dragState.current.ticks = Array.from(el.querySelectorAll<HTMLElement>("[data-tick-key]")).map((n) => {
+      const r = n.getBoundingClientRect();
+      return { key: n.dataset.tickKey || "", target: n.dataset.tickTarget || "", y: r.top + r.height / 2 };
+    });
+    dragState.current.active = true;
+    try { el.setPointerCapture(e.pointerId); } catch { /* older browsers */ }
+    if (scrubClearT.current !== null) window.clearTimeout(scrubClearT.current);
+    const t = nearestTick(e.clientY);
+    if (t) setScrubHover(t.key);
+  };
+  const onRailPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragState.current.active) return;
+    const t = nearestTick(e.clientY);
+    if (t) setScrubHover(t.key);
+  };
+  const onRailPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragState.current.active) return;
+    dragState.current.active = false;
+    const t = nearestTick(e.clientY);
+    if (t) sectionEls.current.get(t.target)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    scrubClearT.current = window.setTimeout(() => setScrubHover(null), 600);
+  };
+  const onRailPointerCancel = () => {
+    if (!dragState.current.active) return;
+    dragState.current.active = false;
+    scrubClearT.current = window.setTimeout(() => setScrubHover(null), 300);
+  };
+
   return (
-    <div ref={containerRef} className="il-muro" style={{ position: "relative", width: "100%" }}>
-      {/* right-edge jump-to-date rail (thumb-natural zone); hidden with <2 sections */}
-      {packed.length > 1 && (
+    <div ref={containerRef} className="il-muro" style={{ position: "relative", width: "100%", paddingRight: isMobile && showRail ? "0.9rem" : undefined }}>
+      {/* right-edge jump-to-date rail (thumb-natural zone); hidden with <2 ticks.
+          On mobile it lives in the reserved right gutter so it never overlays tiles. */}
+      {showRail && (
         <div className="il-muro-scrub" aria-hidden="true" style={{ position: "sticky", top: 0, float: "right", width: 0, height: 0, zIndex: 6 }}>
-          <div style={{ position: "absolute", right: isMobile ? "-0.1rem" : "-1.5rem", top: "0.5rem", display: "flex", flexDirection: "column", gap: "0.2rem", alignItems: "flex-end" }}>
-            {packed.map((sec) => (
+          <div
+            ref={railColRef}
+            onPointerDown={onRailPointerDown}
+            onPointerMove={onRailPointerMove}
+            onPointerUp={onRailPointerUp}
+            onPointerCancel={onRailPointerCancel}
+            style={{ position: "absolute", right: isMobile ? "-0.85rem" : "-1.5rem", top: "0.5rem", display: "flex", flexDirection: "column", gap: "0.2rem", alignItems: "flex-end", maxHeight: "80vh", overflowY: "hidden", touchAction: "none" }}
+          >
+            {ticks.map((tick) => (
               <button
-                key={sec.key}
+                key={tick.key}
                 type="button"
-                onClick={() => sectionEls.current.get(sec.key)?.scrollIntoView({ block: "start", behavior: "smooth" })}
-                onMouseEnter={() => setScrubHover(sec.key)}
-                onMouseLeave={() => setScrubHover((h) => (h === sec.key ? null : h))}
+                tabIndex={-1}
+                data-tick-key={tick.key}
+                data-tick-target={tick.target}
+                onClick={() => sectionEls.current.get(tick.target)?.scrollIntoView({ block: "start", behavior: "smooth" })}
+                onMouseEnter={() => setScrubHover(tick.key)}
+                onMouseLeave={() => { if (!dragState.current.active) setScrubHover((h) => (h === tick.key ? null : h)); }}
                 style={{ display: "flex", alignItems: "center", gap: "0.4rem", justifyContent: "flex-end", background: "none", border: "none", padding: "0.15rem 0.2rem", cursor: "pointer" }}
               >
-                {scrubHover === sec.key && (
-                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: "#403B36", background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", borderRadius: "0.4rem", padding: "0.1rem 0.4rem", whiteSpace: "nowrap", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)" }}>{sec.label}</span>
+                {scrubHover === tick.key && (
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: "#403B36", background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", borderRadius: "0.4rem", padding: "0.1rem 0.4rem", whiteSpace: "nowrap", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)" }}>{tick.label}</span>
                 )}
-                <span style={{ width: scrubHover === sec.key ? "0.75rem" : "0.5rem", height: "0.1875rem", borderRadius: "1rem", background: scrubHover === sec.key ? "#C99A2E" : "rgba(154,79,42,0.35)", transition: "width 0.15s ease, background 0.15s ease" }} />
+                <span style={{ width: scrubHover === tick.key ? "0.75rem" : "0.5rem", height: "0.1875rem", borderRadius: "1rem", background: scrubHover === tick.key ? "#C99A2E" : "rgba(154,79,42,0.35)", transition: "width 0.15s ease, background 0.15s ease" }} />
               </button>
             ))}
           </div>
@@ -205,12 +292,15 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
       )}
       {packed.map((sec) => (
         <section key={sec.key} aria-label={sec.label} ref={(el) => { if (el) sectionEls.current.set(sec.key, el); else sectionEls.current.delete(sec.key); }}>
-          {/* sticky gold-underlined band — carries all the stripped metadata */}
-          <div style={{ position: "sticky", top: 0, zIndex: 5, display: "flex", alignItems: "baseline", gap: "0.5rem", padding: "0.9rem 0 0.5rem", background: "linear-gradient(#FCFAF5 70%, rgba(252,250,245,0))" }}>
-            <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.0625rem", lineHeight: 1.15, color: "#403B36" }}>{sec.label}</span>
-            <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontVariantNumeric: "tabular-nums" }}>{countLabel(sec.items.length)}</span>
-            <span aria-hidden="true" style={{ flex: 1, height: "0.125rem", alignSelf: "center", background: "linear-gradient(90deg, #C99A2E, rgba(201,154,46,0.25) 45%, transparent)" }} />
-          </div>
+          {/* sticky gold-underlined band — carries all the stripped metadata
+              (skipped for the single unbanded alpha/type section) */}
+          {sec.band !== false && (
+            <div style={{ position: "sticky", top: 0, zIndex: 5, display: "flex", alignItems: "baseline", gap: "0.5rem", padding: "0.9rem 0 0.5rem", background: "linear-gradient(#FCFAF5 70%, rgba(252,250,245,0))" }}>
+              <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.0625rem", lineHeight: 1.15, color: "#403B36" }}>{sec.label}</span>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontVariantNumeric: "tabular-nums" }}>{countLabel(sec.items.length)}</span>
+              <span aria-hidden="true" style={{ flex: 1, height: "0.125rem", alignSelf: "center", background: "linear-gradient(90deg, #C99A2E, rgba(201,154,46,0.25) 45%, transparent)" }} />
+            </div>
+          )}
           {sec.rows.map((row, ri) => (
             <div key={ri} style={{ display: "flex", gap: `${GAP}px`, marginBottom: `${GAP}px`, contentVisibility: "auto", containIntrinsicSize: `${Math.round(effWidth)}px ${Math.round(row.height)}px` } as React.CSSProperties}>
               {row.tiles.map(({ item, w, h }) => {
@@ -221,7 +311,7 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
                     role="listitem"
                     aria-label={item.title}
                     onClick={() => (selectMode ? onToggleSelect(item.id) : onOpen(item._i))}
-                    onContextMenu={(e) => { e.preventDefault(); onToggleSelect(item.id); }}
+                    onContextMenu={selectMode ? (e) => { e.preventDefault(); onToggleSelect(item.id); } : undefined}
                     draggable={!!draggableTiles && !selectMode}
                     onDragStart={draggableTiles && !selectMode ? (e) => {
                       e.dataTransfer.setData("application/x-mp-memory", item.id);
@@ -267,3 +357,7 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
     </div>
   );
 }
+
+// Memoised so the parent's useCallback-stabilised props skip re-renders of the
+// (potentially thousand-tile) wall.
+export default React.memo(PhotoWall);

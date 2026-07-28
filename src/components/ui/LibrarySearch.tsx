@@ -58,9 +58,11 @@ export function LibrarySearch({
   const [localQuery, setLocalQuery] = useState(query);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync local state when parent clears the query externally
+  // Sync local state when parent clears the query externally — and cancel any
+  // pending debounce so a stale keystroke can't resurrect the cleared query.
   useEffect(() => {
     if (query !== localQuery) {
+      if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
       setLocalQuery(query);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

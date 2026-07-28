@@ -88,7 +88,8 @@ export interface QueuedFile {
 interface ImportHubProps {
   onClose: () => void;
   onImportFiles: (files: QueuedFile[], roomId?: string) => Promise<void> | void;
-  onOpenCloudProvider: (provider: string) => void;
+  /** roomId = the Destination selector's choice, so cloud imports land where the user aimed */
+  onOpenCloudProvider: (provider: string, roomId?: string | null) => void;
   initialRoomId?: string | null;
   /** When true, hide wing/room selectors — used in onboarding */
   lockRoom?: boolean;
@@ -703,7 +704,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                   return (
                   <button
                     key={key}
-                    onClick={() => { if (!disabled) onOpenCloudProvider(key); }}
+                    onClick={() => { if (!disabled) onOpenCloudProvider(key, targetRoomId || null); }}
                     disabled={disabled}
                     className="imp-hub-anim imp-hub-focus"
                     style={{

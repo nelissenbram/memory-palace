@@ -44,12 +44,41 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const [infoPanelOpen, setInfoPanelOpen] = useState(true);
 
   const thumbStripRef = useRef<HTMLDivElement>(null);
-  const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; t: number; target: EventTarget | null } | null>(null);
   const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const mem = memories[index];
+  const mem: Mem | undefined = memories[index];
   const total = memories.length;
+
+  /* Track the current memory by id so a shrinking/reordered `memories` array
+     (e.g. an inline edit dropping the mem out of the active filter) can't
+     silently swap or crash the player. */
+  const currentIdRef = useRef<string | null>(mem?.id ?? null);
+
+  /* Adopt the id of whatever memory we intentionally navigated to. */
+  useEffect(() => {
+    const m = memories[index];
+    if (m) currentIdRef.current = m.id;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
+
+  /* Reconcile index when the live `memories` array changes. */
+  useEffect(() => {
+    const id = currentIdRef.current;
+    const found = id ? memories.findIndex(m => m.id === id) : -1;
+    if (found >= 0) {
+      if (found !== index) setIndex(found);
+      return;
+    }
+    if (memories.length === 0) {
+      onClose();
+      return;
+    }
+    const clamped = Math.max(0, Math.min(index, memories.length - 1));
+    currentIdRef.current = memories[clamped].id;
+    if (clamped !== index) setIndex(clamped);
+  }, [memories, index, onClose]);
 
   /* Pre-generate random bar heights to avoid hydration mismatch */
   const barHeights = useRef(Array.from({ length: 40 }, (_, i) => 1 + Math.sin(i * 0.5) * 2.5 + Math.random() * 1.5));
@@ -76,7 +105,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
       if (e.key === "Escape") onClose();
       else if (e.key === "ArrowLeft") goPrev();
       else if (e.key === "ArrowRight") goNext();
-      else if (e.key === "e" || e.key === "E" || e.key === "i" || e.key === "I") onEdit(mem);
+      else if ((e.key === "e" || e.key === "E" || e.key === "i" || e.key === "I") && mem) onEdit(mem);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -111,23 +140,33 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   /* ─── Touch / swipe ─── */
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now() };
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, t: Date.now(), target: e.target };
   }, []);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (!touchStartRef.current) return;
-    const touch = e.changedTouches[0];
-    const dx = touch.clientX - touchStartRef.current.x;
-    const dy = touch.clientY - touchStartRef.current.y;
-    const dt = Date.now() - touchStartRef.current.t;
+    const start = touchStartRef.current;
     touchStartRef.current = null;
+
+    // Ignore touches that started on interactive/scrollable children
+    // (media controls, buttons, inputs, the horizontally scrollable thumbnail strip)
+    const startEl = start.target instanceof Element ? start.target : null;
+    if (startEl?.closest("video, audio, button, input, textarea, a, .rmp-thumb")) return;
+
+    // Ignore swipes while zoomed in — panning a zoomed photo isn't navigation
+    if (zoom > 1) return;
+
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const dt = Date.now() - start.t;
 
     // Only trigger if horizontal swipe > 50px, not too vertical, and fast enough
     if (Math.abs(dx) > 50 && Math.abs(dy) < Math.abs(dx) * 0.7 && dt < 500) {
       if (dx < 0) goNext();
       else goPrev();
     }
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, zoom]);
 
   /* ─── Zoom via scroll wheel ─── */
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -140,13 +179,15 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const getMediaType = (m: Mem): "photo" | "video" | "audio" | "text" => {
     const t = m.type.toLowerCase();
     if (t === "video" || m.videoBlob) return "video";
+    // Legacy 'voice' memories carrying an audio dataUrl are real audio, not text
+    if (t === "voice" && m.dataUrl?.startsWith("data:audio")) return "audio";
     if (t === "interview" || t === "voice") return "text";
     if (t === "audio" || m.voiceBlob) return "audio";
     if (t === "text" || t === "document" || t === "story" || m.documentBlob) return "text";
     return "photo";
   };
 
-  const mediaType = getMediaType(mem);
+  const mediaType = mem ? getMediaType(mem) : "photo";
 
   /* ─── Render media content ─── */
   const renderMedia = () => {
@@ -275,7 +316,11 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
           </div>
         );
 
-      case "text":
+      case "text": {
+        // Never dump a raw dataUrl/URL (e.g. base64 PDF) as story text — offer
+        // an open/download affordance for file-backed memories instead.
+        const fallback = mem.dataUrl || "";
+        const fallbackIsFileUrl = /^(data:|blob:|https?:\/\/|\/api)/i.test(fallback);
         return (
           <div style={{
             width: "100%", height: "100%",
@@ -314,15 +359,55 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
               }}>
                 {mem.title}
               </h2>
-              <p style={{
-                fontFamily: T.font.display, fontSize: "1.0625rem", lineHeight: 1.8,
-                color: "rgba(255,255,255,0.75)", margin: 0, whiteSpace: "pre-wrap",
-              }}>
-                {mem.desc || mem.dataUrl || t("mediaPlayerNoContent")}
-              </p>
+              {fallbackIsFileUrl ? (
+                <>
+                  {mem.desc && (
+                    <p style={{
+                      fontFamily: T.font.display, fontSize: "1.0625rem", lineHeight: 1.8,
+                      color: "rgba(255,255,255,0.75)", margin: "0 0 1.25rem", whiteSpace: "pre-wrap",
+                    }}>
+                      {mem.desc}
+                    </p>
+                  )}
+                  <a
+                    href={mem.dataUrl!}
+                    download={mem.title}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                      padding: "0.625rem 1.25rem",
+                      borderRadius: "0.5rem",
+                      background: "rgba(184,92,56,0.25)",
+                      border: "0.0625rem solid #B85C38",
+                      color: "rgba(255,255,255,0.92)",
+                      fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                      letterSpacing: "0.02em",
+                      textDecoration: "none",
+                      cursor: "pointer",
+                      transition: "background 0.2s ease",
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    {t("mediaPlayerOpenDocument") !== "mediaPlayerOpenDocument" ? t("mediaPlayerOpenDocument") : "Open document"}
+                  </a>
+                </>
+              ) : (
+                <p style={{
+                  fontFamily: T.font.display, fontSize: "1.0625rem", lineHeight: 1.8,
+                  color: "rgba(255,255,255,0.75)", margin: 0, whiteSpace: "pre-wrap",
+                }}>
+                  {mem.desc || mem.dataUrl || t("mediaPlayerNoContent")}
+                </p>
+              )}
             </div>
           </div>
         );
+      }
 
       default:
         return null;
@@ -363,6 +448,10 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
     backdropFilter: "blur(0.5rem)", WebkitBackdropFilter: "blur(0.5rem)",
     transition: "background 0.2s ease",
   };
+
+  /* If the current memory vanished from the live array, render nothing for
+     this frame — the reconciliation effect above re-points or closes. */
+  if (!mem) return null;
 
   return (
     <div
@@ -510,7 +599,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                  if (e.key === "Escape") { setTitleDraft(mem.title); setEditingTitle(false); }
+                  if (e.key === "Escape") { e.stopPropagation(); setTitleDraft(mem.title); setEditingTitle(false); }
                 }}
                 style={{
                   fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.375rem",
@@ -557,7 +646,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                   }
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Escape") { setDescDraft(mem.desc || ""); setEditingDesc(false); }
+                  if (e.key === "Escape") { e.stopPropagation(); setDescDraft(mem.desc || ""); setEditingDesc(false); }
                 }}
                 rows={3}
                 style={{
