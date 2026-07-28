@@ -1114,6 +1114,20 @@ export default function LibraryView() {
   const countLabelOf = useCallback((n: number) => `${n}`, []);
   const handleTileDragEnd = useCallback(() => setDraggingMemId(null), []);
 
+  // "Stored in" provenance for the fullscreen viewer: Wing › Room + accent
+  const storedInOf = useCallback((memId: string) => {
+    const loc = memRoomMap.get(memId);
+    if (!loc) return null;
+    const w = wings.find(x => x.id === loc.wingId);
+    const r = w ? getWingRooms(w.id).find(rr => rr.id === loc.roomId) : null;
+    if (!w || !r) return null;
+    return {
+      wing: w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings),
+      room: translateRoomName(r, tWings),
+      accent: w.accent,
+    };
+  }, [memRoomMap, wings, getWingRooms, t, tWings]);
+
   // Room-scoped spotlight targets (AI label / write story / location) only
   // render their pill inside a room — auto-enter the fullest room so the
   // Atrium CTA actually lands on a pulsing control instead of nothing.
@@ -2763,6 +2777,7 @@ export default function LibraryView() {
             setDetailMem({ mem, wingId: loc?.wingId || selectedWing, roomId: loc?.roomId || selectedRoom || "" });
           }}
           onUpdate={(memId, updates) => { const rid = memRoomMap.get(memId)?.roomId || selectedRoom; if (rid) updateMemory(rid, memId, updates); }}
+          storedIn={storedInOf}
         />
       )}
 

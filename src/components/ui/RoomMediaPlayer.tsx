@@ -14,6 +14,8 @@ interface RoomMediaPlayerProps {
   onClose: () => void;
   onEdit: (mem: Mem) => void;
   onUpdate?: (memId: string, updates: Partial<Mem>) => void;
+  /** where this memory lives in the palace — shown as "Wing › Room" provenance */
+  storedIn?: (memId: string) => { wing: string; room: string; accent: string } | null;
 }
 
 /* ─── Styles injected once ─── */
@@ -28,7 +30,7 @@ const PLAYER_STYLES = `
 .rmp-ctrl-btn:hover { background: rgba(255,255,255,0.18) !important; }
 `;
 
-export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdit, onUpdate }: RoomMediaPlayerProps) {
+export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdit, onUpdate, storedIn }: RoomMediaPlayerProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
@@ -632,6 +634,20 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 </svg>
               </h3>
             )}
+
+            {/* Provenance — where this memory lives in the palace */}
+            {(() => {
+              const loc = storedIn?.(mem.id);
+              if (!loc) return null;
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", margin: "0.25rem 0 0" }}>
+                  <span aria-hidden="true" style={{ width: "0.4375rem", height: "0.4375rem", borderRadius: "50%", background: loc.accent, boxShadow: "0 0 0 0.09375rem rgba(252,250,245,0.25)", flexShrink: 0 }} />
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500, color: "rgba(255,255,255,0.55)", letterSpacing: "0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {loc.wing} {"›"} {loc.room}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Description — click to edit */}
             {editingDesc ? (
