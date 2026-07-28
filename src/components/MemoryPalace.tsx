@@ -651,7 +651,14 @@ export default function MemoryPalace(){
       }
     } catch {}
   }, [navMode, view, setPalaceTourOpen]);
-  const hasVisitedPalace = true; // eager mount — scene warms in background
+  // Lazy 3D warm-up: the WebGL context + ExteriorScene graph (+ its HDRI/PBR
+  // downloads) must NOT build during the first atrium/library paint. Build it
+  // the moment the user enters 3D — sessions that never open the palace pay
+  // zero 3D cost. Once warmed it stays mounted for smooth palace↔atrium hops.
+  const [hasVisitedPalace, setHasVisitedPalace] = useState(false);
+  useEffect(() => {
+    if (navMode === "3d") setHasVisitedPalace(true);
+  }, [navMode]);
   useEffect(() => {
     if (typeof document === "undefined") return;
     const el = document.createElement("div");

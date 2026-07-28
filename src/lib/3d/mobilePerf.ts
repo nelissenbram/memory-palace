@@ -158,7 +158,11 @@ const MOBILE_QUALITY: QualitySettings = {
   bloom: false,
   smaa: true,
   vegetationDensity: 0.5,
-  loadBackgroundHDRI: true,
+  // Mobile skips the 6.5 MB background HDRI (the procedural sky sphere stands
+  // in) — it was documented as skipped but the flag was still true, so phones
+  // were silently downloading + decoding it on exterior entry. Env HDRI (small,
+  // used for PBR reflections) stays.
+  loadBackgroundHDRI: false,
   loadEnvHDRI: true,
   textureRes: "1k",
   maxEagerTextureSets: 4,

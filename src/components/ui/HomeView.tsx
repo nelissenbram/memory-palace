@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback, useEffect, useState, useRef } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
@@ -188,6 +188,7 @@ export interface EnrichedMemory {
 export default function HomeView() {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const { t } = useTranslation("atrium");
   const { t: tTracks } = useTranslation("tracksPanel");
   const { t: tAch } = useTranslation("achievementsPanel");
@@ -813,10 +814,11 @@ export default function HomeView() {
           style={{
             maxWidth: "72rem",
             margin: "0 auto",
-            // top padding clears the floating NavigationBar pill (top ~4.4rem),
-            // matching the clearance the old hero used to provide.
-            padding: isMobile
-              ? "3rem 1rem calc(4.5rem + env(safe-area-inset-bottom, 0px))"
+            // top padding clears the floating NavigationBar pill (top ~4.4rem) on
+            // desktop; on iPad portrait (compact) the nav is the BOTTOM bar like
+            // mobile, so the 5.5rem top band is dead space — use the mobile clearance.
+            padding: (isMobile || isCompact)
+              ? "3rem 1.25rem calc(4.5rem + env(safe-area-inset-bottom, 0px))"
               : "5.5rem 2.5rem 6rem",
           }}
         >

@@ -20,7 +20,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { T } from "@/lib/theme";
 import { locales, type Locale } from "@/i18n/config";
-import enMessages from "@/messages/en.json";
+// en.json (~295KB) is type-only here and dynamically imported at runtime — it
+// must never ship in the landing first-paint chunk.
+type EnMessages = typeof import("@/messages/en.json");
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import WhyPalaceVisual from "@/components/landing/WhyPalaceVisual";
 import TourPlayer from "@/components/landing/TourPlayer";
@@ -38,10 +40,10 @@ import CocreateCard from "@/components/landing/usp/CocreateCard";
 import SharingCard from "@/components/landing/usp/SharingCard";
 import LegacyCard from "@/components/landing/usp/LegacyCard";
 
-type V2 = typeof enMessages.landingV2;
-type FaqSlice = typeof enMessages.landing.faq;
-type FooterSlice = typeof enMessages.landing.footer;
-type Compare8 = typeof enMessages.landing.comparison;
+type V2 = EnMessages["landingV2"];
+type FaqSlice = EnMessages["landing"]["faq"];
+type FooterSlice = EnMessages["landing"]["footer"];
+type Compare8 = EnMessages["landing"]["comparison"];
 
 const L = T.land;
 const M = T.motion;
@@ -426,13 +428,14 @@ export default function LandingV2Client({
     const stored = (typeof window !== "undefined" && localStorage.getItem("mp_locale")) as Locale | null;
     if (!stored || stored === initialLocale || !locales.includes(stored)) return;
     const load = async () => {
-      let mod: { default: typeof enMessages } | null = null;
+      type Mod = { default: EnMessages };
+      let mod: Mod | null = null;
       switch (stored) {
-        case "nl": mod = await import("@/messages/nl.json") as never; break;
-        case "de": mod = await import("@/messages/de.json") as never; break;
-        case "es": mod = await import("@/messages/es.json") as never; break;
-        case "fr": mod = await import("@/messages/fr.json") as never; break;
-        default: mod = { default: enMessages };
+        case "nl": mod = await import("@/messages/nl.json") as unknown as Mod; break;
+        case "de": mod = await import("@/messages/de.json") as unknown as Mod; break;
+        case "es": mod = await import("@/messages/es.json") as unknown as Mod; break;
+        case "fr": mod = await import("@/messages/fr.json") as unknown as Mod; break;
+        default: mod = await import("@/messages/en.json") as unknown as Mod;
       }
       if (mod?.default?.landingV2) {
         let v2n = mod.default.landingV2;
