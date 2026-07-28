@@ -66,6 +66,7 @@ export async function getTrending(
   const { data: profiles } = await supabase
     .from("public_profiles")
     .select("id, display_name, username, avatar_url, bio")
+    .eq("is_public", true) // admin client bypasses RLS — never surface opted-out profiles
     .in("id", userIds);
 
   if (!profiles) return [];
@@ -178,6 +179,7 @@ export async function getNewPalaces(
   const { data: profiles } = await supabase
     .from("public_profiles")
     .select("id, display_name, username, avatar_url, bio")
+    .eq("is_public", true) // never surface opted-out profiles
     .in("id", uniqueUserIds);
 
   if (!profiles) return [];
@@ -262,6 +264,7 @@ export async function getFollowingPalaces(
   const { data: profiles } = await supabase
     .from("public_profiles")
     .select("id, display_name, username, avatar_url, bio")
+    .eq("is_public", true) // never surface opted-out profiles
     .in("id", userIds);
 
   if (!profiles) return [];
@@ -317,6 +320,7 @@ async function enrichPalaces(
   const { data: profiles } = await supabase
     .from("public_profiles")
     .select("id, display_name, username, avatar_url, bio")
+    .eq("is_public", true) // never surface opted-out profiles
     .in("id", userIds);
 
   if (!profiles) return [];

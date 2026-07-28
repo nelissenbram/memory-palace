@@ -38,7 +38,6 @@ import {
 import ModeTransition, {
   useModeTransition,
 } from "@/components/ui/ModeTransition";
-import PersonalProfile from "./PersonalProfile";
 import EnhanceMemories from "./EnhanceMemories";
 import FeatureDiscovery from "./FeatureDiscovery";
 import PersonaSelector from "./PersonaSelector";
@@ -1177,39 +1176,6 @@ export default function HomeView() {
               }}
               onSendViaWhatsApp={() => setShowKepCapture(true)}
               onPublishExplore={() => router.push("/explore")}
-              isMobile={isMobile}
-            />
-          </div>
-
-          {/* ── 6. PERSONAL PROFILE ── */}
-          <div
-            style={{
-              marginTop: "2.5rem",
-              ...sectionStyle(5),
-            }}
-          >
-            <PersonalProfile
-              totalMemories={totalMemories}
-              totalWings={totalWings}
-              wingsData={wingsData}
-              userName={userName}
-              onStartInterview={() => setShowInterviewLibrary(true)}
-              onStartBaselineInterview={() => startInterviewSession("baseline")}
-              onNavigateLibrary={handleNavigateLibrary}
-              onNavigateToWing={handleNavigateToWing}
-              interviewSummaries={interviewSessions
-                .filter((s) => s.status === "completed" && s.narrativeSummary)
-                .map((s) => s.narrativeSummary!)}
-              memoryTypeCounts={(() => {
-                const counts = { photo: 0, video: 0, audio: 0, text: 0 };
-                for (const { mem } of allMemories) {
-                  if (mem.type === "photo" || mem.type === "album") counts.photo++;
-                  else if (mem.type === "video") counts.video++;
-                  else if (mem.type === "audio" || (mem.type === "voice" && !mem.desc)) counts.audio++;
-                  else counts.text++; // includes interview, voice-with-desc, orb, case, etc.
-                }
-                return counts;
-              })()}
               isMobile={isMobile}
             />
           </div>
