@@ -392,6 +392,16 @@
     "ariaEditCorridorPaintings": "Korridorgemälde bearbeiten"
   },
   "settings": {
+    "connectionsRowDesc": "Verbundene Foto- und Cloud-Dienste zum Importieren von Erinnerungen verwalten",
+    "meStatsMemories": "Erinnerungen",
+    "meStatsVisitors": "Besucher",
+    "meStatsWings": "Flügel",
+    "meViewPublicProfile": "Mein öffentliches Profil ansehen",
+    "meEditProfile": "Profil bearbeiten",
+    "mePublishPrompt": "Veröffentlichen, um Ihre öffentliche Seite zu erhalten",
+    "viewPublicProfile": "Öffentliches Profil ansehen",
+    "securityRowDesc": "Passwort, Zwei-Faktor-Authentifizierung, Datenexport und Kontolöschung",
+    "meUnnamed": "Ihr Palast",
     "yourProfile": "Dein Profil",
     "profileDescription": "Verwalte deine persönlichen Informationen und Kontoeinstellungen.",
     "displayName": "Anzeigename",
@@ -734,6 +744,7 @@
     "appleImportSuccess": "{count} Fotos erfolgreich importiert!"
   },
   "familySettings": {
+    "manageWingSharing": "Verwalten, wer Ihre Flügel sieht",
     "title": "Familie & Freunde",
     "description": "Erstelle eine Gruppe, um deine Gedächtnispalast-Flügel und Räume mit Familie und Freunden zu teilen.",
     "loading": "Familieneinstellungen werden geladen...",
@@ -3572,6 +3583,7 @@
     "moreCapsulePlural": "+{count} weitere Kapseln"
   },
   "securityPage": {
+    "howWeProtectTitle": "Wie wir Ihre Daten schützen",
     "navBrand": "The Memory Palace",
     "getStarted": "Jetzt starten",
     "heroTitle": "Deine Daten sind sicher",
@@ -4728,7 +4740,7 @@
   },
   "nudge": {
     "exploreSearch": "Suche nach Palästen per Name oder Benutzername — entdecke Ersteller aus aller Welt.",
-    "exploreTabs": "Wechsle zwischen Entdecken (öffentliche Paläste) und Folge ich (Ersteller, denen du folgst).",
+    "exploreTabs": "Filtere Paläste: Empfohlen, Neu oder Ersteller, denen du folgst.",
     "exploreCards": "Klicke auf eine Karte, um das Profil zu besuchen und veröffentlichte Flügel und Räume zu erkunden.",
     "explorePublish": "Teile deinen eigenen Palast mit der Community — mache deine Flügel für alle sichtbar.",
     "exploreOverviewTitle": "Erkunden — Dein sozialer Hub",
@@ -5002,6 +5014,7 @@
     "faq4A": "Ja, sende STOP an Kep und es hort sofort mit der Erfassung auf. Sende START um fortzufahren."
   },
   "social": {
+    "editProfile": "Profil bearbeiten",
     "anonymous": "Anonym",
     "followers": "Follower",
     "following": "folgt",
@@ -5162,6 +5175,19 @@
     "enterPalaceButton": "Palast betreten",
     "memberSince": "Mitglied seit",
     "exploreFollowEmpty": "Folge Erstellern, um ihre Updates hier zu sehen",
+    "exploreWarmlyVisited": "Gern besucht",
+    "exploreShowMore": "Mehr anzeigen",
+    "exploreSignIn": "Anmelden",
+    "exploreCreatePalace": "Erstelle deinen Palast",
+    "exploreErrorTitle": "Entdecken konnte nicht geladen werden",
+    "exploreErrorHint": "Beim Laden der Paläste ist etwas schiefgelaufen. Bitte versuche es erneut.",
+    "exploreRetry": "Erneut versuchen",
+    "clearSearch": "Suche löschen",
+    "searchMinChars": "Gib mindestens 2 Zeichen ein",
+    "searchError": "Die Suche konnte nicht geladen werden. Bitte versuche es erneut.",
+    "searchStatus": "{count} Ergebnisse für \"{query}\"",
+    "wingCount_one": "{count} Flügel",
+    "wingCount_other": "{count} Flügel",
     "guestbook": "Gästebuch",
     "palaceGuestbook": "Palast-Gastebuch",
     "palaceGuestbookHint": "Hinterlasse eine Nachricht fur den Palastbesitzer",

@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
-import { updateProfile, requestPasswordReset, deleteAccount, uploadAvatar } from "@/lib/auth/profile-actions";
+import { updateProfile, uploadAvatar } from "@/lib/auth/profile-actions";
 import { updateProfile as updateSocialProfile } from "@/lib/social/profile-actions";
-import MFASetup from "@/components/settings/MFASetup";
-import ExportPanel from "@/components/settings/ExportPanel";
+import Link from "next/link";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales, localeNames } from "@/i18n/config";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
@@ -51,12 +50,12 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
   // Hide the not-yet-shipped Renaissance style on iOS (Apple Guideline 2.3.1).
   const [hideComingSoon, setHideComingSoon] = useState(false);
   useEffect(() => { setHideComingSoon(isIOS()); }, []);
-  const [deleteText, setDeleteText] = useState("");
-  const [deleting, setDeleting] = useState(false);
+  // Hydration-safe host for the public-profile URL row.
+  const [publicHost, setPublicHost] = useState("thememorypalace.ai");
+  useEffect(() => { if (window.location.host) setPublicHost(window.location.host); }, []);
   // Editable fields
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -84,6 +83,12 @@ export default function ProfilePage() {
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
   }, []);
+
+  // i18n fallback helper — new keys work before the locale files land.
+  const tf = useCallback((key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  }, [t]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -175,27 +180,6 @@ export default function ProfilePage() {
     );
     showToast(t("profileSaved"), "success");
     setSaving(false);
-  };
-
-  const handlePasswordReset = async () => {
-    const result = await requestPasswordReset();
-    if (result.error) {
-      showToast(result.error, "error");
-    } else {
-      showToast(t("passwordResetSent"), "success");
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (deleteText !== t("deleteConfirmWord")) return;
-    setDeleting(true);
-    const result = await deleteAccount();
-    if (result.error) {
-      showToast(result.error, "error");
-      setDeleting(false);
-    } else {
-      window.location.href = "/login";
-    }
   };
 
   const handleAvatarUpload = async (file: File) => {
@@ -462,6 +446,40 @@ export default function ProfilePage() {
             }}>
               {t("usernameHelp")}
             </p>
+            {/* Public-profile link (change 18 — the shareable URL, first time on mobile) */}
+            {profile.username && (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: "0.75rem", flexWrap: "wrap",
+                minHeight: "2.75rem",
+                marginTop: "0.625rem",
+                padding: "0.625rem 1rem",
+                borderRadius: "0.75rem",
+                background: T.color.linen,
+                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              }}>
+                <span style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium ink */,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                }}>
+                  {`${publicHost}/u/${profile.username}`}
+                </span>
+                <Link
+                  href={`/u/${profile.username}`}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                    minHeight: "2.75rem",
+                    padding: "0.375rem 0.875rem",
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                    color: "#B85C38" /* Atrium ember (interactive) */,
+                    textDecoration: "none",
+                    flexShrink: 0,
+                  }}
+                >
+                  {tf("viewPublicProfile", "View public profile")} {"→"}
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Bio */}
@@ -624,90 +642,38 @@ export default function ProfilePage() {
             </div>
           </fieldset>
 
-          {/* Memory Style / Persona */}
-          <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-            <legend style={labelStyle}>{t("yourMemoryStyle")}</legend>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
-              margin: "0 0 0.625rem", lineHeight: 1.4,
+          {/* Memory Style / Persona — shrunk to one link row (change 18; the quiz lives in the Atrium) */}
+          <div>
+            <span style={labelStyle}>{t("yourMemoryStyle")}</span>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: "0.75rem", minHeight: "2.75rem",
+              padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+              background: T.color.linen,
+              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
             }}>
-              {t("memoryStyleDesc")}
-            </p>
-            {personaType ? (
-              <div style={{
-                display: "flex", alignItems: "center", gap: "1rem",
-                padding: "1rem 1.25rem", borderRadius: "0.75rem",
-                background: T.color.linen,
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              <span style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem",
+                color: personaType ? "#403B36" /* Atrium ink */ : "#716A5E" /* Atrium muted */,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
               }}>
-                <div style={{
-                  width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-                  background: "rgba(154,79,42,0.11)" /* Atrium terracotta medallion */, border: "0.0625rem solid rgba(154,79,42,0.35)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9A4F2A" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 16v-4M12 8h.01" />
-                  </svg>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
-                    color: "#403B36" /* Atrium ink */,
-                  }}>
-                    {tPersona("resultTitle").replace("{type}", tPersona(`${personaType}Label`))}
-                  </div>
-                  <div style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
-                    marginTop: "0.125rem", lineHeight: 1.45,
-                  }}>
-                    {tPersona(`${personaType}Desc`)}
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    localStorage.removeItem("mp_persona_type");
-                    setPersonaType(null);
-                    showToast(t("personaReset"), "success");
-                  }}
-                  style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                    color: "#9A4F2A" /* Atrium terracotta glyph */, background: "none",
-                    border: "0.0625rem solid rgba(154,79,42,0.35)",
-                    borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
-                    cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
-                  }}
-                >
-                  {t("retakeQuiz")}
-                </button>
-              </div>
-            ) : (
-              <div style={{
-                padding: "1rem 1.25rem", borderRadius: "0.75rem",
-                background: T.color.linen, border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-              }}>
-                <span style={{
-                  fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */,
-                }}>
-                  {t("noPersonaYet")}
-                </span>
-                <button
-                  onClick={() => { router.push("/atrium"); }}
-                  style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                    color: "#9A4F2A" /* Atrium terracotta glyph */, background: "none",
-                    border: "0.0625rem solid rgba(154,79,42,0.35)",
-                    borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
-                    cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
-                  }}
-                >
-                  {t("takeQuiz")}
-                </button>
-              </div>
-            )}
-          </fieldset>
+                {personaType ? tPersona(`${personaType}Label`) : t("noPersonaYet")}
+              </span>
+              <button
+                onClick={() => { router.push("/atrium"); }}
+                style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                  color: "#9A4F2A" /* Atrium terracotta glyph */, background: "none",
+                  border: "0.0625rem solid rgba(154,79,42,0.35)",
+                  borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
+                  minHeight: "2.75rem",
+                  cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
+                }}
+              >
+                {personaType ? t("retakeQuiz") : t("takeQuiz")}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Save button */}
@@ -759,75 +725,46 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Account Section ── */}
-      <div style={{
-        background: T.color.white,
-        borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-        padding: "1.75rem 2rem",
-        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
-        marginBottom: "1.5rem",
-      }}>
-        <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-          color: "#403B36" /* Atrium ink */, margin: "0 0 0.375rem",
+      {/* ── Connections (folded under Profile — change 16; route survives for OAuth returns) ── */}
+      <Link href="/settings/connections" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
+        <div style={{
+          background: T.color.white,
+          borderRadius: "1rem",
+          border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+          padding: "1.125rem 1.5rem",
+          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
+          display: "flex", alignItems: "center", gap: "1rem",
+          minHeight: "2.75rem",
         }}>
-          {t("account")}
-        </h3>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */,
-          margin: "0 0 1.375rem", lineHeight: 1.4,
-        }}>
-          {t("accountDescription")}
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {/* Change Password */}
           <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen,
-            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+            width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
+            background: "rgba(154,79,42,0.11)", /* Atrium terracotta medallion */
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, color: "#9A4F2A",
           }}>
-            <div>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                color: "#403B36" /* Atrium ink */,
-              }}>
-                {t("changePassword")}
-              </div>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
-                marginTop: "0.25rem",
-              }}>
-                {t("changePasswordDesc")}
-              </div>
-            </div>
-            <button
-              onClick={handlePasswordReset}
-              style={{
-                padding: "0.75rem 1.5rem",
-                borderRadius: "0.625rem",
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                background: T.color.white,
-                fontFamily: T.font.body,
-                fontSize: "0.9375rem",
-                fontWeight: 500,
-                color: "#403B36" /* Atrium ink */,
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                flexShrink: 0,
-                minHeight: "2.75rem",
-              }}
-            >
-              {t("sendResetLink")}
-            </button>
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+            </svg>
           </div>
-
-          {/* Download My Data */}
-          <ExportPanel showToast={showToast} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+              color: "#403B36" /* Atrium ink */, marginBottom: "0.125rem",
+            }}>
+              {tc("connections")}
+            </div>
+            <div style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */, lineHeight: 1.4,
+            }}>
+              {tf("connectionsRowDesc", "Manage connected photo and cloud services for importing memories")}
+            </div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#716A5E" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <path d="m9 18 6-6-6-6" />
+          </svg>
         </div>
-      </div>
+      </Link>
 
       {/* ── AI Features Consent ── */}
       <div style={{
@@ -914,9 +851,6 @@ export default function ProfilePage() {
 
         </div>
       </div>
-
-      {/* ── Security: Two-Factor Authentication ── */}
-      <MFASetup />
 
       {/* ── Language ── */}
       <div style={{
@@ -1182,140 +1116,45 @@ export default function ProfilePage() {
         })()}
       </div>
 
-      {/* ── Danger Zone ── */}
-      <div style={{
-        background: T.color.white,
-        borderRadius: "1rem",
-        border: "0.0625rem solid #EFD3D3", /* Atrium pre-mixed: danger 25% on white */
-        padding: "1.75rem 2rem",
-        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium S1 */
-      }}>
-        <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-          color: "#C05050", margin: "0 0 0.375rem",
+      {/* ── Security & account controls (change 17) ── */}
+      <Link href="/settings/security" style={{ textDecoration: "none", display: "block" }}>
+        <div style={{
+          background: T.color.white,
+          borderRadius: "1rem",
+          border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+          padding: "1.125rem 1.5rem",
+          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
+          display: "flex", alignItems: "center", gap: "1rem",
+          minHeight: "2.75rem",
         }}>
-          {t("dangerZone")}
-        </h3>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */,
-          margin: "0 0 1.125rem", lineHeight: 1.4,
-        }}>
-          {t("dangerDescription")}
-        </p>
-
-        {!deleteConfirm ? (
-          <button
-            onClick={() => setDeleteConfirm(true)}
-            style={{
-              padding: "0.875rem 1.75rem",
-              borderRadius: "0.75rem",
-              border: "0.0625rem solid #F2DCDC", /* Atrium pre-mixed: danger 20% on white */
-              background: "#FDF9F9", /* Atrium pre-mixed: danger 3% on white */
-              fontFamily: T.font.body,
-              fontSize: "0.9375rem",
-              fontWeight: 600,
-              color: "#C05050",
-              cursor: "pointer",
-              transition: "all 0.2s ease",
-            }}
-          >
-            {t("deleteAccount")}
-          </button>
-        ) : (
           <div style={{
-            padding: "1.25rem 1.5rem", borderRadius: "0.875rem",
-            background: "#FAF1F1", /* Atrium pre-mixed: danger 8% on white */
-            border: "0.0625rem solid #ECCACA", /* Atrium pre-mixed: danger 30% on white */
+            width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
+            background: "rgba(154,79,42,0.11)", /* Atrium terracotta medallion */
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, color: "#9A4F2A",
           }}>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-              color: "#A83A3A" /* danger strong, one ramp */, margin: "0 0 0.75rem",
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+              color: "#403B36" /* Atrium ink */, marginBottom: "0.125rem",
             }}>
-              {t("deleteConfirmTitle")}
-            </p>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", color: "#8C3434" /* danger deep, one ramp */,
-              margin: "0 0 1rem", lineHeight: 1.4,
+              {tc("security")}
+            </div>
+            <div style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */, lineHeight: 1.4,
             }}>
-              {(() => {
-                const raw = t("deleteConfirmDescription");
-                const parts = raw.split(/\{boldStart\}|\{boldEnd\}/);
-                // parts[0] = before, parts[1] = bold text, parts[2] = after
-                return (
-                  <>
-                    {parts[0]}
-                    {parts[1] && <strong>{parts[1]}</strong>}
-                    {parts[2]}
-                  </>
-                );
-              })()}
-            </p>
-            <input
-              id="profile-delete-confirm"
-              className="mp-settings-input"
-              aria-label={t("deleteConfirmTitle")}
-              type="text"
-              value={deleteText}
-              onChange={(e) => setDeleteText(e.target.value)}
-              placeholder={t("deleteConfirmPlaceholder")}
-              style={{
-                ...inputStyle,
-                borderColor: "#ECCACA", /* Atrium pre-mixed: danger 30% on white */
-                marginBottom: "0.875rem",
-              }}
-            />
-            <div style={{ display: "flex", gap: "0.625rem" }}>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={deleteText !== t("deleteConfirmWord") || deleting}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.625rem",
-                  border: "none",
-                  background:
-                    deleteText === t("deleteConfirmWord") && !deleting
-                      ? "#A83A3A" /* danger strong, one ramp */
-                      : "#EEE9DF" /* Atrium pre-mixed: sandstone 37% on cream */,
-                  color:
-                    deleteText === t("deleteConfirmWord") && !deleting
-                      ? "#FFF"
-                      : "#716A5E" /* Atrium muted */,
-                  fontFamily: T.font.body,
-                  fontSize: "0.9375rem",
-                  fontWeight: 600,
-                  cursor:
-                    deleteText === t("deleteConfirmWord") && !deleting
-                      ? "pointer"
-                      : "default",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {deleting ? t("deleting") : t("permanentlyDelete")}
-              </button>
-              <button
-                onClick={() => {
-                  setDeleteConfirm(false);
-                  setDeleteText("");
-                }}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.625rem",
-                  border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                  background: T.color.white,
-                  fontFamily: T.font.body,
-                  fontSize: "0.9375rem",
-                  fontWeight: 500,
-                  color: "#403B36" /* Atrium ink */,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {tc("cancel")}
-              </button>
+              {tf("securityRowDesc", "Password, two-factor authentication, data export and account deletion")}
             </div>
           </div>
-        )}
-      </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#716A5E" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </div>
+      </Link>
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }

@@ -163,7 +163,8 @@ export function getNotificationAction(n: NotificationRow): string | null {
       if (n.wing_id) return `/palace?wing=${n.wing_id}`;
       return "/palace";
     case "new_follower":
-      return n.from_user_id ? `/explore/profile/${n.from_user_id}` : "/explore";
+      // /u/[username] accepts UUIDs too — the old /explore/profile/{id} 404'd
+      return n.from_user_id ? `/u/${n.from_user_id}` : "/explore";
     case "followed_published":
       return n.from_user_id ? `/visit/${n.from_user_id}/walk` : "/explore";
     case "collab_invite":

@@ -335,7 +335,7 @@ function NavigationBar({
 
   // Prefetch routes for instant navigation
   useEffect(() => {
-    router.prefetch("/settings");
+    router.prefetch("/me");
     router.prefetch("/palace");
     router.prefetch("/family-tree");
     router.prefetch("/settings/profile");
@@ -548,7 +548,7 @@ function NavigationBar({
                     if (onSettings) {
                       onSettings();
                     } else {
-                      router.push("/settings");
+                      router.push("/me");
                     }
                   } else if (isHelp) {
                     setHelpMenuOpen(!helpMenuOpen);
@@ -946,7 +946,7 @@ function NavigationBar({
                   if (onSettings) {
                     onSettings();
                   } else {
-                    router.push("/settings");
+                    router.push("/me");
                   }
                 }}
                 aria-current={isMeActive ? "page" : undefined}

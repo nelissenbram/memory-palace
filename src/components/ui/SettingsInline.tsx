@@ -19,9 +19,10 @@ const NotificationsSettingsPage = lazy(() => import("@/app/(app)/settings/notifi
 const LegacyPage = lazy(() => import("@/app/(app)/settings/legacy/page"));
 const SharingPage = lazy(() => import("@/app/(app)/settings/sharing/page"));
 const SecurityPage = lazy(() => import("@/app/(app)/settings/security/page"));
-const CookiesPage = lazy(() => import("@/app/(app)/settings/cookies/page"));
+// Cookies tab removed (Explore/Me revision, change 16): cookie consent now
+// lives inside Privacy & Security; /settings/cookies redirects there.
 
-type SettingsTab = "profile" | "family" | "subscription" | "connections" | "notifications" | "legacy" | "sharing" | "security" | "cookies";
+type SettingsTab = "profile" | "family" | "subscription" | "connections" | "notifications" | "legacy" | "sharing" | "security";
 
 function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   const s = {
@@ -54,7 +55,6 @@ const NAV_ITEMS: { tab: SettingsTab; labelKey: string; iconKey: string; hideInNa
   { tab: "legacy", labelKey: "legacy", iconKey: "legacy" },
   { tab: "sharing", labelKey: "sharingSettings", iconKey: "sharing" },
   { tab: "security", labelKey: "security", iconKey: "security" },
-  { tab: "cookies", labelKey: "cookies", iconKey: "cookies" },
 ];
 
 const PAGE_MAP: Record<SettingsTab, React.LazyExoticComponent<any>> = {
@@ -66,7 +66,6 @@ const PAGE_MAP: Record<SettingsTab, React.LazyExoticComponent<any>> = {
   legacy: LegacyPage,
   sharing: SharingPage,
   security: SecurityPage,
-  cookies: CookiesPage,
 };
 
 const fallback = (

@@ -392,6 +392,16 @@
     "ariaEditCorridorPaintings": "Editar pinturas del corredor"
   },
   "settings": {
+    "connectionsRowDesc": "Gestiona los servicios de fotos y nube conectados para importar recuerdos",
+    "meStatsMemories": "Recuerdos",
+    "meStatsVisitors": "Visitantes",
+    "meStatsWings": "Alas",
+    "meViewPublicProfile": "Ver mi perfil público",
+    "meEditProfile": "Editar perfil",
+    "mePublishPrompt": "Publica para obtener tu página pública",
+    "viewPublicProfile": "Ver perfil público",
+    "securityRowDesc": "Contraseña, autenticación en dos pasos, exportación de datos y eliminación de cuenta",
+    "meUnnamed": "Tu palacio",
     "yourProfile": "Tu Perfil",
     "profileDescription": "Gestiona tu información personal y configuración de cuenta.",
     "displayName": "Nombre",
@@ -734,6 +744,7 @@
     "appleImportSuccess": "¡{count} fotos importadas con éxito!"
   },
   "familySettings": {
+    "manageWingSharing": "Gestiona quién ve tus alas",
     "title": "Familia y Amigos",
     "description": "Crea un grupo para compartir las alas y salas de tu palacio de la memoria con familia y amigos.",
     "loading": "Cargando configuración familiar...",
@@ -3572,6 +3583,7 @@
     "moreCapsulePlural": "+{count} cápsulas más"
   },
   "securityPage": {
+    "howWeProtectTitle": "Cómo protegemos tus datos",
     "navBrand": "The Memory Palace",
     "getStarted": "Comenzar",
     "heroTitle": "Tus datos están seguros",
@@ -4728,7 +4740,7 @@
   },
   "nudge": {
     "exploreSearch": "Busca palacios por nombre o usuario — descubre creadores de todo el mundo.",
-    "exploreTabs": "Cambia entre Descubrir (palacios públicos) y Siguiendo (creadores que sigues).",
+    "exploreTabs": "Filtra palacios: Destacados, Nuevos o creadores que sigues.",
     "exploreCards": "Haz clic en una tarjeta para visitar su perfil y explorar sus alas y salas publicadas.",
     "explorePublish": "Comparte tu propio palacio con la comunidad — haz visibles tus alas para todos.",
     "exploreOverviewTitle": "Explorar — Tu Centro Social",
@@ -5002,6 +5014,7 @@
     "faq4A": "Sí, envia STOP a Kep y dejara de recopilar de inmediato. Envia START para reanudar."
   },
   "social": {
+    "editProfile": "Editar perfil",
     "anonymous": "Anónimo",
     "followers": "seguidores",
     "following": "siguiendo",
@@ -5162,6 +5175,19 @@
     "enterPalaceButton": "Entrar al Palacio",
     "memberSince": "Miembro desde",
     "exploreFollowEmpty": "Sigue a creadores para ver sus actualizaciones aquí",
+    "exploreWarmlyVisited": "Muy visitados",
+    "exploreShowMore": "Mostrar más",
+    "exploreSignIn": "Iniciar sesión",
+    "exploreCreatePalace": "Crea tu palacio",
+    "exploreErrorTitle": "No se pudo cargar Explorar",
+    "exploreErrorHint": "Algo salió mal al cargar los palacios. Inténtalo de nuevo.",
+    "exploreRetry": "Intentar de nuevo",
+    "clearSearch": "Borrar búsqueda",
+    "searchMinChars": "Escribe al menos 2 caracteres",
+    "searchError": "No se pudo cargar la búsqueda. Inténtalo de nuevo.",
+    "searchStatus": "{count} resultados para \"{query}\"",
+    "wingCount_one": "{count} ala",
+    "wingCount_other": "{count} alas",
     "guestbook": "Libro de visitas",
     "palaceGuestbook": "Libro de visitas del palacio",
     "palaceGuestbookHint": "Deja una nota para el dueno del palacio",

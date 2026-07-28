@@ -106,18 +106,22 @@ function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   }
 }
 
+/**
+ * Settings IA (Explore/Me revision, change 16): 7 honest doors.
+ * - Cookies folded into Privacy & Security (/settings/cookies redirects there).
+ * - Connections reachable from Profile (route survives for OAuth returns/deep links).
+ * - All /settings/* sub-pages remain canonical deep-link targets for /me.
+ */
 const NAV_ITEMS = [
   { href: "/settings/profile", labelKey: "profile", iconKey: "profile" },
   { href: "/settings/family", labelKey: "family", iconKey: "family" },
   // iOS is free-tier only (Apple 3.1.1) — hide the Subscription tab and its
   // link to the billing/plan page inside the native app.
   { href: "/settings/subscription", labelKey: "subscription", iconKey: "subscription", hideInNative: true },
-  { href: "/settings/connections", labelKey: "connections", iconKey: "connections" },
+  { href: "/settings/sharing", labelKey: "sharingSettings", iconKey: "sharing" },
   { href: "/settings/notifications", labelKey: "alerts", iconKey: "notifications" },
   { href: "/settings/legacy", labelKey: "legacy", iconKey: "legacy" },
-  { href: "/settings/sharing", labelKey: "sharingSettings", iconKey: "sharing" },
   { href: "/settings/security", labelKey: "security", iconKey: "security" },
-  { href: "/settings/cookies", labelKey: "cookies", iconKey: "cookies" },
 ] as const;
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

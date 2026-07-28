@@ -392,6 +392,16 @@
     "ariaEditCorridorPaintings": "Edit corridor paintings"
   },
   "settings": {
+    "connectionsRowDesc": "Manage connected photo and cloud services for importing memories",
+    "meStatsMemories": "Memories",
+    "meStatsVisitors": "Visitors",
+    "meStatsWings": "Wings",
+    "meViewPublicProfile": "View my public profile",
+    "meEditProfile": "Edit profile",
+    "mePublishPrompt": "Publish to get your public page",
+    "viewPublicProfile": "View public profile",
+    "securityRowDesc": "Password, two-factor authentication, data export and account deletion",
+    "meUnnamed": "Your palace",
     "yourProfile": "Your Profile",
     "profileDescription": "Manage your personal information and account settings.",
     "displayName": "Display Name",
@@ -734,6 +744,7 @@
     "appleImportSuccess": "{count} photos imported successfully!"
   },
   "familySettings": {
+    "manageWingSharing": "Manage who sees your wings",
     "title": "Family & Friends",
     "description": "Create a group to share your memory palace wings and rooms with family and friends.",
     "loading": "Loading family settings...",
@@ -3572,6 +3583,7 @@
     "moreCapsulePlural": "+{count} more capsules"
   },
   "securityPage": {
+    "howWeProtectTitle": "How we protect your data",
     "navBrand": "The Memory Palace",
     "getStarted": "Get Started",
     "heroTitle": "Your data is safe",
@@ -4728,7 +4740,7 @@
   },
   "nudge": {
     "exploreSearch": "Search for palaces by name or username — discover creators from around the world.",
-    "exploreTabs": "Switch between Discover (public palaces) and Following (creators you follow).",
+    "exploreTabs": "Filter palaces: Featured, New, or creators you follow.",
     "exploreCards": "Click any card to visit their profile and explore their published wings and rooms.",
     "explorePublish": "Share your own palace with the community — make your wings visible to everyone.",
     "exploreOverviewTitle": "Explore — Your Social Hub",
@@ -5002,6 +5014,7 @@
     "faq4A": "Yes, text STOP to Kep and it will immediately stop collecting. Text START to resume."
   },
   "social": {
+    "editProfile": "Edit profile",
     "anonymous": "Anonymous",
     "followers": "followers",
     "following": "following",
@@ -5162,6 +5175,19 @@
     "enterPalaceButton": "Enter Palace",
     "memberSince": "Member since",
     "exploreFollowEmpty": "Follow creators to see their updates here",
+    "exploreWarmlyVisited": "Warmly visited",
+    "exploreShowMore": "Show more",
+    "exploreSignIn": "Sign in",
+    "exploreCreatePalace": "Create your palace",
+    "exploreErrorTitle": "Explore couldn't load",
+    "exploreErrorHint": "Something went wrong while fetching palaces. Please try again.",
+    "exploreRetry": "Try again",
+    "clearSearch": "Clear search",
+    "searchMinChars": "Type at least 2 characters",
+    "searchError": "Search couldn't load. Please try again.",
+    "searchStatus": "{count} results for \"{query}\"",
+    "wingCount_one": "{count} wing",
+    "wingCount_other": "{count} wings",
     "guestbook": "Guestbook",
     "palaceGuestbook": "Palace Guestbook",
     "palaceGuestbookHint": "Leave a note for the palace owner",

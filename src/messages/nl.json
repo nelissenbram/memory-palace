@@ -392,6 +392,16 @@
     "ariaEditCorridorPaintings": "Gangschilderijen bewerken"
   },
   "settings": {
+    "connectionsRowDesc": "Beheer gekoppelde foto- en clouddiensten voor het importeren van herinneringen",
+    "meStatsMemories": "Herinneringen",
+    "meStatsVisitors": "Bezoekers",
+    "meStatsWings": "Vleugels",
+    "meViewPublicProfile": "Bekijk mijn openbare profiel",
+    "meEditProfile": "Profiel bewerken",
+    "mePublishPrompt": "Publiceer om je openbare pagina te krijgen",
+    "viewPublicProfile": "Bekijk openbaar profiel",
+    "securityRowDesc": "Wachtwoord, tweestapsverificatie, gegevensexport en accountverwijdering",
+    "meUnnamed": "Jouw paleis",
     "yourProfile": "Je Profiel",
     "profileDescription": "Beheer je persoonlijke gegevens en accountinstellingen.",
     "displayName": "Weergavenaam",
@@ -734,6 +744,7 @@
     "appleImportSuccess": "{count} foto's succesvol geïmporteerd!"
   },
   "familySettings": {
+    "manageWingSharing": "Beheer wie je vleugels ziet",
     "title": "Familie & Vrienden",
     "description": "Maak een groep om je geheugenpaleis vleugels en kamers te delen met familie en vrienden.",
     "loading": "Familie-instellingen laden...",
@@ -3574,6 +3585,7 @@
     "moreCapsulePlural": "+{count} capsules meer"
   },
   "securityPage": {
+    "howWeProtectTitle": "Hoe we je gegevens beschermen",
     "navBrand": "The Memory Palace",
     "getStarted": "Aan de slag",
     "heroTitle": "Je gegevens zijn veilig",
@@ -4730,7 +4742,7 @@
   },
   "nudge": {
     "exploreSearch": "Zoek naar paleizen op naam of gebruikersnaam — ontdek makers van over de hele wereld.",
-    "exploreTabs": "Schakel tussen Ontdekken (openbare paleizen) en Volgend (makers die je volgt).",
+    "exploreTabs": "Filter paleizen: Uitgelicht, Nieuw of makers die je volgt.",
     "exploreCards": "Klik op een kaart om hun profiel te bezoeken en hun gepubliceerde vleugels en kamers te verkennen.",
     "explorePublish": "Deel je eigen paleis met de gemeenschap — maak je vleugels zichtbaar voor iedereen.",
     "exploreOverviewTitle": "Verkennen — Jouw Sociale Hub",
@@ -5004,6 +5016,7 @@
     "faq4A": "Ja, stuur STOP naar Kep en het stopt direct met verzamelen. Stuur START om te hervatten."
   },
   "social": {
+    "editProfile": "Profiel bewerken",
     "anonymous": "Anoniem",
     "followers": "volgers",
     "following": "volgend",
@@ -5164,6 +5177,19 @@
     "enterPalaceButton": "Betreed Paleis",
     "memberSince": "Lid sinds",
     "exploreFollowEmpty": "Volg makers om hun updates hier te zien",
+    "exploreWarmlyVisited": "Warm bezocht",
+    "exploreShowMore": "Meer tonen",
+    "exploreSignIn": "Inloggen",
+    "exploreCreatePalace": "Maak je paleis",
+    "exploreErrorTitle": "Ontdekken kon niet laden",
+    "exploreErrorHint": "Er ging iets mis bij het ophalen van paleizen. Probeer het opnieuw.",
+    "exploreRetry": "Opnieuw proberen",
+    "clearSearch": "Zoekopdracht wissen",
+    "searchMinChars": "Typ minstens 2 tekens",
+    "searchError": "Zoeken is mislukt. Probeer het opnieuw.",
+    "searchStatus": "{count} resultaten voor \"{query}\"",
+    "wingCount_one": "{count} vleugel",
+    "wingCount_other": "{count} vleugels",
     "guestbook": "Gastenboek",
     "palaceGuestbook": "Paleis Gastenboek",
     "palaceGuestbookHint": "Laat een bericht achter voor de paleiseigenaar",

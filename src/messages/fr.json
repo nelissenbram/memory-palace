@@ -392,6 +392,16 @@
     "ariaEditCorridorPaintings": "Modifier les peintures du couloir"
   },
   "settings": {
+    "connectionsRowDesc": "Gérez les services photo et cloud connectés pour importer des souvenirs",
+    "meStatsMemories": "Souvenirs",
+    "meStatsVisitors": "Visiteurs",
+    "meStatsWings": "Ailes",
+    "meViewPublicProfile": "Voir mon profil public",
+    "meEditProfile": "Modifier le profil",
+    "mePublishPrompt": "Publiez pour obtenir votre page publique",
+    "viewPublicProfile": "Voir le profil public",
+    "securityRowDesc": "Mot de passe, authentification à deux facteurs, export des données et suppression du compte",
+    "meUnnamed": "Votre palais",
     "yourProfile": "Votre Profil",
     "profileDescription": "Gérez vos informations personnelles et paramètres de compte.",
     "displayName": "Nom d'affichage",
@@ -734,6 +744,7 @@
     "appleImportSuccess": "{count} photos importées avec succès !"
   },
   "familySettings": {
+    "manageWingSharing": "Gérez qui voit vos ailes",
     "title": "Famille et Amis",
     "description": "Créez un groupe pour partager les ailes et salles de votre palais de la mémoire avec votre famille et vos amis.",
     "loading": "Chargement des parametres familiaux...",
@@ -3572,6 +3583,7 @@
     "moreCapsulePlural": "+{count} capsules supplémentaires"
   },
   "securityPage": {
+    "howWeProtectTitle": "Comment nous protégeons vos données",
     "navBrand": "The Memory Palace",
     "getStarted": "Commencer",
     "heroTitle": "Vos données sont en sécurité",
@@ -4728,7 +4740,7 @@
   },
   "nudge": {
     "exploreSearch": "Recherchez des palais par nom ou pseudo — découvrez des créateurs du monde entier.",
-    "exploreTabs": "Basculez entre Découvrir (palais publics) et Suivi (créateurs que vous suivez).",
+    "exploreTabs": "Filtrez les palais : À la une, Nouveaux ou créateurs que vous suivez.",
     "exploreCards": "Cliquez sur une carte pour visiter le profil et explorer les ailes et salles publiées.",
     "explorePublish": "Partagez votre propre palais avec la communauté — rendez vos ailes visibles à tous.",
     "exploreOverviewTitle": "Explorer — Votre Hub Social",
@@ -5002,6 +5014,7 @@
     "faq4A": "Oui, envoyez STOP a Kep et il arretera immediatement de collecter. Envoyez START pour reprendre."
   },
   "social": {
+    "editProfile": "Modifier le profil",
     "anonymous": "Anonyme",
     "followers": "abonnés",
     "following": "abonnements",
@@ -5162,6 +5175,19 @@
     "enterPalaceButton": "Entrer dans le Palais",
     "memberSince": "Membre depuis",
     "exploreFollowEmpty": "Suivez des créateurs pour voir leurs mises à jour ici",
+    "exploreWarmlyVisited": "Chaleureusement visités",
+    "exploreShowMore": "Afficher plus",
+    "exploreSignIn": "Se connecter",
+    "exploreCreatePalace": "Créez votre palais",
+    "exploreErrorTitle": "Impossible de charger Explorer",
+    "exploreErrorHint": "Une erreur s'est produite lors du chargement des palais. Veuillez réessayer.",
+    "exploreRetry": "Réessayer",
+    "clearSearch": "Effacer la recherche",
+    "searchMinChars": "Saisissez au moins 2 caractères",
+    "searchError": "La recherche n'a pas pu être chargée. Veuillez réessayer.",
+    "searchStatus": "{count} résultats pour « {query} »",
+    "wingCount_one": "{count} aile",
+    "wingCount_other": "{count} ailes",
     "guestbook": "Livre d'or",
     "palaceGuestbook": "Livre d'or du palais",
     "palaceGuestbookHint": "Laissez un mot au proprietaire du palais",

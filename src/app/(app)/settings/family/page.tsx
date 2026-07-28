@@ -16,33 +16,6 @@ import {
   updateFamilyGroup,
   deleteFamilyGroup,
 } from "@/lib/auth/family-actions";
-import {
-  shareWing,
-  unshareWing,
-  getMyWingShares,
-  getWingsSharedWithMe,
-} from "@/lib/auth/sharing-actions";
-
-const WING_OPTION_IDS = ["roots", "nest", "craft", "travel", "passions"] as const;
-
-const WING_LABEL_KEYS: Record<string, string> = {
-  roots: "wingRoots",
-  nest: "wingNest",
-  craft: "wingCraft",
-  travel: "wingTravel",
-  passions: "wingPassions",
-};
-
-interface WingShare {
-  id: string;
-  wing_id: string;
-  permission: string;
-  shared_with_id?: string;
-  shared_with_email?: string;
-  owner_id?: string;
-  owner_email?: string;
-  created_at: string;
-}
 
 interface FamilyMember {
   id: string;
@@ -60,9 +33,6 @@ interface FamilyGroup {
   created_by: string;
   created_at: string;
 }
-
-/* ── visual step data for "How it works" ── */
-const STEP_ICONS = ["\u2160", "\u2161", "\u2162", "\u2163"]; // Roman numerals I-IV
 
 /* ── Inline SVG icons (Roman/Tuscan aesthetic) ── */
 function FamilyIcon({ name, size = 20, color = "currentColor" }: { name: "palace" | "link" | "lock"; size?: number; color?: string }) {
@@ -116,7 +86,6 @@ interface PendingInviteEntry {
 
 export default function FamilyPage() {
   const { t } = useTranslation("familySettings");
-  const { t: tp } = useTranslation("palace");
   const isMobile = useIsMobile();
   // Multi-group state
   const [groups, setGroups] = useState<FamilyGroupEntry[]>([]);
@@ -125,7 +94,6 @@ export default function FamilyPage() {
   const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ groupId: string; userId: string; email: string } | null>(null);
-  const [confirmUnshareId, setConfirmUnshareId] = useState<string | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [groupName, setGroupName] = useState("");
@@ -140,14 +108,6 @@ export default function FamilyPage() {
   const [renamingSaving, setRenamingSaving] = useState(false);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-
-  // Wing sharing state
-  const [myWingShares, setMyWingShares] = useState<WingShare[]>([]);
-  const [sharedWithMe, setSharedWithMe] = useState<WingShare[]>([]);
-  const [shareWingId, setShareWingId] = useState("roots");
-  const [shareMemberEmail, setShareMemberEmail] = useState("");
-  const [sharePermission, setSharePermission] = useState<"view" | "contribute">("view");
-  const [sharingWing, setSharingWing] = useState(false);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -178,22 +138,7 @@ export default function FamilyPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadWingShares = useCallback(async () => {
-    try {
-      const [myRes, withMeRes] = await Promise.all([
-        getMyWingShares(),
-        getWingsSharedWithMe(),
-      ]);
-      setMyWingShares((myRes.shares || []) as WingShare[]);
-      setSharedWithMe((withMeRes.shares || []) as WingShare[]);
-    } catch {
-      showToast(t("loadWingSharesError"), "error");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   useEffect(() => { loadGroups(); }, [loadGroups]);
-  useEffect(() => { loadWingShares(); }, [loadWingShares]);
 
   const handleCreateGroup = async () => {
     if (!groupName.trim()) return;
@@ -318,34 +263,6 @@ export default function FamilyPage() {
     }
   };
 
-  const handleShareWing = async () => {
-    if (!shareMemberEmail.trim() || !shareMemberEmail.includes("@")) {
-      if (shareMemberEmail.trim()) showToast(t("inviteInvalidEmail"), "error");
-      return;
-    }
-    setSharingWing(true);
-    const result = await shareWing(shareWingId, shareMemberEmail.trim(), sharePermission);
-    setSharingWing(false);
-    if (result.error) {
-      showToast(result.error, "error");
-    } else {
-      showToast(t("wingSharedSuccess", { email: shareMemberEmail.trim() }), "success");
-      setShareMemberEmail("");
-      loadWingShares();
-    }
-  };
-
-  const handleUnshareWing = async (shareId: string) => {
-    const result = await unshareWing(shareId);
-    setConfirmUnshareId(null);
-    if (result.error) {
-      showToast(result.error, "error");
-    } else {
-      showToast(t("wingShareRemoved"), "success");
-      loadWingShares();
-    }
-  };
-
   const handleRenameGroup = async (groupId: string) => {
     if (!editGroupName.trim()) return;
     setRenamingSaving(true);
@@ -375,24 +292,10 @@ export default function FamilyPage() {
     }
   };
 
-  // Collect all active members across all groups for wing sharing
-  const allOtherActiveMembers = groups.flatMap((g) =>
-    (g.members as FamilyMember[]).filter((m) => m.status === "active" && m.email.toLowerCase() !== userEmail.toLowerCase())
-  );
-  // Deduplicate by email
-  const uniqueOtherMembers = allOtherActiveMembers.filter(
-    (m, i, arr) => arr.findIndex((x) => x.email.toLowerCase() === m.email.toLowerCase()) === i
-  );
-
   const roleColor = (role: string) => {
     if (role === "owner") return "#9A4F2A"; /* Atrium token: terracotta glyph */
     if (role === "admin") return "#8A6410"; /* Atrium gold-lane glyph brown */
     return "#56683C"; /* Atrium token: sage canonical */
-  };
-
-  const wingLabel = (wingId: string) => {
-    const key = WING_LABEL_KEYS[wingId];
-    return key ? tp(key) : wingId;
   };
 
   if (loading) {
@@ -1130,28 +1033,6 @@ export default function FamilyPage() {
             </p>
           </div>
           )}
-          <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
-            <Link href="/family-tree" style={{
-              display: "inline-flex", alignItems: "center", gap: "0.5rem",
-              padding: "0.625rem 1.25rem",
-              borderRadius: "0.75rem",
-              border: `0.09375rem solid ${"#56683C"}40`,
-              background: `${"#56683C"}08`,
-              color: "#56683C",
-              fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-              textDecoration: "none",
-              transition: "all .2s",
-            }}>
-              <svg width="1.125rem" height="1.125rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-                <path d="M5 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-                <path d="M19 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-                <path d="M12 5v4" />
-                <path d="M5 16v-3a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v3" />
-              </svg>
-              {t("viewFamilyTree")}
-            </Link>
-          </div>
         </div>
         {/* Inclusive note */}
         <p style={{
@@ -1208,133 +1089,14 @@ export default function FamilyPage() {
         );
       })}
 
-      {/* ═══ NO GROUPS AT ALL: Warm CTA + benefits + how-it-works ═══ */}
+      {/* NO GROUPS: one muted sentence above the create-group form (change 19) */}
       {!hasGroups && !hasPendingInvites && (
-        <>
-          {/* Warm welcome CTA */}
-          <div style={{
-            background: `linear-gradient(135deg, rgba(154,79,42,0.06), rgba(154,79,42,0.03))`,
-            borderRadius: "1rem",
-            border: "0.0625rem solid #E7D9C4", /* Atrium terracotta-zone border */
-            padding: "2rem 2rem 1.75rem",
-            marginBottom: "1.5rem",
-            textAlign: "center",
-          }}>
-            <div style={{
-              width: "4rem", height: "4rem", borderRadius: "50%",
-              background: `linear-gradient(135deg, rgba(154,79,42,0.14), rgba(154,79,42,0.07))`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 1.25rem",
-              border: "0.0625rem solid #E7D9C4", /* Atrium terracotta-zone border */
-            }}>
-              <svg width="1.75rem" height="1.75rem" viewBox="0 0 24 24" fill="none" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-            </div>
-            <h3 style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
-              color: "#403B36", margin: "0 0 0.5rem",
-            }}>
-              {t("noGroupTitle")}
-            </h3>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", /* Atrium token: muted */
-              margin: "0 0 1.5rem", lineHeight: 1.6, maxWidth: "28rem", marginLeft: "auto", marginRight: "auto",
-            }}>
-              {t("noGroupDesc")}
-            </p>
-          </div>
-
-          {/* Benefits section */}
-          <div style={{
-            background: "#EFF2E8", /* Atrium sage tray, pre-mixed */
-            borderRadius: "1rem",
-            border: "0.0625rem solid #DFE3D2", /* sage-zone border */
-            padding: "1.75rem 2rem",
-            marginBottom: "1.5rem",
-          }}>
-            <h3 style={{
-              fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-              color: "#403B36", margin: "0 0 1rem",
-            }}>
-              {t("benefitsTitle")}
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {(["benefit1", "benefit2", "benefit3", "benefit4"] as const).map((key) => (
-                <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    width: "1.5rem", height: "1.5rem", borderRadius: "50%",
-                    background: "rgba(86,104,60,0.16)", color: "#56683C",
-                    fontSize: "0.8125rem", fontWeight: 700, flexShrink: 0, marginTop: "0.0625rem",
-                  }}>{"\u2713"}</span>
-                  <span style={{
-                    fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", lineHeight: 1.5, /* Atrium token: ink */
-                  }}>
-                    {t(key)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* How it works steps */}
-          <div style={{
-            background: T.color.white,
-            borderRadius: "1rem",
-            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-            padding: "1.75rem 2rem",
-            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
-            marginBottom: "1.5rem",
-          }}>
-            <h3 style={{
-              fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-              color: "#403B36", margin: "0 0 1.25rem",
-            }}>
-              {t("stepsTitle")}
-            </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(8.5rem, 1fr))", gap: "1rem" }}>
-              {([
-                { titleKey: "step1Title", descKey: "step1Desc" },
-                { titleKey: "step2Title", descKey: "step2Desc" },
-                { titleKey: "step3Title", descKey: "step3Desc" },
-                { titleKey: "step4Title", descKey: "step4Desc" },
-              ] as const).map((step, i) => (
-                <div key={step.titleKey} style={{
-                  textAlign: "center", padding: "1rem 0.75rem",
-                  borderRadius: "0.875rem",
-                  background: T.color.linen,
-                  border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                }}>
-                  <div style={{
-                    width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-                    background: "rgba(154,79,42,0.11)", /* Atrium medallion tint */
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    margin: "0 auto 0.75rem",
-                    fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-                    color: "#9A4F2A",
-                  }}>
-                    {STEP_ICONS[i]}
-                  </div>
-                  <div style={{
-                    fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
-                    color: "#403B36", marginBottom: "0.25rem",
-                  }}>
-                    {t(step.titleKey)}
-                  </div>
-                  <div style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", lineHeight: 1.4,
-                  }}>
-                    {t(step.descKey)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
+        <p style={{
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", /* Atrium token: muted */
+          margin: "0 0 1.25rem", lineHeight: 1.6, maxWidth: "34rem",
+        }}>
+          {t("noGroupDesc")}
+        </p>
       )}
 
       {/* ═══ CREATE GROUP CARD (shown always — either as initial CTA or as "+ add another") ═══ */}
@@ -1502,302 +1264,45 @@ export default function FamilyPage() {
             </div>
           </Link>
 
-          {/* ═══ WING SHARING SECTION ═══ */}
-          <div style={{
-            background: T.color.white,
-            borderRadius: "1rem",
-            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-            padding: "1.75rem 2rem",
-            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
-            marginBottom: "1.5rem",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.25rem" }}>
+          {/* Wing sharing moved to Settings > Sharing (change 20) — one link, one home */}
+          <Link href="/settings/sharing" style={{ textDecoration: "none", display: "block" }}>
+            <div style={{
+              background: T.color.white,
+              borderRadius: "1rem",
+              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              padding: "1.25rem 1.5rem",
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
+              marginBottom: "1.5rem",
+              display: "flex", alignItems: "center", gap: "1rem",
+              minHeight: "2.75rem",
+              cursor: "pointer",
+            }}>
               <div style={{
-                width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
-                background: `linear-gradient(135deg, ${"#56683C"}20, ${"#56683C"}10)`,
+                width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
+                background: "rgba(154,79,42,0.11)", /* Atrium terracotta medallion */
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#56683C",
+                flexShrink: 0, color: "#9A4F2A",
               }}>
-                <FamilyIcon name="palace" size={18} color={"#56683C"} />
+                <FamilyIcon name="palace" size={20} color={"#9A4F2A"} />
               </div>
-              <div>
-                <h3 style={{
-                  fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-                  color: "#403B36", margin: 0,
-                }}>
-                  {t("wingSharing")}
-                </h3>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.125rem",
+                  fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                  color: "#403B36", marginBottom: "0.125rem",
+                }}>
+                  {t("manageWingSharing") !== "manageWingSharing" ? t("manageWingSharing") : "Manage who sees your wings"}
+                </div>
+                <div style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", lineHeight: 1.4,
                 }}>
                   {t("wingSharingDesc")}
                 </div>
               </div>
+              <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="m9 18 6-6-6-6" />
+              </svg>
             </div>
-
-            {/* Share a wing form */}
-            {uniqueOtherMembers.length > 0 && (
-              <div style={{
-                padding: "1.25rem 1.375rem",
-                background: T.color.linen,
-                borderRadius: "0.875rem",
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                marginBottom: "1.5rem",
-              }}>
-                <label style={labelStyle}>{t("shareAWing")}</label>
-
-                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.875rem", flexWrap: "wrap" }}>
-                  {WING_OPTION_IDS.map((wingId) => (
-                    <button
-                      key={wingId}
-                      onClick={() => setShareWingId(wingId)}
-                      aria-pressed={shareWingId === wingId}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        borderRadius: "0.75rem",
-                        border: `0.0625rem solid ${shareWingId === wingId ? "#56683C" + "60" : "#E3D6BC"}`,
-                        background: shareWingId === wingId ? `${"#56683C"}15` : T.color.white,
-                        cursor: "pointer",
-                        fontFamily: T.font.body,
-                        fontSize: "0.8125rem",
-                        color: shareWingId === wingId ? "#56683C" : "#716A5E",
-                        fontWeight: shareWingId === wingId ? 600 : 500,
-                        transition: "all .2s ease",
-                      }}
-                    >
-                      {tp(WING_LABEL_KEYS[wingId])}
-                    </button>
-                  ))}
-                </div>
-
-                <label htmlFor="family-share-member" style={{ ...labelStyle, marginTop: "0.5rem" }}>{t("familyMember")}</label>
-                <select
-                  id="family-share-member"
-                  value={shareMemberEmail}
-                  onChange={(e) => setShareMemberEmail(e.target.value)}
-                  style={{
-                    ...inputStyle,
-                    marginBottom: "0.875rem",
-                    cursor: "pointer",
-                    appearance: "auto" as React.CSSProperties["appearance"],
-                  }}
-                >
-                  <option value="">{t("selectMember")}</option>
-                  {uniqueOtherMembers.map((m) => (
-                    <option key={m.id} value={m.email}>{m.email}</option>
-                  ))}
-                </select>
-
-                <label style={{ ...labelStyle, marginTop: "0.25rem" }}>{t("permission")}</label>
-                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-                  {(["view", "contribute"] as const).map((perm) => (
-                    <button
-                      key={perm}
-                      onClick={() => setSharePermission(perm)}
-                      aria-pressed={sharePermission === perm}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        borderRadius: "0.75rem",
-                        border: `0.0625rem solid ${sharePermission === perm ? "#56683C" + "60" : "#E3D6BC"}`,
-                        background: sharePermission === perm ? `${"#56683C"}15` : T.color.white,
-                        cursor: "pointer",
-                        fontFamily: T.font.body,
-                        fontSize: "0.8125rem",
-                        color: sharePermission === perm ? "#56683C" : "#716A5E",
-                        fontWeight: sharePermission === perm ? 600 : 500,
-                        transition: "all .2s ease",
-                      }}
-                    >
-                      {perm === "view" ? t("viewOnly") : t("canContribute")}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleShareWing}
-                  disabled={!shareMemberEmail || sharingWing}
-                  style={{
-                    padding: "0.75rem 1.75rem",
-                    borderRadius: "0.75rem",
-                    border: "none",
-                    background: !shareMemberEmail || sharingWing
-                      ? `${T.color.sandstone}60`
-                      : "#56683C",
-                    color: !shareMemberEmail || sharingWing ? "#716A5E" : "#FFF",
-                    fontFamily: T.font.body,
-                    fontSize: "0.9375rem",
-                    fontWeight: 600,
-                    cursor: !shareMemberEmail || sharingWing ? "default" : "pointer",
-                    transition: "all .2s ease",
-                  }}
-                >
-                  {sharingWing ? t("sharing") : t("shareWing")}
-                </button>
-              </div>
-            )}
-
-            {uniqueOtherMembers.length === 0 && (
-              <div style={{
-                padding: "1rem 1.25rem",
-                background: T.color.linen,
-                borderRadius: "0.75rem",
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                marginBottom: "1.5rem",
-              }}>
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E",
-                  margin: 0, lineHeight: 1.5,
-                }}>
-                  {t("inviteToShare")}
-                </p>
-              </div>
-            )}
-
-            {uniqueOtherMembers.length > 0 && myWingShares.length === 0 && sharedWithMe.length === 0 && (
-              <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
-                margin: "0 0 1rem", lineHeight: 1.5, fontStyle: "italic",
-              }}>
-                {t("noWingSharesYet")}
-              </p>
-            )}
-
-            {myWingShares.length > 0 && (
-              <>
-                <label style={labelStyle}>{t("wingsShared")}</label>
-                <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
-                  {myWingShares.map((share) => (
-                    <div key={share.id} role="listitem" style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "0.75rem 1rem", borderRadius: "0.75rem",
-                      background: T.color.linen,
-                      border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                    }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", minWidth: 0 }}>
-                        <span style={{
-                          display: "inline-block",
-                          padding: "0.1875rem 0.625rem",
-                          borderRadius: "0.375rem",
-                          background: `${"#56683C"}15`,
-                          color: "#56683C",
-                          fontFamily: T.font.body,
-                          fontSize: "0.8125rem",
-                          fontWeight: 600,
-                          flexShrink: 0,
-                        }}>
-                          {wingLabel(share.wing_id)}
-                        </span>
-                        <span style={{
-                          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
-                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
-                        }}>
-                          {share.shared_with_email}
-                        </span>
-                        <span style={{
-                          fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
-                          padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
-                          background: `${T.color.sandstone}30`,
-                        }}>
-                          {share.permission === "view" ? t("viewOnly") : t("canContribute")}
-                        </span>
-                      </div>
-                      {confirmUnshareId === share.id ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", flexShrink: 0 }}>
-                          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" }}>
-                            {t("confirmUnshareShort")}
-                          </span>
-                          <button
-                            onClick={() => handleUnshareWing(share.id)}
-                            style={{
-                              padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
-                              border: "none", background: T.color.error, color: "#FFF",
-                              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
-                              cursor: "pointer", transition: "all .2s ease",
-                            }}
-                          >
-                            {t("confirmYes")}
-                          </button>
-                          <button
-                            onClick={() => setConfirmUnshareId(null)}
-                            style={{
-                              padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
-                              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */ background: T.color.white,
-                              color: "#716A5E", fontFamily: T.font.body, fontSize: "0.6875rem",
-                              fontWeight: 500, cursor: "pointer", transition: "all .2s ease",
-                            }}
-                          >
-                            {t("cancel")}
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setConfirmUnshareId(share.id)}
-                          aria-label={t("removeShare", { email: share.shared_with_email || "" })}
-                          style={{
-                            width: "1.75rem", height: "1.75rem", borderRadius: "0.75rem",
-                            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                            background: "transparent",
-                            color: "#716A5E",
-                            fontSize: "0.8125rem",
-                            cursor: "pointer",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            transition: "all .2s ease",
-                            minWidth: "2.75rem", minHeight: "2.75rem",
-                          }}
-                        >
-                          {"\u2715"}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {sharedWithMe.length > 0 && (
-              <>
-                <label style={labelStyle}>{t("sharedWithMe")}</label>
-                <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {sharedWithMe.map((share) => (
-                    <div key={share.id} role="listitem" style={{
-                      display: "flex", alignItems: "center",
-                      padding: "0.75rem 1rem", borderRadius: "0.75rem",
-                      background: `${"#56683C"}06`,
-                      border: `0.0625rem solid ${"#56683C"}20`,
-                      gap: "0.625rem",
-                    }}>
-                      <span style={{
-                        display: "inline-block",
-                        padding: "0.1875rem 0.625rem",
-                        borderRadius: "0.375rem",
-                        background: `${"#56683C"}15`,
-                        color: "#56683C",
-                        fontFamily: T.font.body,
-                        fontSize: "0.8125rem",
-                        fontWeight: 600,
-                        flexShrink: 0,
-                      }}>
-                        {wingLabel(share.wing_id)}
-                      </span>
-                      <span style={{
-                        fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
-                      }}>
-                        {t("from")} {share.owner_email}
-                      </span>
-                      <span style={{
-                        fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
-                        padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
-                        background: `${T.color.sandstone}30`,
-                      }}>
-                        {share.permission === "view" ? t("viewOnly") : t("canContribute")}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+          </Link>
 
           {/* Info footer */}
           <div style={{

@@ -97,6 +97,29 @@ export default function ProfilePageClient({
         }}>
           <TuscanCard variant="elevated" padding="1.5rem">
             <ProfileCard profile={profile} />
+            {/* Self-view bridge (change 24): owners see one Edit affordance where
+                visitors see Follow — self view = public view + Edit. */}
+            {profile.is_own && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.875rem" }}>
+                <button
+                  onClick={() => router.push("/settings/profile")}
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    minHeight: "2.75rem",
+                    padding: "0.5rem 1.375rem",
+                    borderRadius: "2rem",
+                    border: "0.0625rem solid #B85C38", /* Atrium ember — interactive */
+                    background: "transparent",
+                    color: "#B85C38",
+                    fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                    cursor: "pointer",
+                    transition: `background 0.2s ${EASE}`,
+                  }}
+                >
+                  {t("editProfile") !== "editProfile" ? t("editProfile") : "Edit profile"}
+                </button>
+              </div>
+            )}
           </TuscanCard>
         </div>
 

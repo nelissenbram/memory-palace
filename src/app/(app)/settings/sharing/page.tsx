@@ -326,7 +326,466 @@ export default function SharingPage() {
 
       {/* Passcode / Temp Visiting Codes */}
       <PasscodeSection scale={scale} />
+
+      {/* Family wing permissions (moved here from Settings > Family — change 20) */}
+      <FamilyWingSharingSection scale={scale} />
     </>
+  );
+}
+
+/* ── Family Wing Sharing ─────────────────────────────── */
+/**
+ * Wing-level permissions for family members (view / contribute), relocated from
+ * Settings > Family (Explore/Me revision, change 20). Sharing is now the single
+ * answer to "who can see what": publish tree + passcodes + family wing permissions.
+ * The wing list comes from getMyPublishableContent (real wings incl. custom
+ * names), replacing the old hardcoded 5-slug list.
+ */
+
+interface WingShareEntry {
+  id: string;
+  wing_id: string;
+  permission: string;
+  shared_with_id?: string;
+  shared_with_email?: string;
+  owner_id?: string;
+  owner_email?: string;
+  created_at: string;
+}
+
+function FamilyWingSharingSection({ scale }: { scale: number }) {
+  const { t: tf } = useTranslation("familySettings");
+
+  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<{ id: string; email: string }[]>([]);
+  const [wingOptions, setWingOptions] = useState<{ id: string; slug: string; name: string }[]>([]);
+  const [myShares, setMyShares] = useState<WingShareEntry[]>([]);
+  const [sharedWithMe, setSharedWithMe] = useState<WingShareEntry[]>([]);
+  const [shareWingSlug, setShareWingSlug] = useState("");
+  const [shareMemberEmail, setShareMemberEmail] = useState("");
+  const [sharePermission, setSharePermission] = useState<"view" | "contribute">("view");
+  const [sharing, setSharing] = useState(false);
+  const [confirmUnshareId, setConfirmUnshareId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = useCallback((message: string, type: "success" | "error") => {
+    setToast({ message, type });
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  const loadShares = useCallback(async () => {
+    try {
+      const { getMyWingShares, getWingsSharedWithMe } = await import("@/lib/auth/sharing-actions");
+      const [myRes, withMeRes] = await Promise.all([getMyWingShares(), getWingsSharedWithMe()]);
+      setMyShares((myRes.shares || []) as WingShareEntry[]);
+      setSharedWithMe((withMeRes.shares || []) as WingShareEntry[]);
+    } catch {
+      showToast(tf("loadWingSharesError"), "error");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [{ getAllFamilyGroups }, { getMyPublishableContent }] = await Promise.all([
+          import("@/lib/auth/family-actions"),
+          import("@/lib/social/share-actions"),
+        ]);
+        const [groupsRes, content] = await Promise.all([
+          getAllFamilyGroups(),
+          getMyPublishableContent(),
+        ]);
+        // All active family members across all groups (deduped, excluding self)
+        const userEmail = (groupsRes.userEmail || "").toLowerCase();
+        const groupEntries = (groupsRes.groups || []) as unknown as { members?: { id: string; email: string; status: string }[] }[];
+        const all = groupEntries.flatMap((g) =>
+          (g.members || []).filter((m) => m.status === "active" && m.email.toLowerCase() !== userEmail)
+        );
+        const unique = all.filter(
+          (m, i, arr) => arr.findIndex((x) => x.email.toLowerCase() === m.email.toLowerCase()) === i
+        );
+        setMembers(unique.map((m) => ({ id: m.id, email: m.email })));
+        // Real wing list (fixes the hardcoded 5-wing list — 18-room era)
+        const opts = content.map((w) => ({ id: w.id, slug: w.slug, name: w.name }));
+        setWingOptions(opts);
+        if (opts.length > 0) setShareWingSlug(opts[0].slug);
+      } catch {
+        /* section stays usable with what loaded */
+      }
+      await loadShares();
+      setLoading(false);
+    })();
+  }, [loadShares]);
+
+  const wingLabel = (wingSlug: string) => {
+    const wing = wingOptions.find((w) => w.slug === wingSlug || w.id === wingSlug);
+    return wing ? wing.name : wingSlug;
+  };
+
+  const handleShareWing = async () => {
+    if (!shareMemberEmail.trim() || !shareMemberEmail.includes("@")) {
+      if (shareMemberEmail.trim()) showToast(tf("inviteInvalidEmail"), "error");
+      return;
+    }
+    setSharing(true);
+    const { shareWing } = await import("@/lib/auth/sharing-actions");
+    const result = await shareWing(shareWingSlug, shareMemberEmail.trim(), sharePermission);
+    setSharing(false);
+    if (result.error) {
+      showToast(result.error, "error");
+    } else {
+      showToast(tf("wingSharedSuccess", { email: shareMemberEmail.trim() }), "success");
+      setShareMemberEmail("");
+      loadShares();
+    }
+  };
+
+  const handleUnshareWing = async (shareId: string) => {
+    const { unshareWing } = await import("@/lib/auth/sharing-actions");
+    const result = await unshareWing(shareId);
+    setConfirmUnshareId(null);
+    if (result.error) {
+      showToast(result.error, "error");
+    } else {
+      showToast(tf("wingShareRemoved"), "success");
+      loadShares();
+    }
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily: T.font.body,
+    fontSize: "0.6875rem", /* Atrium overline: the one small-caps voice */
+    fontWeight: 700,
+    color: "#716A5E",
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    display: "block",
+    marginBottom: "0.5rem",
+  };
+
+  return (
+    <div style={{
+      background: T.color.white,
+      borderRadius: "1rem",
+      border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+      padding: `${1.75 * scale}rem ${2 * scale}rem`,
+      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1
+      marginBottom: "1.5rem",
+    }}>
+      {/* Toast (section-local) */}
+      {toast && (
+        <div className="sharing-toast" role={toast.type === "success" ? "status" : "alert"} style={{
+          position: "fixed", top: "1rem", right: "1rem", zIndex: 9999,
+          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
+          background: toast.type === "success" ? "#56683C" /* Atrium token: sage */ : "#C05050",
+          color: T.color.white, fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
+          fontWeight: 500, boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
+        }}>
+          {toast.message}
+        </div>
+      )}
+
+      <h3 style={{
+        fontFamily: T.font.display, fontSize: `${1.1875 * scale}rem`, fontWeight: 600, lineHeight: 1.15,
+        color: "#403B36", margin: "0 0 0.375rem",
+      }}>
+        {tf("wingSharing")}
+      </h3>
+      <p style={{
+        fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E",
+        margin: "0 0 1.25rem", lineHeight: 1.4,
+      }}>
+        {tf("wingSharingDesc")}
+      </p>
+
+      {loading ? (
+        <div style={{ padding: "1rem", textAlign: "center", color: "#716A5E", fontFamily: T.font.body }}>...</div>
+      ) : (
+        <>
+          {/* Share a wing form */}
+          {members.length > 0 && wingOptions.length > 0 && (
+            <div style={{
+              padding: "1.25rem 1.375rem",
+              background: T.color.linen,
+              borderRadius: "0.875rem",
+              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              marginBottom: "1.5rem",
+            }}>
+              <label style={labelStyle}>{tf("shareAWing")}</label>
+
+              <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.875rem", flexWrap: "wrap" }}>
+                {wingOptions.map((wing) => (
+                  <button
+                    key={wing.slug}
+                    onClick={() => setShareWingSlug(wing.slug)}
+                    aria-pressed={shareWingSlug === wing.slug}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      minHeight: "2.75rem",
+                      borderRadius: "0.75rem",
+                      border: `0.0625rem solid ${shareWingSlug === wing.slug ? "#B85C38" /* Atrium ember */ : "#E3D6BC"}`,
+                      background: shareWingSlug === wing.slug ? "#FBF2EC" /* premixed terracotta wash */ : T.color.white,
+                      cursor: "pointer",
+                      fontFamily: T.font.body,
+                      fontSize: "0.8125rem",
+                      color: shareWingSlug === wing.slug ? "#9A4F2A" : "#716A5E",
+                      fontWeight: shareWingSlug === wing.slug ? 600 : 500,
+                      transition: "all .2s ease",
+                    }}
+                  >
+                    {wing.name}
+                  </button>
+                ))}
+              </div>
+
+              <label htmlFor="sharing-family-member" style={{ ...labelStyle, marginTop: "0.5rem" }}>{tf("familyMember")}</label>
+              <select
+                id="sharing-family-member"
+                value={shareMemberEmail}
+                onChange={(e) => setShareMemberEmail(e.target.value)}
+                style={{
+                  width: "100%", fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
+                  padding: "0.75rem 1rem", borderRadius: "0.75rem",
+                  border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: T.color.white,
+                  color: "#403B36", outline: "none",
+                  marginBottom: "0.875rem",
+                  minHeight: "2.75rem",
+                  cursor: "pointer",
+                  appearance: "auto" as React.CSSProperties["appearance"],
+                }}
+              >
+                <option value="">{tf("selectMember")}</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.email}>{m.email}</option>
+                ))}
+              </select>
+
+              <label style={{ ...labelStyle, marginTop: "0.25rem" }}>{tf("permission")}</label>
+              <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
+                {(["view", "contribute"] as const).map((perm) => (
+                  <button
+                    key={perm}
+                    onClick={() => setSharePermission(perm)}
+                    aria-pressed={sharePermission === perm}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      minHeight: "2.75rem",
+                      borderRadius: "0.75rem",
+                      border: `0.0625rem solid ${sharePermission === perm ? "#B85C38" /* Atrium ember */ : "#E3D6BC"}`,
+                      background: sharePermission === perm ? "#FBF2EC" : T.color.white,
+                      cursor: "pointer",
+                      fontFamily: T.font.body,
+                      fontSize: "0.8125rem",
+                      color: sharePermission === perm ? "#9A4F2A" : "#716A5E",
+                      fontWeight: sharePermission === perm ? 600 : 500,
+                      transition: "all .2s ease",
+                    }}
+                  >
+                    {perm === "view" ? tf("viewOnly") : tf("canContribute")}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={handleShareWing}
+                disabled={!shareMemberEmail || sharing}
+                style={{
+                  padding: "0.75rem 1.75rem",
+                  minHeight: "2.75rem",
+                  borderRadius: "0.75rem",
+                  border: "none",
+                  background: !shareMemberEmail || sharing
+                    ? T.color.sandstone
+                    : "linear-gradient(135deg, #B85C38, #9A4F2A)", /* Atrium: ember → terracotta */
+                  color: !shareMemberEmail || sharing ? "#716A5E" : "#FFF",
+                  fontFamily: T.font.body,
+                  fontSize: "0.9375rem",
+                  fontWeight: 600,
+                  cursor: !shareMemberEmail || sharing ? "default" : "pointer",
+                  transition: "all .2s ease",
+                }}
+              >
+                {sharing ? tf("sharing") : tf("shareWing")}
+              </button>
+            </div>
+          )}
+
+          {members.length === 0 && (
+            <div style={{
+              padding: "1rem 1.25rem",
+              background: T.color.linen,
+              borderRadius: "0.75rem",
+              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              marginBottom: "1.5rem",
+            }}>
+              <p style={{
+                fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, color: "#716A5E",
+                margin: 0, lineHeight: 1.5,
+              }}>
+                {tf("inviteToShare")}
+              </p>
+            </div>
+          )}
+
+          {members.length > 0 && myShares.length === 0 && sharedWithMe.length === 0 && (
+            <p style={{
+              fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E",
+              margin: "0 0 1rem", lineHeight: 1.5, fontStyle: "italic",
+            }}>
+              {tf("noWingSharesYet")}
+            </p>
+          )}
+
+          {myShares.length > 0 && (
+            <>
+              <label style={labelStyle}>{tf("wingsShared")}</label>
+              <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: sharedWithMe.length > 0 ? "1.5rem" : 0 }}>
+                {myShares.map((share) => (
+                  <div key={share.id} role="listitem" style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "0.75rem 1rem", borderRadius: "0.75rem",
+                    background: T.color.linen,
+                    border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                    gap: "0.625rem", flexWrap: "wrap",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", minWidth: 0, flex: 1 }}>
+                      <span style={{
+                        display: "inline-block",
+                        padding: "0.1875rem 0.625rem",
+                        borderRadius: "2rem",
+                        background: "rgba(154,79,42,0.11)",
+                        color: "#9A4F2A", /* Atrium terracotta glyph */
+                        fontFamily: T.font.body,
+                        fontSize: "0.8125rem",
+                        fontWeight: 600,
+                        flexShrink: 0,
+                      }}>
+                        {wingLabel(share.wing_id)}
+                      </span>
+                      <span style={{
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                      }}>
+                        {share.shared_with_email}
+                      </span>
+                      <span style={{
+                        fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
+                        padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
+                        background: "rgba(113,106,94,0.12)",
+                        flexShrink: 0,
+                      }}>
+                        {share.permission === "view" ? tf("viewOnly") : tf("canContribute")}
+                      </span>
+                    </div>
+                    {confirmUnshareId === share.id ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", flexShrink: 0 }}>
+                        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" }}>
+                          {tf("confirmUnshareShort")}
+                        </span>
+                        <button
+                          onClick={() => handleUnshareWing(share.id)}
+                          style={{
+                            padding: "0.375rem 0.75rem", borderRadius: "0.375rem",
+                            minHeight: "2.75rem",
+                            border: "none", background: "#C05050", color: "#FFF",
+                            fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                            cursor: "pointer", transition: "all .2s ease",
+                          }}
+                        >
+                          {tf("confirmYes")}
+                        </button>
+                        <button
+                          onClick={() => setConfirmUnshareId(null)}
+                          style={{
+                            padding: "0.375rem 0.75rem", borderRadius: "0.375rem",
+                            minHeight: "2.75rem",
+                            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */ background: T.color.white,
+                            color: "#716A5E", fontFamily: T.font.body, fontSize: "0.6875rem",
+                            fontWeight: 500, cursor: "pointer", transition: "all .2s ease",
+                          }}
+                        >
+                          {tf("cancel")}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmUnshareId(share.id)}
+                        aria-label={tf("removeShare", { email: share.shared_with_email || "" })}
+                        style={{
+                          borderRadius: "0.75rem",
+                          border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                          background: "transparent",
+                          color: "#716A5E",
+                          fontSize: "0.8125rem",
+                          cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "all .2s ease",
+                          minWidth: "2.75rem", minHeight: "2.75rem",
+                        }}
+                      >
+                        {"✕"}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {sharedWithMe.length > 0 && (
+            <>
+              <label style={labelStyle}>{tf("sharedWithMe")}</label>
+              <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {sharedWithMe.map((share) => (
+                  <div key={share.id} role="listitem" style={{
+                    display: "flex", alignItems: "center",
+                    padding: "0.75rem 1rem", borderRadius: "0.75rem",
+                    background: "#F2F5EA", /* Atrium sage tile wash, pre-mixed */
+                    border: "0.0625rem solid #DFE3D2", /* sage-zone border */
+                    gap: "0.625rem",
+                  }}>
+                    <span style={{
+                      display: "inline-block",
+                      padding: "0.1875rem 0.625rem",
+                      borderRadius: "2rem",
+                      background: "rgba(86,104,60,0.16)",
+                      color: "#56683C", /* Atrium sage */
+                      fontFamily: T.font.body,
+                      fontSize: "0.8125rem",
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}>
+                      {wingLabel(share.wing_id)}
+                    </span>
+                    <span style={{
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                    }}>
+                      {tf("from")} {share.owner_email}
+                    </span>
+                    <span style={{
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
+                      padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
+                      background: "rgba(113,106,94,0.12)",
+                      flexShrink: 0,
+                    }}>
+                      {share.permission === "view" ? tf("viewOnly") : tf("canContribute")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
