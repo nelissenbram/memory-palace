@@ -1,0 +1,579 @@
+{
+    "vision":  "Explore becomes a calm, content-first discovery field on the cream #FCFAF5 canvas: one Fraunces h1 line, a live search bar, a small gold-ceremonial Featured strip, then ONE continuous grid of person-led palace cards â€” no explainer cards, no compass ornament, no tabs, no publish modal, no frosted glass. Every card has honest, full-size tap zones; every social deep link resolves; anonymous visitors get one conversion door. Me stops being a 9-drawer filing cabinet: 6-7 tabs (6 on iOS), Profile answers \u0027who am I here\u0027 in one screen with a link to the public self, Security becomes the real security page (MFA/password/export/delete/blocked), Cookies folds into it, Sharing becomes the ONE answer to \u0027who can see what\u0027, Subscription answers only \u0027what am I on\u0027. Everything speaks Atrium canon: ink #403B36 / muted #716A5E type, hairline #E3D6BC borders in rem, ember #B85C38 = interactive, gold = ceremony and focus rings only, warm-ink shadows, one reduced-motion-guarded entrance, 2.75rem touch floor, i18n x5 locales. iOS stays sealed free-tier throughout.",
+    "changes":  [
+                    {
+                        "id":  1,
+                        "surface":  "explore",
+                        "phase":  1,
+                        "title":  "Fix broken social deep links (404 cluster): new_follower, palace_visit, ActivityFeed avatar, owner pill href=undefined",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/lib/utils/notification-grouping.ts",
+                                      "src/components/social/ActivityFeed.tsx",
+                                      "src/app/visit/[userId]/[wingSlug]/VisitPageClient.tsx"
+                                  ],
+                        "spec":  "notification-grouping.ts:166 new_follower â†’ `/u/${from_user_id}` (page accepts raw UUIDs, u/[username]/page.tsx:13-18). :159 palace_visit â†’ `/u/${from_user_id}` (never /visit/{id}/walk â€” 404s when actor has no published wings, visit/[userId]/page.tsx:33 notFound()). ActivityFeed.tsx:120 avatar href â†’ `/u/${item.actor_id}`. VisitPageClient.tsx:298 owner pill: fall back to `/u/${ownerId}` instead of href=undefined.",
+                        "mobile":  "Follow-back loop and visit notifications stop dead-ending on phones where notifications are the main entry.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  2,
+                        "surface":  "explore",
+                        "phase":  1,
+                        "title":  "Fix anonymous Follow no-op that decrements follower count",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/components/social/ProfileCard.tsx",
+                                      "src/lib/social/profile-actions.ts"
+                                  ],
+                        "spec":  "profile-actions.ts:148 toggleFollow returns explicit {requiresAuth:true} when !user instead of fake {following:false}. ProfileCard.tsx:28-34: only mutate the optimistic count on a confirmed state change; when unauthenticated render a sign-in row (router.push(\u0027/login?next=/u/{username}\u0027)) instead of Follow. Also stop trusting list-shaped is_own/is_following (profile-actions.ts:258-263,:317-322) â€” type list results without those flags.",
+                        "mobile":  "Kills the negative-follower-count bug on the most-shared surface.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  3,
+                        "surface":  "me",
+                        "phase":  1,
+                        "title":  "Fix copy-invite-link 404: /join-family does not exist",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/(app)/settings/family/page.tsx"
+                                  ],
+                        "spec":  "family/page.tsx:264 handleCopyInviteLink: build the same URL the invite email uses â€” `${window.location.origin}/settings/family` (send-invite.ts:247) â€” until a real /join-family?group= landing exists.",
+                        "mobile":  "Recipients on phones stop landing on a 404 from a clipboard link.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  4,
+                        "surface":  "me",
+                        "phase":  1,
+                        "title":  "Fix Discard not resetting whatsappPhone",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/(app)/settings/profile/page.tsx"
+                                  ],
+                        "spec":  "profile/page.tsx:738-742: add setWhatsappPhone(profile.whatsapp_phone ?? \"\") to the Discard handler; hasChanges (:138-143) already tracks it.",
+                        "mobile":  "Correctness on all form factors.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  5,
+                        "surface":  "me",
+                        "phase":  1,
+                        "title":  "Fix push toggle permanently dying after any failed enable (subscribingRef leak)",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/(app)/settings/notifications/page.tsx"
+                                  ],
+                        "spec":  "notifications/page.tsx:272-347: wrap the entire enable branch in try/finally with `subscribingRef.current = false; setSubscribing(false)` in finally â€” the five early returns (:277,:285,:292,:301,:318) currently strand the ref true and the :244 guard swallows every later tap. Dismissing the permission prompt (perm===\u0027default\u0027) must leave the toggle usable.",
+                        "mobile":  "Dismissing the browser prompt is the normal 60+ first reaction; the page\u0027s primary control must survive it.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  6,
+                        "surface":  "explore",
+                        "phase":  1,
+                        "title":  "Privacy: extend is_public filter to Trending/Newest/Following queries BEFORE any caching",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/lib/social/directory-actions.ts"
+                                  ],
+                        "spec":  "Only searchPalaces filters .eq(\u0027is_public\u0027,true) (:116). Add the same predicate to getTrending (:66-69), getNewPalaces (:178-181), getFollowingPalaces (:262-265) â€” all use the admin client (RLS bypassed). Verify the public_profiles view definition first; /u hard-404s non-public profiles (u/[username]/page.tsx:42) and the rails must honor the same contract. Must land before change 27 (caching).",
+                        "mobile":  "n/a â€” privacy correctness.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  7,
+                        "surface":  "explore",
+                        "phase":  1,
+                        "title":  "Delete DirectoryPanel.tsx (333 orphan lines) + ExplorePageClient dead code",
+                        "kind":  "cut",
+                        "files":  [
+                                      "src/components/ui/DirectoryPanel.tsx",
+                                      "src/app/explore/ExplorePageClient.tsx"
+                                  ],
+                        "spec":  "Delete DirectoryPanel.tsx (imported by nothing â€” verified grep). In ExplorePageClient: remove unused useNudgeStore import (:15), unreachable `: null` branch (:456), pointless Suspense fallback={null} around same-file modal (:472-479), and the dead error state (:970, only ever setError(null) :1064) â€” the whole modal dies in change 9 anyway.",
+                        "mobile":  "Smaller bundle; zero behavior change.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  8,
+                        "surface":  "explore",
+                        "phase":  1,
+                        "title":  "Cut the hero ornaments: compass medallion + 3-card value-prop explainer",
+                        "kind":  "cut",
+                        "files":  [
+                                      "src/app/explore/ExplorePageClient.tsx"
+                                  ],
+                        "spec":  "Delete the 3.5rem gold compass medallion (:129-140) and the entire 3-card glass explainer grid (:157-215, TuscanCard variant=\u0027glass\u0027, gold icons :168/:177/:186). Hero becomes: Fraunces 600 h1 in ink #403B36 at existing RT sizes (1.75/2.25rem) + one muted #716A5E subtitle line (exploreTitle/exploreSubtitle already carry the message), padding reduced to ~1.25rem top. Leave the valueProp* i18n keys unused, drop usage.",
+                        "mobile":  "Recovers ~2 portrait viewports of chrome; search bar and first palace card land above the fold on 390x844.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  9,
+                        "surface":  "explore",
+                        "phase":  1,
+                        "title":  "Evict the entire Publish + Passcode modal subsystem (~500 lines) â€” pure deletion, canonical copy already exists",
+                        "kind":  "cut",
+                        "files":  [
+                                      "src/app/explore/ExplorePageClient.tsx",
+                                      "src/app/(app)/settings/sharing/page.tsx"
+                                  ],
+                        "spec":  "Delete PublishAllModal (:961-1272), ModalPasscodeSection (:1276-1455), showPublishModal state (:63), the gold hero CTA pill (:266-299 incl. JS mouseEnter handlers :284-293), and the duplicate empty-state publish button (:437-452). settings/sharing/page.tsx ALREADY implements the identical publish tree (getMyPublishableContent flow :39-126, with toast error handling) and PasscodeSection (:328-366) â€” verified. Replace with ONE quiet authed-only link in the section header row: canon utility pill (transparent bg, warmStone border, muted text, minHeight 2.75rem, ember on hover) \u0027Publish your palace â†’\u0027 â†’ /settings/sharing. In the same pass fix the sharing page\u0027s own hardcoded \u0027Wing\u0027 label (:422) and undersized revoke button (:507) so nothing is inherited.",
+                        "mobile":  "Removes the worst touch-target cluster on the surface (0.875-1rem checkboxes, ~1.2rem revoke) and a z-9999 blur overlay; first cards move ~3rem up.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  10,
+                        "surface":  "explore",
+                        "phase":  1,
+                        "title":  "Search bar overhaul: pending state, iOS zoom, clear-button target, cancellation, a11y",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/explore/ExplorePageClient.tsx",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "(a) Keep isPending (:65 currently `const [, startTransition]`) â€” swap the search icon for the existing spin keyframe while in flight, aria-busy on the results region. (b) Input fontSize :245 â†’ 1rem (kills iOS Safari auto-zoom, LibrarySearch rule). (c) Clear button (:251-260): minWidth/minHeight 2.75rem (negative margin keeps visual compact), aria-label={t(\u0027clearSearch\u0027)} added x5 locales, and its onClick must also clearTimeout(debounceRef.current). (d) Request-sequence ref so only the latest searchPalaces response lands (seq guard around setSearchResults). (e) Wrap input in role=\u0027search\u0027; add aria-live=\u0027polite\u0027 visually-hidden status \u0027{n} results for {query}\u0027; helper line while 0\u003clen\u003c2 (\u0027type at least 2 characters\u0027, i18n). (f) Focus border â†’ ember #B85C38 (Library input recipe); gold reserved for :focus-visible outline only.",
+                        "mobile":  "No surprise viewport zoom; search visibly works on slow connections; clear becomes tappable for 60+ thumbs.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  11,
+                        "surface":  "explore",
+                        "phase":  1,
+                        "title":  "Re-token Explore chrome to Atrium canon: cream canvas, ink/muted type, warm-ink shadows, one guarded entrance",
+                        "kind":  "restyle",
+                        "files":  [
+                                      "src/app/explore/ExplorePageClient.tsx"
+                                  ],
+                        "spec":  "Canvas :97 gradient â†’ flat CREAM #FCFAF5. h1 charcoal â†’ ink #403B36; subtitle walnut â†’ muted #716A5E. All px borders (1.5px :225,:278; 1px :199) â†’ 0.0625rem rem hairlines; alpha-band `${gold}40` borders â†’ pre-mixed opaque hexes (#E3D6BC/#E7D9C4). Black shadows (:228-229,:336,:642) â†’ warm-ink rgba(64,59,54,x) SHADOW steps. Delete all 10 tuscanFadeSlideUp declarations (:125,:163,:220,:270,:303,:323,:357,:402,:414,:426 â€” dead today, keyframes never mounted on /explore) and add ONE local relay-rise entrance on the content container inside @media (prefers-reduced-motion: no-preference) with the AtriumRelay.tsx:605-608 kill-switch. Remaining gold-as-interactive (tab badge :344, empty-state buttons :388/:444) â†’ ember. ðŸ”¥ emoji badge (:416) dies with change 26; if touched earlier, replace with text.",
+                        "mobile":  "Calmer first paint, honors iOS Reduce Motion (heavily used by 60+ users), no glass blur cost on old phones.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  12,
+                        "surface":  "me",
+                        "phase":  1,
+                        "title":  "Family empty-state: cut marketing trio to one card with the form in it",
+                        "kind":  "cut",
+                        "files":  [
+                                      "src/app/(app)/settings/family/page.tsx"
+                                  ],
+                        "spec":  "Delete the Benefits sage card (:1251-1282) and the \u0027How it works\u0027 4-step grid (:1285-1336); also delete the second \u0027How it works\u0027 footer for the has-groups state (:1802-1821). Keep ONE card: title + one-sentence value prop + group-name input + create button (Atrium hero-tile register), i.e. merge the hero (:1215-1249) with the create form (:1341-1419).",
+                        "mobile":  "Empty-state users get the form in viewport one instead of after ~3 viewports of marketing.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  13,
+                        "surface":  "me",
+                        "phase":  1,
+                        "title":  "Cut the duplicate Family Tree banner; fix the headless mobile header",
+                        "kind":  "cut",
+                        "files":  [
+                                      "src/app/(app)/settings/family/page.tsx"
+                                  ],
+                        "spec":  "Delete the full-width sage banner card (:1461-1503) â€” verbatim duplicate destination of the header pill (:1134-1153). Move the surviving header pill inside a proper header block so mobile no longer opens with a floating button and no page title (the !isMobile guard at :1117 currently hides only title/description); give the pill minHeight 2.75rem.",
+                        "mobile":  "Mobile page gets a heading; one full-width card removed from the longest settings page.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  14,
+                        "surface":  "explore",
+                        "phase":  2,
+                        "title":  "Merge FollowingCard into one PalaceCard in the Atrium light-card register",
+                        "kind":  "rebuild",
+                        "files":  [
+                                      "src/app/explore/ExplorePageClient.tsx"
+                                  ],
+                        "spec":  "Delete FollowingCard (:767-922, ~150-line clone incl. byte-identical 74-line villa SVG :791-831 vs :551-624). One PalaceCard: extract the villa SVG once as \u003cVillaHeader/\u003e shrunk to a ~4rem band (or cut per taste â€” it carries zero identity signal); optional timeAgoBadge prop (the only real delta, :869-878). Chrome: replace TuscanCard variant=\u0027glass\u0027 (:534) with opaque tileBg linear-gradient(160deg,#FBF2EC 0%,#FCFAF5 78%), 0.0625rem #E7D9C4 border, radius 1rem, SHADOW[1]+TOP_HIGHLIGHT; hover via CSS class gated @media (hover:hover) â€” HOVER_LIFT translateY(-0.1875rem) â€” replacing JS onMouseEnter (:731-740). Identity-first anatomy: avatar + Fraunces 600 name in ink, @username muted, 2-line bio clamp, one tabular-nums datum line. Featured cards keep a gold border/tint register (#FCF6E5/#E9DCBE) â€” curation is legitimate ceremonial gold. \u0027Visit palace â†’\u0027 arrow ember_glyph #9A4F2A not goldDark (:753). i18n: wing/wings plurals (:710,:905) and timeAgo (:33-44) â†’ Intl.RelativeTimeFormat on active locale, keys x5.",
+                        "mobile":  "~5rem less dead SVG per card â‰ˆ one extra palace per screen; hover no longer sticks after touch.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  15,
+                        "surface":  "explore",
+                        "phase":  2,
+                        "title":  "Card navigation: two honest full-size tap zones; primary stays /visit (follow lives there)",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/explore/ExplorePageClient.tsx"
+                                  ],
+                        "spec":  "Cut the 1.75rem person-icon link (:715-749) with its false aria-label={t(\u0027followUser\u0027)} (:719). VERIFIED: /u ProfilePageClient has NO follow button (grep: zero follow matches in src/app/u) â€” follow lives only on PalaceOverviewClient â€” so the card\u0027s primary destination stays /visit/{user_id} until change 22 lands. New anatomy: the avatar+name person row (min-height 2.75rem) is a real \u003cLink\u003e to /u/{username||user_id}; the card body / \u0027Visit palace â†’\u0027 span (:750-757) is a real \u003cLink\u003e to /visit/{user_id} (long-press/open-in-tab semantics replace div+role=button :538-543). Rename navigateToProfile (:81-83) â†’ navigateToPalace.",
+                        "mobile":  "Eliminates the single worst mis-tap trap on the page; screen-reader label stops lying.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  16,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Collapse the settings hub: 9 tabs â†’ 7 (6 on iOS)",
+                        "kind":  "rebuild",
+                        "files":  [
+                                      "src/app/(app)/settings/layout.tsx"
+                                  ],
+                        "spec":  "NAV_ITEMS (layout.tsx:109-121) becomes: Profile, Account \u0026 Security (absorbs Security + Cookies + Profile\u0027s account controls + Connections as a \u0027connected services\u0027 card), Family, Sharing, Notifications, Legacy, Subscription (web only). Keep the hideInNative iOS filter (:112-114,:135) byte-for-byte â€” Apple 3.1.1 seal. Add route redirects: /settings/cookies â†’ /settings/security#cookies, /settings/connections â†’ /settings/security#connections. Extend the mobile min-height CSS hack (:351-353) into explicit inline minWidth/minHeight on controls as pages are touched.",
+                        "mobile":  "The horizontally scrolling tab row (:208-258) currently hides 4+ tabs off-screen; at 6-7 most tabs are visible without scrolling â€” the biggest findability win for 60+.",
+                        "effort":  "L"
+                    },
+                    {
+                        "id":  17,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Rebuild Security as the real security page; cut the 22-item brochure",
+                        "kind":  "rebuild",
+                        "files":  [
+                                      "src/app/(app)/settings/security/page.tsx",
+                                      "src/app/(app)/settings/profile/page.tsx"
+                                  ],
+                        "spec":  "Collapse the 5 static SECTIONS (security/page.tsx:85-143, rendered :170-218) into one \u0027How we protect your data\u0027 accordion (condensed, not deleted â€” trust copy matters for 60+). Move IN from Profile: MFASetup (profile:919), password reset + ExportPanel (:762-830), Danger Zone delete (:1185-1318). KEEP BlockedAccountsPanel (:221 â€” Apple 1.2) and the keystone commitment card (:224-252). GDPR: export and delete move, never disappear.",
+                        "mobile":  "Profile loses ~550 lines of scroll; security actions get one obvious tab.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  18,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Merge Cookies page into Account \u0026 Security as one card",
+                        "kind":  "cut",
+                        "files":  [
+                                      "src/app/(app)/settings/cookies/page.tsx",
+                                      "src/app/(app)/settings/security/page.tsx"
+                                  ],
+                        "spec":  "Transplant the 3 consent toggles + short explanation (cookies/page.tsx:117-171) as a \u0027Cookie preferences\u0027 card on the rebuilt Security page (code is already Atrium-clean, near-verbatim move). Delete the tab; redirect /settings/cookies. MUST NOT cut the toggles themselves (GDPR/ePrivacy).",
+                        "mobile":  "One fewer pill in the mobile tab row.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  19,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Slim Profile to identity + preferences and add the missing \u0027View my public profile\u0027 seam",
+                        "kind":  "reduce",
+                        "files":  [
+                                      "src/app/(app)/settings/profile/page.tsx",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "After change 17 moves account/MFA/danger out, Profile keeps: avatar/name/username/bio/visibility/phone + Palace Style, Memory Style, Language (:921-959), Text Size (:961-1050), Daylight (:1052-1183), grouped under one \u0027Preferences\u0027 subheading. ADD next to the username field (:448-463) and visibility switch (:507-571): the resulting URL thememorypalace.ai/u/{username} with a copy button and an ember \u0027View public profile\u0027 link (min-height 2.75rem) â€” grep confirms zero /u/ links exist anywhere in settings today. New i18n keys x5 locales.",
+                        "mobile":  "Longest common Me scroll roughly halves; users can finally see what visitors see.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  20,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Subscription: cut the pricing grid + referral program; re-token the remainder",
+                        "kind":  "cut",
+                        "files":  [
+                                      "src/app/(app)/settings/subscription/page.tsx"
+                                  ],
+                        "spec":  "Delete the plan-comparison block (:723-1135, ~410 lines) â†’ one ember \u0027Compare plans â†’\u0027 link to /pricing (web only). Reduce Refer-a-Friend (:1139-1290) to a single code+copy row or relocate to an Atrium relay tile. MUST NOT TOUCH: isApple plan coercion (:100-111), the !nativeApp gate (:723), the !isApple referral gate (:1137-1139). Then re-token survivors: C.cream 1px borders/black shadows (:727-729,:1143-1145) â†’ 0.0625rem #E3D6BC + warm-ink S1; terracottaâ†’walnut gradients (:769,:788,:1239) â†’ ember #B85C38â†’#9A4F2A; all px paddings/radii/font-sizes â†’ rem; kill every t(\u0027key\u0027)!==\u0027key\u0027 fallback hack (:779,:801,:815,:1278) by adding real keys x5 locales.",
+                        "mobile":  "Removes the worst small-screen block (3-col grid, 14px/11px text); sub-1rem px text no longer fights iOS zoom and text-scale.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  21,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Family correctness bundle: resend invite, shared invite state, stale closure, validation, i18n",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/(app)/settings/family/page.tsx",
+                                      "src/lib/auth/sharing-actions.ts",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "(a) New server action resendFamilyInvite(groupId,memberId) that only re-sends the email â€” replace the destructive cancel-then-reinvite dance (:233-261). (b) Clear inviteEmail when expandedGroupId changes; delete the dead ternary (:734). (c) Fix loadGroups stale closure: setExpandedGroupId(prev =\u003e prev ?? firstId) instead of reading expandedGroupId in the empty-deps callback (:170,:178). (d) Real email validation (input type=email checkValidity) replacing includes(\u0027@\u0027) (:217,:322). (e) Distinct \u0027inviteCancelled\u0027 toast key (:292 currently reuses memberRemoved), drop textTransform:\u0027capitalize\u0027 on translated role badges (:596,:968). (f) Wing options from the user\u0027s actual wings (sharing\u0027s getMyPublishableContent) instead of the 5-wing hardcode (:26) that makes attic unsharable (server accepts it, sharing-actions.ts:172).",
+                        "mobile":  "Invites stop vanishing on flaky mobile networks; wrong-group invites stop happening.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  22,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Notifications: capability-based push gating + server-truth category state",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/(app)/settings/notifications/page.tsx",
+                                      "src/app/api/push/route.ts"
+                                  ],
+                        "spec":  "(a) Change the push-section gate (:406) from `isMobile \u0026\u0026 !nativeApp` to `!nativeApp \u0026\u0026 \u0027Notification\u0027 in window` â€” desktop web push works and the unsupported/denied warning UI already exists (:409-422); KEEP the nativeApp exclusion (Apple 2.1 comment :199-201). (b) On load, hydrate push category toggles from the server\u0027s push_subscriptions preference columns (like email prefs at :216-240) instead of localStorage-only (pushNotificationStore.ts:33-40) â€” the PATCH already writes globally (route.ts:189-192), so UI truth must match server truth; localStorage becomes a cache.",
+                        "mobile":  "No mobile regression; cross-device toggle divergence ends.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  23,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Notifications: cut the 12 bespoke SVG icons; make toggles accessible full-row targets",
+                        "kind":  "cut",
+                        "files":  [
+                                      "src/app/(app)/settings/notifications/page.tsx"
+                                  ],
+                        "spec":  "Delete the 12 icon components (:11-158, ~150 lines = 23% of the file) and the icon field from PUSH_CATEGORIES/EMAIL_CATEGORIES (:172-186); at most 2 small section glyphs (push/email). ToggleSwitch (:644-652): add aria-label={t(cat.titleKey)} (currently unlabeled role=switch â€” 11 anonymous switches); make the whole row (icon-less title+description, min-height 2.75rem) tap-toggle with the 3rem x 1.75rem switch as visual indicator only.",
+                        "mobile":  "Every toggle interaction is touch and currently at 64% of the floor; rows become the target.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  24,
+                        "surface":  "me",
+                        "phase":  2,
+                        "title":  "Connections: real native gating, missing i18n key, dead comingSoon branch",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/(app)/settings/connections/page.tsx",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "(a) Add cloudUnavailableNative to ALL 5 locale files and drop the t(key)!==key hack (:257) â€” today every locale sees the English literal, and on iOS that string IS the page. (b) Gate the cloud grid on isNative() (both platforms) not isIOS() (:136) â€” Android in-WebView Google OAuth will hard-fail with disallowed_useragent (:367-368); if native connects are wanted, route through the Capacitor Browser plugin like social login. Rename hideComingSoon â†’ hideCloudGrid. (c) Delete the dead comingSoon branch (~25 lines: field :22, isComingSoon :264, disabled card :274, pill :309-320) â€” no provider defines it. (d) Replace the local ConfirmModal duplicate with the shared confirm component from change 25.",
+                        "mobile":  "Android app users stop hitting Google\u0027s OAuth block screen.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  25,
+                        "surface":  "me",
+                        "phase":  3,
+                        "title":  "One settings control language: shared IconButton/ConfirmModal/danger token, focus-visible everywhere, 2.75rem floor",
+                        "kind":  "restyle",
+                        "files":  [
+                                      "src/app/(app)/settings/family/page.tsx",
+                                      "src/app/(app)/settings/legacy/page.tsx",
+                                      "src/app/(app)/settings/connections/page.tsx",
+                                      "src/lib/libraryTokens.ts"
+                                  ],
+                        "spec":  "(a) One IconButton primitive at 2.75rem min for every âœ•/pencil/trash (family currently ships 2.25rem :619/:643, 2.5rem :889-897, 2.75rem :1074 for the same glyph). (b) One shared ConfirmModal/confirm-banner replacing three paradigms (family inline confirms :1039-1045/:1712-1716, legacy:27-134, connections:447-547); micro Yes/Cancel (~1.5rem tall) die. (c) Define ONE danger token in libraryTokens (warm oxide near EMBER_GLYPH) replacing #C05050/T.color.error (:472,:646). (d) Extend the gold :focus-visible ring beyond .mp-settings-input to selects/buttons/links via a shared .mp-settings-control class (family select :1574-1589 currently outline:none with no ring). (e) Replace string-concat alpha colors (`${\u0027#9A4F2A\u0027}08`â€¦`}40` etc. :772-836,:964,:1170) with pre-mixed opaque hexes per canon. (f) Give the mailto \u003ca\u003e (:1002) and family-tree Link explicit 2.75rem mins â€” the layout.tsx:351-353 hack covers only \u003cbutton\u003e on mobile.",
+                        "mobile":  "Every settings tappable reaches the floor on ALL form factors, not just where the CSS hack fires.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  26,
+                        "surface":  "explore",
+                        "phase":  3,
+                        "title":  "Collapse rails + tabs into one Featured strip and one continuous grid",
+                        "kind":  "rebuild",
+                        "files":  [
+                                      "src/app/explore/ExplorePageClient.tsx",
+                                      "src/app/explore/page.tsx",
+                                      "src/lib/social/directory-actions.ts"
+                                  ],
+                        "spec":  "(a) Delete the Discover/Following segmented control (:317-353, ~2.4rem targets) and the Following empty-state panel (:370-395); when following.length\u003e0 render \u0027From people you follow\u0027 as the FIRST section (using PalaceCard + timeAgoBadge); when empty render nothing. The pill/section swaps to the fetched following array â€” NOT a client filter of the merged grid (following users generally aren\u0027t in trending+newest). (b) Replace the three labeled rails (:400-430) with: one \u0027Featured\u0027 strip (max 3 cards, canon lane header â€” 0.6rem accent dot + 0.6875rem/700/0.12em small-caps overline in gold-glyph #8A6410 + hairline rule; replaces the â˜… pill :404) then ONE continuous grid: server merges trending+newest in page.tsx (:26-31), dedupe by user_id, sort by recent activity, limits 12â†’6 per source. Delete the ðŸ”¥ badge (:416) and \u0027Trending\u0027 label. (c) Fix the data-shape lie: compute published_wing_count and total_visit_count in ONE shared enrich step (today hardcoded 0 at directory-actions.ts:92,:142,:349) or drop those badges â€” one card contract. (d) Results-count badge uses the canon count-chip recipe with tabular-nums (:305).",
+                        "mobile":  "One uninterrupted scroll of consistent full-width cards; followed palaces surface without a tab tap; the sub-floor tab row dies.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  27,
+                        "surface":  "explore",
+                        "phase":  3,
+                        "title":  "Data layer: cache the anonymous rails 60s, dedupe excludeBlocked to one fetch, cap the trending scan",
+                        "kind":  "reduce",
+                        "files":  [
+                                      "src/app/explore/page.tsx",
+                                      "src/lib/social/directory-actions.ts"
+                                  ],
+                        "spec":  "Requires change 6 first. Replace force-dynamic (page.tsx:12) with unstable_cache/revalidate:60 around getFeatured/getTrending/getNewPalaces (cache RAW rails only); auth + getFollowingPalaces + block filtering stay per-request. Fetch the blocked-id set ONCE in page.tsx and filter all rails with it (excludeBlocked currently re-runs auth.getUser()+fetch inside every rail, :295-308 â€” merge plumbing, NEVER the behavior; per-viewer block filter applied AFTER cache read). Cap getTrending\u0027s palace_visits scan (:45-57) from 2000 rows to ~200 or a windowed count.",
+                        "mobile":  "Materially faster first load on cellular; ~10 admin queries per anonymous hit drop to a cache read.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  28,
+                        "surface":  "explore",
+                        "phase":  3,
+                        "title":  "Rebuild loading.tsx to mirror the final layout",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/explore/loading.tsx"
+                                  ],
+                        "spec":  "Sequenced LAST in phase 3 (after 8/11/26 settle the layout): same maxWidth 60rem (client :118), same cream #FCFAF5 canvas, same padding branches, centered h1 ghost + search-bar-height bar + featured strip ghost + 1-col full-width card ghosts at real card height. Today\u0027s skeleton (56rem, flat linen, left-aligned, 16rem 4-card grid) causes a visible re-layout on every visit.",
+                        "mobile":  "No width/background jump at hydrate for the slow-network users who see the skeleton longest.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  29,
+                        "surface":  "profile",
+                        "phase":  3,
+                        "title":  "One auth-aware FollowButton, mounted on ProfileCard, PalaceOverviewClient AND ProfilePageClient",
+                        "kind":  "rebuild",
+                        "files":  [
+                                      "src/components/social/ProfileCard.tsx",
+                                      "src/app/visit/[userId]/PalaceOverviewClient.tsx",
+                                      "src/app/u/[username]/ProfilePageClient.tsx"
+                                  ],
+                        "spec":  "Extract one FollowButton: ember solid when not following / hairline pill when following, minHeight 2.75rem, auth-aware (sign-in CTA per change 2), optimistic count only on confirmed change, track(\u0027social_follow_toggle\u0027) always (PalaceOverviewClient\u0027s inline copy :356-382 currently skips both count and analytics). Mount it in ProfileCard (:150-175), PalaceOverviewClient (delete inline copy), and ADD it to ProfilePageClient â€” verified today /u has NO follow control, which breaks the discovery loop the person-row link (change 15) creates.",
+                        "mobile":  "Follow reaches the touch floor everywhere and finally exists on the public profile.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  30,
+                        "surface":  "profile",
+                        "phase":  3,
+                        "title":  "Fix the visitâ†”profileâ†”explore navigation loop and exit labels",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/app/u/[username]/ProfilePageClient.tsx",
+                                      "src/app/visit/[userId]/walk/VisitorPalaceWalk.tsx",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "(a) ProfilePageClient back button (:74-90): router.back() when same-origin history exists, /explore fallback. (b) VisitorPalaceWalk: the three hardcoded /explore exits (:188,:316,:321) return to /visit/{userId} overview; relabel the :352 button from tCommon(\u0027backToPalace\u0027) (\u0027Back To Your Palace\u0027 â€” a lie for both audiences) to a new \u0027exitPalace\u0027 key x5 locales. (c) Add t(\u0027palaceOfName\u0027,{name}) x5 locales replacing the hardcoded English possessive `${owner.name}\u0027s Palace` (PalaceOverviewClient.tsx:340).",
+                        "mobile":  "Back means back; NL/DE/ES/FR stop seeing \"Marie\u0027s Palace\".",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  31,
+                        "surface":  "profile",
+                        "phase":  3,
+                        "title":  "Restyle the social seam to canon: ember CTAs, opaque cards, touch floor",
+                        "kind":  "restyle",
+                        "files":  [
+                                      "src/components/social/ProfileCard.tsx",
+                                      "src/app/u/[username]/ProfilePageClient.tsx",
+                                      "src/app/visit/[userId]/PalaceOverviewClient.tsx",
+                                      "src/app/visit/[userId]/[wingSlug]/VisitPageClient.tsx",
+                                      "src/components/social/ActivityFeed.tsx",
+                                      "src/components/social/CommentThread.tsx"
+                                  ],
+                        "spec":  "Replace every TuscanCard variant=\u0027glass\u0027 on the seam (ProfileCard:42, ProfilePageClient:272, PalaceOverviewClient:278, VisitPageClient:244, ActivityFeed:113) with opaque tileBg gradients + #E3D6BC hairlines + warm-ink shadows. Goldâ†’ember on all interactive: Follow gradients (ProfileCard:163-165, PalaceOverviewClient:370-372), comment Send (CommentThread:232); \u0027Enter Palace\u0027 (ProfilePageClient:117) may stay as the ONE dark ink+gold keystone (linear-gradient(165deg,#403B36,#2E2A26) + gold hairline). Linen-gradient canvases (ProfilePageClient:47) â†’ cream. Single reduced-motion-guarded entrance replacing 5+ staggered tuscanFadeSlideUp (:72-205). Touch floor 2.75rem on: back links (~1.9rem), feed avatars (2.25rem, ActivityFeed:123), @username attribution (PalaceOverviewClient:343-353).",
+                        "mobile":  "The whole public loop stops feeling like a different, older app; every seam tappable reaches the floor.",
+                        "effort":  "L"
+                    },
+                    {
+                        "id":  32,
+                        "surface":  "profile",
+                        "phase":  3,
+                        "title":  "Comment composer: gate on auth, surface errors",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/components/social/CommentThread.tsx",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "handlePost/handleReply (:273-311) currently swallow every addComment failure â€” anon \u0027Not authenticated\u0027 AND member moderation rejections (comment-actions.ts:45,:53) both look like a dead Send button. Gate the composer on currentUserId: guests see a \u0027Sign in to leave a message\u0027 row (conversion moment, min-height 2.75rem); authed failures render the returned error string inline. Moderation must be VISIBLY functional (Apple 1.2 posture). New keys x5.",
+                        "mobile":  "Send stops silently failing; a real UGC-moderation signal for review.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  33,
+                        "surface":  "explore",
+                        "phase":  3,
+                        "title":  "Social chrome: push not replace, lightweight notifications, one SocialPageChrome",
+                        "kind":  "fix",
+                        "files":  [
+                                      "src/components/ui/NavigationBar.tsx",
+                                      "src/app/explore/ExplorePageClient.tsx",
+                                      "src/app/u/[username]/ProfilePageClient.tsx",
+                                      "src/app/visit/[userId]/PalaceOverviewClient.tsx"
+                                  ],
+                        "spec":  "(a) NavigationBar Explore tap (:541-546): router.push, matching Me (:551) â€” replace currently destroys the back-stack entry so hardware-back exits the app. (b) Stop routing the bell to /palace?notifications=1 (6 duplicated call sites) â€” render the NotificationBell sheet in place on social pages (store exists, NavigationBar.tsx:559) so reading \u0027X followed you\u0027 no longer boots WebGL. (c) Extract ONE SocialPageChrome component owning the NavigationBar mounts + handleModeChange/onNotifications handlers, ending the triplication (ExplorePageClient:87-113, ProfilePageClient:39-61, PalaceOverviewClient:221-245).",
+                        "mobile":  "Bell tap costs a sheet, not a multi-second 3D boot on mid phones; back button behaves.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  34,
+                        "surface":  "explore",
+                        "phase":  4,
+                        "title":  "Anon conversion bar on /explore, /u, /visit â€” iOS-sealed",
+                        "kind":  "rebuild",
+                        "files":  [
+                                      "src/app/explore/ExplorePageClient.tsx",
+                                      "src/app/u/[username]/ProfilePageClient.tsx",
+                                      "src/app/visit/[userId]/PalaceOverviewClient.tsx"
+                                  ],
+                        "spec":  "For unauthenticated visitors (who today get NO header, logo, or signup path â€” NavigationBar is gated isAuthenticated): one slim persistent top bar, cream bg + hairline bottom border: wordmark â†’ /, and ONE ink keystone CTA \u0027Create your palace\u0027 (linear-gradient(165deg,#403B36,#2E2A26) + gold hairline, min-height 2.75rem) â†’ the SSR-sealed landing. HARD RULES: no price, no tier name, no \u0027free\u0027 qualifier, no external purchase language anywhere reachable from iOS; the CTA routes through the existing mp_platform/getUserPlan coercion path. Best-effort SocialPageChrome (change 33) hosts it.",
+                        "mobile":  "Shared links stop being dead ends; one thumb-size door in, nothing Apple can read as steering.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  35,
+                        "surface":  "me",
+                        "phase":  4,
+                        "title":  "Move Wing Sharing into the Sharing tab â€” one answer to \u0027who can see what\u0027",
+                        "kind":  "rebuild",
+                        "files":  [
+                                      "src/app/(app)/settings/family/page.tsx",
+                                      "src/app/(app)/settings/sharing/page.tsx"
+                                  ],
+                        "spec":  "Relocate the Wing Sharing section (family:1505-1800, ~300 lines: member select, view/contribute toggle, shared-by-me/with-me lists) into sharing/page.tsx as a third card alongside Publish and Passcodes, rebuilt with real wings (change 21f), 2.75rem rows, canon controls. Family becomes groups + tree only (~1100 lines); each group card links to Sharing. Sharing page then reads: Public (publish tree) / Guests (passcodes) / Family (wing shares) â€” three audiences, one page. Passcodes and unpublish are load-bearing (GDPR withdraw-consent) â€” consolidate, never remove.",
+                        "mobile":  "The heaviest settings page sheds its heaviest section; one mental model for sharing.",
+                        "effort":  "L"
+                    },
+                    {
+                        "id":  36,
+                        "surface":  "me",
+                        "phase":  4,
+                        "title":  "Family page decomposition + optional single-group simplification",
+                        "kind":  "reduce",
+                        "files":  [
+                                      "src/app/(app)/settings/family/page.tsx"
+                                  ],
+                        "spec":  "After change 35: extract GroupCard, MemberRow, InviteForm components from the 680-line renderGroupCard closure (:410-1089); hoist labelStyle/inputStyle/settingsFocusStyle (triplicated verbatim across family/profile/legacy) into one shared settings-styles module; collapse the 27 useState hooks into a reducer. OWNER DECISION flagged: cap the UI at one family group (keep multi-group in data) â€” deletes the counter/add-button/create-toggle (:1429-1454) and cross-group dedupe (:379-385), and the single group renders permanently expanded. Target \u003c600 lines.",
+                        "mobile":  "Shorter page, permanently-visible member list for the dominant one-household case.",
+                        "effort":  "L"
+                    },
+                    {
+                        "id":  37,
+                        "surface":  "profile",
+                        "phase":  4,
+                        "title":  "Converge on ONE profile presentation: \u0027Me\u0027 front page = public profile + Edit + settings door",
+                        "kind":  "rebuild",
+                        "files":  [
+                                      "src/app/u/[username]/ProfilePageClient.tsx",
+                                      "src/components/ui/PersonalProfile.tsx",
+                                      "src/app/(app)/settings/layout.tsx"
+                                  ],
+                        "spec":  "Instagram/Airbnb parity: the self view of /u/{username} becomes the Me landing â€” identity block (5rem avatar, Fraunces name, muted @handle, one-line bio), max THREE calm stats (Memories Â· Rooms Â· Family, â‰¥1.5rem tabular Fraunces numbers, â‰¥0.875rem labels, each a â‰¥2.75rem tap target), ONE ember \u0027Edit profile\u0027 button (â†’ /settings/profile), one quiet hairline \u0027Settings\u0027 row with chevron (â†’ hub), then the wing/memory grid. First verify where PersonalProfile.tsx (1089 lines) is mounted; if orphaned or redundant with this convergence, delete it â€” if mounted, fold its unique content in and then delete. Never show plan tier, streaks, or config on this surface; iOS shows zero subscription language (hub filter already handles the tab).",
+                        "mobile":  "Above the fold on 390x844: who I am, three numbers, one button, first row of my own memories â€” a mirror, not a control panel.",
+                        "effort":  "L"
+                    }
+                ],
+    "phases":  [
+                   {
+                       "phase":  1,
+                       "title":  "Stop the bleeding + biggest cuts + canon Explore",
+                       "goal":  "Fix all P0/broken-link/data-integrity bugs (notification 404s, anon follow, join-family, push-ref, privacy filter), delete the dead and duplicate weight (DirectoryPanel, publish modal, hero ornaments, family marketing), and re-token Explore\u0027s surviving chrome to Atrium canon with a working, accessible search."
+                   },
+                   {
+                       "phase":  2,
+                       "title":  "Me IA rebuild + one card",
+                       "goal":  "Collapse the hub to 6-7 tabs, make Security real, fold Cookies in, slim Profile and give it the public-profile seam, gut Subscription\u0027s pricing grid, fix Family/Notifications/Connections correctness, and merge Explore\u0027s two cards into one canon PalaceCard with honest tap zones."
+                   },
+                   {
+                       "phase":  3,
+                       "title":  "One grid, one seam, one control language",
+                       "goal":  "Collapse Explore\u0027s rails and tabs into a Featured strip + continuous grid on a cached, deduplicated data layer; unify FollowButton and mount it on /u; fix the visitâ†”profile loop, comment errors, bell routing and back-stack; restyle the whole public seam and settings controls to canon with the 2.75rem floor everywhere; skeleton parity last."
+                   },
+                   {
+                       "phase":  4,
+                       "title":  "Identity convergence + growth doors",
+                       "goal":  "One sharing surface (wing shares join publish + passcodes), one profile presentation (Me = public self + Edit + settings door, PersonalProfile resolved), an iOS-sealed conversion bar for anonymous visitors, and family page decomposition."
+                   }
+               ],
+    "doNotTouch":  [
+                       "excludeBlocked / getBlockedUserIds / SafetyMenu / BlockedAccountsPanel â€” Apple Guideline 1.2 UGC safety; dedupe plumbing only, never behavior, and never serve a cached rail without re-applying the per-viewer block filter",
+                       "iOS free-tier seal: hideInNative subscription-tab filter (settings/layout.tsx:112-114,135), isApple plan coercion (subscription/page.tsx:100-111), !nativeApp gate (:723), !isApple referral gate (:1137-1139), mp_platform/getUserPlan coercion, SSR-sealed landing â€” no price, tier name, \u0027free\u0027 qualifier, or purchase steering reachable from iOS anywhere in these revisions (four 3.1.1 rejections say so)",
+                       "Publish/unpublish tree and passcode create/revoke on /settings/sharing â€” the canonical copies stay; unpublish is the user\u0027s GDPR takedown path and passcodes are the only private-wing access path",
+                       "GDPR-reachable controls: data export (ExportPanel), account delete (Danger Zone), cookie consent toggles â€” they MOVE in this spec but must never be removed or gated",
+                       "The nativeApp exclusion on push notifications (WKWebView dead-toggle, Apple 2.1) â€” widen the gate to desktop web only",
+                       "NavigationBar\u0027s recently aligned canon treatment (docs/NAVBAR_ALIGNMENT_SPEC.json) â€” only the replaceâ†’push and bell-routing behaviors change",
+                       "Comment moderation filter in comment-actions.ts â€” surface its errors, never weaken it"
+                   ],
+    "summary":  "Explore today buries its content under two viewports of self-promotion, carries a 500-line publish system that already exists verbatim in Settings, ships several guaranteed-404 links, and paints every button in the wrong (gold) color. Me is nine drawers where identity, security and marketing are shuffled together, with real bugs (a copied invite link that 404s, a push toggle that dies if you dismiss a prompt, a Discard that doesn\u0027t discard). The plan: Phase 1 fixes every broken link and data bug, deletes the dead weight, and dresses Explore in the Atrium canon with a search that visibly works. Phase 2 collapses Me to 6-7 findable tabs, makes Security the real security page, slims Profile, guts the pricing grid, and merges Explore\u0027s duplicate cards into one honest, thumb-sized card. Phase 3 turns Explore into one calm Featured-plus-grid feed on a cached data layer, unifies Follow, fixes the visit/profile loop, and enforces the 2.75rem touch floor across the whole public seam. Phase 4 converges everything on one sharing page and one profile presentation â€” your Me page becomes the mirror visitors see, plus an Edit button and one quiet settings door. Roughly 1,500+ lines of duplication and marketing are cut, every tap target meets the 60+ floor, and the iOS free-tier seal is treated as untouchable throughout."
+}

@@ -33,10 +33,15 @@ function looksLikeUuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }
 
-export function useThumbnailBackfill(roomId: string | null, mems: Mem[]) {
+export function useThumbnailBackfill(
+  roomId: string | null,
+  mems: Mem[],
+  /** resolves a memory's room when no single room is selected (unified wall) */
+  roomOf?: (memId: string) => string | null,
+) {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!roomId) return;
+    if (!roomId && !roomOf) return;
 
     for (const mem of mems) {
       const isVideo = mem.type === "video" || !!mem.videoBlob;
@@ -49,6 +54,8 @@ export function useThumbnailBackfill(roomId: string | null, mems: Mem[]) {
 
       const memId = mem.id;
       const memDataUrl = mem.dataUrl;
+      const memRoomId = roomId || roomOf?.(mem.id) || null;
+      if (!memRoomId) { _attempted.delete(mem.id); continue; }
 
       _queue.push(async () => {
         // 1. Extract frame to data URL
@@ -80,14 +87,14 @@ export function useThumbnailBackfill(roomId: string | null, mems: Mem[]) {
 
         // 5. Update local state so the card re-renders with the thumbnail
         useMemoryStore.setState((s) => {
-          const cur = s.userMems[roomId];
+          const cur = s.userMems[memRoomId];
           if (!cur) return s;
           const updated = cur.map((m) => m.id === memId ? { ...m, thumbnailUrl: url } : m);
-          return { userMems: { ...s.userMems, [roomId]: updated } };
+          return { userMems: { ...s.userMems, [memRoomId]: updated } };
         });
       });
     }
 
     processQueue();
-  }, [roomId, mems]);
+  }, [roomId, mems, roomOf]);
 }

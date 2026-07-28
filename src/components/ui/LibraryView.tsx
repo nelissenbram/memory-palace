@@ -411,14 +411,14 @@ const memDate = (m: Mem) => m.createdAt || (m as { date?: string }).date || "";
 export default function LibraryView() {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
-  const { t } = useTranslation("library");
+  const { t, locale } = useTranslation("library");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
   const { getWings, getWingRooms: getWingRoomsStore } = useRoomStore();
   const customWings = useRoomStore(s => s.customWings);
   const extraWings = useRoomStore(s => s.extraWings);
   const customRooms = useRoomStore(s => s.customRooms);
-  const { userMems, fetchRoomMemories } = useMemoryStore();
+  const { userMems, fetchRoomMemories, fetchAllRoomMemories } = useMemoryStore();
   const { setNavMode, enterCorridor, enterWingRoom, enterEntrance, activeWing: storeActiveWing } = usePalaceStore();
 
   const { addMemory, updateMemory, deleteMemory, moveMemory } = useMemoryStore();
@@ -441,6 +441,13 @@ export default function LibraryView() {
   const [bulkMoving, setBulkMoving] = useState(false);
   const [expandedMoveWing, setExpandedMoveWing] = useState<string | null>(null);
   const [movedToast, setMovedToast] = useState(false);
+  const movedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showMovedToast = useCallback(() => {
+    setMovedToast(true);
+    if (movedToastTimerRef.current) clearTimeout(movedToastTimerRef.current);
+    movedToastTimerRef.current = setTimeout(() => setMovedToast(false), 2200);
+  }, []);
+  useEffect(() => () => { if (movedToastTimerRef.current) clearTimeout(movedToastTimerRef.current); }, []);
   const [showWingManager, setShowWingManager] = useState(false);
   const [showRoomManager, setShowRoomManager] = useState(false);
   // List view is retired (redundant beside wall + timeline) — validate the
@@ -463,12 +470,10 @@ export default function LibraryView() {
   const [showImportHub, setShowImportHub] = useState(false);
   const [showDemos, setShowDemos] = useState(() => demosVisible());
   const [activeToolPanel, setActiveToolPanel] = useState<"writeStory" | "aiLabel" | "addLocation" | null>(null);
-  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [libTimeOfDay, setLibTimeOfDay] = useState(() => getTimeOfDay());
   const [wallGroupBy, setWallGroupBy] = useState<"month" | "room">("month");
   const [filterYear, setFilterYear] = useState<string>("");
   useEffect(() => { const id = setInterval(() => setLibTimeOfDay(getTimeOfDay()), 10 * 60 * 1000); return () => clearInterval(id); }, []);
-  const [toolbarHint, setToolbarHint] = useState(false);
   const [storyText, setStoryText] = useState("");
   const [aiLabelProcessing, setAiLabelProcessing] = useState(false);
   // Monotonic run id: any close/cancel bumps it, orphaning in-flight label loops
@@ -496,12 +501,10 @@ export default function LibraryView() {
   });
   const [selectedMemIds, setSelectedMemIds] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
-  const [lightboxMem, setLightboxMem] = useState<Mem | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [draggingMemId, setDraggingMemId] = useState<string | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSortOpen, setMobileSortOpen] = useState(false);
   const [batchTagInput, setBatchTagInput] = useState("");
   const [showBatchTag, setShowBatchTag] = useState(false);
@@ -875,21 +878,21 @@ export default function LibraryView() {
     }
     return getWingRooms(selectedWing);
   }, [selectedWing, wings, getWingRooms]);
-  // Fetch memories for all rooms of selected wing on mount/change
+  // Fetch memories for all rooms of the selected wing on wing CHANGE — the
+  // mount is covered by the single fetchAllRoomMemories sweep below.
   const wingRoomIds = wingRooms.map(r => r.id).join(",");
+  const didMountSweep = useRef(false);
   useEffect(() => {
+    if (!didMountSweep.current) { didMountSweep.current = true; return; }
     for (const id of wingRoomIds.split(",")) {
       if (id) fetchRoomMemories(id);
     }
   }, [wingRoomIds, fetchRoomMemories]);
 
-  // Prefetch all wings on mount for cross-wing search
+  // One request for the whole palace on mount (was 2 requests PER ROOM:
+  // the wing sweep + a per-room prefetch loop).
   useEffect(() => {
-    for (const w of wings) {
-      for (const r of getWingRooms(w.id)) {
-        fetchRoomMemories(r.id);
-      }
-    }
+    fetchAllRoomMemories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -976,7 +979,8 @@ export default function LibraryView() {
   }, [selectedRoom, selectedWing, libAllMems, allWingMems, getMemsForRoom, q, matchesQuery, matchesFilters, sortMode]);
 
   // Backfill missing video thumbnails for the selected room (background, throttled)
-  useThumbnailBackfill(selectedRoom, filteredRoomMems);
+  const backfillRoomOf = useCallback((id: string) => memRoomMap.get(id)?.roomId || null, [memRoomMap]);
+  useThumbnailBackfill(selectedRoom, filteredRoomMems, backfillRoomOf);
 
   // Cross-wing search results
   const crossWingResults = useMemo(() => {
@@ -1084,6 +1088,17 @@ export default function LibraryView() {
     setShowBatchTag(false);
   }, [selectedRoom, selectedWing]);
 
+  // Prune the selection when filters narrow the view — bulk actions must
+  // never act on memories the user can no longer see.
+  useEffect(() => {
+    setSelectedMemIds(prev => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(filteredRoomMems.map(m => m.id));
+      const next = new Set([...prev].filter(id => visible.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filteredRoomMems]);
+
   // The wall is the only view outside a room — a persisted timeline choice
   // must never strand the default All-Memories scope where the toggle is hidden.
   const effectiveView = selectedRoom ? viewMode : "grid";
@@ -1094,7 +1109,8 @@ export default function LibraryView() {
   const roomLabelOf = useCallback((id: string) => { const rid = memRoomMap.get(id)?.roomId; if (!rid) return t("undated") !== "undated" ? t("undated") : "Undated"; const wid = memRoomMap.get(id)?.wingId; const r = wid ? getWingRooms(wid).find(rr => rr.id === rid) : null; return r ? translateRoomName(r, tWings) : rid; }, [memRoomMap, getWingRooms, t, tWings]);
   const toggleSelectMem = useCallback((id: string) => setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }), []);
   const openMediaAt = useCallback((i: number) => setMediaPlayerIndex(i), []);
-  const monthLabelOf = useCallback((d: Date) => d.toLocaleDateString(undefined, { month: "long", year: "numeric" }), []);
+  // Dates follow the app locale (mp_locale), not the browser locale
+  const monthLabelOf = useCallback((d: Date) => d.toLocaleDateString(locale, { month: "long", year: "numeric" }), [locale]);
   const countLabelOf = useCallback((n: number) => `${n}`, []);
   const handleTileDragEnd = useCallback(() => setDraggingMemId(null), []);
 
@@ -1189,7 +1205,6 @@ export default function LibraryView() {
       else if (activeToolPanel) closeToolPanel();
       else if (bulkMoving) { setBulkMoving(false); setExpandedMoveWing(null); }
       else if (mediaPlayerIndex !== null) setMediaPlayerIndex(null);
-      else if (lightboxMem) setLightboxMem(null);
       else if (detailPanelMem) setDetailPanelMem(null);
       else if (movingMem) setMovingMem(null);
       else if (detailMem) setDetailMem(null);
@@ -1200,7 +1215,7 @@ export default function LibraryView() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showImportHub, cloudBrowserProvider, pickerStatus, showPublishModal, activeToolPanel, closeToolPanel, bulkMoving, mediaPlayerIndex, lightboxMem, detailPanelMem, movingMem, detailMem, showUploadFor, mobileSortOpen, selectMode, selectedRoom, handleBackToRooms]);
+  }, [showImportHub, cloudBrowserProvider, pickerStatus, showPublishModal, activeToolPanel, closeToolPanel, bulkMoving, mediaPlayerIndex, detailPanelMem, movingMem, detailMem, showUploadFor, mobileSortOpen, selectMode, selectedRoom, handleBackToRooms]);
 
   const handleAddMemory = useCallback((mem: Mem) => {
     if (showUploadFor) {
@@ -1226,8 +1241,7 @@ export default function LibraryView() {
     moveMemory(movingMem.fromRoom, targetRoomId, movingMem.mem.id);
     setMovingMem(null);
     setExpandedMoveWing(null);
-    setMovedToast(true);
-    setTimeout(() => setMovedToast(false), 2200);
+    showMovedToast();
   }, [movingMem, moveMemory]);
 
   // Drag & drop: tile → sidebar room. Source room comes from memRoomMap so it
@@ -1242,8 +1256,7 @@ export default function LibraryView() {
     const from = memRoomMap.get(memId)?.roomId;
     if (!from || from === roomId) return;
     moveMemory(from, roomId, memId);
-    setMovedToast(true);
-    setTimeout(() => setMovedToast(false), 2200);
+    showMovedToast();
   }, [memRoomMap, moveMemory]);
 
   const handleBulkMoveToRoom = useCallback((targetRoomId: string) => {
@@ -1257,8 +1270,7 @@ export default function LibraryView() {
     setBulkMoving(false);
     setExpandedMoveWing(null);
     setSelectMode(false);
-    setMovedToast(true);
-    setTimeout(() => setMovedToast(false), 2200);
+    showMovedToast();
   }, [selectedRoom, selectedMemIds, moveMemory, memRoomMap]);
 
   const handleEnter3D = () => {
@@ -1798,6 +1810,14 @@ export default function LibraryView() {
               {showDemos && (
                 <button type="button" onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("demoBannerClear")}</button>
               )}
+              {/* Mobile add-memory pill — the UploadPanel opener otherwise
+                  lives only in the desktop header */}
+              {isMobile && selectedRoom && (
+                <button type="button" onClick={() => setShowUploadFor({ wingId: selectedWing, roomId: selectedRoom })} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.3rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: EMBER, color: "#FCFAF5", border: `0.0625rem solid ${EMBER}` }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  {t("addMemory")}
+                </button>
+              )}
               {selectedRoom && roomTools.map(a => (
                 <button key={a.key} type="button" data-spotlight-id={a.key} onClick={() => { setActiveToolPanel(a.key); if (spotlightTarget === a.key) setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === a.key ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>{a.label}</button>
               ))}
@@ -2216,9 +2236,11 @@ export default function LibraryView() {
                       <label style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", cursor: "pointer" }}>
                         <input
                           type="checkbox"
-                          checked={filteredRoomMems.length > 0 && selectedMemIds.size === filteredRoomMems.length}
+                          checked={filteredRoomMems.length > 0 && filteredRoomMems.every(m => selectedMemIds.has(m.id))}
                           onChange={() => {
-                            if (selectedMemIds.size === filteredRoomMems.length) {
+                            // Membership, not size-equality — the set may hold
+                            // ids that are no longer in the filtered view
+                            if (filteredRoomMems.every(m => selectedMemIds.has(m.id))) {
                               setSelectedMemIds(new Set());
                             } else {
                               setSelectedMemIds(new Set(filteredRoomMems.map(m => m.id)));
@@ -2428,7 +2450,7 @@ export default function LibraryView() {
                     return sorted.map((mem, i) => {
                       const rawDate = memDate(mem);
                       const dateStr = rawDate
-                        ? new Date(rawDate).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+                        ? new Date(rawDate).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" })
                         : "";
                       const showDate = dateStr !== lastDate;
                       if (showDate) lastDate = dateStr;
@@ -2480,9 +2502,10 @@ export default function LibraryView() {
                             <span style={{ display: "inline-flex", alignItems: "center", lineHeight: 1, flexShrink: 0 }}>
                               <TypeIcon type={mem.type} size={16} color={currentWing.accent} />
                             </span>
-                            {mem.dataUrl && (
-                              <Image src={mem.dataUrl} alt="" width={36} height={36} unoptimized style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.375rem", objectFit: "cover", flexShrink: 0 }} />
-                            )}
+                            {/* Type-aware thumb: video/audio use thumbnailUrl,
+                                never their raw dataUrl as an <img> */}
+                            <MediaThumb mem={mem} size="2.25rem" iconSize={14} />
+
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <span style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#403B36", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {mem.title}
@@ -2495,7 +2518,7 @@ export default function LibraryView() {
                             </div>
                             {mem.createdAt && (
                               <span style={{ fontSize: "0.625rem", color: "#716A5E", flexShrink: 0, whiteSpace: "nowrap" }}>
-                                {new Date(mem.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                                {new Date(mem.createdAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
                               </span>
                             )}
                           </button>
@@ -2599,20 +2622,25 @@ export default function LibraryView() {
           </div>
           {/* Content */}
           <div style={{ flex: 1, overflow: "auto", padding: "1.25rem" }}>
-            {/* Photo */}
-            {detailPanelMem.mem.dataUrl && (
+            {/* Media preview — type-aware: photos show the image, video/audio
+                show their thumbnail or the type glyph (never raw dataUrl) */}
+            {(detailPanelMem.mem.dataUrl || detailPanelMem.mem.thumbnailUrl) && (
               <div style={{
                 borderRadius: "0.75rem", overflow: "hidden", marginBottom: "1rem",
                 background: T.color.cream, aspectRatio: "16 / 10",
                 position: "relative",
               }}>
-                <Image
-                  src={detailPanelMem.mem.dataUrl}
-                  alt={detailPanelMem.mem.title}
-                  fill
-                  unoptimized
-                  style={{ objectFit: "cover" }}
-                />
+                {["photo", "painting", "album"].includes(detailPanelMem.mem.type) && detailPanelMem.mem.dataUrl ? (
+                  <Image
+                    src={detailPanelMem.mem.dataUrl}
+                    alt={detailPanelMem.mem.title}
+                    fill
+                    unoptimized
+                    style={{ objectFit: "cover" }}
+                  />
+                ) : (
+                  <MediaThumb mem={detailPanelMem.mem} size="100%" borderRadius="0" iconSize={28} />
+                )}
               </div>
             )}
             {/* Title */}
@@ -2642,7 +2670,7 @@ export default function LibraryView() {
                     {t("detailPanelDate")}
                   </span>
                   <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" }}>
-                    {new Date(detailPanelMem.mem.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    {new Date(detailPanelMem.mem.createdAt).toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
               )}
@@ -2986,70 +3014,6 @@ export default function LibraryView() {
         />
       )}
 
-      {/* ═══ IMAGE LIGHTBOX (P1 #12) ═══ */}
-      {lightboxMem && lightboxMem.dataUrl && (
-        <div
-          onClick={() => setLightboxMem(null)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(64,59,54,.75)",
-            backdropFilter: "blur(1rem)",
-            WebkitBackdropFilter: "blur(1rem)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexDirection: "column", gap: "1rem",
-            animation: "libFadeIn 0.2s ease both",
-            cursor: "pointer",
-          }}
-        >
-          <img
-            src={lightboxMem.dataUrl}
-            alt={lightboxMem.title}
-            decoding="async"
-            onClick={e => e.stopPropagation()}
-            style={{
-              maxWidth: "90vw", maxHeight: "80vh", borderRadius: "0.75rem",
-              objectFit: "contain",
-              boxShadow: "0 1.5rem 3rem rgba(36,28,21,0.4)",
-              cursor: "default",
-              animation: "libSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
-            }}
-          />
-          <div onClick={e => e.stopPropagation()} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <p style={{
-              fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-              color: T.color.white, margin: 0, textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.3)",
-            }}>
-              {lightboxMem.title}
-            </p>
-            <button
-              onClick={() => { if (selectedRoom) { setDetailMem({ mem: lightboxMem, wingId: selectedWing, roomId: selectedRoom }); } setLightboxMem(null); }}
-              style={{
-                padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
-                background: "rgba(255,255,255,0.2)", border: "0.0625rem solid rgba(255,255,255,0.3)",
-                color: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem",
-                fontWeight: 500, cursor: "pointer", backdropFilter: "blur(0.5rem)",
-              }}
-            >
-              {t("viewDetails")}
-            </button>
-          </div>
-          <button
-            onClick={() => setLightboxMem(null)}
-            style={{
-              position: "absolute", top: "1.5rem", right: "1.5rem",
-              width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-              background: "rgba(255,255,255,0.15)", border: "0.0625rem solid rgba(255,255,255,0.25)",
-              color: T.color.white, fontSize: "1.125rem", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              backdropFilter: "blur(0.5rem)", WebkitBackdropFilter: "blur(0.5rem)",
-            }}
-            aria-label={tc("close")}
-          >
-            {"\u2715"}
-          </button>
-        </div>
-      )}
-
       {/* ═══ WRITE STORY PANEL ═══ */}
       {activeToolPanel === "writeStory" && selectedRoom && (
         <div
@@ -3170,11 +3134,13 @@ export default function LibraryView() {
           setAiLabelDone(successCount > 0);
           if (failCount > 0) setAiLabelError(t("aiLabelFailed", { count: String(failCount) }));
         };
-        const handleSaveResult = (memId: string, description: string, labels: string[]) => {
+        const handleSaveResult = async (memId: string, description: string, labels: string[]) => {
           const tagSuffix = labels.length > 0 ? ` [${labels.join(", ")}]` : "";
           const rid = memRoomMap.get(memId)?.roomId || selectedRoom;
           if (!rid) return;
-          updateMemory(rid, memId, { desc: description + tagSuffix });
+          // Only show the checkmark once the server actually persisted it
+          const ok = await updateMemory(rid, memId, { desc: description + tagSuffix });
+          if (!ok) { setAiLabelError(t("aiLabelFailed", { count: "1" })); return; }
           setAiLabelResults(prev => ({ ...prev, [memId]: { ...prev[memId], saved: true } }));
         };
         const handleClosePanel = closeToolPanel;

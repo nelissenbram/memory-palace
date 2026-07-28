@@ -33,7 +33,12 @@ export const MediaThumb = React.memo(function MediaThumb({
   // For video/audio, only use stored thumbnailUrl (no runtime extraction — too heavy)
   const mediaThumb = (isVideo || isAudio) ? (mem.thumbnailUrl || null) : null;
 
-  const thumbSrc = imageUrl || mediaThumb;
+  const candidateSrc = imageUrl || mediaThumb;
+
+  // A failed load falls back to the type glyph instead of the browser's
+  // broken-image icon (and never re-requests the known-dead URL).
+  const [failedSrc, setFailedSrc] = React.useState<string | null>(null);
+  const thumbSrc = candidateSrc && candidateSrc !== failedSrc ? candidateSrc : null;
 
   const gradient = `linear-gradient(135deg, hsl(${mem.hue},${mem.s}%,${mem.l}%), hsl(${(mem.hue + 20) % 360},${Math.max(mem.s - 5, 15)}%,${Math.max(mem.l - 8, 35)}%))`;
 
@@ -60,6 +65,7 @@ export const MediaThumb = React.memo(function MediaThumb({
           alt=""
           loading="lazy"
           decoding="async"
+          onError={() => setFailedSrc(thumbSrc)}
           style={{
             width: "100%",
             height: "100%",

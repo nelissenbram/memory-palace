@@ -25,7 +25,8 @@ interface MemoryState {
   fetchRoomMemories: (roomId: string) => Promise<void>;
   fetchAllRoomMemories: () => Promise<void>;
   addMemory: (roomId: string, mem: Mem) => Promise<void>;
-  updateMemory: (roomId: string, memId: string, updates: Partial<Mem>) => Promise<void>;
+  /** resolves true when the change is persisted (or running local-only) */
+  updateMemory: (roomId: string, memId: string, updates: Partial<Mem>) => Promise<boolean>;
   deleteMemory: (roomId: string, memId: string) => Promise<void>;
   moveMemory: (fromRoomId: string, toRoomId: string, memId: string) => Promise<void>;
   getRoomSharing: (roomId: string, activeWing: string | null) => SharingInfo;
@@ -33,6 +34,9 @@ interface MemoryState {
 }
 
 function isSupabaseReady() { return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); }
+
+// One in-flight fetch per room at a time — duplicate callers await the same promise
+const _inflightRoomFetches = new Map<string, Promise<void>>();
 
 export const useMemoryStore = create<MemoryState>((set, get) => ({
   userMems: {},
@@ -70,6 +74,11 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       return;
     }
 
+    // Dedupe concurrent fetches for the same room (mount sweeps + card
+    // clicks used to fire 2+ identical requests per room).
+    const inflight = _inflightRoomFetches.get(roomId);
+    if (inflight) return inflight;
+    const p = (async () => {
     const { memories } = await fetchMemories(roomId);
     if (memories) {
       const mapped: Mem[] = memories.map((m: any) => ({
@@ -95,6 +104,9 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         cacheMemories(roomId, toCache).catch(() => {});
       } catch { /* IndexedDB unavailable */ }
     }
+    })();
+    _inflightRoomFetches.set(roomId, p);
+    try { await p; } finally { _inflightRoomFetches.delete(roomId); }
   },
 
   fetchAllRoomMemories: async () => {
@@ -258,7 +270,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       const selMem = s.selMem?.id === memId ? { ...s.selMem, ...updates } : s.selMem;
       return { userMems: { ...s.userMems, [roomId]: updated }, selMem };
     });
-    if (!isSupabaseReady()) return;
+    if (!isSupabaseReady()) return true;
 
     // If dataUrl changed (image was edited), upload the new version
     let fileUrl = updates.dataUrl;
@@ -302,9 +314,15 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       ...("displayUnit" in updates ? { display_unit: updates.displayUnit ?? null } : {}),
     };
     try {
-      await updateMemoryAction(memId, supaUpdates);
+      const result = await updateMemoryAction(memId, supaUpdates);
+      if ((result as { error?: string } | null)?.error) {
+        console.error("[memoryStore] updateMemory failed:", (result as { error?: string }).error);
+        return false;
+      }
+      return true;
     } catch (e) {
       console.error("Supabase update failed:", e);
+      return false;
     }
   },
 
