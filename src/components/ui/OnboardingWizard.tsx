@@ -13,7 +13,6 @@ import { useAccessibility, type ScaleLevel } from "@/components/providers/Access
 import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 
 const OnboardingSceneHost = lazy(() => import("@/components/ui/OnboardingSceneHost"));
-const OnboardingTooltip = lazy(() => import("@/components/ui/OnboardingTooltip"));
 const OnboardingCelebration = lazy(() => import("@/components/ui/OnboardingCelebration"));
 const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
 
@@ -112,6 +111,12 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     setFirstWing("roots");
   }, [setFirstWing]);
 
+  // Apply the detected/stored locale to the ACTIVE translation on mount, so the
+  // very first onboarding screen renders in the user's language (nl by default)
+  // — not the app's fallback English until they tap a language. Runs once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setLocaleNoReload(selectedLocale); }, []);
+
   // ── Phase state ── (retired saved phases remapped by loadPhase) ──
   const [phase, setPhaseRaw] = useState<Phase>(() => loadPhase() || "lang_a11y");
 
@@ -122,7 +127,6 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
   const memoryUploadedRef = useRef(false);
   const [uploadedMemory, setUploadedMemory] = useState<any>(null);
-  const [sceneReady, setSceneReady] = useState(false);
 
   // ── Language / A11y state ──
   // Check localStorage directly — the hook's `locale` hasn't hydrated yet on first render
@@ -554,7 +558,7 @@ ${KEYFRAMES}
                 fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
                 fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
-                {t("styleConfirmTitle") !== "styleConfirmTitle" ? t("styleConfirmTitle") : "Your palace is Roman Tuscany"}
+                {t("styleConfirmTitle") !== "styleConfirmTitle" ? t("styleConfirmTitle") : "Your palace style: Roman Tuscany"}
               </h2>
               <p style={{
                 fontFamily: T.font.display, fontStyle: "italic", fontSize: "1rem",
@@ -612,22 +616,12 @@ ${KEYFRAMES}
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
         {canonStyle}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onReady={() => setSceneReady(true)} />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
         </Suspense>
 
-        {/* Single seeded-memory hint (change 18) — revealed once the scene paints
-            (change 17), so the prompt never floats over a black void. i18n'd. */}
-        {sceneReady && (
-          <Suspense fallback={null}>
-            <OnboardingTooltip
-              message={t("firstMemoryHint") !== "firstMemoryHint" ? t("firstMemoryHint") : "Place your first memory here — a photo, a name, anything."}
-              showNext={false}
-              showSkip={true}
-              skipLabel={t("skipExploreOwn")}
-              onSkip={handleSkip}
-            />
-          </Suspense>
-        )}
+        {/* No seeded-memory tooltip here — the ImportHub's own upload prompt is
+            the guidance; a floating tooltip overlapped it (owner feedback). The
+            ImportHub close button doubles as "skip". */}
 
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
