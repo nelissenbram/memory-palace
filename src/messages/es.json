@@ -5242,7 +5242,7 @@
     "faq2a": "¡Sí! El plan gratuito incluye tu propio palacio 3D con alas y salas ilimitadas y 1 GB de almacenamiento. Actualiza cuando quieras para más almacenamiento, funciones de IA ilimitadas y más.",
     "faq2a_ios": "Sí — The Memory Palace es gratis en iPhone y iPad. Crea tu propio palacio en 3D, añade recuerdos y construye tu árbol genealógico, todo incluido.",
     "faq3q": "¿Cómo añado recuerdos?",
-    "faq3a": "Puedes subir fotos y vídeos directamente, usar la mejora con IA para etiquetarlos automáticamente, escribir historias o enviarlos por WhatsApp a Kep.",
+    "faq3a": "Sube fotos y vídeos directamente a tu Biblioteca. Desde la barra de acciones puedes escribir una historia, dejar que la IA etiquete automáticamente o añadir una ubicación. También puedes reenviar fotos, vídeos y notas de voz a Kep por WhatsApp y llegan a tu palacio automáticamente.",
     "faq4q": "¿Puedo compartir mi palacio con la familia?",
     "faq4a": "¡Por supuesto! Crea un Grupo Familiar en ajustes para invitar a tus seres queridos. Pueden ver, contribuir y recorrer tu palacio juntos.",
     "faq5q": "¿Están seguros mis datos?",
@@ -5250,9 +5250,9 @@
     "faq6q": "¿Qué es Kep?",
     "faq6a": "Kep es tu asistente de recuerdos en WhatsApp. Reenvía fotos, vídeos y notas de voz a Kep y aparecerán automáticamente en tu palacio.",
     "faq7q": "¿Pueden otros visitar mi palacio?",
-    "faq7a": "Sí, si publicas un ala o sala. Los visitantes pueden recorrer tus espacios publicados, dejar comentarios y reaccionar a tus recuerdos.",
+    "faq7a": "Sí — abre Ajustes › Compartir para publicar un ala o una habitación. Los visitantes podrán recorrer tus espacios publicados, dejar comentarios y reaccionar a tus recuerdos.",
     "faq8q": "¿Cómo organizo mis recuerdos?",
-    "faq8a": "Tu palacio tiene alas (temas como Raíces, Viajes, Pasiones) y salas dentro de cada ala. Arrastra recuerdos entre salas o deja que la IA los ordene por ti.",
+    "faq8a": "Tu palacio tiene alas (temas como Raíces, Viajes y Pasiones) y habitaciones dentro de cada ala. En la Biblioteca, cada recuerdo vive en un muro unificado — Il Muro — donde puedes filtrar, saltar a cualquier fecha y arrastrar una tarjeta a una habitación para archivarla, o dejar que la IA etiquete y ordene por ti.",
     "contactTitle": "Contáctanos",
     "contactDesc": "¿No encuentras lo que buscas? Envíanos un mensaje y te responderemos lo antes posible.",
     "contactCategory": "Categoría",
@@ -5277,7 +5277,9 @@
     "communityBtn": "Únete en Reddit",
     "footerPrivacy": "Privacidad",
     "footerTerms": "Términos",
-    "footerSecurity": "Seguridad"
+    "footerSecurity": "Seguridad",
+    "faq9q": "¿Dónde encuentro las cosas en la app?",
+    "faq9a": "Tu Atrio es un tablero de conserjería que muestra lo importante y te lleva a cada área. Usa la navegación inferior o lateral para tu Biblioteca (el muro de fotos Il Muro), tu Palacio 3D, Explorar y Yo — tu página de identidad personal. Las opciones de cuenta están en Ajustes."
   },
   "landingV2": {
     "nav": {

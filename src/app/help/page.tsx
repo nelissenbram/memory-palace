@@ -49,6 +49,7 @@ export default function HelpPage() {
     { q: t("faq6q"), a: t("faq6a") },
     { q: t("faq7q"), a: t("faq7a") },
     { q: t("faq8q"), a: t("faq8a") },
+    { q: t("faq9q"), a: t("faq9a") },
   ];
 
   const categories = [

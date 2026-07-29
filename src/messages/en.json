@@ -5242,7 +5242,7 @@
     "faq2a": "Yes! The free plan includes your own 3D palace with unlimited wings and rooms and 1 GB of storage. Upgrade anytime for more storage, unlimited AI features, and more.",
     "faq2a_ios": "Yes — The Memory Palace is free to use on iPhone and iPad. Create your own 3D palace, add memories, and build your family tree, all included.",
     "faq3q": "How do I add memories?",
-    "faq3a": "You can upload photos and videos directly, use AI enhancement to auto-tag them, write stories, or even send them via WhatsApp to Kep, your memory assistant.",
+    "faq3a": "Upload photos and videos straight into your Library. From the control band you can Write a story, let AI auto-label, or Add a location to any memory. You can also forward photos, videos and voice notes to Kep on WhatsApp and they land in your palace automatically.",
     "faq4q": "Can I share my palace with family?",
     "faq4a": "Absolutely! Create a Family Group in settings to invite loved ones. They can view, contribute, and walk through your palace together.",
     "faq5q": "Is my data secure?",
@@ -5250,9 +5250,9 @@
     "faq6q": "What is Kep?",
     "faq6a": "Kep is your WhatsApp memory assistant. Forward photos, videos, and voice notes to Kep, and they appear in your palace automatically.",
     "faq7q": "Can others visit my palace?",
-    "faq7a": "Yes, if you publish a wing or room. Visitors can walk through your published spaces, leave comments, and react to your memories.",
+    "faq7a": "Yes — open Settings › Sharing to publish a wing or room. Visitors can then walk through your published spaces, leave comments and react to your memories.",
     "faq8q": "How do I organize my memories?",
-    "faq8a": "Your palace has wings (themes like Roots, Travel, Passions) and rooms within each wing. Drag and drop memories between rooms, or let AI sort them for you.",
+    "faq8a": "Your palace has wings (themes like Roots, Travel and Passions) and rooms within each wing. In the Library, every memory lives on one unified wall — Il Muro — where you can filter, jump to any date, and drag a tile onto a room to file it there, or let AI auto-label and sort for you.",
     "contactTitle": "Contact Us",
     "contactDesc": "Can't find what you're looking for? Send us a message and we'll get back to you.",
     "contactCategory": "Category",
@@ -5277,7 +5277,9 @@
     "communityBtn": "Join on Reddit",
     "footerPrivacy": "Privacy",
     "footerTerms": "Terms",
-    "footerSecurity": "Security"
+    "footerSecurity": "Security",
+    "faq9q": "Where do I find things in the app?",
+    "faq9a": "Your Atrium is a concierge board that surfaces what matters and hands you off to each area. Use the bottom or side navigation to reach your Library (the Il Muro photo wall), your 3D Palace, Explore, and Me — your personal identity page. Account options live under Settings."
   },
   "landingV2": {
     "nav": {

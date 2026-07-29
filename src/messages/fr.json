@@ -5242,7 +5242,7 @@
     "faq2a": "Oui ! Le plan gratuit comprend votre propre palais 3D avec des ailes et des pièces illimitées et 1 Go de stockage. Passez à un plan supérieur à tout moment pour plus de stockage, des fonctions IA illimitées et plus encore.",
     "faq2a_ios": "Oui — The Memory Palace est gratuit sur iPhone et iPad. Créez votre propre palais en 3D, ajoutez des souvenirs et construisez votre arbre généalogique, tout est inclus.",
     "faq3q": "Comment ajouter des souvenirs ?",
-    "faq3a": "Vous pouvez télécharger des photos et vidéos directement, utiliser l'amélioration IA pour les taguer automatiquement, écrire des histoires ou les envoyer via WhatsApp à Kep.",
+    "faq3a": "Téléversez photos et vidéos directement dans votre Bibliothèque. Depuis la barre d'actions, vous pouvez écrire un récit, laisser l'IA étiqueter automatiquement ou ajouter un lieu. Vous pouvez aussi transférer photos, vidéos et notes vocales à Kep sur WhatsApp — elles arrivent automatiquement dans votre palais.",
     "faq4q": "Puis-je partager mon palais avec ma famille ?",
     "faq4a": "Absolument ! Créez un Groupe Familial dans les paramètres pour inviter vos proches. Ils peuvent voir, contribuer et parcourir votre palais ensemble.",
     "faq5q": "Mes données sont-elles sécurisées ?",
@@ -5250,9 +5250,9 @@
     "faq6q": "Qu'est-ce que Kep ?",
     "faq6a": "Kep est votre assistant souvenirs sur WhatsApp. Transférez photos, vidéos et notes vocales à Kep et ils apparaîtront automatiquement dans votre palais.",
     "faq7q": "D'autres peuvent-ils visiter mon palais ?",
-    "faq7a": "Oui, si vous publiez une aile ou une pièce. Les visiteurs peuvent parcourir vos espaces publiés, laisser des commentaires et réagir à vos souvenirs.",
+    "faq7a": "Oui — ouvrez Réglages › Partage pour publier une aile ou une pièce. Les visiteurs peuvent alors parcourir vos espaces publiés, laisser des commentaires et réagir à vos souvenirs.",
     "faq8q": "Comment organiser mes souvenirs ?",
-    "faq8a": "Votre palais a des ailes (thèmes comme Racines, Voyages, Passions) et des pièces dans chaque aile. Glissez-déposez les souvenirs entre les pièces ou laissez l'IA les trier pour vous.",
+    "faq8a": "Votre palais a des ailes (thèmes comme Racines, Voyages et Passions) et des pièces dans chaque aile. Dans la Bibliothèque, chaque souvenir vit sur un mur unifié — Il Muro — où vous pouvez filtrer, sauter à n'importe quelle date et glisser une carte sur une pièce pour la classer, ou laisser l'IA étiqueter et trier pour vous.",
     "contactTitle": "Contactez-nous",
     "contactDesc": "Vous ne trouvez pas ce que vous cherchez ? Envoyez-nous un message et nous vous répondrons dès que possible.",
     "contactCategory": "Catégorie",
@@ -5277,7 +5277,9 @@
     "communityBtn": "Rejoindre sur Reddit",
     "footerPrivacy": "Confidentialité",
     "footerTerms": "Conditions",
-    "footerSecurity": "Sécurité"
+    "footerSecurity": "Sécurité",
+    "faq9q": "Où puis-je trouver les choses dans l'application ?",
+    "faq9a": "Votre Atrium est un tableau de conciergerie qui met en avant l'essentiel et vous oriente vers chaque espace. Utilisez la navigation du bas ou du côté pour votre Bibliothèque (le mur de photos Il Muro), votre Palais 3D, Explorer et Vous — votre page d'identité personnelle. Les options de compte sont dans Réglages."
   },
   "landingV2": {
     "nav": {

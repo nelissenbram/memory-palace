@@ -5242,7 +5242,7 @@
     "faq2a": "Ja! Der kostenlose Plan bietet deinen eigenen 3D-Palast mit unbegrenzten Flügeln und Räumen sowie 1 GB Speicher. Upgrade jederzeit für mehr Speicher, unbegrenzte KI-Funktionen und mehr.",
     "faq2a_ios": "Ja — The Memory Palace ist auf iPhone und iPad kostenlos. Erstelle deinen eigenen 3D-Palast, füge Erinnerungen hinzu und baue deinen Stammbaum – alles inklusive.",
     "faq3q": "Wie füge ich Erinnerungen hinzu?",
-    "faq3a": "Du kannst Fotos und Videos direkt hochladen, KI-Verbesserung zum automatischen Taggen nutzen, Geschichten schreiben oder sie per WhatsApp an Kep senden.",
+    "faq3a": "Laden Sie Fotos und Videos direkt in Ihre Bibliothek hoch. Über die Aktionsleiste können Sie eine Geschichte schreiben, die KI automatisch beschriften lassen oder einen Ort hinzufügen. Sie können Fotos, Videos und Sprachnotizen auch per WhatsApp an Kep senden — sie landen automatisch in Ihrem Palast.",
     "faq4q": "Kann ich meinen Palast mit der Familie teilen?",
     "faq4a": "Absolut! Erstelle eine Familiengruppe in den Einstellungen, um Angehörige einzuladen. Sie können deinen Palast ansehen, beitragen und gemeinsam durchwandern.",
     "faq5q": "Sind meine Daten sicher?",
@@ -5250,9 +5250,9 @@
     "faq6q": "Was ist Kep?",
     "faq6a": "Kep ist dein WhatsApp-Erinnerungsassistent. Leite Fotos, Videos und Sprachnachrichten an Kep weiter, und sie erscheinen automatisch in deinem Palast.",
     "faq7q": "Können andere meinen Palast besuchen?",
-    "faq7a": "Ja, wenn du einen Flügel oder Raum veröffentlichst. Besucher können durch deine veröffentlichten Räume wandern, Kommentare hinterlassen und auf deine Erinnerungen reagieren.",
+    "faq7a": "Ja — öffnen Sie Einstellungen › Teilen, um einen Flügel oder Raum zu veröffentlichen. Besucher können dann durch Ihre veröffentlichten Räume gehen, Kommentare hinterlassen und auf Ihre Erinnerungen reagieren.",
     "faq8q": "Wie organisiere ich meine Erinnerungen?",
-    "faq8a": "Dein Palast hat Flügel (Themen wie Wurzeln, Reisen, Leidenschaften) und Räume in jedem Flügel. Ziehe Erinnerungen zwischen Räumen oder lass die KI sie für dich sortieren.",
+    "faq8a": "Ihr Palast hat Flügel (Themen wie Wurzeln, Reisen und Leidenschaften) und Räume in jedem Flügel. In der Bibliothek liegt jede Erinnerung auf einer vereinten Wand — Il Muro — wo Sie filtern, zu jedem Datum springen und eine Kachel auf einen Raum ziehen können, um sie dort abzulegen, oder die KI automatisch beschriften und sortieren lassen.",
     "contactTitle": "Kontaktiere uns",
     "contactDesc": "Findest du nicht, was du suchst? Sende uns eine Nachricht und wir melden uns so schnell wie möglich.",
     "contactCategory": "Kategorie",
@@ -5277,7 +5277,9 @@
     "communityBtn": "Auf Reddit beitreten",
     "footerPrivacy": "Datenschutz",
     "footerTerms": "AGB",
-    "footerSecurity": "Sicherheit"
+    "footerSecurity": "Sicherheit",
+    "faq9q": "Wo finde ich Dinge in der App?",
+    "faq9a": "Ihr Atrium ist ein Concierge-Board, das Wichtiges hervorhebt und Sie in jeden Bereich weiterleitet. Nutzen Sie die untere oder seitliche Navigation für Ihre Bibliothek (die Il-Muro-Fotowand), Ihren 3D-Palast, Entdecken und Ich — Ihre persönliche Identitätsseite. Kontooptionen finden Sie unter Einstellungen."
   },
   "landingV2": {
     "nav": {

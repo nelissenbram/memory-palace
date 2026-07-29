@@ -5244,7 +5244,7 @@
     "faq2a": "Ja! Het gratis plan biedt je eigen 3D-paleis met onbeperkte vleugels en kamers en 1 GB opslag. Upgrade wanneer je wilt voor meer opslag, onbeperkte AI-functies en meer.",
     "faq2a_ios": "Ja — The Memory Palace is gratis te gebruiken op iPhone en iPad. Maak je eigen 3D-paleis, voeg herinneringen toe en bouw je stamboom, allemaal inbegrepen.",
     "faq3q": "Hoe voeg ik herinneringen toe?",
-    "faq3a": "Je kunt foto's en video's direct uploaden, AI-verbetering gebruiken om ze automatisch te taggen, verhalen schrijven, of ze via WhatsApp naar Kep sturen.",
+    "faq3a": "Upload foto's en video's rechtstreeks naar je Bibliotheek. In de actiebalk kun je een verhaal schrijven, AI automatisch laten labelen of een locatie toevoegen. Je kunt ook foto's, video's en spraakberichten naar Kep sturen via WhatsApp — die belanden automatisch in je paleis.",
     "faq4q": "Kan ik mijn paleis delen met familie?",
     "faq4a": "Absoluut! Maak een Familiegroep aan in de instellingen om dierbaren uit te nodigen. Ze kunnen je paleis bekijken, bijdragen en er samen doorheen wandelen.",
     "faq5q": "Is mijn data veilig?",
@@ -5252,9 +5252,9 @@
     "faq6q": "Wat is Kep?",
     "faq6a": "Kep is je WhatsApp-herinneringsassistent. Stuur foto's, video's en spraakberichten door naar Kep en ze verschijnen automatisch in je paleis.",
     "faq7q": "Kunnen anderen mijn paleis bezoeken?",
-    "faq7a": "Ja, als je een vleugel of kamer publiceert. Bezoekers kunnen door je gepubliceerde ruimtes wandelen, reacties achterlaten en op je herinneringen reageren.",
+    "faq7a": "Ja — ga naar Instellingen › Delen om een vleugel of kamer te publiceren. Bezoekers kunnen dan door je gepubliceerde ruimtes wandelen, reacties achterlaten en op je herinneringen reageren.",
     "faq8q": "Hoe organiseer ik mijn herinneringen?",
-    "faq8a": "Je paleis heeft vleugels (thema's zoals Roots, Reizen, Passies) en kamers binnen elke vleugel. Sleep herinneringen tussen kamers, of laat AI ze voor je sorteren.",
+    "faq8a": "Je paleis heeft vleugels (thema's zoals Wortels, Reizen en Passies) en kamers binnen elke vleugel. In de Bibliotheek staat elke herinnering op één samengevoegde muur — Il Muro — waar je kunt filteren, naar elke datum springen en een tegel naar een kamer slepen om hem daar te ordenen, of AI automatisch laten labelen en sorteren.",
     "contactTitle": "Neem contact op",
     "contactDesc": "Kun je niet vinden wat je zoekt? Stuur ons een bericht en we nemen zo snel mogelijk contact met je op.",
     "contactCategory": "Categorie",
@@ -5279,7 +5279,9 @@
     "communityBtn": "Doe mee op Reddit",
     "footerPrivacy": "Privacy",
     "footerTerms": "Voorwaarden",
-    "footerSecurity": "Beveiliging"
+    "footerSecurity": "Beveiliging",
+    "faq9q": "Waar vind ik dingen in de app?",
+    "faq9a": "Je Atrium is een conciërgebord dat toont wat belangrijk is en je naar elk gebied begeleidt. Gebruik de onder- of zijnavigatie voor je Bibliotheek (de Il Muro-fotomuur), je 3D-Paleis, Ontdek en Ik — je persoonlijke identiteitspagina. Accountopties staan onder Instellingen."
   },
   "landingV2": {
     "nav": {
