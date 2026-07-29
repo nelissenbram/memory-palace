@@ -108,6 +108,18 @@ function StepDots({ current, total, label }: { current: number; total: number; l
   );
 }
 
+/* ── Canon stroked check ── a thin, round-capped tick drawn in the same hand as
+   the laurel wreath and divider ticks (strokeWidth ~1.6, round caps, currentColor),
+   replacing the literal '✓' glyph for a more intentional selected affordance.
+   Size + color are driven by the caller via width/height/color. ── */
+function CheckMark({ size = "0.875rem", color = EMBER, strokeWidth = 2.4 }: { size?: string; color?: string; strokeWidth?: number }) {
+  return (
+    <svg aria-hidden width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ display: "block", flexShrink: 0 }}>
+      <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 /* ── Keyframes ── */
 const KEYFRAMES = `
 @keyframes onb-fadeUp{from{opacity:0;transform:translateY(1.5rem)}to{opacity:1;transform:translateY(0)}}
@@ -533,7 +545,7 @@ ${KEYFRAMES}
                           display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                         }}
                       >
-                        {active && <span aria-hidden style={{ color: EMBER, fontWeight: 700 }}>{"✓"}</span>}
+                        {active && <CheckMark color={EMBER} size="0.875rem" />}
                         {localeNames[loc]}
                       </button>
                     );
@@ -583,8 +595,10 @@ ${KEYFRAMES}
                         {active && (
                           <span aria-hidden style={{
                             position: "absolute", top: "0.25rem", right: "0.375rem",
-                            color: EMBER, fontSize: "0.75rem", fontWeight: 700,
-                          }}>{"✓"}</span>
+                            display: "flex",
+                          }}>
+                            <CheckMark color={EMBER} size="0.8125rem" />
+                          </span>
                         )}
                         <span style={{ fontSize: fz, fontFamily: T.font.display, fontWeight: 400, lineHeight: 1 }}>Aa</span>
                         <span>{label}</span>
@@ -1000,9 +1014,9 @@ ${KEYFRAMES}
                       width: "1.25rem", height: "1.25rem", borderRadius: "50%",
                       background: `${EMBER}18`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "0.625rem", color: EMBER_GLYPH, flexShrink: 0,
+                      flexShrink: 0,
                     }}>
-                      {"✓"}
+                      <CheckMark color={EMBER_GLYPH} size="0.75rem" strokeWidth={2.2} />
                     </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem", color: INK, lineHeight: 1.4,

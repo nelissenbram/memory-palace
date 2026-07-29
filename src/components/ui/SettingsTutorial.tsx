@@ -44,6 +44,11 @@ export default function SettingsTutorial({ open, onClose }: Props) {
   // Reactive viewport width so tooltip geometry re-lays-out on rotation/resize
   // even when the measured target rect is unchanged.
   const [vw, setVw] = useState(0);
+  // Live root font size (px per rem). Tracked reactively so the spotlight
+  // cutout and tooltip geometry — which must be expressed in px because they
+  // feed getBoundingClientRect() math and SVG rect coordinates — still scale
+  // when the user changes their browser/OS text-size preference.
+  const [remPx, setRemPx] = useState(16);
   const primaryBtnRef = useRef<HTMLButtonElement | null>(null);
   const skipBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -53,6 +58,13 @@ export default function SettingsTutorial({ open, onClose }: Props) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     setVw(window.innerWidth);
+  }, []);
+
+  // Read the live px-per-rem so geometry constants below track text scaling.
+  const measureRem = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const fs = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    if (fs > 0) setRemPx(fs);
   }, []);
 
   // Lock body scroll only while tutorial overlay is visible
@@ -67,11 +79,11 @@ export default function SettingsTutorial({ open, onClose }: Props) {
   // tooltip re-position on rotation/resize.
   useEffect(() => {
     if (!open || !mounted) return;
-    const onResize = () => setVw(window.innerWidth);
+    const onResize = () => { setVw(window.innerWidth); measureRem(); };
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [open, mounted]);
+  }, [open, mounted, measureRem]);
 
   // Measure the tab bar for step 0
   useLayoutEffect(() => {
@@ -128,22 +140,27 @@ export default function SettingsTutorial({ open, onClose }: Props) {
 
   // ── Step 0: highlight top tab bar with a cream tooltip ──
   if (step === 0) {
-    const pad = "0.375rem"; // rem-based cutout padding
-    const padPx = 6;        // pixel equivalent for SVG rect geometry (1rem=16px)
+    // SVG rect + getBoundingClientRect() math is inherently px, but the px
+    // values are derived from rem via the live root font size so the spotlight
+    // and tooltip track the user's text-scaling preference.
+    const rem = (n: number) => n * remPx; // rem → px at the current root size
+    const padPx = rem(0.375);
     const r = "0.75rem";
-    const rPx = 12;
+    const rPx = rem(0.75);
     const t_ = targetBox ? targetBox.top - padPx : 0;
     const l_ = targetBox ? targetBox.left - padPx : 0;
     const w_ = targetBox ? targetBox.width + padPx * 2 : 0;
     const h_ = targetBox ? targetBox.height + padPx * 2 : 0;
 
-    // Tooltip position: above the highlighted bar
-    const tipWidth = isMobile ? Math.min(viewportW - 32, 320) : 280;
-    const tipEstH = 120; // estimated tooltip height
-    const tipTop = targetBox ? Math.max(16, t_ - tipEstH - 12) : 80;
+    // Tooltip position: above the highlighted bar (all offsets in rem→px)
+    const gutter = rem(1);      // 1rem viewport gutter
+    const tipWidth = isMobile ? Math.min(viewportW - rem(2), rem(20)) : rem(17.5);
+    const tipEstH = rem(7.5);   // estimated tooltip height (~120px @16)
+    const tipGap = rem(0.75);   // gap between tooltip and highlighted bar
+    const tipTop = targetBox ? Math.max(gutter, t_ - tipEstH - tipGap) : rem(5);
     const tipLeft = targetBox
-      ? Math.max(16, Math.min(viewportW - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2))
-      : 16;
+      ? Math.max(gutter, Math.min(viewportW - tipWidth - gutter, l_ + w_ / 2 - tipWidth / 2))
+      : gutter;
 
     const overlay = (
       <div role="dialog" aria-modal="true" aria-label={t("step1Title")} onKeyDown={trapFocus} style={{ position: "fixed", inset: 0, zIndex: 57 }}>
@@ -286,6 +303,13 @@ function TourControls({
   );
 }
 
+// Module-level guard so the ?tour=1 bootstrap fires exactly once per page
+// load, even if two mounted settings shells both invoke useSettingsTutorial().
+// Without this, each shell would independently read the URL and call setOpen,
+// producing duplicate portals / double reset side-effects. The store itself is
+// a singleton, so a single flip is enough for every consumer to react.
+let tourBootstrapped = false;
+
 /** Hook helper: returns [open, setOpen] and opens the tour when the URL
  *  contains ?tour=1 (or when a Help button flips the store directly).
  */
@@ -295,6 +319,11 @@ export function useSettingsTutorial(): [boolean, (v: boolean) => void] {
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
+      // Bootstrap the ?tour=1 request only once per page load. Secondary shells
+      // that also call this hook simply subscribe to the shared store above
+      // (open) without re-running the URL read / setOpen.
+      if (tourBootstrapped) return;
+      tourBootstrapped = true;
       const params = new URLSearchParams(window.location.search);
       // Only open on explicit request (?tour=1 or the help button). The old
       // auto-fire-on-first-visit was jarring when tapping a settings submenu

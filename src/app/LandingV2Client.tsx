@@ -189,15 +189,43 @@ function CtaLink({
 
 /* ───────────────────────── hero video ───────────────────────── */
 
-function HeroMedia({ pauseLabel, playLabel, alt }: { pauseLabel: string; playLabel: string; alt: string }) {
+function HeroMedia({
+  pauseLabel,
+  playLabel,
+  alt,
+  tapToPlayLabel,
+}: {
+  pauseLabel: string;
+  playLabel: string;
+  alt: string;
+  tapToPlayLabel: string;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoLive, setVideoLive] = useState(false);
   const [paused, setPaused] = useState(false);
   const [wantVideo, setWantVideo] = useState(false);
+  // When we default to poster-only on a constrained/mobile connection (NOT
+  // reduced-motion, which we always honour), surface a tap-to-play affordance so
+  // the visitor can opt into the loop instead of being stuck with a still. The
+  // MP4 is still never fetched until they ask for it.
+  const [offerTapToPlay, setOfferTapToPlay] = useState(false);
 
   useEffect(() => {
-    // Poster-only on reduced motion or constrained connections — never download the loop.
-    if (prefersReducedMotion() || connectionIsConstrained()) return;
+    // Reduced motion is a hard opt-out — no video, no affordance.
+    if (prefersReducedMotion()) return;
+    // Constrained/mobile: keep poster-only by default, but offer opt-in.
+    if (connectionIsConstrained()) {
+      setOfferTapToPlay(true);
+      return;
+    }
+    setWantVideo(true);
+  }, []);
+
+  // Opt in from the poster-only state: mount the <video> (which begins the lazy
+  // fetch) and dismiss the affordance. The autoplay effect below takes it from
+  // here once `wantVideo` flips true.
+  const optInToVideo = useCallback(() => {
+    setOfferTapToPlay(false);
     setWantVideo(true);
   }, []);
 
@@ -281,6 +309,38 @@ function HeroMedia({ pauseLabel, playLabel, alt }: { pauseLabel: string; playLab
           background: L.scrim.hero,
         }}
       />
+      {offerTapToPlay ? (
+        <button
+          type="button"
+          onClick={optInToVideo}
+          aria-label={tapToPlayLabel}
+          className="lv2-video-toggle"
+          style={{
+            position: "absolute",
+            right: "1rem",
+            bottom: "1rem",
+            minHeight: T.touch,
+            padding: "0 1rem",
+            borderRadius: "1.5rem",
+            border: "1px solid rgba(252,250,245,0.5)",
+            background: "rgba(36,28,21,0.55)",
+            color: T.color.cream,
+            cursor: "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            fontFamily: FONT_BODY,
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            zIndex: 3,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 2l10 6-10 6V2z" fill="currentColor" />
+          </svg>
+          {tapToPlayLabel}
+        </button>
+      ) : null}
       {wantVideo ? (
         <button
           type="button"
@@ -566,17 +626,38 @@ export default function LandingV2Client({
   // whole time the tab is open, draining battery and hurting INP. Toggling a
   // `usp-live` class flips animation-play-state (see globals.css). Reduced-motion
   // users already get `animation: none`, so this is purely a perf gate.
+  //
+  // The observer lives in a ref and each element is observed the moment its ref
+  // callback fires (unobserved when it unmounts / the ref is cleared), so the
+  // gate is robust to the card list growing or reordering — no mount-time
+  // snapshot to go stale. The scroll-active effect above is untouched: it only
+  // ever reads `uspRefs.current`, never this observer.
+  const uspLiveIoRef = useRef<IntersectionObserver | null>(null);
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
-    const els = uspRefs.current.filter(Boolean) as HTMLDivElement[];
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) e.target.classList.toggle("usp-live", e.isIntersecting);
       },
       { rootMargin: "200px 0px 200px 0px" }
     );
-    els.forEach((el) => io.observe(el));
-    return () => io.disconnect();
+    uspLiveIoRef.current = io;
+    // Observe any refs already assigned before this effect ran (SSR → hydration
+    // order means the ref callbacks may have fired first).
+    for (const el of uspRefs.current) if (el) io.observe(el);
+    return () => {
+      io.disconnect();
+      uspLiveIoRef.current = null;
+    };
+  }, []);
+
+  // Ref setter for each USP block: keep the flat-index slot in sync AND wire the
+  // element into the perf observer as it mounts/unmounts.
+  const setUspRef = useCallback((flatIdx: number, el: HTMLDivElement | null) => {
+    const prev = uspRefs.current[flatIdx];
+    if (prev && prev !== el) uspLiveIoRef.current?.unobserve(prev);
+    uspRefs.current[flatIdx] = el;
+    if (el) uspLiveIoRef.current?.observe(el);
   }, []);
 
   const MOCK = v2.mock as Record<string, string>;
@@ -942,7 +1023,12 @@ export default function LandingV2Client({
             padding: "6rem 0 4rem",
           }}
         >
-          <HeroMedia pauseLabel={v2.a11y.pause} playLabel={v2.a11y.play} alt={v2.a11y.heroVideo} />
+          <HeroMedia
+            pauseLabel={v2.a11y.pause}
+            playLabel={v2.a11y.play}
+            alt={v2.a11y.heroVideo}
+            tapToPlayLabel={a11y.tapToPlay ?? "Play video"}
+          />
           <div style={{ position: "relative", zIndex: 2, textAlign: "center", padding: "0 1.5rem", maxWidth: "60rem" }}>
             {v2.hero.eyebrow ? <Eyebrow onDark>{v2.hero.eyebrow}</Eyebrow> : null}
             <h1
@@ -1154,7 +1240,7 @@ export default function LandingV2Client({
                     {group.items.map((item, ii) => {
                       const flatIdx = uspIdxByGroup[gi][ii];
                       return (
-                        <div key={item.t} ref={(el) => { uspRefs.current[flatIdx] = el; }} data-usp-idx={flatIdx} style={{ scrollMarginTop: "6rem" }}>
+                        <div key={item.t} ref={(el) => setUspRef(flatIdx, el)} data-usp-idx={flatIdx} style={{ scrollMarginTop: "6rem" }}>
                           <Reveal>
                             <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.625rem" }}>
                               {String(flatIdx + 1).padStart(2, "0")} · {group.label}

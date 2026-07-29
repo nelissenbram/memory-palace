@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useSyncExternalStore } from "react";
 import { T } from "@/lib/theme";
 import TuscanCard from "@/components/ui/TuscanCard";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -12,9 +12,77 @@ const EMBER_DEEP = "#9A4F2A";
 /** Canon recessed tray for neutral chips (libraryTokens TRAY). */
 const TRAY = "#F6EBE3";
 
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+/** True when the user has requested reduced motion (SSR-safe). */
+function useReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(REDUCED_MOTION_QUERY);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
+    () => false,
+  );
+}
+
 interface PalaceCardProps {
   palace: DirectoryPalace;
   onClick?: () => void;
+}
+
+/**
+ * Loading placeholder for a PalaceCard. Mirrors the real card's footprint so
+ * rails don't reflow on hydration. The shimmer sweep is suppressed under
+ * prefers-reduced-motion (a calm static tint is shown instead).
+ */
+export function PalaceCardSkeleton() {
+  const reduceMotion = useReducedMotion();
+
+  // Warm recessed tray as the base, with a slightly lighter cream highlight
+  // sweeping across — all in-canon (no cool greys, no gold).
+  const shimmer: React.CSSProperties = reduceMotion
+    ? { background: TRAY }
+    : {
+        background: `linear-gradient(100deg, ${TRAY} 30%, #FBF3EC 50%, ${TRAY} 70%)`,
+        backgroundSize: "200% 100%",
+        animation: "mp-palace-card-shimmer 1.4s ease-in-out infinite",
+      };
+
+  const block = (w: string, h: string, extra?: React.CSSProperties): React.CSSProperties => ({
+    width: w,
+    height: h,
+    borderRadius: "0.375rem",
+    ...shimmer,
+    ...extra,
+  });
+
+  return (
+    <TuscanCard variant="elevated" padding="1.25rem">
+      {/* Keyframes are inert under reduced-motion since the animation is unset. */}
+      <style>{`@keyframes mp-palace-card-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
+      <div
+        aria-hidden="true"
+        style={{ display: "flex", gap: "0.875rem", alignItems: "center" }}
+      >
+        <div
+          style={{
+            width: "3.25rem",
+            height: "3.25rem",
+            borderRadius: "50%",
+            flexShrink: 0,
+            border: `1px solid ${T.color.hairline}`,
+            ...shimmer,
+          }}
+        />
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div style={block("55%", "1.125rem")} />
+          <div style={block("35%", "0.8125rem")} />
+          <div style={block("90%", "0.8125rem", { marginTop: "0.25rem" })} />
+        </div>
+      </div>
+    </TuscanCard>
+  );
 }
 
 export default function PalaceCard({ palace, onClick }: PalaceCardProps) {

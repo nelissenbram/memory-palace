@@ -524,8 +524,12 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
   }, [loadShares]);
 
   const wingLabel = (wingSlug: string) => {
+    // The stored wing_id may be either a slug or a DB uuid depending on when the
+    // share was written, so match on both. If neither resolves (e.g. a wing that
+    // was renamed/removed), show a human label rather than leaking a raw
+    // slug/uuid into the badge.
     const wing = wingOptions.find((w) => w.slug === wingSlug || w.id === wingSlug);
-    return wing ? wing.name : wingSlug;
+    return wing ? wing.name : tf("unknownWing");
   };
 
   const handleShareWing = async () => {
@@ -1070,9 +1074,16 @@ function PasscodeSection({ scale }: { scale: number }) {
                 fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, fontWeight: 600,
                 padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "none", // Atrium: small-control radius
                 minHeight: "2.75rem",
-                background: "linear-gradient(135deg, #B85C38, #9A4F2A)", // Atrium: ember → terracotta
-                color: CREAM, cursor: creating ? "wait" : "pointer",
+                // Canonical settings-shell primary-button grammar: ember→terracotta
+                // gradient when actionable, pre-mixed sandstone + muted ink when not
+                // (matches the Save CTA above and the profile-page Save button).
+                background: creating || !selectedWingId
+                  ? "#EEE9DF" /* Atrium: disabled */
+                  : "linear-gradient(135deg, #B85C38, #9A4F2A)", // Atrium: ember → terracotta
+                color: creating || !selectedWingId ? MUTED : CREAM,
+                cursor: creating ? "wait" : !selectedWingId ? "not-allowed" : "pointer",
                 opacity: creating ? 0.6 : 1, whiteSpace: "nowrap",
+                transition: "all 0.2s ease",
               }}
             >
               {t("passcodeCreate") || "Create Code"}

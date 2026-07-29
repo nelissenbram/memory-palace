@@ -12,6 +12,14 @@ async function getShareData(slug: string) {
     return null;
   }
 
+  // The slug IS the secret for a public share (no passcode gate on this route):
+  // reject empty / whitespace / over-long values before touching the DB so a
+  // malformed link fails closed instead of hitting the share lookup.
+  const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+  if (!normalizedSlug || normalizedSlug.length > 200) {
+    return null;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -26,7 +34,7 @@ async function getShareData(slug: string) {
   const { data: share } = await supabase
     .from("public_shares")
     .select("id, room_id, wing_id, slug, created_by, is_active, expires_at")
-    .eq("slug", slug)
+    .eq("slug", normalizedSlug)
     .eq("is_active", true)
     .single();
 

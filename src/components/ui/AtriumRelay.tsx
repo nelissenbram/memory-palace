@@ -44,7 +44,6 @@ export type RelayTile = {
 export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor";
 export type RelayLane = { id: string; overline: string; accent: RelayAccent; tiles: RelayTile[] };
 export type RelaySuggestion = { key: string; title: string; reason: string; onClick: () => void; progress?: { done: number; total: number } };
-export type RelayChip = { key: string; label: string; onClick: () => void };
 export type RelayPill = { key: string; label: string; onClick: () => void };
 export type RelayScore = { points: number; badgesEarned: number; badgesTotal: number; onClick: () => void };
 /** Keeper's Ledger — the forgiving weekly "kept warm" line (never a scolding streak). */
@@ -65,7 +64,6 @@ interface AtriumRelayProps {
   warmth?: WarmthLevel;
   score?: RelayScore | null;
   suggestion: RelaySuggestion;
-  chips: RelayChip[];
   personaLabel?: string | null;
   personaQuiz?: React.ReactNode;
   onChangeStyle?: () => void;
@@ -87,15 +85,31 @@ interface AtriumRelayProps {
    the board can never drift from the Library. The ACCENT / TRAY maps below
    are the only board-specific additions. ── */
 
+/* ── The board's gold-ink family, consolidated (changes 1/17).
+   CREAM cannot carry #D4AF37 (ceremonial GOLD) as body ink — it fails text
+   contrast — so the ledger, gold-lane and ember overlines use a graded
+   ochre→gilt ramp. These four are the ONLY gold hexes on the board; every
+   surface references the named token so the family can never drift:
+     LEDGER_OCHRE  darkest, text-safe on cream (ledger line, gold datum/glyph)
+     GOLD_GRAPHIC  softer graphic gold (gold-lane tileTop, story-quote flourish)
+     GOLD          #D4AF37 ceremonial gilt — anchors only (from theme.gold)
+     FLAME_GOLD    lightest, warmth/flame accents (gilt datum on the dark keystone)
+   RGBA washes derive from the two ochres so tints stay in the same family. */
+const LEDGER_OCHRE = "#8A6410";        // text-safe on cream
+const GOLD_GRAPHIC = "#C99A2E";        // softer graphic gold
+const FLAME_GOLD = "#E8C255";          // lightest, flame/warmth accents
+const OCHRE_RGB = "169,116,27";        // graphic-gold rgb, for washes
+const OCHRE_WASH = `rgba(${OCHRE_RGB},0.35)`; // rules / hairline fades
+
 /* ── INK & EMBER, elevation pass (changes 1/8/17): the anchors go dark gilt
    keystone; lanes get pre-mixed opaque trays; gold-lane browns a step so it
    stops competing with gilt; sage rebased on canonical #56683C/#7A8C64. ── */
 const ACCENT: Record<RelayAccent, { glyph: string; medallion: string; glow: string; rule: string; tileTop: string; tileBg: string; border: string; titleColor: string; descColor: string; datumColor: string }> = {
   terracotta: { glyph: "#9A4F2A", medallion: "rgba(154,79,42,0.11)", glow: "rgba(154,79,42,0.45)", rule: "rgba(154,79,42,0.35)", tileTop: "#B85C38", tileBg: "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)", border: "#E7D9C4", titleColor: "#403B36", descColor: "#716A5E", datumColor: "#9A4F2A" },
-  gold: { glyph: "#8A6410", medallion: "rgba(169,116,27,0.14)", glow: "rgba(169,116,27,0.45)", rule: "rgba(169,116,27,0.35)", tileTop: "#C99A2E", tileBg: "linear-gradient(160deg, #FCF6E5 0%, #FCFAF5 78%)", border: "#E9DCBE", titleColor: "#403B36", descColor: "#716A5E", datumColor: "#8A6410" },
+  gold: { glyph: LEDGER_OCHRE, medallion: `rgba(${OCHRE_RGB},0.14)`, glow: `rgba(${OCHRE_RGB},0.45)`, rule: OCHRE_WASH, tileTop: GOLD_GRAPHIC, tileBg: "linear-gradient(160deg, #FCF6E5 0%, #FCFAF5 78%)", border: "#E9DCBE", titleColor: "#403B36", descColor: "#716A5E", datumColor: LEDGER_OCHRE },
   sage: { glyph: "#56683C", medallion: "rgba(86,104,60,0.16)", glow: "rgba(122,140,100,0.45)", rule: "rgba(86,104,60,0.35)", tileTop: "#7A8C64", tileBg: "linear-gradient(160deg, #F2F5EA 0%, #FCFAF5 78%)", border: "#DFE3D2", titleColor: "#403B36", descColor: "#716A5E", datumColor: "#56683C" },
   // Dark gilt keystone (change 1): the only ink-dark, only true-gold register.
-  anchor: { glyph: "#D4AF37", medallion: "rgba(212,175,55,0.16)", glow: "rgba(212,175,55,0.5)", rule: "rgba(212,175,55,0.55)", tileTop: "#D4AF37", tileBg: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "rgba(212,175,55,0.5)", titleColor: "#FCFAF5", descColor: "rgba(252,250,245,0.72)", datumColor: "#E8C255" },
+  anchor: { glyph: T.color.gold, medallion: "rgba(212,175,55,0.16)", glow: "rgba(212,175,55,0.5)", rule: "rgba(212,175,55,0.55)", tileTop: T.color.gold, tileBg: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "rgba(212,175,55,0.5)", titleColor: "#FCFAF5", descColor: "rgba(252,250,245,0.72)", datumColor: FLAME_GOLD },
 };
 
 /* Recessed lane trays (change 8): pre-mixed opaque hexes, no alpha bands. */
@@ -109,7 +123,7 @@ const TRAY: Record<RelayAccent, string> = {
 /* Ember cameo tints (change 17: hoisted as named tokens, sage canonical). */
 const EMBER_TINTS = [
   { bg: "rgba(154,79,42,0.10)", ink: "#9A4F2A" },
-  { bg: "rgba(169,116,27,0.14)", ink: "#8A6410" },
+  { bg: `rgba(${OCHRE_RGB},0.14)`, ink: LEDGER_OCHRE },
   { bg: "rgba(86,104,60,0.16)", ink: "#56683C" },
 ];
 
@@ -244,7 +258,7 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
   }
 
   const Vignette = RelayVignettes[tile.key];
-  const vigPalette = { ink: a.glyph, soft: a.medallion, gold: "#C99A2E" };
+  const vigPalette = { ink: a.glyph, soft: a.medallion, gold: GOLD_GRAPHIC };
 
   // HERO (change 5): one full-width lead per lane — big medallion, desc +
   // datum, and the USP-style scene vignette resting on the right (visible at
@@ -292,6 +306,10 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
             is invisible — show it inline on the front there (hidden on hover devices). */}
         {tile.desc ? <span className="relay-sec-desc" style={{ fontFamily: T.font.body, fontSize: RT.overline, color: a.datumColor, lineHeight: 1.25, marginTop: "0.15rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.desc}</span> : null}
       </span>
+      {/* Always-on open affordance (item 6): a persistent low-opacity gilt arrow
+          so touch devices — which never see the hover back-card — still read the
+          tile as "openable". On hover devices it fades as the back-card rises. */}
+      <span aria-hidden="true" className="relay-sec-openarrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop, opacity: 0.4, pointerEvents: "none" }}>→</span>
       {/* back-card: the tile turns over to the full USP-style scene — no
           title repeat (the front already said it); description + datum +
           gilt open-arrow, clamped so nothing ever overflows */}
@@ -322,8 +340,8 @@ export function EmbersRow({ embers }: { embers: RelayEmbers }) {
   return (
     <section aria-label={embers.title} style={{ marginBottom: "1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.6rem" }}>
-        <Overline color="#8A6410">{embers.title}</Overline>
-        <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, rgba(169,116,27,0.35), transparent)" }} />
+        <Overline color={LEDGER_OCHRE}>{embers.title}</Overline>
+        <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: `linear-gradient(90deg, ${OCHRE_WASH}, transparent)` }} />
       </div>
       <div style={{ display: "flex", gap: "0.85rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
         {embers.people.map((p, i) => {
@@ -360,7 +378,7 @@ export function EmbersRow({ embers }: { embers: RelayEmbers }) {
   );
 }
 
-export default function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, warmth = 1, score, suggestion, chips, personaLabel, personaQuiz, onChangeStyle, onChooseJourney, onAddName, memoriesStrip, anchors, lanes, you, isMobile, weekHistory, labels }: AtriumRelayProps) {
+export default function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, warmth = 1, score, suggestion, personaLabel, personaQuiz, onChangeStyle, onChooseJourney, onAddName, memoriesStrip, anchors, lanes, you, isMobile, weekHistory, labels }: AtriumRelayProps) {
   const [mounted, setMounted] = useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   useEffect(() => { const id = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(id); }, []);
@@ -369,7 +387,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
   const soonLabel = labels?.soon ?? "Soon";
   // The Evening Return card's icon well picks up the golden-hour tint.
   const sugWell = suggestion.key === "lantern"
-    ? { background: "rgba(184,92,56,0.12)", color: "#8A6410" }
+    ? { background: "rgba(184,92,56,0.12)", color: LEDGER_OCHRE }
     : { background: "rgba(154,79,42,0.10)", color: "#9A4F2A" };
 
   return (
@@ -385,12 +403,12 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
       {topWash ? <div aria-hidden="true" style={{ position: "absolute", inset: "-3rem -1.5rem auto", height: "26rem", background: topWash, pointerEvents: "none", maskImage: "linear-gradient(180deg, black 55%, transparent)", WebkitMaskImage: "linear-gradient(180deg, black 55%, transparent)" }} /> : null}
 
       {/* ── STEWARD STRIP: greeting → ledger → datum (change 13) ── */}
-      <div style={{ position: "relative", display: "grid", gridTemplateColumns: chips.length > 0 ? (isMobile ? "1fr" : "1.7fr 1fr") : "1fr", gap: "1.25rem", alignItems: "start", marginBottom: "1.5rem" }}>
+      <div style={{ position: "relative", display: "grid", gridTemplateColumns: "1fr", gap: "1.25rem", alignItems: "start", marginBottom: "1.5rem" }}>
         <div>
           <h1 style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: isMobile ? RT.h1m : RT.h1, lineHeight: 1.12, margin: 0, color: "#403B36" }}>
             {greeting}
             {userName ? (
-              <>,{" "}<span className="relay-name" style={{ fontStyle: "italic", fontWeight: 700, whiteSpace: "nowrap", background: "linear-gradient(100deg, #3E5230 0%, #56683C 32%, #E8C255 50%, #56683C 68%, #3E5230 100%)", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "#56683C" }}>{userName}</span></>
+              <>,{" "}<span className="relay-name" style={{ fontStyle: "italic", fontWeight: 700, whiteSpace: "nowrap", background: `linear-gradient(100deg, #3E5230 0%, #56683C 32%, ${FLAME_GOLD} 50%, #56683C 68%, #3E5230 100%)`, backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "#56683C" }}>{userName}</span></>
             ) : onAddName ? (
               <>{" "}<button type="button" onClick={(e) => { e.stopPropagation(); onAddName(); }} style={{ fontFamily: "inherit", fontStyle: "italic", fontSize: isMobile ? RT.titleS : RT.titleL, fontWeight: 600, color: "#9A4F2A", background: "none", border: "none", borderBottom: "0.125rem solid rgba(212,175,55,0.6)", padding: "0 0.15rem", cursor: "pointer", verticalAlign: "baseline" }}>{labels?.addYourName ?? "add your name"}</button></>
             ) : null}
@@ -402,9 +420,9 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
                 onClick={weekHistory && weekHistory.length > 0 ? () => setLedgerOpen((v) => !v) : undefined}
                 aria-expanded={ledgerOpen}
                 className="relay-ledger"
-                style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500, fontSize: RT.titleS, letterSpacing: "0.02em", color: ledger.warm ? "#8A6410" : "#716A5E", background: "none", border: "none", padding: 0, cursor: weekHistory && weekHistory.length > 0 ? "pointer" : "default", textAlign: "left" }}
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500, fontSize: RT.titleS, letterSpacing: "0.02em", color: ledger.warm ? LEDGER_OCHRE : "#716A5E", background: "none", border: "none", padding: 0, cursor: weekHistory && weekHistory.length > 0 ? "pointer" : "default", textAlign: "left" }}
               >
-                <span aria-hidden="true" className={ledger.warm ? "relay-ember-flicker" : undefined} style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: ledger.warm ? "radial-gradient(circle at 40% 35%, #E8C255, #B85C38)" : "#C9BFAE", flexShrink: 0 }} />
+                <span aria-hidden="true" className={ledger.warm ? "relay-ember-flicker" : undefined} style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: ledger.warm ? `radial-gradient(circle at 40% 35%, ${FLAME_GOLD}, #B85C38)` : "#C9BFAE", flexShrink: 0 }} />
                 {ledger.text}
               </button>
               {/* 12-week warmth strip (change 16): dots, never numerals, no red */}
@@ -412,7 +430,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
                 <div style={{ marginTop: "0.6rem", padding: "0.75rem 0.9rem", borderRadius: "0.85rem", border: `0.0625rem solid ${HAIRLINE}`, background: T.color.cream, boxShadow: SHADOW[1], maxWidth: "22rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.45rem" }}>
                     {weekHistory.map((warm, i) => (
-                      <span key={i} aria-hidden="true" style={{ width: "0.75rem", height: "0.75rem", borderRadius: "50%", flexShrink: 0, background: warm ? "radial-gradient(circle at 40% 35%, #E8C255, #B85C38)" : "transparent", border: warm ? "none" : "0.0625rem solid #C9BFAE", opacity: warm ? 0.65 + (i / (weekHistory.length - 1 || 1)) * 0.35 : 0.8 }} />
+                      <span key={i} aria-hidden="true" style={{ width: "0.75rem", height: "0.75rem", borderRadius: "50%", flexShrink: 0, background: warm ? `radial-gradient(circle at 40% 35%, ${FLAME_GOLD}, #B85C38)` : "transparent", border: warm ? "none" : "0.0625rem solid #C9BFAE", opacity: warm ? 0.65 + (i / (weekHistory.length - 1 || 1)) * 0.35 : 0.8 }} />
                     ))}
                   </div>
                   <p style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: RT.meta, color: "#716A5E", margin: "0.55rem 0 0", lineHeight: RT.lhBody }}>
@@ -424,19 +442,6 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
           ) : null}
           {datumLine ? <p style={{ fontFamily: T.font.body, fontSize: RT.body, fontWeight: 500, color: "#716A5E", margin: "0.4rem 0 0", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p> : null}
         </div>
-
-        {chips.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-            {chips.map((c) => {
-              const Ico = RelayIcons[c.key] ?? RelayIcons.continue;
-              return (
-                <button key={c.key} type="button" onClick={c.onClick} className="relay-chip" style={{ display: "inline-flex", alignItems: "center", gap: "0.625rem", minHeight: "3rem", padding: "0 1.125rem", borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.warmStone}`, background: T.color.cream, cursor: "pointer", fontFamily: T.font.body, fontSize: RT.body, fontWeight: 600, color: "#403B36" }}>
-                  <span aria-hidden="true" style={{ width: "1.25rem", height: "1.25rem", display: "inline-flex", color: T.color.terracotta }}><Ico /></span>{c.label}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
       </div>
 
       {/* ── FAMILY EMBERS ── */}
@@ -540,8 +545,11 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
         .relay-invite-arrow { opacity: 0; transform: translateX(-0.3rem); }
         /* Front-side description: only where hover can't reveal the back-card. */
         .relay-sec-desc { display: none; }
+        .relay-sec-openarrow { transition: opacity 0.24s ease, transform 0.24s ease; }
         @media (hover: none) { .relay-sec-desc { display: block; } }
         @media (hover: hover) {
+          /* the persistent arrow yields to the back-card's own arrow on hover */
+          .relay-tile-sec:hover .relay-sec-openarrow, .relay-tile-sec:focus-visible .relay-sec-openarrow { opacity: 0; transform: translateY(-50%) translateX(0.3rem); }
           .relay-backcard { transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease; }
           .relay-tile-sec:hover .relay-backcard, .relay-tile-sec:focus-visible .relay-backcard { opacity: 1; transform: translateY(0); }
           .relay-sec-vig { transition: opacity 0.2s ease; }
@@ -551,10 +559,12 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
           .relay-invite-arrow { transition: opacity 0.25s ease, transform 0.25s ease; }
           .relay-tile:hover .relay-invite-arrow { opacity: 1; transform: translateX(0); }
         }
+        /* Anchor illustration lights on hover AND on press, so the lit state is
+           reachable on touch (no hover) via :active — item 3. */
         .relay-art { transition: filter 0.3s ease; }
-        .relay-tile:hover .relay-art { filter: brightness(1.08) saturate(1.05); }
-        .relay-chip, .relay-pill { transition: background 0.2s ease, border-color 0.2s ease; }
-        .relay-chip:hover, .relay-pill:hover { background: ${T.color.warmStone}55; border-color: ${T.color.terracotta}; }
+        .relay-tile:hover .relay-art, .relay-tile:active .relay-art, .relay-tile:focus-visible .relay-art { filter: brightness(1.08) saturate(1.05); }
+        .relay-pill { transition: background 0.2s ease, border-color 0.2s ease; }
+        .relay-pill:hover { background: ${T.color.warmStone}55; border-color: ${T.color.terracotta}; }
         .relay-suggest { transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .relay-suggest:hover { transform: translateY(-0.1875rem); box-shadow: ${HOVER_SHADOW}; }
         /* one-shot sheen on mount — an invitation, not a beacon */
@@ -587,7 +597,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
         @keyframes relay-ember-breathe { 0%, 100% { opacity: calc(0.55 * var(--warmth, 0.5) + 0.25); } 50% { opacity: calc(0.9 * var(--warmth, 0.5) + 0.1); } }
         @keyframes relay-ember-flicker { 0%, 100% { opacity: 0.75; transform: scale(0.92); } 50% { opacity: 1; transform: scale(1.08); } }
         @keyframes relay-anchor-breathe { 0%, 100% { opacity: 0.18; } 50% { opacity: 0.26; } }
-        .relay-tile:focus-visible, .relay-chip:focus-visible, .relay-pill:focus-visible, .relay-suggest:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
+        .relay-tile:focus-visible, .relay-pill:focus-visible, .relay-suggest:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
         @keyframes relay-rise { from { opacity: 0; transform: translateY(0.6rem); } to { opacity: 1; transform: none; } }
         @keyframes relay-sheen { 0% { left: -45%; } 100% { left: 135%; } }
         @keyframes ri-pulse { 0%,100% { opacity: 0.5; transform: scale(0.82); } 50% { opacity: 1; transform: scale(1.18); } }
@@ -597,7 +607,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
         @keyframes ri-wave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
         @keyframes ri-bob { 0%,100% { transform: translateY(0.04rem); } 50% { transform: translateY(-0.09rem); } }
         @media (prefers-reduced-motion: reduce) {
-          .relay-tile, .relay-chip, .relay-pill, .relay-suggest, .relay-suggest-sheen, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob, .relay-name, .relay-sug-blink, .relay-ember-breathe, .relay-ember-flicker, .relay-anchor-glow, .relay-backcard, .relay-backcard-arrow, .relay-invite-arrow { animation: none !important; transition: none !important; }
+          .relay-tile, .relay-pill, .relay-suggest, .relay-suggest-sheen, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob, .relay-name, .relay-sug-blink, .relay-ember-breathe, .relay-ember-flicker, .relay-anchor-glow, .relay-backcard, .relay-backcard-arrow, .relay-invite-arrow, .relay-sec-openarrow { animation: none !important; transition: none !important; }
           .relay-tile:hover, .relay-suggest:hover { transform: none !important; }
           .relay-suggest-sheen { display: none; }
         }

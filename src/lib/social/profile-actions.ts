@@ -15,6 +15,15 @@ export interface SocialProfile {
   following_count: number;
   is_following: boolean;
   is_own: boolean;
+  /**
+   * True when this is the reduced payload returned for a private profile viewed
+   * by someone else: bio is null and follower/following/is_following are
+   * known-zeroed placeholders (not real counts). Cards should read this to
+   * suppress the Follow affordance and the zeroed stat row rather than showing
+   * a misleading "0 followers / Follow" on a profile that can't be followed
+   * here. Absent/false on full payloads.
+   */
+  is_limited?: boolean;
 }
 
 /** Get a user's social profile by user ID or username */
@@ -55,6 +64,7 @@ export async function getProfile(
       following_count: 0,
       is_following: false,
       is_own: false,
+      is_limited: true,
     };
   }
 
@@ -92,6 +102,7 @@ export async function getProfile(
     following_count: followingRes.count || 0,
     is_following: isFollowing,
     is_own: isOwn,
+    is_limited: false,
   };
 }
 

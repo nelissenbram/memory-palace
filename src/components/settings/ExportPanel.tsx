@@ -157,6 +157,22 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
 
       const result = await scanExportTree();
 
+      // The server scan counts family_groups only by created_by, but the
+      // family_groups export payload is the UNION of family_groups (created_by)
+      // AND family_members (user_id). Reconcile the meta count here so the
+      // checkbox enable/disable state and the exported payload agree: a user who
+      // only *belongs* to groups (no groups they created) still has exportable
+      // family_members rows and must see a non-zero, selectable count.
+      try {
+        const { count: memberCount } = await authClient
+          .from("family_members")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", scanUser.id);
+        if (memberCount && memberCount > 0) {
+          result.meta.family_groups = (result.meta.family_groups || 0) + memberCount;
+        }
+      } catch { /* keep the server-provided family_groups count */ }
+
       // Build a lookup from the server result: localId → { roomId (UUID), memoryCount, photoCount }
       const serverRoomMap: Record<string, { roomId: string; memoryCount: number; photoCount: number }> = {};
       for (const wing of result.wings) {

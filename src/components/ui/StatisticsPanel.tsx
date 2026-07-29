@@ -102,6 +102,29 @@ function countWords(mems: Mem[]): number {
   return total;
 }
 
+/* ─── reduced-motion guard ───────────────────────────────────
+ *  Local, self-contained hook so entrance/layout animations are
+ *  suppressed in JS too — not only via the injected @media block.
+ *  (No shared usePrefersReducedMotion() hook exists yet, and this
+ *  panel is the only file in scope.) ── */
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
+    // addEventListener is the modern API; guard for older Safari.
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else mq.addListener(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else mq.removeListener(onChange);
+    };
+  }, []);
+  return reduced;
+}
+
 /* ─── animated counter ───────────────────────────────────── */
 
 function AnimatedNumber({ value, duration = 800 }: { value: number; duration?: number }) {
@@ -146,6 +169,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
   const isTablet = useIsTablet();
+  const reduceMotion = usePrefersReducedMotion();
   const { t, locale } = useTranslation("statistics");
   const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
@@ -426,7 +450,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
         background: "rgba(64,59,54,0.45)", // Atrium token: warm-ink scrim (matches panel shadows)
         backdropFilter: "blur(6px)",
         zIndex: 800,
-        animation: "spFadeIn .25s ease",
+        animation: reduceMotion ? "none" : "spFadeIn .25s ease",
         display: "flex",
         justifyContent: "center",
         alignItems: isMobile ? "stretch" : "center",
@@ -451,11 +475,11 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
           width: isMobile ? "100%" : "min(40rem, 92vw)",
           height: isMobile ? "100%" : undefined,
           maxHeight: isMobile ? undefined : "88vh",
-          background: T.color.linen,
+          background: CREAM, // Atrium token: cream shell (canon bg); linen reserved for recessed trays/tracks
           borderRadius: isMobile ? 0 : "1rem",
           boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
           overflowY: "auto",
-          animation: "spSlideUp .3s ease",
+          animation: reduceMotion ? "none" : "spSlideUp .3s ease",
           display: "flex",
           flexDirection: "column",
         }}
@@ -469,13 +493,13 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             onKeyDown={(e) => { if (e.key === "Escape") setShowDigest(false); }}
             style={{
               position: "fixed", inset: 0, zIndex: 810,
-              background: T.color.linen, overflowY: "auto",
-              animation: "spSlideUp .3s ease",
+              background: CREAM, overflowY: "auto",
+              animation: reduceMotion ? "none" : "spSlideUp .3s ease",
             }}
           >
             <div style={{
               position: "sticky", top: 0, zIndex: 2,
-              background: `${T.color.linen}f0`, backdropFilter: "blur(12px)",
+              background: `${CREAM}f0`, backdropFilter: "blur(12px)", // Atrium token: cream shell glass
               padding: `max(1rem, env(safe-area-inset-top, 1rem)) 1.5rem 1rem`,
               display: "flex", justifyContent: "space-between", alignItems: "center",
               borderBottom: "0.0625rem solid #E3D6BC", // Atrium token: hairline
@@ -589,7 +613,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             position: "sticky",
             top: 0,
             zIndex: 2,
-            background: `${T.color.linen}f0`,
+            background: `${CREAM}f0`, // Atrium token: cream shell glass
             backdropFilter: "blur(12px)",
             padding: "1.25rem 1.5rem 1rem",
             display: "flex",
@@ -906,7 +930,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                   aria-label={`${t(`month_${bucket.label}`)} ${bucket.year}: ${bucket.count} ${t("memories")}`}
                   style={{
                     display: "flex", alignItems: "center", gap: "0.5rem",
-                    animation: `spSlideUp .3s ease ${idx * 0.03}s both`,
+                    animation: reduceMotion ? "none" : `spSlideUp .3s ease ${idx * 0.03}s both`,
                   }}
                 >
                   <span aria-hidden style={{ ...mutedStyle, width: "3.75rem", textAlign: "right", flexShrink: 0 }}>

@@ -20,6 +20,11 @@ const InteriorScene = lazy(() => import("@/components/3d/InteriorScene"));
 
 type View = "exterior" | "entrance" | "corridor" | "room";
 
+/** Shared inert handler for owner-only PalaceSubNav actions that are disabled in
+ *  read-only visitor mode. Kept as a stable module-level reference so it never
+ *  triggers re-renders and reads as intentional (not a forgotten TODO). */
+const NOOP = () => {};
+
 interface VisitorPalaceWalkProps {
   data: VisitorPalaceData;
 }
@@ -319,15 +324,23 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
         onEntranceHall={handleEntranceHall}
         onSwitchWing={handleSwitchWing}
         onNavigateRoom={handleNavigateRoom}
-        onUpload={() => {}}
-        onGallery={() => {}}
-        onWingManager={() => {}}
-        onRoomManager={() => {}}
-        onCorridorGallery={() => {}}
-        onMassImport={() => {}}
-        onShare={() => {}}
-        onSharingSettings={() => {}}
+        // Visitor mode is strictly read-only: the owner-only management actions
+        // (upload / gallery / wing+room managers / import / share / settings)
+        // must never do anything for a guest. PalaceSubNav only renders visible
+        // management controls when it is given the owner-only `onPublish` /
+        // `onPasscode` props — which we deliberately DO NOT pass here — so these
+        // handlers stay purely interface-satisfying stubs that no visible button
+        // is ever wired to. Do not point them at real owner actions.
+        onUpload={NOOP}
+        onGallery={NOOP}
+        onWingManager={NOOP}
+        onRoomManager={NOOP}
+        onCorridorGallery={NOOP}
+        onMassImport={NOOP}
+        onShare={NOOP}
+        onSharingSettings={NOOP}
         onBack={() => { window.location.href = "/explore"; }}
+        // onPublish / onPasscode intentionally omitted → no owner controls render.
       />
 
       {/* "Back To Your Palace" button — always visible */}

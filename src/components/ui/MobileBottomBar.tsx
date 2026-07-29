@@ -1,8 +1,70 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+
+/* ═══ Action icon set ═══
+ * Crafted 24×24 stroke glyphs (stroke=currentColor, 1.6 width) matching the
+ * NavigationBar / PalaceSubNav / WingRoomIcons visual language. Kept local and
+ * self-contained so the bottom bar renders deterministically across devices
+ * instead of leaning on platform emoji fonts. Each icon inherits `color`
+ * through `currentColor`, so it themes to MUTED / accent like the rest of the
+ * nav chrome. "+" stays a plain glyph inside the accent medallion.
+ */
+export type ActionIconName =
+  | "back" | "add" | "gallery" | "share" | "rooms" | "map" | "timeline"
+  | "interviews" | "import" | "shareCard" | "invites" | "shared"
+  | "manageShares" | "tracks" | "awards" | "gear" | "sparkle" | "more";
+
+function ActionIcon({ name, size = 20, color = "currentColor" }: { name: ActionIconName; size?: number; color?: string }) {
+  const p = {
+    width: size, height: size, viewBox: "0 0 24 24", fill: "none",
+    stroke: color, strokeWidth: 1.6, strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const, "aria-hidden": true,
+    style: { display: "block" } as React.CSSProperties,
+  };
+  switch (name) {
+    case "back":
+      return (<svg {...p}><path d="M15 5l-7 7 7 7" /></svg>);
+    case "add":
+      return (<svg {...p}><path d="M12 5v14M5 12h14" /></svg>);
+    case "gallery": // stacked images
+      return (<svg {...p}><rect x="3.5" y="5.5" width="17" height="13" rx="1.5" /><path d="M4 16l4.5-4 3 2.5L16 10l4 5" /><circle cx="9" cy="10" r="1.3" fill={color} stroke="none" /></svg>);
+    case "share": // share nodes
+      return (<svg {...p}><circle cx="6" cy="12" r="2.4" /><circle cx="17.5" cy="6" r="2.4" /><circle cx="17.5" cy="18" r="2.4" /><path d="M8.2 10.8l7.1-3.6M8.2 13.2l7.1 3.6" /></svg>);
+    case "rooms": // house / doors
+      return (<svg {...p}><path d="M4 10.5 L12 4 L20 10.5" /><path d="M5.5 10v9.5h13V10" /><rect x="10" y="13" width="4" height="6.5" rx="0.5" /></svg>);
+    case "map": // globe with meridian
+      return (<svg {...p}><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.4 2.4 3.5 5.4 3.5 8.5s-1.1 6.1-3.5 8.5c-2.4-2.4-3.5-5.4-3.5-8.5S9.6 5.9 12 3.5z" /></svg>);
+    case "timeline": // calendar
+      return (<svg {...p}><rect x="4" y="5.5" width="16" height="14" rx="1.6" /><path d="M4 9.5h16M8 3.5v3.5M16 3.5v3.5" /><path d="M8 13h2M13.5 13h2.5M8 16h4.5" /></svg>);
+    case "interviews": // microphone
+      return (<svg {...p}><rect x="9" y="3" width="6" height="10" rx="3" /><path d="M6 11a6 6 0 0 0 12 0" /><path d="M12 17v3.5M9 20.5h6" /></svg>);
+    case "import": // package / box
+      return (<svg {...p}><path d="M12 3l8 4.2v9.6L12 21l-8-4.2V7.2z" /><path d="M4 7.2l8 4.2 8-4.2M12 11.4V21" /></svg>);
+    case "shareCard": // export / send arrow
+      return (<svg {...p}><path d="M12 15V4M8 7.5 12 3.5 16 7.5" /><path d="M5 13v5.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V13" /></svg>);
+    case "invites": // envelope
+      return (<svg {...p}><rect x="3.5" y="5.5" width="17" height="13" rx="1.6" /><path d="M4 7l8 6 8-6" /></svg>);
+    case "shared": // two people
+      return (<svg {...p}><circle cx="8" cy="9" r="2.6" /><path d="M3.5 19c0-2.7 2-4.6 4.5-4.6S12.5 16.3 12.5 19" /><circle cx="16.5" cy="7.5" r="2.1" /><path d="M14 13.4c2.3-.7 6 .2 6 4.6" /></svg>);
+    case "manageShares": // sliders
+      return (<svg {...p}><path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h9M17 17h3" /><circle cx="15.5" cy="7" r="1.8" fill={color} stroke="none" /><circle cx="9.5" cy="12" r="1.8" fill={color} stroke="none" /><circle cx="14.5" cy="17" r="1.8" fill={color} stroke="none" /></svg>);
+    case "tracks": // scroll
+      return (<svg {...p}><path d="M6 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1h13" /><path d="M9 8h7M9 11.5h7M9 15h4" /></svg>);
+    case "awards": // trophy
+      return (<svg {...p}><path d="M8 4h8v4a4 4 0 0 1-8 0z" /><path d="M8 5H5v1.5A3 3 0 0 0 8 9.5M16 5h3v1.5A3 3 0 0 1 16 9.5" /><path d="M10.5 12.5h3l-.4 3.5h1.4v2.5H9.5V16h1.4z" /></svg>);
+    case "gear": // settings cog
+      return (<svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19" /></svg>);
+    case "sparkle": // tour / guide
+      return (<svg {...p}><path d="M12 3l1.6 4.3L18 9l-4.4 1.7L12 15l-1.6-4.3L6 9l4.4-1.7z" /><path d="M18.5 15l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z" fill={color} stroke="none" /></svg>);
+    case "more": // ellipsis
+      return (<svg {...p}><circle cx="5.5" cy="12" r="1.5" fill={color} stroke="none" /><circle cx="12" cy="12" r="1.5" fill={color} stroke="none" /><circle cx="18.5" cy="12" r="1.5" fill={color} stroke="none" /></svg>);
+    default:
+      return null;
+  }
+}
 
 /* ═══ Mobile Bottom Action Bar ═══ */
 export interface MobileBottomBarProps {
@@ -50,31 +112,31 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
   }, [moreMenuOpen, props.onCloseMore]);
 
   // Define primary actions based on view (max 3 + more = 4 visible)
-  const primaryActions: { icon: string; label: string; action: () => void; accent?: boolean; isBack?: boolean }[] = [];
+  const primaryActions: { icon: ActionIconName; label: string; action: () => void; accent?: boolean; isBack?: boolean }[] = [];
 
   // Back button for non-exterior views
   if (view !== "exterior") {
-    primaryActions.push({ icon: "\u2190", label: tAction("back"), action: props.onBack, isBack: true });
+    primaryActions.push({ icon: "back", label: tAction("back"), action: props.onBack, isBack: true });
   }
 
   if (view === "room" && activeRoomId && !showUpload && !showSharing && !selMem) {
-    primaryActions.push({ icon: "+", label: tAction("add"), action: props.onUpload, accent: true });
+    primaryActions.push({ icon: "add", label: tAction("add"), action: props.onUpload, accent: true });
     if (allRoomMems.length > 0) {
-      primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: tAction("gallery"), action: props.onGallery });
+      primaryActions.push({ icon: "gallery", label: tAction("gallery"), action: props.onGallery });
     }
-    primaryActions.push({ icon: "\u{1F91D}", label: tAction("share"), action: props.onShare });
+    primaryActions.push({ icon: "share", label: tAction("share"), action: props.onShare });
   } else if (view === "corridor" && activeWing) {
-    primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: tAction("gallery"), action: props.onCorridorGallery, accent: true });
-    primaryActions.push({ icon: "\u{1F527}", label: tAction("rooms"), action: props.onRoomManager });
-    primaryActions.push({ icon: "\uD83C\uDF0D", label: tAction("map"), action: props.onMemoryMap });
+    primaryActions.push({ icon: "gallery", label: tAction("gallery"), action: props.onCorridorGallery, accent: true });
+    primaryActions.push({ icon: "rooms", label: tAction("rooms"), action: props.onRoomManager });
+    primaryActions.push({ icon: "map", label: tAction("map"), action: props.onMemoryMap });
   } else if (view === "entrance") {
-    primaryActions.push({ icon: "\uD83D\uDCC5", label: tAction("timeline"), action: props.onTimeline, accent: true });
-    primaryActions.push({ icon: "\uD83C\uDF0D", label: tAction("map"), action: props.onMemoryMap });
-    primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews });
+    primaryActions.push({ icon: "timeline", label: tAction("timeline"), action: props.onTimeline, accent: true });
+    primaryActions.push({ icon: "map", label: tAction("map"), action: props.onMemoryMap });
+    primaryActions.push({ icon: "interviews", label: tAction("interviews"), action: props.onInterviews });
   } else if (view === "exterior") {
-    primaryActions.push({ icon: "\uD83D\uDCC5", label: tAction("timeline"), action: props.onTimeline, accent: true });
-    primaryActions.push({ icon: "\uD83C\uDF0D", label: tAction("map"), action: props.onMemoryMap });
-    primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews });
+    primaryActions.push({ icon: "timeline", label: tAction("timeline"), action: props.onTimeline, accent: true });
+    primaryActions.push({ icon: "map", label: tAction("map"), action: props.onMemoryMap });
+    primaryActions.push({ icon: "interviews", label: tAction("interviews"), action: props.onInterviews });
   }
 
   // Progress is only surfaced in the (lazily rendered) More menu, so avoid the
@@ -82,7 +144,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
   const p = moreMenuOpen ? props.getProgress() : { earned: 0, total: 0, percentage: 0 };
 
   // Build grouped more-menu sections based on view
-  type MoreItem = { icon: string; label: string; action: () => void };
+  type MoreItem = { icon: ActionIconName; label: string; action: () => void };
   type MoreSection = { title: string; items: MoreItem[] };
 
   const moreSections: MoreSection[] = [];
@@ -90,44 +152,44 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
   // Content section
   const contentItems: MoreItem[] = [];
   if (view === "room") {
-    contentItems.push({ icon: "\u{1F4E6}", label: tAction("import"), action: props.onMassImport });
+    contentItems.push({ icon: "import", label: tAction("import"), action: props.onMassImport });
   }
   if (view === "exterior" || view === "entrance") {
-    contentItems.push({ icon: "\u{1F4E6}", label: tAction("import"), action: props.onMassImport });
+    contentItems.push({ icon: "import", label: tAction("import"), action: props.onMassImport });
   }
   if (view === "corridor" && activeWing) {
-    contentItems.push({ icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews });
+    contentItems.push({ icon: "interviews", label: tAction("interviews"), action: props.onInterviews });
   }
   if (contentItems.length > 0) moreSections.push({ title: tAction("moreContent"), items: contentItems });
 
   // Social section
   const socialItems: MoreItem[] = [];
   if (view === "room") {
-    socialItems.push({ icon: "\u{1F4E4}", label: tAction("shareCard"), action: props.onShare });
+    socialItems.push({ icon: "shareCard", label: tAction("shareCard"), action: props.onShare });
   }
-  socialItems.push({ icon: "\u{1F4EC}", label: tAction("invites"), action: props.onInvites });
-  socialItems.push({ icon: "\u{1F91D}", label: tAction("shared"), action: props.onSharedWithMe });
-  socialItems.push({ icon: "\u{1F6E0}\uFE0F", label: tAction("manageShares"), action: props.onSharingSettings });
+  socialItems.push({ icon: "invites", label: tAction("invites"), action: props.onInvites });
+  socialItems.push({ icon: "shared", label: tAction("shared"), action: props.onSharedWithMe });
+  socialItems.push({ icon: "manageShares", label: tAction("manageShares"), action: props.onSharingSettings });
   moreSections.push({ title: tAction("moreSocial"), items: socialItems });
 
   // Explore section
   const exploreItems: MoreItem[] = [];
   if (view !== "exterior" && view !== "entrance") {
-    exploreItems.push({ icon: "\uD83D\uDCC5", label: tAction("timeline"), action: props.onTimeline });
-    exploreItems.push({ icon: "\uD83C\uDF0D", label: tAction("map"), action: props.onMemoryMap });
-    exploreItems.push({ icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews });
+    exploreItems.push({ icon: "timeline", label: tAction("timeline"), action: props.onTimeline });
+    exploreItems.push({ icon: "map", label: tAction("map"), action: props.onMemoryMap });
+    exploreItems.push({ icon: "interviews", label: tAction("interviews"), action: props.onInterviews });
   }
-  exploreItems.push({ icon: "\uD83D\uDCDC", label: tAction("tracks"), action: props.onTracks });
-  exploreItems.push({ icon: "\u{1F3C6}", label: tAction("awards", { earned: String(p.earned), total: String(p.total) }), action: props.onAchievements });
+  exploreItems.push({ icon: "tracks", label: tAction("tracks"), action: props.onTracks });
+  exploreItems.push({ icon: "awards", label: tAction("awards", { earned: String(p.earned), total: String(p.total) }), action: props.onAchievements });
   moreSections.push({ title: tAction("moreExplore"), items: exploreItems });
 
   // Settings section
   const settingsItems: MoreItem[] = [];
   if (view === "corridor" || view === "room") {
-    settingsItems.push({ icon: "\u{1F527}", label: tAction("manageRooms"), action: props.onRoomManager });
+    settingsItems.push({ icon: "rooms", label: tAction("manageRooms"), action: props.onRoomManager });
   }
-  settingsItems.push({ icon: "\u2699\uFE0F", label: tAction("customizeWings"), action: props.onWingManager });
-  settingsItems.push({ icon: "\u2728", label: tAction("tour"), action: () => { props.onCloseMore(); window.dispatchEvent(new Event("mp:open-palace-tutorial")); } });
+  settingsItems.push({ icon: "gear", label: tAction("customizeWings"), action: props.onWingManager });
+  settingsItems.push({ icon: "sparkle", label: tAction("tour"), action: () => { props.onCloseMore(); window.dispatchEvent(new Event("mp:open-palace-tutorial")); } });
   moreSections.push({ title: tAction("moreSettings"), items: settingsItems });
 
   return (
@@ -183,7 +245,9 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
                   onTouchStart={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.95)"; }}
                   onTouchEnd={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
                   >
-                    <span aria-hidden="true" style={{ fontSize: "1.25rem", lineHeight: 1 }}>{item.icon}</span>
+                    <span aria-hidden="true" style={{ display: "flex", color: T.color.walnut }}>
+                      <ActionIcon name={item.icon} size={22} color={T.color.walnut} />
+                    </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem",
                       color: T.color.walnut, fontWeight: 500, lineHeight: 1.2,
@@ -237,19 +301,21 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
                 width: "2.375rem", height: "2.375rem", borderRadius: "1.1875rem",
                 background: `linear-gradient(135deg, ${accent}, ${T.color.walnut})`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: T.color.white, fontSize: act.icon === "+" ? "1.375rem" : "1.0625rem", fontWeight: 300,
+                color: T.color.white,
                 boxShadow: `0 0.25rem 0.75rem ${accent}40`,
-              }}>{act.icon}</div>
+              }}><ActionIcon name={act.icon} size={act.icon === "add" ? 24 : 20} color={T.color.white} /></div>
             ) : act.isBack ? (
               <div style={{
                 width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem",
                 background: `${T.color.warmStone}dd`,
                 border: `1px solid ${T.color.cream}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "0.9375rem", color: T.color.walnut,
-              }}>{act.icon}</div>
+                color: T.color.walnut,
+              }}><ActionIcon name={act.icon} size={19} color={T.color.walnut} /></div>
             ) : (
-              <span aria-hidden="true" style={{ fontSize: "1.1875rem", lineHeight: 1 }}>{act.icon}</span>
+              <span aria-hidden="true" style={{ display: "flex", color: T.color.muted }}>
+                <ActionIcon name={act.icon} size={21} color={T.color.muted} />
+              </span>
             )}
             <span style={{
               fontFamily: T.font.body,
@@ -260,7 +326,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
           </button>
         ))}
         {/* More button */}
-        <button onClick={props.onToggleMore} aria-label={tAction("more")} style={{
+        <button onClick={props.onToggleMore} aria-label={tAction("more")} aria-expanded={moreMenuOpen} style={{
           flex: 0.7, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.125rem",
           padding: "0.5rem 0.25rem", border: "none", background: "transparent", cursor: "pointer",
           minHeight: "3rem", justifyContent: "center",
@@ -269,13 +335,15 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
         onTouchStart={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.95)"; }}
         onTouchEnd={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
         >
-          <span style={{
-            fontSize: "1.1875rem", lineHeight: 1,
-            transform: moreMenuOpen ? "rotate(45deg)" : "none",
+          <span aria-hidden="true" style={{
+            display: "flex",
+            transform: moreMenuOpen ? "rotate(90deg)" : "none",
             transition: "transform .25s cubic-bezier(.22,1,.36,1)",
             color: moreMenuOpen ? accent : T.color.walnut,
           }}>
-            {moreMenuOpen ? "+" : "\u22EF"}
+            {moreMenuOpen
+              ? <ActionIcon name="add" size={21} color={accent} />
+              : <ActionIcon name="more" size={21} color={T.color.walnut} />}
           </span>
           <span style={{
             fontFamily: T.font.body,

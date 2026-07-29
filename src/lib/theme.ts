@@ -23,10 +23,16 @@ export const T = {
     ivory: "#F9F5EE",
     lineFaint: "#EBE3D4",
     inkSoft: "#403B36",
+    // ── Canon tokens (mirror src/lib/libraryTokens.ts — the single source of
+    //    truth). PREFER THESE in new/refreshed surfaces. The legacy keys above
+    //    (charcoal #1F1B1A, terracotta #C66B3D, gold, sage…) are kept only so
+    //    the ~146 existing callers don't shift; do not spend effort re-tinting
+    //    them app-wide — migrate call sites to the canon keys below instead.
     hairline: "#E3D6BC",   // canon card border (libraryTokens HAIRLINE)
-    ink: "#403B36",        // canon body ink (libraryTokens INK)
-    inkMuted: "#716A5E",   // canon secondary text (libraryTokens MUTED)
-    ember: "#B85C38",      // canon interactive / CTA (libraryTokens EMBER)
+    ink: "#403B36",        // canon body ink (libraryTokens INK) — 10.6:1 on cream
+    inkMuted: "#716A5E",   // canon secondary text (libraryTokens MUTED) — 5.1:1 on cream, AA ✓
+    ember: "#B85C38",      // canon interactive / CTA (libraryTokens EMBER) — 4.35:1 on
+                           // cream: use as a fill / large text / icon, NOT as small body ink.
   },
   /** Warm-ink shadow ramp (libraryTokens SHADOW) — never cold black. */
   shadow: {

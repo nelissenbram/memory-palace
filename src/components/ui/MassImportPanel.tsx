@@ -109,6 +109,28 @@ function formatBytes(b: number): string {
   return (b / (1024 * 1024)).toFixed(1) + " MB";
 }
 
+// ── Date helpers for the editable ReviewCard date field ──
+// A <input type="date"> speaks "yyyy-mm-dd" (local), while we store a full ISO
+// timestamp on exif.dateTaken (also used verbatim as the memory's createdAt).
+function toDateInputValue(iso?: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function fromDateInputValue(value: string, prevIso?: string): string {
+  if (!value) return prevIso || "";
+  // Preserve the original time-of-day (if any) so we only edit the calendar date.
+  const prev = prevIso ? new Date(prevIso) : null;
+  const [y, m, d] = value.split("-").map(Number);
+  const next = prev && !isNaN(prev.getTime()) ? new Date(prev) : new Date();
+  next.setFullYear(y, (m || 1) - 1, d || 1);
+  return next.toISOString();
+}
+
 const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
 
@@ -822,6 +844,24 @@ function ReviewCard({ item, wings, getWingRooms }: {
             <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("description")}</label>
             <textarea value={item.confirmed.desc} onChange={(e) => store.updateConfirmed(item.localId, { desc: e.target.value })} rows={2} placeholder={t("descriptionPlaceholder")}
               style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: "#403B36", boxSizing: "border-box", resize: "none" }} />
+          </div>
+          {/* Editable date — resolves to the memory's createdAt at commit time.
+              Pre-filled from EXIF dateTaken when present so users can correct a
+              wrong or missing capture date before committing. Persisted onto
+              item.exif.dateTaken via the store's public updateItem(). */}
+          <div style={{ marginBottom: "0.625rem" }}>
+            <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("dateTaken")}</label>
+            <input
+              type="date"
+              value={toDateInputValue(item.exif?.dateTaken)}
+              max={toDateInputValue(new Date().toISOString())}
+              onChange={(e) => {
+                const iso = fromDateInputValue(e.target.value, item.exif?.dateTaken);
+                store.updateItem(item.localId, { exif: { ...(item.exif || {}), dateTaken: iso } });
+              }}
+              aria-label={t("dateTaken")}
+              style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: "#403B36", boxSizing: "border-box", cursor: "pointer" }}
+            />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.625rem" }}>
             <div>

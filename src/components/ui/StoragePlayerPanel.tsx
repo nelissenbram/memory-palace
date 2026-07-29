@@ -19,6 +19,33 @@ const TYPE_KEY_MAP: Record<string, string> = {
 };
 
 /**
+ * Dark-surface engraved illustration for the Storage empty state — mirrors the
+ * light LibraryEmptyState EngravedScene (fine strokes + a single gilt spark),
+ * but tuned for the warm-ink scrim: cream-tinted lines on transparent, so it
+ * reads as a quiet engraving rather than a flat emoji.
+ */
+function EngravedCrate() {
+  const LINE = "rgba(252,250,245,0.34)"; // cream at engraving weight
+  const FILL = "rgba(252,250,245,0.05)";
+  const GILT = "#D4AF37";
+  return (
+    <svg width="88" height="72" viewBox="0 0 88 72" fill="none" aria-hidden="true" style={{ display: "block" }}>
+      {/* ground shadow rules */}
+      <path d="M8 62h72M14 67h60" stroke={LINE} strokeWidth="0.75" opacity="0.6" />
+      {/* open crate body */}
+      <path d="M24 26l20-6 20 6v26l-20 6-20-6z" fill={FILL} stroke={LINE} strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M24 26l20 6 20-6M44 32v32" stroke={LINE} strokeWidth="1.2" strokeLinejoin="round" />
+      {/* crate slats */}
+      <path d="M30 30v26M58 30v26" stroke={LINE} strokeWidth="0.9" opacity="0.7" />
+      {/* lid ajar */}
+      <path d="M20 20l24-8 24 8-8 4-16-5-16 5z" fill={FILL} stroke={LINE} strokeWidth="1.2" strokeLinejoin="round" />
+      {/* gilt spark */}
+      <path d="M68 12l1.4 3.6L73 17l-3.6 1.4L68 22l-1.4-3.6L63 17l3.6-1.4z" fill={GILT} opacity="0.9" />
+    </svg>
+  );
+}
+
+/**
  * Storage Room — a simple media player overlay for unallocated memories.
  * Shows all memories in the "at1" room (storage) as a scrollable list with inline playback.
  */
@@ -101,12 +128,28 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
       }}>
         {mems.length === 0 ? (
           <div style={{
-            textAlign: "center", padding: "3.75rem 1.25rem", color: "rgba(252,250,245,0.72)", /* Atrium token: keystone secondary */
-            fontFamily: T.font.body, fontSize: "0.9375rem",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            textAlign: "center", padding: "3.75rem 1.25rem", gap: "0.85rem",
           }}>
-            <p style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>{"\u{1F4E6}"}</p>
-            <p>{t("empty")}</p>
-            <p style={{ fontSize: "0.8125rem", marginTop: "0.5rem", color: "rgba(252,250,245,0.55)" }}>
+            <div style={{ marginBottom: "0.35rem" }}>
+              <EngravedCrate />
+            </div>
+            <span style={{
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+              letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(252,250,245,0.55)",
+            }}>
+              {t("emptyOverline")}
+            </span>
+            <p style={{
+              fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, lineHeight: 1.15,
+              color: "#FCFAF5", margin: 0,
+            }}>
+              {t("empty")}
+            </p>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: "rgba(252,250,245,0.72)",
+              margin: 0, maxWidth: "24rem", lineHeight: 1.4,
+            }}>
               {t("emptyDescription")}
             </p>
           </div>

@@ -175,7 +175,13 @@
     "agreeTerms": "Al crear una cuenta, aceptas nuestros",
     "and": "y",
     "ageConfirm": "Confirmo que tengo al menos 16 años",
-    "ageRequiredForSocial": "Por favor, confirma que tienes al menos 16 años antes de registrarte."
+    "ageRequiredForSocial": "Por favor, confirma que tienes al menos 16 años antes de registrarte.",
+    "didntGetEmail": "¿No recibiste el correo? Revisa tu carpeta de spam o vuelve a enviarlo.",
+    "resendConfirmation": "Reenviar correo de confirmación",
+    "resending": "Reenviando…",
+    "resendCooldown": "Podrás reenviar en {seconds}s",
+    "resendSent": "Correo de confirmación reenviado. Puede tardar un minuto en llegar.",
+    "resendError": "No se pudo reenviar ahora. Inténtalo de nuevo en un momento."
   },
   "forgotPassword": {
     "title": "Restablecer Contraseña",
@@ -917,7 +923,10 @@
     "loadError": "No se pudieron cargar los datos familiares. Por favor, inténtalo de nuevo.",
     "loadWingSharesError": "No se pudieron cargar las alas compartidas. Por favor, inténtalo de nuevo.",
     "noActiveMembers": "Aún no hay miembros activos. Envía una invitación para empezar.",
-    "inviteInvalidEmail": "Por favor, introduce una dirección de correo electrónico válida."
+    "inviteInvalidEmail": "Por favor, introduce una dirección de correo electrónico válida.",
+    "unknownWing": "Ala",
+    "resendFailed": "No se pudo reenviar la invitacion. Intentalo de nuevo.",
+    "resendFailedLost": "No se pudo reenviar la invitacion. Vuelve a invitar a esta persona."
   },
   "legacySettings": {
     "title": "Tu legado",
@@ -1935,7 +1944,13 @@
     "shareLoading": "Preparando tu enlace para compartir…",
     "viewModeLabel": "Modo de vista del árbol",
     "sharedTreeEmptyTitle": "Este árbol está vacío",
-    "sharedTreeEmpty": "Todavía no hay personas en este árbol genealógico."
+    "sharedTreeEmpty": "Todavía no hay personas en este árbol genealógico.",
+    "gedcomSiblingWarning": "Las relaciones de hermanos, medio hermanos y padrastros no se guardan en archivos GEDCOM: se reconstruyen a partir de los progenitores compartidos.",
+    "stepThroughPeople": "Recorrer personas",
+    "stepPrevPerson": "Persona anterior",
+    "stepNextPerson": "Persona siguiente",
+    "stepOpenPerson": "Abrir",
+    "stepStart": "Explorar"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -2363,7 +2378,8 @@
     "status_rejected": "Rechazado",
     "status_committed": "Guardado",
     "status_error": "Error",
-    "readError": "Error de lectura"
+    "readError": "Error de lectura",
+    "dateTaken": "Fecha de captura"
   },
   "memoryDetail": {
     "panelTitle": "Detalles del recuerdo",
@@ -3580,7 +3596,8 @@
     "skip": "Omitir",
     "next": "Siguiente",
     "done": "Entendido",
-    "stepXofY": "Paso {current} de {total}"
+    "stepXofY": "Paso {current} de {total}",
+    "advanceHint": "Continuar el recorrido"
   },
   "entranceHallTour": {
     "stepTitle": "Navegación manual",
@@ -3663,7 +3680,8 @@
     "typePhoto": "foto",
     "typePainting": "cuadro",
     "typeDocument": "documento",
-    "typeStory": "historia"
+    "typeStory": "historia",
+    "emptyOverline": "Aún no hay nada guardado"
   },
   "timeCapsule": {
     "resolutionReminder": "Recordatorio de propósitos",
@@ -3754,7 +3772,9 @@
     "cookiePrefToggleLabel": "Activar o desactivar cookies no esenciales",
     "sectionSignInAccess": "Inicio de sesión y acceso",
     "sectionPrivacyData": "Privacidad y tus datos",
-    "sectionDangerZone": "Zona de peligro"
+    "sectionDangerZone": "Zona de peligro",
+    "passwordResetSocialOnly": "Esta cuenta inicia sesión con un proveedor social, así que no hay contraseña que restablecer. La próxima vez, simplemente inicia sesión con ese proveedor.",
+    "passwordResetUnavailable": "El restablecimiento de contraseña no está disponible en este entorno."
   },
   "cookieSettings": {
     "pageTitle": "Preferencias de cookies",
@@ -4440,7 +4460,8 @@
     "tileType_document": "Documento",
     "tileType_memory": "Recuerdo",
     "tileSelected": "Seleccionado",
-    "memoryCountOne": "{count} recuerdo"
+    "memoryCountOne": "{count} recuerdo",
+    "tileMovable": "Movible: usa el modo de selección para mover a una sala"
   },
   "atrium": {
     "goodMorning": "Buenos días",
@@ -5125,7 +5146,10 @@
     "routePartialError": "Algunas capturas no se pudieron enrutar y siguen pendientes.",
     "retry": "Reintentar",
     "wizardCreateError": "No pudimos crear tu Kep. Comprueba tu conexión e inténtalo de nuevo.",
-    "wizardStep3DescRouting": "Deja que la IA archive cada recuerdo en la sala correcta automáticamente."
+    "wizardStep3DescRouting": "Deja que la IA archive cada recuerdo en la sala correcta automáticamente.",
+    "wizardPhotosNotLinkedTitle": "Conecta Google Fotos primero",
+    "wizardPhotosNotLinkedDesc": "Un Kep de fotos necesita una cuenta de Google Fotos vinculada para obtener recuerdos. Conecta una y luego vuelve para terminar la configuración.",
+    "wizardPhotosConnectCta": "Conectar Google Fotos"
   },
   "kepLanding": {
     "title": "Conoce a Kep",
@@ -5450,7 +5474,10 @@
     "wingLabelSingularCap": "Ala",
     "wingsLabelCap": "Alas",
     "guestbookSendError": "No se pudo enviar tu mensaje. Inténtalo de nuevo.",
-    "commentFailed": "No se pudo publicar tu mensaje."
+    "commentFailed": "No se pudo publicar tu mensaje.",
+    "totalWingVisits": "Visitas de alas",
+    "publishNoChanges": "No hay cambios que publicar: tu selección ya coincide con lo compartido.",
+    "guestReactPrompt": "Inicia sesión para reaccionar"
   },
   "help": {
     "title": "Centro de ayuda",
@@ -5627,7 +5654,8 @@
       "mapVignette": "Recuerdos fijados en un mapa",
       "menu": "Menú",
       "mainNav": "Principal",
-      "language": "Idioma"
+      "language": "Idioma",
+      "tapToPlay": "Reproducir vídeo"
     },
     "usps": {
       "eyebrow": "Qué puedes hacer",

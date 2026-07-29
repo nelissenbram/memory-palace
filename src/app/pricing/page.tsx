@@ -42,6 +42,20 @@ export default function PricingPage() {
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("pricing");
 
+  // Honour the OS "reduce motion" preference for the hover/active scale and the
+  // colour/transform transitions on the toggle, CTAs and highlighted card.
+  // Inline-only (canon forbids @media in styles): read the media query in JS and
+  // fall back to transition:'none' / no scale when the user asks for less motion.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduceMotion(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
+
   // Auto-detect currency from timezone/locale
   useEffect(() => {
     setCurrency(detectCurrency());
@@ -165,6 +179,11 @@ export default function PricingPage() {
     { q: t("faq3q"), a: t("faq3a") },
   ];
 
+  // When the user prefers reduced motion, drop every colour/scale transition to
+  // "none" and skip the highlighted-card scale-up.
+  const trans = (value: string) => (reduceMotion ? "none" : value);
+  const highlightScale = reduceMotion ? undefined : "scale(1.03)";
+
   return (
     <div
       style={{
@@ -195,7 +214,7 @@ export default function PricingPage() {
             width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
             border: `1px solid ${HAIRLINE_BORDER}`,
             background: "none", color: C.walnut, textDecoration: "none",
-            transition: "border-color 0.2s",
+            transition: trans("border-color 0.2s"),
           }}>
             <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -232,7 +251,7 @@ export default function PricingPage() {
             background: "none", border: `1px solid ${HAIRLINE_BORDER}`, borderRadius: "0.375rem",
             padding: "0.5rem 0.625rem", minHeight: "2.75rem", fontSize: "1rem", fontFamily: F.body,
             fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
-            textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
+            textTransform: "uppercase", transition: trans("border-color 0.2s, color 0.2s"),
             appearance: "none", WebkitAppearance: "none", paddingRight: "1.5rem",
             backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
             backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center",
@@ -358,7 +377,7 @@ export default function PricingPage() {
               fontSize: 14,
               fontWeight: 600,
               cursor: "pointer",
-              transition: "all 0.2s",
+              transition: trans("all 0.2s"),
             }}
           >
             {/* i18n: "monthly" */}
@@ -381,7 +400,7 @@ export default function PricingPage() {
               fontSize: 14,
               fontWeight: 600,
               cursor: "pointer",
-              transition: "all 0.2s",
+              transition: trans("all 0.2s"),
               display: "flex",
               alignItems: "center",
               gap: 8,
@@ -424,7 +443,7 @@ export default function PricingPage() {
             color: C.walnut,
             cursor: "pointer",
             letterSpacing: "0.5px",
-            transition: "border-color 0.2s, color 0.2s",
+            transition: trans("border-color 0.2s, color 0.2s"),
             appearance: "none",
             WebkitAppearance: "none",
             backgroundImage:
@@ -602,7 +621,7 @@ export default function PricingPage() {
                   boxShadow: isHighlighted
                     ? "0 0.5rem 1.5rem rgba(64,59,54,0.14)"
                     : "0 0.25rem 1rem rgba(64,59,54,0.07)",
-                  transform: isHighlighted && !isSmall && !isCompact ? "scale(1.03)" : undefined,
+                  transform: isHighlighted && !isSmall && !isCompact ? highlightScale : undefined,
                 }}
               >
                 {/* Badge */}
@@ -736,7 +755,7 @@ export default function PricingPage() {
                     fontSize: 16,
                     fontWeight: 600,
                     cursor: loading ? "wait" : (isApple && !isFree && !iapReady ? "default" : "pointer"),
-                    transition: "all 0.2s",
+                    transition: trans("all 0.2s"),
                     opacity: (loading && loading !== planId) || (isApple && !isFree && !iapReady) ? 0.6 : 1,
                     marginBottom: 28,
                   }}

@@ -11,6 +11,7 @@ import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import { RoomIcon, WingIcon } from "@/components/ui/WingRoomIcons";
+import { TypeIcon } from "@/lib/constants/type-icons";
 import RoomMediaPlayer from "@/components/ui/RoomMediaPlayer";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -63,13 +64,16 @@ interface Props {
 }
 
 // ─── Furniture slots for the Room Gallery ─────────────────────────────────────
+// Each furniture slot maps to a type from the shared stroke-SVG TypeIcon set
+// (src/lib/constants/type-icons.ts) so the gallery speaks the same custom-icon
+// language as the Library \u2014 no raw emoji. iconType is the TypeIcon glyph key.
 const FURNITURE_SLOTS = [
-  { key: "painting", unitKey: "painting", slotType: "painting", compatTypes: ["photo", "painting"], icon: "\uD83D\uDDBC\uFE0F" },
-  { key: "frame", unitKey: "frame", slotType: "frame", compatTypes: ["photo"], icon: "\uD83D\uDDBC" },
-  { key: "screen", unitKey: "screen", slotType: "video", compatTypes: ["video"], icon: "\uD83D\uDCFA" },
-  { key: "vinyl", unitKey: "vinyl", slotType: "audio", compatTypes: ["audio", "voice", "interview"], icon: "\uD83C\uDFB5" },
-  { key: "vitrine", unitKey: "vitrine", slotType: "case", compatTypes: ["photo", "case", "orb"], icon: "\uD83C\uDFDB\uFE0F" },
-  { key: "album", unitKey: "album", slotType: "album", compatTypes: ["photo", "album"], icon: "\uD83D\uDCD4" },
+  { key: "painting", unitKey: "painting", slotType: "painting", compatTypes: ["photo", "painting"], iconType: "painting" },
+  { key: "frame", unitKey: "frame", slotType: "frame", compatTypes: ["photo"], iconType: "photo" },
+  { key: "screen", unitKey: "screen", slotType: "video", compatTypes: ["video"], iconType: "video" },
+  { key: "vinyl", unitKey: "vinyl", slotType: "audio", compatTypes: ["audio", "voice", "interview"], iconType: "audio" },
+  { key: "vitrine", unitKey: "vitrine", slotType: "case", compatTypes: ["photo", "case", "orb"], iconType: "case" },
+  { key: "album", unitKey: "album", slotType: "album", compatTypes: ["photo", "album"], iconType: "album" },
 ] as const;
 
 // ─── Eye icons (SVG) ────────────────────────────────────────────────────────
@@ -465,11 +469,11 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
     if (isExhibition) {
       // Exhibition: only paintings (20 slots) + screen (1 slot)
       return [
-        { key: "painting", unitKey: "painting", slotType: "painting", compatTypes: ["photo", "painting"] as readonly string[], icon: "\uD83D\uDDBC\uFE0F" },
-        { key: "screen", unitKey: "screen", slotType: "video", compatTypes: ["video"] as readonly string[], icon: "\uD83D\uDCFA" },
+        { key: "painting", unitKey: "painting", slotType: "painting", compatTypes: ["photo", "painting"] as readonly string[], iconType: "painting" },
+        { key: "screen", unitKey: "screen", slotType: "video", compatTypes: ["video"] as readonly string[], iconType: "video" },
       ];
     }
-    return FURNITURE_SLOTS as unknown as { key: string; unitKey: string; slotType: string; compatTypes: readonly string[]; icon: string }[];
+    return FURNITURE_SLOTS as unknown as { key: string; unitKey: string; slotType: string; compatTypes: readonly string[]; iconType: string }[];
   }, [isExhibition]);
 
   const activeSlotCounts = useMemo<Record<string, number>>(() => {
@@ -1093,12 +1097,12 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
           }}>
             {(() => {
               // For exhibition mode, expand painting into 20 individual slots + 1 screen
-              const galleryItems: { key: string; unitKey: string; slotType: string; compatTypes: readonly string[]; icon: string; slotIdx: number }[] = [];
+              const galleryItems: { key: string; unitKey: string; slotType: string; compatTypes: readonly string[]; iconType: string; slotIdx: number }[] = [];
               if (isExhibition) {
                 for (let i = 0; i < 20; i++) {
-                  galleryItems.push({ key: `painting-${i}`, unitKey: "painting", slotType: "painting", compatTypes: ["photo", "painting"], icon: "\uD83D\uDDBC\uFE0F", slotIdx: i });
+                  galleryItems.push({ key: `painting-${i}`, unitKey: "painting", slotType: "painting", compatTypes: ["photo", "painting"], iconType: "painting", slotIdx: i });
                 }
-                galleryItems.push({ key: "screen-0", unitKey: "screen", slotType: "video", compatTypes: ["video"], icon: "\uD83D\uDCFA", slotIdx: 0 });
+                galleryItems.push({ key: "screen-0", unitKey: "screen", slotType: "video", compatTypes: ["video"], iconType: "video", slotIdx: 0 });
               } else {
                 for (const slot of activeFurnitureSlots) {
                   galleryItems.push({ ...slot, slotIdx: 0 });
@@ -1181,12 +1185,17 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                         : `linear-gradient(135deg, ${accent}35, ${accent}15)`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    {/* Show icon for video/audio without thumbnail */}
+                    {/* Show slot glyph (shared stroke-SVG set, wing-accent tinted) for
+                        video/audio without thumbnail, or for an empty slot */}
                     {firstMem && !thumbSrc && (
-                      <span style={{ fontSize: "1.75rem", opacity: 0.6 }}>{slot.icon}</span>
+                      <span style={{ opacity: 0.65, display: "flex" }}>
+                        <TypeIcon type={slot.iconType} size={30} color={accent} />
+                      </span>
                     )}
                     {!firstMem && (
-                      <span style={{ fontSize: "1.75rem", opacity: 0.5 }}>{slot.icon}</span>
+                      <span style={{ opacity: 0.45, display: "flex" }}>
+                        <TypeIcon type={slot.iconType} size={30} color={accent} />
+                      </span>
                     )}
                     {firstMem && (
                       <span
@@ -1240,7 +1249,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
             // Exhibition slots have keys like "painting-5", "screen-0"; parse them
             const exhibitionMatch = isExhibition ? pickingSlot.match(/^(painting|screen)-(\d+)$/) : null;
             const slot = exhibitionMatch
-              ? { key: pickingSlot, unitKey: exhibitionMatch[1], slotType: exhibitionMatch[1] === "painting" ? "painting" : "video", compatTypes: exhibitionMatch[1] === "painting" ? ["photo", "painting"] : ["video"], icon: exhibitionMatch[1] === "painting" ? "\uD83D\uDDBC\uFE0F" : "\uD83D\uDCFA", slotIdx: parseInt(exhibitionMatch[2]) }
+              ? { key: pickingSlot, unitKey: exhibitionMatch[1], slotType: exhibitionMatch[1] === "painting" ? "painting" : "video", compatTypes: exhibitionMatch[1] === "painting" ? ["photo", "painting"] : ["video"], iconType: exhibitionMatch[1] === "painting" ? "painting" : "video", slotIdx: parseInt(exhibitionMatch[2]) }
               : activeFurnitureSlots.find(s => s.key === pickingSlot);
             if (!slot) return null;
             const compatible = mems.filter(m => m.dataUrl && slot.compatTypes.includes(m.type));

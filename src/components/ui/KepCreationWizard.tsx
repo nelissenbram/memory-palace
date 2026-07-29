@@ -16,6 +16,10 @@ export function KepCreationWizard() {
   const { createKep, isCreating, error, clearError } = useKepStore();
   const [step, setStep] = useState(0);
   const [data, setData] = useState<WizardData>(INITIAL_WIZARD_DATA);
+  // Google Photos link status: null while loading, boolean once known. A photos
+  // Kep can't route anywhere without a linked Google Photos account, so we gate
+  // the configure step on it and steer to /settings/connections instead.
+  const [photosLinked, setPhotosLinked] = useState<boolean | null>(null);
   const stepRef = useRef<HTMLDivElement>(null);
 
   // Move focus to the step region on change so keyboard/SR users are told
@@ -24,8 +28,28 @@ export function KepCreationWizard() {
     stepRef.current?.focus();
   }, [step]);
 
+  // Load connected-accounts once so we know if Google Photos is available.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/integrations/accounts");
+        if (!res.ok) { if (alive) setPhotosLinked(false); return; }
+        const json = await res.json();
+        const linked = Array.isArray(json.accounts)
+          && json.accounts.some((a: { provider?: string }) => a.provider === "google_photos");
+        if (alive) setPhotosLinked(linked);
+      } catch {
+        if (alive) setPhotosLinked(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
   const currentStep = WIZARD_STEPS[step];
-  const canProceed = currentStep.isValid(data);
+  // Photos Kep with no linked Google Photos account can't proceed past configure.
+  const photosBlocked = data.source_type === "photos" && photosLinked === false;
+  const canProceed = currentStep.isValid(data) && !(step === 1 && photosBlocked);
 
   const handleNext = () => {
     if (step < WIZARD_STEPS.length - 1) setStep(step + 1);
@@ -69,7 +93,7 @@ export function KepCreationWizard() {
       {/* Step content */}
       <div ref={stepRef} tabIndex={-1} aria-live="polite" style={{ outline: "none" }}>
         {step === 0 && <StepSource data={data} update={update} t={t} />}
-        {step === 1 && <StepConfigure data={data} update={update} t={t} />}
+        {step === 1 && <StepConfigure data={data} update={update} t={t} photosLinked={photosLinked} router={router} />}
         {step === 2 && <StepRouting data={data} update={update} t={t} />}
         {step === 3 && <StepReview data={data} t={t} />}
       </div>
@@ -209,11 +233,46 @@ function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial
   );
 }
 
-function StepConfigure({ data, update, t }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string }) {
+function StepConfigure({ data, update, t, photosLinked, router }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string; photosLinked: boolean | null; router: ReturnType<typeof useRouter> }) {
+  const showConnectCta = data.source_type === "photos" && photosLinked === false;
   return (
     <div>
       <h2 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", marginBottom: "0.25rem" }}>{t("wizardStep2")}</h2>
       <p style={{ fontFamily: T.font.body, color: "#716A5E", fontSize: "0.9375rem", lineHeight: 1.4, marginBottom: "1.25rem" }}>{t("wizardStep2Desc")}</p>
+
+      {/* Google Photos not linked — a photos Kep has nothing to pull from, so
+          block progress and route the user to connect the account first. */}
+      {showConnectCta && (
+        <div
+          role="alert"
+          style={{
+            display: "flex", alignItems: "flex-start", gap: "0.75rem",
+            background: "rgba(184,92,56,0.08)",
+            border: "0.0625rem solid #E3D6BC",
+            borderRadius: "0.75rem",
+            padding: "0.875rem 1rem",
+            marginBottom: "1.25rem",
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: "1.25rem", lineHeight: 1.2, marginTop: "0.0625rem" }}>{"📸"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: T.font.body, fontWeight: 600, fontSize: "0.9375rem", color: "#403B36", marginBottom: "0.1875rem" }}>{t("wizardPhotosNotLinkedTitle")}</div>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", lineHeight: 1.45, color: "#716A5E", margin: "0 0 0.625rem" }}>{t("wizardPhotosNotLinkedDesc")}</p>
+            <button
+              onClick={() => router.push("/settings/connections")}
+              style={{
+                display: "inline-flex", alignItems: "center",
+                padding: "0.4375rem 0.875rem", borderRadius: "0.75rem",
+                background: "#B85C38", color: "#FCFAF5", border: "none",
+                cursor: "pointer", fontFamily: T.font.body, fontWeight: 600,
+                fontSize: "0.8125rem", minHeight: "2.75rem",
+              }}
+            >
+              {t("wizardPhotosConnectCta")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Name */}
       <div style={{ marginBottom: "1rem" }}>

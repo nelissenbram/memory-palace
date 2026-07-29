@@ -19,9 +19,20 @@ interface LegacyContact {
   contact_email: string;
   relationship: string;
   access_level: string;
-  accessible_wings: string[];
-  accessible_rooms: string[];
+  // track-actions persists these columns…
+  accessible_wings?: string[];
+  accessible_rooms?: string[];
+  // …while the settings/legacy page uses these. Read from whichever is present
+  // so a contact created in either surface renders its wings here.
+  wing_access?: string[];
+  room_access?: string[];
 }
+
+// Wings for a contact, tolerant of both column vocabularies.
+const contactWings = (c: LegacyContact): string[] =>
+  (c.accessible_wings && c.accessible_wings.length > 0
+    ? c.accessible_wings
+    : c.wing_access) || [];
 
 interface LegacyPanelProps {
   onClose: () => void;
@@ -43,10 +54,21 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
     { id: "other", label: t("relOther") },
   ];
 
+  // Access-level vocabulary is shared with the settings/legacy page so a
+  // contact created here shows the correct label there (and vice-versa).
+  // "wings_only" is the canonical enum; older rows may carry the legacy
+  // "selected_wings" value, which we normalise on read (normalizeAccessLevel).
   const ACCESS_LEVELS = [
     { id: "full", label: t("accessFull"), desc: t("accessFullDesc") },
-    { id: "selected_wings", label: t("accessWings"), desc: t("accessWingsDesc") },
+    { id: "wings_only", label: t("accessWings"), desc: t("accessWingsDesc") },
   ];
+
+  // Map any historical / cross-surface access_level onto this panel's vocabulary.
+  const normalizeAccessLevel = (level: string | undefined): string => {
+    if (level === "selected_wings" || level === "wings_only") return "wings_only";
+    if (level === "specific_rooms") return "wings_only"; // panel has no room picker; surface as wing-scoped
+    return "full";
+  };
   const [contacts, setContacts] = useState<LegacyContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -92,7 +114,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
       contactEmail: formEmail.trim(),
       relationship: formRelationship,
       accessLevel: formAccessLevel,
-      accessibleWings: formAccessLevel === "selected_wings" ? formWings : [],
+      accessibleWings: formAccessLevel === "wings_only" ? formWings : [],
     });
     if (!result.error) {
       await loadContacts();
@@ -108,7 +130,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
       contactEmail: formEmail.trim(),
       relationship: formRelationship,
       accessLevel: formAccessLevel,
-      accessibleWings: formAccessLevel === "selected_wings" ? formWings : [],
+      accessibleWings: formAccessLevel === "wings_only" ? formWings : [],
     });
     await loadContacts();
     resetForm();
@@ -124,8 +146,8 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
     setFormName(contact.contact_name);
     setFormEmail(contact.contact_email);
     setFormRelationship(contact.relationship || "spouse");
-    setFormAccessLevel(contact.access_level || "full");
-    setFormWings(contact.accessible_wings || []);
+    setFormAccessLevel(normalizeAccessLevel(contact.access_level));
+    setFormWings(contactWings(contact));
     setEditingId(contact.id);
     setShowAddForm(true);
   };
@@ -258,8 +280,8 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                       borderRadius: "2rem", background: "#EFF2E8", border: "0.0625rem solid #DFE3D2", // Atrium sage tray + hairline
                       color: "#56683C", // Atrium sage
                     }}>
-                      {contact.access_level === "full" ? t("fullAccess") :
-                       t("wingsAccess", { count: String((contact.accessible_wings || []).length) })}
+                      {normalizeAccessLevel(contact.access_level) === "full" ? t("fullAccess") :
+                       t("wingsAccess", { count: String(contactWings(contact).length) })}
                     </span>
                   </div>
                 </div>
@@ -408,7 +430,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               </div>
 
               {/* Wing picker */}
-              {formAccessLevel === "selected_wings" && (
+              {formAccessLevel === "wings_only" && (
                 <div style={{ marginBottom: "0.875rem" }}>
                   <label id="legacy-panel-wings-label" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                     {t("selectWings")}

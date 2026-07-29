@@ -135,6 +135,11 @@ export default function CorridorTutorial({ open, onClose }: Props) {
     tipLeft = Math.max(16, Math.min(vw - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2));
   }
 
+  const advance = () => {
+    if (step >= totalSteps - 1) onClose();
+    else setStep(step + 1);
+  };
+
   const overlay = (
     <div
       role="dialog"
@@ -173,6 +178,24 @@ export default function CorridorTutorial({ open, onClose }: Props) {
               animation: "mpCtPulse 2s ease-in-out infinite",
               pointerEvents: "none",
               boxSizing: "border-box",
+            }}
+          />
+          {/* Tapping the highlighted control advances the tour (feels interactive,
+              rather than dismissing). We don't punch pointer-events through to the
+              real control to avoid double-duty taps on the joystick mid-tour. */}
+          <button
+            type="button"
+            aria-label={t("advanceHint")}
+            onClick={(e) => { e.stopPropagation(); advance(); }}
+            style={{
+              position: "absolute",
+              top: t_, left: l_, width: w_, height: h_,
+              minWidth: T.touch, minHeight: T.touch,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              borderRadius: `${rRem}rem`,
             }}
           />
         </>
@@ -262,11 +285,7 @@ export default function CorridorTutorial({ open, onClose }: Props) {
               <button
                 ref={nextRef}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (step >= totalSteps - 1) onClose();
-                  else setStep(step + 1);
-                }}
+                onClick={(e) => { e.stopPropagation(); advance(); }}
                 style={{
                   fontFamily: T.font.body, fontSize: RT.overline, fontWeight: 600,
                   color: "#FFF",

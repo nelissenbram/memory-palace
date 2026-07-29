@@ -18,7 +18,21 @@ import NotificationBell from "@/components/ui/NotificationBell";
 import type { Crumb } from "@/lib/hooks/useNavigation";
 import { locales, type Locale } from "@/i18n/config";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
-import { translateWingName, translateRoomName } from "@/lib/constants/wings";
+import { translateWingName, translateRoomName, WINGS } from "@/lib/constants/wings";
+
+/**
+ * Resolve a shared wing's display name. Shares carry only a wingId slug; when
+ * that slug matches a canonical wing (roots / nest / craft / …) we render its
+ * localized name via translateWingName so shared wings read the same as your
+ * own — never a raw lowercase slug. Custom-named wings (no canonical match)
+ * fall back to a title-cased slug until a real name is threaded through the
+ * shares fetch layer.
+ */
+function resolveSharedWingName(wingId: string, tWings: (k: string) => string): string {
+  const canon = WINGS.find((w) => w.id === wingId);
+  if (canon) return translateWingName(canon, tWings);
+  return wingId.charAt(0).toUpperCase() + wingId.slice(1);
+}
 
 function formatDaylightHour(h: number): string {
   const hr = Math.floor(h) % 24;
@@ -236,7 +250,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                       </span>
                     </div>
                     {sharedWings.map(sw => {
-                      const wingName = sw.wingId.charAt(0).toUpperCase() + sw.wingId.slice(1);
+                      const wingName = resolveSharedWingName(sw.wingId, tWings);
                       return (
                         <button key={sw.shareId} onClick={() => { onNavigateSharedWing?.(sw.shareId, sw.wingId); setMenuOpen(false); }} style={{
                           padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
@@ -1064,7 +1078,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                       >
                         <span style={{ fontSize: "0.9375rem" }}>{"\u{1F91D}"}</span>
                         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {sw.wingId.charAt(0).toUpperCase() + sw.wingId.slice(1)}
+                          {resolveSharedWingName(sw.wingId, tWings)}
                         </span>
                         <span style={{ fontSize: "0.5625rem", color: T.color.sandstone, fontWeight: 500 }}>
                           {sw.ownerName}

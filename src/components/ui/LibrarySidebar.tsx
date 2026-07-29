@@ -10,7 +10,7 @@ import TuscanCard from "./TuscanCard";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
 import { isIOS } from "@/lib/native/platform";
-import { CREAM, HAIRLINE, SHADOW, TOP_HIGHLIGHT, giltRule, EMBER } from "@/lib/libraryTokens";
+import { CREAM, HAIRLINE, SHADOW, TOP_HIGHLIGHT, giltRule, EMBER, TRAY, MUTED } from "@/lib/libraryTokens";
 
 interface LibrarySidebarProps {
   wings: Wing[];
@@ -100,6 +100,13 @@ export default function LibrarySidebar({
     }
     return {};
   });
+
+  // The wing recolour is authoritative within the sidebar: a user-picked colour
+  // overrides the wing's stored accent EVERYWHERE the accent stands for wing
+  // identity (mobile pill, seal medallion, active border, count badge, room
+  // highlight, dividers) — not just the dot + chevron. Falls back to the wing's
+  // real accent when no override is set.
+  const effectiveAccent = (w: Wing) => wingColors[w.id] || w.accent;
 
   // Switching wings closes any transient open-state (colour picker / tooltip)
   // so they never linger over a different wing after selection.
@@ -200,7 +207,9 @@ export default function LibrarySidebar({
         style={{
           width: "100%",
           height: "auto",
-          background: "rgba(242,237,231,0.72)",
+          // Frosted sandstone tray, sourced from the TRAY token (was a hardcoded
+          // rgba near-match) so the mobile strip tracks the palette.
+          background: `${TRAY}B8`,
           backdropFilter: "blur(1.5rem)",
           WebkitBackdropFilter: "blur(1.5rem)",
           borderBottom: `0.0625rem solid ${HAIRLINE}`,
@@ -222,6 +231,7 @@ export default function LibrarySidebar({
         <style>{keyframes}</style>
         {visibleWings.map((w, i) => {
           const active = w.id === selectedWing;
+          const accent = effectiveAccent(w);
           return (
             <button
               key={w.id}
@@ -234,14 +244,14 @@ export default function LibrarySidebar({
                 minHeight: "2.75rem",
                 borderRadius: "1.5rem",
                 border: active
-                  ? `0.0625rem solid ${w.accent}44`
-                  : "0.0625rem solid rgba(255,255,255,0.4)",
+                  ? `0.0625rem solid ${accent}44`
+                  : `0.0625rem solid ${CREAM}66`,
                 background: active
-                  ? `linear-gradient(135deg, ${w.accent}, ${w.accent}DD)`
-                  : "rgba(255,255,255,0.55)",
+                  ? `linear-gradient(135deg, ${accent}, ${accent}DD)`
+                  : `${CREAM}8C`,
                 backdropFilter: active ? "none" : "blur(0.5rem)",
                 WebkitBackdropFilter: active ? "none" : "blur(0.5rem)",
-                color: active ? T.color.white : "#716A5E",
+                color: active ? T.color.white : MUTED,
                 cursor: "pointer",
                 fontFamily: T.font.display,
                 fontSize: "0.8125rem",
@@ -251,7 +261,7 @@ export default function LibrarySidebar({
                 flexShrink: 0,
                 transition: `all 0.3s ${EASE_OUT_EXPO}`,
                 boxShadow: active
-                  ? `0 0.25rem 0.75rem ${w.accent}40, inset 0 0.0625rem 0 rgba(255,255,255,0.15)`
+                  ? `0 0.25rem 0.75rem ${accent}40, inset 0 0.0625rem 0 rgba(255,255,255,0.15)`
                   : "0 0.0625rem 0.25rem rgba(64,59,54,0.04)",
                 transform: active ? "scale(1.05)" : "scale(1)",
                 animation: mounted
@@ -259,14 +269,14 @@ export default function LibrarySidebar({
                   : "none",
               }}
             >
-              <WingIcon wingId={w.id} size={18} color={active ? "#FFF" : w.accent} />
+              <WingIcon wingId={w.id} size={18} color={active ? "#FFF" : accent} />
               {w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings)}
               {/* Room count badge (P1 #13) */}
               {getWingRooms(w.id).length > 0 && (
                 <span style={{
                   minWidth: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
-                  background: active ? "rgba(255,255,255,0.25)" : `${w.accent}18`,
-                  color: active ? T.color.white : w.accent,
+                  background: active ? "rgba(255,255,255,0.25)" : `${accent}18`,
+                  color: active ? T.color.white : accent,
                   fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700,
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   padding: "0 0.1875rem",
@@ -490,6 +500,7 @@ export default function LibrarySidebar({
         {visibleWings.map((w, index) => {
           const active = w.id === selectedWing;
           const hovered = hoveredWing === w.id;
+          const accent = effectiveAccent(w);
           const roomCount = getWingRooms(w.id).length;
           const memCount = wingMemCount(w.id);
           const progressRatio = Math.min(memCount / PROGRESS_BASELINE, 1);
@@ -531,7 +542,7 @@ export default function LibrarySidebar({
                     : "transparent",
                 border: "none",
                 borderLeft: active
-                  ? `0.1875rem solid ${w.accent}`
+                  ? `0.1875rem solid ${accent}`
                   : "0.1875rem solid transparent",
                 cursor: "pointer",
                 textAlign: "left",
@@ -561,7 +572,7 @@ export default function LibrarySidebar({
                       width: "2.375rem",
                       height: "2.375rem",
                       borderRadius: "50%",
-                      background: `linear-gradient(135deg, ${w.accent}14, ${w.accent}22)`,
+                      background: `linear-gradient(135deg, ${accent}14, ${accent}22)`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -571,7 +582,7 @@ export default function LibrarySidebar({
                       boxShadow: `inset 0 0 0 0.0625rem #E3D6BC, inset 0 0.0625rem 0 rgba(255,255,255,0.5)${warmGlow !== "none" ? ", " + warmGlow : ""}`,
                     }}
                   >
-                    <WingIcon wingId={w.id} size={20} color={w.accent} />
+                    <WingIcon wingId={w.id} size={20} color={accent} />
                   </div>
                 );
               })()}
@@ -643,8 +654,8 @@ export default function LibrarySidebar({
                     minWidth: "1.375rem",
                     height: "1.375rem",
                     borderRadius: "0.6875rem",
-                    background: active ? `${w.accent}20` : `${"#716A5E"}15`,
-                    color: active ? w.accent : "#716A5E",
+                    background: active ? `${accent}20` : `${"#716A5E"}15`,
+                    color: active ? accent : "#716A5E",
                     fontFamily: T.font.body,
                     fontSize: "0.625rem",
                     fontWeight: 700,
@@ -664,7 +675,7 @@ export default function LibrarySidebar({
               <span
                 style={{
                   fontSize: "0.875rem",
-                  color: active ? (wingColors[w.id] || w.accent) : "#716A5E",
+                  color: active ? accent : "#716A5E",
                   opacity: hovered || active ? 1 : 0,
                   transform: hovered ? "translateX(0.125rem)" : "translateX(0)",
                   transition: `all 0.25s ${EASE_OUT_EXPO}`,
@@ -703,7 +714,7 @@ export default function LibrarySidebar({
               <span
                 style={{
                   width: "0.75rem", height: "0.75rem", borderRadius: "50%",
-                  background: wingColors[w.id] || w.accent,
+                  background: accent,
                   border: `0.0625rem solid rgba(64,59,54,0.15)`,
                   transition: `all 0.2s ${EASE_OUT_EXPO}`,
                   transform: (hovered || active) ? "scale(1.15)" : "scale(1)",
@@ -720,7 +731,7 @@ export default function LibrarySidebar({
                 animation: mounted ? `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both` : "none",
               }}>
                 {WING_COLOR_SWATCHES.map(color => {
-                  const selected = (wingColors[w.id] || w.accent) === color;
+                  const selected = accent === color;
                   return (
                   <button
                     key={color}
@@ -764,7 +775,7 @@ export default function LibrarySidebar({
                 {/* Divider between wing and rooms */}
                 <div style={{
                   height: "0.0625rem", margin: "0.25rem 1rem 0.25rem 2.25rem",
-                  background: `linear-gradient(90deg, ${w.accent}33, ${T.color.cream}22, transparent)`,
+                  background: `linear-gradient(90deg, ${accent}33, ${T.color.cream}22, transparent)`,
                 }} />
                 {/* "Rooms in {wingName}" label */}
                 <div style={{
@@ -815,7 +826,7 @@ export default function LibrarySidebar({
                       cursor: "pointer",
                       transition: `all 0.2s ${EASE_OUT_EXPO}`,
                       background: isDropTarget ? "rgba(184,92,56,0.14)" : isRoomActive ? "rgba(255,255,255,0.7)" : "transparent",
-                      borderLeft: isDropTarget ? "2px solid #B85C38" : isRoomActive ? `2px solid ${w.accent}` : "2px solid transparent",
+                      borderLeft: isDropTarget ? "2px solid #B85C38" : isRoomActive ? `2px solid ${accent}` : "2px solid transparent",
                       animation: mounted ? `lsb-wing-enter 0.3s ${EASE_OUT_EXPO} ${ri * 0.04 + 0.1}s both` : "none",
                     }}
                     onMouseEnter={e => {

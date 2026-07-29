@@ -33,6 +33,12 @@ function hexToHSL(hex: string): { h: number; s: number; l: number } {
   return { h: h * 360, s: s * 100, l: l * 100 };
 }
 
+// Serif family for the OG canvas. Georgia leads for the Latin-script brand feel,
+// but the broad system fallbacks (Times New Roman, plus the platform default
+// serif) let non-Latin locale titles — DE/FR accents, and any CJK/Cyrillic
+// characters — resolve to a font that actually has the glyphs instead of tofu.
+const OG_SERIF = "Georgia, 'Times New Roman', 'Noto Serif', 'Songti SC', serif";
+
 function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines: number): number {
   const words = text.split(" ");
   let line = "";
@@ -148,7 +154,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
       const renderText = () => {
         // Title
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "bold 46px Georgia, serif";
+        ctx.font = `bold 46px ${OG_SERIF}`;
         ctx.textBaseline = "top";
         const titleX = imgRendered ? 520 : 100;
         const titleMaxW = imgRendered ? 580 : cardW - 80;
@@ -158,14 +164,14 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
         // Description
         if (mem.desc) {
           ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-          ctx.font = "20px Georgia, serif";
+          ctx.font = `20px ${OG_SERIF}`;
           const descY = imgRendered ? 230 : 300;
           wrapText(ctx, mem.desc, titleX, descY, titleMaxW, 28, 3);
         }
 
         // Room + wing info at bottom
         ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-        ctx.font = "18px Georgia, serif";
+        ctx.font = `18px ${OG_SERIF}`;
         const parts: string[] = [];
         if (roomName) parts.push((roomIcon || "") + " " + roomName);
         if (wingName) parts.push((wingIcon || "") + " " + wingName);
@@ -173,7 +179,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
 
         // Branding
         ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-        ctx.font = "italic 16px Georgia, serif";
+        ctx.font = `italic 16px ${OG_SERIF}`;
         ctx.textAlign = "right";
         ctx.fillText(t("brandName"), W - 100, H - 90);
         ctx.textAlign = "left";
@@ -218,28 +224,28 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
     } else if (isRoom) {
       // Room card
       // Big room icon
-      ctx.font = "80px serif";
+      ctx.font = `80px ${OG_SERIF}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(roomIcon || "", W / 2, 200);
 
       // Room name
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 52px Georgia, serif";
+      ctx.font = `bold 52px ${OG_SERIF}`;
       ctx.textBaseline = "top";
       ctx.textAlign = "center";
       wrapText(ctx, roomName || "", W / 2 - 300, 270, 600, 62, 2);
 
       // Memory count
       ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
-      ctx.font = "24px Georgia, serif";
+      ctx.font = `24px ${OG_SERIF}`;
       ctx.textAlign = "center";
       ctx.fillText(t("memories", { count: String(memCount ?? 0) }), W / 2, 370);
 
       // Wing info
       if (wingName) {
         ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        ctx.font = "20px Georgia, serif";
+        ctx.font = `20px ${OG_SERIF}`;
         ctx.fillText(`${wingIcon || ""} ${t("wing", { name: wingName || "" })}`, W / 2, 420);
       }
 
@@ -247,7 +253,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
 
       // Branding
       ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-      ctx.font = "italic 16px Georgia, serif";
+      ctx.font = `italic 16px ${OG_SERIF}`;
       ctx.textAlign = "right";
       ctx.fillText(t("brandWatermark"), W - 100, H - 90);
       ctx.textAlign = "left";

@@ -259,9 +259,19 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
   return { url: publicUrl };
 }
 
-export async function requestPasswordReset() {
+export async function requestPasswordReset(): Promise<{
+  success?: boolean;
+  error?: string;
+  /** Account signs in only via a social provider (no email/password identity) —
+   *  a reset link would be useless. The page surfaces a distinct explanation. */
+  socialOnly?: boolean;
+  /** Supabase isn't configured (local/dev): no email is actually sent. */
+  notConfigured?: boolean;
+}> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { success: true };
+    // Dev / unconfigured: be honest that nothing was mailed rather than showing
+    // a false "check your inbox" success (Explore/Me revision P3 polish).
+    return { notConfigured: true };
   }
   const supabase = await createClient();
   const {
@@ -270,6 +280,17 @@ export async function requestPasswordReset() {
 
   if (!user?.email) {
     { const t = await serverError(); return { error: t("notAuthenticated") }; }
+  }
+
+  // Social-login-only accounts (Apple/Google/etc.) have no email/password
+  // identity, so resetPasswordForEmail sends a link that can't set a usable
+  // password. Detect the absence of an "email" identity and tell the user to
+  // sign in with their provider instead of silently claiming an email was sent.
+  const identities = user.identities ?? [];
+  const hasPasswordIdentity =
+    identities.length === 0 || identities.some((i) => i.provider === "email");
+  if (!hasPasswordIdentity) {
+    return { socialOnly: true };
   }
 
   const siteUrl =

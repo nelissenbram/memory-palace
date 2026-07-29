@@ -634,8 +634,6 @@ export default function HomeView() {
           : lastVisitedRoom
             ? { key: "continue", title: t("continueWhereLeft"), reason: lastVisitedRoom.name, onClick: handleContinueLastRoom }
             : { key: "record", title: t("relay.sgRecordTitle"), reason: t("relay.sgRecordReason"), onClick: () => setShowInterviewLibrary(true) };
-  // Chips retired: they duplicated board tiles (Add a memory / WhatsApp).
-  const relayChips: { key: string; label: string; onClick: () => void }[] = [];
   // Personalization returns: compact "tuned for you" summary, or the full
   // selector when no persona is set yet.
   // Style quiz: label (subtle chip) when taken; the full selector otherwise.
@@ -724,14 +722,28 @@ export default function HomeView() {
   const relayScore = { points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) };
   // Grouped by the LANDING triptych, each verb-zone its own key colour.
   // Hero-per-lane (elevation change 5): the steward leads each verb with ONE
-  // full tile — the suggested tile if it lives there, else a sensible lead.
+  // full tile. The suggestion key is NEVER the lane hero (item 5): the top
+  // steward card already carries that action with richer copy/progress, so
+  // promoting it again would show the same action twice. Each lane instead
+  // leads with a sensible default, skipping the suggested key if it collides.
   const heroFor = (laneId: string, tileKeys: string[]): string => {
-    if (tileKeys.includes(relaySuggestion.key)) return relaySuggestion.key;
-    if (laneId === "capture") return totalMemories > 0 ? "record" : "photos";
-    if (laneId === "bringtolife") return "timeline";
+    const sug = relaySuggestion.key;
+    const pick = (...prefs: string[]): string => {
+      // first preference present in the lane that isn't the suggested key
+      const nonDup = prefs.find((k) => tileKeys.includes(k) && k !== sug);
+      if (nonDup) return nonDup;
+      // else the first present-but-suggested preference (avoids empty lead),
+      // finally any non-suggested tile so a hero still leads the lane
+      return prefs.find((k) => tileKeys.includes(k))
+        ?? tileKeys.find((k) => k !== sug)
+        ?? tileKeys[0];
+    };
+    if (laneId === "capture") return pick(totalMemories > 0 ? "record" : "photos", "photos", "record", "write");
+    if (laneId === "bringtolife") return pick("timeline", "map", "family", "insights");
     // Only lead the share lane with "shared" when the tile is genuinely
     // present (loaded AND non-empty) — tileKeys already excludes hidden tiles.
-    return sharedWithMe.length > 0 && tileKeys.includes("shared") ? "shared" : "familyGroup";
+    const shareLead = sharedWithMe.length > 0 && tileKeys.includes("shared") ? "shared" : "familyGroup";
+    return pick(shareLead, "familyGroup", "cocreate", "publish");
   };
   const markHero = <Tl extends { key: string; hidden?: boolean; soon?: boolean }>(laneId: string, tiles: Tl[]): (Tl & { hero?: boolean })[] => {
     const hk = heroFor(laneId, tiles.filter((tl) => !tl.hidden && !tl.soon).map((tl) => tl.key));
@@ -876,7 +888,6 @@ export default function HomeView() {
             labels={{ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), otherJourneys: t("relay.otherJourneys"), weeksWarm: t("relay.weeksWarm"), quietKept: t("relay.quietKept") }}
             score={relayScore}
             suggestion={relaySuggestion}
-            chips={relayChips}
             personaLabel={personaLabel}
             personaQuiz={personaQuiz}
             onChangeStyle={() => setPersonaExpanded(true)}

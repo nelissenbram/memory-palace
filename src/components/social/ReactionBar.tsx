@@ -6,7 +6,7 @@ import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, SHADOW } from "@/lib/libraryT
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { ReactionSummary } from "@/lib/social/comment-actions";
-import { toggleReaction } from "@/lib/social/comment-actions";
+import { toggleReaction, getReactions } from "@/lib/social/comment-actions";
 
 const REACTION_EMOJIS = [
   { emoji: "candle", label: "Candle" },
@@ -74,6 +74,7 @@ export default function ReactionBar({
     startTransition(async () => {
       const { reacted } = await toggleReaction({ targetType, targetId, emoji });
 
+      // Optimistic update for instant feedback.
       setReactions((prev) => {
         const existing = prev.find((r) => r.emoji === emoji);
         if (existing) {
@@ -88,6 +89,16 @@ export default function ReactionBar({
       });
 
       setShowPicker(false);
+
+      // Reconcile with server truth so counts stay accurate across users.
+      // The optimistic delta above only tracks this viewer's own toggle; other
+      // users' reactions land here. Failure is non-fatal — we keep the optimistic value.
+      try {
+        const fresh = await getReactions(targetType, targetId);
+        setReactions(fresh);
+      } catch {
+        // Network hiccup: leave the optimistic state in place.
+      }
     });
   };
 

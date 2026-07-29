@@ -175,7 +175,13 @@
     "agreeTerms": "En créant un compte, vous acceptez nos",
     "and": "et",
     "ageConfirm": "Je confirme avoir au moins 16 ans",
-    "ageRequiredForSocial": "Veuillez confirmer que vous avez au moins 16 ans avant de vous inscrire."
+    "ageRequiredForSocial": "Veuillez confirmer que vous avez au moins 16 ans avant de vous inscrire.",
+    "didntGetEmail": "Vous n'avez pas reçu l'e-mail ? Vérifiez vos spams ou renvoyez-le.",
+    "resendConfirmation": "Renvoyer l'e-mail de confirmation",
+    "resending": "Renvoi en cours…",
+    "resendCooldown": "Nouvel envoi possible dans {seconds}s",
+    "resendSent": "E-mail de confirmation renvoyé. Il peut mettre une minute à arriver.",
+    "resendError": "Impossible de renvoyer pour le moment. Réessayez dans un instant."
   },
   "forgotPassword": {
     "title": "Réinitialiser le Mot de Passe",
@@ -917,7 +923,10 @@
     "loadError": "Impossible de charger les donnees familiales. Veuillez reessayer.",
     "loadWingSharesError": "Impossible de charger les partages d'ailes. Veuillez reessayer.",
     "noActiveMembers": "Aucun membre actif pour l'instant. Envoyez une invitation pour commencer.",
-    "inviteInvalidEmail": "Veuillez entrer une adresse e-mail valide."
+    "inviteInvalidEmail": "Veuillez entrer une adresse e-mail valide.",
+    "unknownWing": "Aile",
+    "resendFailed": "Impossible de renvoyer l'invitation. Veuillez reessayer.",
+    "resendFailedLost": "L'invitation n'a pas pu etre renvoyee. Veuillez inviter cette personne a nouveau."
   },
   "legacySettings": {
     "title": "Votre heritage",
@@ -1935,7 +1944,13 @@
     "shareLoading": "Préparation de votre lien de partage…",
     "viewModeLabel": "Mode d'affichage de l'arbre",
     "sharedTreeEmptyTitle": "Cet arbre est vide",
-    "sharedTreeEmpty": "Il n'y a encore personne dans cet arbre généalogique."
+    "sharedTreeEmpty": "Il n'y a encore personne dans cet arbre généalogique.",
+    "gedcomSiblingWarning": "Les relations de frères et sœurs, demi-frères et sœurs et beaux-parents ne sont pas enregistrées dans les fichiers GEDCOM — elles sont reconstruites à partir des parents communs.",
+    "stepThroughPeople": "Parcourir les personnes",
+    "stepPrevPerson": "Personne précédente",
+    "stepNextPerson": "Personne suivante",
+    "stepOpenPerson": "Ouvrir",
+    "stepStart": "Parcourir"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -2363,7 +2378,8 @@
     "status_rejected": "Rejeté",
     "status_committed": "Enregistré",
     "status_error": "Erreur",
-    "readError": "Erreur de lecture"
+    "readError": "Erreur de lecture",
+    "dateTaken": "Date de prise"
   },
   "memoryDetail": {
     "panelTitle": "Détails du souvenir",
@@ -3580,7 +3596,8 @@
     "skip": "Passer",
     "next": "Suivant",
     "done": "Compris",
-    "stepXofY": "Étape {current} sur {total}"
+    "stepXofY": "Étape {current} sur {total}",
+    "advanceHint": "Continuer la visite"
   },
   "entranceHallTour": {
     "stepTitle": "Navigation manuelle",
@@ -3663,7 +3680,8 @@
     "typePhoto": "photo",
     "typePainting": "peinture",
     "typeDocument": "document",
-    "typeStory": "histoire"
+    "typeStory": "histoire",
+    "emptyOverline": "Rien de stocké pour l'instant"
   },
   "timeCapsule": {
     "resolutionReminder": "Rappel de résolution",
@@ -3754,7 +3772,9 @@
     "cookiePrefToggleLabel": "Activer/désactiver les cookies non essentiels",
     "sectionSignInAccess": "Connexion et accès",
     "sectionPrivacyData": "Confidentialité et vos données",
-    "sectionDangerZone": "Zone sensible"
+    "sectionDangerZone": "Zone sensible",
+    "passwordResetSocialOnly": "Ce compte se connecte via un fournisseur social ; il n'y a donc aucun mot de passe à réinitialiser. Connectez-vous simplement avec ce fournisseur la prochaine fois.",
+    "passwordResetUnavailable": "La réinitialisation du mot de passe n'est pas disponible dans cet environnement."
   },
   "cookieSettings": {
     "pageTitle": "Préférences de cookies",
@@ -4440,7 +4460,8 @@
     "tileType_document": "Document",
     "tileType_memory": "Souvenir",
     "tileSelected": "Sélectionné",
-    "memoryCountOne": "{count} souvenir"
+    "memoryCountOne": "{count} souvenir",
+    "tileMovable": "Déplaçable — utilisez le mode sélection pour déplacer vers une pièce"
   },
   "atrium": {
     "goodMorning": "Bonjour",
@@ -5125,7 +5146,10 @@
     "routePartialError": "Certaines captures n'ont pas pu être acheminées et sont toujours en attente.",
     "retry": "Réessayer",
     "wizardCreateError": "Nous n'avons pas pu créer votre Kep. Vérifiez votre connexion et réessayez.",
-    "wizardStep3DescRouting": "Laissez l'IA classer automatiquement chaque souvenir dans la bonne salle."
+    "wizardStep3DescRouting": "Laissez l'IA classer automatiquement chaque souvenir dans la bonne salle.",
+    "wizardPhotosNotLinkedTitle": "Connectez d'abord Google Photos",
+    "wizardPhotosNotLinkedDesc": "Un Kep photos a besoin d'un compte Google Photos lié pour récupérer les souvenirs. Connectez-en un, puis revenez pour terminer la configuration.",
+    "wizardPhotosConnectCta": "Connecter Google Photos"
   },
   "kepLanding": {
     "title": "Découvrez Kep",
@@ -5450,7 +5474,10 @@
     "wingLabelSingularCap": "Aile",
     "wingsLabelCap": "Ailes",
     "guestbookSendError": "Impossible d'envoyer votre message. Veuillez réessayer.",
-    "commentFailed": "Échec de la publication de votre message."
+    "commentFailed": "Échec de la publication de votre message.",
+    "totalWingVisits": "Visites d'ailes",
+    "publishNoChanges": "Aucune modification à publier — votre sélection correspond déjà à ce qui est partagé.",
+    "guestReactPrompt": "Connectez-vous pour réagir"
   },
   "help": {
     "title": "Centre d'aide",
@@ -5627,7 +5654,8 @@
       "mapVignette": "Des souvenirs épinglés sur une carte",
       "menu": "Menu",
       "mainNav": "Navigation principale",
-      "language": "Langue"
+      "language": "Langue",
+      "tapToPlay": "Lire la vidéo"
     },
     "usps": {
       "eyebrow": "Ce que vous pouvez faire",

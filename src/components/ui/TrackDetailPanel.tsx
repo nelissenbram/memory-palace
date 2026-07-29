@@ -31,14 +31,19 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
   const isComplete = !!progress.completedAt;
 
   const handleStepAction = (navigateTo?: string) => {
+    if (!navigateTo) return;
+    // Single source of truth: when the parent supplies onNavigate it already
+    // routes every target (including "legacy") — let it own the branch. Only
+    // when onNavigate is omitted (optional prop) do we fall back to opening the
+    // legacy panel directly so that navigateTo="legacy" still works.
+    if (onNavigate) {
+      onClose();
+      onNavigate(navigateTo);
+      return;
+    }
     if (navigateTo === "legacy") {
       onClose();
       setShowLegacyPanel(true);
-      return;
-    }
-    if (onNavigate && navigateTo) {
-      onClose();
-      onNavigate(navigateTo);
     }
   };
 

@@ -579,8 +579,12 @@ export default function NotificationsPage() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <h4 style={{
-                      fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                      color: INK, margin: "0 0 0.0625rem",
+                      // Two-tier serif hierarchy: the master push toggle sits at
+                      // display 1.1875rem; sub-items step down to a titleS-scale
+                      // serif so the type family stays continuous instead of
+                      // snapping from Fraunces to Source Sans between tiers.
+                      fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                      color: INK, margin: "0 0 0.0625rem", letterSpacing: "-0.01em",
                     }}>
                       {t(cat.titleKey)}
                     </h4>
@@ -633,8 +637,11 @@ export default function NotificationsPage() {
               </div>
               <div style={{ flex: 1 }}>
                 <h4 style={{
-                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  color: INK, margin: "0 0 0.0625rem",
+                  // Two-tier serif hierarchy — matches the push sub-items so both
+                  // section maps read as one continuous Fraunces family stepping
+                  // down from the display-scale master headers.
+                  fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                  color: INK, margin: "0 0 0.0625rem", letterSpacing: "-0.01em",
                 }}>
                   {t(cat.titleKey)}
                 </h4>

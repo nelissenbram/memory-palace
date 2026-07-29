@@ -58,6 +58,7 @@ export default function PublishModal({
   }, [isPending, onClose]);
 
   const toggleWing = (wingId: string) => {
+    if (error) setError(null);
     const next = new Set(selectedWings);
     const wing = wings.find((w) => w.id === wingId);
     if (!wing) return;
@@ -76,6 +77,7 @@ export default function PublishModal({
   };
 
   const toggleRoom = (roomId: string, wingId: string) => {
+    if (error) setError(null);
     const next = new Set(selectedRooms);
     if (next.has(roomId)) {
       next.delete(roomId);
@@ -124,6 +126,13 @@ export default function PublishModal({
             ops.push(unpublishRoom(r.id));
           }
         }
+      }
+      // The current selection already matches the server state — nothing to do.
+      // Surface this instead of silently flashing "success" so the user isn't
+      // left wondering whether their intended change was applied.
+      if (ops.length === 0) {
+        setError(t("publishNoChanges"));
+        return;
       }
       try {
         const results = await Promise.all(ops);

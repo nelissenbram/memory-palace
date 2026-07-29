@@ -398,6 +398,12 @@ export default function SecuritySettingsPage() {
     const result = await requestPasswordReset();
     if (result.error) {
       showToast(result.error, "error");
+    } else if (result.socialOnly) {
+      // Social-login-only account: a reset link is useless — steer them to their
+      // provider instead of a false "check your inbox" success.
+      showToast(tf("passwordResetSocialOnly", "This account signs in with a social provider, so there's no password to reset. Just sign in with that provider next time."), "error");
+    } else if (result.notConfigured) {
+      showToast(tf("passwordResetUnavailable", "Password reset isn't available in this environment."), "error");
     } else {
       showToast(ts("passwordResetSent"), "success");
     }

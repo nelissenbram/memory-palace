@@ -33,6 +33,23 @@ interface RoomManagerPanelProps {
   onEnterRoom?: (roomId: string) => void;
 }
 
+/**
+ * Renders a room's icon. Standard SVG room ids (keys of ROOM_ICON_MAP) resolve
+ * to their crafted SVG glyph via RoomIcon; anything else (a custom emoji chosen
+ * from EMOJI_PRESETS) is rendered as the emoji character itself, so a user's
+ * picked emoji never collapses into RoomIcon's generic-circle fallback.
+ */
+function RoomGlyph({ icon, wingId, size, color }: { icon: string; wingId: string; size: number; color: string }) {
+  if (ROOM_ICON_MAP[icon]) {
+    return <RoomIcon roomId={icon} wingId={wingId} size={size} color={color} />;
+  }
+  return (
+    <span aria-hidden style={{ fontSize: `${size / 16}rem`, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {icon}
+    </span>
+  );
+}
+
 export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomManagerPanelProps) {
   const { t } = useTranslation("room");
   const { t: tc } = useTranslation("common");
@@ -156,7 +173,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                   aria-label={t("changeIcon")}
                   style={{ width: touch ? "2.75rem" : "2.375rem", height: touch ? "2.75rem" : "2.375rem", borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`, background: pickingIconId === room.id ? `${accent}12` : T.color.warmStone, fontSize: "1.25rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s" }}
                   title={t("changeIcon")}>
-                  <RoomIcon roomId={room.icon} wingId={wing.id} size={22} color={accent} />
+                  <RoomGlyph icon={room.icon} wingId={wing.id} size={22} color={accent} />
                 </button>
 
                 {/* Name */}
@@ -234,7 +251,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
               <button onClick={() => { setShowEmoji(false); setShowNewIconPicker(!showNewIconPicker); }}
                 style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`, background: T.color.warmStone, fontSize: "1.375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                 title={t("chooseIcon")}>
-                <RoomIcon roomId={newIcon} wingId={wing.id} size={24} color={accent} />
+                <RoomGlyph icon={newIcon} wingId={wing.id} size={24} color={accent} />
               </button>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("roomNamePlaceholder")} autoFocus
                 onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}

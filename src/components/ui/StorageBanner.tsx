@@ -12,6 +12,13 @@ interface Props {
   onUpgrade: () => void;
 }
 
+/**
+ * Single source of truth for the storage-banner threshold (fraction, 0–1).
+ * The banner self-gates below this; any outer mount guard should import THIS
+ * constant instead of hard-coding 0.5, so the threshold can never drift.
+ */
+export const STORAGE_BANNER_THRESHOLD = 0.5;
+
 export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) {
   const { t } = useTranslation("palace");
   const isSmall = useIsSmall();
@@ -21,7 +28,7 @@ export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) 
   // On web it always shows.
   const hideUpgrade = isAndroid() || (isIOS() && !IAP_ENABLED);
 
-  if (pct < 50) return null;
+  if (pct < STORAGE_BANNER_THRESHOLD * 100) return null;
 
   const level =
     pct >= 100 ? "full" : pct >= 95 ? "urgent" : pct >= 80 ? "warning" : "info";

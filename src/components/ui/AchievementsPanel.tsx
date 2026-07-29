@@ -128,9 +128,10 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <div style={{
               width: "3rem", height: "3rem", borderRadius: "0.85rem",
-              background: "rgba(169,116,27,0.14)", // Atrium token: gold-lane medallion tint
+              background: "rgba(169,116,27,0.18)", // Atrium: gold-lane medallion tint, header focal (stronger than the 0.14 card wells)
+              border: "0.0625rem solid #E9DCBE", // Atrium token: gold-lane hairline ring — sets the header apart from the flat card wells
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.10)", // Atrium: S1 lifted for clear focal hierarchy
             }}><TrophyIcon size={28} /></div>
 
             <div>
@@ -256,15 +257,20 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
   const handleShare = useCallback(async () => {
     const name = t(achievement.titleKey);
     const text = t("shareText", { name });
-    const usedClipboard = !(
-      (typeof navigator !== "undefined" && navigator.share) ||
-      (await import("@capacitor/core")).Capacitor.isNativePlatform()
-    );
+    // Detect whether a system share sheet (native Capacitor or Web Share) is
+    // available. When it is, shareAchievement() presents the sheet and the
+    // clipboard path is only reached if the sheet itself fails — so we never
+    // claim "copied" while a sheet was shown (avoids the user-cancel misfire).
+    // When no sheet exists, clipboard is the guaranteed path and its toast is
+    // the only feedback the user gets.
+    const hasNativeShare = (await import("@capacitor/core")).Capacitor.isNativePlatform();
+    const hasWebShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+    const clipboardIsOnlyPath = !hasNativeShare && !hasWebShare;
     const ok = await shareAchievement(name, text);
-    if (ok && usedClipboard) {
-      onShareToast(t("copiedToClipboard"));
-    } else if (!ok) {
+    if (!ok) {
       onShareToast(t("shareFailed"));
+    } else if (clipboardIsOnlyPath) {
+      onShareToast(t("copiedToClipboard"));
     }
   }, [achievement.titleKey, onShareToast, t]);
 

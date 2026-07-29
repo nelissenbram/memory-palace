@@ -84,23 +84,30 @@ export async function getPublishedRooms(
 ): Promise<PublishedRoom[]> {
   const supabase = createAdminClient();
 
-  // Get ALL rooms in the wing (if the wing is published, all its rooms are visible)
+  // Publish authority is WING-LEVEL: if the wing is published, all of its rooms
+  // are visible to guests (this mirrors the 3D visitor paths getVisitorWingData /
+  // getVisitorPalaceData, which never filter rooms by rooms.published_at). We do
+  // NOT select rooms.published_at here — surfacing it would imply a per-room
+  // publish gate that does not exist, so the room's effective publish time is the
+  // wing's published_at instead.
   const [{ data: rooms }, { data: wing }] = await Promise.all([
     supabase
       .from("rooms")
-      .select("id, name, icon, cover_hue, publish_description, published_at, wing_id, user_id")
+      .select("id, name, icon, cover_hue, publish_description, wing_id, user_id")
       .eq("wing_id", wingId)
       .order("sort_order", { ascending: true }),
-    supabase.from("wings").select("slug, user_id").eq("id", wingId).single(),
+    supabase.from("wings").select("slug, user_id, published_at").eq("id", wingId).single(),
   ]);
 
   if (!rooms || rooms.length === 0) return [];
 
   const roomIds = rooms.map((r) => r.id);
 
-  // Batch: memory counts + visit counts in parallel
+  // Batch: memory counts + visit counts in parallel. Count only VISIBLE memories
+  // (displayed !== false) so memory_count matches what getPublishedMemories
+  // actually serves into the guest gallery — hidden memories don't inflate it.
   const [{ data: memoryRows }, { data: visitRows }] = await Promise.all([
-    supabase.from("memories").select("room_id").in("room_id", roomIds),
+    supabase.from("memories").select("room_id").in("room_id", roomIds).not("displayed", "is", false),
     supabase.from("palace_visits").select("room_id").in("room_id", roomIds),
   ]);
 
@@ -139,13 +146,16 @@ export async function getPublishedRooms(
     if (v.room_id) visitCounts.set(v.room_id, (visitCounts.get(v.room_id) || 0) + 1);
   }
 
+  // Room's effective publish time is the wing's published_at (wing-level authority).
+  const effectivePublishedAt = wing?.published_at || "";
+
   return rooms.map((r) => ({
     id: r.id,
     name: roomNameMap.get(r.name)?.name || r.name,
     icon: roomNameMap.get(r.name)?.icon || r.icon,
     cover_hue: r.cover_hue,
     publish_description: r.publish_description,
-    published_at: r.published_at!,
+    published_at: effectivePublishedAt,
     wing_id: r.wing_id,
     owner_id: r.user_id,
     memory_count: memoryCounts.get(r.id) || 0,

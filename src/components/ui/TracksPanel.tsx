@@ -58,6 +58,24 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
     setSelectedTrackId(trackId);
   };
 
+  /* Text-critical small uses of a per-track brand color can dip below the canon
+   * contrast floor on the light card (e.g. gold #C4A962 / sky #5B8FA8). Darken
+   * the hue for TEXT only; raw track.color still carries fills, icons, borders
+   * and dots where contrast isn't text-critical. Falls back to EMBER_GLYPH
+   * (#9A4F2A, the canon at-rest accent ink) for any non-hex value. */
+  const textInk = (hex: string): string => {
+    const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return "#9A4F2A";
+    const n = parseInt(m[1], 16);
+    // Multiply each channel toward black by 0.68 — enough to clear ~4.5:1 on
+    // the near-white card while keeping the track's identifiable hue.
+    const dark = (c: number) => Math.round(c * 0.68);
+    const r = dark((n >> 16) & 0xff);
+    const g = dark((n >> 8) & 0xff);
+    const b = dark(n & 0xff);
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  };
+
   /* Shared style: forces any child to respect card boundary */
   const clampLine: React.CSSProperties = {
     overflow: "hidden",
@@ -308,7 +326,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                   {isRecommended && !isComplete && (
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
-                      color: track.color, textTransform: "uppercase", letterSpacing: "0.12em", // Atrium overline voice
+                      color: textInk(track.color), textTransform: "uppercase", letterSpacing: "0.12em", // Atrium overline voice; darkened for small-text contrast
                       padding: "0.1875rem 0.5rem", borderRadius: "2rem",
                       background: `${track.color}15`, border: `0.0625rem solid ${track.color}25`,
                       flexShrink: 0, whiteSpace: "nowrap",
@@ -344,7 +362,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                      color: pct >= 100 ? "#56683C" : track.color, // Atrium sage
+                      color: pct >= 100 ? "#56683C" : textInk(track.color), // Atrium sage; track hue darkened for small-text contrast
                     }}>{pct}%</span>
                   </div>
                   <div

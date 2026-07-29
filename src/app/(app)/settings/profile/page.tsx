@@ -15,6 +15,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRouter } from "next/navigation";
 import { isIOS } from "@/lib/native/platform";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
+import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, TRAY, CREAM, SAGE } from "@/lib/libraryTokens";
 
 interface ProfileData {
   display_name: string;
@@ -239,7 +240,7 @@ export default function ProfilePage() {
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9A4F2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }} aria-hidden="true">
           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
         </svg>
-        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */ }}>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED /* Atrium muted */ }}>
           {t("loadingProfile")}
         </span>
       </div>
@@ -260,7 +261,7 @@ export default function ProfilePage() {
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C05050" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
         </svg>
-        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */ }}>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED /* Atrium muted */ }}>
           {t("profileLoadError")}
         </span>
         <button
@@ -272,7 +273,7 @@ export default function ProfilePage() {
             borderRadius: "0.75rem",
             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
             background: "transparent",
-            color: "#B85C38" /* Atrium ember (actionable) */,
+            color: EMBER /* Atrium ember (actionable) */,
             fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
             cursor: "pointer",
           }}
@@ -290,7 +291,7 @@ export default function ProfilePage() {
         <div role={toast.type === "success" ? "status" : "alert"} aria-live={toast.type === "success" ? "polite" : "assertive"} style={{
           position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? "#56683C" : "#C05050", /* Atrium sage */
+          background: toast.type === "success" ? SAGE : T.color.error, /* SAGE success / error token */
           color: "#FFF",
           fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
           boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 */
@@ -396,12 +397,12 @@ export default function ProfilePage() {
           <div>
             <div style={{
               fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
-              color: "#403B36" /* Atrium ink */,
+              color: INK /* Atrium ink */,
             }}>
               {displayName || t("namePlaceholder")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               marginTop: "0.25rem",
             }}>
               {profile.email}
@@ -412,7 +413,7 @@ export default function ProfilePage() {
               disabled={avatarUploading}
               style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                color: "#B85C38" /* Atrium ember (actionable link) */, background: "none",
+                color: EMBER /* Atrium ember (actionable link) */, background: "none",
                 border: "none", padding: "0 0.5rem", minHeight: "2.75rem",
                 display: "inline-flex", alignItems: "center",
                 cursor: avatarUploading ? "wait" : "pointer",
@@ -451,13 +452,13 @@ export default function ProfilePage() {
               readOnly
               style={{
                 ...inputStyle,
-                background: "#F6EBE3", /* Atrium tray (read-only) */
-                color: "#716A5E" /* Atrium muted */,
+                background: TRAY, /* Atrium tray (read-only) */
+                color: MUTED /* Atrium muted */,
                 cursor: "not-allowed",
               }}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("emailReadonlyNote")}
@@ -478,14 +479,14 @@ export default function ProfilePage() {
               style={inputStyle}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("usernameHelp")}
             </p>
             {usernameTooShort && (
               <p role="alert" style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#C05050" /* Atrium error */,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.error /* Atrium error */,
                 margin: "0.375rem 0 0", lineHeight: 1.4,
               }}>
                 {tf("usernameTooShort", "Username must be at least 3 characters.")}
@@ -500,11 +501,11 @@ export default function ProfilePage() {
                 marginTop: "0.625rem",
                 padding: "0.625rem 1rem",
                 borderRadius: "0.75rem",
-                background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
+                background: TRAY /* Atrium tray — recessed below the white card */,
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
               }}>
                 <span style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium ink */,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: INK /* Atrium ink */,
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
                 }}>
                   {`${publicHost}/u/${profile.username}`}
@@ -516,7 +517,7 @@ export default function ProfilePage() {
                     minHeight: "2.75rem",
                     padding: "0.375rem 0.875rem",
                     fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                    color: "#B85C38" /* Atrium ember (interactive) */,
+                    color: EMBER /* Atrium ember (interactive) */,
                     textDecoration: "none",
                     flexShrink: 0,
                   }}
@@ -560,7 +561,7 @@ export default function ProfilePage() {
               style={inputStyle}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("whatsappPhoneHelp")}
@@ -571,18 +572,18 @@ export default function ProfilePage() {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
+            background: TRAY /* Atrium tray — recessed below the white card */,
             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
               <div style={{
                 fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                color: "#403B36" /* Atrium ink */,
+                color: INK /* Atrium ink */,
               }}>
                 {t("profileVisibility")}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
                 marginTop: "0.25rem", lineHeight: 1.4,
               }}>
                 {t("profileVisibilityDesc")}
@@ -643,23 +644,30 @@ export default function ProfilePage() {
           <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
             <legend style={labelStyle}>{t("palaceStyle")}</legend>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               margin: "0 0 0.625rem", lineHeight: 1.4,
             }}>
               {t("palaceStyleDesc")}
             </p>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "0.625rem",
-            }}>
+            <div
+              role="radiogroup"
+              aria-label={t("palaceStyle")}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "0.625rem",
+              }}
+            >
               {(["roman", "renaissance"] as const).filter((era) => !(hideComingSoon && era === "renaissance")).map((era) => {
                 const isComingSoon = era === "renaissance";
+                const isSelected = styleEra === era && !isComingSoon;
                 return (
                 <button
                   key={era}
                   className="mp-settings-btn"
-                  aria-pressed={styleEra === era && !isComingSoon}
+                  role={isComingSoon ? undefined : "radio"}
+                  aria-checked={isComingSoon ? undefined : isSelected}
+                  aria-disabled={isComingSoon || undefined}
                   onClick={async () => {
                     if (isComingSoon) return;
                     setStyleEra(era);
@@ -669,23 +677,23 @@ export default function ProfilePage() {
                   style={{
                     padding: "0.875rem 1rem",
                     borderRadius: "0.75rem",
-                    border: `0.125rem solid ${styleEra === era && !isComingSoon ? "#B85C38" /* Atrium ember (active), matching roman pill grammar */ : "#E3D6BC"}`, /* Atrium hairline */
-                    background: styleEra === era && !isComingSoon ? "#F6EBE3" /* Atrium terracotta tray, pre-mixed */ : "#FCFAF5" /* Atrium panel */,
+                    border: `0.125rem solid ${isSelected ? EMBER /* ember (active), matching roman pill grammar */ : HAIRLINE}`,
+                    background: isSelected ? TRAY /* terracotta tray */ : CREAM /* panel */,
                     cursor: isComingSoon ? "default" : "pointer",
                     opacity: isComingSoon ? 0.55 : 1,
                     textAlign: "left",
                     transition: "all .2s",
                     fontFamily: T.font.body,
                     fontSize: "0.9375rem",
-                    fontWeight: styleEra === era && !isComingSoon ? 600 : 500,
-                    color: styleEra === era && !isComingSoon ? "#B85C38" /* Atrium ember (active) */ : "#403B36" /* Atrium ink */,
+                    fontWeight: isSelected ? 600 : 500,
+                    color: isSelected ? EMBER /* ember (active) */ : INK,
                   }}
                 >
                   <div style={{ fontWeight: 600, marginBottom: "0.125rem" }}>
                     {era === "roman" ? t("romanName") : t("renaissanceName")}
-                    {isComingSoon && <span style={{ fontSize: "0.6875rem", fontWeight: 700, marginLeft: "0.5rem", color: "#716A5E" /* Atrium muted */, textTransform: "uppercase", letterSpacing: "0.12em" }}>{t("comingSoon")}</span>}
+                    {isComingSoon && <span style={{ fontSize: "0.6875rem", fontWeight: 700, marginLeft: "0.5rem", color: MUTED, textTransform: "uppercase", letterSpacing: "0.12em" }}>{t("comingSoon")}</span>}
                   </div>
-                  <div style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#716A5E" /* Atrium muted */ }}>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 500, color: MUTED }}>
                     {era === "roman" ? t("romanDesc") : t("renaissanceDesc")}
                   </div>
                 </button>
@@ -701,7 +709,7 @@ export default function ProfilePage() {
               display: "flex", alignItems: "center", justifyContent: "space-between",
               gap: "0.75rem", minHeight: "2.75rem",
               padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-              background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
+              background: TRAY /* Atrium tray — recessed below the white card */,
               border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
             }}>
               <span style={{
@@ -716,7 +724,7 @@ export default function ProfilePage() {
                 onClick={() => { router.push("/atrium?persona=1"); }}
                 style={{
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                  color: "#B85C38" /* Atrium ember (actionable) */, background: "none",
+                  color: EMBER /* Atrium ember (actionable) */, background: "none",
                   border: "0.0625rem solid rgba(184,92,56,0.35)",
                   borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
                   minHeight: "2.75rem",
@@ -769,7 +777,7 @@ export default function ProfilePage() {
                 borderRadius: "0.75rem",
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                 background: "transparent",
-                color: "#716A5E" /* Atrium muted */,
+                color: MUTED /* Atrium muted */,
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
                 fontWeight: 500,
@@ -801,7 +809,7 @@ export default function ProfilePage() {
             width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
             background: "rgba(154,79,42,0.11)", /* Atrium terracotta medallion */
             display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, color: "#9A4F2A",
+            flexShrink: 0, color: EMBER_GLYPH,
           }}>
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
@@ -811,12 +819,12 @@ export default function ProfilePage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
-              color: "#403B36" /* Atrium ink */, marginBottom: "0.125rem",
+              color: INK /* Atrium ink */, marginBottom: "0.125rem",
             }}>
               {tc("connections")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */, lineHeight: 1.4,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */, lineHeight: 1.4,
             }}>
               {tf("connectionsRowDesc", "Manage connected photo and cloud services for importing memories")}
             </div>
@@ -841,12 +849,12 @@ export default function ProfilePage() {
       }}>
         <h3 style={{
           fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-          color: "#403B36" /* Atrium ink */, margin: "0 0 0.375rem",
+          color: INK /* Atrium ink */, margin: "0 0 0.375rem",
         }}>
           {t("aiFeatures")}
         </h3>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */,
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED /* Atrium muted */,
           margin: "0 0 1.375rem", lineHeight: 1.4,
         }}>
           {t("aiFeaturesDesc")}
@@ -857,18 +865,18 @@ export default function ProfilePage() {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
+            background: TRAY /* Atrium tray — recessed below the white card */,
             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
               <div style={{
                 fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                color: "#403B36" /* Atrium ink */,
+                color: INK /* Atrium ink */,
               }}>
                 {t("aiConsent")}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
                 marginTop: "0.25rem", lineHeight: 1.4,
               }}>
                 {t("aiConsentDesc")}
@@ -928,15 +936,17 @@ export default function ProfilePage() {
       }}>
         <h3 style={{
           fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-          color: "#403B36" /* Atrium ink */, margin: "0 0 1rem",
+          color: INK /* Atrium ink */, margin: "0 0 1rem",
         }}>
           {tc("language")}
         </h3>
-        <div style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>
+        <div role="radiogroup" aria-label={tc("language")} style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>
           {locales.map((l) => (
             <button
               key={l}
               className="mp-settings-btn"
+              role="radio"
+              aria-checked={locale === l}
               onClick={() => {
                 if (locale === l) return;
                 // Language switch reloads the page; warn before dropping unsaved profile edits.
@@ -945,17 +955,17 @@ export default function ProfilePage() {
                 }
                 setLocale(l);
               }}
-              aria-pressed={locale === l}
               style={{
+                minHeight: "2.75rem",
                 padding: "0.875rem 1.5rem",
                 borderRadius: "0.75rem",
-                border: `0.125rem solid ${locale === l ? "#B85C38" : "#E3D6BC"}`, /* Atrium ember / hairline */
-                background: locale === l ? "#F6EBE3" /* terracotta tray */ : "#FCFAF5" /* Atrium panel */,
+                border: `0.125rem solid ${locale === l ? EMBER : HAIRLINE}`,
+                background: locale === l ? TRAY /* terracotta tray */ : CREAM /* panel */,
                 cursor: "pointer",
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
                 fontWeight: locale === l ? 600 : 500,
-                color: locale === l ? "#9A4F2A" : "#403B36", /* Atrium glyph / ink */
+                color: locale === l ? EMBER_GLYPH : INK,
                 transition: "all .2s",
               }}
             >
@@ -976,12 +986,12 @@ export default function ProfilePage() {
       }}>
         <h3 style={{
           fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-          color: "#403B36" /* Atrium ink */, margin: "0 0 0.25rem",
+          color: INK /* Atrium ink */, margin: "0 0 0.25rem",
         }}>
           {tA11y("title")}
         </h3>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
           margin: "0 0 1rem", lineHeight: 1.4,
         }}>
           {tA11y("subtitle")}
@@ -1026,7 +1036,7 @@ export default function ProfilePage() {
                   <span style={{
                     position: "absolute", top: "0.5rem", right: "0.5rem",
                     width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                    background: "#B85C38" /* Atrium ember */, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: EMBER /* Atrium ember */, display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M2.5 6l2.5 2.5 4.5-5" />
@@ -1047,7 +1057,7 @@ export default function ProfilePage() {
                 </span>
                 <span style={{
                   fontFamily: T.font.body, fontSize: "0.8125rem",
-                  color: "#716A5E" /* Atrium muted */, lineHeight: 1.3,
+                  color: MUTED /* Atrium muted */, lineHeight: 1.3,
                 }}>
                   {tA11y(`${level}Desc`)}
                 </span>
@@ -1068,26 +1078,26 @@ export default function ProfilePage() {
       }}>
         <h3 style={{
           fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-          color: "#403B36" /* Atrium ink */, margin: "0 0 1rem",
+          color: INK /* Atrium ink */, margin: "0 0 1rem",
         }}>
           {tc("daylightMode")}
         </h3>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-          background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
+          background: TRAY /* Atrium tray — recessed below the white card */,
           border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           marginBottom: daylightEnabled ? "0.75rem" : 0,
         }}>
           <div>
             <div style={{
               fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-              color: "#403B36" /* Atrium ink */,
+              color: INK /* Atrium ink */,
             }}>
               {tc("daylightMode")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               marginTop: "0.25rem", lineHeight: 1.4,
             }}>
               {tc("daylightDesc")}
@@ -1179,7 +1189,7 @@ export default function ProfilePage() {
                 />
                 <div style={{
                   display: "flex", justifyContent: "space-between",
-                  fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", /* Atrium muted, full opacity */
+                  fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED, /* Atrium muted, full opacity */
                 }}>
                   <span>00:00</span>
                   <span>06:00</span>
@@ -1208,7 +1218,7 @@ export default function ProfilePage() {
             width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
             background: "rgba(154,79,42,0.11)", /* Atrium terracotta medallion */
             display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, color: "#9A4F2A",
+            flexShrink: 0, color: EMBER_GLYPH,
           }}>
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -1217,12 +1227,12 @@ export default function ProfilePage() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
-              color: "#403B36" /* Atrium ink */, marginBottom: "0.125rem",
+              color: INK /* Atrium ink */, marginBottom: "0.125rem",
             }}>
               {tc("security")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */, lineHeight: 1.4,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */, lineHeight: 1.4,
             }}>
               {tf("securityRowDesc", "Password, two-factor authentication, data export and account deletion")}
             </div>
@@ -1249,7 +1259,7 @@ const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "0.6875rem", /* Atrium overline: the one small-caps voice */
   fontWeight: 700,
-  color: "#716A5E", /* Atrium muted */
+  color: MUTED, /* Atrium muted */
   letterSpacing: "0.12em",
   textTransform: "uppercase" as const,
   display: "block",
@@ -1264,7 +1274,7 @@ const inputStyle: React.CSSProperties = {
   background: T.color.white,
   fontFamily: T.font.body,
   fontSize: "1rem", /* >=16px so iOS Safari never zooms-on-focus (canon: inputs >=1rem) */
-  color: "#403B36" /* Atrium ink */,
+  color: INK /* Atrium ink */,
   outline: "none",
   boxSizing: "border-box" as const,
   transition: "border-color .2s, box-shadow .2s",

@@ -175,7 +175,13 @@
     "agreeTerms": "Door een account aan te maken ga je akkoord met onze",
     "and": "en",
     "ageConfirm": "Ik bevestig dat ik minstens 16 jaar oud ben",
-    "ageRequiredForSocial": "Bevestig dat je minstens 16 jaar oud bent voordat je je registreert."
+    "ageRequiredForSocial": "Bevestig dat je minstens 16 jaar oud bent voordat je je registreert.",
+    "didntGetEmail": "E-mail niet ontvangen? Controleer je spamfolder of stuur hem opnieuw.",
+    "resendConfirmation": "Bevestigingsmail opnieuw versturen",
+    "resending": "Opnieuw versturen…",
+    "resendCooldown": "Opnieuw versturen mogelijk over {seconds}s",
+    "resendSent": "Bevestigingsmail opnieuw verstuurd. Het kan even duren voordat hij aankomt.",
+    "resendError": "Kon nu niet opnieuw versturen. Probeer het zo dadelijk opnieuw."
   },
   "forgotPassword": {
     "title": "Wachtwoord resetten",
@@ -917,7 +923,10 @@
     "loadError": "Kan familiegegevens niet laden. Probeer het opnieuw.",
     "loadWingSharesError": "Kan gedeelde vleugels niet laden. Probeer het opnieuw.",
     "noActiveMembers": "Nog geen actieve leden. Verstuur een uitnodiging om te beginnen.",
-    "inviteInvalidEmail": "Voer een geldig e-mailadres in."
+    "inviteInvalidEmail": "Voer een geldig e-mailadres in.",
+    "unknownWing": "Vleugel",
+    "resendFailed": "Kon de uitnodiging niet opnieuw versturen. Probeer het opnieuw.",
+    "resendFailedLost": "De uitnodiging kon niet opnieuw worden verstuurd. Nodig deze persoon opnieuw uit."
   },
   "legacySettings": {
     "title": "Jouw nalatenschap",
@@ -1935,7 +1944,13 @@
     "shareLoading": "Je deellink wordt voorbereid…",
     "viewModeLabel": "Weergavemodus van de boom",
     "sharedTreeEmptyTitle": "Deze stamboom is leeg",
-    "sharedTreeEmpty": "Er staan nog geen personen in deze stamboom."
+    "sharedTreeEmpty": "Er staan nog geen personen in deze stamboom.",
+    "gedcomSiblingWarning": "Broer/zus-, halfbroer/-zus- en stiefrelaties worden niet in GEDCOM-bestanden opgeslagen — ze worden afgeleid uit gedeelde ouders.",
+    "stepThroughPeople": "Door personen bladeren",
+    "stepPrevPerson": "Vorige persoon",
+    "stepNextPerson": "Volgende persoon",
+    "stepOpenPerson": "Openen",
+    "stepStart": "Bladeren"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -2364,7 +2379,8 @@
     "status_rejected": "Afgewezen",
     "status_committed": "Opgeslagen",
     "status_error": "Fout",
-    "readError": "Leesfout"
+    "readError": "Leesfout",
+    "dateTaken": "Datum genomen"
   },
   "memoryDetail": {
     "panelTitle": "Herinneringsdetails",
@@ -3582,7 +3598,8 @@
     "skip": "Overslaan",
     "next": "Volgende",
     "done": "Begrepen",
-    "stepXofY": "Stap {current} van {total}"
+    "stepXofY": "Stap {current} van {total}",
+    "advanceHint": "Rondleiding voortzetten"
   },
   "entranceHallTour": {
     "stepTitle": "Handmatige navigatie",
@@ -3665,7 +3682,8 @@
     "typePhoto": "foto",
     "typePainting": "schilderij",
     "typeDocument": "document",
-    "typeStory": "verhaal"
+    "typeStory": "verhaal",
+    "emptyOverline": "Nog niets opgeslagen"
   },
   "timeCapsule": {
     "resolutionReminder": "Voornemensherinnering",
@@ -3756,7 +3774,9 @@
     "cookiePrefToggleLabel": "Niet-essentiële cookies in- of uitschakelen",
     "sectionSignInAccess": "Aanmelden & toegang",
     "sectionPrivacyData": "Privacy & je gegevens",
-    "sectionDangerZone": "Gevarenzone"
+    "sectionDangerZone": "Gevarenzone",
+    "passwordResetSocialOnly": "Dit account logt in via een sociale provider, dus er is geen wachtwoord om te resetten. Log de volgende keer gewoon in met die provider.",
+    "passwordResetUnavailable": "Wachtwoord resetten is niet beschikbaar in deze omgeving."
   },
   "cookieSettings": {
     "pageTitle": "Cookie-voorkeuren",
@@ -4442,7 +4462,8 @@
     "tileType_document": "Document",
     "tileType_memory": "Herinnering",
     "tileSelected": "Geselecteerd",
-    "memoryCountOne": "{count} herinnering"
+    "memoryCountOne": "{count} herinnering",
+    "tileMovable": "Verplaatsbaar — gebruik selectiemodus om naar een kamer te verplaatsen"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",
@@ -5127,7 +5148,10 @@
     "routePartialError": "Sommige vastleggingen konden niet worden toegewezen en staan nog open.",
     "retry": "Opnieuw proberen",
     "wizardCreateError": "We konden je Kep niet aanmaken. Controleer je verbinding en probeer het opnieuw.",
-    "wizardStep3DescRouting": "Laat AI elke herinnering automatisch in de juiste kamer plaatsen."
+    "wizardStep3DescRouting": "Laat AI elke herinnering automatisch in de juiste kamer plaatsen.",
+    "wizardPhotosNotLinkedTitle": "Verbind eerst Google Foto's",
+    "wizardPhotosNotLinkedDesc": "Een foto-Kep heeft een gekoppeld Google Foto's-account nodig om herinneringen op te halen. Koppel er een en kom dan terug om de installatie te voltooien.",
+    "wizardPhotosConnectCta": "Google Foto's verbinden"
   },
   "kepLanding": {
     "title": "Maak kennis met Kep",
@@ -5452,7 +5476,10 @@
     "wingLabelSingularCap": "Vleugel",
     "wingsLabelCap": "Vleugels",
     "guestbookSendError": "Kon je bericht niet verzenden. Probeer het opnieuw.",
-    "commentFailed": "Het plaatsen van je bericht is mislukt."
+    "commentFailed": "Het plaatsen van je bericht is mislukt.",
+    "totalWingVisits": "Vleugelbezoeken",
+    "publishNoChanges": "Niets om te publiceren — je selectie komt al overeen met wat gedeeld is.",
+    "guestReactPrompt": "Log in om te reageren"
   },
   "help": {
     "title": "Helpcentrum",
@@ -5629,7 +5656,8 @@
       "mapVignette": "Herinneringen vastgepind op een kaart",
       "menu": "Menu",
       "mainNav": "Hoofdmenu",
-      "language": "Taal"
+      "language": "Taal",
+      "tapToPlay": "Video afspelen"
     },
     "usps": {
       "eyebrow": "Wat je kunt doen",

@@ -184,8 +184,8 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
           maxHeight: isMobile ? undefined : "90vh",
           background: C.linen,
           borderRadius: isMobile ? 0 : "1rem", // Atrium token: card radius
-          boxShadow: isMobile ? "none" : "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2 warm-ink overlay shadow
-          border: isMobile ? "none" : "0.0625rem solid #E3D6BC", // Atrium token: hairline
+          boxShadow: isMobile ? "none" : T.shadow[2], // Atrium token: S2 warm-ink overlay shadow
+          border: isMobile ? "none" : `0.0625rem solid ${C.hairline}`, // Atrium token: hairline
           display: "flex", flexDirection: "column",
           overflow: "hidden",
           animation: "fadeUp .35s ease",
@@ -198,13 +198,13 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
           paddingTop: isMobile ? "max(1rem, env(safe-area-inset-top, 0px))" : undefined,
           paddingLeft: isMobile ? "max(1.25rem, env(safe-area-inset-left, 0px))" : undefined,
           paddingRight: isMobile ? "max(1.25rem, env(safe-area-inset-right, 0px))" : undefined,
-          borderBottom: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+          borderBottom: `0.0625rem solid ${C.hairline}`, // Atrium token: hairline
           background: `linear-gradient(180deg, ${C.warmStone} 0%, ${C.linen} 100%)`,
           flexShrink: 0,
         }}>
           <h2 style={{
             fontFamily: F.display, fontSize: isMobile ? "1.1875rem" : "1.375rem", // Atrium token: titleM/titleL
-            fontWeight: 600, color: "#403B36", margin: 0,
+            fontWeight: 600, color: C.ink, margin: 0,
           }}>
             {t("navTitle")}
           </h2>
@@ -213,8 +213,8 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
             aria-label={tc("close")}
             style={{
               width: "2.75rem", height: "2.75rem", minWidth: "2.75rem", minHeight: "2.75rem",
-              borderRadius: "0.75rem", border: "0.0625rem solid #E3D6BC", // Atrium token: small-control radius + hairline
-              background: C.white, cursor: "pointer", fontSize: "1rem", color: "#716A5E",
+              borderRadius: "0.75rem", border: `0.0625rem solid ${C.hairline}`, // Atrium token: small-control radius + hairline
+              background: C.white, cursor: "pointer", fontSize: "1rem", color: C.inkMuted,
               display: "flex", alignItems: "center", justifyContent: "center",
               transition: "opacity 0.2s ease", flexShrink: 0, padding: 0,
             }}
@@ -240,7 +240,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
               fontFamily: F.display,
               fontSize: isMobile ? "1.375rem" : "1.75rem", // Atrium token: titleL/h1m
               fontWeight: 600,
-              color: "#403B36",
+              color: C.ink,
               margin: "0.75rem 0 0.25rem",
               lineHeight: 1.15,
             }}>
@@ -249,7 +249,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
             <p style={{
               fontFamily: F.display,
               fontSize: "0.9375rem",
-              color: "#716A5E", // Atrium token: muted, full opacity
+              color: C.inkMuted, // Atrium token: muted, full opacity
               fontStyle: "italic",
               maxWidth: "28rem",
               margin: "0 auto",
@@ -285,13 +285,13 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                   <p style={stepDesc}>{t("quickStep1Text")}</p>
                   <div style={{
                     display: "inline-flex", alignItems: "center",
-                    background: "rgba(154,79,42,0.11)", border: "0.0625rem solid #E3D6BC", // Atrium token: terracotta medallion tint + hairline (gold reserved for the palace itself)
+                    background: "rgba(154,79,42,0.11)", border: `0.0625rem solid ${C.hairline}`, // Atrium token: terracotta medallion tint + hairline (gold reserved for the palace itself)
                     borderRadius: "0.75rem", padding: "0.5rem 1rem",
                     marginBottom: "0.75rem",
                   }}>
                     <span style={{
                       fontFamily: "monospace", fontSize: isMobile ? "1rem" : "1.125rem",
-                      fontWeight: 700, color: "#9A4F2A", letterSpacing: "0.03em", // Atrium token: terracotta glyph
+                      fontWeight: 700, color: C.rustDeep, letterSpacing: "0.03em", // Atrium token: terracotta glyph
                     }}>
                       {displayPhone}
                     </span>
@@ -308,8 +308,8 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                     <button onClick={handleCopy} style={{
                       ...btnSecondary,
                       background: copied ? "#56683C" : C.warmStone, // Atrium token: canonical sage
-                      color: copied ? C.cream : "#403B36",
-                      borderColor: copied ? "#56683C" : "#E3D6BC", // Atrium token: hairline
+                      color: copied ? C.cream : C.ink,
+                      borderColor: copied ? "#56683C" : C.hairline, // Atrium token: hairline
                     }}>
                       {copied ? t("quickStep1Copied") : t("quickStep1Copy")}
                     </button>
@@ -366,9 +366,9 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                     {[`ROOM ${t("cmdExampleKitchen")}`, `NEW ${t("cmdExampleHolidays")}`, "ROOMS"].map((cmd) => (
                       <code key={cmd} style={{
                         fontFamily: "monospace", fontSize: "0.8125rem", fontWeight: 600, // Atrium token: meta
-                        color: "#403B36", background: C.linen,
+                        color: C.ink, background: C.linen,
                         padding: "0.25rem 0.5rem", borderRadius: "0.25rem",
-                        border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+                        border: `0.0625rem solid ${C.hairline}`, // Atrium token: hairline
                       }}>
                         {cmd}
                       </code>
@@ -407,7 +407,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                   href="/settings/connections"
                   style={{
                     fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 600,
-                    color: "#9A4F2A", textDecoration: "underline", // Atrium token: terracotta glyph (text-safe on light)
+                    color: C.rustDeep, textDecoration: "underline", // Atrium token: terracotta glyph (text-safe on light)
                     textUnderlineOffset: "0.1875rem",
                   }}
                 >
@@ -419,7 +419,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
 
           {/* Commands tip */}
           <p style={{
-            fontFamily: F.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium token: meta + muted
+            fontFamily: F.body, fontSize: "0.8125rem", color: C.inkMuted, // Atrium token: meta + muted
             textAlign: "center", fontStyle: "italic",
             animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} 0.3s both`,
           }}>
@@ -435,17 +435,17 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
 
 const stepTitle: React.CSSProperties = {
   fontFamily: F.display, fontSize: "1.0625rem", fontWeight: 600, // Atrium token: titleS
-  color: "#403B36", margin: "0 0 0.25rem",
+  color: C.ink, margin: "0 0 0.25rem",
 };
 
 const stepDesc: React.CSSProperties = {
-  fontFamily: F.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium token: body + muted
+  fontFamily: F.body, fontSize: "0.9375rem", color: C.inkMuted, // Atrium token: body + muted
   lineHeight: 1.4, margin: "0 0 0.625rem",
 };
 
 const btnPrimary: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: "0.375rem",
-  background: "#B85C38", color: C.cream, // Atrium token: ember (active/button register)
+  background: C.ember, color: C.cream, // Atrium token: ember (active/button register)
   border: "none", borderRadius: "0.75rem", // Atrium token: small-control radius
   padding: "0.4375rem 0.875rem", fontSize: "0.8125rem",
   fontWeight: 600, cursor: "pointer", fontFamily: F.body,
@@ -456,7 +456,7 @@ const btnSecondary: React.CSSProperties = {
   borderRadius: "0.75rem", padding: "0.4375rem 0.75rem", // Atrium token: small-control radius
   fontSize: "0.8125rem", cursor: "pointer",
   fontWeight: 500, fontFamily: F.body,
-  background: C.warmStone, color: "#403B36",
+  background: C.warmStone, color: C.ink,
   transition: `all 0.2s ${EASE}`,
 };
 
@@ -472,12 +472,12 @@ function StepBadge({ n }: { n: number }) {
   return (
     <div style={{
       width: "2rem", height: "2rem", borderRadius: "50%",
-      background: "linear-gradient(135deg, #B85C38, #9A4F2A)", // Atrium token: opaque ember→terracotta, no alpha band
+      background: `linear-gradient(135deg, ${C.ember}, ${C.rustDeep})`, // Atrium token: opaque ember→terracotta, no alpha band
       color: C.cream,
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: F.display, fontSize: "0.8125rem", fontWeight: 700,
       flexShrink: 0, marginTop: "0.125rem",
-      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm-ink shadow
+      boxShadow: T.shadow[1], // Atrium token: S1 warm-ink shadow
     }}>
       {n}
     </div>

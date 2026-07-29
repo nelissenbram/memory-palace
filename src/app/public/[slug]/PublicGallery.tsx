@@ -221,14 +221,20 @@ export default function PublicGallery({ slug }: { slug: string }) {
             : t("memoryPlural", { count: String(memories.length) }))}
         </p>
 
-        {/* Decorative divider — wing identity accent (not a CTA) */}
-        <div style={{
-          width: "3.75rem",
-          height: 1,
-          background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
-          margin: "1.25rem auto 0",
-          opacity: 0.5,
-        }} />
+        {/* Section seam — matches TuscanSectionHeader's canon underline
+            (0.125rem, rounded) so the public gallery reads as a sibling of the
+            profile page. Wing identity accent tints it (never a CTA fill). */}
+        <div
+          aria-hidden="true"
+          style={{
+            width: "3.5rem",
+            height: "0.125rem",
+            background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
+            borderRadius: "0.125rem",
+            margin: "1.25rem auto 0",
+            opacity: 0.55,
+          }}
+        />
 
         {/* Report objectionable content (Apple Guideline 1.2) */}
         <div style={{ marginTop: "0.75rem", textAlign: "center" }}>
@@ -290,7 +296,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
       <footer style={{
         padding: isMobile ? "2rem 1.25rem 2.5rem" : "2rem 1.5rem 2.5rem",
         textAlign: "center",
-        borderTop: `1px solid ${T.color.cream}`,
+        borderTop: `1px solid ${T.color.hairline}`,
         background: `${T.color.linen}cc`,
       }}>
         <div style={{
@@ -362,25 +368,27 @@ function MemoryCard({
     <button
       onClick={onClick}
       style={{
-        background: T.color.white,
+        // Canon TuscanCard grammar: opaque CREAM on a HAIRLINE border with the
+        // warm-ink shadow ramp (matches the profile page's card grammar).
+        background: T.color.cream,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: `1px solid ${T.color.hairline}`,
         overflow: "hidden",
         cursor: "pointer",
         textAlign: "left",
         transition: "transform .2s, box-shadow .2s",
-        boxShadow: "0 2px 12px rgba(64,59,54,.06)",
+        boxShadow: T.shadow[1],
         animationDelay: `${index * 50}ms`,
         display: "flex",
         flexDirection: "column",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-3px)";
-        e.currentTarget.style.boxShadow = "0 8px 30px rgba(64,59,54,.12)";
+        e.currentTarget.style.transform = "translateY(-0.125rem)";
+        e.currentTarget.style.boxShadow = T.shadow.hover;
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 2px 12px rgba(64,59,54,.06)";
+        e.currentTarget.style.boxShadow = T.shadow[1];
       }}
     >
       {/* Image area */}
@@ -562,10 +570,10 @@ function MemoryLightbox({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: T.color.linen,
+          background: T.color.cream,
           borderRadius: "1.25rem",
-          border: `1px solid ${T.color.cream}`,
-          boxShadow: "0 24px 80px rgba(64,59,54,.25)",
+          border: `1px solid ${T.color.hairline}`,
+          boxShadow: "0 1.5rem 5rem rgba(64,59,54,.25)",
           maxWidth: "42.5rem",
           width: "100%",
           maxHeight: "90dvh",
@@ -669,7 +677,7 @@ function MemoryLightbox({
             alignItems: "center",
             gap: "0.5rem",
             paddingTop: "0.75rem",
-            borderTop: `1px solid ${T.color.cream}`,
+            borderTop: `1px solid ${T.color.hairline}`,
           }}>
             <MemoryTypeIcon type={mem.type} />
             <span style={{
@@ -706,7 +714,7 @@ function MemoryLightbox({
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
               background: "transparent",
-              border: `1px solid ${T.color.cream}`,
+              border: `1px solid ${T.color.hairline}`,
               borderRadius: "0.625rem",
               cursor: "pointer",
               color: T.color.muted,

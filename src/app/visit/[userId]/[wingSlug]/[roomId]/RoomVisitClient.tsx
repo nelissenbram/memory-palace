@@ -3,7 +3,7 @@
 import React from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import TuscanCard, { TuscanSectionHeader } from "@/components/ui/TuscanCard";
 import CommentThread from "@/components/social/CommentThread";
 import ReactionBar from "@/components/social/ReactionBar";
@@ -36,6 +36,17 @@ interface RoomVisitClientProps {
   currentUserId?: string;
 }
 
+/** Constrain a stored memory hue toward the warm canon palette: cap saturation
+ *  so vivid blues/greens stop clashing with the cream ground, and keep lightness
+ *  in a soft mid-band. Returns an HSL string that harmonizes with CREAM/EMBER. */
+function warmHsl(hue: number, saturation: number, lightness: number, opts?: { satCap?: number; lightBias?: number }) {
+  const satCap = opts?.satCap ?? 34;
+  const lightBias = opts?.lightBias ?? 0;
+  const s = Math.min(saturation, satCap);
+  const l = Math.min(Math.max(lightness + lightBias, 52), 78);
+  return `hsl(${hue}, ${s}%, ${l}%)`;
+}
+
 function MemoryCard({
   memory,
   index,
@@ -51,7 +62,11 @@ function MemoryCard({
   const hasImage = isImage && (memory.file_url || memory.thumbnail_url);
   const hasVideo = isVideo && !!memory.file_url;
   const hasMedia = hasImage || hasVideo;
+  // Full-saturation hue only backs real media (hidden behind the image/video).
   const bgColor = `hsl(${memory.hue}, ${memory.saturation}%, ${memory.lightness}%)`;
+  // Warm, cream-friendly tones for the color-only text and audio surfaces.
+  const warmBase = warmHsl(memory.hue, memory.saturation, memory.lightness);
+  const warmSoft = warmHsl(memory.hue, memory.saturation, memory.lightness, { satCap: 24, lightBias: 10 });
 
   return (
     <TuscanCard
@@ -114,44 +129,94 @@ function MemoryCard({
         </div>
       )}
 
-      {/* Colored header for text-only memories */}
+      {/* Colored header for text-only memories — warm, desaturated wash with a
+          cream veil so the initial reads in ink rather than on a vivid banner. */}
       {!hasMedia && !isAudio && (
         <div
           style={{
+            position: "relative",
             width: "100%",
             height: "4.5rem",
-            background: `linear-gradient(135deg, ${bgColor}, hsl(${memory.hue}, ${Math.max(memory.saturation - 10, 0)}%, ${Math.min(memory.lightness + 15, 90)}%))`,
+            background: `linear-gradient(135deg, ${warmBase}, ${warmSoft})`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "1.5rem",
-            color: "rgba(255,255,255,0.8)",
-            fontFamily: T.font.display,
-            fontWeight: 600,
+            overflow: "hidden",
           }}
         >
-          {memory.title?.[0]?.toUpperCase() || "?"}
+          {/* Cream veil to knock back saturation and lift toward canon. */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(135deg, rgba(252,250,245,0.42), rgba(252,250,245,0.14))",
+            }}
+          />
+          <span
+            style={{
+              position: "relative",
+              fontSize: "1.75rem",
+              color: T.color.ink,
+              opacity: 0.72,
+              fontFamily: T.font.display,
+              fontWeight: 600,
+            }}
+          >
+            {memory.title?.[0]?.toUpperCase() || "?"}
+          </span>
         </div>
       )}
 
-      {/* Audio player */}
+      {/* Audio player — framed in a warm, desaturated strip with a small
+          waveform glyph so the raw native control sits in canon rather than
+          floating on a saturated tint. */}
       {isAudio && memory.file_url && (
         <div
           style={{
-            padding: "1rem 1rem 0.5rem",
-            background: `linear-gradient(135deg, ${bgColor}30, transparent)`,
+            padding: "0.875rem 1rem 0.625rem",
+            background: `linear-gradient(135deg, ${warmSoft}, ${T.color.cream})`,
+            borderBottom: `0.0625rem solid ${T.color.hairline}`,
           }}
         >
-          <audio
-            controls
-            preload="none"
-            src={memory.file_url}
+          <div
             style={{
-              width: "100%",
-              height: "2.5rem",
-              borderRadius: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.625rem",
             }}
-          />
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                flexShrink: 0,
+                width: "2rem",
+                height: "2rem",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: T.color.cream,
+                border: `0.0625rem solid ${T.color.hairline}`,
+                color: T.color.ember,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                <path d="M4 12v0M8 8v8M12 5v14M16 8v8M20 12v0" />
+              </svg>
+            </span>
+            <audio
+              controls
+              preload="none"
+              src={memory.file_url}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                height: "2.5rem",
+                borderRadius: "0.5rem",
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -191,6 +256,89 @@ function MemoryCard({
   );
 }
 
+// Palace-themed reaction glyphs, mirrored from ReactionBar so the read-only
+// guest view stays visually consistent with the interactive signed-in bar.
+const GUEST_REACTION_SVG: Record<string, string> = {
+  candle:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2c0 0-2 3-2 5s1 3 2 3 2-1 2-3-2-5-2-5z" fill="currentColor" opacity="0.3"/><rect x="10" y="10" width="4" height="10" rx="0.5"/><path d="M8 20h8"/></svg>',
+  key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9m-2-4l3 3m-5-1l3 3"/></svg>',
+  scroll:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3c-1 0-2 1-2 2v14c0 1 1 2 2 2h1V5h10c0-1-1-2-2-2H6z"/><path d="M9 5v16h9c1 0 2-1 2-2V7c0-1-1-2-2-2H9z"/><path d="M12 9h5m-5 3h5m-5 3h3"/></svg>',
+  heart:
+    '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+  amphora:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3h8M9 3v2c0 2-3 4-3 8v5c0 2 2 3 6 3s6-1 6-3v-5c0-4-3-6-3-8V3"/><path d="M6 7c-2 1-3 2-3 3s1 2 3 2m12-5c2 1 3 2 3 3s-1 2-3 2"/></svg>',
+};
+
+/** Read-only reaction summary + sign-in nudge shown to logged-out visitors,
+ *  in place of the interactive ReactionBar (which needs an auth session). */
+function GuestReactions({
+  reactions,
+  t,
+}: {
+  reactions: ReactionSummary[];
+  t: (key: string, vars?: Record<string, string>) => string;
+}) {
+  const known = reactions.filter((r) => GUEST_REACTION_SVG[r.emoji] && r.count > 0);
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.5rem",
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      {known.map((r) => (
+        <span
+          key={r.emoji}
+          aria-label={t(`reaction_${r.emoji}`)}
+          title={t(`reaction_${r.emoji}`)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.25rem",
+            padding: "0.375rem 0.625rem",
+            borderRadius: "1rem",
+            border: `0.0625rem solid ${T.color.hairline}`,
+            background: "transparent",
+            fontFamily: T.font.body,
+            fontSize: "0.75rem",
+            color: T.color.ink,
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{ width: "1rem", height: "1rem", display: "inline-block", color: T.color.inkMuted }}
+            dangerouslySetInnerHTML={{ __html: GUEST_REACTION_SVG[r.emoji] }}
+          />
+          <span>{r.count}</span>
+        </span>
+      ))}
+      <a
+        href="/login"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          minHeight: "2.75rem",
+          padding: "0.375rem 0.75rem",
+          fontFamily: T.font.body,
+          fontSize: "0.8125rem",
+          fontWeight: 600,
+          color: T.color.ember,
+          textDecoration: "none",
+          transition: "opacity 0.15s ease",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.75"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+      >
+        {t("guestReactPrompt")}
+      </a>
+    </div>
+  );
+}
+
 export default function RoomVisitClient({
   userId,
   room,
@@ -203,6 +351,9 @@ export default function RoomVisitClient({
 }: RoomVisitClientProps) {
   const { t } = useTranslation("social");
   const isMobile = useIsMobile();
+  // Compact = phone landscape / iPad split-view (≤1024px). Narrow the reading
+  // column and trim the banner so the header doesn't dominate a short viewport.
+  const isCompact = useIsCompact();
 
   return (
     <div
@@ -212,7 +363,7 @@ export default function RoomVisitClient({
         padding: isMobile ? "1rem 0.75rem 4rem" : "2rem 1rem 4rem",
       }}
     >
-      <div style={{ maxWidth: "56rem", margin: "0 auto" }}>
+      <div style={{ maxWidth: isCompact ? "48rem" : "56rem", margin: "0 auto" }}>
         {/* Breadcrumb navigation */}
         <div
           style={{
@@ -292,7 +443,7 @@ export default function RoomVisitClient({
           {/* Room color banner */}
           <div
             style={{
-              height: isMobile ? "3.5rem" : "4.5rem",
+              height: isMobile ? "3.5rem" : isCompact ? "4rem" : "4.5rem",
               background: `linear-gradient(135deg, hsl(${room.coverHue}, 45%, 65%), hsl(${room.coverHue}, 35%, 50%))`,
               display: "flex",
               alignItems: "center",
@@ -328,13 +479,20 @@ export default function RoomVisitClient({
               </p>
             )}
 
-            {/* Reactions */}
+            {/* Reactions — interactive only for signed-in visitors, since
+                toggling a reaction requires an authenticated session and would
+                fail server-side for guests. Guests see the existing reaction
+                counts (read-only) plus a gentle sign-in nudge. */}
             <div style={{ marginTop: "1rem" }}>
-              <ReactionBar
-                targetType="room"
-                targetId={room.id}
-                initialReactions={initialReactions}
-              />
+              {currentUserId ? (
+                <ReactionBar
+                  targetType="room"
+                  targetId={room.id}
+                  initialReactions={initialReactions}
+                />
+              ) : (
+                <GuestReactions reactions={initialReactions} t={t} />
+              )}
             </div>
           </div>
         </TuscanCard>

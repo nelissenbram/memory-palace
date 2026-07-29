@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { T } from "@/lib/theme";
-import { INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, GOLD_SOFT, CREAM, TRAY, CARD_BORDER } from "@/lib/libraryTokens";
+import { INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, GOLD_SOFT, CREAM, TRAY, CARD_BORDER, RT } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { SettingsPageHeader } from "../_SettingsChrome";
@@ -191,31 +191,37 @@ export default function FamilyPage() {
 
   const handleResendInvite = async (groupId: string, member: FamilyMember) => {
     setResendingId(member.id);
+    // Resend re-sends the invite email. Since inviteFamilyMember rejects a duplicate
+    // (email already in group), we cancel the existing row first and then re-create it.
+    // The row carries no reusable token, so this delete-then-recreate is the only path
+    // available from the client. To avoid losing the invite when re-creation fails, we
+    // capture the original role and attempt to restore the row on failure.
+    const resendRole = member.role === "owner" ? "member" : member.role;
     try {
-      // Remove existing invite then re-invite
-      let cancelResult: { error?: string };
-      if (member.user_id) {
-        cancelResult = await removeFamilyMember(groupId, member.user_id);
-      } else {
-        // Invited members have no user_id — cancel by member row id
-        cancelResult = await cancelFamilyInvite(groupId, member.id);
-      }
+      // Remove existing invite (by user_id for active rows, by member id for pending invites)
+      const cancelResult = member.user_id
+        ? await removeFamilyMember(groupId, member.user_id)
+        : await cancelFamilyInvite(groupId, member.id);
       if (cancelResult.error) {
+        // Nothing was removed — the original invite is still intact.
         showToast(cancelResult.error, "error");
-        setResendingId(null);
         return;
       }
-      const result = await inviteFamilyMember(groupId, member.email, member.role === "owner" ? "member" : member.role);
+      const result = await inviteFamilyMember(groupId, member.email, resendRole);
       if (result.error) {
-        showToast(result.error, "error");
+        // Re-creation failed AFTER the old row was removed. Try to restore the invite so
+        // it is not silently lost, then tell the user the resend did not complete.
+        const restore = await inviteFamilyMember(groupId, member.email, resendRole);
+        showToast(restore.error ? t("resendFailedLost") : t("resendFailed"), "error");
       } else {
         showToast(t("inviteResent", { email: member.email }), "success");
-        await loadGroups();
       }
     } catch {
-      showToast(t("loadError"), "error");
+      showToast(t("resendFailed"), "error");
     } finally {
       setResendingId(null);
+      // Always refresh so the UI reflects the true server state regardless of outcome.
+      await loadGroups();
     }
   };
 
@@ -528,7 +534,7 @@ export default function FamilyPage() {
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{
-              fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+              fontFamily: T.font.display, fontSize: RT.titleM, fontWeight: 600,
               color: INK, margin: 0,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
@@ -1104,7 +1110,7 @@ export default function FamilyPage() {
             marginBottom: "1rem",
           }}>
             <h3 style={{
-              fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+              fontFamily: T.font.display, fontSize: RT.titleM, fontWeight: 600,
               color: INK, margin: "0 0 0.5rem",
             }}>
               {t("invitedTitle")}
@@ -1159,7 +1165,7 @@ export default function FamilyPage() {
           marginBottom: "1.5rem",
         }}>
           <h3 style={{
-            fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+            fontFamily: T.font.display, fontSize: RT.titleM, fontWeight: 600,
             color: INK, margin: "0 0 0.375rem",
           }}>
             {t("createGroup")}
@@ -1300,7 +1306,7 @@ export default function FamilyPage() {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{
-                  fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                  fontFamily: T.font.display, fontSize: RT.titleS, fontWeight: 600,
                   color: INK, marginBottom: "0.125rem",
                 }}>
                   {t("viewFamilyTree")}
@@ -1340,7 +1346,7 @@ export default function FamilyPage() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                  fontFamily: T.font.display, fontSize: RT.titleS, fontWeight: 600,
                   color: INK, marginBottom: "0.125rem",
                 }}>
                   {t("manageWingSharing") !== "manageWingSharing" ? t("manageWingSharing") : "Manage who sees your wings"}

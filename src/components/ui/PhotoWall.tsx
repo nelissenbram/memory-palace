@@ -339,22 +339,28 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                 const typeName = t(`tileType_${tileCategory(item.type)}`);
                 const baseName = item.title ? `${item.title} — ${typeName}` : typeName;
                 const ariaName = selectMode && selected ? `${baseName} · ${t("tileSelected")}` : baseName;
+                // When tiles are draggable (desktop pointer), the move affordance is
+                // otherwise invisible to keyboard/AT users. Announce it as a
+                // roledescription so a screen reader hears that the tile is movable
+                // and that select mode carries the pointer-free move path.
+                const movable = !!draggableTiles && !selectMode;
                 return (
                   <button
                     key={item.id}
                     role="listitem"
                     aria-label={ariaName}
+                    aria-roledescription={movable ? t("tileMovable") : undefined}
                     aria-pressed={selectMode ? selected : undefined}
                     onClick={() => (selectMode ? onToggleSelect(item.id) : onOpen(item._i))}
                     onContextMenu={selectMode ? (e) => { e.preventDefault(); onToggleSelect(item.id); } : undefined}
-                    draggable={!!draggableTiles && !selectMode}
-                    onDragStart={draggableTiles && !selectMode ? (e) => {
+                    draggable={movable}
+                    onDragStart={movable ? (e) => {
                       e.dataTransfer.setData("application/x-mp-memory", item.id);
                       e.dataTransfer.setData("text/plain", item.id);
                       e.dataTransfer.effectAllowed = "move";
                       onTileDragStart?.(item.id);
                     } : undefined}
-                    onDragEnd={draggableTiles && !selectMode ? () => onTileDragEnd?.() : undefined}
+                    onDragEnd={movable ? () => onTileDragEnd?.() : undefined}
                     className="il-muro-tile"
                     style={{
                       position: "relative", flex: row.last ? "0 0 auto" : "1 1 auto",

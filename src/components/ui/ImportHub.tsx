@@ -731,7 +731,19 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                       e.currentTarget.style.boxShadow = "none";
                     }}
                   >
-                    {icon}
+                    {/* Brand marks are framed in a hairline pill so their loud
+                        brand colors read as intentional badges against the muted
+                        Tuscan palette rather than as stray accents. */}
+                    <span aria-hidden="true" style={{
+                      flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: "1.75rem", height: "1.75rem",
+                      borderRadius: "50%",
+                      background: T.color.cream,
+                      border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
+                    }}>
+                      {icon}
+                    </span>
                     <span>{t(labelKey)}{disabled && <span style={{ fontSize: "0.8125rem", /* Atrium meta */ color: "#716A5E", marginLeft: "0.25rem" }}>{t("comingSoon")}</span>}</span>
                   </button>
                   );

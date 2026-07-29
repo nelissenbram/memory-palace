@@ -175,7 +175,13 @@
     "agreeTerms": "By creating an account, you agree to our",
     "and": "and",
     "ageConfirm": "I confirm I am at least 16 years old",
-    "ageRequiredForSocial": "Please confirm you are at least 16 years old before signing up."
+    "ageRequiredForSocial": "Please confirm you are at least 16 years old before signing up.",
+    "didntGetEmail": "Didn't get the email? Check your spam folder, or resend it.",
+    "resendConfirmation": "Resend confirmation email",
+    "resending": "Resending…",
+    "resendCooldown": "Resend available in {seconds}s",
+    "resendSent": "Confirmation email sent again. It may take a minute to arrive.",
+    "resendError": "Couldn't resend right now. Please try again in a moment."
   },
   "forgotPassword": {
     "title": "Reset Password",
@@ -917,7 +923,10 @@
     "loadError": "Could not load family data. Please try again.",
     "loadWingSharesError": "Could not load wing shares. Please try again.",
     "noActiveMembers": "No active members yet. Send an invite to get started.",
-    "inviteInvalidEmail": "Please enter a valid email address."
+    "inviteInvalidEmail": "Please enter a valid email address.",
+    "unknownWing": "Wing",
+    "resendFailed": "Could not resend the invite. Please try again.",
+    "resendFailedLost": "The invite could not be resent. Please invite this person again."
   },
   "legacySettings": {
     "title": "Your Legacy",
@@ -1935,7 +1944,13 @@
     "shareLoading": "Preparing your share link…",
     "viewModeLabel": "Tree view mode",
     "sharedTreeEmptyTitle": "This tree is empty",
-    "sharedTreeEmpty": "There are no people in this family tree yet."
+    "sharedTreeEmpty": "There are no people in this family tree yet.",
+    "gedcomSiblingWarning": "Sibling, half-sibling and step relationships aren't stored in GEDCOM files — they're rebuilt from shared parents.",
+    "stepThroughPeople": "Step through people",
+    "stepPrevPerson": "Previous person",
+    "stepNextPerson": "Next person",
+    "stepOpenPerson": "Open",
+    "stepStart": "Browse"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -2363,7 +2378,8 @@
     "status_rejected": "Rejected",
     "status_committed": "Saved",
     "status_error": "Error",
-    "readError": "Read error"
+    "readError": "Read error",
+    "dateTaken": "Date taken"
   },
   "memoryDetail": {
     "panelTitle": "Memory details",
@@ -3580,7 +3596,8 @@
     "skip": "Skip",
     "next": "Next",
     "done": "Got it",
-    "stepXofY": "Step {current} of {total}"
+    "stepXofY": "Step {current} of {total}",
+    "advanceHint": "Continue tour"
   },
   "entranceHallTour": {
     "stepTitle": "Manual navigation",
@@ -3663,7 +3680,8 @@
     "typePhoto": "photo",
     "typePainting": "painting",
     "typeDocument": "document",
-    "typeStory": "story"
+    "typeStory": "story",
+    "emptyOverline": "Nothing stored yet"
   },
   "timeCapsule": {
     "resolutionReminder": "Resolution Reminder",
@@ -3754,7 +3772,9 @@
     "cookiePrefToggleLabel": "Toggle non-essential cookies",
     "sectionSignInAccess": "Sign-in & access",
     "sectionPrivacyData": "Privacy & your data",
-    "sectionDangerZone": "Danger zone"
+    "sectionDangerZone": "Danger zone",
+    "passwordResetSocialOnly": "This account signs in with a social provider, so there's no password to reset. Just sign in with that provider next time.",
+    "passwordResetUnavailable": "Password reset isn't available in this environment."
   },
   "cookieSettings": {
     "pageTitle": "Cookie Preferences",
@@ -4440,7 +4460,8 @@
     "tileType_document": "Document",
     "tileType_memory": "Memory",
     "tileSelected": "Selected",
-    "memoryCountOne": "{count} memory"
+    "memoryCountOne": "{count} memory",
+    "tileMovable": "Movable — use select mode to move to a room"
   },
   "atrium": {
     "goodMorning": "Good morning",
@@ -5125,7 +5146,10 @@
     "routePartialError": "Some captures couldn't be routed and are still pending.",
     "retry": "Try again",
     "wizardCreateError": "We couldn't create your Kep. Please check your connection and try again.",
-    "wizardStep3DescRouting": "Let AI file each memory into the right room automatically."
+    "wizardStep3DescRouting": "Let AI file each memory into the right room automatically.",
+    "wizardPhotosNotLinkedTitle": "Connect Google Photos first",
+    "wizardPhotosNotLinkedDesc": "A photos Kep needs a linked Google Photos account to pull memories from. Connect one, then come back to finish setup.",
+    "wizardPhotosConnectCta": "Connect Google Photos"
   },
   "kepLanding": {
     "title": "Meet Kep",
@@ -5450,7 +5474,10 @@
     "wingLabelSingularCap": "Wing",
     "wingsLabelCap": "Wings",
     "guestbookSendError": "Couldn't send your message. Please try again.",
-    "commentFailed": "Failed to post your message."
+    "commentFailed": "Failed to post your message.",
+    "totalWingVisits": "Wing Visits",
+    "publishNoChanges": "No changes to publish — your selection already matches what's shared.",
+    "guestReactPrompt": "Sign in to react"
   },
   "help": {
     "title": "Help Center",
@@ -5627,7 +5654,8 @@
       "mapVignette": "Memories pinned on a map",
       "menu": "Menu",
       "mainNav": "Main",
-      "language": "Language"
+      "language": "Language",
+      "tapToPlay": "Play video"
     },
     "usps": {
       "eyebrow": "What you can do",

@@ -1279,6 +1279,30 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
     return () => window.removeEventListener("keydown", handler);
   }, [loading, viewMode, handleKeyDown]);
 
+  /* ── Touch equivalent of Tab-through keyboard nav ──
+   * Keyboard users step between people with Tab and open with Enter. Touch
+   * users have no keyboard, so this control lets them step prev/next through
+   * the same layout order (highlighting the focused node) and open its panel. */
+  const handleTouchStep = useCallback((dir: 1 | -1) => {
+    if (layoutOrderIds.length === 0) return;
+    const currentIdx = focusedNodeId ? layoutOrderIds.indexOf(focusedNodeId) : -1;
+    let nextIdx: number;
+    if (dir === 1) {
+      nextIdx = currentIdx >= layoutOrderIds.length - 1 ? 0 : currentIdx + 1;
+    } else {
+      nextIdx = currentIdx <= 0 ? layoutOrderIds.length - 1 : currentIdx - 1;
+    }
+    const nextId = layoutOrderIds[nextIdx];
+    setFocusedNodeId(nextId);
+    centerOnPerson(nextId);
+  }, [layoutOrderIds, focusedNodeId, centerOnPerson]);
+
+  const handleTouchStepOpen = useCallback(() => {
+    if (!focusedNodeId) return;
+    const p = persons.find((p) => p.id === focusedNodeId);
+    if (p) setSelectedPerson(p);
+  }, [focusedNodeId, persons]);
+
   /** Generate a smooth cubic bezier path from parent center-bottom to child center-top */
   function makeLink(link: {
     sx: number;
@@ -1697,6 +1721,28 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                     }}
                   >
                     {t("gedcomHint")}
+                  </div>
+                  {/* Sibling/step relationships are not preserved by the GEDCOM
+                      standard (they derive from shared parents). Warn so users
+                      don't expect them to survive a round-trip. */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "0.375rem",
+                      padding: "0.25rem 0.75rem 0.375rem",
+                      fontFamily: T.font.body,
+                      fontSize: "0.6875rem" /* Atrium overline size */,
+                      lineHeight: 1.4,
+                      color: "#716A5E",
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B85C38" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "0.0625rem" }} aria-hidden="true">
+                      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <span>{t("gedcomSiblingWarning")}</span>
                   </div>
                 </div>
               </>
@@ -2469,6 +2515,103 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             }}
           >
             {t("keyboardHint")}
+          </div>
+        )}
+
+        {/* Touch step control — mobile equivalent of Tab-through keyboard nav.
+            Lets touch users walk person-to-person and open the focused card
+            without a keyboard. Sits above the centred zoom pill. */}
+        {persons.length > 0 && viewMode === "portrait" && isMobile && (
+          <div
+            style={{
+              position: "fixed",
+              bottom: "calc(3.75rem + env(safe-area-inset-bottom, 0rem))",
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.375rem",
+              padding: "0.25rem",
+              borderRadius: "1.5rem",
+              background: `${T.color.linen}E8`,
+              backdropFilter: "blur(0.75rem)",
+              WebkitBackdropFilter: "blur(0.75rem)",
+              border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
+              zIndex: 40,
+              pointerEvents: "auto",
+            }}
+            role="group"
+            aria-label={t("stepThroughPeople")}
+          >
+            <button
+              onClick={() => handleTouchStep(-1)}
+              aria-label={t("stepPrevPerson")}
+              title={t("stepPrevPerson")}
+              style={{
+                width: "2.75rem",
+                height: "2.75rem",
+                borderRadius: "50%",
+                border: "none",
+                background: "transparent",
+                color: T.color.walnut,
+                fontSize: "1.125rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              {"‹"}
+            </button>
+            <button
+              onClick={handleTouchStepOpen}
+              disabled={!focusedNodeId}
+              aria-label={t("stepOpenPerson")}
+              title={t("stepOpenPerson")}
+              style={{
+                minWidth: "2.75rem",
+                height: "2.75rem",
+                padding: "0 0.875rem",
+                borderRadius: "1.375rem",
+                border: focusedNodeId
+                  ? "0.125rem solid #B85C38" /* Atrium token: ember */
+                  : "0.0625rem solid #E3D6BC" /* Atrium hairline */,
+                background: focusedNodeId ? "#B85C38" : T.color.white,
+                color: focusedNodeId ? T.color.white : "#716A5E",
+                fontFamily: T.font.body,
+                fontWeight: 600,
+                fontSize: "0.8125rem",
+                cursor: focusedNodeId ? "pointer" : "default",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {focusedNodeId ? t("stepOpenPerson") : t("stepStart")}
+            </button>
+            <button
+              onClick={() => handleTouchStep(1)}
+              aria-label={t("stepNextPerson")}
+              title={t("stepNextPerson")}
+              style={{
+                width: "2.75rem",
+                height: "2.75rem",
+                borderRadius: "50%",
+                border: "none",
+                background: "transparent",
+                color: T.color.walnut,
+                fontSize: "1.125rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              {"›"}
+            </button>
           </div>
         )}
 

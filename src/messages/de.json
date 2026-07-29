@@ -175,7 +175,13 @@
     "agreeTerms": "Mit der Erstellung eines Kontos stimmst du unseren",
     "and": "und",
     "ageConfirm": "Ich bestätige, dass ich mindestens 16 Jahre alt bin",
-    "ageRequiredForSocial": "Bitte bestätige, dass du mindestens 16 Jahre alt bist."
+    "ageRequiredForSocial": "Bitte bestätige, dass du mindestens 16 Jahre alt bist.",
+    "didntGetEmail": "Keine E-Mail erhalten? Sieh im Spam-Ordner nach oder sende sie erneut.",
+    "resendConfirmation": "Bestätigungs-E-Mail erneut senden",
+    "resending": "Wird erneut gesendet…",
+    "resendCooldown": "Erneut senden in {seconds}s möglich",
+    "resendSent": "Bestätigungs-E-Mail erneut gesendet. Es kann eine Minute dauern, bis sie ankommt.",
+    "resendError": "Konnte gerade nicht erneut senden. Bitte versuche es gleich noch einmal."
   },
   "forgotPassword": {
     "title": "Passwort zurücksetzen",
@@ -917,7 +923,10 @@
     "loadError": "Familiendaten konnten nicht geladen werden. Bitte versuche es erneut.",
     "loadWingSharesError": "Flügelfreigaben konnten nicht geladen werden. Bitte versuche es erneut.",
     "noActiveMembers": "Noch keine aktiven Mitglieder. Sende eine Einladung, um zu beginnen.",
-    "inviteInvalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein."
+    "inviteInvalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein.",
+    "unknownWing": "Flügel",
+    "resendFailed": "Einladung konnte nicht erneut gesendet werden. Bitte versuche es erneut.",
+    "resendFailedLost": "Die Einladung konnte nicht erneut gesendet werden. Bitte lade diese Person erneut ein."
   },
   "legacySettings": {
     "title": "Dein Vermächtnis",
@@ -1935,7 +1944,13 @@
     "shareLoading": "Dein Freigabelink wird vorbereitet…",
     "viewModeLabel": "Ansichtsmodus des Stammbaums",
     "sharedTreeEmptyTitle": "Dieser Stammbaum ist leer",
-    "sharedTreeEmpty": "In diesem Stammbaum sind noch keine Personen vorhanden."
+    "sharedTreeEmpty": "In diesem Stammbaum sind noch keine Personen vorhanden.",
+    "gedcomSiblingWarning": "Geschwister-, Halbgeschwister- und Stiefbeziehungen werden nicht in GEDCOM-Dateien gespeichert — sie werden aus gemeinsamen Eltern abgeleitet.",
+    "stepThroughPeople": "Personen durchblättern",
+    "stepPrevPerson": "Vorherige Person",
+    "stepNextPerson": "Nächste Person",
+    "stepOpenPerson": "Öffnen",
+    "stepStart": "Blättern"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -2363,7 +2378,8 @@
     "status_rejected": "Abgelehnt",
     "status_committed": "Gespeichert",
     "status_error": "Fehler",
-    "readError": "Lesefehler"
+    "readError": "Lesefehler",
+    "dateTaken": "Aufnahmedatum"
   },
   "memoryDetail": {
     "panelTitle": "Erinnerungsdetails",
@@ -3580,7 +3596,8 @@
     "skip": "Überspringen",
     "next": "Weiter",
     "done": "Verstanden",
-    "stepXofY": "Schritt {current} von {total}"
+    "stepXofY": "Schritt {current} von {total}",
+    "advanceHint": "Tour fortsetzen"
   },
   "entranceHallTour": {
     "stepTitle": "Manuelle Navigation",
@@ -3663,7 +3680,8 @@
     "typePhoto": "Foto",
     "typePainting": "Gemälde",
     "typeDocument": "Dokument",
-    "typeStory": "Geschichte"
+    "typeStory": "Geschichte",
+    "emptyOverline": "Noch nichts gelagert"
   },
   "timeCapsule": {
     "resolutionReminder": "Vorsatz-Erinnerung",
@@ -3754,7 +3772,9 @@
     "cookiePrefToggleLabel": "Nicht notwendige Cookies umschalten",
     "sectionSignInAccess": "Anmeldung & Zugriff",
     "sectionPrivacyData": "Datenschutz & deine Daten",
-    "sectionDangerZone": "Gefahrenbereich"
+    "sectionDangerZone": "Gefahrenbereich",
+    "passwordResetSocialOnly": "Dieses Konto meldet sich über einen sozialen Anbieter an, daher gibt es kein Passwort zum Zurücksetzen. Melde dich beim nächsten Mal einfach mit diesem Anbieter an.",
+    "passwordResetUnavailable": "Das Zurücksetzen des Passworts ist in dieser Umgebung nicht verfügbar."
   },
   "cookieSettings": {
     "pageTitle": "Cookie-Einstellungen",
@@ -4440,7 +4460,8 @@
     "tileType_document": "Dokument",
     "tileType_memory": "Erinnerung",
     "tileSelected": "Ausgewählt",
-    "memoryCountOne": "{count} Erinnerung"
+    "memoryCountOne": "{count} Erinnerung",
+    "tileMovable": "Verschiebbar — im Auswahlmodus in einen Raum verschieben"
   },
   "atrium": {
     "goodMorning": "Guten Morgen",
@@ -5125,7 +5146,10 @@
     "routePartialError": "Einige Aufnahmen konnten nicht zugeordnet werden und sind noch offen.",
     "retry": "Erneut versuchen",
     "wizardCreateError": "Wir konnten deinen Kep nicht erstellen. Bitte prüfe deine Verbindung und versuche es erneut.",
-    "wizardStep3DescRouting": "Lass die KI jede Erinnerung automatisch im richtigen Raum ablegen."
+    "wizardStep3DescRouting": "Lass die KI jede Erinnerung automatisch im richtigen Raum ablegen.",
+    "wizardPhotosNotLinkedTitle": "Zuerst Google Fotos verbinden",
+    "wizardPhotosNotLinkedDesc": "Ein Fotos-Kep benötigt ein verknüpftes Google-Fotos-Konto, um Erinnerungen abzurufen. Verbinde eines und kehre dann zurück, um die Einrichtung abzuschließen.",
+    "wizardPhotosConnectCta": "Google Fotos verbinden"
   },
   "kepLanding": {
     "title": "Lernen Sie Kep kennen",
@@ -5450,7 +5474,10 @@
     "wingLabelSingularCap": "Flügel",
     "wingsLabelCap": "Flügel",
     "guestbookSendError": "Deine Nachricht konnte nicht gesendet werden. Bitte versuche es erneut.",
-    "commentFailed": "Deine Nachricht konnte nicht veröffentlicht werden."
+    "commentFailed": "Deine Nachricht konnte nicht veröffentlicht werden.",
+    "totalWingVisits": "Flügelbesuche",
+    "publishNoChanges": "Keine Änderungen zu veröffentlichen — deine Auswahl entspricht bereits dem Geteilten.",
+    "guestReactPrompt": "Anmelden zum Reagieren"
   },
   "help": {
     "title": "Hilfecenter",
@@ -5627,7 +5654,8 @@
       "mapVignette": "Erinnerungen auf einer Karte",
       "menu": "Menü",
       "mainNav": "Hauptnavigation",
-      "language": "Sprache"
+      "language": "Sprache",
+      "tapToPlay": "Video abspielen"
     },
     "usps": {
       "eyebrow": "Was Sie tun können",

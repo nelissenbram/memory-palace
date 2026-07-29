@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signUp } from "@/lib/auth/actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
+import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { T } from "@/lib/theme";
 import { EMBER, HAIRLINE, MUTED, INK, GOLD } from "@/lib/libraryTokens";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -30,10 +32,17 @@ export default function RegisterPage() {
 function RegisterContent() {
   const { t } = useTranslation("register");
   const { t: tc } = useTranslation("common");
+  const isMobile = useIsMobile();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  // Email is retained after a successful sign-up so the confirmation-screen
+  // resend can re-target it without re-entry.
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  // Resend-confirmation state machine: idle → sending → sent (cooldown) / error.
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [resendCooldown, setResendCooldown] = useState(0);
   // OAuth state. `appleFirst` set after mount to avoid hydration mismatch; on
   // iOS, Apple is shown first for equal prominence (Apple Guideline 4.8).
   const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
@@ -59,6 +68,38 @@ function RegisterContent() {
     }
   }, [refCode]);
 
+  // Tick down the resend cooldown once per second so the button re-enables.
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendCooldown]);
+
+  // Re-send the confirmation email for a user stuck on the check-email screen
+  // (never arrived / expired). Uses the browser Supabase client's resend() —
+  // Supabase returns success even for an already-confirmed or unknown address, so
+  // this never leaks account existence. A 45s cooldown throttles abuse.
+  async function handleResend() {
+    if (resendState === "sending" || resendCooldown > 0 || !registeredEmail) return;
+    setResendState("sending");
+    try {
+      const supabase = createClient();
+      const { error: resendErr } = await supabase.auth.resend({
+        type: "signup",
+        email: registeredEmail,
+      });
+      if (resendErr) {
+        setResendState("error");
+        return;
+      }
+      setResendState("sent");
+      setResendCooldown(45);
+      track("signup_confirmation_resent");
+    } catch {
+      setResendState("error");
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -67,6 +108,7 @@ function RegisterContent() {
 
     const password = formData.get("password") as string | null;
     const confirm = formData.get("confirmPassword") as string | null;
+    const email = ((formData.get("email") as string | null) ?? "").trim();
 
     // Guard against a bypassed `required` attribute (e.g. autofill/scripting)
     // so a null password can never .length-deref before the try/catch below.
@@ -95,6 +137,7 @@ function RegisterContent() {
       if (result?.error) {
         setError(result.error);
       } else {
+        setRegisteredEmail(email);
         setSuccess(true);
         track("signup_completed");
 
@@ -150,12 +193,62 @@ function RegisterContent() {
         </h2>
         <p style={{ fontSize: "0.875rem", color: MUTED, lineHeight: 1.6 }}>
           {t("confirmationSent")}
+          {registeredEmail && (
+            <span style={{ display: "block", marginTop: "0.375rem", color: INK, fontWeight: 600 }}>
+              {registeredEmail}
+            </span>
+          )}
           {redirect && (
             <span style={{ display: "block", marginTop: "0.5rem", color: EMBER }}>
               {t("afterConfirming")}
             </span>
           )}
         </p>
+
+        {/* Stuck-user recovery: resend the confirmation email, or explain the
+            already-registered case. */}
+        {registeredEmail && (
+          <div style={{ marginTop: "1.25rem" }}>
+            <p style={{ fontSize: "0.8125rem", color: MUTED, lineHeight: 1.6, margin: "0 0 0.625rem" }}>
+              {t("didntGetEmail")}
+            </p>
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendState === "sending" || resendCooldown > 0}
+              style={{
+                minHeight: "2.75rem",
+                padding: "0.625rem 1.25rem",
+                borderRadius: "0.75rem",
+                border: `1.5px solid ${HAIRLINE}`,
+                background: T.color.white,
+                color: resendState === "sending" || resendCooldown > 0 ? MUTED : EMBER,
+                fontFamily: T.font.body,
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                cursor: resendState === "sending" || resendCooldown > 0 ? "default" : "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              {resendState === "sending"
+                ? t("resending")
+                : resendCooldown > 0
+                  ? t("resendCooldown", { seconds: String(resendCooldown) })
+                  : t("resendConfirmation")}
+            </button>
+            {resendState === "sent" && (
+              <p role="status" style={{ fontSize: "0.8125rem", color: T.color.walnut, marginTop: "0.625rem", marginBottom: 0 }}>
+                {t("resendSent")}
+              </p>
+            )}
+            {resendState === "error" && (
+              <p role="alert" style={{ fontSize: "0.8125rem", color: T.color.error, marginTop: "0.625rem", marginBottom: 0 }}>
+                {t("resendError")}
+              </p>
+            )}
+          </div>
+        )}
+
         <Link
           href="/login"
           style={{
@@ -176,12 +269,12 @@ function RegisterContent() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-        <div style={{ marginBottom: "0.5rem" }}><PalaceLogo variant="mark" color="dark" size="lg" /></div>
+      <div style={{ textAlign: "center", marginBottom: isMobile ? "1.25rem" : "1.75rem" }}>
+        <div style={{ marginBottom: "0.5rem" }}><PalaceLogo variant="mark" color="dark" size={isMobile ? "md" : "lg"} /></div>
         <h1
           style={{
             fontFamily: T.font.display,
-            fontSize: "1.75rem",
+            fontSize: isMobile ? "1.5rem" : "1.75rem",
             fontWeight: 300,
             color: T.color.charcoal,
             margin: 0,
@@ -295,7 +388,7 @@ function RegisterContent() {
         {loading ? t("creating") : t("createAccount")}
       </button>
 
-      <div style={dividerStyle}>
+      <div style={{ ...dividerStyle, margin: isMobile ? "1.25rem 0 1rem" : "1.5rem 0 1.25rem" }}>
         <span style={dividerLineStyle} />
         <span style={dividerTextStyle}>{t("orSignUpWith")}</span>
         <span style={dividerLineStyle} />

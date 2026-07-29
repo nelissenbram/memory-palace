@@ -1011,7 +1011,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         marginBottom: "0.625rem",
                       }}
                     >
-                      <PermissionBadge label={t("viewOnly")} enabled={true} />
+                      <PermissionBadge label={t("viewOnly")} enabled={share.status === "accepted"} />
                       <PermissionBadge label={t("canAdd")} enabled={share.can_add} />
                       <PermissionBadge label={t("canEdit")} enabled={share.can_edit} />
                       <PermissionBadge label={t("canDelete")} enabled={share.can_delete} />
@@ -1120,7 +1120,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         marginBottom: "0.625rem",
                       }}
                     >
-                      <PermissionBadge label={t("viewOnly")} enabled={true} />
+                      <PermissionBadge label={t("viewOnly")} enabled={share.status === "accepted"} />
                       <PermissionBadge label={t("canAdd")} enabled={share.can_add} />
                       <PermissionBadge label={t("canEdit")} enabled={share.can_edit} />
                       <PermissionBadge label={t("canDelete")} enabled={share.can_delete} />

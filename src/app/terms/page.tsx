@@ -59,17 +59,17 @@ export default function TermsOfServicePage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 clamp(20px, 5vw, 60px)",
-          height: 64,
+          padding: "0 clamp(1.25rem, 5vw, 3.75rem)",
+          height: "4rem",
           background: "rgba(250,250,247,0.92)",
           backdropFilter: "blur(12px)",
           borderBottom: `1px solid ${C.sandstone}40`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <Link href="/" aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            width: 32, height: 32, borderRadius: 8,
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
             border: `1px solid ${C.sandstone}50`,
             background: "none", color: C.walnut, textDecoration: "none",
             transition: "border-color 0.2s",
@@ -83,7 +83,7 @@ export default function TermsOfServicePage() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: "0.625rem",
               textDecoration: "none",
             }}
           >
@@ -91,7 +91,7 @@ export default function TermsOfServicePage() {
             <span
               style={{
                 fontFamily: F.display,
-                fontSize: 20,
+                fontSize: "1.25rem",
                 fontWeight: 500,
                 color: C.inkSoft,
                 letterSpacing: "-0.3px",
@@ -117,20 +117,20 @@ export default function TermsOfServicePage() {
       {/* Content */}
       <main
         style={{
-          maxWidth: 760,
+          maxWidth: "47.5rem",
           margin: "0 auto",
-          padding: "60px clamp(20px, 5vw, 40px) 100px",
+          padding: "3.75rem clamp(1.25rem, 5vw, 2.5rem) 6.25rem",
         }}
       >
         <p
           style={{
             fontFamily: F.body,
-            fontSize: 12,
-            letterSpacing: "2px",
+            fontSize: "0.75rem",
+            letterSpacing: "0.125rem",
             textTransform: "uppercase",
             color: C.terracotta,
             fontWeight: 600,
-            marginBottom: 12,
+            marginBottom: "0.75rem",
           }}
         >
           {t("legal")}
@@ -138,16 +138,16 @@ export default function TermsOfServicePage() {
         <h1
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(32px, 5vw, 48px)",
+            fontSize: "clamp(2rem, 5vw, 3rem)",
             fontWeight: 300,
             lineHeight: 1.2,
             color: C.inkSoft,
-            marginBottom: 8,
+            marginBottom: "0.5rem",
           }}
         >
           {t("title")}
         </h1>
-        <p style={{ fontSize: 14, color: C.muted, marginBottom: 48 }}>
+        <p style={{ fontSize: "0.875rem", color: C.muted, marginBottom: "3rem" }}>
           {t("lastUpdated")}
         </p>
 
@@ -240,20 +240,20 @@ export default function TermsOfServicePage() {
           </Ul>
         </Section>
 
-        <div style={{ marginTop: 48, paddingTop: 24, borderTop: `1px solid ${C.sandstone}40` }}>
+        <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: `1px solid ${C.sandstone}40` }}>
           <Link
             href="/privacy"
-            style={{ ...linkStyle, fontSize: 14, marginRight: 24 }}
+            style={{ ...linkStyle, fontSize: "0.875rem", marginRight: "1.5rem" }}
           >
             {t("privacyPolicy")}
           </Link>
           <Link
             href="/security"
-            style={{ ...linkStyle, fontSize: 14, marginRight: 24 }}
+            style={{ ...linkStyle, fontSize: "0.875rem", marginRight: "1.5rem" }}
           >
             {t("securityPolicy")}
           </Link>
-          <Link href="/" style={{ ...linkStyle, fontSize: 14 }}>
+          <Link href="/" style={{ ...linkStyle, fontSize: "0.875rem" }}>
             {t("backToHome")}
           </Link>
         </div>
@@ -266,14 +266,14 @@ export default function TermsOfServicePage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: 40 }}>
+    <section style={{ marginBottom: "2.5rem" }}>
       <h2
         style={{
           fontFamily: F.display,
-          fontSize: 24,
+          fontSize: "1.5rem",
           fontWeight: 500,
           color: C.inkSoft,
-          marginBottom: 14,
+          marginBottom: "0.875rem",
           lineHeight: 1.3,
         }}
       >
@@ -288,10 +288,10 @@ function P({ children }: { children: React.ReactNode }) {
   return (
     <p
       style={{
-        fontSize: 15,
+        fontSize: "0.9375rem",
         lineHeight: 1.75,
         color: C.walnut,
-        marginBottom: 12,
+        marginBottom: "0.75rem",
       }}
     >
       {children}
@@ -303,8 +303,8 @@ function Ul({ children }: { children: React.ReactNode }) {
   return (
     <ul
       style={{
-        paddingLeft: 20,
-        marginBottom: 12,
+        paddingLeft: "1.25rem",
+        marginBottom: "0.75rem",
       }}
     >
       {children}
@@ -316,10 +316,10 @@ function Li({ children }: { children: React.ReactNode }) {
   return (
     <li
       style={{
-        fontSize: 15,
+        fontSize: "0.9375rem",
         lineHeight: 1.75,
         color: C.walnut,
-        marginBottom: 6,
+        marginBottom: "0.375rem",
       }}
     >
       {children}
