@@ -63,32 +63,41 @@ export async function GET(
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
-  const rl = await rateLimit(`media:${user.id}`, 200, 60_000);
-  if (!rl.success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
-  }
-
-  // Check ownership: file_path matches the video OR thumbnail_url references this path
-  // (thumbnails are uploaded as separate files but linked via thumbnail_url).
-  // Prefer the admin client (bypasses RLS for shared/published access); but on
-  // environments WITHOUT a service-role key (e.g. Vercel Preview deploys, where
-  // it is Production-only) fall back to the authenticated session client. RLS
-  // then scopes lookups to the user's OWN memories — which only REDUCES access,
-  // never grants it — so owners still see their own media on previews.
+  // Prefer the admin client (bypasses RLS for shared/published/ANONYMOUS access);
+  // on environments WITHOUT a service-role key (e.g. Vercel Preview deploys, where
+  // it is Production-only) fall back to the authenticated session client. RLS then
+  // scopes lookups to the user's OWN memories — which only REDUCES access, never
+  // grants it — so owners still see their own media on previews.
   let adminClient = supabase;
+  let hasAdmin = false;
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
     try {
       const { createAdminClient } = await import("@/lib/supabase/server");
       adminClient = createAdminClient();
+      hasAdmin = true;
     } catch (err) {
       console.error("[media] admin client unavailable, using session client:", err);
     }
   }
 
+  // Anonymous visitors (public share links) can be served ONLY published-wing
+  // media, which requires the admin client to look up + authorize (RLS hides it
+  // from an anonymous session). Without a service-role key we can't safely
+  // authorize an anonymous read → 401.
+  if (!user && !hasAdmin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit per-user, or per-IP for anonymous public viewers.
+  const rlIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = await rateLimit(user ? `media:${user.id}` : `media:anon:${rlIp}`, 200, 60_000);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
+  }
+
+  // Check ownership: file_path matches the video OR thumbnail_url references this
+  // path (thumbnails are uploaded as separate files but linked via thumbnail_url).
   let { data: memory } = await adminClient
     .from("memories")
     .select("id, user_id, storage_backend, room_id")
@@ -113,10 +122,10 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  let authorized = memory.user_id === user.id;
+  let authorized = !!user && memory.user_id === user.id;
 
-  // Check shared access if not the owner
-  if (!authorized) {
+  // Check shared access if not the owner (authenticated users only)
+  if (!authorized && user) {
     const { data: share } = await supabase
       .from("room_shares")
       .select("id")

@@ -300,6 +300,9 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
       <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "68%" }}>
         <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.title}</span>
         {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
+        {/* Touch/coarse-pointer devices have no hover, so the back-card description
+            is invisible — show it inline on the front there (hidden on hover devices). */}
+        {tile.desc ? <span className="relay-sec-desc" style={{ fontFamily: T.font.body, fontSize: RT.overline, color: a.datumColor, lineHeight: 1.25, marginTop: "0.15rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.desc}</span> : null}
       </span>
       {/* back-card: the tile turns over to the full USP-style scene — no
           title repeat (the front already said it); description + datum +
@@ -547,6 +550,9 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
            function turns over to show what awaits */
         .relay-backcard { opacity: 0; transform: translateY(100%); pointer-events: none; }
         .relay-invite-arrow { opacity: 0; transform: translateX(-0.3rem); }
+        /* Front-side description: only where hover can't reveal the back-card. */
+        .relay-sec-desc { display: none; }
+        @media (hover: none) { .relay-sec-desc { display: block; } }
         @media (hover: hover) {
           .relay-backcard { transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease; }
           .relay-tile-sec:hover .relay-backcard, .relay-tile-sec:focus-visible .relay-backcard { opacity: 1; transform: translateY(0); }
