@@ -1,46 +1,51 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
+import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
-import { navigateInApp, isIOS } from "@/lib/native/platform";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
-import { WINGS } from "@/lib/constants/wings";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import { track } from "@/lib/analytics";
+import { useAccessibility, type ScaleLevel } from "@/components/providers/AccessibilityProvider";
+import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 
 const OnboardingSceneHost = lazy(() => import("@/components/ui/OnboardingSceneHost"));
 const OnboardingTooltip = lazy(() => import("@/components/ui/OnboardingTooltip"));
 const OnboardingCelebration = lazy(() => import("@/components/ui/OnboardingCelebration"));
 const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
 
-/* ── State machine ── */
+/* ── State machine ──
+   Surviving flow: lang_a11y -> name -> style_era(confirmation) -> celebration(threshold)
+   -> done (lands the user into the seeded room to place their first memory). The
+   intro video, quiz, cinematic pre-roll, 4-leg auto-walk gauntlet and paywall are cut. */
 type Phase =
-  | "video_intro"      // Emotional video plays first
-  | "lang_a11y"        // Language + text size (video loops bg)
-  | "name"             // Name input (video loops bg)
-  | "quiz"             // REMOVED — kept for backward compat with saved phases
-  | "style_era"        // Roman vs Renaissance (video loops bg)
-  | "cinematic"        // Live 3D — "Welcome to X's Palace"
-  | "walk_exterior"
-  | "walk_entrance"
-  | "walk_corridor"
-  | "walk_room"
-  | "paywall"          // Soft paywall — trial offer after sunk-cost walkthrough
-  | "upload"
-  | "celebration"
+  | "lang_a11y"        // Language + legibility (warm-cream card)
+  | "name"             // Name input
+  | "style_era"        // Roman Tuscany confirmation
+  | "upload"           // Seeded room + ImportHub (first memory)
+  | "celebration"      // Gold ceremonial threshold
   | "done";
 
-const WALK_PHASES: Phase[] = ["walk_exterior", "walk_entrance", "walk_corridor", "walk_room"];
-const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "style_era"];
+const SETUP_PHASES: Phase[] = ["lang_a11y", "name", "style_era"];
 const PHASE_ORDER: Phase[] = [
-  "video_intro", "lang_a11y", "name", "style_era", "cinematic",
-  "walk_exterior", "walk_entrance", "walk_corridor", "walk_room",
-  "upload", "celebration", "paywall", "done",
+  "lang_a11y", "name", "style_era", "upload", "celebration", "done",
 ];
+
+/* Retired phases from the old flow -> nearest surviving phase, so any stale saved
+   state resolves instead of resurrecting a removed phase. */
+const RETIRED_PHASE_MAP: Record<string, Phase> = {
+  video_intro: "lang_a11y",
+  quiz: "name",
+  cinematic: "name",
+  walk_exterior: "name",
+  walk_entrance: "name",
+  walk_corridor: "name",
+  walk_room: "name",
+  paywall: "celebration",
+};
 
 const STORAGE_KEY = "mp_onboarding_phase";
 const WALK_DONE_KEY = "mp_onboarding_walk_done";
@@ -48,28 +53,28 @@ const WALK_DONE_KEY = "mp_onboarding_walk_done";
 function persistPhase(p: Phase) { try { localStorage.setItem(STORAGE_KEY, p); } catch {} }
 function loadPhase(): Phase | null {
   try {
-    const v = localStorage.getItem(STORAGE_KEY) as Phase | null;
-    if (v && PHASE_ORDER.includes(v)) return v;
+    const v = localStorage.getItem(STORAGE_KEY) as string | null;
+    if (!v) return null;
+    if (PHASE_ORDER.includes(v as Phase)) return v as Phase;
+    if (RETIRED_PHASE_MAP[v]) return RETIRED_PHASE_MAP[v];
   } catch {}
   return null;
 }
 function cleanupStorage() { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
 
-/* ── Text size ── */
-type TextSize = "standard" | "comfortable" | "large";
-const TEXT_SIZE_SCALE: Record<TextSize, number> = { standard: 1, comfortable: 1.125, large: 1.25 };
+/* ── Text size (mirrors AccessibilityProvider ScaleLevel) ── */
+type TextSize = ScaleLevel;
 
-/* ── (flags removed — clean text-only language buttons) ── */
-
-/* ── Branding header shared across all 3 setup screens ── */
-function StepIndicator({ current, total }: { current: number; total: number }) {
+/* ── Quiet canon step dots (AtriumRelay lane-dot grammar): filled=EMBER_GLYPH,
+   unfilled=HAIRLINE, no numeric total, no growing bar. ── */
+function StepDots({ current, total }: { current: number; total: number }) {
   return (
     <div style={{ position: "absolute", top: "calc(2rem + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "0.5rem", alignItems: "center" }}>
       {Array.from({ length: total }, (_, i) => (
         <div key={i} style={{
-          width: i + 1 === current ? "1.5rem" : "0.375rem", height: "0.375rem", borderRadius: "0.1875rem",
-          background: i < current ? T.color.terracotta : "rgba(255,255,255,0.12)",
-          transition: "all .4s ease",
+          width: "0.6rem", height: "0.6rem", borderRadius: "50%",
+          background: i + 1 <= current ? EMBER_GLYPH : HAIRLINE,
+          transition: "background .4s ease",
         }} />
       ))}
     </div>
@@ -95,27 +100,20 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // Landscape phone: full-screen centered setup cards clip at the top when taller
   // than the short viewport. Switch to top-aligned + scrollable. Portrait unchanged.
   const isLandscapePhone = isMobile && !isPortrait;
-  const { t, locale, setLocaleNoReload } = useTranslation("onboarding");
-  const { t: tPalace } = useTranslation("palace");
+  const { t, setLocaleNoReload } = useTranslation("onboarding");
   const {
-    userName, styleEra,
-    setUserName, setUserGoal, setFirstWing, setStyleEra, setOnboarded,
+    userName,
+    setUserName, setUserGoal, setFirstWing, setStyleEra,
   } = useUserStore();
+  const { scaleLevel, setScaleLevel } = useAccessibility();
 
   useEffect(() => {
-    // Goal is now set by the quiz phase; only default firstWing here
+    // Default firstWing; goal default is set explicitly at completion (change 21).
     setFirstWing("roots");
   }, [setFirstWing]);
 
-  // ── Phase state ──
-  const [phase, setPhaseRaw] = useState<Phase>(() => {
-    const saved = loadPhase();
-    if (saved && WALK_PHASES.includes(saved)) return "walk_exterior";
-    if (saved && SETUP_PHASES.includes(saved)) return "video_intro";
-    if (saved === "cinematic" || saved === "upload" || saved === "paywall") return "walk_exterior";
-    if (saved === "celebration") return "celebration";
-    return "video_intro";
-  });
+  // ── Phase state ── (retired saved phases remapped by loadPhase) ──
+  const [phase, setPhaseRaw] = useState<Phase>(() => loadPhase() || "lang_a11y");
 
   const setPhase = useCallback((p: Phase) => {
     setPhaseRaw(p);
@@ -125,10 +123,6 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const memoryUploadedRef = useRef(false);
   const [uploadedMemory, setUploadedMemory] = useState<any>(null);
   const [sceneReady, setSceneReady] = useState(false);
-  const [cinematicPaused, setCinematicPaused] = useState(false);
-  const [cinematicResumed, setCinematicResumed] = useState(false);
-  const [corridorStep, setCorridorStep] = useState(-1);
-  const [roomStep, setRoomStep] = useState(-1);
 
   // ── Language / A11y state ──
   // Check localStorage directly — the hook's `locale` hasn't hydrated yet on first render
@@ -139,123 +133,33 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     } catch {}
     return detectBrowserLocale();
   });
-  const [textSize, setTextSize] = useState<TextSize>("standard");
-  const [selectedEra, setSelectedEra] = useState<"roman" | "renaissance">(
-    (styleEra as "roman" | "renaissance") || "roman"
-  );
+  // Text size is owned by the app-wide AccessibilityProvider (persists to
+  // localStorage + DB + documentElement, survives unmount). Change here writes
+  // through it — no local documentElement writer that wipes on unmount (change 11).
+  const textSize = scaleLevel;
+  const setTextSize = setScaleLevel;
+  const [selectedEra] = useState<"roman">("roman");
 
-  // ── Quiz state ──
-  const [quizStep, setQuizStep] = useState(0);
-  const [quizGoal, setQuizGoal] = useState<string | null>(null);
-  const [quizScale, setQuizScale] = useState<string | null>(null);
-  const [quizAudience, setQuizAudience] = useState<string | null>(null);
+  // ── Name validation (change 13) ──
+  const trimmedName = userName.trim();
 
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${TEXT_SIZE_SCALE[textSize] * 100}%`;
-    return () => { document.documentElement.style.fontSize = ""; };
-  }, [textSize]);
-
-  // ── Video state ──
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoPlayed, setVideoPlayed] = useState(false);
-
-  // Force-play on mobile — autoplay can fail silently on iOS/Android
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (phase === "video_intro") {
-      v.play().catch(() => {
-        // Autoplay blocked — skip directly to next phase
-        setVideoPlayed(true);
-        setPhase("lang_a11y");
-      });
-    } else if (SETUP_PHASES.includes(phase)) {
-      // Ensure video keeps playing as background during setup phases
-      v.loop = true;
-      v.play().catch(() => {});
-    }
-  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Preload 3D scene modules during setup phases (before user reaches cinematic) ──
-  useEffect(() => {
-    if (phase === "name" || phase === "quiz" || phase === "style_era") {
-      // User is filling in their name / picking era — perfect time to warm the module cache
-      import("@/lib/3d/scenePreloader").then(({ preloadScene }) => {
-        preloadScene("exterior");
-        preloadScene("entrance");
-      }).catch(() => {});
-    }
-  }, [phase]);
-
-  // ── Skip ──
-  const handleSkip = useCallback(() => {
-    track("onboarding_skipped", { phase });
-    // Use quiz answer if already chosen, otherwise fall back to "preserve"
+  // ── Unified completion (change 21): skip and normal finish converge on the SAME
+  // atomic path. Persist the trimmed name, set a default goal explicitly (the quiz
+  // was the only goal writer), then advance to 'done' whose effect calls onFinish. ──
+  const completeAndFinish = useCallback(() => {
+    setUserName(trimmedName);
     const savedGoal = (() => { try { return localStorage.getItem("mp_user_goal"); } catch { return null; } })();
     setUserGoal(savedGoal || "preserve");
     setStyleEra(selectedEra);
     setFirstWing("roots");
     useWalkthroughStore.getState().skip();
-    setOnboarded(true);
-    cleanupStorage();
-    onFinish(false);
-  }, [setUserGoal, setStyleEra, setFirstWing, setOnboarded, onFinish, selectedEra, phase]);
+    setPhase("done");
+  }, [trimmedName, setUserName, setUserGoal, setStyleEra, setFirstWing, selectedEra, setPhase]);
 
-  // ── Scene arrival handlers ──
-  const handleExteriorRoomClick = useCallback((id: string) => {
-    // Cinematic phase zooms to entrance → 3s pause, then entrance hall
-    if (id === "__entrance__" && (phase === "cinematic" || phase === "walk_exterior")) {
-      setTimeout(() => setPhase("walk_entrance"), 3000);
-    }
-  }, [phase, setPhase]);
-
-  const handleEntranceDoorClick = useCallback((id: string) => {
-    if (id === "roots" && phase === "walk_entrance") setPhase("walk_corridor");
-  }, [phase, setPhase]);
-
-  const [corridorEnterClicked, setCorridorEnterClicked] = useState(false);
-  const handleCorridorDoorClick = useCallback((id: string) => {
-    // Auto-walk arrived at door → auto-transition to room
-    if (id === "ro1" && phase === "walk_corridor") {
-      setPhase("walk_room");
-    }
-  }, [phase, setPhase]);
-
-  // Safety fallback: auto-transition to room 4s after Enter Room clicked
-  useEffect(() => {
-    if (corridorEnterClicked && phase === "walk_corridor") {
-      const t = setTimeout(() => setPhase("walk_room"), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [corridorEnterClicked, phase, setPhase]);
-
-  // Safety fallback for the auto-walk legs: the exterior/entrance scenes advance
-  // only when their WebGL loop fires a callback. If the scene stalls on iPhone
-  // (GL context loss, throttled rAF), never strand the user — advance after a ceiling.
-  useEffect(() => {
-    if (phase === "walk_exterior") {
-      const t = setTimeout(() => setPhase("walk_entrance"), 14000);
-      return () => clearTimeout(t);
-    }
-    if (phase === "walk_entrance") {
-      const t = setTimeout(() => setPhase("walk_corridor"), 14000);
-      return () => clearTimeout(t);
-    }
-    // walk_room invites a tap on the upload painting; if the reviewer never finds it,
-    // surface the upload step rather than leaving them stuck in the room forever.
-    if (phase === "walk_room") {
-      const t = setTimeout(() => setPhase("upload"), 30000);
-      return () => clearTimeout(t);
-    }
-  }, [phase, setPhase]);
-
-  const handleRoomPaintingClick = useCallback((id: string) => {
-    // Honor the painting tap as soon as the room is shown — gating on roomStep>=9
-    // left the painting dead for ~18s of cinematic clock, reading as "unresponsive".
-    if (id === "__upload_painting__" && phase === "walk_room") {
-      setPhase("upload");
-    }
-  }, [phase, setPhase]);
+  const handleSkip = useCallback(() => {
+    track("onboarding_skipped", { phase });
+    completeAndFinish();
+  }, [completeAndFinish, phase]);
 
   // ── Upload ──
   const handleMemoryAdded = useCallback(() => {
@@ -273,9 +177,9 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     }
   }, [phase, onFinish]);
 
-  // ── Preload ImportHub during walk phases so it's ready when the user clicks the painting ──
+  // ── Preload ImportHub during setup so it's ready when the user reaches the room ──
   useEffect(() => {
-    if (phase === "walk_corridor" || phase === "walk_room") {
+    if (phase === "style_era") {
       import("@/components/ui/ImportHub");
     }
   }, [phase]);
@@ -284,78 +188,83 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const onboardingRoomName: string | undefined = undefined; // Keep default room names from WING_ROOMS
 
   // ══════════════════════════════════════════════
-  // SHARED: Video background for setup phases
+  // SHARED: warm-cream Library canon primitives
   // ══════════════════════════════════════════════
-  const isSetupPhase = SETUP_PHASES.includes(phase);
-
-  const videoBackground = (
-    <video
-      ref={videoRef}
-      autoPlay={phase === "video_intro"}
-      muted
-      loop={videoPlayed}
-      playsInline
-      preload="metadata"
-      onEnded={() => {
-        setVideoPlayed(true);
-        // After first play, switch to loop mode and transition to lang_a11y
-        if (videoRef.current) {
-          videoRef.current.loop = true;
-          videoRef.current.play().catch(() => {});
-        }
-        if (phase === "video_intro") setPhase("lang_a11y");
-      }}
-      style={{
-        position: "fixed", inset: 0,
-        width: "100%", height: "100%",
-        objectFit: "cover",
-        objectPosition: isMobile ? "60% center" : "center center",
-        // During intro: brighter. During setup: match landing page warmth
-        opacity: phase === "video_intro" ? 0.65 : 0.45,
-        filter: phase === "video_intro"
-          ? "saturate(0.7) brightness(1.1)"
-          : "saturate(0.7) brightness(1.0) blur(2px)",
-        transition: "opacity 1.2s ease, filter 1.2s ease",
-        zIndex: 0,
-      }}
-    >
-      <source src="/video/hero-ob.mp4" type="video/mp4" />
-    </video>
+  const canonStyle = (
+    <style>{`
+${KEYFRAMES}
+@keyframes onb-spin{to{transform:rotate(360deg)}}
+.onb-cta{transition:transform .16s ease, filter .16s ease}
+.onb-cta:hover{transform:translateY(-1px);filter:brightness(1.06)}
+.onb-focusable:focus-visible{outline:0.1875rem solid ${GOLD};outline-offset:0.1875rem}
+    `}</style>
   );
 
-  const gradientOverlay = (
-    <div style={{
-      position: "fixed", inset: 0,
-      background: phase === "video_intro"
-        ? "linear-gradient(180deg, rgba(26,25,23,0.15) 0%, rgba(26,25,23,0.3) 50%, rgba(26,25,23,0.7) 100%)"
-        : "radial-gradient(ellipse at center, rgba(26,25,23,0.4), rgba(26,25,23,0.65))",
-      transition: "background 1s ease",
-      pointerEvents: "none",
-      zIndex: 1,
-    }} />
+  // Opaque warm-cream card (hairline border, no backdrop blur).
+  const cardStyle: React.CSSProperties = {
+    maxWidth: "30rem", width: "92%",
+    padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
+    background: CREAM,
+    borderRadius: "1rem",
+    border: `0.0625rem solid ${HAIRLINE}`,
+    boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
+    animation: "onb-fadeUp .5s ease",
+  };
+
+  const pageStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+    width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative",
+    overflow: isMobile ? "auto" : "hidden", background: CREAM, ...extra,
+  });
+
+  // Canon overline: 0.6875rem / 700 / 0.12em / uppercase / ember-glyph ink.
+  const Overline = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+      <span style={{ width: "2rem", height: "1px", background: `${EMBER_GLYPH}40` }} />
+      <span style={{
+        fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+        color: EMBER_GLYPH, letterSpacing: "0.12em", textTransform: "uppercase",
+      }}>
+        {children}
+      </span>
+      <span style={{ width: "2rem", height: "1px", background: `${EMBER_GLYPH}40` }} />
+    </div>
   );
+
+  // One primary EMBER CTA (ctaGrad, GOLD focus ring via .onb-focusable, >=3.25rem).
+  const primaryCtaStyle: React.CSSProperties = {
+    fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
+    padding: "0 1.25rem", borderRadius: "0.75rem", border: "none",
+    background: T.land.ctaGrad, color: "#FFF", cursor: "pointer",
+    minHeight: "3.25rem",
+  };
+
+  const skipLinkStyle: React.CSSProperties = {
+    fontFamily: T.font.body, fontSize: "0.8125rem",
+    color: MUTED, background: "none", border: "none",
+    cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+    minHeight: "2.75rem", padding: "0.5rem",
+  };
 
   // Visible fallback for lazy 3D scenes / panels: a spinner plus an always-clickable
-  // Skip, so a slow or failed chunk in WKWebView never leaves a frozen black screen.
+  // Skip, so a slow or failed chunk in WKWebView never leaves a frozen cream screen.
   const sceneLoadingFallback = (
     <div style={{
       position: "absolute", inset: 0, display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center", gap: "1.5rem",
-      background: "#1a1917", zIndex: 30,
+      background: CREAM, zIndex: 30,
       paddingBottom: "calc(2rem + env(safe-area-inset-bottom, 0px))",
     }}>
       <style>{`@keyframes onb-spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{
         width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-        border: "3px solid rgba(255,255,255,0.15)", borderTopColor: T.color.terracotta,
+        border: `3px solid ${HAIRLINE}`, borderTopColor: EMBER,
         animation: "onb-spin 0.8s linear infinite",
       }} />
-      <button onClick={handleSkip} style={{
+      <button className="onb-focusable" onClick={handleSkip} style={{
         fontFamily: T.font.body, fontSize: "0.8125rem",
-        color: "rgba(255,255,255,0.75)", background: "rgba(0,0,0,0.4)",
-        border: "1px solid rgba(255,255,255,0.2)", borderRadius: "0.5rem",
+        color: MUTED, background: "#FFF",
+        border: `0.0625rem solid ${HAIRLINE}`, borderRadius: "0.5rem",
         padding: "0.625rem 1.25rem", cursor: "pointer", minHeight: "2.75rem",
-        backdropFilter: "blur(4px)",
       }}>
         {t("skipExploreOwn")}
       </button>
@@ -366,50 +275,13 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // PHASE RENDERS
   // ══════════════════════════════════════════════
 
-  /* ── Video intro — plays once, then transitions ── */
-  if (phase === "video_intro") {
-    return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", overflow: "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        {videoBackground}
-        {gradientOverlay}
-
-        {/* Skip button */}
-        <button
-          onClick={() => {
-            setVideoPlayed(true);
-            if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
-            setPhase("lang_a11y");
-          }}
-          style={{
-            position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
-            fontFamily: T.font.body, fontSize: "0.75rem",
-            color: "rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.2)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-            cursor: "pointer", backdropFilter: "blur(4px)", minHeight: "2.5rem",
-          }}
-        >
-          {t("cinematicSkip")}
-        </button>
-
-        {/* Auto-advance after 15s if video hasn't ended */}
-        <VideoAutoAdvance seconds={15} onAdvance={() => {
-          setVideoPlayed(true);
-          if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
-          setPhase("lang_a11y");
-        }} />
-      </div>
-    );
-  }
-
-  /* ── Language + Accessibility — elevated design ── */
+  /* ── Language + Legibility — warm-cream Library canon ── */
   if (phase === "lang_a11y") {
+    const langLabel = t("chooseLangSubtitle");
+    const sizeLabel = t("textSizeTitle");
     return (
-      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        {videoBackground}
-        {gradientOverlay}
+      <div style={pageStyle()}>
+        {canonStyle}
 
         <div style={{
           position: "relative", zIndex: 2,
@@ -418,50 +290,30 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           justifyContent: isLandscapePhone ? "flex-start" : "center",
           overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
-          <StepIndicator current={1} total={3} />
+          <StepDots current={1} total={3} />
 
-          {/* Glass card container — warm bronze tint */}
-          <div style={{
-            maxWidth: "30rem", width: "92%",
-            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
-            background: "rgba(40, 34, 26, 0.6)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
-            animation: "onb-fadeUp .6s ease",
-          }}>
+          <div style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
+              <Overline>{t("appName")}</Overline>
 
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
-                {t("chooseLangTitle")}
+                {t("langA11yTitle") !== "langA11yTitle" ? t("langA11yTitle") : "Let's make this comfortable to read"}
               </h2>
 
-              {/* Language grid — text only, no flags */}
+              {/* Language radiogroup */}
               <div style={{ width: "100%" }}>
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.625rem",
-                  color: "#7A6F63", textAlign: "left", marginBottom: "0.5rem",
-                  fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px",
+                <h3 style={{
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+                  color: EMBER_GLYPH, textAlign: "left", margin: "0 0 0.5rem",
+                  textTransform: "uppercase", letterSpacing: "0.12em",
                 }}>
-                  {t("chooseLangSubtitle")}
-                </p>
-                <div style={{
+                  {langLabel}
+                </h3>
+                <div role="radiogroup" aria-label={langLabel} style={{
                   display: "grid",
                   gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
                   gap: "0.4375rem",
@@ -471,18 +323,22 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                     return (
                       <button
                         key={loc}
+                        className="onb-focusable"
+                        role="radio"
+                        aria-checked={active}
                         onClick={() => { setSelectedLocale(loc); setLocaleNoReload(loc); }}
                         style={{
-                          fontFamily: T.font.body, fontSize: "0.8125rem",
-                          fontWeight: active ? 600 : 500,
+                          fontFamily: T.font.body, fontSize: "0.9375rem",
+                          fontWeight: active ? 700 : 500,
                           padding: "0.6875rem 0.5rem", borderRadius: "0.5rem",
-                          border: `1.5px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
-                          background: active ? `${T.color.terracotta}12` : "rgba(255,255,255,0.02)",
-                          color: active ? T.color.terracotta : "#C4B8A8",
+                          border: `0.125rem solid ${active ? EMBER : HAIRLINE}`,
+                          background: active ? `${EMBER}12` : "#FFF",
+                          color: active ? EMBER : INK,
                           cursor: "pointer", transition: "all .2s", minHeight: "2.75rem",
                           display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                         }}
                       >
+                        {active && <span aria-hidden style={{ color: EMBER, fontWeight: 700 }}>{"✓"}</span>}
                         {localeNames[loc]}
                       </button>
                     );
@@ -491,18 +347,18 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
               </div>
 
               {/* Divider */}
-              <div style={{ width: "100%", height: "1px", background: "rgba(255,255,255,0.05)" }} />
+              <div style={{ width: "100%", height: "1px", background: HAIRLINE }} />
 
-              {/* Text size */}
+              {/* Text size radiogroup — persists app-wide via AccessibilityProvider */}
               <div style={{ width: "100%" }}>
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.625rem",
-                  color: "#7A6F63", textAlign: "left", marginBottom: "0.5rem",
-                  fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px",
+                <h3 style={{
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+                  color: EMBER_GLYPH, textAlign: "left", margin: "0 0 0.5rem",
+                  textTransform: "uppercase", letterSpacing: "0.12em",
                 }}>
-                  {t("textSizeTitle")}
-                </p>
-                <div style={{ display: "flex", gap: "0.375rem" }}>
+                  {sizeLabel}
+                </h3>
+                <div role="radiogroup" aria-label={sizeLabel} style={{ display: "flex", gap: "0.375rem" }}>
                   {(["standard", "comfortable", "large"] as TextSize[]).map((size) => {
                     const active = size === textSize;
                     const label = t(`textSize${size.charAt(0).toUpperCase() + size.slice(1)}` as any);
@@ -510,20 +366,30 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                     return (
                       <button
                         key={size}
+                        className="onb-focusable"
+                        role="radio"
+                        aria-checked={active}
                         onClick={() => setTextSize(size)}
                         style={{
-                          flex: 1, fontFamily: T.font.body, fontSize: "0.6875rem",
-                          fontWeight: active ? 600 : 500,
-                          padding: "0.75rem 0.25rem", borderRadius: "0.5rem",
-                          border: `1.5px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
-                          background: active ? `${T.color.terracotta}12` : "rgba(255,255,255,0.02)",
-                          color: active ? T.color.terracotta : "#A09889",
-                          cursor: "pointer", transition: "all .2s", minHeight: "3.25rem",
-                          display: "flex", flexDirection: "column", alignItems: "center", gap: "0.125rem",
+                          flex: 1, fontFamily: T.font.body, fontSize: "0.75rem",
+                          fontWeight: active ? 700 : 500,
+                          padding: "0.5rem 0.25rem", borderRadius: "0.5rem",
+                          border: `0.125rem solid ${active ? EMBER : HAIRLINE}`,
+                          background: active ? `${EMBER}12` : "#FFF",
+                          color: active ? EMBER : INK,
+                          cursor: "pointer", transition: "all .2s", height: "3.5rem",
+                          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.125rem",
+                          position: "relative",
                         }}
                       >
-                        <span style={{ fontSize: fz, fontFamily: T.font.display, fontWeight: 300, lineHeight: 1 }}>Aa</span>
-                        <span style={{ fontSize: size === "comfortable" ? "0.8125rem" : size === "large" ? "0.9375rem" : undefined }}>{label}</span>
+                        {active && (
+                          <span aria-hidden style={{
+                            position: "absolute", top: "0.25rem", right: "0.375rem",
+                            color: EMBER, fontSize: "0.75rem", fontWeight: 700,
+                          }}>{"✓"}</span>
+                        )}
+                        <span style={{ fontSize: fz, fontFamily: T.font.display, fontWeight: 400, lineHeight: 1 }}>Aa</span>
+                        <span>{label}</span>
                       </button>
                     );
                   })}
@@ -532,24 +398,14 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
               {/* Continue */}
               <button
+                className="onb-cta onb-focusable"
                 onClick={() => setPhase("name")}
-                style={{
-                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  padding: "0.8125rem 0", borderRadius: "0.5rem", border: "none",
-                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  color: "#FFF", cursor: "pointer", transition: "all .3s",
-                  boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.25)",
-                  minHeight: "3rem", width: "100%",
-                }}
+                style={{ ...primaryCtaStyle, width: "100%" }}
               >
                 {t("continueButton")}
               </button>
 
-              <button onClick={handleSkip} style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "#5A5248", background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-              }}>
+              <button className="onb-focusable" onClick={handleSkip} style={skipLinkStyle}>
                 {t("skipExploreOwn")}
               </button>
             </div>
@@ -559,13 +415,13 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     );
   }
 
-  /* ── Name screen — same glass card style ── */
+  /* ── Name screen — warm-cream card, validated + labeled ── */
   if (phase === "name") {
+    const nameValid = trimmedName.length > 0;
+    const advanceFromName = () => { if (nameValid) { setUserName(trimmedName); setPhase("style_era"); } };
     return (
-      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        {videoBackground}
-        {gradientOverlay}
+      <div style={pageStyle()}>
+        {canonStyle}
 
         <div style={{
           position: "relative", zIndex: 2,
@@ -574,95 +430,85 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           justifyContent: isLandscapePhone ? "flex-start" : "center",
           overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
-          <StepIndicator current={2} total={3} />
+          <StepDots current={2} total={3} />
 
-          {/* Glass card — warm bronze tint */}
-          <div style={{
-            maxWidth: "30rem", width: "92%",
-            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
-            background: "rgba(40, 34, 26, 0.6)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
-            animation: "onb-fadeUp .5s ease",
-          }}>
+          <div style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
+              <Overline>{t("appName")}</Overline>
 
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
-                {t("whatToCallYou")}
+                {t("nameTitle") !== "nameTitle" ? t("nameTitle") : t("whatToCallYou")}
               </h2>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem",
-                color: "#A09889", maxWidth: "22rem", lineHeight: 1.6, margin: 0,
+                fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.9375rem",
+                color: MUTED, maxWidth: "22rem", lineHeight: 1.6, margin: 0,
               }}>
-                {t("nameDescription")}
+                {t("nameAside") !== "nameAside" ? t("nameAside") : "So the house knows whose it is."}
               </p>
               <div style={{ width: "100%", maxWidth: "20rem" }}>
+                <label htmlFor="onb-name-input" style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}>
+                  {t("namePlaceholder")}
+                </label>
                 <input
+                  id="onb-name-input"
+                  className="onb-focusable"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   placeholder={t("namePlaceholder")}
+                  aria-label={t("namePlaceholder")}
                   style={{
-                    fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.5rem", textAlign: "center",
-                    padding: "0.875rem 1.5rem", border: "1.5px solid rgba(198,107,61,0.18)",
-                    borderRadius: "0.625rem", background: "rgba(40,34,26,0.4)", color: "#F2EDE7",
+                    fontFamily: T.font.display, fontSize: "1rem", textAlign: "center",
+                    padding: "0.875rem 1.5rem", border: `0.09375rem solid ${HAIRLINE}`,
+                    borderRadius: "0.625rem", background: "#FFF", color: INK,
                     outline: "none", width: "100%", transition: "border-color .2s",
                   }}
-                  onFocus={(e) => { e.target.style.borderColor = T.color.terracotta; }}
-                  onBlur={(e) => { e.target.style.borderColor = "rgba(198,107,61,0.18)"; }}
+                  onFocus={(e) => { e.target.style.borderColor = EMBER; }}
+                  onBlur={(e) => { e.target.style.borderColor = HAIRLINE; }}
                   autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter") setPhase("style_era"); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") advanceFromName(); }}
                 />
+                {!nameValid && (
+                  <p style={{
+                    fontFamily: T.font.body, fontSize: "0.75rem", color: MUTED,
+                    margin: "0.5rem 0 0", lineHeight: 1.4,
+                  }}>
+                    {t("nameHint") !== "nameHint" ? t("nameHint") : "Please enter a name to continue."}
+                  </p>
+                )}
               </div>
 
               <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
                 <button
+                  className="onb-focusable"
                   onClick={() => setPhase("lang_a11y")}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
-                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
+                    padding: "0 1.25rem", borderRadius: "0.75rem", minHeight: "3.25rem",
+                    border: `0.0625rem solid ${HAIRLINE}`, background: "#FFF",
+                    color: MUTED, cursor: "pointer",
                   }}
                 >
                   {"\u2190"} {t("backButton")}
                 </button>
                 <button
-                  onClick={() => setPhase("style_era")}
+                  className="onb-cta onb-focusable"
+                  onClick={advanceFromName}
+                  disabled={!nameValid}
                   style={{
-                    flex: 1, fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
-                    padding: "0.75rem 2rem", borderRadius: "0.5rem", minHeight: "3rem", border: "none",
-                    background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                    color: "#FFF",
-                    cursor: "pointer",
-                    boxShadow: "0 0.25rem 1rem rgba(198,107,61,.3)",
+                    ...primaryCtaStyle, flex: 1,
+                    opacity: nameValid ? 1 : 0.5,
+                    cursor: nameValid ? "pointer" : "not-allowed",
                   }}
                 >
                   {t("continueButton")} {"\u2192"}
                 </button>
               </div>
 
-              <button onClick={handleSkip} style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "#5A5248", background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-              }}>
+              <button className="onb-focusable" onClick={handleSkip} style={skipLinkStyle}>
                 {t("skipExploreOwn")}
               </button>
             </div>
@@ -672,168 +518,11 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     );
   }
 
-  /* ── Personalization Quiz — 3 questions ── */
-  if (phase === "quiz") {
-    const QUIZ_QUESTIONS = [
-      {
-        key: "quizQ1" as const,
-        options: [
-          { label: "quizQ1o1" as const, icon: "\uD83C\uDFDB\uFE0F", value: "preserve" },
-          { label: "quizQ1o2" as const, icon: "\uD83D\uDCD6", value: "stories" },
-          { label: "quizQ1o3" as const, icon: "\uD83C\uDF33", value: "genealogy" },
-          { label: "quizQ1o4" as const, icon: "\uD83D\uDCF8", value: "organize" },
-        ],
-        selected: quizGoal,
-        onSelect: (v: string) => {
-          setQuizGoal(v);
-          try { localStorage.setItem("mp_user_goal", v); } catch {}
-          setUserGoal(v);
-          setTimeout(() => setPhase("style_era"), 300);
-        },
-      },
-    ];
-
-    const currentQ = QUIZ_QUESTIONS[quizStep];
-
-    return (
-      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}{`
-@keyframes onb-quizFade{from{opacity:0;transform:translateX(1.5rem)}to{opacity:1;transform:translateX(0)}}
-        `}</style>
-        {videoBackground}
-        {gradientOverlay}
-
-        <div style={{
-          position: "relative", zIndex: 2,
-          width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        }}>
-          <StepIndicator current={3} total={3} />
-
-          {/* Glass card */}
-          <div style={{
-            maxWidth: "30rem", width: "92%",
-            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
-            background: "rgba(40, 34, 26, 0.6)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
-            animation: "onb-fadeUp .5s ease",
-          }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
-
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("quizTitle")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
-
-              {/* Question — animated swap */}
-              <div key={quizStep} style={{ animation: "onb-quizFade .4s ease", width: "100%" }}>
-                <h2 style={{
-                  fontFamily: T.font.display, fontSize: isMobile ? "1.25rem" : "1.5rem",
-                  fontWeight: 300, color: "#F2EDE7", lineHeight: 1.3, margin: "0 0 0.25rem",
-                }}>
-                  {t(currentQ.key)}
-                </h2>
-
-                {/* Quiz step dots */}
-                <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem", marginBottom: "1rem" }}>
-                  {QUIZ_QUESTIONS.map((_, i) => (
-                    <div key={i} style={{
-                      width: "0.375rem", height: "0.375rem", borderRadius: "50%",
-                      background: i === quizStep ? T.color.terracotta : i < quizStep ? `${T.color.terracotta}80` : "rgba(255,255,255,0.12)",
-                      transition: "all .3s ease",
-                    }} />
-                  ))}
-                </div>
-
-                {/* Option cards */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {currentQ.options.map((opt) => {
-                    const active = currentQ.selected === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => currentQ.onSelect(opt.value)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: "0.875rem",
-                          width: "100%", padding: isMobile ? "0.875rem 1rem" : "1rem 1.25rem",
-                          borderRadius: "0.75rem",
-                          border: `2px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
-                          background: active ? `${T.color.terracotta}14` : "rgba(255,255,255,0.02)",
-                          cursor: "pointer", transition: "all .2s",
-                          fontFamily: T.font.body, fontSize: isMobile ? "0.875rem" : "0.9375rem",
-                          color: active ? "#F2EDE7" : "#C4B8A8",
-                          fontWeight: active ? 600 : 500,
-                          textAlign: "left",
-                          minHeight: "3.25rem",
-                        }}
-                      >
-                        <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>{opt.icon}</span>
-                        <span>{t(opt.label)}</span>
-                        {active && (
-                          <span style={{
-                            marginLeft: "auto", width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                            background: T.color.terracotta, display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: "0.625rem", color: "#FFF", flexShrink: 0,
-                          }}>&#10003;</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Back button */}
-              <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
-                <button
-                  onClick={() => {
-                    if (quizStep > 0) {
-                      setQuizStep(quizStep - 1);
-                    } else {
-                      setPhase("name");
-                    }
-                  }}
-                  style={{
-                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
-                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
-                  }}
-                >
-                  {"\u2190"} {t("backButton")}
-                </button>
-              </div>
-
-              <button onClick={handleSkip} style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "#5A5248", background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-              }}>
-                {t("skipExploreOwn")}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Style era: Roman vs Renaissance ── */
+  /* ── Style confirmation — one calm Roman-Tuscany confirmation, not a choice ── */
   if (phase === "style_era") {
     return (
-      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        {videoBackground}
-        {gradientOverlay}
+      <div style={pageStyle()}>
+        {canonStyle}
 
         <div style={{
           position: "relative", zIndex: 2,
@@ -842,132 +531,72 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           justifyContent: isLandscapePhone ? "flex-start" : "center",
           overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
-          <StepIndicator current={3} total={3} />
+          <StepDots current={3} total={3} />
 
-          {/* Glass card — warm bronze tint */}
-          <div style={{
-            maxWidth: "30rem", width: "92%",
-            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
-            background: "rgba(40, 34, 26, 0.6)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
-            animation: "onb-fadeUp .5s ease",
-          }}>
+          <div style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
+              <Overline>{t("appName")}</Overline>
+
+              {/* Laurel wreath — Roman identity glyph, ember-glyph ink */}
+              <svg width="52" height="52" viewBox="0 0 44 44" fill="none" aria-hidden>
+                <path d="M22 6C18 10 14 16 14 22C14 28 17 32 22 34C27 32 30 28 30 22C30 16 26 10 22 6Z"
+                  stroke={EMBER_GLYPH} strokeWidth="1.2" fill="none" opacity="0.55" />
+                <path d="M10 20C12 16 16 13 20 12" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.45" strokeLinecap="round" />
+                <path d="M34 20C32 16 28 13 24 12" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.45" strokeLinecap="round" />
+                <path d="M8 26C11 22 15 20 19 19" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
+                <path d="M36 26C33 22 29 20 25 19" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
+                <line x1="16" y1="36" x2="28" y2="36" stroke={EMBER_GLYPH} strokeWidth="1.2" opacity="0.65" />
+                <line x1="18" y1="38" x2="26" y2="38" stroke={EMBER_GLYPH} strokeWidth="0.8" opacity="0.45" />
+              </svg>
 
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
-                {tPalace("eraPickerTitle")}
+                {t("styleConfirmTitle") !== "styleConfirmTitle" ? t("styleConfirmTitle") : "Your palace is Roman Tuscany"}
               </h2>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem",
-                color: "#A09889", maxWidth: "24rem", lineHeight: 1.6, margin: 0,
+                fontFamily: T.font.display, fontStyle: "italic", fontSize: "1rem",
+                color: MUTED, maxWidth: "24rem", lineHeight: 1.6, margin: 0,
               }}>
-                {tPalace("eraPickerSubtitle")}
+                {t("styleConfirmAside") !== "styleConfirmAside" ? t("styleConfirmAside") : "Marble atriums, colonnaded gardens — we'll build it around you."}
               </p>
-
-              {/* Era cards */}
-              <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
-                {/* Roman Tuscany — selectable */}
-                <button
-                  onClick={() => setSelectedEra("roman")}
-                  style={{
-                    flex: 1, padding: "1.5rem 0.875rem", borderRadius: "0.875rem",
-                    border: `2px solid ${selectedEra === "roman" ? T.era.roman.secondary : "rgba(255,255,255,0.06)"}`,
-                    background: selectedEra === "roman" ? `${T.era.roman.secondary}14` : "rgba(255,255,255,0.02)",
-                    cursor: "pointer", transition: "all .25s",
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: "0.625rem",
-                    position: "relative",
-                  }}
-                >
-                  {/* Elegant laurel wreath icon */}
-                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                    <path d="M22 6C18 10 14 16 14 22C14 28 17 32 22 34C27 32 30 28 30 22C30 16 26 10 22 6Z"
-                      stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1.2" fill="none" opacity="0.5" />
-                    <path d="M10 20C12 16 16 13 20 12" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
-                    <path d="M34 20C32 16 28 13 24 12" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
-                    <path d="M8 26C11 22 15 20 19 19" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.35" strokeLinecap="round" />
-                    <path d="M36 26C33 22 29 20 25 19" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.35" strokeLinecap="round" />
-                    <line x1="16" y1="36" x2="28" y2="36" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1.2" opacity="0.6" />
-                    <line x1="18" y1="38" x2="26" y2="38" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="0.8" opacity="0.4" />
-                  </svg>
-                  <span style={{
-                    fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 500,
-                    color: selectedEra === "roman" ? "#F2EDE7" : "#A09889",
-                    letterSpacing: "0.5px",
-                  }}>
-                    {tPalace("eraRoman")}
-                  </span>
-                  <span style={{
-                    fontFamily: T.font.body, fontSize: "0.6875rem",
-                    color: selectedEra === "roman" ? "#D4C5B2" : "#6B6155", lineHeight: 1.4,
-                  }}>
-                    {tPalace("eraRomanDesc")}
-                  </span>
-                  {selectedEra === "roman" && (
-                    <span style={{
-                      position: "absolute", top: "0.5rem", right: "0.5rem",
-                      width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                      background: T.era.roman.secondary, display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "0.625rem", color: "#FFF",
-                    }}>&#10003;</span>
-                  )}
-                </button>
-
-              </div>
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem",
+                color: MUTED, maxWidth: "24rem", lineHeight: 1.5, margin: 0,
+              }}>
+                {t("styleConfirmReversible") !== "styleConfirmReversible" ? t("styleConfirmReversible") : "You can change this anytime."}
+              </p>
 
               {/* Buttons */}
               <div style={{ display: "flex", gap: "0.75rem", width: "100%", marginTop: "0.25rem" }}>
                 <button
+                  className="onb-focusable"
                   onClick={() => setPhase("name")}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
-                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
+                    padding: "0 1.25rem", borderRadius: "0.75rem", minHeight: "3.25rem",
+                    border: `0.0625rem solid ${HAIRLINE}`, background: "#FFF",
+                    color: MUTED, cursor: "pointer",
                   }}
                 >
-                  {"\u2190"} {t("backButton")}
+                  {"←"} {t("backButton")}
                 </button>
                 <button
+                  className="onb-cta onb-focusable"
                   onClick={() => {
-                    setStyleEra(selectedEra);
-                    updateProfile({ styleEra: selectedEra }).catch(() => {});
-                    setPhase("cinematic");
+                    setStyleEra("roman");
+                    updateProfile({ styleEra: "roman" }).catch(() => {});
+                    setPhase("upload");
                   }}
-                  style={{
-                    flex: 1, fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
-                    padding: "0.75rem 2rem", borderRadius: "0.5rem", minHeight: "3rem", border: "none",
-                    background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                    color: "#FFF", cursor: "pointer",
-                    boxShadow: "0 0.25rem 1rem rgba(198,107,61,.3)",
-                  }}
+                  style={{ ...primaryCtaStyle, flex: 1 }}
                 >
-                  {t("continueButton")} {"\u2192"}
+                  {t("continueButton")} {"→"}
                 </button>
               </div>
 
-              <button onClick={handleSkip} style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "#5A5248", background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-              }}>
+              <button className="onb-focusable" onClick={handleSkip} style={skipLinkStyle}>
                 {t("skipExploreOwn")}
               </button>
             </div>
@@ -977,586 +606,32 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     );
   }
 
-  /* ── Cinematic — "Welcome to [Name]'s Palace" over live 3D ── */
-  if (phase === "cinematic") {
+  /* ── Upload — seeded room + first-memory placement (do-first) ── */
+  if (phase === "upload") {
     return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-
-        <Suspense fallback={
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: "#6B6155", animation: "onb-pulse 1.5s ease infinite" }}>
-              {t("cinematicLoading")}
-            </p>
-          </div>
-        }>
-          <OnboardingSceneHost
-            scene="exterior"
-            onboardingMode={true}
-            onRoomClick={handleExteriorRoomClick}
-            onReady={() => setSceneReady(true)}
-            onCinematicPause={() => setCinematicPaused(true)}
-            cinematicResumed={cinematicResumed}
-          />
-        </Suspense>
-
-        {/* Bottom shadow gradient for text readability over 3D scene */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
-
-        {/* Title floats in from the bottom */}
-        <div style={{
-          position: "absolute",
-          bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
-          left: "50%", transform: "translateX(-50%)",
-          textAlign: "center", zIndex: 10, width: "90%",
-        }}>
-          {/* Decorative line */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
-            marginBottom: "1rem",
-            animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
-          }}>
-            <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-            <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
-            <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-          </div>
-
-          <p style={{
-            fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-            color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
-            margin: "0 0 0.625rem",
-            textShadow: "0 2px 8px rgba(0,0,0,0.7)",
-            animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
-          }}>
-            {t("welcomeTitle")}
-          </p>
-
-          <h1 style={{
-            fontFamily: T.font.display,
-            fontSize: isMobile ? "1.5rem" : "3.5rem",
-            fontWeight: 300, color: "#F2EDE7",
-            lineHeight: 1.05, margin: 0,
-            letterSpacing: "0.04em",
-            animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-            backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-            backgroundSize: "200% 100%",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
-          }}>
-            {t("cinematicPalaceName", { name: userName })}
-          </h1>
-
-          <p style={{
-            fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-            color: "#D4CBC0", margin: "0.75rem 0 0",
-            lineHeight: 1.5,
-            textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-            animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
-          }}>
-            {t("walkExterior")}
-          </p>
-
-          {cinematicPaused && !cinematicResumed && (
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              gap: "1rem", flexWrap: "wrap",
-              marginTop: "1.25rem",
-              animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
-            }}>
-              <p style={{
-                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                color: "#D4CBC0", margin: 0, lineHeight: 1.5,
-                textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-              }}>
-                {t("cinematicPrompt")}
-              </p>
-              <button
-                onClick={() => setCinematicResumed(true)}
-                style={{
-                  fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                  letterSpacing: "0.04em",
-                  padding: "0.625rem 1.5rem",
-                  background: T.color.terracotta,
-                  color: "#FAFAF7",
-                  border: "none", borderRadius: "0.5rem",
-                  cursor: "pointer",
-                  boxShadow: `0 0.25rem 1rem ${T.color.terracotta}40`,
-                  transition: "transform .15s ease, box-shadow .15s ease",
-                  whiteSpace: "nowrap",
-                  minHeight: "2.75rem",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}60`; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}40`; }}
-                onPointerDown={e => { e.currentTarget.style.transform = "scale(0.96)"; }}
-                onPointerUp={e => { e.currentTarget.style.transform = ""; }}
-                onPointerCancel={e => { e.currentTarget.style.transform = ""; }}
-              >
-                {t("cinematicYes")}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Skip intro */}
-        <button
-          onClick={() => setPhase("walk_exterior")}
-          aria-label={t("cinematicSkip")}
-          style={{
-            position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
-            fontFamily: T.font.body, fontSize: "0.8125rem",
-            color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.45)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-            cursor: "pointer", backdropFilter: "blur(8px)", minHeight: "2.75rem",
-            minWidth: "2.75rem",
-            textShadow: "0 1px 3px rgba(0,0,0,0.5)",
-          }}
-        >
-          {t("cinematicSkip")}
-        </button>
-      </div>
-    );
-  }
-
-  /* ── Walk phases (3D + tooltip) ── */
-  if (WALK_PHASES.includes(phase)) {
-    const sceneMap: Record<string, "exterior" | "entrance" | "corridor" | "room"> = {
-      walk_exterior: "exterior",
-      walk_entrance: "entrance",
-      walk_corridor: "corridor",
-      walk_room: "room",
-    };
-    const currentScene = sceneMap[phase] || "exterior";
-    const autoWalkTarget =
-      phase === "walk_exterior" ? "__entrance__" :
-      phase === "walk_entrance" ? null : // entrance cinematic handles the walk internally
-      phase === "walk_corridor" ? null : // cinematic handles the walk internally, auto-walks to door at step 7
-      null;
-
-    const tooltipMessage =
-      phase === "walk_exterior" ? t("walkExterior") :
-      phase === "walk_entrance" ? t("walkEntrance") :
-      phase === "walk_corridor" ? t("walkCorridor") :
-      t("walkRoom");
-
-    const showAddMemoryButton = false; // walk_room now uses cinematic overlay, not tooltip button
-    const hideTooltip = phase === "walk_entrance" || phase === "walk_corridor" || phase === "walk_room";
-
-    return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
+        {canonStyle}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost
-            scene={currentScene}
-            autoWalkTo={autoWalkTarget}
-            onboardingMode={true}
-            onRoomClick={handleExteriorRoomClick}
-            onDoorClick={
-              phase === "walk_entrance" ? handleEntranceDoorClick :
-              phase === "walk_corridor" ? handleCorridorDoorClick :
-              phase === "walk_room" ? handleRoomPaintingClick :
-              undefined
-            }
-            onCinematicStep={
-              phase === "walk_corridor" ? setCorridorStep :
-              phase === "walk_room" ? setRoomStep :
-              undefined
-            }
-            roomName={onboardingRoomName}
-            isMobile={isMobile}
-            corridorEnterClicked={corridorEnterClicked}
-          />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onReady={() => setSceneReady(true)} />
         </Suspense>
 
-        {/* Bottom shadow gradient for text readability — exterior only */}
-        {phase === "walk_exterior" && (
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 4 }} />
-        )}
-
-
-        {/* ── Corridor cinematic overlay ── */}
-        {phase === "walk_corridor" && corridorStep >= 0 && (
-          <>
-            {/* Bottom shadow gradient for text readability */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
-
-            {/* Title text overlay */}
-            <div style={{
-              position: "absolute",
-              bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
-              left: "50%", transform: "translateX(-50%)",
-              textAlign: "center", zIndex: 10, width: "90%", maxWidth: "36rem",
-            }}>
-              {/* Decorative line */}
-              <div style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
-                marginBottom: "1rem",
-                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
-              }}>
-                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-                <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
-                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-              </div>
-
-              <p style={{
-                fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-                color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
-                margin: "0 0 0.625rem", textShadow: "0 2px 8px rgba(0,0,0,0.7)",
-                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
-              }}>
-                {t("welcomeTitle")}
-              </p>
-
-              <h1 style={{
-                fontFamily: T.font.display,
-                fontSize: isMobile ? "1.75rem" : "3.5rem",
-                fontWeight: 300, color: "#F2EDE7",
-                lineHeight: 1.05, margin: 0,
-                letterSpacing: "0.04em",
-                animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-                backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-                backgroundSize: "200% 100%",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
-              }}>
-                {t("cinematicPossessive", { name: userName, thing: t("corridorWingName") })}
-              </h1>
-
-              <p style={{
-                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                color: "#D4CBC0", margin: "0.75rem 0 0",
-                lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-                animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
-              }}>
-                {t("corridorSubtitle")}
-              </p>
-
-              {/* Step 6+: room prompt */}
-              {corridorStep >= 6 && (
-                <p style={{
-                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                  color: "#D4CBC0", margin: "0.75rem 0 0", lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-                  animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
-                }}>
-                  {t("corridorRoomPromptPrefix")}{" "}
-                  <span style={{ color: T.color.terracotta, fontWeight: 600 }}>{t("corridorRoomName")}</span>
-                </p>
-              )}
-
-              {/* Enter Room button — shown after camera arrives at door */}
-              {corridorStep >= 6 && !corridorEnterClicked && (
-                <button
-                  onClick={() => setCorridorEnterClicked(true)}
-                  disabled={corridorEnterClicked}
-                  style={{
-                    marginTop: "1.25rem",
-                    fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                    letterSpacing: "0.04em",
-                    padding: "0.625rem 1.75rem",
-                    background: T.color.terracotta,
-                    color: "#FAFAF7",
-                    border: "none", borderRadius: "0.5rem",
-                    cursor: corridorEnterClicked ? "default" : "pointer",
-                    opacity: corridorEnterClicked ? 0.8 : 1,
-                    boxShadow: `0 0.25rem 1rem ${T.color.terracotta}40`,
-                    transition: "transform .15s ease, box-shadow .15s ease",
-                    whiteSpace: "nowrap",
-                    animation: "onb-slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
-                    minHeight: "2.75rem",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}60`; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}40`; }}
-                  onPointerDown={e => { if (!corridorEnterClicked) e.currentTarget.style.transform = "scale(0.96)"; }}
-                  onPointerUp={e => { e.currentTarget.style.transform = ""; }}
-                  onPointerCancel={e => { e.currentTarget.style.transform = ""; }}
-                >
-                  {corridorEnterClicked ? `${t("corridorEnterRoom")}…` : t("corridorEnterRoom")}
-                </button>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* ── Room cinematic overlay ── */}
-        {phase === "walk_room" && roomStep >= 0 && (
-          <div style={{ pointerEvents: "none" }}>
-            {/* Bottom shadow gradient for text readability */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
-
-            {/* Title text overlay */}
-            <div style={{
-              position: "absolute",
-              bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
-              left: "50%", transform: "translateX(-50%)",
-              textAlign: "center", zIndex: 10, width: "90%", maxWidth: "36rem",
-              pointerEvents: "none",
-            }}>
-              {/* Decorative line */}
-              <div style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
-                marginBottom: "1rem",
-                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
-              }}>
-                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-                <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
-                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-              </div>
-
-              <p style={{
-                fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-                color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
-                margin: "0 0 0.625rem", textShadow: "0 2px 8px rgba(0,0,0,0.7)",
-                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
-              }}>
-                {t("welcomeTitle")}
-              </p>
-
-              <h1 style={{
-                fontFamily: T.font.display,
-                fontSize: isMobile ? "1.75rem" : "3.5rem",
-                fontWeight: 300, color: "#F2EDE7",
-                lineHeight: 1.05, margin: 0,
-                letterSpacing: "0.04em",
-                animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-                backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-                backgroundSize: "200% 100%",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
-              }}>
-                {t("cinematicPossessive", { name: userName, thing: t("roomTitle") })}
-              </h1>
-
-              <p style={{
-                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                color: "#D4CBC0", margin: "0.75rem 0 0",
-                lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-                animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
-              }}>
-                {t("roomSubtitle")}
-              </p>
-
-              {/* Step 9+: "Click on the empty painting" prompt */}
-              {roomStep >= 9 && (
-                <div style={{
-                  marginTop: "1.25rem",
-                  animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
-                }}>
-                  <p style={{
-                    fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                    color: "#D4CBC0", margin: "0 0 0.75rem", lineHeight: 1.5,
-                    textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-                  }}>
-                    {t("roomHangPrompt")}
-                  </p>
-                  <span style={{
-                    display: "inline-block",
-                    fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                    letterSpacing: "0.04em",
-                    padding: "0.5rem 1.5rem",
-                    background: "rgba(255,255,255,0.08)",
-                    color: "rgba(250,250,247,0.5)",
-                    border: `1px solid rgba(255,255,255,0.12)`,
-                    borderRadius: "0.5rem",
-                    cursor: "default",
-                    whiteSpace: "nowrap",
-                  }}>
-                    {t("roomClickPainting")}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Skip intro button — shown during entrance hall, corridor & room cinematics */}
-        {hideTooltip && (
-          <button
-            onClick={handleSkip}
-            style={{
-              position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
-              fontFamily: T.font.body, fontSize: "0.75rem",
-              color: "rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.2)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-              cursor: "pointer", backdropFilter: "blur(4px)", minHeight: "2.5rem",
-            }}
-          >
-            {t("cinematicSkip")}
-          </button>
-        )}
-
-        {/* Tooltip for exterior & other non-cinematic walk phases */}
-        {!hideTooltip && (
-          <Suspense fallback={sceneLoadingFallback}>
+        {/* Single seeded-memory hint (change 18) — revealed once the scene paints
+            (change 17), so the prompt never floats over a black void. i18n'd. */}
+        {sceneReady && (
+          <Suspense fallback={null}>
             <OnboardingTooltip
-              message={tooltipMessage}
-              nextLabel={showAddMemoryButton ? t("walkAddMemory") : t("walkNext")}
-              skipLabel={t("walkSkip")}
-              onNext={showAddMemoryButton ? () => setPhase("upload") : undefined}
-              onSkip={handleSkip}
-              showNext={showAddMemoryButton}
+              message={t("firstMemoryHint") !== "firstMemoryHint" ? t("firstMemoryHint") : "Place your first memory here — a photo, a name, anything."}
+              showNext={false}
               showSkip={true}
+              skipLabel={t("skipExploreOwn")}
+              onSkip={handleSkip}
             />
           </Suspense>
         )}
-      </div>
-    );
-  }
-
-  /* ── Paywall — soft trial offer after walkthrough ── */
-  if (phase === "paywall") {
-    const paywallFeatures = [
-      t("paywallFeat1"),
-      t("paywallFeat2"),
-      t("paywallFeat3"),
-      t("paywallFeat4"),
-    ];
-
-    return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
-        </Suspense>
-
-        {/* Dark overlay */}
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 10,
-          background: "rgba(26,25,23,0.75)",
-          backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          {/* Glass card */}
-          <div style={{
-            maxWidth: "28rem", width: "92%",
-            padding: isMobile ? "2rem 1.5rem" : "2.5rem 2.25rem",
-            background: "rgba(40, 34, 26, 0.85)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.15)",
-            boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.4), inset 0 1px 0 rgba(198,107,61,0.08)",
-            animation: "onb-fadeUp .6s ease",
-          }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
-
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
-
-              {/* Title */}
-              <h2 style={{
-                fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
-              }}>
-                {t("paywallTitle", { name: userName || t("namePlaceholder") })}
-              </h2>
-
-              {/* Subtitle */}
-              <p style={{
-                fontFamily: T.font.body, fontSize: "0.875rem",
-                color: "#A09889", maxWidth: "24rem", lineHeight: 1.6, margin: 0,
-              }}>
-                {t("paywallSubtitle")}
-              </p>
-
-              {/* Features */}
-              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
-                {paywallFeatures.map((feat) => (
-                  <div key={feat} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                    <span style={{
-                      width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                      background: `${T.color.terracotta}18`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "0.625rem", color: T.color.terracotta, flexShrink: 0,
-                    }}>
-                      {"\u2713"}
-                    </span>
-                    <span style={{
-                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#D4CBC0", lineHeight: 1.4,
-                    }}>
-                      {feat}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Trial CTA */}
-              <button
-                onClick={() => {
-                  track("paywall_trial_clicked", { source: "onboarding" });
-                  navigateInApp("/pricing");
-                  setPhase("done");
-                }}
-                style={{
-                  width: "100%", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  padding: "0.875rem 0", borderRadius: "0.625rem", border: "none",
-                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  color: "#FFF", cursor: "pointer", transition: "all .3s",
-                  boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.3)",
-                  minHeight: "3rem",
-                }}
-              >
-                {t("paywallTrialCta")}
-              </button>
-
-              {/* Subscription disclosure (Apple Guideline 3.1.2) */}
-              <p style={{
-                fontFamily: T.font.body, fontSize: "0.625rem", color: "#8A8073",
-                lineHeight: 1.5, margin: "-0.5rem 0 0", textAlign: "center", maxWidth: "22rem",
-              }}>
-                {t("paywallAutoRenew") !== "paywallAutoRenew" ? t("paywallAutoRenew") : "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings."}{" "}
-                <a href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
-                {" · "}
-                <a href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
-              </p>
-
-              {/* Free continue */}
-              <button
-                onClick={() => {
-                  track("paywall_skipped", { source: "onboarding" });
-                  setPhase("done");
-                }}
-                style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem",
-                  color: "#6B6155", background: "none", border: "none",
-                  cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-                }}
-              >
-                {t("paywallContinueFree")}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Upload — selfie prompt ── */
-  if (phase === "upload") {
-    return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
-        </Suspense>
 
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
-            onClose={() => { if (!memoryUploadedRef.current) setPhase("done"); }}
+            onClose={() => { if (!memoryUploadedRef.current) completeAndFinish(); }}
             onImportFiles={async (files) => {
               if (files.length === 0) return;
               const f = files[0];
@@ -1590,18 +665,27 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     );
   }
 
-  /* ── Celebration — confetti over the room scene, no dark overlay ── */
+  /* ── Celebration — calm gold threshold echoing the user's name (change 15) ── */
   if (phase === "celebration") {
+    // Personalized copy that already exists in all 5 locales; degrade the {name}
+    // token gracefully when empty (change 13). CTA always enters (never a paywall).
+    const displayName = trimmedName || t("namePlaceholder");
+    const celebTitle = (t("celebrationTitle") !== "celebrationTitle"
+      ? t("celebrationTitle")
+      : "Welcome home, {name}!").replace("{name}", displayName);
+    const celebSubtitle = t("celebrationSubtitle") !== "celebrationSubtitle"
+      ? t("celebrationSubtitle")
+      : "Your palace is ready. Every memory you add makes it more yours.";
     return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
+        {canonStyle}
         <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} memories={uploadedMemory ? [uploadedMemory] : []} initialCameraZ={0} />
         </Suspense>
         <Suspense fallback={sceneLoadingFallback}>
           <OnboardingCelebration
-            title={t("celebrationTitle2")}
-            subtitle={t("celebrationSubtitle2")}
+            title={celebTitle}
+            subtitle={celebSubtitle}
             buttonLabel={t("celebrationAtrium")}
             onContinue={() => setPhase("done")}
             transparent
@@ -1611,17 +695,5 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     );
   }
 
-  return null;
-}
-
-/* ── Helper: auto-advance after N seconds ── */
-function VideoAutoAdvance({ seconds, onAdvance }: { seconds: number; onAdvance: () => void }) {
-  const firedRef = useRef(false);
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (!firedRef.current) { firedRef.current = true; onAdvance(); }
-    }, seconds * 1000);
-    return () => clearTimeout(t);
-  }, [seconds, onAdvance]);
   return null;
 }

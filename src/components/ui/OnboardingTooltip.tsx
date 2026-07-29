@@ -1,10 +1,17 @@
 "use client";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { CREAM, INK, MUTED, HAIRLINE, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
+
+/* One clean seeded-memory hint. All copy is caller-supplied and i18n'd —
+ * NO hardcoded English defaults can ever leak: nextLabel/skipLabel default to
+ * '' and their buttons are guarded so an empty label never renders. */
 
 interface OnboardingTooltipProps {
   message: string;
+  /** Required, i18n'd label — defaults to '' with a render guard so no raw English leaks. */
   nextLabel?: string;
+  /** Required, i18n'd label — defaults to '' with a render guard so no raw English leaks. */
   skipLabel?: string;
   onNext?: () => void;
   onSkip?: () => void;
@@ -12,10 +19,12 @@ interface OnboardingTooltipProps {
   showSkip?: boolean;
 }
 
+const ctaGrad = "linear-gradient(135deg, #9A4F2A, #6B3318)";
+
 export default function OnboardingTooltip({
   message,
-  nextLabel = "Next",
-  skipLabel = "Skip tour",
+  nextLabel = "",
+  skipLabel = "",
   onNext,
   onSkip,
   showNext = true,
@@ -38,23 +47,26 @@ export default function OnboardingTooltip({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: "0.75rem",
+        gap: "0.875rem",
         padding: "1.25rem 1.5rem",
         borderRadius: "1rem",
-        background: "rgba(30, 28, 26, 0.88)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 0.5rem 2rem rgba(0,0,0,0.4)",
-        animation: "fadeUp .4s ease",
+        background: CREAM,
+        border: `0.0625rem solid ${HAIRLINE}`,
+        boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
+        animation: "onb-tt-rise .4s cubic-bezier(0.4,0,0.2,1)",
       }}
     >
+      <style>{`
+@keyframes onb-tt-rise{from{opacity:0;transform:translate(-50%,0.75rem)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion: reduce){[role="status"]{animation:none!important}}
+.onb-tt-btn:focus-visible{outline:0.1875rem solid ${GOLD};outline-offset:0.1875rem}
+`}</style>
       <p
         style={{
           fontFamily: T.font.body,
-          fontSize: isMobile ? "0.9375rem" : "1rem",
-          color: "#F2EDE7",
-          lineHeight: 1.6,
+          fontSize: isMobile ? "1rem" : "1.0625rem",
+          color: INK,
+          lineHeight: 1.55,
           textAlign: "center",
           margin: 0,
         }}
@@ -63,41 +75,43 @@ export default function OnboardingTooltip({
       </p>
 
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-        {showNext && onNext && (
+        {showNext && onNext && nextLabel && (
           <button
+            className="onb-tt-btn"
             onClick={onNext}
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.9375rem",
+              fontSize: "1rem",
               fontWeight: 600,
-              padding: "0.625rem 1.75rem",
-              borderRadius: "0.5rem",
+              padding: "0 1.75rem",
+              minHeight: "2.75rem",
+              minWidth: "2.75rem",
+              borderRadius: "0.625rem",
               border: "none",
-              background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-              color: "#FFF",
+              background: ctaGrad,
+              color: "#FFFFFF",
               cursor: "pointer",
-              transition: "all .2s",
-              minHeight: "3rem",
-              minWidth: "3rem",
+              transition: "filter .2s",
             }}
           >
             {nextLabel}
           </button>
         )}
-        {showSkip && onSkip && (
+        {showSkip && onSkip && skipLabel && (
           <button
+            className="onb-tt-btn"
             onClick={onSkip}
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.8125rem",
-              color: "rgba(255,255,255,0.5)",
+              fontSize: "0.875rem",
+              color: MUTED,
               background: "none",
               border: "none",
               cursor: "pointer",
               textDecoration: "underline",
               textUnderlineOffset: "0.125rem",
-              padding: "0.5rem",
-              minHeight: "3rem",
+              padding: "0.5rem 0.75rem",
+              minHeight: "2.75rem",
             }}
           >
             {skipLabel}

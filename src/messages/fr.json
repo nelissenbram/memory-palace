@@ -289,7 +289,15 @@
     "quizQ3": "Pour qui est ce palais ?",
     "quizQ3o1": "Juste pour moi",
     "quizQ3o2": "Ma famille proche",
-    "quizQ3o3": "Famille élargie et générations futures"
+    "quizQ3o3": "Famille élargie et générations futures",
+    "langA11yTitle": "Rendons ceci confortable à lire",
+    "nameTitle": "Comment devons-nous vous appeler ?",
+    "nameAside": "Pour que la maison sache à qui elle est.",
+    "nameHint": "Veuillez saisir un nom pour continuer.",
+    "styleConfirmTitle": "Votre palais est la Toscane romaine",
+    "styleConfirmAside": "Atriums de marbre, jardins à colonnades — nous le bâtirons autour de vous.",
+    "styleConfirmReversible": "Vous pouvez modifier cela à tout moment.",
+    "firstMemoryHint": "Placez ici votre premier souvenir — une photo, un nom, n'importe quoi."
   },
   "palace": {
     "uploadMemory": "Ajouter un Souvenir",

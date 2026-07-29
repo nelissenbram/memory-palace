@@ -289,7 +289,15 @@
     "quizQ3": "Who is this palace for?",
     "quizQ3o1": "Just me",
     "quizQ3o2": "My immediate family",
-    "quizQ3o3": "Extended family & future generations"
+    "quizQ3o3": "Extended family & future generations",
+    "langA11yTitle": "Let's make this comfortable to read",
+    "nameTitle": "What should we call you?",
+    "nameAside": "So the house knows whose it is.",
+    "nameHint": "Please enter a name to continue.",
+    "styleConfirmTitle": "Your palace is Roman Tuscany",
+    "styleConfirmAside": "Marble atriums, colonnaded gardens — we'll build it around you.",
+    "styleConfirmReversible": "You can change this anytime.",
+    "firstMemoryHint": "Place your first memory here — a photo, a name, anything."
   },
   "palace": {
     "uploadMemory": "Upload Memory",

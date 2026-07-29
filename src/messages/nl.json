@@ -289,7 +289,15 @@
     "quizQ3": "Voor wie is dit paleis?",
     "quizQ3o1": "Alleen voor mij",
     "quizQ3o2": "Mijn directe familie",
-    "quizQ3o3": "Uitgebreide familie & toekomstige generaties"
+    "quizQ3o3": "Uitgebreide familie & toekomstige generaties",
+    "langA11yTitle": "Laten we dit prettig leesbaar maken",
+    "nameTitle": "Hoe mogen we je noemen?",
+    "nameAside": "Zodat het huis weet van wie het is.",
+    "nameHint": "Voer een naam in om door te gaan.",
+    "styleConfirmTitle": "Jouw paleis is Romeins Toscane",
+    "styleConfirmAside": "Marmeren atria, zuilengalerijen — we bouwen het rond jou.",
+    "styleConfirmReversible": "Je kunt dit altijd wijzigen.",
+    "firstMemoryHint": "Plaats hier je eerste herinnering — een foto, een naam, wat dan ook."
   },
   "palace": {
     "uploadMemory": "Herinnering uploaden",

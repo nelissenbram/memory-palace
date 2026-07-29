@@ -289,7 +289,15 @@
     "quizQ3": "Für wen ist dieser Palast?",
     "quizQ3o1": "Nur für mich",
     "quizQ3o2": "Meine engste Familie",
-    "quizQ3o3": "Erweiterte Familie & zukünftige Generationen"
+    "quizQ3o3": "Erweiterte Familie & zukünftige Generationen",
+    "langA11yTitle": "Machen wir es angenehm lesbar",
+    "nameTitle": "Wie dürfen wir dich nennen?",
+    "nameAside": "Damit das Haus weiß, wem es gehört.",
+    "nameHint": "Bitte gib einen Namen ein, um fortzufahren.",
+    "styleConfirmTitle": "Dein Palast ist römische Toskana",
+    "styleConfirmAside": "Marmoratrien, Säulengärten — wir bauen es um dich herum.",
+    "styleConfirmReversible": "Du kannst dies jederzeit ändern.",
+    "firstMemoryHint": "Platziere hier deine erste Erinnerung — ein Foto, ein Name, irgendetwas."
   },
   "palace": {
     "uploadMemory": "Erinnerung hochladen",

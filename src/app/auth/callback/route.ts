@@ -75,14 +75,19 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}${redirectTo}`);
         }
 
-        const { data: profile } = await supabase
+        const { data: profile, error: profileErr } = await supabase
           .from("profiles")
-          .select("onboarded, preferred_locale")
+          .select("onboarded, preferred_locale, welcome_email_sent_at")
           .eq("id", user.id)
-          .single<{ onboarded: boolean; preferred_locale: string | null }>();
+          .single<{ onboarded: boolean; preferred_locale: string | null; welcome_email_sent_at: string | null }>();
 
-        // Send welcome email for new users (not yet onboarded)
-        if (!profile?.onboarded && user.email) {
+        // Send the welcome email EXACTLY ONCE per account, gated on an idempotent
+        // marker — never on the onboarded flag (which re-fires on every not-yet-
+        // onboarded login) and never on a profile READ FAILURE (profile null →
+        // the old `!profile?.onboarded` was true, spamming the email).
+        if (!profileErr && profile && profile.onboarded === false && !profile.welcome_email_sent_at && user.email) {
+          // Mark first (best-effort) so a double auth callback can't double-send.
+          supabase.from("profiles").update({ welcome_email_sent_at: new Date().toISOString() } as never).eq("id", user.id).then(() => {}, () => {});
           // Fire-and-forget: don't block the redirect
           sendWelcomeEmail({
             recipientEmail: user.email,
