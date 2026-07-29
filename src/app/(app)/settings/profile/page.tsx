@@ -14,6 +14,7 @@ import { useDaylight } from "@/components/providers/DaylightProvider";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRouter } from "next/navigation";
 import { isIOS } from "@/lib/native/platform";
+import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 interface ProfileData {
   display_name: string;
@@ -267,22 +268,15 @@ export default function ProfilePage() {
       )}
 
       {/* Page header — desktop only (mobile uses tab bar as title) */}
-      {!isMobile && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2 style={{
-            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
-            color: "#403B36" /* Atrium ink */, margin: "0 0 0.5rem",
-          }}>
-            {t("yourProfile")}
-          </h2>
-          <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */,
-            margin: 0, lineHeight: 1.5,
-          }}>
-            {t("profileDescription")}
-          </p>
-        </div>
-      )}
+      <SettingsPageHeader
+        hidden={isMobile}
+        icon="profile"
+        title={t("yourProfile")}
+        subtitle={t("profileDescription")}
+      />
+
+      {/* Section overline — Your details */}
+      <SectionOverline label={tf("sectionYourDetails", "Your details")} />
 
       {/* ── Profile Card ── */}
       <div style={{
@@ -727,6 +721,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Section overline — Account & data */}
+      <SectionOverline label={tf("sectionAccountData", "Account & data")} />
+
       {/* ── Connections (folded under Profile — change 16; route survives for OAuth returns) ── */}
       <Link href="/settings/connections" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
         <div style={{
@@ -767,6 +764,9 @@ export default function ProfilePage() {
           </svg>
         </div>
       </Link>
+
+      {/* Section overline — Preferences */}
+      <SectionOverline label={tf("sectionPreferences", "Preferences")} />
 
       {/* ── AI Features Consent ── */}
       <div style={{

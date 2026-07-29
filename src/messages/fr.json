@@ -4801,7 +4801,10 @@
     "next": "Suivant",
     "tryIt": "Essayer",
     "skip": "Passer le tutoriel",
-    "gotIt": "Compris"
+    "gotIt": "Compris",
+    "meOverviewTitle": "Voici votre page",
+    "meOverviewFooter": "Tout ce qui vous concerne vit ici.",
+    "meOverviewItems": "[{\"text\":\"Votre portrait, votre nom et quelques mots sur vous.\"},{\"text\":\"Trois trésors en un coup d'œil — vos ailes, souvenirs et visiteurs.\"},{\"text\":\"Modifiez votre profil ou voyez la page publique que les autres voient.\"},{\"text\":\"Les portes discrètes ci-dessous mènent à Famille, Partage, Héritage et vos réglages.\"}]"
   },
   "shareReceive": {
     "title": "Photos partagées",

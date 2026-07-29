@@ -4801,7 +4801,10 @@
     "next": "Siguiente",
     "tryIt": "Pruébalo",
     "skip": "Saltar tutorial",
-    "gotIt": "Entendido"
+    "gotIt": "Entendido",
+    "meOverviewTitle": "Esta es tu página",
+    "meOverviewFooter": "Todo sobre ti vive aquí.",
+    "meOverviewItems": "[{\"text\":\"Tu retrato, nombre y unas palabras sobre ti.\"},{\"text\":\"Tres tesoros de un vistazo — tus alas, recuerdos y visitantes.\"},{\"text\":\"Edita tu perfil o mira la página pública que ven los demás.\"},{\"text\":\"Las puertas discretas de abajo llevan a Familia, Compartir, Legado y tus ajustes.\"}]"
   },
   "shareReceive": {
     "title": "Fotos compartidas",

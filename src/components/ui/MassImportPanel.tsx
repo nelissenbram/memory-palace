@@ -235,6 +235,10 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           dataUrl: item.dataUrl || null,
           videoBlob: item.fileType.startsWith("video/"),
           createdAt: item.exif?.dateTaken || new Date().toISOString(),
+          // Pass the generated downscaled thumbnail through so the Library wall
+          // loads it instead of the full-res original. Only a data: URL is
+          // uploadable by addMemory; a blob: preview fallback is skipped.
+          ...(item.previewUrl?.startsWith("data:") ? { thumbnailUrl: item.previewUrl } : {}),
         };
         if (item.confirmed.lat !== null && item.confirmed.lng !== null) {
           mem.lat = item.confirmed.lat;

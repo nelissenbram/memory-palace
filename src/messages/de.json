@@ -4801,7 +4801,10 @@
     "next": "Weiter",
     "tryIt": "Ausprobieren",
     "skip": "Tutorial überspringen",
-    "gotIt": "Verstanden"
+    "gotIt": "Verstanden",
+    "meOverviewTitle": "Das ist Ihre Seite",
+    "meOverviewFooter": "Alles über Sie ist hier zu Hause.",
+    "meOverviewItems": "[{\"text\":\"Ihr Porträt, Name und ein paar Worte über Sie.\"},{\"text\":\"Drei Kostbarkeiten auf einen Blick — Ihre Flügel, Erinnerungen und Besucher.\"},{\"text\":\"Profil bearbeiten oder die öffentliche Seite ansehen, die andere sehen.\"},{\"text\":\"Die ruhigen Türen unten führen zu Familie, Teilen, Vermächtnis und Ihren Einstellungen.\"}]"
   },
   "shareReceive": {
     "title": "Geteilte Fotos",

@@ -107,8 +107,10 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
     const r=new FileReader();
     r.onload=e=>{setPreview(e.target?.result as string);};
     r.readAsDataURL(file);
-    // Generate thumbnail from video/audio files during user interaction (works on mobile)
-    if(isVid||file.type.startsWith("audio/")){
+    // Generate a downscaled thumbnail during user interaction (works on mobile).
+    // Photos/paintings/albums get one too so the Library wall never pulls the
+    // multi-MB original through the rate-limited /api/media proxy.
+    if(isVid||file.type.startsWith("audio/")||file.type.startsWith("image/")){
       generateThumbnail(file,280).then(t=>{if(t)setVideoThumb(t);}).catch(()=>{});
     }
   };

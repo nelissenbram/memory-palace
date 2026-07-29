@@ -4801,7 +4801,10 @@
     "next": "Next",
     "tryIt": "Try it",
     "skip": "Skip tutorial",
-    "gotIt": "Got it"
+    "gotIt": "Got it",
+    "meOverviewTitle": "This is your page",
+    "meOverviewFooter": "Everything about you lives here.",
+    "meOverviewItems": "[{\"text\":\"Your portrait, name and a few words about you.\"},{\"text\":\"Three keepsakes at a glance — your wings, memories and visitors.\"},{\"text\":\"Edit profile, or view the public page others see.\"},{\"text\":\"Quiet doors below lead to Family, Sharing, Legacy and your settings.\"}]"
   },
   "shareReceive": {
     "title": "Shared Photos",

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import type { Mem } from "@/lib/constants/defaults";
-import { thumbnailFromVideoUrl } from "@/lib/utils/thumbnail";
+import { thumbnailFromVideoUrl, thumbnailFromImageUrl } from "@/lib/utils/thumbnail";
 import { updateMemoryAction } from "@/lib/auth/memory-actions";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 
@@ -45,9 +45,14 @@ export function useThumbnailBackfill(
 
     for (const mem of mems) {
       const isVideo = mem.type === "video" || !!mem.videoBlob;
-      if (!isVideo) continue;
+      // Photos (and painting/album/document image tiles) that never got a stored
+      // thumbnail: everything that isn't a video and carries image pixel data.
+      const isPhoto = !isVideo && (mem.type === "photo" || mem.type === "painting" || mem.type === "album");
+      if (!isVideo && !isPhoto) continue;
       if (mem.thumbnailUrl) continue;
       if (!mem.dataUrl) continue;
+      // Only backfill from real image data (not a remote http URL we can't taint-safely draw).
+      if (isPhoto && !mem.dataUrl.startsWith("data:image/")) continue;
       if (!looksLikeUuid(mem.id)) continue;
       if (_attempted.has(mem.id)) continue;
       _attempted.add(mem.id);
@@ -58,8 +63,10 @@ export function useThumbnailBackfill(
       if (!memRoomId) { _attempted.delete(mem.id); continue; }
 
       _queue.push(async () => {
-        // 1. Extract frame to data URL
-        const thumbDataUrl = await thumbnailFromVideoUrl(memDataUrl, 240);
+        // 1. Generate a downscaled thumbnail data URL (frame for video, 280px for photo)
+        const thumbDataUrl = isVideo
+          ? await thumbnailFromVideoUrl(memDataUrl, 240)
+          : await thumbnailFromImageUrl(memDataUrl, 280);
         if (!thumbDataUrl) return;
 
         // 2. Convert data URL → Blob without fetch() (CSP blocks data: in connect-src)

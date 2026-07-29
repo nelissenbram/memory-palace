@@ -17,6 +17,7 @@ import BlockedAccountsPanel from "@/components/social/BlockedAccountsPanel";
 import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
 import { requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
+import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 const F = T.font;
 
@@ -405,22 +406,15 @@ export default function SecuritySettingsPage() {
       )}
 
       {/* Header — desktop only */}
-      {!isMobile && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2 style={{
-            fontFamily: F.display, fontSize: "1.75rem", fontWeight: 600,
-            color: INK, lineHeight: 1.15, margin: "0 0 0.5rem",
-          }}>
-            {t("heroTitle")}
-          </h2>
-          <p style={{
-            fontFamily: F.body, fontSize: "0.9375rem", color: MUTED,
-            margin: 0, lineHeight: 1.4, maxWidth: "37.5rem",
-          }}>
-            {t("heroDescription")}
-          </p>
-        </div>
-      )}
+      <SettingsPageHeader
+        hidden={isMobile}
+        icon="security"
+        title={t("heroTitle")}
+        subtitle={t("heroDescription")}
+      />
+
+      {/* Section overline — Sign-in & access */}
+      <SectionOverline label={tf("sectionSignInAccess", "Sign-in & access")} />
 
       {/* ── 1. Two-Factor Authentication ── */}
       <MFASetup />
@@ -470,6 +464,9 @@ export default function SecuritySettingsPage() {
 
       {/* ── 3. Blocked accounts (Apple Guideline 1.2 — must stay mounted) ── */}
       <BlockedAccountsPanel />
+
+      {/* Section overline — Privacy & your data */}
+      <SectionOverline label={tf("sectionPrivacyData", "Privacy & your data")} style={{ marginTop: "1.75rem" }} />
 
       {/* ── 4. Cookie consent (GDPR — anchor target for /settings/cookies redirect) ── */}
       <div id="cookies" style={{ scrollMarginTop: "4.5rem" }}>
@@ -635,6 +632,21 @@ export default function SecuritySettingsPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Section overline — Danger zone (danger register — the one non-ember overline) */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: "0.5rem",
+        marginTop: "1.75rem", marginBottom: "1rem",
+      }}>
+        <span aria-hidden="true" style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: "#C05050", flexShrink: 0 }} />
+        <span style={{
+          fontFamily: F.body, fontSize: "0.6875rem", fontWeight: 700,
+          letterSpacing: "0.12em", textTransform: "uppercase", color: "#C05050", whiteSpace: "nowrap",
+        }}>
+          {tf("sectionDangerZone", "Danger zone")}
+        </span>
+        <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, #EFD3D3, transparent)" }} />
       </div>
 
       {/* ── 7. Danger Zone — last (GDPR Art. 17, terracotta register, never gold) ── */}

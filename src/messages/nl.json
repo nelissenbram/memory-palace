@@ -4803,7 +4803,10 @@
     "next": "Volgende",
     "tryIt": "Probeer het",
     "skip": "Tutorial overslaan",
-    "gotIt": "Begrepen"
+    "gotIt": "Begrepen",
+    "meOverviewTitle": "Dit is jouw pagina",
+    "meOverviewFooter": "Alles over jou staat hier.",
+    "meOverviewItems": "[{\"text\":\"Je portret, naam en een paar woorden over jou.\"},{\"text\":\"Drie kostbaarheden in één oogopslag — je vleugels, herinneringen en bezoekers.\"},{\"text\":\"Bewerk je profiel, of bekijk de openbare pagina die anderen zien.\"},{\"text\":\"De rustige deuren hieronder leiden naar Familie, Delen, Nalatenschap en je instellingen.\"}]"
   },
   "shareReceive": {
     "title": "Gedeelde foto's",

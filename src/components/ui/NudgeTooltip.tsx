@@ -5,7 +5,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useNudgeStore, type NudgeId } from "@/lib/stores/nudgeStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
-type PageId = "atrium" | "library" | "palace" | "explore";
+type PageId = "atrium" | "library" | "palace" | "explore" | "me";
 
 // Bridge nudges target specific nav buttons
 const BRIDGE_TARGET: Record<string, string> = {
@@ -15,7 +15,7 @@ const BRIDGE_TARGET: Record<string, string> = {
 };
 
 // Overview nudges — centered floating cards with bullet lists
-const OVERVIEW_NUDGES = new Set<string>(["atrium_overview", "library_overview", "explore_overview"]);
+const OVERVIEW_NUDGES = new Set<string>(["atrium_overview", "library_overview", "explore_overview", "me_overview"]);
 
 // Palace walk intro — centered card with walk/skip options
 const PALACE_WALK = "palace_walk_intro";
@@ -68,6 +68,7 @@ const NUDGE_CONFIG: Record<NudgeId, { messageKey: string; position: "top" | "bot
   explore_cards:          { messageKey: "exploreCards",         position: "top" },
   explore_publish:        { messageKey: "explorePublish",      position: "bottom" },
   explore_overview:       { messageKey: "exploreOverview",     position: "bottom" },
+  me_overview:            { messageKey: "meOverview",           position: "bottom" },
   library_wing_sidebar:   { messageKey: "wingSidebar",         position: "top" },
   library_room_bar:       { messageKey: "libraryRoomBar",      position: "bottom" },
   library_search:         { messageKey: "librarySearch",       position: "bottom" },

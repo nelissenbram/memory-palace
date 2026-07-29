@@ -25,6 +25,7 @@ import SignOutOverlay from "@/components/ui/SignOutOverlay";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { isIOS } from "@/lib/native/platform";
+import NudgeProvider from "@/components/ui/NudgeTooltip";
 import { CREAM, INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 
 interface MeProfile {
@@ -457,6 +458,8 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
           />
         )}
       </div>
+      {/* First-visit tutorial for the Me page (playful gold annotations) */}
+      <NudgeProvider page="me" />
     </>
   );
 }

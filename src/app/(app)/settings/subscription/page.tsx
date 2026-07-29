@@ -9,10 +9,11 @@ import { isAndroid, isIOS } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, waitForProducts, manageSubscriptions, IAP_ENABLED } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
-import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import CancelFlow from "@/components/ui/CancelFlow";
 import InviteFlow from "@/components/social/InviteFlow";
+import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 const F = T.font;
 
@@ -34,7 +35,6 @@ export default function SubscriptionPage() {
   const isApple = isIOS();
   const nativeApp = isAndroid() || isApple;
   const isMobile = useIsMobile();
-  const isCompact = useIsCompact();
   const [iapReady, setIapReady] = useState(false);
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
@@ -55,6 +55,12 @@ export default function SubscriptionPage() {
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
   }, []);
+
+  // i18n fallback helper — new keys work before the locale files land.
+  const tf = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
 
   const load = useCallback(async () => {
       try {
@@ -336,22 +342,15 @@ export default function SubscriptionPage() {
       )}
 
       {/* Header — desktop only */}
-      {!isMobile && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2 style={{
-            fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
-            color: "#403B36", margin: "0 0 0.5rem",
-          }}>
-            {t("title")}
-          </h2>
-          <p style={{
-            fontFamily: F.body, fontSize: "0.9375rem", color: "#716A5E",
-            margin: 0, lineHeight: 1.5,
-          }}>
-            {t("description")}
-          </p>
-        </div>
-      )}
+      <SettingsPageHeader
+        hidden={isMobile}
+        icon="subscription"
+        title={t("title")}
+        subtitle={t("description")}
+      />
+
+      {/* Section overline — Your plan */}
+      <SectionOverline label={tf("sectionYourPlan", "Your plan")} />
 
       {/* Current Plan Card */}
       <div style={{
@@ -625,6 +624,9 @@ export default function SubscriptionPage() {
           </div>
         )}
       </div>
+
+      {/* Section overline — Usage */}
+      <SectionOverline label={tf("sectionUsage", "Usage")} />
 
       {/* Usage Stats */}
       <div style={{
@@ -952,8 +954,10 @@ export default function SubscriptionPage() {
               <div style={{
                 marginTop: "1.25rem",
                 display: "grid",
-                gridTemplateColumns: (isMobile || isCompact) ? "1fr" : "repeat(3, 1fr)",
-                gap: (isMobile || isCompact) ? "1rem" : "1.25rem",
+                /* iPad portrait keeps the multi-column grid — collapse to one
+                   column only on true mobile (isMobile), not on compact/iPad. */
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+                gap: isMobile ? "1rem" : "1.25rem",
                 alignItems: "start",
               }}>
                 {PLAN_ORDER.map((planId) => {
@@ -975,12 +979,12 @@ export default function SubscriptionPage() {
                           : isCurrent
                             ? "0.09375rem solid rgba(154,79,42,0.35)"
                             : "0.0625rem solid #E3D6BC",
-                        padding: (isMobile || isCompact) ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
+                        padding: isMobile ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
                         position: "relative",
                         boxShadow: isHighlighted
                           ? "0 0.5rem 1.5rem rgba(64,59,54,0.14)"
                           : "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
-                        transform: isHighlighted && !isMobile && !isCompact ? "scale(1.03)" : undefined,
+                        transform: isHighlighted && !isMobile ? "scale(1.03)" : undefined,
                       }}
                     >
                       {/* Most Popular badge */}

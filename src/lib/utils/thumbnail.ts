@@ -9,24 +9,45 @@ export async function generateThumbnail(
 }
 
 function thumbnailFromImage(file: File, maxDim: number): Promise<string | null> {
+  const url = URL.createObjectURL(file);
+  return thumbnailFromImageUrl(url, maxDim).then((result) => {
+    URL.revokeObjectURL(url);
+    return result;
+  });
+}
+
+/**
+ * Downscale an image (from any loadable URL, incl. a data: URL) to a JPEG
+ * thumbnail data URL at `maxDim` longest edge. Returns null on load/CORS error.
+ * Used to backfill photo thumbnails for existing full-res memories.
+ */
+export function thumbnailFromImageUrl(
+  url: string,
+  maxDim: number = 280,
+): Promise<string | null> {
   return new Promise((resolve) => {
     const img = new Image();
-    const url = URL.createObjectURL(file);
+    const isCrossOrigin = /^https?:\/\//i.test(url) &&
+      typeof window !== "undefined" &&
+      !url.startsWith(window.location.origin);
+    if (isCrossOrigin) img.crossOrigin = "anonymous";
     img.onload = () => {
       const { width: w, height: h } = img;
+      if (!w || !h) { resolve(null); return; }
       const scale = Math.min(maxDim / w, maxDim / h, 1);
       const canvas = document.createElement("canvas");
       canvas.width = Math.round(w * scale);
       canvas.height = Math.round(h * scale);
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.7));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(null); return; }
+      try {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      } catch {
+        resolve(null); // CORS-tainted canvas
+      }
     };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
+    img.onerror = () => resolve(null);
     img.src = url;
   });
 }
