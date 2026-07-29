@@ -970,6 +970,24 @@ export default function MemoryPalace(){
   // Track that we just finished onboarding — suppress tutorial auto-start
   const justOnboardedRef = useRef(false);
 
+  // STAGING-ONLY: treat every login as a first-time login so onboarding can be
+  // reviewed on preview builds. HARD-GATED to non-production hosts — the real
+  // domain (thememorypalace.ai / www) is NEVER forced. Escape hatch: append
+  // ?onboarding=off to browse the rest of staging without the wizard.
+  const [forceOnboarding, setForceOnboarding] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const h = window.location.hostname;
+    if (h === "thememorypalace.ai" || h === "www.thememorypalace.ai") return; // production: never force
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("onboarding") === "off") sessionStorage.setItem("mp_stg_onb_off", "1");
+      if (params.get("onboarding") === "on") sessionStorage.removeItem("mp_stg_onb_off");
+      if (sessionStorage.getItem("mp_stg_onb_off") === "1") return;
+    } catch { /* ignore */ }
+    setForceOnboarding(true);
+  }, []);
+
   const handleFinishOnboarding=async(memoryUploaded?: boolean)=>{
     // Atomic: if the DB write fails, finishOnboarding throws — keep the wizard
     // mounted so the write retries rather than navigating away with a half-
@@ -1079,7 +1097,9 @@ export default function MemoryPalace(){
     return <PalaceLoadingScreen />;
   }
 
-  if(onboarded === false) return <OnboardingWizard onFinish={handleFinishOnboarding}/>;
+  // Production trigger: onboarded === false only. On staging, forceOnboarding
+  // re-shows the wizard every load (until finished this session) for review.
+  if(onboarded === false || (forceOnboarding && !justOnboardedRef.current)) return <OnboardingWizard onFinish={handleFinishOnboarding}/>;
 
   const hovDoorRoom=hovDoor&&activeWing?getWingRooms(activeWing).find(r=>r.id===hovDoor)??null:null;
 
