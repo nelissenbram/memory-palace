@@ -10,7 +10,9 @@ export interface BustPedestalData {
 
 interface UserState {
   profileLoading: boolean;
-  onboarded: boolean;
+  // Tri-state: null = "not yet known" (never show the wizard), false = a
+  // definitive first-login (DB row says not onboarded → show once), true = done.
+  onboarded: boolean | null;
   onboardStep: number;
   userName: string;
   userGoal: string;
@@ -44,7 +46,7 @@ interface UserState {
 
 export const useUserStore = create<UserState>((set, get) => ({
   profileLoading: true,
-  onboarded: false,
+  onboarded: null,
   onboardStep: 0,
   userName: "",
   userGoal: "",
@@ -100,27 +102,43 @@ export const useUserStore = create<UserState>((set, get) => ({
     }
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { set({ profileLoading: false }); return; }
-    const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-    if (profile) {
-      if (profile.onboarded) {
-        // Parse per-pedestal data from JSON column, or build from legacy single-bust fields
-        let pedestals: Record<number, BustPedestalData> = {};
-        if (profile.bust_pedestals) {
-          try { pedestals = typeof profile.bust_pedestals === "string" ? JSON.parse(profile.bust_pedestals) : profile.bust_pedestals; } catch { /* ignore */ }
-        } else if (profile.bust_texture_url) {
-          pedestals = { 0: { faceUrl: profile.bust_texture_url, name: profile.bust_name || profile.display_name || "", gender: (profile.bust_gender as "male" | "female") || "male" } };
-        }
-        set({ onboarded: true, userName: profile.display_name || "", styleEra: profile.style_era || null, bustTextureUrl: profile.bust_texture_url || null, bustModelUrl: profile.bust_model_url || null, bustName: profile.bust_name || null, bustGender: profile.bust_gender || null, bustPedestals: pedestals, accessibilityMode: profile.accessibility_mode || "standard" });
-        // Cache onboarded state for offline/fallback scenarios
-        try { localStorage.setItem("mp_onboarded", "true"); localStorage.setItem("mp_userName", profile.display_name || ""); } catch { /* ignore */ }
-        // One-time wing slug migration (old→new wing names)
-        migrateWingSlugs().catch(() => {});
+    if (!user) {
+      // Session not (yet) resolved — an UNKNOWN state, not "first login". Never
+      // assert onboarded:false here (that would show the wizard to a returning
+      // user). Leave it null; onAuthStateChange re-runs loadProfile once the
+      // cookie commits.
+      set({ profileLoading: false });
+      return;
+    }
+    const cacheKey = `mp_onboarded:${user.id}`;
+    const { data: profile, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    if (profile && profile.onboarded === true) {
+      // Parse per-pedestal data from JSON column, or build from legacy single-bust fields
+      let pedestals: Record<number, BustPedestalData> = {};
+      if (profile.bust_pedestals) {
+        try { pedestals = typeof profile.bust_pedestals === "string" ? JSON.parse(profile.bust_pedestals) : profile.bust_pedestals; } catch { /* ignore */ }
+      } else if (profile.bust_texture_url) {
+        pedestals = { 0: { faceUrl: profile.bust_texture_url, name: profile.bust_name || profile.display_name || "", gender: (profile.bust_gender as "male" | "female") || "male" } };
       }
-      // Not yet onboarded: still surface any name we already have (e.g. captured
-      // from Sign in with Apple at /auth/callback) so the wizard can pre-fill it
-      // and never force the user to re-enter their name (Apple Guideline 4).
-      else set({ onboarded: false, userName: profile.display_name || "" });
+      set({ onboarded: true, userName: profile.display_name || "", styleEra: profile.style_era || null, bustTextureUrl: profile.bust_texture_url || null, bustModelUrl: profile.bust_model_url || null, bustName: profile.bust_name || null, bustGender: profile.bust_gender || null, bustPedestals: pedestals, accessibilityMode: profile.accessibility_mode || "standard" });
+      // Cache onboarded state (per-user) for offline/fallback scenarios
+      try { localStorage.setItem(cacheKey, "true"); localStorage.setItem("mp_userName", profile.display_name || ""); } catch { /* ignore */ }
+      // One-time wing slug migration (old→new wing names)
+      migrateWingSlugs().catch(() => {});
+    } else if (profile && profile.onboarded === false) {
+      // DEFINITIVE first login: the row exists and explicitly says not onboarded.
+      // Surface any captured name (e.g. Sign in with Apple) so the wizard
+      // pre-fills it (Apple Guideline 4).
+      set({ onboarded: false, userName: profile.display_name || "" });
+    } else {
+      // AMBIGUOUS: fetch error or missing row. Do NOT assert false (would
+      // re-onboard a returning user on a flaky network). Trust the positive
+      // per-user cache if present; otherwise leave onboarded null (stay on the
+      // loading screen) and let the auth listener retry.
+      if (error) console.error("[userStore] profile load failed, not asserting onboarded state:", error.message);
+      try {
+        if (localStorage.getItem(cacheKey) === "true") set({ onboarded: true, userName: localStorage.getItem("mp_userName") || "" });
+      } catch { /* ignore */ }
     }
     set({ profileLoading: false });
 
@@ -136,12 +154,21 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   finishOnboarding: async () => {
     const { userName, userGoal, firstWing, styleEra } = get();
+    // ATOMIC: the authoritative DB write MUST confirm before we flip local +
+    // cache to onboarded. If it fails, throw so the caller keeps the wizard
+    // mounted (and the write is retried) — never mask a failed persist, or a
+    // fresh-device relogin would re-onboard.
     const result = await completeOnboarding({ displayName: userName, goal: userGoal, firstWing: firstWing || "", styleEra: styleEra || "roman" });
-    if (result.error) console.error("Onboarding error:", result.error);
+    if (result.error) {
+      console.error("Onboarding error:", result.error);
+      throw new Error(result.error);
+    }
     set({ onboarded: true });
-    // Cache onboarded state in localStorage as fallback
+    // Cache onboarded state (per-user) as a positive-only fallback
     try {
-      localStorage.setItem("mp_onboarded", "true");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) localStorage.setItem(`mp_onboarded:${user.id}`, "true");
       localStorage.setItem("mp_userName", get().userName);
     } catch { /* SSR or storage error */ }
   },

@@ -1,0 +1,368 @@
+{
+    "vision":  "Onboarding becomes a calm, warm-cream, four-step threshold that looks like the same house as the Landing/Atrium/Me surfaces the user just came through. It opens by making reading comfortable (language + legibility), asks the user\u0027s name as a consequential identity beat, confirms their palace style, then hands them across a dignified gold \u0027threshold\u0027 directly INTO a seeded room where their very first action is placing a real memory (do-first, not tour-first). The dark bronze-glass wizard, the 15s intro video, the 4-leg auto-walk WebGL gauntlet, the dead quiz phase, and the post-celebration paywall detour are all cut. Ink-on-cream typography at proper weight replaces pale text on near-black. One primary EMBER action per screen, quiet muted Skip, gold reserved only for the ceremonial threshold. Every word is i18n\u0027d across 5 locales; touch targets \u003e=2.75rem; prefers-reduced-motion and no-WebGL both have real fallbacks. Most important: the wizard fires ONLY on an account\u0027s first-ever login and NEVER again, guaranteed by a tri-state DB-authoritative gate and atomic completion.",
+    "triggerContract":  "AUTHORITATIVE RULE: The wizard renders IF AND ONLY IF the authenticated user\u0027s DB row `profiles.onboarded === false`. It must NEVER render on an unknown/unresolved state, and completion must be atomic so it can never re-fire. Three coordinated changes: (1) TRI-STATE GATE. In src/lib/stores/userStore.ts change `onboarded: false` (:47) to `onboarded: null` typed `boolean | null` (null = \u0027not yet known\u0027). In src/components/MemoryPalace.tsx change the gate at :1070 from `if(!onboarded)` to `if(onboarded === false) return \u003cOnboardingWizard onFinish={handleFinishOnboarding}/\u003e;`, and gate loading on `if(profileLoading || onboarded === null) return \u003cPalaceLoadingScreen/\u003e;` (:1066). The 3s safety timeout (:396) may only clear profileLoading; it must NOT reveal the wizard while onboarded===null. (2) DB IS AUTHORITATIVE, NEVER DEFAULT TO WIZARD. In loadProfile (userStore.ts:104) capture the error: `const { data: profile, error } = await ...single();`. Set `onboarded:true` only on `profile.onboarded===true` (:106/:114) and `onboarded:false` ONLY on an explicit row with `profile.onboarded===false` (:123). For every ambiguous branch â€” `!user` (:103), `error`, or null `profile` â€” do NOT assert false: consult the positive-only cache `localStorage.getItem(\u0027mp_onboarded\u0027)===\u0027true\u0027 ? set({onboarded:true}) : leave onboarded null` and let the onAuthStateChange listener (MemoryPalace.tsx:385-388) re-run loadProfile with a committed session. Scope the cache per-user (`mp_onboarded:\u003cuid\u003e`) to avoid shared-device cross-account bleed. (3) ATOMIC COMPLETION. finishOnboarding (userStore.ts:137) currently ignores completeOnboarding\u0027s error (:140) yet flips local+cache true (:141,:144). Change to: `if (result.error) { console.error(...); throw new Error(result.error); }` BEFORE `set({onboarded:true})` and the localStorage writes. In handleFinishOnboarding (MemoryPalace.tsx:973) wrap `await finishOnboarding()` in try/catch; on failure keep the wizard mounted and show a retry toast, do NOT navigate to atrium. The sole authoritative DB write stays completeOnboarding\u0027s upsert (profile-actions.ts:36-48, `onboarded:true`), invoked only via handleFinishOnboarding â€” verified present and awaited at MemoryPalace.tsx:974. (4) DECOUPLE WELCOME EMAIL. auth/callback/route.ts:85 keys the welcome email on the same `!profile?.onboarded` flag, so any re-trigger re-emails. Gate it instead on a dedicated idempotent column `welcome_email_sent_at timestamptz` set the first time the email dispatches; only send when the profile read SUCCEEDED and onboarded===false, never when profile is null. NET GUARANTEE: a returning already-onboarded account whose fetch is slow/fails/returns null/has no committed cookie never sees the wizard (stays loading or cached-true); a genuine first login (definitive `onboarded:false` row) gets it exactly once; a failed completion keeps the wizard so the DB write is retried, never masked.",
+    "changes":  [
+                    {
+                        "id":  1,
+                        "phase":  1,
+                        "severity":  "P0",
+                        "zone":  "trigger:db-authority",
+                        "kind":  "bug",
+                        "title":  "Tri-state onboarded gate â€” never render wizard on unknown state",
+                        "files":  [
+                                      "src/lib/stores/userStore.ts",
+                                      "src/components/MemoryPalace.tsx"
+                                  ],
+                        "spec":  "userStore.ts: change interface field and initial state to `onboarded: boolean | null` = `null` (:47). MemoryPalace.tsx: gate becomes `if(profileLoading || onboarded === null){ return \u003cPalaceLoadingScreen/\u003e; }` (:1066) then `if(onboarded === false) return \u003cOnboardingWizard onFinish={handleFinishOnboarding}/\u003e;` (:1070). The 3s safety timeout (:396) only sets profileLoading:false; with onboarded still null the gate stays on PalaceLoadingScreen, not the wizard. Removes the default-false flash entirely.",
+                        "mobile":  "Eliminates spurious wizard flash on slow mobile networks for the 60+ audience â€” the single most-likely re-trigger.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  2,
+                        "phase":  1,
+                        "severity":  "P0",
+                        "zone":  "trigger:db-authority",
+                        "kind":  "trigger",
+                        "title":  "Handle !user / error / null-profile branches without asserting not-onboarded",
+                        "files":  [
+                                      "src/lib/stores/userStore.ts"
+                                  ],
+                        "spec":  "In loadProfile: `const { data: profile, error } = await supabase.from(\u0027profiles\u0027).select(\u0027*\u0027).eq(\u0027id\u0027,user.id).single();`. Keep :114 set true and :123 set false only for explicit rows. For `!user` (:103), `error`, or `!profile`: do NOT set onboarded:false. Instead read the per-user positive cache: `if (localStorage.getItem(\u0027mp_onboarded:\u0027+user.id)===\u0027true\u0027) set({onboarded:true}); else leave onboarded null`. Always `set({profileLoading:false})`. The onAuthStateChange listener re-runs loadProfile when the cookie commits. Never map a swallowed read error to \u0027show the wizard\u0027.",
+                        "mobile":  "Prevents replication-lag / transient-network re-onboarding right after signup on mobile.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  3,
+                        "phase":  1,
+                        "severity":  "P0",
+                        "zone":  "trigger:db-authority",
+                        "kind":  "bug",
+                        "title":  "Atomic completion â€” do not flip local onboarded until DB upsert confirmed",
+                        "files":  [
+                                      "src/lib/stores/userStore.ts",
+                                      "src/components/MemoryPalace.tsx"
+                                  ],
+                        "spec":  "userStore.ts finishOnboarding (:137): `const result = await completeOnboarding({...}); if (result.error){ console.error(\u0027Onboarding error:\u0027,result.error); throw new Error(result.error); } set({onboarded:true}); localStorage.setItem(\u0027mp_onboarded:\u0027+userId,\u0027true\u0027); localStorage.setItem(\u0027mp_userName\u0027, get().userName);`. MemoryPalace.tsx handleFinishOnboarding (:973): `try { await finishOnboarding(); } catch { /* keep wizard mounted */ showRetryToast(); return; } setOnboardDate(); ...`. Never write onboarded:true/cache on a failed upsert; the wizard stays so the write retries.",
+                        "mobile":  "Guarantees a fresh-device relogin agrees with the DB; no re-fire, no duplicate welcome email.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  4,
+                        "phase":  1,
+                        "severity":  "P2",
+                        "zone":  "trigger:first-login-contract",
+                        "kind":  "trigger",
+                        "title":  "Decouple welcome email from onboarded flag (idempotent marker)",
+                        "files":  [
+                                      "src/app/auth/callback/route.ts",
+                                      "migrations"
+                                  ],
+                        "spec":  "Add column `welcome_email_sent_at timestamptz` to profiles. In auth/callback/route.ts:85 send only when the profile read succeeded (profile !== null) AND onboarded===false AND welcome_email_sent_at IS NULL; set welcome_email_sent_at=now() on dispatch. Never send when profile is null (read error). Guarantees exactly one welcome email per account, independent of onboarding-completion timing.",
+                        "mobile":  "No duplicate welcome emails to Heritage Keepers on any re-trigger edge.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  5,
+                        "phase":  1,
+                        "severity":  "P2",
+                        "zone":  "trigger:relogin-multitab",
+                        "kind":  "trigger",
+                        "title":  "Scope + clear the onboarded cache to prevent shared-device bleed",
+                        "files":  [
+                                      "src/lib/stores/userStore.ts",
+                                      "src/lib/hooks/useSignOut.ts"
+                                  ],
+                        "spec":  "Key the cache per user: `mp_onboarded:\u003cuid\u003e` and `mp_userName:\u003cuid\u003e` everywhere it is written/read (userStore.ts:94-95,116,144). On sign-out (useSignOut.ts:34) also clear the current user\u0027s `mp_onboarded:\u003cuid\u003e`/`mp_userName:\u003cuid\u003e` so the next account on the device is never mis-rescued. Read it only for the currently authenticated uid.",
+                        "mobile":  "Safe on family-shared tablets common in the 60+ cohort.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  6,
+                        "phase":  1,
+                        "severity":  "P1",
+                        "zone":  "flow-architecture",
+                        "kind":  "cut",
+                        "title":  "Cut to 4 real phases: lang_a11y -\u003e name -\u003e style_era -\u003e celebration(threshold)-into-first-memory",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "New PHASE_ORDER = [\u0027lang_a11y\u0027,\u0027name\u0027,\u0027style_era\u0027,\u0027celebration\u0027,\u0027done\u0027]. DELETE render blocks + state for: video_intro (:370-404), the dead quiz (:676-828, state quizStep/quizGoal/quizScale/quizAudience :148-151, preload :181, resume comment :106), cinematic (:981-1121), all four WALK_PHASES (:1123-1410) with their 14s/14s/30s safety timeouts (:235-250) and handlers (:205-258), and paywall (:1412-1546). Keep the ImportHub/seeded-room \u0027upload\u0027 beat (mounts OnboardingSceneHost scene=\u0027room\u0027 wingId=\u0027roots\u0027 roomId=\u0027ro1\u0027 lockRoom :1554,1585) but reach it FROM celebration, not after a tour. Update SETUP_PHASES, WALK_PHASES=[], and the saved-phase resume map (:111-118) so a stale saved \u0027quiz\u0027/\u0027walk_*\u0027/\u0027paywall\u0027/\u0027video_intro\u0027/\u0027cinematic\u0027 can never resurrect a removed phase (validate against new PHASE_ORDER, else start at \u0027lang_a11y\u0027).",
+                        "mobile":  "Removes ~75s of passive camera-on-rails and four heavy WebGL auto-walk loads that GL-context-lose on older iPhones.",
+                        "effort":  "L"
+                    },
+                    {
+                        "id":  7,
+                        "phase":  1,
+                        "severity":  "P0",
+                        "zone":  "flow-architecture",
+                        "kind":  "cut",
+                        "title":  "Remove the post-celebration paywall detour on every platform",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "celebration onContinue (:1606) becomes `setPhase(\u0027done\u0027)` for ALL platforms (drop the `isIOS()?\u0027done\u0027:\u0027paywall\u0027` fork). ImportHub onClose (:1559) routes to celebration/done, never paywall. Delete the paywall render (:1412-1546) incl navigateInApp(\u0027/pricing\u0027) (:1501) and drop \u0027paywall\u0027 from the Phase union (:32), PHASE_ORDER, and resume remap (:115). First run ends on the warm threshold, never a sell. (iOS already skipped it via isIOS(); this does NOT change the iOS free-tier seal.)",
+                        "mobile":  "Removes a full-screen blurred pricing modal over a 3D room load and a context-losing /pricing jump.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  8,
+                        "phase":  2,
+                        "severity":  "P1",
+                        "zone":  "visual-style",
+                        "kind":  "restyle",
+                        "title":  "Re-skin all setup screens from dark bronze glass to warm-cream Library canon",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx",
+                                      "src/lib/libraryTokens.ts"
+                                  ],
+                        "spec":  "Import CREAM #FCFAF5, INK #403B36, MUTED #716A5E, HAIRLINE #E3D6BC, EMBER #B85C38, EMBER_GLYPH #9A4F2A, GOLD #D4AF37, SHADOW, TOP_HIGHLIGHT. Replace on lang_a11y/name/style_era: page bg #1a1917 (:409,565,833) -\u003e CREAM; glass card rgba(40,34,26,0.6)+blur(20px) (:424-432,580-588,848-856) -\u003e opaque `background:#FFFFFF` (or a lifted cream gradient literal), `border:0.0625rem solid HAIRLINE`, `borderRadius:1rem`, `boxShadow:`${SHADOW[1]}, ${TOP_HIGHLIGHT}``, NO backdropFilter; titles color #F2EDE7 fontWeight 300 (:450,606,873) -\u003e INK weight 600 T.font.display; body #A09889/#D4C5B2 -\u003e MUTED T.font.body full opacity. Delete the full-bleed videoBackground/gradientOverlay backdrop (:291-336). Input border -\u003e HAIRLINE with EMBER focus.",
+                        "mobile":  "Ink-on-cream is far more legible in sunlight than pale text on dark; dropping blur(20px)+autoplay video saves GPU/battery on older iPhones.",
+                        "effort":  "L"
+                    },
+                    {
+                        "id":  9,
+                        "phase":  2,
+                        "severity":  "P1",
+                        "zone":  "visual-style",
+                        "kind":  "restyle",
+                        "title":  "Unify accent to EMBER and primary CTA to ctaGrad with GOLD focus ring",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx",
+                                      "src/components/ui/OnboardingTooltip.tsx",
+                                      "src/components/ui/OnboardingCelebration.tsx"
+                                  ],
+                        "spec":  "Replace every `T.color.terracotta` #C66B3D accent (overlines, active borders/fills, dots at :441,479-482,518-520,597,865,892) with EMBER #B85C38 (interactive) / EMBER_GLYPH #9A4F2A (at-rest glyphs/overlines). Replace every primary CTA `linear-gradient(135deg,T.color.terracotta,T.color.walnut)` (:539,651,957; Tooltip :76; Celebration :163) with `L.ctaGrad` (linear-gradient(135deg,#9A4F2A,#6B3318)), white text, borderRadius 0.75rem, minHeight 3.25rem, `.lv2-cta` hover (translateY(-1px) brightness(1.06)). Add canon focus ring to ALL buttons+input (none exist today): `:focus-visible{ outline:0.1875rem solid #D4AF37; outlineOffset:0.1875rem }`.",
+                        "mobile":  "One consistent EMBER continue spot = muscle memory; 3.25rem\u003e2.75rem touch min; focus ring aids keyboard/switch users.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  10,
+                        "phase":  2,
+                        "severity":  "P1",
+                        "zone":  "step-language-a11y",
+                        "kind":  "design",
+                        "title":  "Fix sub-legible overlines and section labels to canon Overline",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "Replace all 0.5625rem/3px-tracked appName overlines (:440-445,595-601,864-869) and the 0.625rem section captions chooseLangSubtitle (:458) / textSizeTitle (:499) with the canon Overline: `fontSize:0.6875rem, fontWeight:700, letterSpacing:0.12em, textTransform:uppercase, color:EMBER_GLYPH`, T.font.body. Convert px tracking to em. Never render sub-0.6875rem text in this app, least of all on the a11y screen.",
+                        "mobile":  "Meets the 60+ high-legibility floor.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  11,
+                        "phase":  3,
+                        "severity":  "P1",
+                        "zone":  "step-language-a11y",
+                        "kind":  "functionality",
+                        "title":  "Persist the text-size a11y choice app-wide (or cut it)",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx",
+                                      "src/lib/stores/userStore.ts",
+                                      "src/lib/auth/profile-actions.ts"
+                                  ],
+                        "spec":  "The wizard effect writes documentElement.style.fontSize (:154) then wipes it on unmount (:155) â€” the only writer in the app; textSize is local-only (:142). Fix: persist to a store slice + `mp_text_size` localStorage, apply the root font-scale from a top-level app provider (mirror mp_locale load), and upsert to profiles.accessibility_scale in completeOnboarding alongside styleEra (profile-actions.ts:36-48). If no persistent scale system will be built, CUT the control from onboarding and surface it in Me/Settings (proposal: it belongs there anyway, revisitable with live app preview). Do NOT ship a no-op accessibility promise.",
+                        "mobile":  "A 60+ user who picks Large keeps it in the app, not just the wizard.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  12,
+                        "phase":  3,
+                        "severity":  "P2",
+                        "zone":  "step-language-a11y",
+                        "kind":  "a11y",
+                        "title":  "Language \u0026 text-size groups: real radiogroup semantics + non-color selected state",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "Wrap language buttons (:472-488) and text-size buttons (:511-528) each in `role=\u0027radiogroup\u0027` with `aria-label` from the (now \u003ch3\u003e) section heading; render options as `role=\u0027radio\u0027 aria-checked={active}`. Add a non-color affordance (checkmark or ring) so selection isn\u0027t color-only (WCAG 1.4.1). Promote \u0027Language\u0027/\u0027Text size\u0027 \u003cp\u003e labels (:457,498) to \u003ch3\u003e. Equalize the three text-size tiles to a fixed row height (e.g. height 3.5rem) so \u0027large\u0027 Aa doesn\u0027t inflate its tile.",
+                        "mobile":  "The accessibility step is itself accessible.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  13,
+                        "phase":  3,
+                        "severity":  "P1",
+                        "zone":  "step-name",
+                        "kind":  "functionality",
+                        "title":  "Validate + trim name; label the input; graceful possessive fallback",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "Compute `const trimmedName = userName.trim();`. Disable Continue (:647) and no-op Enter (:630) when `!trimmedName` (dimmed style + gentle inline hint), and `setUserName(trimmedName)` before advancing so the persisted display_name is trimmed. Pre-fill from the Apple/display_name already loaded into userName (userStore.ts:123). Add `aria-label` (or \u003clabel htmlFor\u003e) to the input (:617) â€” placeholder-only today. Downstream: make cinematicPossessive/palace strings (:1048,1226,1332) degrade to a generic \u0027Your Palace\u0027 when name is empty so no \u0027\u0027s Palace\u0027 leading-apostrophe renders.",
+                        "mobile":  "No broken personalized greeting; labeled field for screen readers.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  14,
+                        "phase":  2,
+                        "severity":  "P1",
+                        "zone":  "step-style-era",
+                        "kind":  "cut",
+                        "title":  "Cut the one-option style_era picker OR ship it as a confirmation",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "The era container (:886) holds a single Roman card (:888-931, stray \u003c/div\u003e :933); selectedEra defaults \u0027roman\u0027 (:143) so the sole click is a no-op. DECISION: keep the phase as a CONFIRMATION not a choice â€” retitle to \u0027Your palace is Roman Tuscany\u0027 with a warm Fraunces-italic aside \u0027marble atriums, colonnaded gardens â€” we\u0027ll build it around you\u0027 + reversibility line \u0027You can change this anytime\u0027, set styleEra=\u0027roman\u0027 once at entry. (If a second era ships later, restore the picker WITH the second card â€” never a one-option picker.) Update all 5 locales; narrow `selectedEra` type to `\u0027roman\u0027` and drop the dead \u0027renaissance\u0027 union + preload `phase===\u0027quiz\u0027` (:181).",
+                        "mobile":  "Removes a decision-with-no-decision; keeps the personalization preview.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  15,
+                        "phase":  2,
+                        "severity":  "P1",
+                        "zone":  "celebration",
+                        "kind":  "rebuild",
+                        "title":  "Reframe celebration as a calm gold threshold that echoes name + style, no confetti",
+                        "files":  [
+                                      "src/components/ui/OnboardingCelebration.tsx",
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "Replace the 120-piece rAF confetti canvas (OnboardingCelebration.tsx:41,55-75,91-94) with a single ceremonial GOLD flourish: a gold divider tick (`width:3rem, height:2px, background:#D4AF37, opacity:0.6`) above the headline (WhyPalaceVisual pattern). Wire the personalized copy that already exists in all 5 locales but is dead: title=`t(\u0027celebrationTitle\u0027).replace(\u0027{name}\u0027, userName || t(\u0027namePlaceholder\u0027))` (\u0027Welcome home, {name}!\u0027), subtitle=`t(\u0027celebrationSubtitle\u0027)` (\u0027Your palace is ready. Every memory you add makes it more yours.\u0027); delete unused celebrationTitle2/Subtitle2 x5. Render the NAME in the Atrium steward gold-sage italic gradient (linear-gradient(100deg,#3E5230,#56683C,#E8C255,#56683C,#3E5230), WebkitBackgroundClip:text, fontStyle italic, fontWeight 700). Title fontWeight 300 (:135) -\u003e 500-600 with textShadow over scene. Keep the reduce-motion guard (:33). CTA always enters the seeded room/atrium (setPhase(\u0027done\u0027)), never a paywall (see change 7).",
+                        "mobile":  "Static gold tick costs nothing vs a 120-particle loop over live WebGL.",
+                        "effort":  "L"
+                    },
+                    {
+                        "id":  16,
+                        "phase":  1,
+                        "severity":  "P0",
+                        "zone":  "scene-backdrop",
+                        "kind":  "functionality",
+                        "title":  "WebGL error boundary + reduced-motion path so the 3D beat can never strand a user",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx",
+                                      "src/components/ui/OnboardingSceneHost.tsx"
+                                  ],
+                        "spec":  "Wrap the remaining seeded-room OnboardingSceneHost (:1554) in a React error boundary that, on WebGL failure (ExteriorScene.tsx:186 retry can throw uncaught), renders a static poster still + a working Continue that advances to celebration/done. Detect WebGL absence up-front (`getContext(\u0027webgl2\u0027)||getContext(\u0027webgl\u0027)` null) and skip the 3D room, routing straight to a text-based first-memory prompt + ImportHub. When `matchMedia(\u0027(prefers-reduced-motion: reduce)\u0027).matches`, hold a fixed frame / poster (mirror OnboardingCelebration.tsx:32-33) instead of any auto-camera. Keep ONE ceiling timeout on the seeded room so a stalled canvas still surfaces the upload step.",
+                        "mobile":  "No-WebGL / older WKWebView users and vestibular-sensitive users can still complete first-run.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  17,
+                        "phase":  2,
+                        "severity":  "P1",
+                        "zone":  "scene-backdrop",
+                        "kind":  "perf",
+                        "title":  "Gate the seeded-room overlay reveal on sceneReady, not fixed delays",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "sceneReady state (:127) is set via onReady (:997) but never read. Gate the first-memory prompt/tooltip reveal on `sceneReady` (fade in only after onReady fires at first painted frame) with a ~4s max-wait fallback so a never-firing onReady still reveals the overlay. No more title floating over a black void for seconds while WebGL boots.",
+                        "mobile":  "Prevents the \u0027frozen app\u0027 impression on slow mobile GPUs.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  18,
+                        "phase":  3,
+                        "severity":  "P1",
+                        "zone":  "flow-architecture",
+                        "kind":  "fix",
+                        "title":  "i18n-harden OnboardingTooltip and reduce to ONE seeded-memory hint",
+                        "files":  [
+                                      "src/components/ui/OnboardingTooltip.tsx",
+                                      "src/components/ui/OnboardingWizard.tsx",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "Remove the hardcoded EN defaults nextLabel=\u0027Next\u0027 (:6,18) and skipLabel=\u0027Skip tour\u0027 (:7,19) â€” make both props required so no future caller can ship an un-i18n\u0027d control. (Live caller already passes t(\u0027walkNext\u0027)/t(\u0027walkSkip\u0027) :1399-1400; confirm those keys exist in nl/de/es/fr, not just en.json.) Restyle the tooltip to canon: cream card, INK text, EMBER primary (drop dark glass :44-45). Use exactly ONE contextual tooltip at the first-memory moment (\u0027Place your first memory here â€” a photo, a name, anything\u0027), fully i18n\u0027d; never a chained tour.",
+                        "mobile":  "Bottom-anchored single hint keeps the \u0027what do I do\u0027 spot constant.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  19,
+                        "phase":  3,
+                        "severity":  "P1",
+                        "zone":  "whole-flow",
+                        "kind":  "copy",
+                        "title":  "Warm host voice + reversibility + expectation line across setup copy",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx",
+                                      "src/messages/en.json",
+                                      "src/messages/nl.json",
+                                      "src/messages/de.json",
+                                      "src/messages/es.json",
+                                      "src/messages/fr.json"
+                                  ],
+                        "spec":  "Replace wizard-speak with warm-host lines per screen (all 5 locales): lang_a11y \u0027Let\u0027s make this comfortable to read\u0027; name \u0027What should we call you?\u0027 + Fraunces-italic aside \u0027So the house knows whose it is\u0027; style_era \u0027Pick the feel of your palace\u0027 + \u0027You can change this anytime\u0027; add one plain expectation line \u0027Your palace is a private set of rooms; you\u0027ll fill them with memories over time\u0027. Skip stays a quiet MUTED #716A5E text link (:548-554), never a competing button.",
+                        "mobile":  "Lower decision paralysis for the deliberate 60+ cohort.",
+                        "effort":  "M"
+                    },
+                    {
+                        "id":  20,
+                        "phase":  3,
+                        "severity":  "P2",
+                        "zone":  "whole-flow",
+                        "kind":  "reduce",
+                        "title":  "Replace the filling terracotta \u0027Step X of 3\u0027 bar with quiet canon dots",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "StepIndicator (:65-77) elongates a current pill in T.color.terracotta on rgba(255,255,255,0.12) â€” a scoreboard. Replace with quiet equal dots (0.6rem round; filled=EMBER_GLYPH #9A4F2A, unfilled=HAIRLINE #E3D6BC; no numeric total, no growing bar), matching AtriumRelay lane-dot grammar. Given the flow is now 3 short setup screens, dropping it entirely is acceptable (Apple uses no progress meter). Remove the duplicate current={3} that the dead quiz claimed (:711) once quiz is cut.",
+                        "mobile":  "Frees top vertical space on short viewports; no finish-line anxiety.",
+                        "effort":  "S"
+                    },
+                    {
+                        "id":  21,
+                        "phase":  3,
+                        "severity":  "P2",
+                        "zone":  "flow-architecture",
+                        "kind":  "functionality",
+                        "title":  "Unify Skip and dismiss into the single atomic completion path",
+                        "files":  [
+                                      "src/components/ui/OnboardingWizard.tsx"
+                                  ],
+                        "spec":  "handleSkip (:191-202) bypasses the done-effect and may never run the styleEra server write, stranding goal/era defaults. Route Skip and ImportHub-dismiss (:1559) through the SAME completion path as normal finish (same fields, same completeOnboarding write via onFinish), persisting the trimmed name first. One consistent onboarded DB state regardless of skip vs complete. Set a sensible default goal explicitly (the dead quiz was the only writer of mp_user_goal) so removal doesn\u0027t silently drop the field.",
+                        "mobile":  "No divergent half-persisted completion states.",
+                        "effort":  "M"
+                    }
+                ],
+    "phases":  [
+                   {
+                       "phase":  1,
+                       "title":  "Trigger contract + P0 correctness + biggest cuts",
+                       "goal":  "Guarantee onboarding fires only on a definitive first-ever login and never re-fires (tri-state DB-authoritative gate, atomic completion, decoupled welcome email, per-user cache), and remove the paywall detour, dead quiz, intro video, and 4-leg walk gauntlet. Add the no-WebGL/reduced-motion fallback so the 3D beat can\u0027t strand anyone."
+                   },
+                   {
+                       "phase":  2,
+                       "title":  "Canon reskin of the surviving flow",
+                       "goal":  "Re-skin lang_a11y/name/style_era/celebration from dark bronze glass to warm-cream Library canon (CREAM/INK/MUTED/HAIRLINE, EMBER CTA + GOLD focus ring), fix sub-legible overlines, turn style_era into a confirmation, and rebuild the celebration as a calm gold threshold that echoes the user\u0027s name."
+                   },
+                   {
+                       "phase":  3,
+                       "title":  "Copy, a11y, i18n, do-first polish",
+                       "goal":  "Warm-host copy + reversibility + expectation lines across 5 locales, persist the text-size choice app-wide, radiogroup semantics + labeled name input, i18n-harden the tooltip to one seeded-memory hint, quiet dots over the scoreboard, and unify Skip/dismiss into the atomic completion path."
+                   },
+                   {
+                       "phase":  4,
+                       "title":  "Reserved / verification",
+                       "goal":  "On-device verification pass (iOS WKWebView + slow-network + no-WebGL + reduced-motion), confirm nl/de/es/fr keys resolve, and confirm the wizard fires exactly once for a genuine first login and never for returning/fresh-device/slow-fetch accounts."
+                   }
+               ],
+    "cutList":  [
+                    "video_intro phase (15s autoplay hero video, OnboardingWizard.tsx:370-404)",
+                    "dead \u0027quiz\u0027 phase render + state + preload (:25,148-151,181,676-828)",
+                    "\u0027cinematic\u0027 welcome-to-X\u0027s-palace pre-roll (:981-1121)",
+                    "all four WALK_PHASES walk_exterior/entrance/corridor/room + auto-walk handlers + 14s/14s/30s safety timeouts (:1123-1410,205-258,235-250)",
+                    "\u0027paywall\u0027 phase + navigateInApp(\u0027/pricing\u0027) detour on all platforms (:1412-1546,1501,1606,1559)",
+                    "one-option style_era picker as a *choice* (keep only as a confirmation, or cut)",
+                    "120-piece confetti canvas in OnboardingCelebration (:41,55-75)",
+                    "dead \u0027renaissance\u0027 era union + celebrationTitle2/Subtitle2 keys x5",
+                    "filling terracotta StepIndicator scoreboard (:65-77) â€” replace with quiet dots or remove"
+                ],
+    "doNotTouch":  [
+                       "iOS free-tier seal is inviolable â€” first-run must contain ZERO paid/upgrade surfaces on iOS; removing the paywall fork only deletes the non-iOS branch and must not introduce any new isIOS()-gated paid CTA",
+                       "getUserPlan mp_platform cookie/UA coercion that enforces iOS=free-tier server-side",
+                       "The sole authoritative onboarded write path (completeOnboarding upsert in profile-actions.ts:36-48) â€” harden its error handling, do not add a second competing writer",
+                       "Family-tree\u0027s own wizard src/app/(app)/family-tree/OnboardingWizard.tsx (255) â€” unrelated, do not conflate",
+                       "Inline-styles-only + useIsMobile()/useIsCompact() responsiveness (no @media) + rem units + 5-locale i18n conventions"
+                   ],
+    "summary":  "Onboarding is rebuilt as a calm 4-step warm-cream threshold â€” language/legibility, name, style-confirmation, gold ceremonial celebration â€” that ends by depositing the user INTO a seeded room to place their first real memory (do-first). The dark bronze-glass shell, 15s intro video, 4-leg WebGL auto-walk gauntlet, dead quiz phase, and post-celebration paywall are all cut. The load-bearing fix is the TRIGGER CONTRACT: onboarded becomes tri-state (boolean|null, default null); the gate renders the wizard ONLY on an authoritative `profiles.onboarded===false`, never on unknown/slow/failed/no-cookie states (verified: default-false + 3s timeout + null-profile + transient !user were all real re-fire vectors at userStore.ts:47/103/104 and MemoryPalace.tsx:396/1070). Completion is made atomic â€” no local/cache flip until the DB upsert confirms (userStore.ts:140 verified to swallow the error today) â€” and the welcome email is decoupled onto an idempotent welcome_email_sent_at marker (auth/callback:85 verified re-sends on the same flag). A per-user-scoped positive cache rescues slow fetches without shared-device bleed. Everything is re-tokened to CREAM/INK/EMBER with a GOLD focus ring and ceremonial gold, warm-host copy across 5 locales, WebGL/reduced-motion fallbacks, and validated/trimmed name. iOS free-tier seal stays inviolable. All 21 changes are grounded in confirmed P0/P1 findings or top-scored proposals; phase 1 delivers the trigger contract + P0s + the biggest cuts."
+}

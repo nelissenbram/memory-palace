@@ -971,7 +971,15 @@ export default function MemoryPalace(){
   const justOnboardedRef = useRef(false);
 
   const handleFinishOnboarding=async(memoryUploaded?: boolean)=>{
-    await finishOnboarding();
+    // Atomic: if the DB write fails, finishOnboarding throws — keep the wizard
+    // mounted so the write retries rather than navigating away with a half-
+    // persisted state (which would re-onboard on the next fresh device).
+    try {
+      await finishOnboarding();
+    } catch {
+      try { window.dispatchEvent(new CustomEvent("mp:toast", { detail: { message: "Something went wrong finishing setup — please try again.", type: "error" } })); } catch {}
+      return;
+    }
     setOnboardDate();
     justOnboardedRef.current = true;
     // Mark checklist item if user uploaded during onboarding
@@ -1063,11 +1071,15 @@ export default function MemoryPalace(){
     </>);
   }
 
-  if(profileLoading){
+  // Tri-state gate: while the onboarded state is UNKNOWN (null) or still
+  // loading, show the loading screen — NEVER the wizard. The wizard renders
+  // only on a definitive first-login (onboarded === false), so a returning
+  // account on a slow/failed/fresh-device fetch can never be re-onboarded.
+  if(profileLoading || onboarded === null){
     return <PalaceLoadingScreen />;
   }
 
-  if(!onboarded) return <OnboardingWizard onFinish={handleFinishOnboarding}/>;
+  if(onboarded === false) return <OnboardingWizard onFinish={handleFinishOnboarding}/>;
 
   const hovDoorRoom=hovDoor&&activeWing?getWingRooms(activeWing).find(r=>r.id===hovDoor)??null:null;
 
