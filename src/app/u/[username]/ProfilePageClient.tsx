@@ -58,7 +58,7 @@ export default function ProfilePageClient({
         <NavigationBar
           currentMode={"atrium"}
           onModeChange={handleModeChange}
-          onNotifications={() => router.push("/palace?notifications=1")}
+          onNotifications={() => router.push("/atrium?notifications=1")}
           isMobile={false}
           activeTab="explore"
         />
@@ -263,7 +263,7 @@ export default function ProfilePageClient({
         <NavigationBar
           currentMode={"atrium"}
           onModeChange={handleModeChange}
-          onNotifications={() => router.push("/palace?notifications=1")}
+          onNotifications={() => router.push("/atrium?notifications=1")}
           isMobile={true}
           activeTab="explore"
         />

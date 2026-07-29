@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { isIOS } from "@/lib/native/platform";
+import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 // ── Provider definitions ──
 type ProviderIconKey = "photos" | "dropbox" | "cloud" | "folder" | "apple";
@@ -225,21 +226,16 @@ function ConnectionsContent() {
       )}
 
       {/* Page header — desktop only */}
-      {!isMobile && (
-        <div style={{ marginBottom: "1.75rem" }}>
-          <h2 style={{
-            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
-            color: "#403B36", margin: "0 0 0.5rem", lineHeight: 1.15, // Atrium token: ink display
-          }}>
-            {t("title")}
-          </h2>
-          <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E",
-            margin: 0, lineHeight: 1.4,
-          }}>
-            {t("description")}
-          </p>
-        </div>
+      <SettingsPageHeader
+        hidden={isMobile}
+        icon="connections"
+        title={t("title")}
+        subtitle={t("description")}
+      />
+
+      {/* Section overline — Photo & file sources */}
+      {!loading && !hideComingSoon && (
+        <SectionOverline label={t("sourcesOverline") !== "sourcesOverline" ? t("sourcesOverline") : "Photo & file sources"} />
       )}
 
       {/* Provider cards */}

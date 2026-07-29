@@ -243,14 +243,11 @@ export function useSettingsTutorial(): [boolean, (v: boolean) => void] {
     try {
       if (typeof window === "undefined") return;
       const params = new URLSearchParams(window.location.search);
+      // Only open on explicit request (?tour=1 or the help button). The old
+      // auto-fire-on-first-visit was jarring when tapping a settings submenu
+      // and is retired now that each page carries its own clear header.
       if (params.get("tour") === "1") {
         window.localStorage.removeItem(STORAGE_KEY);
-        setOpen(true);
-        window.localStorage.setItem(STORAGE_KEY, "1");
-        return;
-      }
-      const seen = window.localStorage.getItem(STORAGE_KEY);
-      if (!seen) {
         setOpen(true);
         window.localStorage.setItem(STORAGE_KEY, "1");
       }

@@ -735,12 +735,15 @@ export default function SubscriptionPage() {
           tap action is dead UI that Apple flags under Guideline 2.1(a). When
           iOS IAP is re-enabled, revisit to show plans with working IAP buttons. */}
       {!nativeApp && (
+      <>
+      <SectionOverline label={tf("sectionAllPlans", "All plans")} />
       <div style={{
         background: "#FFFFFF",
         borderRadius: "1rem",
         border: "0.0625rem solid #E3D6BC",
         padding: "1.75rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+        marginBottom: "1.5rem",
       }}>
         <h3 style={{
           fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
@@ -1154,18 +1157,21 @@ export default function SubscriptionPage() {
           </div>
         )}
       </div>
+      </>
       )}
 
       {/* Refer a Friend — hidden on iOS: rewards are web/Stripe promo codes that
           can't apply to Apple IAP, so surfacing them on iOS steers off-platform (3.1.1) */}
       {referralCode && !isApple && (
+        <>
+        <SectionOverline label={tf("sectionReferFriend", "Refer a friend")} />
         <div style={{
           background: "#FFFFFF",
           borderRadius: "1rem",
           border: "0.0625rem solid #E3D6BC",
           padding: "1.75rem 2rem",
           boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
-          marginTop: "1.5rem",
+          marginBottom: "1.5rem",
         }}>
           <h3 style={{
             fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
@@ -1410,6 +1416,7 @@ export default function SubscriptionPage() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* Canon hover / focus / reduced-motion states (style-only) */}

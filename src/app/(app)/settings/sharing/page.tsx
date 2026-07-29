@@ -4,12 +4,21 @@ import { useState, useEffect, useCallback, useTransition } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import type { PublishableWing } from "@/lib/social/share-actions";
+import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 export default function SharingPage() {
   const { t } = useTranslation("social");
   const { t: ts } = useTranslation("settings");
   const { scale } = useAccessibility();
+  const isMobile = useIsMobile();
+
+  // i18n fallback helper — new keys work before the locale files land.
+  const tf = (key: string, fallback: string) => {
+    const v = ts(key);
+    return v === key ? fallback : v;
+  };
 
   const [loading, setLoading] = useState(true);
   const [wings, setWings] = useState<PublishableWing[]>([]);
@@ -150,6 +159,17 @@ export default function SharingPage() {
           <style>{`@media (prefers-reduced-motion: reduce){ .sharing-toast{ animation: none; } }`}</style>
         </div>
       )}
+
+      {/* Page header — desktop only */}
+      <SettingsPageHeader
+        hidden={isMobile}
+        icon="sharing"
+        title={tf("sharingTitle", "Sharing")}
+        subtitle={tf("sharingSubtitle", "Choose who can see your palace — publish wings, share with family, or hand out temporary visiting codes.")}
+      />
+
+      {/* Section overline — Published to your public palace */}
+      <SectionOverline label={tf("sectionPublished", "Public palace")} />
 
       {/* Published Content Card */}
       <div style={{
@@ -331,9 +351,11 @@ export default function SharingPage() {
       </div>
 
       {/* Passcode / Temp Visiting Codes */}
+      <SectionOverline label={tf("sectionVisitingCodes", "Visiting codes")} style={{ marginTop: "1.75rem" }} />
       <PasscodeSection scale={scale} />
 
       {/* Family wing permissions (moved here from Settings > Family — change 20) */}
+      <SectionOverline label={tf("sectionFamilyAccess", "Family access")} style={{ marginTop: "1.75rem" }} />
       <FamilyWingSharingSection scale={scale} />
 
       {/* Canon hover / pressed / focus states (Me-page grammar) */}

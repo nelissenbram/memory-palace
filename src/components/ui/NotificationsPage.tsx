@@ -487,7 +487,7 @@ export default function NotificationsPage() {
             @keyframes npNudgeCardIn { from { opacity:0; transform:translate(-50%,calc(-50% + 0.375rem)); } to { opacity:1; transform:translate(-50%,-50%); } }
             @media (prefers-reduced-motion: reduce) { .np-tutorial-card { animation: none !important; } }
             @media (hover: hover) {
-              .np-tutorial-skip:hover { color: ${INK}; }
+              .np-tutorial-skip:hover { color: #E8C766; }
               .np-tutorial-cta:hover { box-shadow: ${SHADOW[2]}; }
             }
             .np-tutorial-skip:focus-visible, .np-tutorial-cta:focus-visible {
@@ -507,15 +507,15 @@ export default function NotificationsPage() {
             }}
           >
             <div style={{
-              background:"#FFFFFF",
+              background:"linear-gradient(160deg, #2A2018 0%, #201811 100%)",
               borderRadius:"1rem", padding:"1.25rem 1.25rem 1rem",
-              border:`0.0625rem solid ${HAIRLINE}`,
-              boxShadow:`${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
+              border:"0.0625rem solid rgba(212,175,55,0.35)",
+              boxShadow:"0 0.75rem 2rem rgba(0,0,0,0.42), inset 0 0.0625rem 0 rgba(212,175,55,0.12)",
               display:"flex", flexDirection:"column", gap:"0.75rem",
             }}>
               <div style={{
-                fontFamily:T.font.display, fontSize:"1.0625rem", fontWeight:600,
-                color:INK, lineHeight:1.15,
+                fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600,
+                color:"#E8C766", lineHeight:1.15,
               }}>
                 {t("tutorialTitle")}
               </div>
@@ -531,11 +531,11 @@ export default function NotificationsPage() {
                   <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
                     <div style={{
                       width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
-                      background:EMBER,
+                      background:"linear-gradient(135deg, #D4AF37, #B85C38)",
                     }} aria-hidden="true" />
                     <span style={{
                       fontFamily:T.font.body, fontSize:"0.8125rem",
-                      color:MUTED, lineHeight:1.5,
+                      color:"rgba(250,247,235,0.9)", lineHeight:1.5,
                     }}>
                       {text}
                     </span>
@@ -544,7 +544,7 @@ export default function NotificationsPage() {
               </div>
               <div style={{
                 fontFamily:T.font.body, fontSize:"0.8125rem", /* canon meta */
-                color:MUTED, fontStyle:"italic", marginTop:"0.125rem",
+                color:"rgba(232,215,180,0.55)", fontStyle:"italic", marginTop:"0.125rem",
               }}>
                 {t("tutorialFooter")}
               </div>
@@ -556,7 +556,7 @@ export default function NotificationsPage() {
                   className="np-tutorial-skip"
                   style={{
                     display:"inline-flex", alignItems:"center", justifyContent:"center",
-                    fontFamily:T.font.body, fontSize:"0.875rem", fontWeight:500, color:MUTED,
+                    fontFamily:T.font.body, fontSize:"0.875rem", fontWeight:500, color:"rgba(232,215,180,0.55)",
                     background:"transparent", border:"none",
                     minHeight:"2.75rem", padding:"0 0.75rem",
                     cursor:"pointer",

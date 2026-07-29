@@ -530,7 +530,10 @@
     "unpublish": "Unpublish",
     "wingPublished": "Wing is now public.",
     "wingUnpublished": "Wing is now private.",
-    "wingToggleError": "Could not update wing. Please try again."
+    "wingToggleError": "Could not update wing. Please try again.",
+    "sectionPublished": "Public palace",
+    "sectionVisitingCodes": "Visiting codes",
+    "sectionFamilyAccess": "Family access"
   },
   "notifications": {
     "title": "Alerts",
@@ -678,7 +681,9 @@
     "disclosurePrivacy": "Privacy Policy",
     "restorePurchases": "Restore Purchases",
     "restoreSuccess": "Previous purchases restored successfully.",
-    "restoreFailed": "No previous purchases found to restore."
+    "restoreFailed": "No previous purchases found to restore.",
+    "sectionAllPlans": "All plans",
+    "sectionReferFriend": "Refer a friend"
   },
   "cancelFlow": {
     "whyLeaving": "Before you go...",
@@ -745,7 +750,8 @@
     "applePhotosNote": "Apple Photos — no connection needed. Your device photos are available directly when you import memories via the Import panel in any room.",
     "appleImportButton": "Import from Photos",
     "appleImporting": "Importing… ({count} done)",
-    "appleImportSuccess": "{count} photos imported successfully!"
+    "appleImportSuccess": "{count} photos imported successfully!",
+    "sourcesOverline": "Photo & file sources"
   },
   "familySettings": {
     "manageWingSharing": "Manage who sees your wings",
@@ -5222,7 +5228,9 @@
     "memoryGallery": "Memories",
     "noMemories": "No memories in this room yet",
     "visitorMode": "Visitor mode",
-    "walkThrough3D": "Walk through in 3D"
+    "walkThrough3D": "Walk through in 3D",
+    "sharingTitle": "Sharing",
+    "sharingSubtitle": "Choose who can see your palace — publish wings, share with family, or hand out temporary visiting codes."
   },
   "help": {
     "title": "Help Center",

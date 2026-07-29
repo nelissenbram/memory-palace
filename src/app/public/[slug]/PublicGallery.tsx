@@ -370,6 +370,7 @@ function MemoryCard({
             src={mem.fileUrl!}
             alt={mem.title}
             fill sizes="(max-width: 768px) 50vw, 300px"
+            unoptimized
             style={{
               objectFit: "cover",
             }}
@@ -567,6 +568,7 @@ function MemoryLightbox({
               src={mem.fileUrl!}
               alt={mem.title}
               fill sizes="(max-width: 768px) 100vw, 800px"
+              unoptimized
               style={{
                 objectFit: "contain",
               }}

@@ -845,18 +845,26 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
           ? (isCenteredFallback ? "nudgeCenterOut .2s ease forwards" : "nudgeFadeOut .2s ease forwards")
           : (isCenteredFallback ? "nudgeCenterIn .3s ease both" : "nudgeFadeIn .3s ease both"),
       }}>
-        {/* Hand-drawn arrow (landing "peiltje") pointing at the highlighted element */}
-        {!isCenteredFallback && (() => {
-          const p = config.position;
-          const box: React.CSSProperties = p === "top"
-            ? { top: "100%", left: "1.5rem", marginTop: "0.1rem" }
-            : p === "right"
-              ? { right: "100%", top: "0.5rem", marginRight: "0.1rem" }
-              : p === "left"
-                ? { left: "100%", top: "0.5rem", marginLeft: "0.1rem" }
-                : { bottom: "100%", left: "1.5rem", marginBottom: "0.1rem" }; // bottom
-          const dir = p === "top" ? "down" : p === "right" ? "left" : p === "left" ? "right" : "up";
-          return <span style={{ position: "absolute", pointerEvents: "none", ...box }}><HandArrow dir={dir as "up" | "down" | "left" | "right"} /></span>;
+        {/* Hand-drawn arrow (landing "peiltje") — direction derived from the REAL
+            geometry (card vs target), not config.position, so viewport clamping
+            that flips the card can't make the arrow point the wrong way. */}
+        {!isCenteredFallback && targetBox && (() => {
+          const remPx = parseFloat(getComputedStyle(document.documentElement).fontSize || "16");
+          const cardW = (isMobile ? 16.25 : 17.5) * remPx;
+          const cardH = tooltipRef.current?.offsetHeight || 6 * remPx;
+          const cx = pos.left + cardW / 2, cy = pos.top + cardH / 2;
+          const tx = targetBox.left + targetBox.width / 2, ty = targetBox.top + targetBox.height / 2;
+          const dx = tx - cx, dy = ty - cy;
+          let dir: "up" | "down" | "left" | "right";
+          let box: React.CSSProperties;
+          if (Math.abs(dy) >= Math.abs(dx)) {
+            dir = dy < 0 ? "up" : "down";
+            box = dy < 0 ? { bottom: "100%", left: "1.5rem" } : { top: "100%", left: "1.5rem" };
+          } else {
+            dir = dx < 0 ? "left" : "right";
+            box = dx < 0 ? { right: "100%", top: "0.5rem" } : { left: "100%", top: "0.5rem" };
+          }
+          return <span style={{ position: "absolute", pointerEvents: "none", ...box }}><HandArrow dir={dir} /></span>;
         })()}
         <div style={{
           background:cardBg,

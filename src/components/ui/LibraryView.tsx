@@ -1861,7 +1861,7 @@ export default function LibraryView() {
                 }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === a.key ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>{a.label}</button>
               ))}
               <button type="button" onClick={() => setShowPublishModal(true)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("publish")}</button>
-              <button type="button" data-spotlight-id="importUpload" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", animation: spotlightTarget === "importUpload" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
+              <button type="button" data-spotlight-id="importUpload" data-nudge="library_import" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", animation: spotlightTarget === "importUpload" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
                 {t("importButton")}
               </button>
@@ -1904,8 +1904,8 @@ export default function LibraryView() {
 
           {/* example-media clear is now an action pill in the control band */}
 
-          {/* ═══ ACTION BAR: Import + Select + View toggle ═══ */}
-          <div data-nudge="library_import" style={{
+          {/* ═══ ACTION BAR: Select + View toggle (Import lives in the control band) ═══ */}
+          <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             gap: "0.5rem", marginBottom: "0.75rem",
             animation: "libFadeIn 0.35s ease both",

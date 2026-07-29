@@ -530,7 +530,10 @@
     "unpublish": "Dépublier",
     "wingPublished": "L'aile est maintenant publique.",
     "wingUnpublished": "L'aile est maintenant privée.",
-    "wingToggleError": "Impossible de mettre à jour l'aile."
+    "wingToggleError": "Impossible de mettre à jour l'aile.",
+    "sectionPublished": "Palais public",
+    "sectionVisitingCodes": "Codes de visite",
+    "sectionFamilyAccess": "Accès famille"
   },
   "notifications": {
     "title": "Alertes",
@@ -678,7 +681,9 @@
     "disclosurePrivacy": "Politique de confidentialité",
     "restorePurchases": "Restaurer les achats",
     "restoreSuccess": "Achats précédents restaurés avec succès.",
-    "restoreFailed": "Aucun achat précédent trouvé à restaurer."
+    "restoreFailed": "Aucun achat précédent trouvé à restaurer.",
+    "sectionAllPlans": "Tous les forfaits",
+    "sectionReferFriend": "Parrainer un ami"
   },
   "cancelFlow": {
     "whyLeaving": "Avant de partir...",
@@ -745,7 +750,8 @@
     "applePhotosNote": "Apple Photos — aucune connexion nécessaire. Les photos de votre appareil sont directement disponibles lorsque vous importez des souvenirs via le panneau d'importation dans n'importe quelle salle.",
     "appleImportButton": "Importer depuis Photos",
     "appleImporting": "Importation… ({count} terminées)",
-    "appleImportSuccess": "{count} photos importées avec succès !"
+    "appleImportSuccess": "{count} photos importées avec succès !",
+    "sourcesOverline": "Sources de photos et fichiers"
   },
   "familySettings": {
     "manageWingSharing": "Gérez qui voit vos ailes",
@@ -5222,7 +5228,9 @@
     "memoryGallery": "Souvenirs",
     "noMemories": "Pas encore de souvenirs dans cette pièce",
     "visitorMode": "Mode visiteur",
-    "walkThrough3D": "Parcourir en 3D"
+    "walkThrough3D": "Parcourir en 3D",
+    "sharingTitle": "Partage",
+    "sharingSubtitle": "Choisissez qui peut voir votre palais — publiez des ailes, partagez en famille ou distribuez des codes de visite temporaires."
   },
   "help": {
     "title": "Centre d'aide",

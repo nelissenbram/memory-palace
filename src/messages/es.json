@@ -530,7 +530,10 @@
     "unpublish": "Despublicar",
     "wingPublished": "El ala ahora es pública.",
     "wingUnpublished": "El ala ahora es privada.",
-    "wingToggleError": "No se pudo actualizar el ala."
+    "wingToggleError": "No se pudo actualizar el ala.",
+    "sectionPublished": "Palacio público",
+    "sectionVisitingCodes": "Códigos de visita",
+    "sectionFamilyAccess": "Acceso familiar"
   },
   "notifications": {
     "title": "Alertas",
@@ -678,7 +681,9 @@
     "disclosurePrivacy": "Política de privacidad",
     "restorePurchases": "Restaurar compras",
     "restoreSuccess": "Compras anteriores restauradas correctamente.",
-    "restoreFailed": "No se encontraron compras anteriores para restaurar."
+    "restoreFailed": "No se encontraron compras anteriores para restaurar.",
+    "sectionAllPlans": "Todos los planes",
+    "sectionReferFriend": "Recomienda a un amigo"
   },
   "cancelFlow": {
     "whyLeaving": "Antes de irte...",
@@ -745,7 +750,8 @@
     "applePhotosNote": "Apple Fotos — no necesita conexión. Las fotos de tu dispositivo están disponibles directamente cuando importas recuerdos a través del panel de importación en cualquier sala.",
     "appleImportButton": "Importar desde Fotos",
     "appleImporting": "Importando… ({count} listas)",
-    "appleImportSuccess": "¡{count} fotos importadas con éxito!"
+    "appleImportSuccess": "¡{count} fotos importadas con éxito!",
+    "sourcesOverline": "Fuentes de fotos y archivos"
   },
   "familySettings": {
     "manageWingSharing": "Gestiona quién ve tus alas",
@@ -5222,7 +5228,9 @@
     "memoryGallery": "Recuerdos",
     "noMemories": "Aún no hay recuerdos en esta habitación",
     "visitorMode": "Modo visitante",
-    "walkThrough3D": "Recorrer en 3D"
+    "walkThrough3D": "Recorrer en 3D",
+    "sharingTitle": "Compartir",
+    "sharingSubtitle": "Elige quién puede ver tu palacio — publica alas, comparte con la familia o entrega códigos de visita temporales."
   },
   "help": {
     "title": "Centro de ayuda",

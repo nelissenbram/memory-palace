@@ -5,6 +5,7 @@ import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { SettingsPageHeader } from "../_SettingsChrome";
 import {
   createFamilyGroup,
   inviteFamilyMember,
@@ -1027,28 +1028,16 @@ export default function FamilyPage() {
 
       {/* Page header — desktop only */}
       <div style={{ marginBottom: "2rem" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-          {!isMobile && (
-          <div style={{ flex: 1 }}>
-            <h2 style={{
-              fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
-              color: "#403B36", margin: "0 0 0.5rem",
-            }}>
-              {t("title")}
-            </h2>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E",
-              margin: 0, lineHeight: 1.5,
-            }}>
-              {t("description")}
-            </p>
-          </div>
-          )}
-        </div>
+        <SettingsPageHeader
+          hidden={isMobile}
+          icon="family"
+          title={t("title")}
+          subtitle={t("description")}
+        />
         {/* Inclusive note */}
         <p style={{
           fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", /* Atrium token: muted */
-          margin: "0.75rem 0 0", lineHeight: 1.5, fontStyle: "italic",
+          margin: isMobile ? 0 : "-1rem 0 0", lineHeight: 1.5, fontStyle: "italic",
         }}>
           {t("inclusiveNote")}
         </p>

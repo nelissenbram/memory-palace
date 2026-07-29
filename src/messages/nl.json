@@ -530,7 +530,10 @@
     "unpublish": "Verbergen",
     "wingPublished": "Vleugel is nu openbaar.",
     "wingUnpublished": "Vleugel is nu privé.",
-    "wingToggleError": "Kon vleugel niet bijwerken. Probeer het opnieuw."
+    "wingToggleError": "Kon vleugel niet bijwerken. Probeer het opnieuw.",
+    "sectionPublished": "Openbaar paleis",
+    "sectionVisitingCodes": "Bezoekcodes",
+    "sectionFamilyAccess": "Familietoegang"
   },
   "notifications": {
     "title": "Meldingen",
@@ -678,7 +681,9 @@
     "disclosurePrivacy": "Privacybeleid",
     "restorePurchases": "Aankopen herstellen",
     "restoreSuccess": "Eerdere aankopen succesvol hersteld.",
-    "restoreFailed": "Geen eerdere aankopen gevonden om te herstellen."
+    "restoreFailed": "Geen eerdere aankopen gevonden om te herstellen.",
+    "sectionAllPlans": "Alle abonnementen",
+    "sectionReferFriend": "Nodig een vriend uit"
   },
   "cancelFlow": {
     "whyLeaving": "Voordat je gaat...",
@@ -745,7 +750,8 @@
     "applePhotosNote": "Apple Foto's — geen verbinding nodig. Je apparaatfoto's zijn direct beschikbaar wanneer je herinneringen importeert via het importpaneel in elke kamer.",
     "appleImportButton": "Importeer uit Foto's",
     "appleImporting": "Importeren… ({count} klaar)",
-    "appleImportSuccess": "{count} foto's succesvol geïmporteerd!"
+    "appleImportSuccess": "{count} foto's succesvol geïmporteerd!",
+    "sourcesOverline": "Foto- en bestandsbronnen"
   },
   "familySettings": {
     "manageWingSharing": "Beheer wie je vleugels ziet",
@@ -5224,7 +5230,9 @@
     "memoryGallery": "Herinneringen",
     "noMemories": "Nog geen herinneringen in deze kamer",
     "visitorMode": "Bezoekersmodus",
-    "walkThrough3D": "Doorloop in 3D"
+    "walkThrough3D": "Doorloop in 3D",
+    "sharingTitle": "Delen",
+    "sharingSubtitle": "Kies wie je paleis kan zien — publiceer vleugels, deel met familie of geef tijdelijke bezoekcodes."
   },
   "help": {
     "title": "Helpcentrum",

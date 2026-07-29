@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { isNative } from "@/lib/native/platform";
 import Toast, { type ToastData } from "@/components/ui/Toast";
+import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 // ── Custom SVG Icons (Roman/Tuscan aesthetic) — glyphs in #9A4F2A /* Atrium token: terracotta glyph */ ──
 
@@ -385,22 +386,12 @@ export default function NotificationsPage() {
       )}
 
       {/* Page header — desktop only */}
-      {!isMobile && (
-        <div style={{ marginBottom: "1.75rem" }}>
-          <h2 style={{
-            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600, lineHeight: 1.15,
-            color: "#403B36" /* Atrium token: ink */, margin: "0 0 0.5rem",
-          }}>
-            {t("title")}
-          </h2>
-          <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium token: muted */,
-            margin: 0, lineHeight: 1.4,
-          }}>
-            {t("description")}
-          </p>
-        </div>
-      )}
+      <SettingsPageHeader
+        hidden={isMobile}
+        icon="notifications"
+        title={t("title")}
+        subtitle={t("description")}
+      />
 
       {/* ── Push Notifications Section (mobile web only — dead inside native WKWebView) ── */}
       {isMobile && !nativeApp && <>
@@ -436,6 +427,7 @@ export default function NotificationsPage() {
           </p>
         </div>
       )}
+      <SectionOverline label={t("pushSectionHeader")} />
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
@@ -443,20 +435,6 @@ export default function NotificationsPage() {
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)" /* Atrium S1 + top highlight */,
         overflow: "hidden",
       }}>
-        {/* Section header */}
-        <div style={{
-          padding: "1rem 1.5rem 0.5rem",
-        }}>
-          <h3 style={{
-            fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
-            color: "#716A5E" /* Atrium token: overline voice */, margin: 0,
-            textTransform: "uppercase" as const,
-            letterSpacing: "0.12em",
-          }}>
-            {t("pushSectionHeader")}
-          </h3>
-        </div>
-
         {/* Main push toggle */}
         <div style={{
           padding: "1rem 1.5rem",
@@ -540,28 +518,15 @@ export default function NotificationsPage() {
       </>}
 
       {/* ── Email Notifications Section ── */}
+      <SectionOverline label={t("emailSectionHeader")} style={{ marginTop: "1.75rem" }} />
       <div style={{
-        marginTop: "1.5rem",
         background: T.color.white,
         borderRadius: "1rem",
         border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)" /* Atrium S1 + top highlight */,
         overflow: "hidden",
+        paddingTop: "0.5rem",
       }}>
-        {/* Section header */}
-        <div style={{
-          padding: "1rem 1.5rem 0.5rem",
-        }}>
-          <h3 style={{
-            fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
-            color: "#716A5E" /* Atrium token: overline voice */, margin: 0,
-            textTransform: "uppercase" as const,
-            letterSpacing: "0.12em",
-          }}>
-            {t("emailSectionHeader")}
-          </h3>
-        </div>
-
         {EMAIL_CATEGORIES.map((cat, i) => (
           <div key={cat.key}>
             {i > 0 && (

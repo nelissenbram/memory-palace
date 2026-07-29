@@ -397,7 +397,9 @@ export default function NotificationBell() {
               if (window.location.pathname.startsWith("/palace")) {
                 window.dispatchEvent(new CustomEvent("mp:open-notifications-page"));
               } else {
-                router.push("/palace?notifications=1");
+                // Open Activity over the Atrium, NOT the 3D Palace — routing to
+                // /palace forced a full WebGL palace load just to read activity.
+                router.push("/atrium?notifications=1");
               }
             }}
             className="mp-bell-quiet"

@@ -530,7 +530,10 @@
     "unpublish": "Zurückziehen",
     "wingPublished": "Flügel ist jetzt öffentlich.",
     "wingUnpublished": "Flügel ist jetzt privat.",
-    "wingToggleError": "Flügel konnte nicht aktualisiert werden."
+    "wingToggleError": "Flügel konnte nicht aktualisiert werden.",
+    "sectionPublished": "Öffentlicher Palast",
+    "sectionVisitingCodes": "Besuchscodes",
+    "sectionFamilyAccess": "Familienzugang"
   },
   "notifications": {
     "title": "Benachrichtigungen",
@@ -678,7 +681,9 @@
     "disclosurePrivacy": "Datenschutzerklärung",
     "restorePurchases": "Käufe wiederherstellen",
     "restoreSuccess": "Frühere Käufe erfolgreich wiederhergestellt.",
-    "restoreFailed": "Keine früheren Käufe zum Wiederherstellen gefunden."
+    "restoreFailed": "Keine früheren Käufe zum Wiederherstellen gefunden.",
+    "sectionAllPlans": "Alle Tarife",
+    "sectionReferFriend": "Freund werben"
   },
   "cancelFlow": {
     "whyLeaving": "Bevor du gehst...",
@@ -745,7 +750,8 @@
     "applePhotosNote": "Apple Fotos — keine Verbindung nötig. Deine Gerätefotos sind direkt verfügbar, wenn du Erinnerungen über das Importpanel in jedem Raum importierst.",
     "appleImportButton": "Aus Fotos importieren",
     "appleImporting": "Importieren… ({count} fertig)",
-    "appleImportSuccess": "{count} Fotos erfolgreich importiert!"
+    "appleImportSuccess": "{count} Fotos erfolgreich importiert!",
+    "sourcesOverline": "Foto- und Dateiquellen"
   },
   "familySettings": {
     "manageWingSharing": "Verwalten, wer Ihre Flügel sieht",
@@ -5222,7 +5228,9 @@
     "memoryGallery": "Erinnerungen",
     "noMemories": "Noch keine Erinnerungen in diesem Raum",
     "visitorMode": "Besuchermodus",
-    "walkThrough3D": "In 3D durchlaufen"
+    "walkThrough3D": "In 3D durchlaufen",
+    "sharingTitle": "Teilen",
+    "sharingSubtitle": "Wählen Sie, wer Ihren Palast sehen kann — Flügel veröffentlichen, mit der Familie teilen oder temporäre Besuchscodes vergeben."
   },
   "help": {
     "title": "Hilfecenter",
