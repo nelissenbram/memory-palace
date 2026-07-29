@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { createClient } from "@/lib/supabase/client";
 import { isIOS } from "@/lib/native/platform";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import Image from "next/image";
 
 // ── Types ──
@@ -88,12 +89,15 @@ function formatBytes(b: number): string {
   return (b / (1024 * 1024)).toFixed(1) + " MB";
 }
 
-// iOS is free-tier only: expose just the free Google Photos import so no paid
-// (Keeper) provider — with its upgrade badge, "Upgrade to Keeper" CTA and
-// /pricing steering — can ever render on iOS (Apple Guideline 3.1.1 / 3.1.3).
-// Single source of truth so the initial load and the retry path cannot drift.
+// On iOS, until IAP is live (IAP_ENABLED), expose only the free Google Photos
+// import so no paid (Keeper) provider — with its upgrade badge, "Upgrade to
+// Keeper" CTA and /pricing steering — can render (Apple 3.1.1 / 3.1.3). Once
+// IAP_ENABLED, /pricing serves the IAP paywall, so paid providers may show and
+// steer there. Single source of truth so initial load and retry cannot drift.
 function filterAccountsForPlatform(raw: ConnectedAccount[]): ConnectedAccount[] {
-  return isIOS() ? raw.filter((a) => a.provider === "google_photos") : raw;
+  return isIOS() && !IAP_ENABLED
+    ? raw.filter((a) => a.provider === "google_photos")
+    : raw;
 }
 
 // ═══ Main CloudImportPanel ═══
@@ -367,7 +371,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 const meta = PROVIDER_META[account.provider];
                 if (!meta) return null;
                 const isActive = activeProvider === account.provider;
-                const isLocked = account.provider !== "google_photos" && userPlan === "free" && !isIOS();
+                const isLocked = account.provider !== "google_photos" && userPlan === "free" && (!isIOS() || IAP_ENABLED);
                 return (
                   <button key={account.provider} onClick={() => {
                     if (isLocked) {
@@ -569,8 +573,9 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             </div>
           )}
 
-          {/* Keeper-only gate for non-Google providers (never on iOS — no /pricing steering) */}
-          {activeProvider && activeProvider !== "google_photos" && userPlan === "free" && !importing && !importProgress && !isIOS() && (
+          {/* Keeper-only gate for non-Google providers. On iOS this shows only
+              when IAP is live (IAP_ENABLED); /pricing then serves the IAP paywall. */}
+          {activeProvider && activeProvider !== "google_photos" && userPlan === "free" && !importing && !importProgress && (!isIOS() || IAP_ENABLED) && (
             <div style={{
               textAlign: "center", padding: "2.5rem 1.5rem",
             }}>

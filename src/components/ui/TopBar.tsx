@@ -10,6 +10,7 @@ import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { isIOS, isNative } from "@/lib/native/platform";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import { useDaylight } from "@/components/providers/DaylightProvider";
@@ -536,11 +537,15 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
   const { totalPoints, getLevelInfo } = useTrackStore();
   const levelInfo = getLevelInfo();
 
-  // iOS is free-tier only (Apple 3.1.1) — drop the Subscription link from the
-  // desktop user menu on native. This menu renders on iPad (viewport-width based),
-  // so without this the Subscription/billing link is reachable inside the iOS app.
+  // Subscription link shows on web always, and on iOS only when IAP is live
+  // (IAP_ENABLED) so users can reach the IAP paywall / manage their subscription.
+  // Android has no IAP path, so it stays hidden there. This menu renders on iPad
+  // (viewport-width based), so the iOS gating must be explicit.
   const menuItems = USER_MENU_ITEMS.filter(
-    (item) => item.href !== "/settings/subscription" || !(isIOS() || isNative())
+    (item) =>
+      item.href !== "/settings/subscription" ||
+      !isNative() ||
+      (isIOS() && IAP_ENABLED)
   );
 
   // Total focusable items: menu links + 2 lang buttons + a11y toggle + daylight toggle + sign-out

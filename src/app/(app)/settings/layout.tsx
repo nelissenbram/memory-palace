@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { isIOS } from "@/lib/native/platform";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
@@ -142,7 +143,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   };
 
   const settingsRouter = useRouter();
-  const filteredItems = NAV_ITEMS.filter((item) => !("hideInNative" in item && item.hideInNative && isIOS()));
+  // hideInNative items (Subscription) stay hidden on iOS UNLESS IAP is live —
+  // then the subscription tab shows so users can reach the IAP paywall / manage
+  // their subscription. Android has no IAP, so isIOS() keeps it hidden there.
+  const filteredItems = NAV_ITEMS.filter((item) => !("hideInNative" in item && item.hideInNative && isIOS() && !IAP_ENABLED));
   const navMode = usePalaceStore((s) => s.navMode);
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const [tourOpen, setTourOpen] = useSettingsTutorial();

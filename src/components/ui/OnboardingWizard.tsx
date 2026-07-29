@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { navigateInApp, isIOS } from "@/lib/native/platform";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
@@ -55,9 +56,10 @@ function loadPhase(): Phase | null {
   try {
     const v = localStorage.getItem(STORAGE_KEY) as string | null;
     if (!v) return null;
-    // iOS free-tier seal (Apple 3.1.1): a saved 'paywall' state must NEVER resume
-    // the paywall on iOS — remap it to 'done' so the /pricing CTA is unreachable.
-    if (v === "paywall" && isIOS()) return "done";
+    // iOS purchase gate: the paywall routes to /pricing, which on iOS drives the
+    // Apple IAP flow (never Stripe). When IAP is live (IAP_ENABLED) iOS may resume
+    // the paywall; while IAP is off, a saved 'paywall' remaps to 'done' (3.1.1 seal).
+    if (v === "paywall" && isIOS() && !IAP_ENABLED) return "done";
     if (PHASE_ORDER.includes(v as Phase)) return v as Phase;
     if (RETIRED_PHASE_MAP[v]) return RETIRED_PHASE_MAP[v];
   } catch {}
@@ -211,11 +213,11 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     setPhase("celebration");
   }, [setPhase]);
 
-  // ── iOS free-tier seal (Apple 3.1.1): the paywall must be UNREACHABLE on iOS.
-  // All entries are isIOS()-guarded, but if 'paywall' is ever reached on iOS
-  // (e.g. an unforeseen path), coerce it to 'done' so no /pricing surface renders. ──
+  // ── iOS purchase gate: while IAP is off (IAP_ENABLED=false) the paywall must be
+  // UNREACHABLE on iOS (Apple 3.1.1) — coerce any stray 'paywall' to 'done'. When
+  // IAP is live, iOS keeps the paywall (its /pricing CTA drives Apple IAP). ──
   useEffect(() => {
-    if (phase === "paywall" && isIOS()) setPhase("done");
+    if (phase === "paywall" && isIOS() && !IAP_ENABLED) setPhase("done");
   }, [phase, setPhase]);
 
   // ── Done ──
@@ -751,7 +753,7 @@ ${KEYFRAMES}
 
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
-            onClose={() => { if (!memoryUploadedRef.current) completeAndFinish(isIOS() ? "done" : "paywall"); }}
+            onClose={() => { if (!memoryUploadedRef.current) completeAndFinish((isIOS() && !IAP_ENABLED) ? "done" : "paywall"); }}
             onImportFiles={async (files) => {
               if (files.length === 0) return;
               const f = files[0];
@@ -806,8 +808,8 @@ ${KEYFRAMES}
           <OnboardingCelebration
             title={celebTitle}
             subtitle={celebSubtitle}
-            buttonLabel={t("celebrationAtrium")}
-            onContinue={() => setPhase(isIOS() ? "done" : "paywall")}
+            buttonLabel={(isIOS() && !IAP_ENABLED) ? t("celebrationContinue") : t("celebrationAtrium")}
+            onContinue={() => setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall")}
             transparent
           />
         </Suspense>
@@ -815,12 +817,12 @@ ${KEYFRAMES}
     );
   }
 
-  /* ── Paywall — soft trial offer after the celebration (NON-iOS ONLY) ──
-     iOS free-tier seal (Apple 3.1.1): the paywall and its /pricing CTA must be
-     UNREACHABLE on iOS. Every entry is guarded by isIOS() (celebration exit,
-     ImportHub-close exit, and the loadPhase() resume remap). This render is
-     itself iOS-guarded as defense-in-depth: on iOS we fall through to done. */
-  if (phase === "paywall" && !isIOS()) {
+  /* ── Paywall — soft trial offer after the celebration ──
+     The trial CTA routes to /pricing, which on iOS drives the Apple IAP flow
+     (StoreKit, never Stripe) and on web drives Stripe. While IAP is off
+     (IAP_ENABLED=false) the paywall stays UNREACHABLE on iOS (Apple 3.1.1) via
+     every isIOS()-guard; when IAP is live iOS reaches it and buys through Apple. */
+  if (phase === "paywall" && (!isIOS() || IAP_ENABLED)) {
     const paywallFeatures = [
       t("paywallFeat1"),
       t("paywallFeat2"),
@@ -904,7 +906,7 @@ ${KEYFRAMES}
                 ))}
               </div>
 
-              {/* Trial CTA — /pricing is NON-iOS only (guarded above) */}
+              {/* Trial CTA — /pricing drives Apple IAP on iOS, Stripe on web */}
               <button
                 onClick={() => {
                   track("paywall_trial_clicked", { source: "onboarding" });

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 
 const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/help", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og"];
 
@@ -27,13 +28,14 @@ function redirectWith(path: string, request: NextRequest, res: NextResponse): Ne
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
-  // iOS is free-tier only (Apple Guideline 3.1.1) — the pricing page never renders
-  // in the native iOS app. Redirect at the edge (before the client-side guard) so
-  // there is no one-frame flash of pricing/upgrade UI inside the WKWebView.
+  // Anti-steering (Apple Guideline 3.1.1): while IAP is disabled, iOS is free-tier
+  // and the /pricing page must never render in the WKWebView — redirect at the edge
+  // (before the client guard) so there's no one-frame flash. When IAP is enabled,
+  // /pricing is the IAP paywall (IAP-only, no Stripe), so iOS is allowed through.
   const isNativeIOS =
     request.cookies.get("mp_platform")?.value === "ios" ||
     (request.headers.get("user-agent") || "").includes("MemoryPalace-iOS");
-  if (isNativeIOS && path.startsWith("/pricing")) {
+  if (isNativeIOS && !IAP_ENABLED && path.startsWith("/pricing")) {
     return NextResponse.redirect(new URL("/atrium", request.url));
   }
 
