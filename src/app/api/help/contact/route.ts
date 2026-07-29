@@ -74,9 +74,16 @@ export async function POST(req: NextRequest) {
     }];
   }
 
-  // Send to support
-  if (process.env.RESEND_API_KEY) {
-    await fetch("https://api.resend.com/emails", {
+  // Send to support. If delivery to the team fails (or there is no API key),
+  // do NOT send the user a false confirmation — surface an error so the ticket
+  // can be retried instead of being silently lost.
+  if (!process.env.RESEND_API_KEY) {
+    console.error("[help/contact] RESEND_API_KEY missing — support ticket not delivered", ticketId);
+    return NextResponse.json({ error: "Support delivery is temporarily unavailable. Please try again later." }, { status: 502 });
+  }
+
+  try {
+    const supportRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -84,6 +91,14 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify(supportPayload),
     });
+    if (!supportRes.ok) {
+      const detail = await supportRes.text().catch(() => "");
+      console.error("[help/contact] support email failed", ticketId, supportRes.status, detail);
+      return NextResponse.json({ error: "We couldn't submit your message. Please try again in a moment." }, { status: 502 });
+    }
+  } catch (err) {
+    console.error("[help/contact] support email threw", ticketId, err);
+    return NextResponse.json({ error: "We couldn't submit your message. Please try again in a moment." }, { status: 502 });
   }
 
   // Confirmation to user

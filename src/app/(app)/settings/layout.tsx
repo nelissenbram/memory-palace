@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
@@ -12,7 +13,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import SettingsTutorial, { useSettingsTutorial } from "@/components/ui/SettingsTutorial";
-import { CREAM, INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
+import { CREAM, INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 
 function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   const s = {
@@ -151,6 +152,21 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const [tourOpen, setTourOpen] = useSettingsTutorial();
 
+  // Auto-scroll the active tab into view on the stacked (mobile/iPad) tab bar so
+  // overflow items past the active one are never silently hidden. Honour
+  // reduced-motion by falling back to an instant scroll.
+  const stackedNavRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!stacked) return;
+    const nav = stackedNavRef.current;
+    if (!nav) return;
+    const active = nav.querySelector('[aria-current="page"]') as HTMLElement | null;
+    if (!active) return;
+    const reduce = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    active.scrollIntoView({ inline: "center", block: "nearest", behavior: reduce ? "auto" : "smooth" });
+  }, [pathname, stacked]);
+
   return (
     <>
     {signingOut && <SignOutOverlay />}
@@ -182,16 +198,17 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         <div style={{
           display: "flex",
           flexDirection: "column",
-          maxWidth: 1100,
+          maxWidth: "68.75rem",
           margin: "0 auto",
         }}>
           {/* Horizontal scrollable tab bar */}
-          <nav aria-label={tc("settingsNavigation")} style={{
+          <nav ref={stackedNavRef} aria-label={tc("settingsNavigation")} data-mp-settings-tabs style={{
             position: "sticky",
             top: 0,
             zIndex: 10,
             overflowX: "auto",
             whiteSpace: "nowrap",
+            scrollSnapType: "x proximity",
             borderBottom: `0.0625rem solid ${HAIRLINE}`,
             background: CREAM,
             padding: "0.25rem 0.5rem",
@@ -206,11 +223,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                   minHeight: "2.75rem",
                   padding: "0.5rem 1rem",
                   margin: "0.25rem 0.125rem",
+                  scrollSnapAlign: "center",
+                  scrollMargin: "0.5rem",
                   borderRadius: "1.5rem",
                   textDecoration: "none",
                   background: isActive ? EMBER : "transparent",
                   border: `0.0625rem solid ${isActive ? EMBER : HAIRLINE}`,
-                  color: isActive ? "#FCFAF5" : INK,
+                  color: isActive ? CREAM : INK,
                   fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: isActive ? 600 : 500,
                   transition: "all .15s",
                 }}>
@@ -221,7 +240,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             })}
             {/* Sign Out button – last item in tab bar on mobile */}
             <button
+              type="button"
               onClick={handleSignOut}
+              disabled={signingOut}
+              aria-busy={signingOut}
               className="mp-set-tab"
               style={{
                 display: "inline-flex", alignItems: "center", gap: "0.4rem",
@@ -251,14 +273,14 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         /* ── Desktop layout: premium sidebar + content side-by-side ── */
         <div style={{
           display: "flex",
-          maxWidth: 1180,
+          maxWidth: "73.75rem",
           margin: "0 auto",
           padding: "2.25rem 1.75rem 3rem",
           gap: "2.5rem",
         }}>
           {/* Sidebar — a designed nav, not a plain list: icon medallions,
               one-line descriptions, warm active state. */}
-          <nav aria-label={tc("settingsNavigation")} style={{
+          <nav aria-label={tc("settingsNavigation")} data-mp-settings-tabs style={{
             width: "19rem",
             flexShrink: 0,
             alignSelf: "flex-start",
@@ -303,7 +325,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                       flexShrink: 0,
                       display: "flex", alignItems: "center", justifyContent: "center",
                       background: isActive ? EMBER : "rgba(184,92,56,0.09)",
-                      color: isActive ? "#FCFAF5" : EMBER_GLYPH,
+                      color: isActive ? CREAM : EMBER_GLYPH,
                       boxShadow: isActive ? "inset 0 0.0625rem 0 rgba(255,255,255,0.25)" : "none",
                       transition: "background .15s, color .15s",
                     }}>
@@ -317,14 +339,16 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                         color: isActive ? EMBER : INK,
                         lineHeight: 1.2,
                       }}>{tc(item.labelKey)}</span>
-                      <span style={{
-                        display: "block",
+                      <span title={navDesc(item)} style={{
+                        display: "-webkit-box",
+                        WebkitBoxOrient: "vertical",
+                        WebkitLineClamp: 2,
                         fontFamily: T.font.body, fontSize: "0.75rem",
                         color: MUTED, marginTop: "0.125rem", lineHeight: 1.3,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        overflow: "hidden", textOverflow: "ellipsis",
                       }}>{navDesc(item)}</span>
                     </span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isActive ? EMBER : "#C9BCA6"} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isActive ? EMBER : HAIRLINE} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
                       <path d="m9 18 6-6-6-6" />
                     </svg>
                   </Link>
@@ -333,7 +357,10 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               {/* Divider + Sign Out */}
               <div style={{ height: "0.0625rem", background: HAIRLINE, margin: "0.375rem 0.75rem" }} />
               <button
+                type="button"
                 onClick={handleSignOut}
+                disabled={signingOut}
+                aria-busy={signingOut}
                 className="mp-set-door"
                 style={{
                   display: "flex", alignItems: "center", gap: "0.875rem",
@@ -376,24 +403,29 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         }
         .mp-set-door:not([aria-current="page"]):active, .mp-set-tab:not([aria-current="page"]):active { background: rgba(184,92,56,0.14) !important; }
         .mp-set-door:focus-visible, .mp-set-tab:focus-visible {
-          outline: 0.1875rem solid #D4AF37;
+          outline: 0.1875rem solid ${GOLD};
           outline-offset: -0.1875rem;
         }
       `}</style>
       {/* Mobile-specific style overrides — tighter cards, full-width buttons, 16px inputs */}
       {isMobile && (
         <style>{`
+          .mp-settings-mobile-content > div > div[style*="border-radius:1rem"],
           .mp-settings-mobile-content > div > div[style*="border-radius: 1rem"],
-          .mp-settings-mobile-content > div > div[style*="borderRadius: \"1rem\""] {
+          .mp-settings-mobile-content .mp-settings-card {
             padding: 1.125rem 1rem !important;
             border-radius: 0.875rem !important;
             margin-bottom: 1rem !important;
             box-shadow: none !important;
           }
-          .mp-settings-mobile-content input[type="text"],
-          .mp-settings-mobile-content input[type="email"],
+          .mp-settings-mobile-content input,
+          .mp-settings-mobile-content select,
           .mp-settings-mobile-content textarea {
             font-size: 1rem !important;
+          }
+          .mp-settings-mobile-content input:not([type="checkbox"]):not([type="radio"]),
+          .mp-settings-mobile-content select {
+            min-height: 2.75rem;
             padding: 0.875rem 1rem !important;
           }
           .mp-settings-mobile-content button:not([role="switch"]) {

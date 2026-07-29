@@ -180,7 +180,7 @@ function ConfirmDialog({
           onClick={onConfirm}
           style={{
             padding: "0.375rem 0.75rem",
-            borderRadius: "0.7rem", // Atrium token: small control
+            borderRadius: "0.75rem", // Atrium token: small control
             border: "none",
             background: "#B85C38", // Atrium token: ember active
             color: "#FFF",
@@ -196,7 +196,7 @@ function ConfirmDialog({
           onClick={onCancel}
           style={{
             padding: "0.375rem 0.75rem",
-            borderRadius: "0.7rem", // Atrium token: small control
+            borderRadius: "0.75rem", // Atrium token: small control
             border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
             background: T.color.white,
             color: "#716A5E" /* Atrium token: muted */,
@@ -349,11 +349,8 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
         };
       });
 
-      try {
-        const table = type === "wing" ? "wing_shares" as const : "room_shares" as const;
-        await updateSharePermissions(shareId, table, { [field]: value });
-      } catch {
-        // Revert on failure
+      // Revert helper — undo the optimistic flip on failure.
+      const revert = () => {
         setData((prev) => {
           if (!prev) return prev;
           const key = type === "wing" ? "wings" : "rooms";
@@ -368,6 +365,24 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
           };
         });
         setError(t("updateError"));
+      };
+
+      try {
+        const table = type === "wing" ? "wing_shares" as const : "room_shares" as const;
+        // The server action expects camelCase permission keys; map from the
+        // snake_case field name so the UPDATE payload is not silently empty.
+        const camelKey = ({
+          can_add: "canAdd",
+          can_edit: "canEdit",
+          can_delete: "canDelete",
+        } as const)[field];
+        const res = await updateSharePermissions(shareId, table, { [camelKey]: value });
+        // A returned {error} means nothing was written — revert the optimistic UI.
+        if (res && "error" in res && res.error) {
+          revert();
+        }
+      } catch {
+        revert();
       }
       setUpdatingPerm(null);
     },
@@ -451,7 +466,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(42,34,24,.4)",
+        background: "rgba(64,59,54,0.4)", // Atrium token: warm-ink scrim
         backdropFilter: "blur(8px)",
         zIndex: 100,
         animation: "fadeIn .2s ease",
@@ -545,7 +560,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
               display: "flex",
               gap: "0.25rem",
               background: T.color.warmStone,
-              borderRadius: "0.85rem", // Atrium token: small control
+              borderRadius: "0.75rem", // Atrium token: small control
               padding: "0.1875rem",
               marginBottom: "1rem",
             }}
@@ -561,7 +576,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                   style={{
                     flex: 1,
                     padding: "0.5rem 0.75rem",
-                    borderRadius: "0.7rem", // Atrium token: small control
+                    borderRadius: "0.75rem", // Atrium token: small control
                     border: "none",
                     background: active ? T.color.white : "transparent",
                     boxShadow: active ? "0 0.25rem 1rem rgba(64,59,54,0.07)" : "none", // Atrium token: S1 warm ink
@@ -769,7 +784,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           width: "100%",
                           padding: "0.375rem",
-                          borderRadius: "0.7rem", // Atrium token: small control
+                          borderRadius: "0.75rem", // Atrium token: small control
                           border: `0.0625rem solid ${T.color.error}25`,
                           background: `${T.color.error}06`,
                           fontFamily: T.font.body,
@@ -909,7 +924,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           width: "100%",
                           padding: "0.375rem",
-                          borderRadius: "0.7rem", // Atrium token: small control
+                          borderRadius: "0.75rem", // Atrium token: small control
                           border: `0.0625rem solid ${T.color.error}25`,
                           background: `${T.color.error}06`,
                           fontFamily: T.font.body,
@@ -1017,7 +1032,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           width: "100%",
                           padding: "0.375rem",
-                          borderRadius: "0.7rem", // Atrium token: small control
+                          borderRadius: "0.75rem", // Atrium token: small control
                           border: "0.0625rem solid #E3D6BC", // Atrium token: hairline (was alpha-band)
                           background: "transparent",
                           fontFamily: T.font.body,
@@ -1126,7 +1141,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           width: "100%",
                           padding: "0.375rem",
-                          borderRadius: "0.7rem", // Atrium token: small control
+                          borderRadius: "0.75rem", // Atrium token: small control
                           border: "0.0625rem solid #E3D6BC", // Atrium token: hairline (was alpha-band)
                           background: "transparent",
                           fontFamily: T.font.body,

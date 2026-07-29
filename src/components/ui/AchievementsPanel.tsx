@@ -1,8 +1,15 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useId } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+
+/** True when the OS/browser requests reduced motion — read once at call time. */
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
+}
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useAchievementStore, ACHIEVEMENTS, type Achievement } from "@/lib/stores/achievementStore";
 import { AchievementIcon } from "./AtriumWidgets";
@@ -68,12 +75,16 @@ interface Props {
 
 export default function AchievementsPanel({ onClose, highlightId }: Props) {
   const isMobile = useIsMobile();
-  const { t } = useTranslation("achievementsPanel");
+  const isCompact = useIsCompact();
+  const isTouch = useTouchControls();
+  const { t, locale } = useTranslation("achievementsPanel");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { earnedIds, earnedDates, getProgress } = useAchievementStore();
   const { earned, total, percentage } = getProgress();
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reduceMotion = prefersReducedMotion();
+  const headingBaseId = useId();
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -87,7 +98,7 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
         position: "fixed", inset: 0, zIndex: 100,
         background: "rgba(64,59,54,0.55)", backdropFilter: "blur(12px)", // Atrium token: warm ink scrim
         display: "flex", alignItems: "center", justifyContent: "center",
-        animation: "fadeIn .3s ease",
+        animation: reduceMotion ? undefined : "fadeIn .3s ease",
       }}
       onClick={onClose}
     >
@@ -100,16 +111,16 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           maxHeight: isMobile ? "100%" : "88vh",
           height: isMobile ? "100%" : undefined,
           overflow: "auto",
-          background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 100%)`,
+          background: "linear-gradient(160deg, #F2EDE4 0%, #FCFAF5 78%)", // Atrium: linen → canon CREAM, matches StatisticsPanel
           borderRadius: isMobile ? 0 : "1rem",
           border: isMobile ? "none" : "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
           boxShadow: isMobile ? "none" : "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
-          padding: isMobile ? "1.25rem 1rem 1rem" : "2rem 1.75rem 1.75rem",
+          padding: isMobile ? "1.25rem 1rem 1rem" : isCompact ? "2.25rem 2rem 2rem" : "2rem 1.75rem 1.75rem",
           paddingTop: isMobile ? "max(1.25rem, env(safe-area-inset-top, 0px))" : undefined,
           paddingBottom: isMobile ? "max(1rem, env(safe-area-inset-bottom, 0px))" : undefined,
           paddingLeft: isMobile ? "max(1rem, env(safe-area-inset-left, 0px))" : undefined,
           paddingRight: isMobile ? "max(1rem, env(safe-area-inset-right, 0px))" : undefined,
-          animation: isMobile ? "fadeIn .2s ease" : "fadeUp .3s ease",
+          animation: reduceMotion ? undefined : isMobile ? "fadeIn .2s ease" : "fadeUp .3s ease",
         }}
       >
         {/* Header */}
@@ -135,7 +146,7 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
             onClick={onClose}
             aria-label={t("close")}
             style={{
-              width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem", border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
+              width: isTouch ? "2.75rem" : "2.25rem", height: isTouch ? "2.75rem" : "2.25rem", borderRadius: "1.5rem", border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
               background: `${T.color.white}cc`, cursor: "pointer", fontSize: "1rem",
               display: "flex", alignItems: "center", justifyContent: "center",
               color: "#716A5E", fontFamily: T.font.body,
@@ -170,18 +181,24 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
         {/* Category sections */}
         {CATEGORIES.map((cat) => {
           const items = ACHIEVEMENTS.filter((a) => a.category === cat.key);
+          const headingId = `${headingBaseId}-${cat.key}`;
           return (
             <div key={cat.key} style={{ marginBottom: "1.5rem" }}>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, // Atrium: one small-caps overline voice
-                letterSpacing: "0.12em", textTransform: "uppercase",
-                color: "#8A6410", marginBottom: "0.75rem",
-                display: "flex", alignItems: "center", gap: "0.5rem",
-              }}>
+              <div
+                id={headingId}
+                role="heading"
+                aria-level={2}
+                style={{
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, // Atrium: one small-caps overline voice
+                  letterSpacing: "0.12em", textTransform: "uppercase",
+                  color: "#8A6410", marginBottom: "0.75rem",
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                }}
+              >
                 <AchievementIcon id={cat.iconId} size={18} /> {t(cat.labelKey)}
               </div>
-              <div role="list" style={{
-                display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(16.25rem, 1fr))",
+              <div role="list" aria-labelledby={headingId} style={{
+                display: "grid", gridTemplateColumns: (isMobile || isCompact) ? "1fr" : "repeat(auto-fill, minmax(16.25rem, 1fr))",
                 gap: "0.625rem",
               }}>
                 {items.map((ach) => (
@@ -192,6 +209,9 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
                     earnedDate={earnedDates[ach.id]}
                     highlighted={ach.id === highlightId}
                     onShareToast={showToast}
+                    locale={locale}
+                    isTouch={isTouch}
+                    reduceMotion={reduceMotion}
                   />
                 ))}
               </div>
@@ -199,16 +219,24 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           );
         })}
 
-        {/* Toast */}
+        {/* Toast — role=status/aria-live so screen readers announce clipboard/share feedback */}
+        <div role="status" aria-live="polite" style={{ position: "fixed", left: 0, top: 0, width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+          {toast || ""}
+        </div>
         {toast && (
-          <div style={{
-            position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)",
-            padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-            background: "#403B36", color: T.color.white, // Atrium token: ink
-            fontFamily: T.font.body, fontSize: "0.8125rem",
-            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
-            zIndex: 110, animation: "fadeIn .2s ease",
-          }}>
+          <div
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              bottom: "max(2rem, env(safe-area-inset-bottom, 0px))", // clear the home indicator in landscape
+              left: "50%", transform: "translateX(-50%)",
+              padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+              background: "#403B36", color: T.color.white, // Atrium token: ink
+              fontFamily: T.font.body, fontSize: "0.8125rem",
+              boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
+              zIndex: 110, animation: reduceMotion ? undefined : "fadeIn .2s ease",
+            }}
+          >
             {toast}
           </div>
         )}
@@ -217,9 +245,10 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
   );
 }
 
-function AchievementCard({ achievement, earned, earnedDate, highlighted, onShareToast }: {
+function AchievementCard({ achievement, earned, earnedDate, highlighted, onShareToast, locale, isTouch, reduceMotion }: {
   achievement: Achievement; earned: boolean; earnedDate?: string; highlighted?: boolean;
   onShareToast: (msg: string) => void;
+  locale: string; isTouch: boolean; reduceMotion: boolean;
 }) {
   const { t } = useTranslation("achievementsPanel");
   const cardRef = useRef<HTMLDivElement>(null);
@@ -234,14 +263,32 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
     const ok = await shareAchievement(name, text);
     if (ok && usedClipboard) {
       onShareToast(t("copiedToClipboard"));
+    } else if (!ok) {
+      onShareToast(t("shareFailed"));
     }
   }, [achievement.titleKey, onShareToast, t]);
 
+  // Localized unlocked-date label (guards invalid ISO strings).
+  const formattedDate = (() => {
+    if (!earnedDate) return "";
+    const d = new Date(earnedDate);
+    if (isNaN(d.getTime())) return earnedDate;
+    try {
+      return d.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
+    } catch {
+      return earnedDate;
+    }
+  })();
+
   useEffect(() => {
     if (highlighted && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      const el = cardRef.current;
+      const scroll = () => el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      // Defer so lazy content/layout is settled before scrolling.
+      const raf = requestAnimationFrame(scroll);
+      return () => cancelAnimationFrame(raf);
     }
-  }, [highlighted]);
+  }, [highlighted, reduceMotion]);
 
   return (
     <div
@@ -259,7 +306,7 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         background: highlighted ? `${T.color.gold}18` : earned ? T.color.white : "#ECE5D8", // Atrium: pre-mixed opaque surfaces
         border: highlighted ? "0.125rem solid #D4AF37" : earned ? "0.0625rem solid #E9DCBE" : "0.0625rem solid #E3D6BC", // gold = highlight frame only
         opacity: 1, // Atrium: no colour+opacity double-dimming; muted ink carries the locked state
-        transition: "all .2s ease",
+        transition: reduceMotion ? undefined : "all .2s ease",
         position: "relative",
         overflow: "hidden",
         minHeight: "3.5rem",
@@ -275,7 +322,7 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         alignSelf: "center",
         background: earned
           ? "rgba(169,116,27,0.14)" // Atrium token: gold-lane medallion tint
-          : `${T.color.sandstone}22`,
+          : "#EBE3D4", // Atrium: pre-mixed opaque locked well (T.color.lineFaint), no alpha
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -311,12 +358,14 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         {earned && earnedDate && (
           <div style={{
             fontFamily: T.font.body,
-            fontSize: "0.8125rem",
+            fontSize: "0.6875rem", // quiet metadata — smaller than the description
+            fontWeight: 600,
+            letterSpacing: "0.02em",
             color: "#8A6410", // Atrium token: gold-lane datum
-            marginTop: "0.125rem",
+            marginTop: "0.1875rem",
             lineHeight: 1.3,
           }}>
-            {t("unlockedDate", { date: earnedDate || "" })}
+            {t("unlockedDate", { date: formattedDate })}
           </div>
         )}
       </div>
@@ -327,17 +376,27 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
           aria-label={t("shareButton")}
           title={t("shareButton")}
           style={{
-            width: "1.75rem", height: "1.75rem", borderRadius: "0.7rem",
-            border: "0.0625rem solid #E9DCBE", // Atrium token: gold-lane border
-            background: "rgba(169,116,27,0.10)",
+            // >=2.75rem hit area (touch floor); the visual chip stays 1.75rem via inner box.
+            width: "2.75rem", height: "2.75rem",
+            border: "none", background: "transparent", padding: 0,
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, transition: "background 0.2s ease, opacity 0.2s ease",
+            flexShrink: 0, margin: "-0.5rem -0.25rem -0.5rem 0",
+            transition: reduceMotion ? undefined : "opacity 0.2s ease",
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.18)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.10)"; }}
         >
-          <ShareIcon size={14} color="#8A6410" />
+          <span style={{
+            width: isTouch ? "2.375rem" : "1.75rem", height: isTouch ? "2.375rem" : "1.75rem", borderRadius: "0.7rem",
+            border: "0.0625rem solid #E9DCBE", // Atrium token: gold-lane border
+            background: "rgba(169,116,27,0.10)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: reduceMotion ? undefined : "background 0.2s ease",
+          }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.18)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.10)"; }}
+          >
+            <ShareIcon size={isTouch ? 16 : 14} color="#8A6410" />
+          </span>
         </button>
       )}
       {/* Earned shimmer */}

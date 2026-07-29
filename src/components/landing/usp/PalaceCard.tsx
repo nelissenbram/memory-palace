@@ -9,7 +9,7 @@
 
 import React from "react";
 import Image from "next/image";
-import UspCardShell, { U } from "./UspCardShell";
+import UspCardShell, { U, USP_BODY_MIN_HEIGHT } from "./UspCardShell";
 
 const CSS = `
 .lv2u-palace-root {
@@ -33,15 +33,26 @@ const CSS = `
   66.667% { transform: scale(1.015); }
   100% { transform: scale(1); }
 }
+/* Resting state is FULLY VISIBLE: if JS is disabled or the IntersectionObserver
+   perf gate never adds .usp-live (so the intro animation is paused at 0% and
+   never plays), the door labels + stems must still be readable rather than
+   stuck hidden. The hide→reveal intro only applies once the card is live. */
 .lv2u-palace-stem {
-  transform: scaleY(0);
+  transform: scaleY(1);
   transform-origin: top;
+}
+.lv2u-palace-pill {
+  opacity: 1;
+  transform: translateY(0);
+}
+[data-usp-idx].usp-live .lv2u-palace-stem {
+  transform: scaleY(0);
   animation: lv2u-palace-stemdraw 0.2s ease-out forwards;
 }
 @keyframes lv2u-palace-stemdraw {
   to { transform: scaleY(1); }
 }
-.lv2u-palace-pill {
+[data-usp-idx].usp-live .lv2u-palace-pill {
   opacity: 0;
   transform: translateY(0.375rem);
   animation: lv2u-palace-pillin 0.6s cubic-bezier(0.22, 0.8, 0.3, 1) forwards;
@@ -67,6 +78,14 @@ const CSS = `
 .lv2u-palace-h1 { animation-delay: 0s; }
 .lv2u-palace-h2 { animation-delay: 0.5s; }
 .lv2u-palace-h3 { animation-delay: 1s; }
+/* INTENTIONAL container-query exception (documented so audits don't revert it):
+   this vignette must respond to the CARD's own rendered width, not the viewport,
+   because the same card appears in a 1-, 2- and 3-up grid at identical viewport
+   widths. useIsMobile/useIsCompact only read the viewport and cannot express
+   "this card is narrow", so a self-scoped @container on .lv2u-palace-root is the
+   correct tool here. These rules only nudge decorative chip placement — no
+   layout/legibility depends on them, and everything degrades gracefully where
+   container queries are unsupported. */
 @container (max-width: 18rem) {
   .lv2u-palace-dot { display: none; }
 }
@@ -163,7 +182,18 @@ export default function PalaceCard({
       label={`${m.palaceName}: ${m.room1} · ${m.room2} · ${m.room3}`}
     >
       <style>{CSS}</style>
-      <div className="lv2u-palace-root" aria-hidden="true">
+      <div
+        className="lv2u-palace-root"
+        aria-hidden="true"
+        style={{
+          // Shared USP body rhythm so this card aligns in height with siblings
+          // (e.g. KepCard) across the landing grid.
+          minHeight: USP_BODY_MIN_HEIGHT,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
         {/* ROW 1 — engraved plaque header */}
         <div
           style={{
@@ -176,6 +206,9 @@ export default function PalaceCard({
           <span
             style={{ flex: 1, height: "0.0625rem", background: U.hairline }}
           />
+          {/* The sub-brand name already shows once in the shell header; here we
+             keep only the two gold diamonds as a ceremonial ornament divider so
+             the name is not repeated a second time on the same card. */}
           <span
             style={{
               display: "flex",
@@ -192,18 +225,6 @@ export default function PalaceCard({
                 flexShrink: 0,
               }}
             />
-            <span
-              style={{
-                fontFamily: U.fontDisplay,
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                color: U.ink,
-                letterSpacing: "0.03em",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {m.palaceName}
-            </span>
             <span
               style={{
                 width: "0.3125rem",

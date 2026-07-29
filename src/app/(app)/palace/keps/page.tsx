@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
@@ -11,12 +11,16 @@ import { ANIM, EASE } from "@/components/ui/TuscanStyles";
 
 const C = T.color;
 const F = T.font;
+/* Canon mono token for WhatsApp command chips (rather than the raw 'monospace' keyword). */
+const MONO = "ui-monospace, 'SF Mono', 'SFMono-Regular', 'Menlo', 'Consolas', monospace";
 
 /* ───── Helpers ───── */
 
 function formatPhone(phone: string): string {
   if (!phone) return "";
   const clean = phone.replace(/\D/g, "");
+  // Guard against short/malformed numbers so we never render a broken pill.
+  if (clean.length < 8) return clean ? `+${clean}` : "";
   if (clean.length >= 10) {
     const cc = clean.slice(0, clean.length - 9);
     const rest = clean.slice(clean.length - 9);
@@ -25,23 +29,34 @@ function formatPhone(phone: string): string {
   return `+${clean}`;
 }
 
-function downloadVCard(phone: string) {
+function downloadVCard(phone: string, fn: string, org: string, note: string) {
+  const clean = phone.replace(/\D/g, "");
+  if (clean.length < 8) return; // don't save a malformed contact
   const vcard = [
     "BEGIN:VCARD",
     "VERSION:3.0",
-    "FN:Kep - Memory Palace",
-    "ORG:The Memory Palace",
-    `TEL;TYPE=CELL:+${phone}`,
-    "NOTE:Your personal memory porter on WhatsApp",
+    `FN:${fn}`,
+    `ORG:${org}`,
+    `TEL;TYPE=CELL:+${clean}`,
+    `NOTE:${note}`,
     "END:VCARD",
   ].join("\n");
-  const blob = new Blob([vcard], { type: "text/vcard;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "Kep-Memory-Palace.vcf";
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const blob = new Blob([vcard], { type: "text/vcard;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Kep-Memory-Palace.vcf";
+    // Appending to the DOM before click() is required for a reliable download
+    // on some mobile/WebKit browsers; remove and revoke afterwards.
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    // Surface a silent no-op instead of swallowing it entirely.
+    console.error("[Kep] vCard download failed", err);
+  }
 }
 
 /* ───── SVG Illustrations ───── */
@@ -62,10 +77,10 @@ function KepPorterIllustration({ size = 140 }: { size?: number }) {
       <path d="M62 100 Q48 110 52 128 L68 128" fill="none" stroke={C.charcoal} strokeWidth="6" strokeLinecap="round" />
       <path d="M118 100 Q132 110 128 128 L112 128" fill="none" stroke={C.charcoal} strokeWidth="6" strokeLinecap="round" />
       <rect x="48" y="124" width="84" height="4" rx="2" fill={C.gold} />
-      <rect x="56" y="112" width="14" height="12" rx="2" fill={C.terracotta} opacity="0.8" />
+      <rect x="56" y="112" width="14" height="12" rx="2" fill={C.ember} opacity="0.8" />
       <rect x="74" y="108" width="14" height="16" rx="2" fill={C.sage} opacity="0.8" />
       <rect x="92" y="110" width="14" height="14" rx="2" fill={C.walnut} opacity="0.8" />
-      <rect x="110" y="112" width="14" height="12" rx="2" fill={C.terracotta} opacity="0.6" />
+      <rect x="110" y="112" width="14" height="12" rx="2" fill={C.ember} opacity="0.6" />
       <circle cx="52" cy="130" r="5" fill={C.cream} />
       <circle cx="128" cy="130" r="5" fill={C.cream} />
       <rect x="76" y="140" width="12" height="20" rx="2" fill={C.charcoal} />
@@ -77,7 +92,7 @@ function KepPorterIllustration({ size = 140 }: { size?: number }) {
 }
 
 /** Visual: WhatsApp bubble -> Kep porter -> Room door */
-function KepFlowIllustration() {
+function KepFlowIllustration({ roomLabel }: { roomLabel: string }) {
   return (
     <svg width="100%" height="100" viewBox="5 0 280 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxWidth: "22rem", margin: "0 auto", display: "block", overflow: "visible" }}>
       {/* WhatsApp bubble */}
@@ -102,7 +117,7 @@ function KepFlowIllustration() {
       <circle cx="150" cy="64" r="1" fill={C.gold} />
       {/* Tray with photo */}
       <rect x="134" y="70" width="32" height="2" rx="1" fill={C.gold} />
-      <rect x="140" y="64" width="8" height="6" rx="1" fill={C.terracotta} opacity="0.7" />
+      <rect x="140" y="64" width="8" height="6" rx="1" fill={C.ember} opacity="0.7" />
       <rect x="150" y="62" width="8" height="8" rx="1" fill={C.sage} opacity="0.7" />
 
       {/* Arrow 2 */}
@@ -122,7 +137,7 @@ function KepFlowIllustration() {
       {/* Labels below */}
       <text x="40" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill={C.muted} fontWeight="500">WhatsApp</text>
       <text x="150" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill={C.muted} fontWeight="500">Kep</text>
-      <text x="248" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill={C.muted} fontWeight="500">Your Room</text>
+      <text x="248" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill={C.muted} fontWeight="500">{roomLabel}</text>
     </svg>
   );
 }
@@ -143,9 +158,25 @@ export default function KepsPage() {
   const isCompact = useIsCompact();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduceMotion(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+
+  // Gate entrance animations behind the user's reduced-motion preference.
+  const anim = (delay: string) =>
+    reduceMotion ? undefined : `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} ${delay}both`;
 
   const waPhone = process.env.NEXT_PUBLIC_KEP_WHATSAPP_NUMBER || "";
-  const waLink = waPhone ? `https://wa.me/${waPhone}?text=Hi%20Kep` : "#";
+  const waLink = waPhone
+    ? `https://wa.me/${waPhone}?text=${encodeURIComponent(t("waPrefill"))}`
+    : "#";
   const displayPhone = formatPhone(waPhone);
 
   const handleCopy = () => {
@@ -165,10 +196,12 @@ export default function KepsPage() {
   return (
     <div style={{
       minHeight: "100dvh",
-      background: C.linen,
+      background: C.cream,
       paddingBottom: isMobile ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))" : "3rem",
     }}>
       {/* Desktop NavigationBar */}
+      {/* Intentional: Kep is reached from the Atrium, so we keep Atrium as the
+          active mode here rather than introducing a separate Kep tab. */}
       {!isMobile && (
         <NavigationBar
           currentMode="atrium"
@@ -192,7 +225,7 @@ export default function KepsPage() {
         }}>
           <h2 style={{
             fontFamily: F.display, fontSize: isMobile ? "1.125rem" : "1.375rem",
-            fontWeight: 500, color: C.charcoal, margin: 0,
+            fontWeight: 500, color: C.inkSoft, margin: 0,
           }}>
             {t("navTitle")}
           </h2>
@@ -216,14 +249,14 @@ export default function KepsPage() {
         <div style={{
           textAlign: "center",
           marginBottom: "2rem",
-          animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} both`,
+          animation: anim(""),
         }}>
           <KepPorterIllustration size={isMobile ? 110 : 140} />
           <h1 style={{
             fontFamily: F.display,
             fontSize: isMobile ? "1.75rem" : "2.25rem",
             fontWeight: 600,
-            color: C.charcoal,
+            color: C.inkSoft,
             margin: "0.75rem 0 0.25rem",
             lineHeight: 1.15,
           }}>
@@ -245,10 +278,10 @@ export default function KepsPage() {
         {/* ── How it works visual ── */}
         <div style={{
           marginBottom: "2rem",
-          animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} 0.1s both`,
+          animation: anim("0.1s "),
           display: "flex", justifyContent: "center",
         }}>
-          <KepFlowIllustration />
+          <KepFlowIllustration roomLabel={t("flowRoomLabel")} />
         </div>
 
         {/* ── Steps ── */}
@@ -257,7 +290,7 @@ export default function KepsPage() {
           gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
           gap: "1rem",
           marginBottom: "2rem",
-          animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} 0.15s both`,
+          animation: anim("0.15s "),
         }}>
           {/* Step 1: Save the number */}
           <TuscanCard variant="elevated" padding={isMobile ? "1.25rem" : "1.5rem"}>
@@ -267,37 +300,52 @@ export default function KepsPage() {
                 <h3 style={stepTitle}>{t("quickStep1Title")}</h3>
                 <p style={stepDesc}>{t("quickStep1Text")}</p>
                 {/* Phone number pill */}
-                <div style={{
-                  display: "inline-flex", alignItems: "center",
-                  background: `${C.gold}0D`, border: `1.5px solid ${C.gold}35`,
-                  borderRadius: "0.625rem", padding: "0.5rem 1rem",
-                  marginBottom: "0.75rem",
-                }}>
-                  <span style={{
-                    fontFamily: "monospace", fontSize: isMobile ? "1rem" : "1.125rem",
-                    fontWeight: 700, color: C.gold, letterSpacing: "0.03em",
+                {waPhone && (
+                  <div style={{
+                    display: "inline-flex", alignItems: "center",
+                    background: `${C.ember}0D`, border: `1.5px solid ${C.ember}35`,
+                    borderRadius: "0.625rem", padding: "0.5rem 1rem",
+                    marginBottom: "0.75rem",
                   }}>
-                    {displayPhone}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                  <button onClick={() => downloadVCard(waPhone)} style={btnPrimary}>
-                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="2" width="14" height="16" rx="2" />
-                      <circle cx="10" cy="8" r="2.5" />
-                      <path d="M5.5 16c0-2 2-3.5 4.5-3.5s4.5 1.5 4.5 3.5" />
-                    </svg>
-                    {t("quickStep1Save")}
-                  </button>
-                  <button onClick={handleCopy} style={{
-                    ...btnSecondary,
-                    background: copied ? C.sage : C.warmStone,
-                    color: copied ? C.cream : C.walnut,
-                    borderColor: copied ? C.sage : (C.lineFaint || "#e5e2dc"),
+                    <span style={{
+                      fontFamily: F.body, fontSize: isMobile ? "1rem" : "1.125rem",
+                      fontWeight: 700, color: C.ink, letterSpacing: "0.03em",
+                      fontVariantNumeric: "tabular-nums",
+                    }}>
+                      {displayPhone}
+                    </span>
+                  </div>
+                )}
+                {waPhone && (
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    <button onClick={() => downloadVCard(waPhone, t("vcardName"), t("vcardOrg"), t("vcardNote"))} style={btnPrimary}>
+                      <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="2" width="14" height="16" rx="2" />
+                        <circle cx="10" cy="8" r="2.5" />
+                        <path d="M5.5 16c0-2 2-3.5 4.5-3.5s4.5 1.5 4.5 3.5" />
+                      </svg>
+                      {t("quickStep1Save")}
+                    </button>
+                    <button onClick={handleCopy} style={{
+                      ...btnSecondary,
+                      background: copied ? C.sage : C.warmStone,
+                      color: copied ? C.cream : C.walnut,
+                      borderColor: copied ? C.sage : C.hairline,
+                    }}>
+                      {copied ? t("quickStep1Copied") : t("quickStep1Copy")}
+                    </button>
+                  </div>
+                )}
+                {/* Graceful fallback when the WhatsApp number env var is unset:
+                    never render dead CTAs (blank-tab link / broken vCard). */}
+                {!waPhone && (
+                  <p style={{
+                    fontFamily: F.body, fontSize: "0.8125rem", color: C.muted,
+                    fontStyle: "italic", margin: "0.25rem 0 0", lineHeight: 1.5,
                   }}>
-                    {copied ? t("quickStep1Copied") : t("quickStep1Copy")}
-                  </button>
-                </div>
+                    {t("unavailable")}
+                  </p>
+                )}
               </div>
             </div>
           </TuscanCard>
@@ -309,10 +357,12 @@ export default function KepsPage() {
               <div style={{ flex: 1 }}>
                 <h3 style={stepTitle}>{t("quickStep2Title")}</h3>
                 <p style={stepDesc}>{t("quickStep2Text")}</p>
-                <a href={waLink} target="_blank" rel="noopener noreferrer" style={btnWhatsApp}>
-                  <WhatsAppIcon size={16} />
-                  {t("quickStep2Button")}
-                </a>
+                {waPhone && (
+                  <a href={waLink} target="_blank" rel="noopener noreferrer" style={btnWhatsApp}>
+                    <WhatsAppIcon size={16} />
+                    {t("quickStep2Button")}
+                  </a>
+                )}
               </div>
             </div>
           </TuscanCard>
@@ -341,15 +391,21 @@ export default function KepsPage() {
                 }}>
                   {["ROOM Kitchen", "NEW Holidays", "ROOMS"].map((cmd) => (
                     <code key={cmd} style={{
-                      fontFamily: "monospace", fontSize: "0.75rem", fontWeight: 600,
+                      fontFamily: MONO, fontSize: "0.75rem", fontWeight: 600,
                       color: C.walnut, background: C.linen,
                       padding: "0.25rem 0.5rem", borderRadius: "0.25rem",
-                      border: `1px solid ${C.lineFaint || "#e5e2dc"}`,
+                      border: `1px solid ${C.hairline}`,
                     }}>
                       {cmd}
                     </code>
                   ))}
                 </div>
+                <p style={{
+                  fontFamily: F.body, fontSize: "0.6875rem", color: C.muted,
+                  fontStyle: "italic", margin: "0.5rem 0 0",
+                }}>
+                  {t("commandsAreEnglish")}
+                </p>
               </div>
             </div>
           </TuscanCard>
@@ -361,7 +417,7 @@ export default function KepsPage() {
           padding={isMobile ? "1rem" : "1.25rem"}
           style={{
             marginBottom: "1.5rem",
-            animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} 0.25s both`,
+            animation: anim("0.25s "),
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
@@ -384,7 +440,7 @@ export default function KepsPage() {
                 style={{
                   background: "none", border: "none", cursor: "pointer",
                   fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 600,
-                  color: C.terracotta, padding: "0.125rem 0 0", textDecoration: "underline",
+                  color: C.ember, padding: "0.125rem 0 0", textDecoration: "underline",
                   textUnderlineOffset: "0.1875rem",
                 }}
               >
@@ -398,7 +454,7 @@ export default function KepsPage() {
         <p style={{
           fontFamily: F.body, fontSize: "0.75rem", color: C.muted,
           textAlign: "center", fontStyle: "italic",
-          animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} 0.3s both`,
+          animation: anim("0.3s "),
         }}>
           {t("commandsHint")}
         </p>
@@ -422,7 +478,7 @@ export default function KepsPage() {
 
 const stepTitle: React.CSSProperties = {
   fontFamily: F.display, fontSize: "1rem", fontWeight: 600,
-  color: C.charcoal, margin: "0 0 0.25rem",
+  color: C.inkSoft, margin: "0 0 0.25rem",
 };
 
 const stepDesc: React.CSSProperties = {
@@ -431,16 +487,17 @@ const stepDesc: React.CSSProperties = {
 };
 
 const btnPrimary: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: "0.375rem",
-  background: C.terracotta, color: C.cream,
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
+  background: C.ember, color: C.cream,
   border: "none", borderRadius: "0.5rem",
-  padding: "0.4375rem 0.875rem", fontSize: "0.8125rem",
+  padding: "0.4375rem 1rem", minHeight: "2.75rem", fontSize: "0.8125rem",
   fontWeight: 600, cursor: "pointer", fontFamily: F.body,
 };
 
 const btnSecondary: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
   border: "1px solid",
-  borderRadius: "0.5rem", padding: "0.4375rem 0.75rem",
+  borderRadius: "0.5rem", padding: "0.4375rem 1rem", minHeight: "2.75rem",
   fontSize: "0.8125rem", cursor: "pointer",
   fontWeight: 500, fontFamily: F.body,
   background: C.warmStone, color: C.walnut,
@@ -448,9 +505,9 @@ const btnSecondary: React.CSSProperties = {
 };
 
 const btnWhatsApp: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: "0.5rem",
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
   background: "#25D366", color: "#fff",
-  padding: "0.4375rem 1rem", borderRadius: "0.5rem",
+  padding: "0.4375rem 1rem", minHeight: "2.75rem", borderRadius: "0.5rem",
   fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none",
   fontFamily: F.body,
 };
@@ -461,12 +518,12 @@ function StepBadge({ n }: { n: number }) {
   return (
     <div style={{
       width: "2rem", height: "2rem", borderRadius: "50%",
-      background: `linear-gradient(135deg, ${C.terracotta}, ${C.terracotta}D0)`,
+      background: `linear-gradient(135deg, ${C.ember}, ${C.ember}D0)`,
       color: C.cream,
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: F.display, fontSize: "0.875rem", fontWeight: 700,
       flexShrink: 0, marginTop: "0.125rem",
-      boxShadow: `0 0.125rem 0.5rem ${C.terracotta}30`,
+      boxShadow: `0 0.125rem 0.5rem ${C.ember}30`,
     }}>
       {n}
     </div>

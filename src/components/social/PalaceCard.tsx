@@ -6,6 +6,12 @@ import TuscanCard from "@/components/ui/TuscanCard";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { DirectoryPalace } from "@/lib/social/directory-actions";
 
+/** Canon interactive/CTA color. */
+const EMBER = "#B85C38";
+const EMBER_DEEP = "#9A4F2A";
+/** Canon recessed tray for neutral chips (libraryTokens TRAY). */
+const TRAY = "#F6EBE3";
+
 interface PalaceCardProps {
   palace: DirectoryPalace;
   onClick?: () => void;
@@ -31,18 +37,29 @@ export default function PalaceCard({ palace, onClick }: PalaceCardProps) {
             onClick();
           }
         }}
+        onFocus={(e) => {
+          if (!onClick) return;
+          // The one legitimate use of gold on this surface: keyboard focus ring.
+          e.currentTarget.style.outline = `0.1875rem solid ${T.color.gold}`;
+          e.currentTarget.style.outlineOffset = "0.1875rem";
+          e.currentTarget.style.borderRadius = "0.75rem";
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.outline = "none";
+        }}
         style={{ display: "flex", gap: "0.875rem", alignItems: "center" }}
       >
-        {/* Avatar */}
+        {/* Avatar — name is already announced via the row's aria-label. */}
         <div
+          aria-hidden="true"
           style={{
             width: "3.25rem",
             height: "3.25rem",
             borderRadius: "50%",
             background: palace.avatar_url
               ? `url(${palace.avatar_url}) center/cover`
-              : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
-            border: `2px solid ${T.color.gold}`,
+              : `linear-gradient(135deg, ${EMBER}, ${EMBER_DEEP})`,
+            border: `1px solid ${T.color.hairline}`,
             flexShrink: 0,
             display: "flex",
             alignItems: "center",
@@ -64,7 +81,7 @@ export default function PalaceCard({ palace, onClick }: PalaceCardProps) {
               fontFamily: T.font.display,
               fontSize: "1.125rem",
               fontWeight: 600,
-              color: T.color.charcoal,
+              color: T.color.ink,
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -89,7 +106,7 @@ export default function PalaceCard({ palace, onClick }: PalaceCardProps) {
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
-                color: T.color.walnut,
+                color: T.color.muted,
                 margin: "0.375rem 0 0",
                 lineHeight: 1.4,
                 display: "-webkit-box",
@@ -123,8 +140,10 @@ export default function PalaceCard({ palace, onClick }: PalaceCardProps) {
                 style={{
                   padding: "0.125rem 0.5rem",
                   borderRadius: "1rem",
-                  background: `${T.color.gold}15`,
-                  color: T.color.goldDark,
+                  // Canon: neutral recessed tray, not ceremonial palace-gold.
+                  background: TRAY,
+                  border: `1px solid ${T.color.hairline}`,
+                  color: T.color.muted,
                   fontWeight: 500,
                 }}
               >

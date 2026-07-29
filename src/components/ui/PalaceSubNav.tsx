@@ -76,6 +76,17 @@ export interface PalaceSubNavProps {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Canon tokens (mirror NavigationBar's surface + ink grammar)        */
+/* ------------------------------------------------------------------ */
+
+const CANON_EMBER = "#B85C38";      // interactive / active pill (mirrors NavigationBar)
+const CANON_MUTED = "#716A5E";      // secondary chrome (labels, chevrons, non-wing pill borders)
+const CANON_HAIRLINE = "#E3D6BC";   // borders
+// Warm-ink shadow ladder (rgba(64,59,54,x)) — matches NavigationBar / AtriumRelay.
+const CANON_SHADOW_1 = "0 0.125rem 0.5rem rgba(64,59,54,0.08)";
+const CANON_SHADOW_2 = "0 0.25rem 1rem rgba(64,59,54,0.10)";
+
+/* ------------------------------------------------------------------ */
 /*  SVG Icons                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -183,9 +194,11 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
   /*  Shared styles                                                    */
   /* ---------------------------------------------------------------- */
 
-  const barBackground = `linear-gradient(135deg, ${T.color.warmStone}ee, ${T.color.sandstone}dd)`;
-  const barBorder = `1px solid ${T.color.gold}33`;
-  const barShadow = "0 0.125rem 0.5rem rgba(44,44,42,0.08)";
+  // Flat linen glass + warm-ink grammar (mirrors NavigationBar). Gold is reserved
+  // for ceremonial palace surfaces only, so ordinary sub-nav chrome uses hairline.
+  const barBackground = `${T.color.linen}f2`;
+  const barBorder = `0.0625rem solid ${CANON_HAIRLINE}`;
+  const barShadow = CANON_SHADOW_1;
   const compact = isMobile;
 
   /* ---------------------------------------------------------------- */
@@ -193,7 +206,9 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
   /* ---------------------------------------------------------------- */
 
   function pillStyle(active: boolean, accent?: string): CSSProperties {
-    const c = accent || T.color.gold;
+    // Wing pills pass their wing accent; generic pills (Palace / Entrance) fall
+    // back to EMBER for the active state (mirroring NavigationBar) — never gold.
+    const c = accent || CANON_EMBER;
     return {
       display: "flex",
       alignItems: "center",
@@ -204,13 +219,15 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
       minHeight: compact ? "2.75rem" : undefined,
       borderRadius: compact ? "0.5rem" : "0.625rem",
       WebkitAppearance: "none" as const,
-      border: active ? `1.5px solid ${c}` : `1px solid ${c}44`,
+      // Inactive pills use the neutral hairline; only the active/current pill
+      // takes the accent (ember or wing tint).
+      border: active ? `0.09375rem solid ${c}` : `0.0625rem solid ${CANON_HAIRLINE}`,
       background: active ? `${c}18` : `${T.color.cream}80`,
       cursor: active ? "default" : "pointer",
       fontFamily: T.font.display,
       fontSize: compact ? "0.75rem" : "0.9375rem",
       fontWeight: active ? 700 : 500,
-      color: active ? c : T.color.walnut,
+      color: active ? c : CANON_MUTED,
       whiteSpace: "nowrap" as const,
       transition: "all 0.2s ease",
       flexShrink: 0,
@@ -228,7 +245,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
       <span
         aria-hidden
         style={{
-          color: T.color.gold,
+          color: CANON_MUTED,
           fontSize: compact ? "0.75rem" : "1rem",
           fontWeight: 500,
           margin: compact ? "0 0.125rem" : "0 0.375rem",
@@ -256,7 +273,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         aria-current={isActive ? "location" : undefined}
         style={pillStyle(isActive)}
       >
-        <PalaceIcon size={compact ? 14 : 16} color={isActive ? T.color.gold : T.color.walnut} />
+        <PalaceIcon size={compact ? 14 : 16} color={isActive ? CANON_EMBER : CANON_MUTED} />
         {!compact && <span>{t("subnavPalace")}</span>}
       </button>
     );
@@ -276,7 +293,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         aria-current={isActive ? "location" : undefined}
         style={pillStyle(isActive)}
       >
-        <TempleIcon size={compact ? 14 : 16} color={isActive ? T.color.gold : T.color.walnut} />
+        <TempleIcon size={compact ? 14 : 16} color={isActive ? CANON_EMBER : CANON_MUTED} />
         {!compact && <span>{t("entranceHallLabel")}</span>}
       </button>
     );
@@ -318,7 +335,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           }}
         >
           <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
-            <WingIcon wingId={currentWing.id} size={compact ? 14 : 16} color={isActive ? accent : T.color.walnut} />
+            <WingIcon wingId={currentWing.id} size={compact ? 14 : 16} color={isActive ? accent : CANON_MUTED} />
           </span>
           {!compact && <span>{displayName}</span>}
           {/* Down chevron to indicate wing switcher */}
@@ -360,15 +377,15 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           left: "50%",
           transform: "translateX(-50%)",
           marginTop: "0.375rem",
-          background: `${T.color.white}f5`,
+          background: `${T.color.linen}f8`,
           backdropFilter: "blur(0.75rem)",
           WebkitBackdropFilter: "blur(0.75rem)",
           borderRadius: "0.625rem",
-          border: `1px solid ${T.color.gold}33`,
+          border: `0.0625rem solid ${CANON_HAIRLINE}`,
           padding: "0.25rem",
           minWidth: "10rem",
           maxWidth: "calc(16rem * var(--a11y-scale, 1))",
-          boxShadow: `0 0.25rem 1rem rgba(0,0,0,0.10), 0 0 0 1px ${T.color.gold}11`,
+          boxShadow: CANON_SHADOW_2,
           zIndex: 50,
           animation: "subnavDropdownIn 0.15s ease",
         }}
@@ -378,10 +395,10 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           fontFamily: T.font.display,
           fontSize: "0.6875rem",
           fontWeight: 600,
-          color: T.color.gold,
+          color: CANON_MUTED,
           textTransform: "uppercase",
           letterSpacing: "0.04em",
-          borderBottom: `1px solid ${T.color.cream}`,
+          borderBottom: `0.0625rem solid ${CANON_HAIRLINE}`,
           marginBottom: "0.125rem",
         }}>
           {t("subnavWingSwitcher")}
@@ -457,9 +474,9 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           aria-hidden
           style={{
             display: "inline-block",
-            width: "1px",
+            width: "0.0625rem",
             height: compact ? "1rem" : "1.25rem",
-            background: `${T.color.gold}44`,
+            background: CANON_HAIRLINE,
             margin: compact ? "0 0.125rem" : "0 0.375rem",
             flexShrink: 0,
           }}
@@ -541,15 +558,15 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                     left: "50%",
                     transform: "translateX(max(-50%, calc(-100% + 1rem)))",
                     marginTop: "0.375rem",
-                    background: `${T.color.white}f5`,
+                    background: `${T.color.linen}f8`,
                     backdropFilter: "blur(0.75rem)",
                     WebkitBackdropFilter: "blur(0.75rem)",
                     borderRadius: "0.625rem",
-                    border: `1px solid ${w.accent}33`,
+                    border: `0.0625rem solid ${w.accent}33`,
                     padding: "0.25rem",
                     minWidth: "9rem",
                     maxWidth: "min(15rem, calc(100vw - 1rem))",
-                    boxShadow: `0 0.25rem 1rem rgba(0,0,0,0.10), 0 0 0 1px ${w.accent}11`,
+                    boxShadow: CANON_SHADOW_2,
                     zIndex: 50,
                     animation: "subnavDropdownIn 0.15s ease",
                   }}
@@ -676,6 +693,12 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
       from { opacity: 0; transform: translateX(-50%) translateY(-0.25rem); }
       to { opacity: 1; transform: translateX(-50%) translateY(0); }
     }
+    @media (prefers-reduced-motion: reduce) {
+      [data-palace-subnav], [data-palace-subnav] * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
   `;
 
   /* ---------------------------------------------------------------- */
@@ -767,7 +790,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         WebkitBackdropFilter: "blur(1.5rem) saturate(180%)",
         border: "0.0625rem solid rgba(238,234,227,0.5)",
         borderRadius: "2.25rem",
-        boxShadow: "0 0.25rem 1.5rem rgba(44,44,42,0.07), 0 0.0625rem 0.125rem rgba(44,44,42,0.03)",
+        boxShadow: "0 0.25rem 1.5rem rgba(64,59,54,0.07), 0 0.0625rem 0.125rem rgba(64,59,54,0.03)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -934,7 +957,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     : currentWingId || wings[0]?.id || null;
   const focusWing = wings.find((w) => w.id === focusWingId) || null;
   const focusRooms = focusWingId ? (wingRooms[focusWingId] || []) : [];
-  const accent = focusWing?.accent || wingAccent || T.color.gold;
+  const accent = focusWing?.accent || wingAccent || CANON_EMBER;
 
   // Clear stale pending when the view actually reaches that location
   useEffect(() => {
@@ -999,7 +1022,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     fontSize: "0.625rem",
     fontFamily: T.font.display,
     fontWeight: 700,
-    color: T.color.gold,
+    color: CANON_MUTED,
     opacity: 0.75,
     letterSpacing: "0.08em",
     textTransform: "uppercase",
@@ -1048,6 +1071,14 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
         50%     { box-shadow: 0 0 0 0.25rem currentColor; opacity: 0.85; }
       }
+      @media (prefers-reduced-motion: reduce) {
+        [data-mp-palace-bars] *,
+        [data-mp-palace-enter],
+        [data-mp-palace-enter] * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
     `}</style>
 
     {/* Bar 1: Palace level (Palace + Entrance Hall) */}
@@ -1068,18 +1099,18 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
       <span style={sectionLabel}>P</span>
       <button
         onClick={() => setPending({ kind: "palace" })}
-        style={pillFor({ kind: "palace" }, T.color.gold)}
+        style={pillFor({ kind: "palace" }, CANON_EMBER)}
         aria-current={view === "exterior" ? "location" : undefined}
       >
-        <PalaceIcon size={13} color={T.color.gold} />
+        <PalaceIcon size={13} color={CANON_EMBER} />
         <span>{t("palaceLabel")}</span>
       </button>
       <button
         onClick={() => setPending({ kind: "entrance" })}
-        style={pillFor({ kind: "entrance" }, T.color.gold)}
+        style={pillFor({ kind: "entrance" }, CANON_EMBER)}
         aria-current={view === "entrance" ? "location" : undefined}
       >
-        <TempleIcon size={13} color={T.color.gold} />
+        <TempleIcon size={13} color={CANON_EMBER} />
         <span>{t("entranceHallLabel")}</span>
       </button>
     </div>
@@ -1094,7 +1125,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         ...barCommon,
         top: bar2Top,
         height: BAR_H,
-        background: `linear-gradient(180deg, ${T.color.warmStone}e6 0%, ${T.color.linen}d9 100%)`,
+        background: `${T.color.linen}f2`,
       }}
     >
       <span style={sectionLabel}>W</span>
@@ -1126,7 +1157,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         ...barCommon,
         top: bar3Top,
         height: BAR_H,
-        background: `linear-gradient(180deg, ${T.color.linen}e6 0%, ${T.color.cream}d9 100%)`,
+        background: `${T.color.linen}f2`,
       }}
     >
       <span style={{ ...sectionLabel, color: accent }}>R</span>
@@ -1135,7 +1166,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
           {t("selectAWing")}
         </span>
       )}
-      {focusRooms.map((r) => {
+      {focusWingId && focusRooms.map((r) => {
         const isCurr = view === "room" && currentWingId === focusWingId && roomId === r.id;
         const isPending = pending?.kind === "room" && pending.roomId === r.id;
         const style = isCurr ? currentPill(accent) : isPending ? pendingPill(accent) : pillBase;
@@ -1144,7 +1175,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
             // key includes focus wing so pills remount (and fade in) on wing switch
             key={`${focusWingId}-${r.id}`}
             className="mp-fade-in"
-            onClick={() => setPending({ kind: "room", wingId: focusWingId!, roomId: r.id })}
+            onClick={() => setPending({ kind: "room", wingId: focusWingId, roomId: r.id })}
             style={style}
             aria-current={isCurr ? "location" : undefined}
           >
@@ -1177,7 +1208,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: "0 0.125rem 0.5rem rgba(44,44,42,0.1)",
+          boxShadow: "0 0.125rem 0.5rem rgba(64,59,54,0.10)",
           transition: "all 0.15s ease",
         }}
       >
@@ -1208,7 +1239,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: "0 0.125rem 0.5rem rgba(44,44,42,0.1)",
+          boxShadow: "0 0.125rem 0.5rem rgba(64,59,54,0.10)",
           transition: "all 0.15s ease",
         }}
       >
@@ -1234,11 +1265,13 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         height: `calc(${BAR_H} * 3)`,
         zIndex: 43,
         border: "none",
-        borderLeft: `0.125rem solid ${pending ? T.color.gold : `${T.color.gold}55`}`,
+        // Interactive commit control → EMBER, not ceremonial gold. A hairline
+        // gold seam is kept only as a thin left border accent.
+        borderLeft: `0.125rem solid ${pending ? `${T.color.gold}88` : `${CANON_HAIRLINE}`}`,
         background: pending
-          ? `radial-gradient(ellipse at 50% 30%, ${T.color.gold} 0%, ${T.color.terracotta} 55%, ${T.color.walnut} 100%)`
-          : `linear-gradient(180deg, ${T.color.linen}d6, ${T.color.warmStone}d6)`,
-        color: pending ? T.color.cream : `${T.color.walnut}99`,
+          ? `linear-gradient(180deg, ${CANON_EMBER} 0%, ${T.color.rustDeep} 100%)`
+          : `${T.color.linen}d6`,
+        color: pending ? T.color.cream : `${CANON_MUTED}99`,
         cursor: pending ? "pointer" : "not-allowed",
         display: "flex",
         flexDirection: "column",
@@ -1253,8 +1286,8 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         letterSpacing: "0.16em",
         textTransform: "uppercase",
         boxShadow: pending
-          ? `inset 0.125rem 0 0.625rem rgba(0,0,0,0.25), inset 0 0.25rem 0.5rem rgba(255,240,200,0.18), -0.25rem 0 1.25rem ${T.color.gold}55`
-          : `inset 0.125rem 0 0.375rem rgba(0,0,0,0.06)`,
+          ? `inset 0.125rem 0 0.625rem rgba(64,59,54,0.25), inset 0 0.25rem 0.5rem rgba(255,240,200,0.18), -0.25rem 0 1.25rem ${CANON_EMBER}55`
+          : `inset 0.125rem 0 0.375rem rgba(64,59,54,0.06)`,
         transition: "all 0.3s ease",
         overflow: "hidden",
       }}
@@ -1263,7 +1296,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
       <span aria-hidden style={{
         position: "absolute", top: "0.375rem", left: "50%", transform: "translateX(-50%)",
         width: "0.75rem", height: "0.75rem", borderRadius: "50%",
-        background: pending ? `radial-gradient(circle, ${T.color.cream} 0%, ${T.color.gold}00 70%)` : "transparent",
+        background: pending ? `radial-gradient(circle, ${T.color.cream} 0%, ${CANON_EMBER}00 70%)` : "transparent",
         opacity: pending ? 0.8 : 0,
         boxShadow: pending ? `0 0 0.5rem ${T.color.cream}aa` : "none",
       }} />

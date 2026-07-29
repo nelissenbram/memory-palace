@@ -12,7 +12,7 @@
  */
 
 import Image from "next/image";
-import UspCardShell, { U } from "./UspCardShell";
+import UspCardShell, { U, hexAlpha, USP_BODY_MIN_HEIGHT } from "./UspCardShell";
 
 /* A bellhop / porter cap — Kep is the palace's WhatsApp porter. */
 function PorterCap({ size, color }: { size: number; color: string }) {
@@ -45,16 +45,22 @@ export default function KepCard({
   m: Record<string, string>;
   aiLabel?: string;
 }) {
-  const bubbleShadow = "0 1px 2px rgba(36, 28, 21, 0.06)";
+  const bubbleShadow = `0 0.0625rem 0.125rem ${hexAlpha(U.ink, 0.06)}`;
+
+  // Descriptive scene label so the role="img" region announces the wordless
+  // story (photo sent → Kep saves & frames it) instead of just the brand name.
+  const sceneLabel = m.kepScene
+    ? m.kepScene
+    : `${m.kepName}: ${m.kepRole} — ${m.kepSaved}, ${m.kepSorted}`;
 
   return (
-    <UspCardShell icon={KEP_ICON} name={m.kepName} aiLabel={aiLabel} label={m.kepName}>
+    <UspCardShell icon={KEP_ICON} name={m.kepName} aiLabel={aiLabel} label={sceneLabel}>
       <div
         aria-hidden="true"
         style={{
           position: "relative",
           overflow: "hidden",
-          minHeight: "17rem",
+          minHeight: USP_BODY_MIN_HEIGHT,
           display: "flex",
           flexDirection: "column",
           gap: "0.75rem",
@@ -95,7 +101,7 @@ export default function KepCard({
               width: "2.25rem",
               height: "2.25rem",
               borderRadius: "50%",
-              background: U.dark,
+              background: U.ink,
               flexShrink: 0,
             }}
           >
@@ -244,7 +250,7 @@ export default function KepCard({
               width: "1.75rem",
               height: "1.75rem",
               borderRadius: "50%",
-              background: U.dark,
+              background: U.ink,
               flexShrink: 0,
             }}
           >

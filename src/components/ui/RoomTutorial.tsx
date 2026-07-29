@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { T } from "@/lib/theme";
+import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, SHADOW, RT } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useTouchControls } from "@/lib/hooks/useIsMobile";
 
@@ -32,15 +33,29 @@ export default function RoomTutorial({ open, onClose }: Props) {
   // match the joystick's render condition (never viewport width alone).
   const isMobile = useTouchControls();
   const [mounted, setMounted] = useState(false);
+  const doneRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
+  // Escape-to-dismiss + move focus to the primary action while open.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const prev = (typeof document !== "undefined" ? document.activeElement : null) as HTMLElement | null;
+    const focusId = setTimeout(() => doneRef.current?.focus(), 0);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      clearTimeout(focusId);
+      try { prev?.focus?.(); } catch {}
+    };
+  }, [open, onClose]);
+
   if (!mounted || !open) return null;
 
-  const cardBg = "rgba(42,34,24,0.94)";
-  const cardBorder = "rgba(212,175,55,0.2)";
-  const cardShadow = "0 0.5rem 2rem rgba(0,0,0,0.3)";
-  const goldLight = (T.color as Record<string, string>).goldLight || "#E8C870";
+  const cardBg = CREAM;
+  const cardBorder = HAIRLINE;
+  const cardShadow = SHADOW[2];
 
   const items: string[] = isMobile
     ? [t("item1"), t("item2"), t("item3"), t("item4"), t("item5")]
@@ -59,7 +74,7 @@ export default function RoomTutorial({ open, onClose }: Props) {
 
       {/* Backdrop */}
       <div
-        style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", pointerEvents: "auto" }}
+        style={{ position: "absolute", inset: 0, background: "rgba(36,28,21,0.5)", pointerEvents: "auto" }}
         onClick={onClose}
       />
 
@@ -70,16 +85,15 @@ export default function RoomTutorial({ open, onClose }: Props) {
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: isMobile ? "calc(100vw - 2.5rem)" : "22rem",
-          maxWidth: "22rem",
+          width: "min(22rem, calc(100vw - 2.5rem))",
+          maxHeight: "calc(100dvh - 3rem)",
+          overflowY: "auto",
           animation: "mpRtCardIn .3s ease both",
         }}
       >
         <div
           style={{
             background: cardBg,
-            backdropFilter: "blur(1rem)",
-            WebkitBackdropFilter: "blur(1rem)",
             borderRadius: "1rem",
             padding: "1.25rem 1.25rem 1rem",
             border: `1px solid ${cardBorder}`,
@@ -92,9 +106,9 @@ export default function RoomTutorial({ open, onClose }: Props) {
           {/* Title */}
           <div style={{
             fontFamily: T.font.display,
-            fontSize: "1.0625rem",
+            fontSize: RT.titleS,
             fontWeight: 600,
-            color: goldLight,
+            color: INK,
             letterSpacing: "0.02em",
           }}>
             {t("overviewTitle")}
@@ -105,15 +119,15 @@ export default function RoomTutorial({ open, onClose }: Props) {
             {items.map((item, i) => (
               <div key={i} style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
                 <span style={{
-                  color: T.color.gold,
+                  color: EMBER_GLYPH,
                   fontSize: "0.5rem",
                   lineHeight: "1.375rem",
                   flexShrink: 0,
                 }}>{"\u25C6"}</span>
                 <span style={{
                   fontFamily: T.font.body,
-                  fontSize: "0.8125rem",
-                  color: "rgba(250,250,247,0.88)",
+                  fontSize: RT.meta,
+                  color: INK,
                   lineHeight: 1.5,
                 }}>{item}</span>
               </div>
@@ -123,8 +137,8 @@ export default function RoomTutorial({ open, onClose }: Props) {
           {/* Footer */}
           <div style={{
             fontFamily: T.font.body,
-            fontSize: "0.6875rem",
-            color: "rgba(250,250,247,0.5)",
+            fontSize: RT.overline,
+            color: MUTED,
             fontStyle: "italic",
             lineHeight: 1.4,
             marginTop: "0.125rem",
@@ -135,17 +149,19 @@ export default function RoomTutorial({ open, onClose }: Props) {
           {/* Button */}
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.125rem" }}>
             <button
+              ref={doneRef}
               type="button"
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               style={{
                 fontFamily: T.font.body,
-                fontSize: "0.8125rem",
+                fontSize: RT.meta,
                 fontWeight: 600,
                 color: "#FFF",
-                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                background: EMBER,
                 border: "none",
                 borderRadius: "0.5rem",
                 padding: "0.5rem 1.5rem",
+                minHeight: T.touch,
                 cursor: "pointer",
                 letterSpacing: "0.02em",
               }}

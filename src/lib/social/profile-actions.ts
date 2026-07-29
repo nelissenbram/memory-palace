@@ -137,15 +137,18 @@ export async function updateProfile(input: {
   return { ok: true };
 }
 
-/** Toggle follow/unfollow a user */
+/** Toggle follow/unfollow a user.
+ *  `changed` is false when nothing was mutated (unauthenticated, self-follow, or
+ *  a redundant call), so callers can skip optimistic follower-count updates. */
 export async function toggleFollow(
   targetUserId: string
-): Promise<{ following: boolean }> {
+): Promise<{ following: boolean; changed: boolean }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || user.id === targetUserId) return { following: false };
+  if (!user || user.id === targetUserId)
+    return { following: false, changed: false };
 
   // Check existing
   const { data: existing } = await supabase
@@ -158,7 +161,7 @@ export async function toggleFollow(
   if (existing) {
     await supabase.from("follows").delete().eq("id", existing.id);
     revalidatePath("/explore");
-    return { following: false };
+    return { following: false, changed: true };
   }
 
   await supabase.from("follows").insert({
@@ -205,7 +208,7 @@ export async function toggleFollow(
   // Bust Explore page cache so Following tab updates
   revalidatePath("/explore");
 
-  return { following: true };
+  return { following: true, changed: true };
 }
 
 /** Get a user's followers (paginated) */

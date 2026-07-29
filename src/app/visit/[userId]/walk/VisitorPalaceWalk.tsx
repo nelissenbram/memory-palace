@@ -39,6 +39,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
   const [sceneLoading, setSceneLoading] = useState(false);
   const [pending, setPending] = useState<PalacePending>(null);
   const [showGuestbook, setShowGuestbook] = useState(false);
+  const [selectedMemory, setSelectedMemory] = useState<Mem | null>(null);
 
   // Build Wing[] array for ExteriorScene and EntranceHallScene (only published wings)
   const publishedWings: Wing[] = useMemo(() =>
@@ -169,8 +170,17 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
   const handleExteriorClick = useCallback((wingId: string) => {
     if (wingId === "__entrance__") {
       navigateTo("entrance");
+      return;
     }
-  }, [navigateTo]);
+    // Clicking a wing building on the exterior: if it maps to a published wing,
+    // go straight into that wing's corridor; otherwise fall back to the entrance.
+    const found = data.wings.find((w) => w.wing.slug === wingId);
+    if (found) {
+      navigateTo("corridor", wingId);
+    } else {
+      navigateTo("entrance");
+    }
+  }, [navigateTo, data.wings]);
 
   const handleEntranceDoorClick = useCallback((wingId: string) => {
     if (wingId === "__exterior__") {
@@ -277,7 +287,11 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
               actualRoomId={activeRoomId}
               memories={currentMems}
               onMemoryClick={(mem: unknown) => {
-                if (mem === "__back__") navigateTo("corridor", activeWingSlug);
+                if (mem === "__back__") { navigateTo("corridor", activeWingSlug); return; }
+                // Guest upload stations are read-only no-ops.
+                if (mem === "__upload_painting__" || mem === "__upload__") return;
+                // A real memory painting was tapped — open the read-only viewer.
+                if (mem && typeof mem === "object") setSelectedMemory(mem as Mem);
               }}
               wingData={wingData}
               styleEra={data.owner.styleEra || "roman"}
@@ -337,7 +351,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           fontSize: "0.875rem",
           fontWeight: 600,
           cursor: "pointer",
-          boxShadow: `0 0.25rem 1rem rgba(0,0,0,0.3), 0 0 0 1px ${T.color.gold}22`,
+          boxShadow: `0 0.25rem 1rem rgba(64,59,54,0.3), 0 0 0 1px ${T.color.gold}22`,
           transition: "all 0.2s ease",
           zIndex: 44,
           whiteSpace: "nowrap",
@@ -362,7 +376,10 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           pointerEvents: "auto",
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: "0.375rem",
+          minWidth: "2.75rem",
+          minHeight: "2.75rem",
           padding: isMobile ? "0.625rem" : "0.625rem 1rem",
           borderRadius: isMobile ? "50%" : "2rem",
           background: `${T.color.linen}ee`,
@@ -373,13 +390,14 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           fontSize: "0.8125rem",
           fontWeight: 500,
           cursor: "pointer",
-          boxShadow: `0 0.125rem 0.75rem rgba(0,0,0,0.15)`,
+          boxShadow: `0 0.125rem 0.75rem rgba(64,59,54,0.15)`,
           transition: "all 0.2s ease",
           zIndex: 44,
         }}
         onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.color.gold; }}
         onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${T.color.gold}55`; }}
         title={t("guestbook")}
+        aria-label={t("guestbook")}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
@@ -393,6 +411,15 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           target={guestbookTarget}
           ownerName={data.owner.name || t("anonymous")}
           onClose={() => setShowGuestbook(false)}
+          isMobile={isMobile}
+        />
+      )}
+
+      {/* Read-only memory viewer — tapping a painting opens its title/desc/media */}
+      {selectedMemory && (
+        <MemoryViewer
+          memory={selectedMemory}
+          onClose={() => setSelectedMemory(null)}
           isMobile={isMobile}
         />
       )}
@@ -480,6 +507,162 @@ function HoverTooltip({ children, isMobile }: { children: React.ReactNode; isMob
   );
 }
 
+// --- Read-only memory viewer (guests tap a painting to read its memory) ---
+
+function MemoryViewer({ memory, onClose, isMobile }: {
+  memory: Mem;
+  onClose: () => void;
+  isMobile: boolean;
+}) {
+  const { t } = useTranslation("social");
+  const media = memory.dataUrl || memory.thumbnailUrl || null;
+  const isImage = media && (memory.type === "photo" || memory.type === "image");
+  const isVideo = media && memory.type === "video";
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 110,
+        display: "flex",
+        alignItems: isMobile ? "flex-end" : "center",
+        justifyContent: "center",
+      }}
+    >
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(36,28,21,0.55)",
+          backdropFilter: "blur(0.25rem)",
+        }}
+      />
+
+      {/* Panel */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={memory.title || t("anonymous")}
+        style={{
+          position: "relative",
+          width: isMobile ? "100%" : "32rem",
+          maxWidth: "100%",
+          maxHeight: isMobile ? "85vh" : "80vh",
+          background: T.color.cream,
+          borderRadius: isMobile ? "1.25rem 1.25rem 0 0" : "1rem",
+          border: `1px solid ${T.color.hairline}`,
+          boxShadow: `0 0.5rem 2rem rgba(64,59,54,0.25)`,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          animation: `${ANIM.tuscanFadeSlideUp} 0.3s ease both`,
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: "1rem 1.25rem",
+          borderBottom: `1px solid ${T.color.hairline}`,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: "0.75rem",
+        }}>
+          <div style={{
+            fontFamily: T.font.display,
+            fontSize: "1.0625rem",
+            fontWeight: 600,
+            color: T.color.ink,
+            lineHeight: 1.3,
+            minWidth: 0,
+          }}>
+            {memory.title || t("anonymous")}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label={t("close")}
+            style={{
+              width: "2.75rem",
+              height: "2.75rem",
+              borderRadius: "50%",
+              border: `1px solid ${T.color.hairline}`,
+              background: T.color.white,
+              color: T.color.muted,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{
+          overflowY: "auto",
+          padding: "1.25rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "1rem",
+        }}>
+          {isImage && (
+            <img
+              src={media!}
+              alt={memory.title || ""}
+              style={{
+                width: "100%",
+                maxHeight: "24rem",
+                objectFit: "contain",
+                borderRadius: "0.75rem",
+                background: T.color.linen,
+              }}
+            />
+          )}
+          {isVideo && (
+            <video
+              src={media!}
+              controls
+              playsInline
+              style={{
+                width: "100%",
+                maxHeight: "24rem",
+                borderRadius: "0.75rem",
+                background: "#000",
+              }}
+            />
+          )}
+          {!media && (
+            <div style={{
+              height: "8rem",
+              borderRadius: "0.75rem",
+              background: `hsl(${memory.hue}, ${memory.s}%, ${memory.l}%)`,
+            }} />
+          )}
+          {memory.desc && (
+            <p style={{
+              fontFamily: T.font.body,
+              fontSize: "0.9375rem",
+              color: T.color.ink,
+              lineHeight: 1.6,
+              margin: 0,
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}>
+              {memory.desc}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Guestbook Panel ---
 
 interface GuestbookTarget {
@@ -543,10 +726,10 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
         setSent(true);
         setTimeout(() => setSent(false), 2000);
       } else {
-        setError(result.error || "Failed");
+        setError(result.error || t("commentFailed"));
       }
     } catch {
-      setError("Failed to send");
+      setError(t("guestbookSendError"));
     }
     setSending(false);
   };
@@ -594,7 +777,7 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
           background: T.color.linen,
           borderRadius: isMobile ? "1.25rem 1.25rem 0 0" : "1rem",
           border: `1px solid ${T.color.gold}33`,
-          boxShadow: `0 0.5rem 2rem rgba(0,0,0,0.25)`,
+          boxShadow: `0 0.5rem 2rem rgba(64,59,54,0.25)`,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
@@ -614,7 +797,7 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
               fontFamily: T.font.display,
               fontSize: "1rem",
               fontWeight: 600,
-              color: T.color.charcoal,
+              color: T.color.ink,
             }}>
               {title}
             </div>
@@ -629,9 +812,10 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
           </div>
           <button
             onClick={onClose}
+            aria-label={t("close")}
             style={{
-              width: "2rem",
-              height: "2rem",
+              width: "2.75rem",
+              height: "2.75rem",
               borderRadius: "50%",
               border: `1px solid ${T.color.cream}`,
               background: T.color.white,
@@ -705,7 +889,7 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
               <div style={{
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
-                color: T.color.charcoal,
+                color: T.color.ink,
                 lineHeight: 1.5,
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word",
@@ -738,7 +922,7 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
               background: T.color.white,
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
-              color: T.color.charcoal,
+              color: T.color.ink,
               resize: "none",
               outline: "none",
             }}
@@ -796,8 +980,8 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
             transform: "translateX(-50%)",
             padding: "0.375rem 0.75rem",
             borderRadius: "1rem",
-            background: "#c0392b",
-            color: "#fff",
+            background: T.color.error,
+            color: T.color.cream,
             fontFamily: T.font.body,
             fontSize: "0.75rem",
             fontWeight: 600,

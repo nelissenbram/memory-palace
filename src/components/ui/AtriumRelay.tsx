@@ -18,6 +18,7 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { T } from "@/lib/theme";
+import { RT, SHADOW, HOVER_SHADOW, TOP_HIGHLIGHT, HAIRLINE } from "@/lib/libraryTokens";
 import RelayIcons from "./RelayIcons";
 import RelayVignettes from "./RelayVignettes";
 import { WingIcon } from "./WingRoomIcons";
@@ -81,21 +82,10 @@ interface AtriumRelayProps {
   labels?: { suggested?: string; addYourName?: string; soon?: string; otherJourneys?: string; weeksWarm?: string; quietKept?: string; open?: string };
 }
 
-/* ── Type ramp + semantics (change 20): one tuning point for the whole board ── */
-const RT = {
-  overline: "0.6875rem", meta: "0.8125rem", body: "0.9375rem",
-  titleS: "1.0625rem", titleM: "1.1875rem", titleL: "1.375rem",
-  h1m: "1.75rem", h1: "2.25rem", lhDisplay: 1.15, lhBody: 1.4,
-};
-
-/* ── Elevation grammar (change 18): three steps of one warm ink ── */
-const SHADOW = {
-  0: "none",
-  1: "0 0.25rem 1rem rgba(64,59,54,0.07)",
-  2: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
-} as const;
-const HOVER_SHADOW = "0 0.75rem 1.75rem rgba(64,59,54,0.16)";
-const TOP_HIGHLIGHT = "inset 0 0.0625rem 0 rgba(255,255,255,0.5)";
+/* ── Type ramp, elevation grammar and hairline now live in libraryTokens
+   (RT / SHADOW / HOVER_SHADOW / TOP_HIGHLIGHT / HAIRLINE), imported above so
+   the board can never drift from the Library. The ACCENT / TRAY maps below
+   are the only board-specific additions. ── */
 
 /* ── INK & EMBER, elevation pass (changes 1/8/17): the anchors go dark gilt
    keystone; lanes get pre-mixed opaque trays; gold-lane browns a step so it
@@ -115,8 +105,6 @@ const TRAY: Record<RelayAccent, string> = {
   sage: "#EFF2E8",
   anchor: "transparent",
 };
-
-const HAIRLINE = "#E3D6BC";
 
 /* Ember cameo tints (change 17: hoisted as named tokens, sage canonical). */
 const EMBER_TINTS = [
@@ -178,7 +166,7 @@ function WingFan({ chips }: { chips: { id: string; label: string; empty?: boolea
   return (
     <span style={{ display: "inline-flex", alignItems: "center" }} aria-hidden="true">
       {chips.slice(0, 6).map((ch, i) => (
-        <span key={ch.id} style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.1rem", height: "2.1rem", borderRadius: "50%", background: ch.empty ? "rgba(252,250,245,0.16)" : "#FCFAF5", border: ch.empty ? "0.0625rem solid rgba(212,175,55,0.3)" : "0.125rem solid rgba(212,175,55,0.75)", boxShadow: ch.empty ? "none" : "0 0.125rem 0.375rem rgba(0,0,0,0.35)", marginLeft: i === 0 ? 0 : "-0.45rem", transform: `rotate(${(i % 3 - 1) * 5}deg)`, zIndex: ch.empty ? 0 : 1 }}>
+        <span key={ch.id} style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.1rem", height: "2.1rem", borderRadius: "50%", background: ch.empty ? "rgba(252,250,245,0.16)" : "#FCFAF5", border: ch.empty ? "0.0625rem solid rgba(212,175,55,0.3)" : "0.125rem solid rgba(212,175,55,0.75)", boxShadow: ch.empty ? "none" : "0 0.125rem 0.375rem rgba(46,42,38,0.4)", marginLeft: i === 0 ? 0 : "-0.45rem", transform: `rotate(${(i % 3 - 1) * 5}deg)`, zIndex: ch.empty ? 0 : 1 }}>
           <WingIcon wingId={ch.id} size={20} color={ch.empty ? "rgba(212,175,55,0.45)" : "#9A4F2A"} />
           {!ch.empty ? (
             <span style={{ position: "absolute", right: "-0.2rem", bottom: "-0.2rem", minWidth: "1rem", height: "1rem", padding: "0 0.2rem", borderRadius: "1rem", background: "#D4AF37", color: "#2E2A26", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>{ch.label}</span>
@@ -232,7 +220,7 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
           {tile.thumbs && tile.thumbs.length > 0 ? <span style={{ marginTop: "0.5rem" }}><ThumbFan thumbs={tile.thumbs} /></span> : tile.chips && tile.chips.length > 0 ? <span style={{ marginTop: "0.5rem" }}><WingFan chips={tile.chips} /></span> : null}
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, marginTop: "0.35rem", fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
-        <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: "#E8C255" }}>→</span>
+        <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
       </button>
     );
   }
@@ -244,12 +232,12 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
   if (tile.soon) {
     return (
       <div className="relay-tile-soon" style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.65rem", minHeight: "3.5rem", padding: "0.75rem 1rem", borderRadius: "1rem", border: `0.0625rem solid ${a.border}`, background: "transparent" }}>
-        <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.25rem", height: "2.25rem", borderRadius: "0.65rem", background: "rgba(64,59,54,0.05)", color: "#A9A090", flexShrink: 0 }}>
+        <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.25rem", height: "2.25rem", borderRadius: "0.65rem", background: "rgba(64,59,54,0.05)", color: "#716A5E", flexShrink: 0 }}>
           <Glyph k={tile.key} size="1.3rem" />
         </span>
         <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
           <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor }}>{tile.title}</span>
-          <Overline color="#A9A090">{soonLabel}</Overline>
+          <Overline color="#716A5E">{soonLabel}</Overline>
         </span>
       </div>
     );
@@ -315,7 +303,7 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
         ) : null}
         <span style={{ position: "relative", fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: "58%", textShadow: "0 0 0.5rem rgba(252,250,245,0.95), 0 0 1rem rgba(252,250,245,0.8)" }}>{tile.desc}</span>
         {tile.datum ? <span style={{ position: "relative", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: a.datumColor, fontVariantNumeric: "tabular-nums", maxWidth: "58%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.datum}</span> : null}
-        <span className="relay-backcard-arrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: "#C99A2E" }}>→</span>
+        <span className="relay-backcard-arrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
       </span>
     </button>
   );
@@ -347,7 +335,7 @@ export function EmbersRow({ embers }: { embers: RelayEmbers }) {
               type="button"
               onClick={embers.onOpen}
               title={p.latest || p.name}
-              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", flex: "0 0 auto", width: "4.75rem", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", flex: "0 0 auto", width: "4.75rem", minHeight: "2.75rem", background: "none", border: "none", cursor: "pointer", padding: "0.35rem 0" }}
             >
               <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "3.25rem", height: "3.25rem", borderRadius: "50%", background: tint.bg, border: hasUnseen ? "0.125rem solid rgba(212,175,55,0.85)" : `0.0625rem solid ${HAIRLINE}` }}>
                 {hasUnseen ? (
@@ -480,7 +468,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
 
       {/* ── ANCHORS: the dark gilt keystone pair ── */}
       {anchors.length > 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: isMobile ? "0.625rem" : "0.875rem", marginBottom: "1.25rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "0.625rem" : "0.875rem", marginBottom: "1.25rem" }}>
           {anchors.map((tl, i) => <Tile key={tl.key} tile={{ ...tl, anchor: true }} accent="anchor" index={i} isMobile={isMobile} warmth={warmth} soonLabel={soonLabel} />)}
         </div>
       ) : null}
@@ -568,7 +556,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
         .relay-chip, .relay-pill { transition: background 0.2s ease, border-color 0.2s ease; }
         .relay-chip:hover, .relay-pill:hover { background: ${T.color.warmStone}55; border-color: ${T.color.terracotta}; }
         .relay-suggest { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-        .relay-suggest:hover { transform: translateY(-0.1875rem); box-shadow: 0 0.75rem 1.75rem rgba(154,79,42,0.28); }
+        .relay-suggest:hover { transform: translateY(-0.1875rem); box-shadow: ${HOVER_SHADOW}; }
         /* one-shot sheen on mount — an invitation, not a beacon */
         .relay-suggest-sheen { position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; background: linear-gradient(105deg, transparent, rgba(255,240,200,0.4), transparent); transform: skewX(-18deg); }
         /* animated icon SUB-PARTS — only the steward-suggested tile's glyph lives */

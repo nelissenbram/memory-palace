@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import type { Mem } from "@/lib/constants/defaults";
 import Image from "next/image";
@@ -24,11 +25,20 @@ const TYPE_KEY_MAP: Record<string, string> = {
 export default function StoragePlayerPanel({ onClose }: { onClose: () => void }) {
   const { t, locale } = useTranslation("storagePlayer");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
+  const isMobile = useIsMobile();
+  const isSmall = useIsSmall();
   const { userMems, fetchRoomMemories } = useMemoryStore();
   const [mems, setMems] = useState<Mem[]>([]);
   const [activeMem, setActiveMem] = useState<Mem | null>(null);
+  // Only autoplay media the user explicitly picks (and only when motion is allowed),
+  // never the auto-seeded first item on mount.
+  const [userPicked, setUserPicked] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  const prefersReducedMotion = typeof window !== "undefined"
+    && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const shouldAutoPlay = userPicked && !prefersReducedMotion;
 
   useEffect(() => {
     fetchRoomMemories("at1");
@@ -37,8 +47,16 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
   useEffect(() => {
     const stored = userMems["at1"] || [];
     setMems(stored);
-    if (stored.length > 0 && !activeMem) setActiveMem(stored[0]);
-  }, [userMems, activeMem]);
+    // Reconcile the active item against the fresh list: seed the first item when
+    // nothing is active, and reset if the active memory was deleted upstream.
+    setActiveMem((prev) => {
+      if (!prev) return stored[0] || null;
+      const stillExists = stored.some((m) => m.id === prev.id);
+      return stillExists ? prev : (stored[0] || null);
+    });
+  }, [userMems]);
+
+  const selectMem = (mem: Mem) => { setUserPicked(true); setActiveMem(mem); };
 
   const hasMedia = activeMem && (activeMem.type === "video" || activeMem.type === "audio" || activeMem.type === "photo" || activeMem.type === "painting");
 
@@ -55,14 +73,14 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
       {/* Header */}
       <div style={{
         width: "100%", maxWidth: "43.75rem", display: "flex", alignItems: "center",
-        justifyContent: "space-between", padding: "1.25rem 1.5rem 0.75rem",
+        justifyContent: "space-between", padding: isSmall ? "1rem 1rem 0.625rem" : "1.25rem 1.5rem 0.75rem",
         paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))",
-        paddingLeft: "max(1.5rem, env(safe-area-inset-left, 0px))",
-        paddingRight: "max(1.5rem, env(safe-area-inset-right, 0px))",
+        paddingLeft: `max(${isSmall ? "1rem" : "1.5rem"}, env(safe-area-inset-left, 0px))`,
+        paddingRight: `max(${isSmall ? "1rem" : "1.5rem"}, env(safe-area-inset-right, 0px))`,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
           <span style={{ fontSize: "1.375rem" }}>{"\u{1F4E6}"}</span>
-          <span style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, lineHeight: 1.15, color: "#FCFAF5" }}>
+          <span style={{ fontFamily: T.font.display, fontSize: isMobile ? "1.0625rem" : "1.1875rem", fontWeight: 600, lineHeight: 1.15, color: "#FCFAF5" }}>
             {t("title")}
           </span>
         </div>
@@ -75,10 +93,11 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
 
       {/* Player area */}
       <div className="mp-scroll" style={{
-        width: "100%", maxWidth: "43.75rem", flex: 1, overflow: "auto", padding: "0 1.5rem 1.5rem",
+        width: "100%", maxWidth: "43.75rem", flex: 1, overflow: "auto",
+        padding: isSmall ? "0 1rem 1rem" : "0 1.5rem 1.5rem",
         paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))",
-        paddingLeft: "max(1.5rem, env(safe-area-inset-left, 0px))",
-        paddingRight: "max(1.5rem, env(safe-area-inset-right, 0px))",
+        paddingLeft: `max(${isSmall ? "1rem" : "1.5rem"}, env(safe-area-inset-left, 0px))`,
+        paddingRight: `max(${isSmall ? "1rem" : "1.5rem"}, env(safe-area-inset-right, 0px))`,
       }}>
         {mems.length === 0 ? (
           <div style={{
@@ -99,17 +118,17 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
                 background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", borderRadius: "1rem", overflow: "hidden", marginBottom: "1rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token: keystone surface, S2 */
               }}>
                 {(activeMem.type === "video" || activeMem.videoBlob) && activeMem.dataUrl && (
-                  <video ref={videoRef} src={activeMem.dataUrl} controls autoPlay playsInline preload="metadata"
-                    style={{ width: "100%", maxHeight: "22.5rem", objectFit: "contain", display: "block" }} />
+                  <video ref={videoRef} src={activeMem.dataUrl} controls autoPlay={shouldAutoPlay} muted={shouldAutoPlay} playsInline preload="metadata"
+                    style={{ width: "100%", maxHeight: "min(22.5rem, 55vh)", objectFit: "contain", display: "block" }} />
                 )}
                 {(activeMem.type === "audio" || activeMem.voiceBlob) && activeMem.dataUrl && (
                   <div style={{ padding: "1.875rem 1.25rem", textAlign: "center" }}>
                     <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>{"\u{1F3B5}"}</div>
-                    <audio ref={audioRef} src={activeMem.dataUrl} controls autoPlay preload="none" style={{ width: "100%", maxWidth: "25rem" }} />
+                    <audio ref={audioRef} src={activeMem.dataUrl} controls autoPlay={shouldAutoPlay} preload="none" style={{ width: "100%", maxWidth: "25rem" }} />
                   </div>
                 )}
                 {(activeMem.type === "photo" || activeMem.type === "painting") && activeMem.dataUrl && (
-                  <div style={{ position: "relative", width: "100%", height: "22.5rem" }}>
+                  <div style={{ position: "relative", width: "100%", height: "min(22.5rem, 55vh)" }}>
                     <Image src={activeMem.dataUrl!} alt={activeMem.title}
                       fill sizes="(max-width: 768px) 100vw, 500px"
                       style={{ objectFit: "contain" }} />
@@ -139,7 +158,7 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
             {/* Memory list */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
               {mems.map((mem) => (
-                <button key={mem.id} onClick={() => setActiveMem(mem)} style={{
+                <button key={mem.id} onClick={() => selectMem(mem)} style={{
                   display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.625rem 0.875rem", minHeight: "2.75rem",
                   background: activeMem?.id === mem.id ? "rgba(184,92,56,0.16)" : "rgba(255,255,255,0.04)", /* Atrium token: ember active */
                   border: activeMem?.id === mem.id ? "0.0625rem solid rgba(184,92,56,0.45)" : "0.0625rem solid transparent",

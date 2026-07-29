@@ -16,17 +16,36 @@ import React from "react";
 
 export const U = {
   canvas: "#FCFAF5",
-  surface: "#F2EDE4",
+  surface: "#F6EBE3", // canon TRAY — recessed sandstone tray
   hairline: "#E3D6BC",
   ink: "#403B36",
   muted: "#716A5E",
   accent: "#9A4F2A",
   gold: "#D4AF37",
   success: "#4A6741",
-  dark: "#241C15",
+  dark: "#241C15", // deep viewport backdrop (PalaceCard 3D scene only)
   fontBody: "var(--font-body, sans-serif)",
   fontDisplay: "var(--font-display, Georgia, serif)",
 } as const;
+
+/**
+ * Shared body content min-height so every USP card in the landing grid aligns
+ * on a consistent rhythm regardless of its inner vignette. Cards apply this to
+ * their own body wrapper (inside the shell's 1.25rem padding).
+ */
+export const USP_BODY_MIN_HEIGHT = "17rem";
+
+/**
+ * Derive a translucent fill from a token hex so alpha surfaces stay locked to
+ * the canon color instead of hand-copied rgba() literals.
+ */
+export function hexAlpha(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 export default function UspCardShell({
   icon,
@@ -54,7 +73,7 @@ export default function UspCardShell({
         background: U.canvas,
         border: `1px solid ${U.hairline}`,
         borderRadius: "1rem",
-        boxShadow: "0 10px 30px rgba(36, 28, 21, 0.10)",
+        boxShadow: `0 0.625rem 1.875rem ${hexAlpha(U.ink, 0.1)}`,
         overflow: "hidden",
       }}
     >
@@ -86,7 +105,11 @@ export default function UspCardShell({
           {/* Sub-brand logo — a prominent warm medallion echoing the "Why" icons:
             a muted-warm tile, the rust glyph enlarged, and one animated gold
             accent (the pulsing glow behind it). Breathe + glow are gated behind
-            prefers-reduced-motion in globals.css. */}
+            prefers-reduced-motion in globals.css.
+            NOTE: the .lv2-usp-logo / .lv2-usp-logo-glow / .lv2-usp-logo-glyph
+            keyframes live in src/app/globals.css and only run once the landing
+            page adds the `.usp-live` gate class (perf gate). Keep the class
+            names here in sync with that stylesheet. */}
         <span
           className="lv2-usp-logo"
           style={{
@@ -97,8 +120,8 @@ export default function UspCardShell({
             width: "2.375rem",
             height: "2.375rem",
             borderRadius: "0.65rem",
-            background: "rgba(154, 79, 42, 0.08)",
-            border: "1px solid rgba(154, 79, 42, 0.22)",
+            background: hexAlpha(U.accent, 0.08),
+            border: `1px solid ${hexAlpha(U.accent, 0.22)}`,
             color: U.accent,
             flexShrink: 0,
           }}
@@ -110,7 +133,7 @@ export default function UspCardShell({
               position: "absolute",
               inset: 0,
               borderRadius: "inherit",
-              background: "radial-gradient(closest-side, rgba(212, 175, 55, 0.5), transparent 72%)",
+              background: `radial-gradient(closest-side, ${hexAlpha(U.gold, 0.5)}, transparent 72%)`,
             }}
           />
           <span className="lv2-usp-logo-glyph" style={{ position: "relative", display: "inline-flex" }}>
@@ -165,8 +188,8 @@ export default function UspCardShell({
               letterSpacing: "0.08em",
               textTransform: "uppercase",
               color: U.accent,
-              background: "rgba(154, 79, 42, 0.09)",
-              border: `1px solid rgba(154, 79, 42, 0.25)`,
+              background: hexAlpha(U.accent, 0.09),
+              border: `1px solid ${hexAlpha(U.accent, 0.25)}`,
               borderRadius: "2rem",
               padding: "0.2rem 0.6rem",
             }}

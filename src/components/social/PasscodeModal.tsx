@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useTransition, useEffect, useCallback } from "react";
+import React, { useState, useTransition, useEffect, useCallback, useSyncExternalStore } from "react";
 import { T } from "@/lib/theme";
 import TuscanCard from "@/components/ui/TuscanCard";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { createPasscode, getMyPasscodes, deletePasscode } from "@/lib/social/passcode-actions";
 import type { PasscodeShare } from "@/lib/social/passcode-actions";
 import { track } from "@/lib/analytics";
@@ -29,6 +30,23 @@ const EXPIRY_OPTIONS = [
   { hours: 720, key: "expiry30d" },
 ] as const;
 
+const CUSTOM_MIN = 4;
+const CUSTOM_MAX = 20;
+
+const RM_QUERY = "(prefers-reduced-motion: reduce)";
+/** True when the user asked for reduced motion — drop transitions/blur. */
+function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(RM_QUERY);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(RM_QUERY).matches,
+    () => false,
+  );
+}
+
 export default function PasscodeModal({
   wings,
   currentWingId,
@@ -37,8 +55,11 @@ export default function PasscodeModal({
   onClose,
 }: PasscodeModalProps) {
   const { t } = useTranslation("social");
+  const reduceMotion = usePrefersReducedMotion();
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState<"link" | "code" | null>(null);
 
   // Form state
@@ -59,10 +80,17 @@ export default function PasscodeModal({
 
   // Load active passcodes
   useEffect(() => {
-    getMyPasscodes().then((res) => {
-      if (res.ok) setActiveShares(res.shares);
-    });
-  }, [createdShare]);
+    getMyPasscodes()
+      .then((res) => {
+        if (res.ok) {
+          setActiveShares(res.shares);
+          setNotice(null);
+        } else {
+          setNotice(t("passcodeLoadError"));
+        }
+      })
+      .catch(() => setNotice(t("passcodeLoadError")));
+  }, [createdShare, t]);
 
   // Escape to close
   useEffect(() => {
@@ -73,19 +101,27 @@ export default function PasscodeModal({
     return () => document.removeEventListener("keydown", handler);
   }, [isPending, onClose]);
 
-  const toggleWing = useCallback((wingId: string) => {
-    setSelectedWingIds((prev) =>
-      prev.includes(wingId)
-        ? prev.filter((id) => id !== wingId)
-        : [...prev, wingId]
-    );
+  // Single-select (radio semantics): handleCreate only ever issues one passcode
+  // per share, so the picker must promise exactly one wing — selecting a chip
+  // replaces the selection, tapping the active chip clears it.
+  const selectWing = useCallback((wingId: string) => {
+    setSelectedWingIds((prev) => (prev[0] === wingId ? [] : [wingId]));
   }, []);
 
+  const customInvalid =
+    useCustom &&
+    (customPasscode.trim().length < CUSTOM_MIN ||
+      customPasscode.trim().length > CUSTOM_MAX);
+
   const handleCreate = () => {
+    if (customInvalid) {
+      setError(t("passcodeCustomInvalid", { min: String(CUSTOM_MIN), max: String(CUSTOM_MAX) }));
+      return;
+    }
     startTransition(async () => {
       setError(null);
 
-      // Create one share per selected wing (or one for the room)
+      // Create one share for the selected room, or for the single selected wing.
       if (shareRoom && currentRoomId) {
         const result = await createPasscode({
           roomId: currentRoomId,
@@ -99,7 +135,7 @@ export default function PasscodeModal({
         setCreatedShare(result.share!);
         track("passcode_created", { type: "room", expiryHours });
       } else if (selectedWingIds.length > 0) {
-        // Create for the first selected wing
+        // Create for the single selected wing.
         const result = await createPasscode({
           wingId: selectedWingIds[0],
           passcode: useCustom ? customPasscode : undefined,
@@ -137,8 +173,12 @@ export default function PasscodeModal({
     }
   };
 
+  // Embed the code in the link so the shared artifact is self-contained — the
+  // /passcode page reads ?code= to pre-fill the field (see PasscodeEntry).
   const shareUrl = createdShare
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/passcode`
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/passcode?code=${encodeURIComponent(
+        createdShare.passcode || ""
+      )}`
     : "";
 
   const displayPasscode = createdShare?.passcode?.toUpperCase() || "";
@@ -156,7 +196,7 @@ export default function PasscodeModal({
   const inputStyle: React.CSSProperties = {
     width: "100%",
     fontFamily: T.font.body,
-    fontSize: "0.875rem",
+    fontSize: "1rem", // >=1rem so iOS doesn't zoom on focus
     padding: "0.625rem 0.875rem",
     borderRadius: "0.625rem",
     border: `1px solid ${T.color.sandstone}`,
@@ -171,10 +211,11 @@ export default function PasscodeModal({
     fontSize: "0.875rem",
     padding: "0.625rem 1.25rem",
     borderRadius: "0.625rem",
-    border: `1px solid ${T.color.sandstone}`,
+    border: `1px solid ${T.color.hairline}`,
     background: "transparent",
-    color: T.color.walnut,
+    color: T.color.muted,
     cursor: "pointer",
+    minHeight: "2.75rem",
   };
 
   const btnPrimary: React.CSSProperties = {
@@ -184,10 +225,12 @@ export default function PasscodeModal({
     padding: "0.625rem 1.5rem",
     borderRadius: "0.625rem",
     border: "none",
-    background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+    // Canon: EMBER is the interactive/CTA color; gold is ceremonial-only.
+    background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.rustDeep})`,
     color: T.color.cream,
     cursor: isPending ? "wait" : "pointer",
     opacity: isPending ? 0.6 : 1,
+    minHeight: "2.75rem",
   };
 
   return (
@@ -195,6 +238,8 @@ export default function PasscodeModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="passcode-title"
+      ref={containerRef}
+      onKeyDown={handleKeyDown}
       style={{
         position: "fixed",
         inset: 0,
@@ -202,13 +247,19 @@ export default function PasscodeModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(0,0,0,0.5)",
-        backdropFilter: "blur(0.25rem)",
+        background: "rgba(64,59,54,0.5)",
+        backdropFilter: reduceMotion ? undefined : "blur(0.25rem)",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !isPending) onClose();
       }}
     >
+      <style>{`
+        .mp-pc-focusable:focus-visible {
+          outline: 0.125rem solid ${T.color.gold};
+          outline-offset: 0.125rem;
+        }
+      `}</style>
       <TuscanCard
         variant="solid"
         padding="2rem"
@@ -295,6 +346,7 @@ export default function PasscodeModal({
                   {displayPasscode}
                 </code>
                 <button
+                  className="mp-pc-focusable"
                   onClick={() => copyToClipboard(displayPasscode, "code")}
                   style={{
                     ...btnSecondary,
@@ -321,6 +373,7 @@ export default function PasscodeModal({
                   style={{ ...inputStyle, fontSize: "0.8125rem" }}
                 />
                 <button
+                  className="mp-pc-focusable"
                   onClick={() => copyToClipboard(shareUrl, "link")}
                   style={{
                     ...btnSecondary,
@@ -353,10 +406,11 @@ export default function PasscodeModal({
                 justifyContent: "flex-end",
               }}
             >
-              <button onClick={onClose} style={btnSecondary}>
+              <button className="mp-pc-focusable" onClick={onClose} style={btnSecondary}>
                 {t("close")}
               </button>
               <button
+                className="mp-pc-focusable"
                 onClick={() => setCreatedShare(null)}
                 style={btnPrimary}
               >
@@ -374,7 +428,7 @@ export default function PasscodeModal({
                     type="checkbox"
                     checked={shareRoom}
                     onChange={() => setShareRoom(!shareRoom)}
-                    style={{ accentColor: T.color.gold }}
+                    style={{ accentColor: T.color.ember }}
                   />
                   {t("passcodeShareRoom", { name: currentRoomName || "" })}
                 </label>
@@ -383,34 +437,43 @@ export default function PasscodeModal({
 
             {!shareRoom && (
               <div style={{ marginBottom: "1.25rem" }}>
-                <label style={labelStyle}>{t("passcodeSelectWings")}</label>
+                <label style={labelStyle}>{t("passcodeSelectWingSingle")}</label>
                 <div
+                  role="radiogroup"
+                  aria-label={t("passcodeSelectWingSingle")}
                   style={{
                     display: "flex",
                     flexWrap: "wrap",
                     gap: "0.5rem",
                   }}
                 >
-                  {wings.map((w) => (
+                  {wings.map((w) => {
+                    const active = selectedWingIds[0] === w.id;
+                    return (
                     <button
                       key={w.id}
-                      onClick={() => toggleWing(w.id)}
+                      className="mp-pc-focusable"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => selectWing(w.id)}
                       style={{
                         fontFamily: T.font.body,
                         fontSize: "0.8125rem",
-                        fontWeight: selectedWingIds.includes(w.id) ? 600 : 400,
+                        fontWeight: active ? 600 : 400,
                         padding: "0.5rem 0.875rem",
                         borderRadius: "0.5rem",
-                        border: `1px solid ${selectedWingIds.includes(w.id) ? T.color.gold : T.color.sandstone}`,
-                        background: selectedWingIds.includes(w.id) ? `${T.color.gold}15` : "transparent",
-                        color: selectedWingIds.includes(w.id) ? T.color.goldDark : T.color.walnut,
+                        minHeight: "2.75rem",
+                        border: `1px solid ${active ? T.color.ember : T.color.sandstone}`,
+                        background: active ? `${T.color.ember}15` : "transparent",
+                        color: active ? T.color.ember : T.color.muted,
                         cursor: "pointer",
-                        transition: "all 0.15s ease",
+                        transition: reduceMotion ? undefined : "all 0.15s ease",
                       }}
                     >
                       {w.name}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -419,26 +482,33 @@ export default function PasscodeModal({
             <div style={{ marginBottom: "1.25rem" }}>
               <label style={labelStyle}>{t("passcodeExpiry")}</label>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                {EXPIRY_OPTIONS.map((opt) => (
+                {EXPIRY_OPTIONS.map((opt) => {
+                  const active = expiryHours === opt.hours;
+                  return (
                   <button
                     key={opt.hours}
+                    className="mp-pc-focusable"
+                    role="radio"
+                    aria-checked={active}
                     onClick={() => setExpiryHours(opt.hours)}
                     style={{
                       fontFamily: T.font.body,
                       fontSize: "0.8125rem",
-                      fontWeight: expiryHours === opt.hours ? 600 : 400,
+                      fontWeight: active ? 600 : 400,
                       padding: "0.5rem 0.875rem",
                       borderRadius: "0.5rem",
-                      border: `1px solid ${expiryHours === opt.hours ? T.color.gold : T.color.sandstone}`,
-                      background: expiryHours === opt.hours ? `${T.color.gold}15` : "transparent",
-                      color: expiryHours === opt.hours ? T.color.goldDark : T.color.walnut,
+                      minHeight: "2.75rem",
+                      border: `1px solid ${active ? T.color.ember : T.color.sandstone}`,
+                      background: active ? `${T.color.ember}15` : "transparent",
+                      color: active ? T.color.ember : T.color.muted,
                       cursor: "pointer",
-                      transition: "all 0.15s ease",
+                      transition: reduceMotion ? undefined : "all 0.15s ease",
                     }}
                   >
                     {t(opt.key)}
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -449,19 +519,38 @@ export default function PasscodeModal({
                   type="checkbox"
                   checked={useCustom}
                   onChange={() => setUseCustom(!useCustom)}
-                  style={{ accentColor: T.color.gold }}
+                  style={{ accentColor: T.color.ember }}
                 />
                 {t("passcodeCustom")}
               </label>
               {useCustom && (
-                <input
-                  type="text"
-                  value={customPasscode}
-                  onChange={(e) => setCustomPasscode(e.target.value)}
-                  placeholder={t("passcodeCustomPlaceholder")}
-                  maxLength={20}
-                  style={{ ...inputStyle, marginTop: "0.5rem" }}
-                />
+                <>
+                  <input
+                    type="text"
+                    value={customPasscode}
+                    onChange={(e) => setCustomPasscode(e.target.value)}
+                    placeholder={t("passcodeCustomPlaceholder")}
+                    maxLength={CUSTOM_MAX}
+                    aria-invalid={customInvalid}
+                    style={{
+                      ...inputStyle,
+                      marginTop: "0.5rem",
+                      border: `1px solid ${customInvalid ? T.color.error : T.color.sandstone}`,
+                    }}
+                  />
+                  {customInvalid && (
+                    <p
+                      style={{
+                        fontFamily: T.font.body,
+                        fontSize: "0.75rem",
+                        color: T.color.error,
+                        margin: "0.375rem 0 0",
+                      }}
+                    >
+                      {t("passcodeCustomInvalid", { min: String(CUSTOM_MIN), max: String(CUSTOM_MAX) })}
+                    </p>
+                  )}
+                </>
               )}
               {!useCustom && (
                 <p
@@ -481,16 +570,18 @@ export default function PasscodeModal({
             {activeShares.length > 0 && (
               <div style={{ marginBottom: "1.25rem" }}>
                 <button
+                  className="mp-pc-focusable"
                   onClick={() => setShowManage(!showManage)}
                   style={{
                     fontFamily: T.font.body,
                     fontSize: "0.8125rem",
-                    color: T.color.walnut,
+                    color: T.color.muted,
                     background: "none",
                     border: "none",
                     cursor: "pointer",
                     textDecoration: "underline",
                     padding: 0,
+                    minHeight: "2.75rem",
                   }}
                 >
                   {t("passcodeManage", { count: String(activeShares.length) })}
@@ -566,6 +657,7 @@ export default function PasscodeModal({
 
             {error && (
               <p
+                role="alert"
                 style={{
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
@@ -574,6 +666,20 @@ export default function PasscodeModal({
                 }}
               >
                 {error}
+              </p>
+            )}
+
+            {notice && (
+              <p
+                role="status"
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.75rem",
+                  color: T.color.muted,
+                  margin: "0 0 1rem",
+                }}
+              >
+                {notice}
               </p>
             )}
 
@@ -586,13 +692,14 @@ export default function PasscodeModal({
                 marginTop: "1.5rem",
               }}
             >
-              <button onClick={onClose} style={btnSecondary}>
+              <button className="mp-pc-focusable" onClick={onClose} style={btnSecondary}>
                 {t("cancel")}
               </button>
               <button
+                className="mp-pc-focusable"
                 onClick={handleCreate}
-                disabled={isPending}
-                style={btnPrimary}
+                disabled={isPending || customInvalid}
+                style={{ ...btnPrimary, opacity: isPending || customInvalid ? 0.6 : 1 }}
               >
                 {isPending ? t("passcodeCreating") : t("passcodeCreate")}
               </button>

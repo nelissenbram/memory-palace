@@ -13,12 +13,15 @@
 
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { MediaThumb } from "./MediaThumb";
 import { packJustifiedRows, targetRowHeight, getAspect, setAspect, type PackedRow } from "@/lib/library/justify";
-import { CREAM, EMBER } from "@/lib/libraryTokens";
+import { CREAM, EMBER, INK, MUTED, HAIRLINE, GOLD, GOLD_SOFT, EMBER_GLYPH, SHADOW } from "@/lib/libraryTokens";
 import type { Mem } from "@/lib/constants/defaults";
 
-const GAP = 3; // px seams
+// Layout seam: 0.1875rem expressed in px for the pixel-space packer (16px root).
+const SEAM_REM = 0.1875;
+const GAP = SEAM_REM * 16; // = 3px seams
 
 /** Any browser-paintable image URL (data:image, http, blob, /api, /path). */
 function paintable(u: string | null | undefined): string | null {
@@ -26,6 +29,18 @@ function paintable(u: string | null | undefined): string | null {
   if (u.startsWith("data:audio")) return null;
   if (u.startsWith("data:image") || u.startsWith("http") || u.startsWith("blob:") || u.startsWith("/")) return u;
   return null;
+}
+/** Collapse the loose memory `type` to a broad accessible category so a screen
+ *  reader can distinguish a photo from an audio/video/document/story memory
+ *  without needing a translation key per exact type. */
+function tileCategory(type: string | undefined): "image" | "video" | "audio" | "document" | "memory" {
+  switch (type) {
+    case "photo": case "painting": case "album": return "image";
+    case "video": return "video";
+    case "audio": case "voice": case "interview": return "audio";
+    case "document": case "text": return "document";
+    default: return "memory";
+  }
 }
 /** Ordered image-source candidates for a tile — thumbnail first (lighter),
  *  then the full/original. Restores images regardless of where they're stored. */
@@ -41,9 +56,12 @@ function tileSources(mem: Mem): string[] {
 /** Chromeless tile media: real <img> with source fallback, else the MediaThumb
  *  type glyph (story/audio/document). On load it reports the real aspect ratio
  *  so the wall re-packs to organic widths. Zero card/shadow/gradient. */
-function TileMedia({ mem, iconSize, onMeasured }: { mem: Mem; iconSize: number; onMeasured: (id: string, type: Mem["type"], ar: number) => void }) {
+function TileMedia({ mem, iconSize, iconColor, onMeasured }: { mem: Mem; iconSize: number; iconColor?: string; onMeasured: (id: string, type: Mem["type"], ar: number) => void }) {
   const sources = React.useMemo(() => tileSources(mem), [mem]);
   const [idx, setIdx] = useState(0);
+  // Reset the fallback pointer when the source set changes (memory swapped in via
+  // key reuse), otherwise a stale idx can point past the new sources array.
+  useEffect(() => { setIdx(0); }, [sources]);
   const src = sources[idx];
   if (src) {
     return (
@@ -62,7 +80,7 @@ function TileMedia({ mem, iconSize, onMeasured }: { mem: Mem; iconSize: number; 
       />
     );
   }
-  return <MediaThumb mem={mem} size="100%" borderRadius="0" iconSize={iconSize} />;
+  return <MediaThumb mem={mem} size="100%" borderRadius="0" iconSize={iconSize} iconColor={iconColor} />;
 }
 
 interface PhotoWallProps {
@@ -96,6 +114,7 @@ interface PhotoWallProps {
 type Section = { key: string; label: string; items: (Mem & { ar: number; _i: number })[]; band?: boolean };
 
 function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent, groupBy = "month", sortMode = "newest", roomLabelOf, draggableTiles, onTileDragStart, onTileDragEnd }: PhotoWallProps) {
+  const { t } = useTranslation("library");
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
 
@@ -166,8 +185,11 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
       sec.items.push({ ...(mem as Mem), ar: getAspect(mem.id, mem.type), _i });
     });
     if (groupBy === "room") {
-      // rooms in first-appearance order (mems already sorted), undated last
-      return order.map(k => byKey.get(k)!).sort((a, b) => (a.key === "·" ? 1 : b.key === "·" ? -1 : 0));
+      // rooms in first-appearance order (mems already sorted), undated last.
+      // The undated bucket's key is the undatedLabel (see room-lens key above),
+      // so detect it by label to actually push it to the end.
+      const isUndated = (k: string) => k === undatedLabel || k === "·";
+      return order.map(k => byKey.get(k)!).sort((a, b) => (isUndated(a.key) ? 1 : isUndated(b.key) ? -1 : 0));
     }
     // month: undated last, others by key — newest→oldest by default, ascending for "oldest"
     return [...byKey.values()].sort((a, b) => {
@@ -178,17 +200,20 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
   }, [mems, monthLabel, undatedLabel, groupBy, sortMode, roomLabelOf]);
 
   const rowH = targetRowHeight(effWidth);
+  // Tap-target floor on coarse-pointer/mobile: never pack a tile shorter than
+  // 2.75rem (44px @16px root) so every tile stays a usable touch target.
+  const minRowH = isMobile ? 2.75 * 16 : 0;
   const packed = useMemo(
     // re-read getAspect at pack time so measured ratios (arVersion) take effect
     () => sections.map((s) => ({
       ...s,
       rows: packJustifiedRows(
         s.items.map((it) => ({ ...it, ar: getAspect(it.id, it.type) })),
-        effWidth, rowH, GAP,
+        effWidth, rowH, GAP, minRowH,
       ) as PackedRow<Mem & { ar: number; _i: number }>[],
     })),
     // arVersion intentionally in deps to re-pack when real ratios arrive
-    [sections, effWidth, rowH, arVersion],
+    [sections, effWidth, rowH, minRowH, arVersion],
   );
 
   // Jump-to-date scrubber: refs to each section so a tick can scroll to it.
@@ -258,9 +283,10 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
   return (
     <div ref={containerRef} className="il-muro" style={{ position: "relative", width: "100%", paddingRight: isMobile && showRail ? "0.9rem" : undefined }}>
       {/* right-edge jump-to-date rail (thumb-natural zone); hidden with <2 ticks.
-          On mobile it lives in the reserved right gutter so it never overlays tiles. */}
+          On mobile it lives in the reserved right gutter so it never overlays tiles.
+          Exposed as a real navigation landmark so keyboard/AT users can jump too. */}
       {showRail && (
-        <div className="il-muro-scrub" aria-hidden="true" style={{ position: "sticky", top: 0, float: "right", width: 0, height: 0, zIndex: 6 }}>
+        <div className="il-muro-scrub" role="navigation" aria-label={t("jumpToDate")} style={{ position: "sticky", top: 0, float: "right", width: 0, height: 0, zIndex: 6 }}>
           <div
             ref={railColRef}
             onPointerDown={onRailPointerDown}
@@ -273,18 +299,20 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
               <button
                 key={tick.key}
                 type="button"
-                tabIndex={-1}
                 data-tick-key={tick.key}
                 data-tick-target={tick.target}
+                aria-label={t("jumpTo", { label: tick.label })}
                 onClick={() => sectionEls.current.get(tick.target)?.scrollIntoView({ block: "start", behavior: "smooth" })}
+                onFocus={() => setScrubHover(tick.key)}
+                onBlur={() => { if (!dragState.current.active) setScrubHover((h) => (h === tick.key ? null : h)); }}
                 onMouseEnter={() => setScrubHover(tick.key)}
                 onMouseLeave={() => { if (!dragState.current.active) setScrubHover((h) => (h === tick.key ? null : h)); }}
                 style={{ display: "flex", alignItems: "center", gap: "0.4rem", justifyContent: "flex-end", background: "none", border: "none", padding: "0.15rem 0.2rem", cursor: "pointer" }}
               >
                 {scrubHover === tick.key && (
-                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: "#403B36", background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", borderRadius: "0.4rem", padding: "0.1rem 0.4rem", whiteSpace: "nowrap", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)" }}>{tick.label}</span>
+                  <span aria-hidden="true" style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: INK, background: CREAM, border: `0.0625rem solid ${HAIRLINE}`, borderRadius: "0.4rem", padding: "0.1rem 0.4rem", whiteSpace: "nowrap", boxShadow: SHADOW[2] }}>{tick.label}</span>
                 )}
-                <span style={{ width: scrubHover === tick.key ? "0.75rem" : "0.5rem", height: "0.1875rem", borderRadius: "1rem", background: scrubHover === tick.key ? "#C99A2E" : "rgba(154,79,42,0.35)", transition: "width 0.15s ease, background 0.15s ease" }} />
+                <span aria-hidden="true" style={{ width: scrubHover === tick.key ? "0.75rem" : "0.5rem", height: "0.1875rem", borderRadius: "1rem", background: scrubHover === tick.key ? EMBER : `${EMBER_GLYPH}59`, transition: "width 0.15s ease, background 0.15s ease" }} />
               </button>
             ))}
           </div>
@@ -295,21 +323,28 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
           {/* sticky gold-underlined band — carries all the stripped metadata
               (skipped for the single unbanded alpha/type section) */}
           {sec.band !== false && (
-            <div style={{ position: "sticky", top: 0, zIndex: 5, display: "flex", alignItems: "baseline", gap: "0.5rem", padding: "0.9rem 0 0.5rem", background: "linear-gradient(#FCFAF5 70%, rgba(252,250,245,0))" }}>
-              <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.0625rem", lineHeight: 1.15, color: "#403B36" }}>{sec.label}</span>
-              <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontVariantNumeric: "tabular-nums" }}>{countLabel(sec.items.length)}</span>
-              <span aria-hidden="true" style={{ flex: 1, height: "0.125rem", alignSelf: "center", background: "linear-gradient(90deg, #C99A2E, rgba(201,154,46,0.25) 45%, transparent)" }} />
+            <div style={{ position: "sticky", top: 0, zIndex: 5, display: "flex", alignItems: "baseline", gap: "0.5rem", padding: "0.9rem 0 0.5rem", background: `linear-gradient(${CREAM} 70%, rgba(252,250,245,0))` }}>
+              <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.0625rem", lineHeight: 1.15, color: INK }}>{sec.label}</span>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, fontVariantNumeric: "tabular-nums" }}>{countLabel(sec.items.length)}</span>
+              <span aria-hidden="true" style={{ flex: 1, height: "0.125rem", alignSelf: "center", background: `linear-gradient(90deg, ${GOLD_SOFT}, rgba(201,154,46,0.25) 45%, transparent)` }} />
             </div>
           )}
           {sec.rows.map((row, ri) => (
-            <div key={ri} style={{ display: "flex", gap: `${GAP}px`, marginBottom: `${GAP}px`, contentVisibility: "auto", containIntrinsicSize: `${Math.round(effWidth)}px ${Math.round(row.height)}px` } as React.CSSProperties}>
+            <div key={ri} role="list" style={{ display: "flex", gap: `${SEAM_REM}rem`, marginBottom: `${SEAM_REM}rem`, contentVisibility: "auto", containIntrinsicSize: `${Math.round(effWidth)}px ${Math.round(row.height)}px` } as React.CSSProperties}>
               {row.tiles.map(({ item, w, h }) => {
                 const selected = selectedMemIds.has(item.id);
+                // Announce the broad media category so audio/video/document memories
+                // are distinguishable non-visually; append the selected state in
+                // selectMode so screen readers hear it too.
+                const typeName = t(`tileType_${tileCategory(item.type)}`);
+                const baseName = item.title ? `${item.title} — ${typeName}` : typeName;
+                const ariaName = selectMode && selected ? `${baseName} · ${t("tileSelected")}` : baseName;
                 return (
                   <button
                     key={item.id}
                     role="listitem"
-                    aria-label={item.title}
+                    aria-label={ariaName}
+                    aria-pressed={selectMode ? selected : undefined}
                     onClick={() => (selectMode ? onToggleSelect(item.id) : onOpen(item._i))}
                     onContextMenu={selectMode ? (e) => { e.preventDefault(); onToggleSelect(item.id); } : undefined}
                     draggable={!!draggableTiles && !selectMode}
@@ -319,11 +354,14 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                       e.dataTransfer.effectAllowed = "move";
                       onTileDragStart?.(item.id);
                     } : undefined}
-                    onDragEnd={draggableTiles ? () => onTileDragEnd?.() : undefined}
+                    onDragEnd={draggableTiles && !selectMode ? () => onTileDragEnd?.() : undefined}
                     className="il-muro-tile"
                     style={{
                       position: "relative", flex: row.last ? "0 0 auto" : "1 1 auto",
-                      width: `${w}px`, height: `${h}px`, minWidth: 0,
+                      width: `${w}px`, height: `${h}px`,
+                      // touch-target floor on mobile: tall/narrow tiles never render below 2.75rem
+                      minWidth: isMobile ? "2.75rem" : 0,
+                      minHeight: isMobile ? "2.75rem" : undefined,
                       padding: 0, border: "none", borderRadius: 0, overflow: "hidden",
                       background: `linear-gradient(135deg, hsl(${item.hue ?? 32},${item.s ?? 30}%,${item.l ?? 78}%), hsl(${((item.hue ?? 32) + 20) % 360},${Math.max((item.s ?? 30) - 5, 15)}%,${Math.max((item.l ?? 78) - 10, 40)}%))`,
                       cursor: "pointer",
@@ -331,16 +369,22 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                     }}
                   >
                     <span style={{ display: "block", width: "100%", height: "100%", opacity: selected ? 0.82 : 1, transition: "opacity 0.15s ease" }}>
-                      <TileMedia mem={item as Mem} iconSize={h > 130 ? 22 : 16} onMeasured={onMeasured} />
+                      <TileMedia mem={item as Mem} iconSize={h > 130 ? 22 : 16} iconColor={EMBER_GLYPH} onMeasured={onMeasured} />
                     </span>
                     {!selected && tileAccent && tileAccent(item.id) ? (
                       <span aria-hidden="true" style={{ position: "absolute", left: "0.3rem", bottom: "0.3rem", width: "0.4rem", height: "0.4rem", borderRadius: "50%", background: tileAccent(item.id) as string, boxShadow: "0 0 0 0.09375rem rgba(252,250,245,0.85)" }} />
                     ) : null}
-                    {selected && (
-                      <span aria-hidden="true" style={{ position: "absolute", top: "0.375rem", right: "0.375rem", width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: EMBER, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={CREAM} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                      </span>
-                    )}
+                    {selected && (() => {
+                      // Scale the badge from the packed tile height so the mark keeps
+                      // consistent visual weight across small and large tiles.
+                      const badge = Math.max(1, Math.min(1.5, h / 90));
+                      const inset = badge * 0.3;
+                      return (
+                        <span aria-hidden="true" style={{ position: "absolute", top: `${inset}rem`, right: `${inset}rem`, width: `${badge}rem`, height: `${badge}rem`, borderRadius: "50%", background: EMBER, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg width={Math.round(badge * 14)} height={Math.round(badge * 14)} viewBox="0 0 24 24" fill="none" stroke={CREAM} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        </span>
+                      );
+                    })()}
                   </button>
                 );
               })}
@@ -351,7 +395,12 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
       <style>{`
         .il-muro-tile { transition: filter 0.15s ease; }
         @media (hover: hover) { .il-muro-tile:hover { filter: brightness(1.06); } }
-        .il-muro-tile:focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: -0.1875rem; }
+        .il-muro-tile:focus-visible {
+          outline: 0.1875rem solid ${GOLD};
+          outline-offset: -0.1875rem;
+          /* second inset contrast ring so the gold focus reads on light AND dark tiles */
+          box-shadow: inset 0 0 0 0.0625rem rgba(64,59,54,0.55);
+        }
         @media (prefers-reduced-motion: reduce) { .il-muro-tile { transition: none; } }
       `}</style>
     </div>

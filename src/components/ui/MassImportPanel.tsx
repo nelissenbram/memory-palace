@@ -32,6 +32,77 @@ const DISPLAY_TYPES: [string, string, string][] = [
 
 const TYPE_ICONS: Record<string, string> = Object.fromEntries(DISPLAY_TYPES.map(([k, v]) => [k, v]));
 
+/* ═══ Tuscan line-art icons (terracotta glyph #9A4F2A) — matches ImportHub ═══ */
+// Atrium accent split: EMBER #B85C38 = interactive (buttons/active borders/CTAs),
+// GLYPH #9A4F2A = at-rest terracotta (line-art strokes, quiet labels). Keep them
+// distinct so the two oranges never drift into one another's role.
+const MI_GLYPH = "#9A4F2A"; // Atrium token: terracotta glyph (at-rest)
+
+const BoxGlyph = ({ size = 22, color = "#FCFAF5" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5v-9z" />
+    <path d="M3 7.5L12 12l9-4.5M12 12v9" />
+  </svg>
+);
+
+const DownloadGlyph = ({ size = 36, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 6v18M12 18l8 8 8-8" />
+    <path d="M6 30v2a2 2 0 002 2h24a2 2 0 002-2v-2" />
+  </svg>
+);
+
+const SparkGlyph = ({ size = 36, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 5l3 9 9 3-9 3-3 9-3-9-9-3 9-3 3-9z" />
+  </svg>
+);
+
+const ArrowRightGlyph = ({ size = 16, color = "#FCFAF5" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 12h15M13 6l6 6-6 6" />
+  </svg>
+);
+
+const CheckCircleGlyph = ({ size = 48, color = "#56683C" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="24" cy="24" r="19" />
+    <path d="M15 24l6 6 12-13" />
+  </svg>
+);
+
+const ColumnsGlyph = ({ size = 16, color = "#FCFAF5" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 21V9l4-4 4 4v12M12 21V11l4-4 4 4v10M2 21h20" />
+  </svg>
+);
+
+const ClipboardGlyph = ({ size = 24, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="6" y="4" width="12" height="17" rx="2" />
+    <rect x="9" y="2.5" width="6" height="3" rx="1" />
+    <path d="M9 11h6M9 15h4" />
+  </svg>
+);
+
+const FolderGlyph = ({ size = 16, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+  </svg>
+);
+
+const CloudGlyph = ({ size = 16, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 18h10a4 4 0 000-8 5 5 0 00-9.5-1.2A3.5 3.5 0 007 18z" />
+  </svg>
+);
+
+const CloseGlyph = ({ size = 18, color = "currentColor" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <path d="M5 5l10 10M15 5L5 15" />
+  </svg>
+);
+
 function formatBytes(b: number): string {
   if (b < 1024) return b + " B";
   if (b < 1024 * 1024) return (b / 1024).toFixed(1) + " KB";
@@ -200,8 +271,10 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
       }
     } else {
       // Manual mode or no API key — all go to ready, all need review
+      // (needsReview:true so the default Review tab shows every processed item;
+      // otherwise the manual pipeline lands on an empty Review tab).
       for (const item of readyItems) {
-        store.updateItem(item.localId, { status: "ready", needsReview: false });
+        store.updateItem(item.localId, { status: "ready", needsReview: true });
       }
     }
 
@@ -267,7 +340,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
   const totalSize = items.reduce((n, i) => n + i.fileSizeBytes, 0);
 
   return (
-    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)", zIndex: 60, animation: "fadeIn .2s ease", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(64,59,54,0.55)", backdropFilter: "blur(10px)", zIndex: 60, animation: "fadeIn .2s ease", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <style>{`@media(prefers-reduced-motion:reduce){[style*="fadeIn"],[style*="fadeUp"]{animation:none!important}[style*="transition"]{transition:none!important}}
 [role="dialog"] :is(select,input,textarea,button,[role="button"]):focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}`}</style>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
@@ -290,7 +363,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-              <div style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", background: "linear-gradient(135deg, #B85C38, #9A4F2A)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.375rem" }}>{"\u{1F4E6}"}</div>
+              <div style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", background: "linear-gradient(135deg, #B85C38, #9A4F2A)", display: "flex", alignItems: "center", justifyContent: "center" }}><BoxGlyph size={22} color="#FCFAF5" /></div>
               <div>
                 <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#403B36", margin: 0 }}>{t("heading")}</h3>
                 <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: "0.125rem 0 0" }}>
@@ -302,7 +375,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 </p>
               </div>
             </div>
-            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem", border: "0.0625rem solid #E3D6BC", background: T.color.warmStone, color: "#716A5E", fontSize: "0.9375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem", border: "0.0625rem solid #E3D6BC", background: T.color.warmStone, color: "#716A5E", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><CloseGlyph size={16} /></button>
           </div>
 
           {/* Source toggle: Local / Cloud */}
@@ -315,7 +388,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: !showCloud ? 600 : 500, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem",
               }}>
-                {"\u{1F4C1}"} {t("localFiles")}
+                <FolderGlyph size={16} color={!showCloud ? "#403B36" : "#716A5E"} /> {t("localFiles")}
               </button>
               <button role="tab" aria-selected={showCloud} onClick={() => setShowCloud(true)} style={{
                 flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
@@ -324,7 +397,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: showCloud ? 600 : 500, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem",
               }}>
-                {"\u2601\uFE0F"} {t("importFromCloud")}
+                <CloudGlyph size={16} color={showCloud ? "#403B36" : "#716A5E"} /> {t("importFromCloud")}
               </button>
             </div>
           )}
@@ -379,7 +452,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 background: mode === "ai" ? "#FBF2EC" : T.color.white, // Atrium token: terracotta tray
                 cursor: "pointer", textAlign: "left",
               }}>
-                <div style={{ fontSize: "1.5rem", marginBottom: "0.375rem" }}>{"\u2728"}</div>
+                <div style={{ marginBottom: "0.375rem" }}><SparkGlyph size={24} color={mode === "ai" ? "#9A4F2A" : "#716A5E"} /></div>
                 <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: mode === "ai" ? "#9A4F2A" : "#403B36" }}>{t("aiAssisted")}</div>
                 <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: "#716A5E", lineHeight: 1.4, marginTop: "0.25rem" }}>{t("aiAssistedDesc")}</div>
               </button>
@@ -389,7 +462,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 background: mode === "manual" ? "#FBF2EC" : T.color.white, // Atrium token: terracotta tray
                 cursor: "pointer", textAlign: "left",
               }}>
-                <div style={{ fontSize: "1.5rem", marginBottom: "0.375rem" }}>{"\u{1F4CB}"}</div>
+                <div style={{ marginBottom: "0.375rem" }}><ClipboardGlyph size={24} color={mode === "manual" ? "#9A4F2A" : "#716A5E"} /></div>
                 <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: mode === "manual" ? "#9A4F2A" : "#403B36" }}>{t("manual")}</div>
                 <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: "#716A5E", lineHeight: 1.4, marginTop: "0.25rem" }}>{t("manualDesc")}</div>
               </button>
@@ -402,7 +475,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                   {mode === "manual" ? t("targetWing") : t("defaultWingAi")}
                 </label>
                 <select value={targetWingId || ""} onChange={(e) => store.setTarget(e.target.value || null, null)}
-                  style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36", cursor: "pointer" }}>
+                  style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
                   <option value="">{t("selectWing")}</option>
                   {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
                 </select>
@@ -413,7 +486,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 </label>
                 <select value={targetRoomId || ""} onChange={(e) => store.setTarget(targetWingId, e.target.value || null)}
                   disabled={!targetWingId}
-                  style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "0.0625rem solid #E3D6BC", background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: !targetWingId ? "#716A5E" : "#403B36", cursor: targetWingId ? "pointer" : "not-allowed" }}>
+                  style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "0.0625rem solid #E3D6BC", background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: !targetWingId ? "#716A5E" : "#403B36", cursor: targetWingId ? "pointer" : "not-allowed" }}>
                   <option value="">{t("selectRoom")}</option>
                   {targetWingId && getWingRooms(targetWingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
                 </select>
@@ -437,7 +510,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 marginBottom: "1rem", transition: "all .2s",
               }}
             >
-              <div style={{ fontSize: "2.25rem", marginBottom: "0.375rem" }}>{dragOver ? "\u2728" : "\u{1F4E5}"}</div>
+              <div style={{ marginBottom: "0.375rem", display: "flex", justifyContent: "center" }}>{dragOver ? <SparkGlyph size={36} color="#B85C38" /> : <DownloadGlyph size={36} />}</div>
               <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", margin: 0, fontWeight: 500 }}>
                 {items.length > 0 ? t("dropMoreOrBrowse") : t("dropOrBrowse")}
               </p>
@@ -492,9 +565,10 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 background: (mode === "manual" && (!targetWingId || !targetRoomId)) ? "#E3D6BC" : "linear-gradient(135deg, #B85C38, #9A4F2A)", // Atrium token: ember→glyph
                 color: (mode === "manual" && (!targetWingId || !targetRoomId)) ? "#716A5E" : "#FCFAF5",
                 fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, cursor: (mode === "manual" && (!targetWingId || !targetRoomId)) ? "default" : "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
               }}
             >
-              {mode === "ai" ? t("processWithAi", { count: String(items.length) }) : t("processFiles", { count: String(items.length) })} {"\u{1F680}"}
+              {mode === "ai" ? t("processWithAi", { count: String(items.length) }) : t("processFiles", { count: String(items.length) })} <ArrowRightGlyph size={16} color={(mode === "manual" && (!targetWingId || !targetRoomId)) ? "#716A5E" : "#FCFAF5"} />
             </button>}
           </>}
 
@@ -505,8 +579,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <span>{t("processingFiles")}</span>
                 <span>{progress.processed}/{progress.total}</span>
               </div>
-              <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.total ? Math.round((progress.processed / progress.total) * 100) : 0} aria-label={t("processingFiles")} style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: "#E3D6BC", overflow: "hidden" }}>
-                <div style={{ width: `${progress.total ? (progress.processed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: "0.25rem", background: "linear-gradient(90deg, #B85C38, #9A4F2A)", transition: "width .3s" }} />
+              <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.total ? Math.round(((progress.processed + progress.errors) / progress.total) * 100) : 0} aria-label={t("processingFiles")} style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: "#E3D6BC", overflow: "hidden" }}>
+                <div style={{ width: `${progress.total ? ((progress.processed + progress.errors) / progress.total) * 100 : 0}%`, height: "100%", borderRadius: "0.25rem", background: "linear-gradient(90deg, #B85C38, #9A4F2A)", transition: "width .3s" }} />
               </div>
             </div>
             <div style={{ maxHeight: "25rem", overflowY: "auto" }}>
@@ -567,8 +641,9 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 width: "100%", padding: "0.875rem", borderRadius: "0.75rem", border: "none", marginTop: "1rem",
                 background: "linear-gradient(135deg, #B85C38, #9A4F2A)",
                 color: "#FCFAF5", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
               }}>
-                {t("commitMemories", { count: String(items.filter((i) => i.status === "accepted").length) })} {"\u{1F3DB}\uFE0F"}
+                {t("commitMemories", { count: String(items.filter((i) => i.status === "accepted").length) })} <ColumnsGlyph size={16} color="#FCFAF5" />
               </button>
             )}
           </>}
@@ -589,7 +664,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           {/* ════ STEP: DONE ════ */}
           {step === "done" && <>
             <div style={{ textAlign: "center", padding: "2rem 0" }}>
-              <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>{"\u{1F389}"}</div>
+              <div style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "center" }}><CheckCircleGlyph size={48} color="#56683C" /></div>
               <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#403B36", margin: "0 0 0.5rem" }}>{t("importCompleteHeading")}</h3>
               <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED_AA, margin: "0 0 0.25rem" }}>
                 {t("memoriesAdded", { count: String(progress.committed) })}
@@ -674,6 +749,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
   getWingRooms: (wingId: string) => Array<{ id: string; name: string; icon: string }>;
 }) {
   const store = useImportStore();
+  const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const { t } = useTranslation("massImport");
 
@@ -751,7 +827,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
             <div>
               <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("type")}</label>
               <select value={item.confirmed.type} onChange={(e) => store.updateConfirmed(item.localId, { type: e.target.value })}
-                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36", cursor: "pointer" }}>
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
                 {DISPLAY_TYPES.map(([v, icon, labelKey]) => <option key={v} value={v}>{icon} {t(labelKey)}</option>)}
               </select>
             </div>
@@ -761,7 +837,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
                 const rooms = getWingRooms(e.target.value);
                 store.updateConfirmed(item.localId, { wingId: e.target.value, roomId: rooms[0]?.id || "" });
               }}
-                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36", cursor: "pointer" }}>
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
                 <option value="">—</option>
                 {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
               </select>
@@ -770,7 +846,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
               <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("room")}</label>
               <select value={item.confirmed.roomId} onChange={(e) => store.updateConfirmed(item.localId, { roomId: e.target.value })}
                 disabled={!item.confirmed.wingId}
-                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: !item.confirmed.wingId ? "#716A5E" : "#403B36", cursor: item.confirmed.wingId ? "pointer" : "not-allowed" }}>
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: !item.confirmed.wingId ? "#716A5E" : "#403B36", cursor: item.confirmed.wingId ? "pointer" : "not-allowed" }}>
                 <option value="">—</option>
                 {item.confirmed.wingId && getWingRooms(item.confirmed.wingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
               </select>

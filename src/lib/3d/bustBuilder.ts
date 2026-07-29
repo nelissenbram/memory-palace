@@ -670,11 +670,17 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
  *
  * Returns a data URL of the cropped face image (square, 512x512).
  */
+/** Stable key identifying the calibration outcome, for translation in the UI layer. */
+export type FaceCalibrationKey = "faceDetected" | "imageTooSmall" | "noFaceCenterCropped";
+
 export async function detectAndCropFace(
   img: HTMLImageElement,
 ): Promise<{
   croppedUrl: string;
   detected: boolean;
+  /** Translation key (preferred). Translate via t() in the component. */
+  messageKey: FaceCalibrationKey;
+  /** English fallback prose (legacy callers). */
   message: string;
 }> {
   const outputSize = 512;
@@ -732,6 +738,7 @@ export async function detectAndCropFace(
     return {
       croppedUrl: canvas.toDataURL("image/jpeg", 0.9),
       detected: true,
+      messageKey: "faceDetected",
       message: "Face detected and calibrated!",
     };
   }
@@ -747,6 +754,7 @@ export async function detectAndCropFace(
     return {
       croppedUrl: canvas.toDataURL("image/jpeg", 0.9),
       detected: false,
+      messageKey: "imageTooSmall",
       message: "Image is too small. Please use a higher resolution photo.",
     };
   }
@@ -754,6 +762,7 @@ export async function detectAndCropFace(
   return {
     croppedUrl: canvas.toDataURL("image/jpeg", 0.9),
     detected: false,
+    messageKey: "noFaceCenterCropped",
     message: "Could not auto-detect face. The photo will be center-cropped. For best results, use a clear portrait photo.",
   };
 }

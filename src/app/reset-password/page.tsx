@@ -6,12 +6,27 @@ import { updatePassword } from "@/lib/auth/actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
+import { useIsCompact } from "@/lib/hooks/useIsMobile";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 
 export default function ResetPasswordPage() {
   const { t } = useTranslation("resetPassword");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
+  const isCompact = useIsCompact();
+  const isPortrait = useIsPortrait();
+
+  // Tighten the card on small viewports; ease heading down in short landscape.
+  const cardStyleResponsive: React.CSSProperties = {
+    ...cardStyle,
+    padding: isCompact ? "1.5rem 1.25rem" : cardStyle.padding,
+    margin: isCompact ? "1rem" : cardStyle.margin,
+  };
+  const titleStyleResponsive: React.CSSProperties = {
+    ...titleStyle,
+    fontSize: !isPortrait && isCompact ? "1.375rem" : titleStyle.fontSize,
+  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -50,9 +65,24 @@ export default function ResetPasswordPage() {
   if (hasSession === null) {
     return (
       <div className="mp-scroll" style={wrapperStyle}>
-        <main style={cardStyle}>
-          <div style={{ textAlign: "center", padding: "2rem 0" }}>
-            <div style={spinnerStyle} />
+        <main style={cardStyleResponsive}>
+          <div role="status" aria-live="polite" style={{ textAlign: "center", padding: "2rem 0" }}>
+            <div style={spinnerStyle} aria-hidden="true" />
+            <span
+              style={{
+                position: "absolute",
+                width: "1px",
+                height: "1px",
+                padding: 0,
+                margin: "-1px",
+                overflow: "hidden",
+                clip: "rect(0 0 0 0)",
+                whiteSpace: "nowrap",
+                border: 0,
+              }}
+            >
+              {t("loading")}
+            </span>
           </div>
         </main>
       </div>
@@ -63,7 +93,7 @@ export default function ResetPasswordPage() {
   if (!hasSession) {
     return (
       <div className="mp-scroll" style={wrapperStyle}>
-        <main style={cardStyle}>
+        <main style={cardStyleResponsive}>
           <div style={{ textAlign: "center" }}>
             <div style={iconContainerStyle}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -72,7 +102,7 @@ export default function ResetPasswordPage() {
                 <line x1="9" y1="9" x2="15" y2="15"/>
               </svg>
             </div>
-            <h1 style={titleStyle}>{t("title")}</h1>
+            <h1 style={titleStyleResponsive}>{t("title")}</h1>
             <p style={{ fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6, marginTop: "0.75rem" }}>
               {t("noSession")}
             </p>
@@ -87,7 +117,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="mp-scroll" style={wrapperStyle}>
-      <main style={cardStyle}>
+      <main style={cardStyleResponsive}>
         <form onSubmit={handleSubmit}>
           <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
             <div style={iconContainerStyle}>
@@ -97,7 +127,7 @@ export default function ResetPasswordPage() {
                 <circle cx="12" cy="16" r="1"/>
               </svg>
             </div>
-            <h1 style={titleStyle}>{t("title")}</h1>
+            <h1 style={titleStyleResponsive}>{t("title")}</h1>
             <p style={{ fontSize: "0.875rem", color: T.color.muted, marginTop: "0.375rem" }}>
               {t("subtitle")}
             </p>
@@ -149,7 +179,19 @@ export default function ResetPasswordPage() {
           </button>
 
           <p style={{ textAlign: "center", fontSize: "0.8125rem", color: T.color.muted, marginTop: "1.25rem", marginBottom: 0 }}>
-            <Link href="/login" style={{ color: T.color.terracotta, textDecoration: "none", fontWeight: 600 }}>
+            <Link
+              href="/forgot-password"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: T.touch,
+                padding: "0.5rem 0.75rem",
+                color: T.color.terracotta,
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
               {t("requestNewLink")}
             </Link>
           </p>
@@ -165,7 +207,7 @@ const wrapperStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
-  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+  fontFamily: T.font.body,
   position: "relative",
   overflowX: "hidden",
   overflowY: "auto",

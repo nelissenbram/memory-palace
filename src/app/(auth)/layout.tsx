@@ -51,8 +51,8 @@ export default async function AuthLayout({
         alignItems: "center",
         justifyContent: "center",
         background:
-          "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
-        fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+          "linear-gradient(165deg, #FCFAF5 0%, #F2EDE4 50%, #E5DDD0 100%)",
+        fontFamily: "'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif",
         position: "relative",
         overflowX: "hidden",
         overflowY: "auto",
@@ -92,16 +92,16 @@ export default async function AuthLayout({
         id="main-content"
         style={{
           width: "100%",
-          maxWidth: 440,
-          padding: "40px 36px",
-          background: "rgba(250,250,247,0.85)",
+          maxWidth: "27.5rem",
+          padding: "2.5rem 2.25rem",
+          background: "rgba(252,250,245,0.85)",
           backdropFilter: "blur(20px)",
-          borderRadius: 20,
-          border: "1px solid #EEEAE3",
-          boxShadow: "0 8px 32px rgba(44,44,42,0.12)",
+          borderRadius: "1.25rem",
+          border: "1px solid #E3D6BC",
+          boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
           position: "relative",
           zIndex: 1,
-          margin: "20px",
+          margin: "1.25rem",
         }}
       >
         {children}

@@ -292,12 +292,12 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
 
   const bookColors = [
     { fill: T.color.terracotta, opacity: 0.5 },
-    { fill: T.color.walnut, opacity: 0.45 },
+    { fill: T.color.gold, opacity: 0.45 },
     { fill: T.color.sage, opacity: 0.4 },
     { fill: T.color.gold, opacity: 0.35 },
     { fill: T.color.sandstone, opacity: 0.45 },
     { fill: T.color.terracotta, opacity: 0.4 },
-    { fill: T.color.walnut, opacity: 0.5 },
+    { fill: T.color.gold, opacity: 0.5 },
     { fill: T.color.sage, opacity: 0.35 },
   ];
 
@@ -332,9 +332,9 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
           <stop offset="100%" stopColor={T.color.terracotta} stopOpacity="0.3" />
         </radialGradient>
         <linearGradient id="shelfGrad" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor={T.color.walnut} stopOpacity="0.25" />
-          <stop offset="50%" stopColor={T.color.walnut} stopOpacity="0.4" />
-          <stop offset="100%" stopColor={T.color.walnut} stopOpacity="0.25" />
+          <stop offset="0%" stopColor={T.color.gold} stopOpacity="0.25" />
+          <stop offset="50%" stopColor={T.color.gold} stopOpacity="0.4" />
+          <stop offset="100%" stopColor={T.color.gold} stopOpacity="0.25" />
         </linearGradient>
       </defs>
 
@@ -349,16 +349,16 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
 
       {/* ── Bookshelf frame ── */}
       {/* Left upright */}
-      <rect x="20" y="15" width="4" height="150" fill={T.color.walnut} opacity="0.3" rx="1" />
+      <rect x="20" y="15" width="4" height="150" fill={T.color.gold} opacity="0.3" rx="1" />
       {/* Right upright */}
-      <rect x="200" y="15" width="4" height="150" fill={T.color.walnut} opacity="0.3" rx="1" />
+      <rect x="200" y="15" width="4" height="150" fill={T.color.gold} opacity="0.3" rx="1" />
 
       {/* Shelf planks — 3 shelves */}
       {[55, 100, 145].map((y) => (
         <rect key={`shelf-${y}`} x="18" y={y} width="190" height="3" fill="url(#shelfGrad)" rx="0.5" />
       ))}
       {/* Top decorative molding */}
-      <rect x="16" y="13" width="194" height="3" fill={T.color.walnut} opacity="0.35" rx="1" />
+      <rect x="16" y="13" width="194" height="3" fill={T.color.gold} opacity="0.35" rx="1" />
 
       {/* ── Top shelf books ── */}
       {[
@@ -384,7 +384,7 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
             fill={book.color.fill}
             opacity={book.color.opacity}
             rx="1"
-            stroke={T.color.walnut}
+            stroke={T.color.gold}
             strokeWidth="0.3"
             strokeOpacity="0.2"
           />
@@ -437,7 +437,7 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
             fill={book.color.fill}
             opacity={book.color.opacity}
             rx="1"
-            stroke={T.color.walnut}
+            stroke={T.color.gold}
             strokeWidth="0.3"
             strokeOpacity="0.2"
           />
@@ -467,7 +467,7 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
       <rect
         x="170" y="67" width="10" height="33"
         fill={T.color.terracotta} opacity="0.35" rx="1"
-        stroke={T.color.walnut} strokeWidth="0.3" strokeOpacity="0.2"
+        stroke={T.color.gold} strokeWidth="0.3" strokeOpacity="0.2"
         transform="rotate(8, 175, 100)"
       />
 
@@ -476,8 +476,8 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
       <ellipse cx="196" cy="92" rx="5" ry="1.5" fill="none" stroke={T.color.gold} strokeWidth="0.3" opacity="0.18" />
       <ellipse cx="196" cy="92" rx="1.5" ry="5" fill="none" stroke={T.color.gold} strokeWidth="0.3" opacity="0.15" />
       {/* Globe stand */}
-      <line x1="196" y1="97" x2="196" y2="100" stroke={T.color.walnut} strokeWidth="0.5" opacity="0.25" />
-      <line x1="193" y1="100" x2="199" y2="100" stroke={T.color.walnut} strokeWidth="0.5" opacity="0.25" />
+      <line x1="196" y1="97" x2="196" y2="100" stroke={T.color.gold} strokeWidth="0.5" opacity="0.25" />
+      <line x1="193" y1="100" x2="199" y2="100" stroke={T.color.gold} strokeWidth="0.5" opacity="0.25" />
 
       {/* ── Bottom shelf — fewer books, a leaning one ── */}
       {[
@@ -497,7 +497,7 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
             fill={book.color.fill}
             opacity={book.color.opacity}
             rx="1"
-            stroke={T.color.walnut}
+            stroke={T.color.gold}
             strokeWidth="0.3"
             strokeOpacity="0.2"
           />
@@ -507,20 +507,20 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
       <rect
         x="116" y="110" width="12" height="35"
         fill={T.color.terracotta} opacity="0.4" rx="1"
-        stroke={T.color.walnut} strokeWidth="0.3" strokeOpacity="0.2"
+        stroke={T.color.gold} strokeWidth="0.3" strokeOpacity="0.2"
         transform="rotate(-15, 122, 145)"
       />
 
       {/* ── Small cat curled up near bottom shelf ── */}
       {/* Body curve */}
-      <path d="M 140,155 Q 144,148 150,149 Q 155,150 154,155" fill="none" stroke={T.color.walnut} strokeWidth="0.6" opacity="0.18" />
+      <path d="M 140,155 Q 144,148 150,149 Q 155,150 154,155" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.18" />
       {/* Head */}
-      <ellipse cx="151" cy="151" rx="2.5" ry="2" fill="none" stroke={T.color.walnut} strokeWidth="0.5" opacity="0.18" />
+      <ellipse cx="151" cy="151" rx="2.5" ry="2" fill="none" stroke={T.color.gold} strokeWidth="0.5" opacity="0.18" />
       {/* Ears */}
-      <path d="M 149.5,149.5 L 149,148 L 150,149" fill="none" stroke={T.color.walnut} strokeWidth="0.4" opacity="0.15" />
-      <path d="M 152,149.5 L 152.5,148 L 153,149" fill="none" stroke={T.color.walnut} strokeWidth="0.4" opacity="0.15" />
+      <path d="M 149.5,149.5 L 149,148 L 150,149" fill="none" stroke={T.color.gold} strokeWidth="0.4" opacity="0.15" />
+      <path d="M 152,149.5 L 152.5,148 L 153,149" fill="none" stroke={T.color.gold} strokeWidth="0.4" opacity="0.15" />
       {/* Tail */}
-      <path d="M 140,155 Q 136,153 135,150" fill="none" stroke={T.color.walnut} strokeWidth="0.5" opacity="0.15" />
+      <path d="M 140,155 Q 136,153 135,150" fill="none" stroke={T.color.gold} strokeWidth="0.5" opacity="0.15" />
 
       {/* ── Open book in foreground ── */}
       {/* Left page */}
@@ -528,7 +528,7 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
         d="M 135,168 Q 135,140 160,138 L 160,168 Z"
         fill={T.color.cream}
         opacity="0.6"
-        stroke={T.color.walnut}
+        stroke={T.color.gold}
         strokeWidth="0.5"
         strokeOpacity="0.3"
       />
@@ -537,12 +537,12 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
         d="M 185,168 Q 185,140 160,138 L 160,168 Z"
         fill={T.color.linen}
         opacity="0.6"
-        stroke={T.color.walnut}
+        stroke={T.color.gold}
         strokeWidth="0.5"
         strokeOpacity="0.3"
       />
       {/* Spine */}
-      <line x1="160" y1="138" x2="160" y2="168" stroke={T.color.walnut} strokeWidth="0.6" opacity="0.4" />
+      <line x1="160" y1="138" x2="160" y2="168" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" />
       {/* Text lines on left page */}
       {[147, 150, 153, 156, 159, 162].map((y) => (
         <line key={`tl-${y}`} x1="140" y1={y} x2={152 + (y % 3) * 2} y2={y} stroke={T.color.muted} strokeWidth="0.4" opacity="0.3" />
@@ -554,42 +554,42 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
 
       {/* ── Scattered papers / letters near the open book ── */}
       {/* Paper 1 — slightly rotated */}
-      <rect x="120" y="162" width="10" height="7" fill={T.color.cream} opacity="0.35" rx="0.5" stroke={T.color.walnut} strokeWidth="0.2" strokeOpacity="0.15" transform="rotate(-8, 125, 165)" />
+      <rect x="120" y="162" width="10" height="7" fill={T.color.cream} opacity="0.35" rx="0.5" stroke={T.color.gold} strokeWidth="0.2" strokeOpacity="0.15" transform="rotate(-8, 125, 165)" />
       <line x1="122" y1="164" x2="128" y2="164" stroke={T.color.muted} strokeWidth="0.25" opacity="0.15" />
       <line x1="122" y1="166" x2="127" y2="166" stroke={T.color.muted} strokeWidth="0.25" opacity="0.12" />
       {/* Paper 2 */}
-      <rect x="188" y="163" width="9" height="6" fill={T.color.linen} opacity="0.3" rx="0.5" stroke={T.color.walnut} strokeWidth="0.2" strokeOpacity="0.12" transform="rotate(12, 192, 166)" />
+      <rect x="188" y="163" width="9" height="6" fill={T.color.linen} opacity="0.3" rx="0.5" stroke={T.color.gold} strokeWidth="0.2" strokeOpacity="0.12" transform="rotate(12, 192, 166)" />
       <line x1="190" y1="165" x2="195" y2="165" stroke={T.color.muted} strokeWidth="0.25" opacity="0.12" />
       {/* Paper 3 — folded letter */}
-      <rect x="130" y="166" width="7" height="5" fill={T.color.cream} opacity="0.25" rx="0.3" stroke={T.color.walnut} strokeWidth="0.2" strokeOpacity="0.1" transform="rotate(5, 133, 168)" />
+      <rect x="130" y="166" width="7" height="5" fill={T.color.cream} opacity="0.25" rx="0.3" stroke={T.color.gold} strokeWidth="0.2" strokeOpacity="0.1" transform="rotate(5, 133, 168)" />
 
       {/* ── Reading figure silhouette ── */}
       {/* Chair back */}
-      <path d="M 270,145 L 270,130 Q 272,128 275,128 L 278,128 Q 280,128 282,130 L 282,145" fill="none" stroke={T.color.walnut} strokeWidth="0.6" opacity="0.2" />
+      <path d="M 270,145 L 270,130 Q 272,128 275,128 L 278,128 Q 280,128 282,130 L 282,145" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.2" />
       {/* Chair seat */}
-      <line x1="268" y1="145" x2="284" y2="145" stroke={T.color.walnut} strokeWidth="0.6" opacity="0.2" />
+      <line x1="268" y1="145" x2="284" y2="145" stroke={T.color.gold} strokeWidth="0.6" opacity="0.2" />
       {/* Chair legs */}
-      <line x1="269" y1="145" x2="267" y2="155" stroke={T.color.walnut} strokeWidth="0.5" opacity="0.18" />
-      <line x1="283" y1="145" x2="285" y2="155" stroke={T.color.walnut} strokeWidth="0.5" opacity="0.18" />
+      <line x1="269" y1="145" x2="267" y2="155" stroke={T.color.gold} strokeWidth="0.5" opacity="0.18" />
+      <line x1="283" y1="145" x2="285" y2="155" stroke={T.color.gold} strokeWidth="0.5" opacity="0.18" />
       {/* Person — torso */}
-      <line x1="276" y1="135" x2="276" y2="145" stroke={T.color.walnut} strokeWidth="0.7" opacity="0.2" />
+      <line x1="276" y1="135" x2="276" y2="145" stroke={T.color.gold} strokeWidth="0.7" opacity="0.2" />
       {/* Head */}
-      <circle cx="276" cy="132.5" r="2.5" fill="none" stroke={T.color.walnut} strokeWidth="0.6" opacity="0.2" />
+      <circle cx="276" cy="132.5" r="2.5" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.2" />
       {/* Arms holding book */}
-      <line x1="273" y1="138" x2="270" y2="142" stroke={T.color.walnut} strokeWidth="0.5" opacity="0.18" />
-      <line x1="279" y1="138" x2="282" y2="142" stroke={T.color.walnut} strokeWidth="0.5" opacity="0.18" />
+      <line x1="273" y1="138" x2="270" y2="142" stroke={T.color.gold} strokeWidth="0.5" opacity="0.18" />
+      <line x1="279" y1="138" x2="282" y2="142" stroke={T.color.gold} strokeWidth="0.5" opacity="0.18" />
       {/* Small open book in hands */}
-      <path d="M 270,142 L 276,140 L 282,142" fill="none" stroke={T.color.walnut} strokeWidth="0.4" opacity="0.18" />
+      <path d="M 270,142 L 276,140 L 282,142" fill="none" stroke={T.color.gold} strokeWidth="0.4" opacity="0.18" />
 
       {/* ── Candle ── */}
       {/* Candlestick holder */}
-      <rect x="241" y="110" width="8" height="40" fill={T.color.walnut} opacity="0.35" rx="1" />
-      <rect x="238" y="148" width="14" height="4" fill={T.color.walnut} opacity="0.35" rx="1" />
-      <rect x="236" y="152" width="18" height="3" fill={T.color.walnut} opacity="0.3" rx="1.5" />
+      <rect x="241" y="110" width="8" height="40" fill={T.color.gold} opacity="0.35" rx="1" />
+      <rect x="238" y="148" width="14" height="4" fill={T.color.gold} opacity="0.35" rx="1" />
+      <rect x="236" y="152" width="18" height="3" fill={T.color.gold} opacity="0.3" rx="1.5" />
       {/* Candle body */}
       <rect x="242" y="75" width="6" height="36" fill={T.color.cream} opacity="0.5" rx="1" />
       {/* Wick */}
-      <line x1="245" y1="75" x2="245" y2="70" stroke={T.color.charcoal} strokeWidth="0.5" opacity="0.4" />
+      <line x1="245" y1="75" x2="245" y2="70" stroke={T.color.gold} strokeWidth="0.5" opacity="0.4" />
       {/* Warm halo effect — amber outer ring */}
       <ellipse cx="245" cy="62" rx="12" ry="14" fill="none" stroke="#FFD699" strokeWidth="0.5" opacity={candleGlow * 0.3}>
         <animate attributeName="opacity" values={`${candleGlow * 0.3};${candleGlow * 0.45};${candleGlow * 0.3}`} dur="2.5s" repeatCount="indefinite" />
@@ -620,8 +620,8 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
 
       {/* ── A second, smaller candle on the desk (tealight by the scroll) ── */}
       <rect x="219.5" y="128" width="5" height="10" fill={T.color.cream} opacity="0.5" rx="1" />
-      <ellipse cx="222" cy="138.5" rx="4" ry="1.4" fill={T.color.walnut} opacity="0.3" />
-      <line x1="222" y1="128" x2="222" y2="125.5" stroke={T.color.charcoal} strokeWidth="0.4" opacity="0.4" />
+      <ellipse cx="222" cy="138.5" rx="4" ry="1.4" fill={T.color.gold} opacity="0.3" />
+      <line x1="222" y1="128" x2="222" y2="125.5" stroke={T.color.gold} strokeWidth="0.4" opacity="0.4" />
       <ellipse cx="222" cy="124" rx="5" ry="6" fill="#FFEEBB" opacity={candleGlow * 0.15}>
         <animate attributeName="opacity" values={`${candleGlow * 0.15};${candleGlow * 0.26};${candleGlow * 0.15}`} dur="2.3s" repeatCount="indefinite" />
       </ellipse>

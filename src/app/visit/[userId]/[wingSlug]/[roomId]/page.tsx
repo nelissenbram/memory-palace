@@ -24,7 +24,9 @@ export default async function RoomVisitPage({ params }: Props) {
     .single();
   if (!wing) notFound();
 
-  // Get the room
+  // Get the room. Visibility model (consistent with getPublishedRooms): if the
+  // wing is published, ALL of its rooms are public by design, so there is no
+  // per-room published_at gate here — the wing gate above is the sole check.
   const { data: room } = await admin
     .from("rooms")
     .select("id, name, icon, cover_hue, wing_id, user_id")
@@ -43,10 +45,13 @@ export default async function RoomVisitPage({ params }: Props) {
   const {
     data: { user: currentUser },
   } = await userClient.auth.getUser();
-  recordVisit({ ownerId: userId, wingId: wing.id, roomId }).catch(() => {});
+  // Await so the visit is reliably recorded before the response is sent
+  // (recordVisit already dedups and self-suppresses its own errors).
+  await recordVisit({ ownerId: userId, wingId: wing.id, roomId }).catch(() => {});
 
   return (
     <RoomVisitClient
+      userId={userId}
       room={{
         id: room.id,
         name: room.name,

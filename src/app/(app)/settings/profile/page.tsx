@@ -148,6 +148,9 @@ export default function ProfilePage() {
       username !== profile.username ||
       whatsappPhone !== profile.whatsapp_phone);
 
+  // Server rejects usernames under 3 chars — mirror that inline so Save can't fail silently.
+  const usernameTooShort = username.length > 0 && username.length < 3;
+
   const handleSave = async () => {
     setSaving(true);
     const result = await updateProfile({
@@ -225,21 +228,57 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div style={{
-        padding: "3rem", textAlign: "center",
-        fontFamily: T.font.body, fontSize: "0.9375rem" /* Atrium body */, color: "#716A5E" /* Atrium muted */,
+        background: T.color.white,
+        borderRadius: "1rem",
+        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        padding: "3rem 2rem",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 */
+        textAlign: "center",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "0.875rem",
       }}>
-        {t("loadingProfile")}
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9A4F2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }} aria-hidden="true">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */ }}>
+          {t("loadingProfile")}
+        </span>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div style={{
-        padding: "3rem", textAlign: "center",
-        fontFamily: T.font.body, fontSize: "0.9375rem" /* Atrium body */, color: "#716A5E" /* Atrium muted */,
+      <div role="alert" style={{
+        background: T.color.white,
+        borderRadius: "1rem",
+        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        padding: "3rem 2rem",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 */
+        textAlign: "center",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "0.875rem",
       }}>
-        {loading ? "..." : t("profileLoadError")}
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C05050" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+        </svg>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */ }}>
+          {t("profileLoadError")}
+        </span>
+        <button
+          className="mp-settings-btn"
+          onClick={() => window.location.reload()}
+          style={{
+            minHeight: "2.75rem",
+            padding: "0.625rem 1.5rem",
+            borderRadius: "0.75rem",
+            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+            background: "transparent",
+            color: "#B85C38" /* Atrium ember (actionable) */,
+            fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {tf("retry", "Try again")}
+        </button>
       </div>
     );
   }
@@ -292,6 +331,7 @@ export default function ProfilePage() {
           {/* Clickable avatar with upload overlay */}
           <div style={{ position: "relative", flexShrink: 0 }}>
             <button
+              className="mp-settings-btn"
               onClick={() => avatarInputRef.current?.click()}
               aria-label={t("changeProfilePhoto")}
               disabled={avatarUploading}
@@ -367,13 +407,16 @@ export default function ProfilePage() {
               {profile.email}
             </div>
             <button
+              className="mp-settings-btn"
               onClick={() => avatarInputRef.current?.click()}
               disabled={avatarUploading}
               style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                color: "#9A4F2A" /* Atrium terracotta glyph */, background: "none",
-                border: "none", padding: "0.25rem 0", cursor: avatarUploading ? "wait" : "pointer",
-                marginTop: "0.25rem", opacity: avatarUploading ? 0.6 : 1,
+                color: "#B85C38" /* Atrium ember (actionable link) */, background: "none",
+                border: "none", padding: "0 0.5rem", minHeight: "2.75rem",
+                display: "inline-flex", alignItems: "center",
+                cursor: avatarUploading ? "wait" : "pointer",
+                marginTop: "0.25rem", marginLeft: "-0.5rem", opacity: avatarUploading ? 0.6 : 1,
               }}
             >
               {avatarUploading ? t("uploadingPhoto") : t("changeProfilePhoto")}
@@ -440,6 +483,14 @@ export default function ProfilePage() {
             }}>
               {t("usernameHelp")}
             </p>
+            {usernameTooShort && (
+              <p role="alert" style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#C05050" /* Atrium error */,
+                margin: "0.375rem 0 0", lineHeight: 1.4,
+              }}>
+                {tf("usernameTooShort", "Username must be at least 3 characters.")}
+              </p>
+            )}
             {/* Public-profile link (change 18 — the shareable URL, first time on mobile) */}
             {profile.username && (
               <div style={{
@@ -449,7 +500,7 @@ export default function ProfilePage() {
                 marginTop: "0.625rem",
                 padding: "0.625rem 1rem",
                 borderRadius: "0.75rem",
-                background: "#FCFAF5" /* Atrium panel */,
+                background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
               }}>
                 <span style={{
@@ -520,7 +571,7 @@ export default function ProfilePage() {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: "#FCFAF5" /* Atrium panel */,
+            background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
@@ -538,10 +589,16 @@ export default function ProfilePage() {
               </div>
             </div>
             <button
+              className="mp-settings-btn"
               role="switch"
               aria-checked={isPublic}
-              disabled={isPublicSaving}
+              disabled={isPublicSaving || (!isPublic && !profile.username)}
               onClick={async () => {
+                // Can't publish a profile that has no username to share.
+                if (!isPublic && !profile.username) {
+                  showToast(tf("usernameRequiredForPublic", "Choose a username before making your profile public"), "error");
+                  return;
+                }
                 const newVal = !isPublic;
                 setIsPublicSaving(true);
                 setIsPublic(newVal);
@@ -561,11 +618,11 @@ export default function ProfilePage() {
                 borderRadius: "0.875rem",
                 border: "none",
                 background: isPublic ? "#B85C38" /* Atrium ember = active */ : "#E3D6BC" /* Atrium off track */,
-                cursor: isPublicSaving ? "wait" : "pointer",
+                cursor: isPublicSaving ? "wait" : (!isPublic && !profile.username ? "not-allowed" : "pointer"),
                 position: "relative",
                 transition: "background .2s",
                 flexShrink: 0,
-                opacity: isPublicSaving ? 0.6 : 1,
+                opacity: isPublicSaving || (!isPublic && !profile.username) ? 0.6 : 1,
               }}
             >
               <span style={{
@@ -601,6 +658,7 @@ export default function ProfilePage() {
                 return (
                 <button
                   key={era}
+                  className="mp-settings-btn"
                   aria-pressed={styleEra === era && !isComingSoon}
                   onClick={async () => {
                     if (isComingSoon) return;
@@ -611,7 +669,7 @@ export default function ProfilePage() {
                   style={{
                     padding: "0.875rem 1rem",
                     borderRadius: "0.75rem",
-                    border: `0.125rem solid ${styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : "#E3D6BC"}`, /* Atrium hairline */
+                    border: `0.125rem solid ${styleEra === era && !isComingSoon ? "#B85C38" /* Atrium ember (active), matching roman pill grammar */ : "#E3D6BC"}`, /* Atrium hairline */
                     background: styleEra === era && !isComingSoon ? "#F6EBE3" /* Atrium terracotta tray, pre-mixed */ : "#FCFAF5" /* Atrium panel */,
                     cursor: isComingSoon ? "default" : "pointer",
                     opacity: isComingSoon ? 0.55 : 1,
@@ -620,7 +678,7 @@ export default function ProfilePage() {
                     fontFamily: T.font.body,
                     fontSize: "0.9375rem",
                     fontWeight: styleEra === era && !isComingSoon ? 600 : 500,
-                    color: styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : "#403B36" /* Atrium ink */,
+                    color: styleEra === era && !isComingSoon ? "#B85C38" /* Atrium ember (active) */ : "#403B36" /* Atrium ink */,
                   }}
                 >
                   <div style={{ fontWeight: 600, marginBottom: "0.125rem" }}>
@@ -643,7 +701,7 @@ export default function ProfilePage() {
               display: "flex", alignItems: "center", justifyContent: "space-between",
               gap: "0.75rem", minHeight: "2.75rem",
               padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-              background: "#FCFAF5" /* Atrium panel */,
+              background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
               border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
             }}>
               <span style={{
@@ -654,11 +712,12 @@ export default function ProfilePage() {
                 {personaType ? tPersona(`${personaType}Label`) : t("noPersonaYet")}
               </span>
               <button
-                onClick={() => { router.push("/atrium"); }}
+                className="mp-settings-btn"
+                onClick={() => { router.push("/atrium?persona=1"); }}
                 style={{
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                  color: "#9A4F2A" /* Atrium terracotta glyph */, background: "none",
-                  border: "0.0625rem solid rgba(154,79,42,0.35)",
+                  color: "#B85C38" /* Atrium ember (actionable) */, background: "none",
+                  border: "0.0625rem solid rgba(184,92,56,0.35)",
                   borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
                   minHeight: "2.75rem",
                   cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
@@ -673,22 +732,23 @@ export default function ProfilePage() {
         {/* Save button */}
         <div style={{ marginTop: "1.75rem", display: "flex", gap: "0.75rem" }}>
           <button
+            className="mp-settings-btn"
             onClick={handleSave}
-            disabled={!hasChanges || saving}
+            disabled={!hasChanges || saving || !!usernameTooShort}
             style={{
               padding: "0.875rem 2rem",
               minHeight: "2.75rem",
               borderRadius: "0.75rem",
               border: "none",
               background:
-                !hasChanges || saving
+                !hasChanges || saving || usernameTooShort
                   ? "#EEE9DF" /* Atrium pre-mixed: sandstone 37% on cream */
                   : "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium ember → glyph */,
-              color: !hasChanges || saving ? "#716A5E" /* Atrium muted */ : "#FFF",
+              color: !hasChanges || saving || usernameTooShort ? "#716A5E" /* Atrium muted */ : "#FFF",
               fontFamily: T.font.body,
               fontSize: "0.9375rem",
               fontWeight: 600,
-              cursor: !hasChanges || saving ? "default" : "pointer",
+              cursor: !hasChanges || saving || usernameTooShort ? "default" : "pointer",
               transition: "all .2s",
             }}
           >
@@ -696,10 +756,12 @@ export default function ProfilePage() {
           </button>
           {hasChanges && (
             <button
+              className="mp-settings-btn"
               onClick={() => {
                 setDisplayName(profile.display_name);
                 setBio(profile.bio);
                 setUsername(profile.username);
+                setWhatsappPhone(profile.whatsapp_phone);
               }}
               style={{
                 padding: "0.875rem 1.5rem",
@@ -795,7 +857,7 @@ export default function ProfilePage() {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: "#FCFAF5" /* Atrium panel */,
+            background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
@@ -813,6 +875,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <button
+              className="mp-settings-btn"
               role="switch"
               aria-checked={aiConsent}
               disabled={aiSaving}
@@ -873,7 +936,15 @@ export default function ProfilePage() {
           {locales.map((l) => (
             <button
               key={l}
-              onClick={() => setLocale(l)}
+              className="mp-settings-btn"
+              onClick={() => {
+                if (locale === l) return;
+                // Language switch reloads the page; warn before dropping unsaved profile edits.
+                if (hasChanges && !window.confirm(tf("unsavedEditsWarning", "You have unsaved changes that will be lost. Switch language anyway?"))) {
+                  return;
+                }
+                setLocale(l);
+              }}
               aria-pressed={locale === l}
               style={{
                 padding: "0.875rem 1.5rem",
@@ -930,6 +1001,7 @@ export default function ProfilePage() {
             return (
               <button
                 key={level}
+                className="mp-settings-btn"
                 role="radio"
                 aria-checked={isSelected}
                 onClick={() => {
@@ -1003,7 +1075,7 @@ export default function ProfilePage() {
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-          background: "#FCFAF5" /* Atrium panel */,
+          background: "#F6EBE3" /* Atrium tray — recessed below the white card */,
           border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           marginBottom: daylightEnabled ? "0.75rem" : 0,
         }}>
@@ -1022,6 +1094,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <button
+            className="mp-settings-btn"
             role="switch"
             aria-checked={daylightEnabled}
             onClick={toggleDaylight}
@@ -1070,6 +1143,7 @@ export default function ProfilePage() {
                     {formatDaylightHour(displayHour)} — {daylightPeriodLabel(displayHour, tc)}
                   </span>
                   <button
+                    className="mp-settings-btn"
                     aria-pressed={isAuto}
                     onClick={() => isAuto ? setCustomHour(displayHour) : setDaylightMode("auto")}
                     style={{
@@ -1098,6 +1172,7 @@ export default function ProfilePage() {
                   aria-label={tc("daylightSlider")}
                   style={{
                     width: "100%",
+                    minHeight: "2.75rem", /* touch target >=2.75rem (canon) */
                     accentColor: "#B85C38", /* Atrium ember */
                     cursor: "pointer",
                   }}
@@ -1161,7 +1236,7 @@ export default function ProfilePage() {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @media (prefers-reduced-motion: reduce) { [role="status"], [role="alert"], svg, .mp-avatar-overlay, button, input, span { animation: none !important; transition: none !important; } }
+        @media (prefers-reduced-motion: reduce) { [role="status"], [role="alert"], .mp-avatar-overlay svg { animation: none !important; } }
         button:hover .mp-avatar-overlay { opacity: 1 !important; }
         ${settingsFocusStyle}
       `}</style>
@@ -1188,16 +1263,17 @@ const inputStyle: React.CSSProperties = {
   border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: "0.9375rem",
+  fontSize: "1rem", /* >=16px so iOS Safari never zooms-on-focus (canon: inputs >=1rem) */
   color: "#403B36" /* Atrium ink */,
   outline: "none",
   boxSizing: "border-box" as const,
   transition: "border-color .2s, box-shadow .2s",
 };
 
-/* ── Global focus-visible ring for settings inputs ── */
+/* ── Global focus-visible ring for settings inputs + interactive buttons ── */
 const settingsFocusStyle = `
-  .mp-settings-input:focus-visible {
+  .mp-settings-input:focus-visible,
+  .mp-settings-btn:focus-visible {
     outline: 0.1875rem solid #D4AF37; /* Atrium gold focus ring */
     outline-offset: 0.1875rem;
   }

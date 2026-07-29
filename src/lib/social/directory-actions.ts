@@ -13,7 +13,6 @@ export interface DirectoryPalace {
   total_visit_count: number;
   category: string | null;
   featured_at: string | null;
-  first_wing_slug: string | null;
 }
 
 export interface FollowingPalace extends DirectoryPalace {
@@ -179,7 +178,6 @@ async function enrichPalaces(
         total_visit_count: visitCounts.get(p.id) || 0,
         category: e.category || null,
         featured_at: e.featured_at || null,
-        first_wing_slug: slug,
         latest_published_at: e.latest_published_at || null,
       };
     })

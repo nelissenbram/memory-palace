@@ -19,11 +19,13 @@ export default function Loading() {
             <div style={{ width: "8rem", height: "1.5rem", borderRadius: "0.375rem", background: shimmer, animation: pulse }} />
           </div>
 
-          {/* Profile card skeleton */}
+          {/* Profile card skeleton — matches TuscanCard: glass bg, gold top seam, warm-ink shadow */}
           <div style={{
             padding: "1.5rem", borderRadius: "1rem",
-            background: T.color.cream,
-            boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+            background: `${T.color.ivory}CC`,
+            borderTop: `2px solid ${T.color.gold}`,
+            border: `1px solid ${T.color.lineFaint}`,
+            boxShadow: "0 2px 12px rgba(64,59,54,0.06)",
           }}>
             <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
               <div style={{ width: "4.5rem", height: "4.5rem", borderRadius: "50%", background: shimmer, animation: pulse, flexShrink: 0 }} />
@@ -48,11 +50,23 @@ export default function Loading() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16rem, 1fr))", gap: "0.875rem" }}>
               {[1, 2, 3].map((i) => (
                 <div key={i} style={{
-                  height: "8rem", borderRadius: "0.75rem",
-                  background: T.color.cream,
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                  animation: pulse,
-                }} />
+                  borderRadius: "1rem",
+                  overflow: "hidden",
+                  background: `${T.color.ivory}CC`,
+                  border: `1px solid ${T.color.lineFaint}`,
+                  boxShadow: "0 1px 4px rgba(64,59,54,0.04)",
+                }}>
+                  {/* Arch-header block */}
+                  <div style={{
+                    height: "3.5rem",
+                    background: `linear-gradient(135deg, ${T.color.gold}20, ${T.color.terracotta}10)`,
+                    animation: pulse,
+                  }} />
+                  <div style={{ padding: "1.125rem" }}>
+                    <div style={{ width: "60%", height: "1.125rem", borderRadius: "0.375rem", background: shimmer, animation: pulse, marginBottom: "0.75rem" }} />
+                    <div style={{ width: "40%", height: "0.75rem", borderRadius: "0.375rem", background: shimmer, animation: pulse }} />
+                  </div>
+                </div>
               ))}
             </div>
           </div>

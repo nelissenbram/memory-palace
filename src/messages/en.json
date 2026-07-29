@@ -86,7 +86,11 @@
     "errorBoundaryRetry": "Try again",
     "a11yBackToHome": "Back to home",
     "a11ySwitchLanguage": "Switch language",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "mfaDigit": "Digit {n} of {total}",
+    "restoreLoading": "Connecting to the App Store… please try again in a moment.",
+    "expand": "Expand",
+    "collapse": "Collapse"
   },
   "settingsTour": {
     "help": "Help",
@@ -182,7 +186,8 @@
     "sendResetLink": "Send Reset Link",
     "backToSignIn": "Back to sign in",
     "checkEmail": "Check your email",
-    "resetLinkSent": "If an account exists with that email, we've sent a password reset link."
+    "resetLinkSent": "If an account exists with that email, we've sent a password reset link.",
+    "tryDifferentEmail": "Try a different email"
   },
   "resetPassword": {
     "title": "Set New Password",
@@ -199,7 +204,8 @@
     "successMessage": "Your password has been changed successfully.",
     "goToPalace": "Go to your Palace",
     "noSession": "This link has expired or is invalid. Please request a new reset link.",
-    "requestNewLink": "Request new link"
+    "requestNewLink": "Request new link",
+    "loading": "Loading..."
   },
   "onboarding": {
     "welcomeTitle": "Welcome to",
@@ -298,7 +304,12 @@
     "styleConfirmAside": "Marble atriums, colonnaded gardens — we'll build it around you.",
     "styleConfirmReversible": "You can change this anytime.",
     "firstMemoryHint": "Place your first memory here — a photo, a name, anything.",
-    "welcomeToPalace": "Welcome to your Memory Palace"
+    "welcomeToPalace": "Welcome to your Memory Palace",
+    "uploadFailed": "We couldn't save your memory. Please try again.",
+    "stepOf": "Step {current} of {total}",
+    "paywallTerms": "Terms",
+    "paywallPrivacy": "Privacy",
+    "paywallAutoRenew": "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings."
   },
   "palace": {
     "uploadMemory": "Upload Memory",
@@ -395,7 +406,9 @@
     "ariaWings": "Wings",
     "ariaRooms": "Rooms",
     "ariaAvControls": "AV controls",
-    "ariaEditCorridorPaintings": "Edit corridor paintings"
+    "ariaEditCorridorPaintings": "Edit corridor paintings",
+    "upgradeNow": "Upgrade",
+    "onboardingFinishError": "Something went wrong finishing setup — please try again."
   },
   "settings": {
     "navDescProfile": "Your name, photo and public page",
@@ -542,7 +555,23 @@
     "wingToggleError": "Could not update wing. Please try again.",
     "sectionPublished": "Public palace",
     "sectionVisitingCodes": "Visiting codes",
-    "sectionFamilyAccess": "Family access"
+    "sectionFamilyAccess": "Family access",
+    "meStatsVisits": "Visits",
+    "meAvatarAlt": "Portrait of {name}",
+    "loading": "Loading…",
+    "loadError": "Could not load your sharing settings. Please try again.",
+    "publishError": "Some changes could not be saved. Please try again.",
+    "sectionYourDetails": "Your details",
+    "sectionAccountData": "Account & data",
+    "sectionPreferences": "Preferences",
+    "usernameRequiredForPublic": "Choose a username before making your profile public",
+    "unsavedEditsWarning": "You have unsaved changes that will be lost. Switch language anyway?",
+    "usernameTooShort": "Username must be at least 3 characters.",
+    "retry": "Try again",
+    "exportZipCapped": "Export complete. {count} photo(s) were left out to stay within your selected limit.",
+    "exportScanError": "We couldn't prepare your export. Please check your connection and try again.",
+    "exportScanAuthError": "Your session has expired. Please sign in again to export your data.",
+    "exportRetry": "Try again"
   },
   "notifications": {
     "title": "Alerts",
@@ -609,7 +638,9 @@
     "testSampleReminder": "A quiet nudge: the Library has been patient. Want to add a story?",
     "testSampleSystem": "A new feature has arrived in your palace. Explore the Atrium.",
     "testResultLocal": "Added 8 locally",
-    "testResultServerError": "Added 8 locally (server error: {error})"
+    "testResultServerError": "Added 8 locally (server error: {error})",
+    "saveRateLimited": "You're changing settings too quickly. Please wait a moment and try again.",
+    "savePushReenable": "Couldn't save this alert. Turn Push Alerts off and on again to reconnect this device."
   },
   "subscription": {
     "title": "Subscription",
@@ -692,7 +723,13 @@
     "restoreSuccess": "Previous purchases restored successfully.",
     "restoreFailed": "No previous purchases found to restore.",
     "sectionAllPlans": "All plans",
-    "sectionReferFriend": "Refer a friend"
+    "sectionReferFriend": "Refer a friend",
+    "copy": "Copy",
+    "copyLink": "Copy link",
+    "manageOrCancel": "Manage or Cancel Subscription",
+    "inviteFriends": "Invite Friends",
+    "loadError": "We couldn't load your subscription. Please try again.",
+    "retry": "Retry"
   },
   "cancelFlow": {
     "whyLeaving": "Before you go...",
@@ -760,7 +797,9 @@
     "appleImportButton": "Import from Photos",
     "appleImporting": "Importing… ({count} done)",
     "appleImportSuccess": "{count} photos imported successfully!",
-    "sourcesOverline": "Photo & file sources"
+    "sourcesOverline": "Photo & file sources",
+    "cloudUnavailableNative": "Connecting external cloud photo services isn't available in the app. You can still add photos and videos directly from your device.",
+    "connectionFailedProvider": "Couldn't connect {provider}. Please try again."
   },
   "familySettings": {
     "manageWingSharing": "Manage who sees your wings",
@@ -1031,7 +1070,9 @@
     "unsavedChangesTitle": "Unsaved changes",
     "unsavedChangesBody": "You have unsaved changes. Switch tabs anyway?",
     "addFirstContact": "+ Add your first contact",
-    "emptyBodyWarning": "Your message has no body text — is that intentional?"
+    "emptyBodyWarning": "Your message has no body text — is that intentional?",
+    "statusNotConfigured": "Not configured",
+    "statusNotConfiguredHint": " — set an inactivity period and a trusted verifier below to activate your legacy plan."
   },
   "mfa": {
     "loading": "Loading security settings...",
@@ -1520,7 +1561,8 @@
     "digestWordsWritten": "words written across all your memories",
     "digestWordsNovel": "That's a whole novel of stories!",
     "digestWordsEssay": "Enough to fill a book of essays!",
-    "digestWordsGrowing": "Your story collection is growing beautifully."
+    "digestWordsGrowing": "Your story collection is growing beautifully.",
+    "emptyTitle": "No insights yet"
   },
   "walkthrough": {
     "phase0": "Welcome to your Memory Palace, {name}. Click the entrance to step inside.",
@@ -1889,7 +1931,11 @@
     "optionalEnrichments": "Optional: Add life events and sources for richer records",
     "datePrefixCirca": "c.",
     "datePrefixBefore": "bef.",
-    "datePrefixAfter": "aft."
+    "datePrefixAfter": "aft.",
+    "shareLoading": "Preparing your share link…",
+    "viewModeLabel": "Tree view mode",
+    "sharedTreeEmptyTitle": "This tree is empty",
+    "sharedTreeEmpty": "There are no people in this family tree yet."
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1926,7 +1972,9 @@
     "trustSsl": "Encrypted at Rest & in Transit",
     "trustGdpr": "GDPR Compliant",
     "trustGuarantee": "Free plan — no credit card needed",
-    "currency": "Currency"
+    "currency": "Currency",
+    "subscriptionActivated": "Subscription activated!",
+    "billingInterval": "Billing interval"
   },
   "cookieConsent": {
     "message": "We use cookies to keep you signed in and remember your preferences.",
@@ -2074,7 +2122,15 @@
     "resume": "Resume",
     "pause": "Pause",
     "stopRecording": "Stop recording",
-    "recorderError": "There was a problem with the microphone. Please check your permissions and try again."
+    "recorderError": "There was a problem with the microphone. Please check your permissions and try again.",
+    "interviewQuotaReached": "Interview quota reached",
+    "interviewsRemaining": "interviews remaining",
+    "nextInterviewDate": "Next interview available {date}",
+    "upgradeForUnlimited": "Upgrade for unlimited interviews",
+    "noAnswersYet": "You haven't shared any answers yet, so there's no story to save. Record or type at least one answer to weave your story.",
+    "leaveTitle": "Leave this interview?",
+    "leaveCancel": "Keep going",
+    "leaveConfirmBtn": "Leave"
   },
   "sharingPanel": {
     "publicLinkCreated": "Public link created!",
@@ -2116,7 +2172,11 @@
     "privacyInfo": "Your wing is always private. Only this specific room can be shared. Invited people see room contents but cannot access other wings or rooms.",
     "accepted": "Accepted",
     "declined": "Declined",
-    "pending": "Pending"
+    "pending": "Pending",
+    "enablePublicLinkFirst": "Turn on the public link first to share this way.",
+    "noCollaboratorsForDownload": "Invite someone first before setting download permissions.",
+    "downloadPermissionFailed": "Could not update the download setting. Please try again.",
+    "shareViaQR": "Share via QR code"
   },
   "bustBuilder": {
     "failedToProcess": "Failed to process photo. Please try another image.",
@@ -2162,7 +2222,11 @@
     "altCroppedFace": "Cropped face",
     "altSculpting": "Sculpting",
     "maleShort": "M",
-    "femaleShort": "F"
+    "femaleShort": "F",
+    "faceDetected": "Face detected and calibrated!",
+    "imageTooSmall": "Image is too small. Please use a higher resolution photo.",
+    "noFaceCenterCropped": "Could not auto-detect face. The photo will be center-cropped. For best results, use a clear portrait photo.",
+    "savedLocallyWillSync": "Saved locally — will sync when back online."
   },
   "uploadPanel": {
     "fileTooLarge": "File is too large ({size} MB). Maximum allowed size for {type} is {max}.",
@@ -2430,7 +2494,9 @@
     "accessFullDesc": "Access to your entire palace",
     "accessWings": "Selected Wings",
     "accessWingsDesc": "Access only to specific wings",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "removeConfirmTitle": "Remove this contact?",
+    "removeConfirmBody": "{name} will no longer be able to receive access to your palace. You can add them again at any time."
   },
   "roomGallery": {
     "gallery": "Gallery",
@@ -2663,7 +2729,8 @@
     "stepCompleted": "Step completed!",
     "trackComplete": "Track Complete!",
     "youEarnedBonus": "You earned a bonus of",
-    "tapToContinue": "Tap anywhere to continue"
+    "tapToContinue": "Tap anywhere to continue",
+    "dueToday": "Due today"
   },
   "trackDetail": {
     "of": "of",
@@ -2768,7 +2835,8 @@
     "newWingPlaceholder": "Wing name...",
     "wingLimit": "{current} of {max} wings",
     "deleteWing": "Delete this wing",
-    "deleteConfirm": "Delete this wing and all its rooms? This cannot be undone."
+    "deleteConfirm": "Delete this wing and all its rooms? This cannot be undone.",
+    "maxWingsReached": "Maximum of {max} wings reached"
   },
   "featureSpotlight": {
     "importTitle": "Import Your Photos",
@@ -2804,7 +2872,8 @@
     "allWings": "All Wings",
     "thisWing": "This Wing",
     "noPhotos": "No photo memories found. Add photos to your rooms or upload an image.",
-    "hint": "Photos assigned here will appear as paintings in the corridor. Click a painting in-scene to enter its room."
+    "hint": "Photos assigned here will appear as paintings in the corridor. Click a painting in-scene to enter its room.",
+    "filterSource": "Filter photo source"
   },
   "roomMedia": {
     "title": "Room Media",
@@ -2905,7 +2974,8 @@
     "moveTo": "Move to...",
     "currentRoom": "Current room",
     "memoryMoved": "Memory moved successfully",
-    "ariaOpenRoomMedia": "Open room media"
+    "ariaOpenRoomMedia": "Open room media",
+    "importFailed": "Import failed. Please try again."
   },
   "memoryMap": {
     "title": "Memory Map",
@@ -2989,7 +3059,9 @@
     "mobileHint": "Left side: move · Right side: look · Tap memories to view",
     "move": "Move",
     "look": "Look",
-    "gotIt": "Got it"
+    "gotIt": "Got it",
+    "corridorHint": "Drag to look around · Tap a door to enter",
+    "roomHint": "Joystick to move · Drag to look · Tap memories to view"
   },
   "tutorial": {
     "skip": "Skip",
@@ -3058,7 +3130,8 @@
     "typeOrbs": "Orbs",
     "typeVitrines": "Vitrines",
     "typeAudio": "Audio",
-    "typeDocs": "Docs"
+    "typeDocs": "Docs",
+    "clearFilter": "Clear search and filters"
   },
   "statusBar": {
     "achievements": "Achievements",
@@ -3195,7 +3268,8 @@
     "shareButton": "Share",
     "shareText": "I just earned the {name} badge in The Memory Palace!",
     "copiedToClipboard": "Copied to clipboard!",
-    "close": "Close"
+    "close": "Close",
+    "shareFailed": "Couldn't share. Please try again."
   },
   "directoryPanel": {
     "title": "Directory",
@@ -3222,7 +3296,9 @@
     "shareTextRoom": "{icon} {name} — {count} memories in The Memory Palace",
     "shareTextDefault": "The Memory Palace",
     "brandName": "The Memory Palace",
-    "brandWatermark": "The Memory Palace"
+    "brandWatermark": "The Memory Palace",
+    "email": "Email",
+    "shareVia": "Share via {{platform}}"
   },
   "sharedWithMe": {
     "title": "Shared with me",
@@ -3236,7 +3312,10 @@
     "memories": "{count} memories",
     "permView": "view",
     "permContribute": "contribute",
-    "sharedBy": "Shared by {name}"
+    "sharedBy": "Shared by {name}",
+    "loadError": "Couldn't load your shared rooms.",
+    "retry": "Try again",
+    "emptyWing": "No rooms in this wing yet"
   },
   "inviteNotifications": {
     "title": "Invitations",
@@ -3500,7 +3579,8 @@
     "dStep2Body": "Click the golden medallion at the bottom-right to add your own photos and media to the corridor paintings.",
     "skip": "Skip",
     "next": "Next",
-    "done": "Got it"
+    "done": "Got it",
+    "stepXofY": "Step {current} of {total}"
   },
   "entranceHallTour": {
     "stepTitle": "Manual navigation",
@@ -3511,7 +3591,8 @@
     "dStep2Body": "Use the breadcrumb bar above to jump directly to any wing or room without walking there.",
     "skip": "Skip",
     "next": "Next",
-    "done": "Got it"
+    "done": "Got it",
+    "stepXofY": "Step {current} of {total}"
   },
   "palaceTour": {
     "step1Title": "Navigate from the top",
@@ -3526,7 +3607,8 @@
     "dStep2Body": "Click on the Entrance Hall door or any Wing door on the palace to go inside. Use the breadcrumb bar above to jump directly to any wing or room.",
     "skip": "Skip",
     "next": "Next",
-    "done": "Got it"
+    "done": "Got it",
+    "stepXofY": "Step {current} of {total}"
   },
   "entranceHall": {
     "unmute": "Unmute music",
@@ -3669,7 +3751,10 @@
     "cookiePrefTitle": "Cookie Preferences",
     "cookiePrefLabel": "Non-essential cookies",
     "cookiePrefDetail": "Allow non-essential cookies to help us improve your experience. We never use cookies for advertising or tracking across websites.",
-    "cookiePrefToggleLabel": "Toggle non-essential cookies"
+    "cookiePrefToggleLabel": "Toggle non-essential cookies",
+    "sectionSignInAccess": "Sign-in & access",
+    "sectionPrivacyData": "Privacy & your data",
+    "sectionDangerZone": "Danger zone"
   },
   "cookieSettings": {
     "pageTitle": "Cookie Preferences",
@@ -4345,7 +4430,17 @@
     "byRoom": "Rooms",
     "expandSidebar": "Show wings",
     "collapseSidebar": "Hide wings",
-    "allYears": "All years"
+    "allYears": "All years",
+    "importFailedRetry": "Import failed. Your files are still here — please try again.",
+    "jumpToDate": "Jump to date",
+    "jumpTo": "Jump to {label}",
+    "tileType_image": "Photo",
+    "tileType_video": "Video",
+    "tileType_audio": "Audio",
+    "tileType_document": "Document",
+    "tileType_memory": "Memory",
+    "tileSelected": "Selected",
+    "memoryCountOne": "{count} memory"
   },
   "atrium": {
     "goodMorning": "Good morning",
@@ -4626,7 +4721,79 @@
     "relay.q27": "Which photograph means the most to you, and why?",
     "relay.q28": "What sound from the past do you miss?",
     "relay.q29": "Describe a moment you felt truly at peace.",
-    "relay.q30": "What would you tell the person you were twenty years ago?"
+    "relay.q30": "What would you tell the person you were twenty years ago?",
+    "relay": {
+      "wingsCount": "{count} wings",
+      "roomsCount": "{count} rooms",
+      "memoriesCount": "{count} memories",
+      "recordedCount": "{count} recorded",
+      "sharedCount": "{count} shared",
+      "enterPalaceTitle": "Enter Your Palace",
+      "enterPalaceDesc": "Walk through your rooms in 3D",
+      "enterLibraryTitle": "Enter Your Library",
+      "enterLibraryDesc": "Your whole collection",
+      "laneCapture": "Capture",
+      "laneBringToLife": "Bring to life",
+      "laneShare": "Share & pass on",
+      "tilePhotos": "Add Photos",
+      "tilePhotosDesc": "Bring in your pictures",
+      "tileCloud": "Import from Cloud",
+      "tileCloudDesc": "Google Photos, iCloud & more",
+      "tileRestore": "Restore a Photo",
+      "tileRestoreDesc": "Repair an old photo",
+      "tileWrite": "Write a Memory",
+      "tileWriteDesc": "Put it into words",
+      "tileInterviews": "Interviews",
+      "tileInterviewsDesc": "Tell your story aloud",
+      "tileWhatsapp": "Capture by WhatsApp",
+      "tileWhatsappDesc": "Save by message",
+      "tileCapsule": "Time Capsule",
+      "tileCapsuleDesc": "A memory for later",
+      "tileMap": "Memory Map",
+      "tileMapDesc": "Memories placed in the world",
+      "tileTimeline": "Timeline",
+      "tileTimelineDesc": "Your life in time",
+      "tileHighlights": "Highlights",
+      "tileHighlightsDesc": "Patterns in your memories",
+      "tileFamilyTree": "Family Tree",
+      "tileFamilyTreeDesc": "Who's who, across generations",
+      "tileGallery": "Create a Gallery",
+      "tileGalleryDesc": "Curate a set",
+      "tileOrganize": "Tidy Your Rooms",
+      "tileOrganizeDesc": "Organise memories",
+      "tileExplore": "Explore",
+      "tileExploreDesc": "Public palaces to visit",
+      "tileLifeStory": "Life Story",
+      "tileLifeStoryDesc": "Your life, woven into one story",
+      "tileFamilyGroup": "Start a Family Group",
+      "tileFamilyGroupDesc": "Invite your family in",
+      "tileCocreate": "Build Together",
+      "tileCocreateDesc": "Grow the palace as a family",
+      "tileInvite": "Invite Relatives",
+      "tileInviteDesc": "Bring others to your palace",
+      "tilePublish": "Share Publicly",
+      "tilePublishDesc": "Publish to Explore",
+      "tileShared": "Shared with you",
+      "tileSharedDesc": "Wings your family shared",
+      "tileLegacy": "Plan Your Legacy",
+      "tileLegacyDesc": "Decide who inherits",
+      "youJourneys": "Your Journeys",
+      "youMilestones": "Milestones",
+      "youProfile": "Your Profile",
+      "youSettings": "Settings",
+      "youHelp": "Help & Guides",
+      "sgFamilySharedTitle": "Your family shared with you",
+      "sgFamilySharedReason": "See what they added",
+      "sgOnThisDayTitle": "On this day",
+      "sgOnThisDayReason": "A memory from a year gone by",
+      "sgFirstPhotosTitle": "Bring in your first photos",
+      "sgFirstPhotosReason": "The fastest way to fill your palace",
+      "sgContinueTrack": "Continue your {name}",
+      "sgStepsOf": "{done} of {total} steps",
+      "sgRecordTitle": "Record your story",
+      "sgRecordReason": "A few minutes, a lifetime kept",
+      "stripSummary": "{photos} photos · {videos} videos · {stories} stories · {wings} wings"
+    }
   },
   "enhance": {
     "sectionTitle": "Enrich Your Memories",
@@ -4755,7 +4922,14 @@
     "noMemories": "No memories to show yet",
     "brandName": "The Memory Palace",
     "tagline": "A beautiful space to preserve your most precious memories — photos, videos, and stories in a place as unique as your life.",
-    "close": "Close"
+    "close": "Close",
+    "type_photo": "Photo",
+    "type_video": "Video",
+    "type_orb": "Orb",
+    "type_case": "Case",
+    "type_album": "Album",
+    "linkExpired": "This shared link has expired.",
+    "linkTryAgain": "Couldn't load this gallery right now. Please try again in a moment."
   },
   "nudge": {
     "exploreSearch": "Search for palaces by name or username — discover creators from around the world.",
@@ -4945,7 +5119,13 @@
     "waWelcomeForward": "Forward photos, videos, or messages from any chat and I'll help you file them in the right room.",
     "activeRoom": "Active Room",
     "aiRouting": "AI routing",
-    "useAiRouting": "Use AI routing"
+    "useAiRouting": "Use AI routing",
+    "selectAll": "Select all ({count})",
+    "loadError": "Couldn't load your pending captures.",
+    "routePartialError": "Some captures couldn't be routed and are still pending.",
+    "retry": "Try again",
+    "wizardCreateError": "We couldn't create your Kep. Please check your connection and try again.",
+    "wizardStep3DescRouting": "Let AI file each memory into the right room automatically."
   },
   "kepLanding": {
     "title": "Meet Kep",
@@ -5033,7 +5213,19 @@
     "faq3Q": "What happens to my data?",
     "faq3A": "Your memories are stored securely in your private palace. Only you can access them.",
     "faq4Q": "Can I stop at any time?",
-    "faq4A": "Yes, text STOP to Kep and it will immediately stop collecting. Text START to resume."
+    "faq4A": "Yes, text STOP to Kep and it will immediately stop collecting. Text START to resume.",
+    "flowRoomLabel": "Your Room",
+    "commandsAreEnglish": "These commands are typed in English.",
+    "vcardName": "Kep - Memory Palace",
+    "vcardOrg": "The Memory Palace",
+    "vcardNote": "Your personal memory porter on WhatsApp",
+    "flowWhatsapp": "WhatsApp",
+    "flowKep": "Kep",
+    "flowRoom": "Your Room",
+    "cmdExampleKitchen": "Kitchen",
+    "cmdExampleHolidays": "Holidays",
+    "waPrefill": "Hi Kep",
+    "unavailable": "Kep is temporarily unavailable. Please try again later."
   },
   "social": {
     "editProfile": "Edit profile",
@@ -5239,7 +5431,26 @@
     "visitorMode": "Visitor mode",
     "walkThrough3D": "Walk through in 3D",
     "sharingTitle": "Sharing",
-    "sharingSubtitle": "Choose who can see your palace — publish wings, share with family, or hand out temporary visiting codes."
+    "sharingSubtitle": "Choose who can see your palace — publish wings, share with family, or hand out temporary visiting codes.",
+    "exploreFeaturedEmpty": "Nothing featured yet",
+    "exploreNewEmpty": "No new palaces yet",
+    "exploreHomeLink": "The Memory Palace",
+    "passcodeSelectWingSingle": "Select a wing to share",
+    "passcodeCustomInvalid": "Passcode must be {min}–{max} characters.",
+    "passcodeLoadError": "Couldn't load your active passcodes.",
+    "safetyReportError": "Couldn't file your report. Please try again.",
+    "safetyBlockError": "Couldn't block this account. You may need to sign in first.",
+    "passcodeWing": "Wing",
+    "passcodeCreateError": "Could not create a visiting code. Please try again.",
+    "publishFailed": "Some changes could not be saved. Please try again.",
+    "copyFailed": "Copy failed",
+    "palaceOf": "{name}'s Palace",
+    "wingLabelSingular": "wing",
+    "wingsLabel": "wings",
+    "wingLabelSingularCap": "Wing",
+    "wingsLabelCap": "Wings",
+    "guestbookSendError": "Couldn't send your message. Please try again.",
+    "commentFailed": "Failed to post your message."
   },
   "help": {
     "title": "Help Center",
@@ -5288,7 +5499,8 @@
     "footerTerms": "Terms",
     "footerSecurity": "Security",
     "faq9q": "Where do I find things in the app?",
-    "faq9a": "Your Atrium is a concierge board that surfaces what matters and hands you off to each area. Use the bottom or side navigation to reach your Library (the Il Muro photo wall), your 3D Palace, Explore, and Me — your personal identity page. Account options live under Settings."
+    "faq9a": "Your Atrium is a concierge board that surfaces what matters and hands you off to each area. Use the bottom or side navigation to reach your Library (the Il Muro photo wall), your 3D Palace, Explore, and Me — your personal identity page. Account options live under Settings.",
+    "contactAttachTooLarge": "That file is too large. Please choose an attachment under 5 MB."
   },
   "landingV2": {
     "nav": {
@@ -5412,7 +5624,10 @@
       "shot1": "The palace gallery with framed memories",
       "shot2": "A corridor of memory rooms",
       "shot3": "The palace dashboard with wings and rooms",
-      "mapVignette": "Memories pinned on a map"
+      "mapVignette": "Memories pinned on a map",
+      "menu": "Menu",
+      "mainNav": "Main",
+      "language": "Language"
     },
     "usps": {
       "eyebrow": "What you can do",
@@ -5510,7 +5725,8 @@
       "capsuleRole": "Sealed now, opened when you choose",
       "cocreateRole": "Build your palace as a family",
       "sharingRole": "Show a room, or the whole palace",
-      "legacyRole": "Choose who inherits the keys"
+      "legacyRole": "Choose who inherits the keys",
+      "kepScene": "Kep the porter: a family photo sent over chat is saved to your palace and framed in gold."
     },
     "notes": {
       "n1": "your palace, from above",
@@ -5521,5 +5737,29 @@
       "n7": "a library of memories",
       "n8": "little wins, along the way"
     }
+  },
+  "dataDeletion": {
+    "legal": "Legal",
+    "title": "Data Deletion Instructions",
+    "appName": "The Memory Palace",
+    "introPre": "If you want to delete your data from ",
+    "introPost": ", you have the following options:",
+    "option1Title": "Option 1: Delete your account (removes all data)",
+    "option1Step1Pre": "Log in at ",
+    "option1Step2": "Go to Settings → Security",
+    "option1Step3": "Scroll to the bottom and click \"Delete Account\"",
+    "option1Step4": "Confirm deletion — all your data (memories, photos, recordings, family tree, palace) will be permanently removed",
+    "option2Title": "Option 2: Delete WhatsApp Kep data only",
+    "option2Step1Pre": "Send ",
+    "option2Step1Command": "\"STOP\"",
+    "option2Step1Post": " in the WhatsApp conversation to stop data collection",
+    "option2Step2": "Log in and go to Palace → Keps",
+    "option2Step3": "Delete any captures or the entire Kep",
+    "option3Title": "Option 3: Contact us",
+    "option3Pre": "Email ",
+    "option3Post": " and we will delete your data within 30 days.",
+    "footerPre": "See our full ",
+    "footerPrivacyLink": "Privacy Policy",
+    "footerPost": " for details on how we handle your data."
   }
 }

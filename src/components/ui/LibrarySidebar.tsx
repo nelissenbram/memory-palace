@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import type { Wing } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
@@ -9,7 +10,7 @@ import TuscanCard from "./TuscanCard";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
 import { isIOS } from "@/lib/native/platform";
-import { CREAM, HAIRLINE, SHADOW, TOP_HIGHLIGHT, giltRule } from "@/lib/libraryTokens";
+import { CREAM, HAIRLINE, SHADOW, TOP_HIGHLIGHT, giltRule, EMBER } from "@/lib/libraryTokens";
 
 interface LibrarySidebarProps {
   wings: Wing[];
@@ -73,6 +74,13 @@ export default function LibrarySidebar({
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
   const { getWingRooms } = useRoomStore();
+  // The desktop sidebar also renders on iPad portrait (768–1024px), where
+  // useIsMobile() reports desktop but the device is touch-only. Enlarge the
+  // small mouse-first hit boxes (search input font, room rows, ? tooltip,
+  // colour dot/swatches) to the 2.75rem touch minimum whenever the user drives
+  // by touch, so nothing on iPad falls below the touch floor or triggers the
+  // sub-16px iOS zoom-on-focus.
+  const isTouch = useTouchControls();
 
   const [hoveredWing, setHoveredWing] = useState<string | null>(null);
   const [enterHovered, setEnterHovered] = useState(false);
@@ -92,6 +100,14 @@ export default function LibrarySidebar({
     }
     return {};
   });
+
+  // Switching wings closes any transient open-state (colour picker / tooltip)
+  // so they never linger over a different wing after selection.
+  const handleSelectWing = (wingId: string) => {
+    setColorPickerWing(null);
+    setTooltipOpen(false);
+    onSelectWing(wingId);
+  };
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
@@ -169,6 +185,13 @@ export default function LibrarySidebar({
   `;
 
   // ── MOBILE: horizontal scrollable pill strip ──
+  // NOTE: on mobile this component is ONLY the wing switcher. Room selection,
+  // search, sort, shared-with-me, add-wing/room, drag-drop and Enter-Palace are
+  // all delegated to LibraryView's own mobile chrome (Wings bar → Rooms bar →
+  // Search/Sort header + bottom actions), NOT rendered here. The room/search/
+  // drag props (onSelectRoom, sharedWings, dragActive, onDropMemory, etc.) are
+  // therefore intentionally unused in this branch — they exist only for the
+  // desktop tree below. Do not assume tapping a pill drills into rooms here.
   if (isMobile) {
     return (
       <nav
@@ -202,7 +225,7 @@ export default function LibrarySidebar({
           return (
             <button
               key={w.id}
-              onClick={() => onSelectWing(w.id)}
+              onClick={() => handleSelectWing(w.id)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -306,7 +329,7 @@ export default function LibrarySidebar({
         >
           {t("sidebarSubtitle", {
             count: String(totalMemories),
-            wings: String(visibleWings.length),
+            wings: String(wings.length),
           })}
         </p>
 
@@ -344,11 +367,13 @@ export default function LibrarySidebar({
             placeholder={t("sidebarSearchPlaceholder")}
             aria-label={t("sidebarSearchPlaceholder")}
             style={{
-              width: "100%", padding: "0.375rem 0.5rem 0.375rem 1.75rem",
+              width: "100%", padding: isTouch ? "0.6875rem 0.5rem 0.6875rem 1.75rem" : "0.375rem 0.5rem 0.375rem 1.75rem",
               borderRadius: "0.5rem",
               border: `0.0625rem solid ${T.color.cream}`,
               background: "rgba(255,255,255,0.5)",
-              fontFamily: T.font.body, fontSize: "0.75rem",
+              // 1rem on touch prevents iOS zoom-on-focus (canon input floor);
+              // iPad renders this desktop sidebar so it must obey the floor too.
+              fontFamily: T.font.body, fontSize: isTouch ? "1rem" : "0.75rem",
               color: "#403B36", outline: "none",
               boxSizing: "border-box" as const,
               transition: `border-color 0.2s ${EASE_OUT_EXPO}`,
@@ -396,17 +421,20 @@ export default function LibrarySidebar({
         {/* Info tooltip (?) */}
         <div style={{ position: "relative", display: "inline-flex" }}>
           <button
-            onClick={() => setTooltipOpen(!tooltipOpen)}
-            onMouseEnter={() => setTooltipOpen(true)}
-            onMouseLeave={() => setTooltipOpen(false)}
+            onClick={isTouch ? () => setTooltipOpen(o => !o) : undefined}
+            onMouseEnter={isTouch ? undefined : () => setTooltipOpen(true)}
+            onMouseLeave={isTouch ? undefined : () => setTooltipOpen(false)}
             aria-label={t("wingsTooltip")}
+            aria-expanded={tooltipOpen}
             style={{
-              width: "0.875rem", height: "0.875rem", borderRadius: "50%",
-              background: tooltipOpen ? `rgba(184,92,56,0.19)` : `${"#716A5E"}15`,
-              border: `0.0625rem solid rgba(184,92,56,0.27)`,
+              // 2.75rem transparent hit box on touch around the 0.875rem glyph pill.
+              width: isTouch ? "2.75rem" : "0.875rem", height: isTouch ? "2.75rem" : "0.875rem",
+              borderRadius: "50%",
+              background: isTouch ? "transparent" : tooltipOpen ? `rgba(184,92,56,0.19)` : `${"#716A5E"}15`,
+              border: isTouch ? "none" : `0.0625rem solid rgba(184,92,56,0.27)`,
               cursor: "pointer", padding: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
+              fontFamily: T.font.body, fontSize: isTouch ? "0.75rem" : "0.5625rem", fontWeight: 600,
               color: tooltipOpen ? "#B85C38" : "#716A5E",
               transition: `all 0.2s ${EASE_OUT_EXPO}`,
             }}
@@ -476,7 +504,7 @@ export default function LibrarySidebar({
                 is invalid HTML (hydration hazard, invisible to AT). */}
             <div style={{ position: "relative" }}>
             <button
-              onClick={() => onSelectWing(w.id)}
+              onClick={() => handleSelectWing(w.id)}
               onMouseEnter={() => setHoveredWing(w.id)}
               onMouseLeave={() => setHoveredWing(null)}
               onDragOver={dragActive ? (e) => {
@@ -658,11 +686,13 @@ export default function LibrarySidebar({
               title={t("customizeColor")}
               style={{
                 position: "absolute",
-                right: "0.625rem",
+                // On touch, widen the transparent hit box to the 2.75rem floor
+                // while keeping the visual dot pinned to the right edge.
+                right: isTouch ? "0.25rem" : "0.625rem",
                 top: "50%",
-                marginTop: "-0.75rem",
-                width: "1.5rem", height: "1.5rem",
-                display: "flex", alignItems: "center", justifyContent: "center",
+                marginTop: isTouch ? "-1.375rem" : "-0.75rem",
+                width: isTouch ? "2.75rem" : "1.5rem", height: isTouch ? "2.75rem" : "1.5rem",
+                display: "flex", alignItems: "center", justifyContent: isTouch ? "flex-end" : "center",
                 background: "transparent", border: "none",
                 cursor: "pointer", padding: 0, font: "inherit",
                 // While dragging, let dragover events fall through to the row
@@ -689,7 +719,9 @@ export default function LibrarySidebar({
                 display: "flex", gap: "0.25rem", padding: "0.25rem 1rem 0.375rem 3.5rem",
                 animation: mounted ? `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both` : "none",
               }}>
-                {WING_COLOR_SWATCHES.map(color => (
+                {WING_COLOR_SWATCHES.map(color => {
+                  const selected = (wingColors[w.id] || w.accent) === color;
+                  return (
                   <button
                     key={color}
                     onClick={() => {
@@ -699,16 +731,30 @@ export default function LibrarySidebar({
                       setColorPickerWing(null);
                     }}
                     style={{
-                      width: "1.125rem", height: "1.125rem", borderRadius: "50%",
-                      background: color, border: (wingColors[w.id] || w.accent) === color ? `0.125rem solid ${"#403B36"}` : `0.0625rem solid rgba(64,59,54,0.15)`,
+                      // Touch: 2.75rem transparent hit box around the small swatch dot.
+                      width: isTouch ? "2.75rem" : "1.125rem", height: isTouch ? "2.75rem" : "1.125rem",
+                      borderRadius: "50%",
+                      background: isTouch ? "transparent" : color,
+                      border: isTouch ? "none" : selected ? `0.125rem solid ${"#403B36"}` : `0.0625rem solid rgba(64,59,54,0.15)`,
                       cursor: "pointer", padding: 0, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
                       transition: `transform 0.15s ${EASE_OUT_EXPO}`,
                     }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.2)"; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
                     aria-label={t("colorSwatch")}
-                  />
-                ))}
+                  >
+                    {isTouch && (
+                      <span style={{
+                        width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+                        background: color,
+                        border: selected ? `0.125rem solid ${"#403B36"}` : `0.0625rem solid rgba(64,59,54,0.15)`,
+                        display: "block",
+                      }} />
+                    )}
+                  </button>
+                  );
+                })}
               </div>
             )}
 
@@ -760,7 +806,11 @@ export default function LibrarySidebar({
                     } : undefined}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
-                      padding: "0.375rem 0.75rem 0.375rem 2.25rem",
+                      // Touch rows reach the 2.75rem hit floor via vertical padding
+                      // (iPad renders this desktop tree).
+                      padding: isTouch ? "0.75rem 0.75rem 0.75rem 2.25rem" : "0.375rem 0.75rem 0.375rem 2.25rem",
+                      minHeight: isTouch ? "2.75rem" : undefined,
+                      boxSizing: "border-box" as const,
                       borderRadius: "0.5rem",
                       cursor: "pointer",
                       transition: `all 0.2s ${EASE_OUT_EXPO}`,
@@ -993,7 +1043,7 @@ export default function LibrarySidebar({
           }}
         >
           {t("wingsRooms", {
-            wings: String(visibleWings.length),
+            wings: String(wings.length),
             rooms: String(totalRooms),
           })}
         </span>
@@ -1012,7 +1062,7 @@ export default function LibrarySidebar({
             style={{
               height: "100%",
               width: `${Math.min((totalMemories / PLAN_LIMIT) * 100, 100)}%`,
-              background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.terracotta}CC)`,
+              background: `linear-gradient(90deg, ${EMBER}, ${EMBER}CC)`,
               borderRadius: "0.125rem",
               transition: "width 0.4s ease",
             }}
@@ -1145,7 +1195,7 @@ export default function LibrarySidebar({
           <PalaceLogo variant="mark" color="light" size="sm" style={{ width: "1rem", height: "1rem" }} />
           {selectedRoomName
             ? t("enter3DRoom", { room: selectedRoomName })
-            : selectedWingName && selectedWing !== wings[0]?.id
+            : selectedWingName && selectedWing !== "__all__"
               ? t("enter3DWing", { wing: selectedWingName })
               : t("enterPalace")}
         </button>

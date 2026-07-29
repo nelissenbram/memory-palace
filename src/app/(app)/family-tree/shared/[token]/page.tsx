@@ -1,5 +1,8 @@
 import { cookies } from "next/headers";
 import { getSharedTree } from "@/lib/auth/family-tree-actions";
+import { T } from "@/lib/theme";
+import { CREAM, INK, MUTED, EMBER_GLYPH } from "@/lib/libraryTokens";
+import { TreeBranchIcon } from "../../PersonCard";
 import { SharedTreeView } from "./SharedTreeView";
 
 const notFoundTitle: Record<string, string> = {
@@ -37,15 +40,20 @@ export default async function SharedFamilyTreePage({
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          minHeight: "60vh",
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
-          color: "#2C2C2A",
+          minHeight: "100dvh",
+          background: CREAM,
+          fontFamily: T.font.display,
+          color: INK,
           gap: "1rem",
           padding: "2rem",
+          textAlign: "center",
         }}
       >
-        <h1 style={{ fontSize: "1.5rem", margin: 0 }}>{notFoundTitle[locale] || notFoundTitle.en}</h1>
-        <p style={{ color: "#746B60", fontSize: "0.9375rem", fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+        <TreeBranchIcon size={48} color={EMBER_GLYPH} />
+        <h1 style={{ fontSize: "1.5rem", margin: 0, fontWeight: 600, color: INK }}>
+          {notFoundTitle[locale] || notFoundTitle.en}
+        </h1>
+        <p style={{ color: MUTED, fontSize: "0.9375rem", fontFamily: T.font.body, margin: 0, maxWidth: "22rem" }}>
           {notFoundDesc[locale] || notFoundDesc.en}
         </p>
       </div>

@@ -111,7 +111,10 @@ export async function validatePasscode(
 
   if (!normalizedCode) return { ok: false, error: "Passcode is required" };
 
-  const { data: share } = await supabase
+  // Passcodes are not guaranteed globally unique among active shares, so a
+  // collision must not surface as "Invalid passcode". Deterministically take
+  // the most-recent active match instead of failing on multi-row via .single().
+  const { data: shares } = await supabase
     .from("public_shares")
     .select(
       "id, slug, wing_id, room_id, created_by, expires_at, is_active, scope"
@@ -119,8 +122,10 @@ export async function validatePasscode(
     .eq("passcode", normalizedCode)
     .eq("is_active", true)
     .eq("scope", "passcode")
-    .single();
+    .order("created_at", { ascending: false })
+    .limit(1);
 
+  const share = shares?.[0];
   if (!share) return { ok: false, error: "Invalid passcode" };
 
   // Check expiry

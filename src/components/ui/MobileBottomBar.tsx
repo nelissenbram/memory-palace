@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useTutorialStore } from "@/lib/stores/tutorialStore";
 
 /* ═══ Mobile Bottom Action Bar ═══ */
 export interface MobileBottomBarProps {
@@ -78,7 +77,9 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
     primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews });
   }
 
-  const p = props.getProgress();
+  // Progress is only surfaced in the (lazily rendered) More menu, so avoid the
+  // call on every bottom-bar render — compute it only when the menu is open.
+  const p = moreMenuOpen ? props.getProgress() : { earned: 0, total: 0, percentage: 0 };
 
   // Build grouped more-menu sections based on view
   type MoreItem = { icon: string; label: string; action: () => void };
@@ -126,7 +127,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
     settingsItems.push({ icon: "\u{1F527}", label: tAction("manageRooms"), action: props.onRoomManager });
   }
   settingsItems.push({ icon: "\u2699\uFE0F", label: tAction("customizeWings"), action: props.onWingManager });
-  settingsItems.push({ icon: "\u2728", label: tAction("tour"), action: () => { props.onCloseMore(); useTutorialStore.getState().start(); } });
+  settingsItems.push({ icon: "\u2728", label: tAction("tour"), action: () => { props.onCloseMore(); window.dispatchEvent(new Event("mp:open-palace-tutorial")); } });
   moreSections.push({ title: tAction("moreSettings"), items: settingsItems });
 
   return (
@@ -134,10 +135,10 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
       {/* More menu overlay */}
       {moreMenuOpen && <div role="presentation" onClick={props.onCloseMore} style={{
         position: "absolute", inset: 0, zIndex: 48,
-        background: "rgba(42,34,24,.4)",
+        background: "rgba(64,59,54,0.35)",
         backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
       }}>
-        <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{
+        <div role="dialog" aria-modal="true" data-mp-more-menu onClick={e => e.stopPropagation()} style={{
           position: "absolute", bottom: "4.5rem", left: "0.75rem", right: "0.75rem",
           maxHeight: "70vh", overflowY: "auto",
           background: `${T.color.linen}e8`,
@@ -152,6 +153,12 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
             @keyframes mobileMoreSlideUp {
               from { opacity: 0; transform: translateY(1.5rem); }
               to { opacity: 1; transform: translateY(0); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              [data-mp-more-menu], [data-mp-more-menu] * {
+                animation: none !important;
+                transition: none !important;
+              }
             }
           `}</style>
           {moreSections.map((section, si) => (
@@ -190,7 +197,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
       </div>}
 
       {/* Bottom bar */}
-      <div style={{
+      <div data-mp-bottom-bar style={{
         position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 49,
         minHeight: "3.75rem", paddingBottom: "env(safe-area-inset-bottom, 0px)",
         background: `${T.color.linen}f4`,
@@ -206,6 +213,12 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
           @keyframes mobileBarSlideUp {
             from { opacity: 0; transform: translateY(100%); }
             to { opacity: 1; transform: translateY(0); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            [data-mp-bottom-bar], [data-mp-bottom-bar] * {
+              animation: none !important;
+              transition: none !important;
+            }
           }
         `}</style>
         {primaryActions.slice(0, 3).map((act, i) => (
@@ -239,7 +252,8 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
               <span aria-hidden="true" style={{ fontSize: "1.1875rem", lineHeight: 1 }}>{act.icon}</span>
             )}
             <span style={{
-              fontFamily: T.font.body, fontSize: "0.5625rem",
+              fontFamily: T.font.body,
+              fontSize: "calc(0.6875rem * var(--a11y-scale, 1))",
               color: act.accent ? accent : act.isBack ? T.color.walnut : T.color.muted,
               fontWeight: act.accent ? 600 : act.isBack ? 500 : 500,
             }}>{act.label}</span>
@@ -264,7 +278,8 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
             {moreMenuOpen ? "+" : "\u22EF"}
           </span>
           <span style={{
-            fontFamily: T.font.body, fontSize: "0.5625rem",
+            fontFamily: T.font.body,
+            fontSize: "calc(0.6875rem * var(--a11y-scale, 1))",
             color: moreMenuOpen ? accent : T.color.muted,
             fontWeight: moreMenuOpen ? 600 : 500,
           }}>{tAction("more")}</span>

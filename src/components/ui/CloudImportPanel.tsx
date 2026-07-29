@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -56,6 +57,12 @@ function isSkippedResult(r: ImportResult): boolean {
 // WCAG AA compliant alternative to T.color.muted on linen backgrounds
 const MUTED_AA = "#716A5E"; // Atrium token: muted ink, full opacity
 
+const CloseGlyph = ({ size = 18, color = "currentColor" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <path d="M5 5l10 10M15 5L5 15" />
+  </svg>
+);
+
 interface Props {
   onClose: () => void;
   embedded?: boolean;
@@ -102,6 +109,7 @@ function filterAccountsForPlatform(raw: ConnectedAccount[]): ConnectedAccount[] 
 
 // ═══ Main CloudImportPanel ═══
 export default function CloudImportPanel({ onClose, embedded }: Props) {
+  const isMobile = useIsMobile();
   const { t } = useTranslation("import");
   const { t: tp } = useTranslation("palace");
   const { t: tc } = useTranslation("common");
@@ -152,11 +160,15 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               const supabase = createClient();
               const { data: { user } } = await supabase.auth.getUser();
               if (user) {
-                const { data } = await supabase
+                // maybeSingle(): users with zero subscription rows return null
+                // (not a query error), so paid users are never wrongly gated
+                // to "free" just because .single() threw on an empty result.
+                const { data, error: planErr } = await supabase
                   .from("subscriptions")
                   .select("plan")
                   .eq("user_id", user.id)
-                  .single();
+                  .maybeSingle();
+                if (planErr) throw planErr;
                 if (data?.plan) setUserPlan(data.plan);
               }
             } catch { /* keep default "free" */ }
@@ -355,9 +367,9 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             <button onClick={onClose} aria-label={tc("close")} style={{
               width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem",
               border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: T.color.warmStone,
-              color: "#716A5E" /* Atrium muted */, fontSize: "0.9375rem", cursor: "pointer",
+              color: "#716A5E" /* Atrium muted */, cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-            }}>{"\u2715"}</button>
+            }}><CloseGlyph size={16} /></button>
           </div>
 
           {/* Provider tabs */}
@@ -441,8 +453,17 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             <div style={{
               textAlign: "center", padding: "3rem",
               fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED_AA,
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem",
             }}>
+              <div aria-hidden="true" style={{
+                width: "2rem", height: "2rem", borderRadius: "50%",
+                border: "0.1875rem solid #E3D6BC", /* Atrium hairline tone, opaque */
+                borderTopColor: "#9A4F2A", /* Atrium glyph terracotta */
+                animation: "cloudSpin .7s linear infinite",
+              }} />
               {t("loadingAccounts")}
+              <style>{`@keyframes cloudSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){[style*="cloudSpin"]{animation:none!important}}`}</style>
             </div>
           )}
 
@@ -745,7 +766,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                         style={{
                           width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.75rem",
                           border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: importing ? T.color.warmStone : T.color.white,
-                          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium ink */,
+                          fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36" /* Atrium ink */,
                           cursor: importing ? "not-allowed" : "pointer",
                           opacity: importing ? 0.6 : 1,
                         }}
@@ -770,7 +791,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                           width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.75rem",
                           border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                           background: (!targetWingId || importing) ? T.color.warmStone : T.color.white,
-                          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium ink */,
+                          fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36" /* Atrium ink */,
                           cursor: (targetWingId && !importing) ? "pointer" : importing ? "not-allowed" : "default",
                           opacity: importing ? 0.6 : 1,
                         }}
@@ -825,7 +846,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
   return (
     <div onClick={onClose} style={{
       position: "absolute", inset: 0,
-      background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)",
+      background: "rgba(64,59,54,0.55)", backdropFilter: "blur(10px)",
       zIndex: 60, animation: "fadeIn .2s ease",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>

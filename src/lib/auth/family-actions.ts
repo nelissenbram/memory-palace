@@ -461,65 +461,82 @@ export async function getAllFamilyGroups() {
   const membershipGroupIds = new Set((memberships || []).map((m) => m.group_id));
   const inviteGroupIds = new Set((invites || []).map((i) => i.group_id));
 
-  // Auto-repair orphaned owned groups
-  for (const ownedGroup of (ownedGroups || [])) {
-    if (!membershipGroupIds.has(ownedGroup.id) && !inviteGroupIds.has(ownedGroup.id)) {
-      await supabase
-        .from("family_members")
-        .insert({
-          group_id: ownedGroup.id,
-          user_id: user.id,
-          email: userEmail,
-          role: "owner",
-          status: "active",
-          joined_at: new Date().toISOString(),
-        });
-      membershipGroupIds.add(ownedGroup.id);
-      if (!memberships) {
-        // This shouldn't happen, but just in case
-      } else {
-        memberships.push({ group_id: ownedGroup.id, role: "owner" });
+  // Auto-repair orphaned owned groups (rare corrective path): batch every missing
+  // owner-membership row into a single insert instead of one await per group.
+  const orphanedOwned = (ownedGroups || []).filter(
+    (g) => !membershipGroupIds.has(g.id) && !inviteGroupIds.has(g.id)
+  );
+  if (orphanedOwned.length > 0) {
+    const nowIso = new Date().toISOString();
+    await supabase.from("family_members").insert(
+      orphanedOwned.map((g) => ({
+        group_id: g.id,
+        user_id: user.id,
+        email: userEmail,
+        role: "owner",
+        status: "active",
+        joined_at: nowIso,
+      }))
+    );
+    if (!memberships) {
+      // memberships was null; nothing to append to — the batch read below still picks these up
+    } else {
+      for (const g of orphanedOwned) {
+        membershipGroupIds.add(g.id);
+        memberships.push({ group_id: g.id, role: "owner" });
       }
     }
   }
 
-  // Fetch full group + members data for all active memberships
+  // Collect every group id we need to hydrate (active memberships + pending invites)
+  const activeGroupIds = (memberships || []).map((m) => m.group_id);
+  const pendingInviteList = (invites || []).filter((i) => !membershipGroupIds.has(i.group_id));
+  const allGroupIds = Array.from(new Set([...activeGroupIds, ...pendingInviteList.map((i) => i.group_id)]));
+
+  // Batch-fetch all groups and all members for those groups in two queries (no N+1).
+  // Skip the round-trips entirely when there is nothing to hydrate.
+  const [groupRes, memberRes] = await Promise.all([
+    allGroupIds.length
+      ? supabase.from("family_groups").select("*").in("id", allGroupIds)
+      : null,
+    activeGroupIds.length
+      ? supabase
+          .from("family_members")
+          .select("*")
+          .in("group_id", activeGroupIds)
+          .order("joined_at", { ascending: true })
+      : null,
+  ]);
+  const groupRows = (groupRes?.data || []) as Record<string, unknown>[];
+  const memberRows = (memberRes?.data || []) as Record<string, unknown>[];
+
+  const groupById = new Map<string, Record<string, unknown>>(
+    groupRows.map((g) => [g.id as string, g])
+  );
+  const membersByGroup = new Map<string, Record<string, unknown>[]>();
+  for (const m of memberRows) {
+    const gid = m.group_id as string;
+    const list = membersByGroup.get(gid);
+    if (list) list.push(m);
+    else membersByGroup.set(gid, [m]);
+  }
+
+  // Assemble active groups
   const groups: { group: Record<string, unknown>; members: Record<string, unknown>[]; userRole: string }[] = [];
-
   for (const membership of (memberships || [])) {
-    const { data: group } = await supabase
-      .from("family_groups")
-      .select("*")
-      .eq("id", membership.group_id)
-      .single();
-
+    const group = groupById.get(membership.group_id);
     if (!group) continue;
-
-    const { data: members } = await supabase
-      .from("family_members")
-      .select("*")
-      .eq("group_id", group.id)
-      .order("joined_at", { ascending: true });
-
     groups.push({
       group,
-      members: members || [],
+      members: membersByGroup.get(membership.group_id) || [],
       userRole: membership.role,
     });
   }
 
-  // Fetch pending invite groups
+  // Assemble pending invite groups
   const pendingInvites: { group: Record<string, unknown>; userRole: string }[] = [];
-  for (const invite of (invites || [])) {
-    // Skip invites for groups where the user is already an active member
-    if (membershipGroupIds.has(invite.group_id)) continue;
-
-    const { data: group } = await supabase
-      .from("family_groups")
-      .select("*")
-      .eq("id", invite.group_id)
-      .single();
-
+  for (const invite of pendingInviteList) {
+    const group = groupById.get(invite.group_id);
     if (group) {
       pendingInvites.push({ group, userRole: invite.role });
     }

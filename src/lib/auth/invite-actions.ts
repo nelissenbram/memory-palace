@@ -362,13 +362,13 @@ export async function getPendingInvites() {
     admin
       .from("room_shares")
       .select("id, room_id, owner_id, permission, status, invite_message, created_at")
-      .or(`shared_with_email.eq.${userEmail},shared_with_id.eq.${user.id}`)
+      .or(`shared_with_email.eq."${userEmail}",shared_with_id.eq.${user.id}`)
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
     admin
       .from("wing_shares")
       .select("id, wing_id, owner_id, permission, status, invite_message, can_add, can_edit, can_delete, created_at")
-      .or(`shared_with_email.eq.${userEmail},shared_with_id.eq.${user.id}`)
+      .or(`shared_with_email.eq."${userEmail}",shared_with_id.eq.${user.id}`)
       .eq("status", "pending")
       .order("created_at", { ascending: false }),
   ]);
@@ -469,7 +469,7 @@ export async function getAcceptedShares() {
     admin
       .from("room_shares")
       .select("id, room_id, owner_id, permission, status, accepted_at, can_add, can_edit, can_delete, placed_in_wing_id")
-      .or(`shared_with_id.eq.${user.id}${userEmail ? `,shared_with_email.eq.${userEmail}` : ""}`)
+      .or(`shared_with_id.eq.${user.id}${userEmail ? `,shared_with_email.eq."${userEmail}"` : ""}`)
       .eq("status", "accepted")
       .order("accepted_at", { ascending: false }),
     admin

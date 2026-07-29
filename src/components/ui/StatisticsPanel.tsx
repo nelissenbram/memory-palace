@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -9,12 +9,13 @@ import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { translateWingName } from "@/lib/constants/wings";
+import { INK, MUTED, HAIRLINE, CREAM, EMBER, EMBER_GLYPH, SAGE } from "@/lib/libraryTokens";
 
 /* ─── Time-of-day SVG icons (Tuscan style) ─── */
 function TimeOfDayIcon({ tod, size = 24 }: { tod: string; size?: number }) {
   const gold = "#8A6410"; // Atrium token: browned gold glyph (true gold reserved for the palace itself)
   const terracotta = "#9A4F2A"; // Atrium token: terracotta glyph
-  const sage = "#56683C"; // Atrium token: sage
+  const sage = SAGE; // Atrium token: sage
   const p = { "aria-hidden": true as const, width: size, height: size, viewBox: "0 0 24 24", fill: "none" };
   switch (tod) {
     case "earlyBird": // sunrise with rays
@@ -85,9 +86,9 @@ const MONTH_KEYS = [
 ];
 
 const TYPE_COLORS: Record<string, string> = {
-  text: "#403B36", // Atrium token: ink
+  text: "#8B6B3D", // Atrium token: walnut data hue (distinct from body-ink so the segment reads as data, not a gap)
   photo: "#9A4F2A", // Atrium token: terracotta glyph
-  video: "#56683C", // Atrium token: sage
+  video: SAGE, // Atrium token: sage
   audio: "#8A6410", // Atrium token: browned gold (true gold reserved for the palace itself)
   other: "#716A5E", // Atrium token: muted
 };
@@ -143,16 +144,22 @@ interface StatisticsPanelProps {
 
 export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
+  const isTablet = useIsTablet();
   const { t, locale } = useTranslation("statistics");
   const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { userMems } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
-  const [showToast, setShowToast] = useState(false);
-  const [digestLoading] = useState(false);
+  // Subscribe to the underlying wing/room config slices (not just the stable
+  // getter method refs) so the stats useMemo re-runs when a wing or room is
+  // renamed/customized/added — otherwise the memo goes stale on customization.
+  const customWings = useRoomStore((s) => s.customWings);
+  const extraWings = useRoomStore((s) => s.extraWings);
+  const customRooms = useRoomStore((s) => s.customRooms);
   const [showDigest, setShowDigest] = useState(false);
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const digestBackRef = useRef<HTMLButtonElement>(null);
 
   /* ── aggregate all memories ── */
   const stats = useMemo(() => {
@@ -341,7 +348,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
       ageInDays,
       longestGapDays,
     };
-  }, [userMems, getWings, getWingRooms, tWings]);
+  }, [userMems, getWings, getWingRooms, tWings, customWings, extraWings, customRooms]);
 
   /* ── donut chart segments ── */
   const donutSegments = useMemo(() => {
@@ -357,13 +364,31 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
     return segments;
   }, [stats.typeCounts, stats.totalMems]);
 
+  /* ── text summary of the donut for screen readers ── */
+  const donutSummary = donutSegments
+    .map((seg) => `${t(`type_${seg.type}`)} ${Math.round(seg.pct)}%`)
+    .join(", ");
+
+  /* ── short weekday labels via Intl (locale-correct, replaces fragile .slice(0,2)) ── */
+  const dayShort = useMemo(() => {
+    const fmt = new Intl.DateTimeFormat(localeDateCodes[locale as Locale], { weekday: "short" });
+    // 2023-01-01 is a Sunday → indices 0..6 map to Sun..Sat, matching DAY_KEYS.
+    return DAY_KEYS.map((_, i) => fmt.format(new Date(Date.UTC(2023, 0, 1 + i))));
+  }, [locale]);
+
+  /* ── move focus into the digest overlay when it opens, so keyboard/SR users
+   *    don't stay trapped behind it in the underlying stats dialog. ── */
+  useEffect(() => {
+    if (showDigest) digestBackRef.current?.focus();
+  }, [showDigest]);
+
   /* ── shared styles ── */
   const cardStyle: React.CSSProperties = {
-    background: "#FCFAF5", // Atrium token: cream, opaque
+    background: CREAM, // Atrium token: cream, opaque
     borderRadius: "1rem", // Atrium token: card radius
-    border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+    border: `0.0625rem solid ${HAIRLINE}`, // Atrium token: hairline
     boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S1 + top highlight
-    padding: isMobile ? "1rem" : "1.25rem",
+    padding: isTablet ? "1.5rem" : isMobile ? "1rem" : "1.25rem",
     marginBottom: "1rem",
   };
 
@@ -371,7 +396,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
     fontFamily: T.font.display,
     fontSize: "1.0625rem", // Atrium token: titleS
     fontWeight: 600,
-    color: "#403B36", // Atrium token: ink
+    color: INK, // Atrium token: ink
     lineHeight: 1.15, // Atrium token: display line-height
     margin: "0 0 0.75rem",
   };
@@ -379,13 +404,13 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   const bodyStyle: React.CSSProperties = {
     fontFamily: T.font.body,
     fontSize: "0.8125rem",
-    color: "#403B36" /* Atrium token: ink */,
+    color: INK /* Atrium token: ink */,
   };
 
   const mutedStyle: React.CSSProperties = {
     fontFamily: T.font.body,
     fontSize: "0.6875rem",
-    color: "#716A5E" /* Atrium token: muted, full opacity */,
+    color: MUTED /* Atrium token: muted, full opacity */,
   };
 
   const formatDate = (d: Date | null) =>
@@ -398,7 +423,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(42,34,24,.45)",
+        background: "rgba(64,59,54,0.45)", // Atrium token: warm-ink scrim (matches panel shadows)
         backdropFilter: "blur(6px)",
         zIndex: 800,
         animation: "spFadeIn .25s ease",
@@ -438,6 +463,9 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
         {/* ── Weekly Digest Overlay ── */}
         {showDigest && (
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("weeklyDigestTitle")}
             onKeyDown={(e) => { if (e.key === "Escape") setShowDigest(false); }}
             style={{
               position: "fixed", inset: 0, zIndex: 810,
@@ -453,10 +481,12 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
               borderBottom: "0.0625rem solid #E3D6BC", // Atrium token: hairline
             }}>
               <button
+                ref={digestBackRef}
                 onClick={() => setShowDigest(false)}
                 style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#9A4F2A" /* Atrium token: terracotta glyph */,
-                  background: "none", border: "none", cursor: "pointer", padding: "0.5rem 0",
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: EMBER_GLYPH /* Atrium token: terracotta glyph */,
+                  background: "none", border: "none", cursor: "pointer",
+                  minHeight: "2.75rem", padding: "0.5rem 0.25rem",
                   display: "flex", alignItems: "center", gap: "0.25rem",
                 }}
               >{"\u2190"} {t("back")}</button>
@@ -488,7 +518,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                     <div style={mutedStyle}>{t("digestMemsThisMonth")}</div>
                   </div>
                   <div>
-                    <div style={{ fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600, color: "#56683C" /* Atrium token: sage */ }}>{stats.streak}</div>
+                    <div style={{ fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600, color: SAGE /* Atrium token: sage */ }}>{stats.streak}</div>
                     <div style={mutedStyle}>{t("dayStreak")}</div>
                   </div>
                   <div>
@@ -553,28 +583,6 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
           </div>
         )}
 
-        {/* ── Toast ── */}
-        {showToast && (
-          <div style={{
-            position: "absolute",
-            top: "0.75rem",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 10,
-            background: "#56683C" /* Atrium token: sage */,
-            color: T.color.white,
-            fontFamily: T.font.body,
-            fontSize: "0.8125rem",
-            fontWeight: 600,
-            padding: "0.5rem 1.25rem",
-            borderRadius: "0.75rem", // Atrium token: small-control radius
-            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2, warm ink
-            animation: "spSlideUp .3s ease",
-          }}>
-            {t("weeklyDigestSent")}
-          </div>
-        )}
-
         {/* ── Header ── */}
         <div
           style={{
@@ -610,12 +618,12 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             onClick={onClose}
             aria-label={t("close")}
             style={{
-              width: "2rem",
-              height: "2rem",
-              borderRadius: "1rem",
-              border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
-              background: T.color.warmStone,
-              color: "#716A5E" /* Atrium token: muted, full opacity */,
+              width: "2.75rem",
+              height: "2.75rem",
+              borderRadius: "0.75rem",
+              border: `0.0625rem solid ${HAIRLINE}`, // Atrium token: hairline
+              background: CREAM, // Atrium token: cream card surface (matches sibling controls)
+              color: MUTED /* Atrium token: muted, full opacity */,
               fontSize: "0.8125rem", // Atrium token: meta (no 0.875rem)
               cursor: "pointer",
               display: "flex",
@@ -629,20 +637,53 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
         </div>
 
         {/* ── Content ── */}
+        {stats.totalMems === 0 ? (
+          /* ── Empty state — a zero-memory user sees an invitation, not fabricated
+             "night owl / peak at 0:00" insights over hollow charts. ── */
+          <div style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            padding: "3rem 1.5rem",
+            gap: "0.75rem",
+          }}>
+            <div style={{
+              fontFamily: T.font.display,
+              fontSize: "1.375rem",
+              fontWeight: 600,
+              color: INK,
+              lineHeight: 1.2,
+            }}>
+              {t("emptyTitle")}
+            </div>
+            <p style={{
+              fontFamily: T.font.body,
+              fontSize: "0.9375rem",
+              color: MUTED,
+              margin: 0,
+              maxWidth: "22rem",
+            }}>
+              {t("noData")}
+            </p>
+          </div>
+        ) : (
         <div style={{ padding: "1rem 1.5rem 2rem" }}>
 
           {/* 1. Overview bar */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr 1fr",
+              gridTemplateColumns: isMobile ? "1fr 1fr" : isCompact ? "1fr 1fr" : "1fr 1fr 1fr 1fr",
               gap: "0.75rem",
               marginBottom: "1rem",
             }}
           >
             {[
               { key: "total", label: t("totalMemories"), value: stats.totalMems, color: "#9A4F2A" /* Atrium token: terracotta glyph */ },
-              { key: "wings", label: t("wingsUsed"), value: stats.totalWings, color: "#56683C" /* Atrium token: sage */ },
+              { key: "wings", label: t("wingsUsed"), value: stats.totalWings, color: SAGE /* Atrium token: sage */ },
               { key: "rooms", label: t("roomsWithMemories"), value: stats.totalRooms, color: "#403B36" /* Atrium token: ink (walnut retired) */ },
               { key: "avg", label: t("avgPerRoom"), value: parseFloat(stats.avgPerRoom), color: "#8A6410" /* Atrium token: browned gold (true gold reserved for the palace) */ },
             ].map((item) => (
@@ -691,6 +732,8 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
               {/* Donut SVG */}
               <svg
                 viewBox="0 0 36 36"
+                role="img"
+                aria-label={`${t("typeBreakdown")}: ${donutSummary}`}
                 style={{ width: "7rem", height: "7rem", flexShrink: 0, alignSelf: "center" }}
               >
                 {donutSegments.map((seg) => (
@@ -785,7 +828,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                   <div style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, color: "#9A4F2A" /* Atrium token: terracotta glyph */, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem" }}>
                     <AnimatedNumber value={stats.thisMonthCount} />
                     {stats.growthPct !== 0 && (
-                      <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: stats.growthPct > 0 ? "#56683C" /* Atrium token: sage */ : "#9A4F2A" /* Atrium token: terracotta glyph */ }}>
+                      <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: stats.growthPct > 0 ? SAGE /* Atrium token: sage */ : "#9A4F2A" /* Atrium token: terracotta glyph */ }}>
                         {stats.growthPct > 0 ? "\u2191" : "\u2193"}{Math.abs(stats.growthPct)}%
                       </span>
                     )}
@@ -794,7 +837,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                 </div>
               )}
               <div>
-                <div style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, color: "#56683C" /* Atrium token: sage */ }}>
+                <div style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, color: SAGE /* Atrium token: sage */ }}>
                   <AnimatedNumber value={stats.streak} />
                 </div>
                 <div style={mutedStyle}>{t("dayStreak")}</div>
@@ -816,8 +859,13 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                 const intensity = stats.maxDowCount > 0 ? count / stats.maxDowCount : 0;
                 const isBest = i === (stats.bestDay ? DAY_KEYS.indexOf(stats.bestDay) : -1);
                 return (
-                  <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                    <div style={{
+                  <div
+                    key={i}
+                    role="img"
+                    aria-label={`${t(`day_${DAY_KEYS[i]}`)}: ${count} ${t("memories")}`}
+                    style={{ flex: 1, textAlign: "center" }}
+                  >
+                    <div aria-hidden style={{
                       height: "3rem", borderRadius: "0.375rem", marginBottom: "0.375rem",
                       background: intensity > 0
                         ? `rgba(154,79,42,${0.12 + intensity * 0.55})` // Atrium token: terracotta glyph #9A4F2A
@@ -832,8 +880,8 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                         </span>
                       )}
                     </div>
-                    <span style={{ ...mutedStyle, fontSize: "0.6875rem", fontWeight: isBest ? 700 : 500, color: isBest ? "#9A4F2A" /* Atrium token: terracotta glyph */ : "#716A5E" /* Atrium token: muted, full opacity */ }}>
-                      {t(`day_${DAY_KEYS[i]}`).slice(0, 2)}
+                    <span aria-hidden style={{ ...mutedStyle, fontSize: "0.6875rem", fontWeight: isBest ? 700 : 500, color: isBest ? "#9A4F2A" /* Atrium token: terracotta glyph */ : "#716A5E" /* Atrium token: muted, full opacity */ }}>
+                      {dayShort[i]}
                     </span>
                   </div>
                 );
@@ -854,25 +902,27 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
               {stats.monthBuckets.map((bucket, idx) => (
                 <div
                   key={bucket.key}
+                  role="img"
+                  aria-label={`${t(`month_${bucket.label}`)} ${bucket.year}: ${bucket.count} ${t("memories")}`}
                   style={{
                     display: "flex", alignItems: "center", gap: "0.5rem",
                     animation: `spSlideUp .3s ease ${idx * 0.03}s both`,
                   }}
                 >
-                  <span style={{ ...mutedStyle, width: "3.75rem", textAlign: "right", flexShrink: 0 }}>
+                  <span aria-hidden style={{ ...mutedStyle, width: "3.75rem", textAlign: "right", flexShrink: 0 }}>
                     {t(`month_${bucket.label}`)} {bucket.year}
                   </span>
-                  <div style={{ flex: 1, height: "1.125rem", background: "#F2EDE4" /* Atrium token: linen track */, borderRadius: "0.25rem", overflow: "hidden" }}>
+                  <div aria-hidden style={{ flex: 1, height: "1.125rem", background: "#F2EDE4" /* Atrium token: linen track */, borderRadius: "0.25rem", overflow: "hidden" }}>
                     <div style={{
                       height: "100%",
                       width: `${(bucket.count / stats.maxMonthCount) * 100}%`,
-                      background: "linear-gradient(90deg, #B85C38, #9A4F2A)", // Atrium token: ember → terracotta glyph
+                      background: "linear-gradient(90deg, #9A4F2A, #C06A44)", // Atrium token: passive data bar — terracotta glyph → lighter terracotta (EMBER reserved for interactive)
                       borderRadius: "0.25rem",
                       transition: "width .3s ease",
                       minWidth: bucket.count > 0 ? "0.25rem" : 0,
                     }} />
                   </div>
-                  <span style={{
+                  <span aria-hidden style={{
                     ...mutedStyle, width: "1.5rem", textAlign: "right", flexShrink: 0,
                     fontWeight: bucket.count > 0 ? 600 : 500,
                     color: bucket.count > 0 ? "#403B36" /* Atrium token: ink */ : "#716A5E" /* Atrium token: muted, full opacity */,
@@ -934,7 +984,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                 padding: "0.75rem", borderRadius: "0.75rem", // Atrium token: small-control radius
                 background: "#EFF2E8", textAlign: "center", // Atrium token: sage tray, opaque
               }}>
-                <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#56683C" /* Atrium token: sage */ }}>
+                <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: SAGE /* Atrium token: sage */ }}>
                   {stats.descPct}%
                 </div>
                 <div style={mutedStyle}>{t("storiesWritten")}</div>
@@ -979,7 +1029,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
               <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem" }}>
                 {stats.ageInDays > 0 && (
                   <div style={{ textAlign: "center" }}>
-                    <span style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, color: "#56683C" /* Atrium token: sage */ }}>
+                    <span style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, color: SAGE /* Atrium token: sage */ }}>
                       <AnimatedNumber value={stats.ageInDays} />
                     </span>
                     <div style={mutedStyle}>{t("daysSpanned")}</div>
@@ -997,31 +1047,31 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             </div>
           )}
 
-          {/* 7. Weekly Digest */}
+          {/* 9. Weekly Digest */}
           <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
             <button
               onClick={() => setShowDigest(true)}
-              disabled={digestLoading}
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem", // Atrium token: body (no 0.875rem)
                 fontWeight: 600,
-                color: digestLoading ? "#716A5E" /* Atrium token: muted, full opacity */ : "#9A4F2A" /* Atrium token: terracotta glyph */,
+                color: EMBER /* Atrium token: EMBER — interactive CTA signal */,
                 background: "#F6EBE3", // Atrium token: terracotta tray, opaque
-                border: "0.0625rem solid #E7D9C4", // Atrium token: terracotta zone border
+                border: `0.0625rem solid ${EMBER}`, // Atrium token: EMBER interactive edge
                 borderRadius: "0.75rem", // Atrium token: small-control radius
+                minHeight: "2.75rem",
                 padding: "0.625rem 1.25rem",
-                cursor: digestLoading ? "default" : "pointer",
+                cursor: "pointer",
                 transition: "background 0.2s ease",
-                opacity: digestLoading ? 0.6 : 1,
               }}
-              onMouseEnter={(e) => { if (!digestLoading) e.currentTarget.style.background = "#F0E0D3"; }} /* Atrium token: terracotta tray, one step deeper */
+              onMouseEnter={(e) => { e.currentTarget.style.background = "#F0E0D3"; }} /* Atrium token: terracotta tray, one step deeper */
               onMouseLeave={(e) => { e.currentTarget.style.background = "#F6EBE3"; }}
             >
               {t("weeklyDigestRead")}
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

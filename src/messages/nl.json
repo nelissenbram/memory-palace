@@ -86,7 +86,11 @@
     "errorBoundaryRetry": "Opnieuw proberen",
     "a11yBackToHome": "Terug naar home",
     "a11ySwitchLanguage": "Taal wisselen",
-    "untitled": "Naamloos"
+    "untitled": "Naamloos",
+    "mfaDigit": "Cijfer {n} van {total}",
+    "restoreLoading": "Verbinden met de App Store… probeer het zo opnieuw.",
+    "expand": "Uitklappen",
+    "collapse": "Inklappen"
   },
   "settingsTour": {
     "help": "Hulp",
@@ -182,7 +186,8 @@
     "sendResetLink": "Resetlink versturen",
     "backToSignIn": "Terug naar inloggen",
     "checkEmail": "Controleer je e-mail",
-    "resetLinkSent": "Als er een account bestaat met dat e-mailadres, hebben we een link voor wachtwoordherstel gestuurd."
+    "resetLinkSent": "Als er een account bestaat met dat e-mailadres, hebben we een link voor wachtwoordherstel gestuurd.",
+    "tryDifferentEmail": "Probeer een ander e-mailadres"
   },
   "resetPassword": {
     "title": "Nieuw wachtwoord instellen",
@@ -199,7 +204,8 @@
     "successMessage": "Je wachtwoord is succesvol gewijzigd.",
     "goToPalace": "Ga naar je Paleis",
     "noSession": "Deze link is verlopen of ongeldig. Vraag een nieuwe resetlink aan.",
-    "requestNewLink": "Nieuwe link aanvragen"
+    "requestNewLink": "Nieuwe link aanvragen",
+    "loading": "Laden..."
   },
   "onboarding": {
     "welcomeTitle": "Welkom bij",
@@ -298,7 +304,12 @@
     "styleConfirmAside": "Marmeren atria, zuilengalerijen — we bouwen het rond jou.",
     "styleConfirmReversible": "Je kunt dit altijd wijzigen.",
     "firstMemoryHint": "Plaats hier je eerste herinnering — een foto, een naam, wat dan ook.",
-    "welcomeToPalace": "Welkom in jouw Memory Palace"
+    "welcomeToPalace": "Welkom in jouw Memory Palace",
+    "uploadFailed": "We konden je herinnering niet opslaan. Probeer het opnieuw.",
+    "stepOf": "Stap {current} van {total}",
+    "paywallTerms": "Voorwaarden",
+    "paywallPrivacy": "Privacy",
+    "paywallAutoRenew": "Automatisch verlengend abonnement, in rekening gebracht via je Apple ID. Op elk moment opzegbaar in Instellingen."
   },
   "palace": {
     "uploadMemory": "Herinnering uploaden",
@@ -395,7 +406,9 @@
     "ariaWings": "Vleugels",
     "ariaRooms": "Kamers",
     "ariaAvControls": "AV-bediening",
-    "ariaEditCorridorPaintings": "Gangschilderijen bewerken"
+    "ariaEditCorridorPaintings": "Gangschilderijen bewerken",
+    "upgradeNow": "Upgraden",
+    "onboardingFinishError": "Er ging iets mis bij het afronden van de installatie — probeer het opnieuw."
   },
   "settings": {
     "navDescProfile": "Je naam, foto en openbare pagina",
@@ -542,7 +555,23 @@
     "wingToggleError": "Kon vleugel niet bijwerken. Probeer het opnieuw.",
     "sectionPublished": "Openbaar paleis",
     "sectionVisitingCodes": "Bezoekcodes",
-    "sectionFamilyAccess": "Familietoegang"
+    "sectionFamilyAccess": "Familietoegang",
+    "meStatsVisits": "Bezoeken",
+    "meAvatarAlt": "Portret van {name}",
+    "loading": "Laden…",
+    "loadError": "Je deelinstellingen konden niet worden geladen. Probeer het opnieuw.",
+    "publishError": "Sommige wijzigingen konden niet worden opgeslagen. Probeer het opnieuw.",
+    "sectionYourDetails": "Jouw gegevens",
+    "sectionAccountData": "Account & gegevens",
+    "sectionPreferences": "Voorkeuren",
+    "usernameRequiredForPublic": "Kies een gebruikersnaam voordat je je profiel openbaar maakt",
+    "unsavedEditsWarning": "Je hebt niet-opgeslagen wijzigingen die verloren gaan. Toch van taal wisselen?",
+    "usernameTooShort": "Gebruikersnaam moet minstens 3 tekens bevatten.",
+    "retry": "Opnieuw proberen",
+    "exportZipCapped": "Export voltooid. {count} foto('s) zijn weggelaten om binnen je gekozen limiet te blijven.",
+    "exportScanError": "We konden je export niet voorbereiden. Controleer je verbinding en probeer het opnieuw.",
+    "exportScanAuthError": "Je sessie is verlopen. Meld je opnieuw aan om je gegevens te exporteren.",
+    "exportRetry": "Opnieuw proberen"
   },
   "notifications": {
     "title": "Meldingen",
@@ -609,7 +638,9 @@
     "testSampleReminder": "Een zacht duwtje: de Bibliotheek wacht geduldig. Wil je een verhaal toevoegen?",
     "testSampleSystem": "Er is een nieuwe functie in je paleis. Ontdek het Atrium.",
     "testResultLocal": "8 lokaal toegevoegd",
-    "testResultServerError": "8 lokaal toegevoegd (serverfout: {error})"
+    "testResultServerError": "8 lokaal toegevoegd (serverfout: {error})",
+    "saveRateLimited": "Je wijzigt instellingen te snel. Wacht even en probeer het opnieuw.",
+    "savePushReenable": "Kon deze melding niet opslaan. Zet Pushmeldingen uit en weer aan om dit apparaat opnieuw te verbinden."
   },
   "subscription": {
     "title": "Abonnement",
@@ -692,7 +723,13 @@
     "restoreSuccess": "Eerdere aankopen succesvol hersteld.",
     "restoreFailed": "Geen eerdere aankopen gevonden om te herstellen.",
     "sectionAllPlans": "Alle abonnementen",
-    "sectionReferFriend": "Nodig een vriend uit"
+    "sectionReferFriend": "Nodig een vriend uit",
+    "copy": "Kopiëren",
+    "copyLink": "Link kopiëren",
+    "manageOrCancel": "Abonnement beheren of opzeggen",
+    "inviteFriends": "Vrienden uitnodigen",
+    "loadError": "We konden je abonnement niet laden. Probeer het opnieuw.",
+    "retry": "Opnieuw"
   },
   "cancelFlow": {
     "whyLeaving": "Voordat je gaat...",
@@ -760,7 +797,9 @@
     "appleImportButton": "Importeer uit Foto's",
     "appleImporting": "Importeren… ({count} klaar)",
     "appleImportSuccess": "{count} foto's succesvol geïmporteerd!",
-    "sourcesOverline": "Foto- en bestandsbronnen"
+    "sourcesOverline": "Foto- en bestandsbronnen",
+    "cloudUnavailableNative": "Externe cloudfotodiensten koppelen is niet beschikbaar in de app. Je kunt nog steeds foto's en video's rechtstreeks vanaf je apparaat toevoegen.",
+    "connectionFailedProvider": "Kon {provider} niet koppelen. Probeer het opnieuw."
   },
   "familySettings": {
     "manageWingSharing": "Beheer wie je vleugels ziet",
@@ -1031,7 +1070,9 @@
     "unsavedChangesTitle": "Niet-opgeslagen wijzigingen",
     "unsavedChangesBody": "Je hebt niet-opgeslagen wijzigingen. Toch van tabblad wisselen?",
     "addFirstContact": "+ Voeg je eerste contact toe",
-    "emptyBodyWarning": "Je bericht heeft geen tekst — is dat de bedoeling?"
+    "emptyBodyWarning": "Je bericht heeft geen tekst — is dat de bedoeling?",
+    "statusNotConfigured": "Nog niet ingesteld",
+    "statusNotConfiguredHint": " — stel hieronder een inactiviteitsperiode en een vertrouwde verifieerder in om je nalatenschap te activeren."
   },
   "mfa": {
     "loading": "Beveiligingsinstellingen laden...",
@@ -1520,7 +1561,8 @@
     "digestWordsWritten": "woorden geschreven in al je herinneringen",
     "digestWordsNovel": "Dat is een hele roman aan verhalen!",
     "digestWordsEssay": "Genoeg om een boek met essays te vullen!",
-    "digestWordsGrowing": "Je verhalenverzameling groeit prachtig."
+    "digestWordsGrowing": "Je verhalenverzameling groeit prachtig.",
+    "emptyTitle": "Nog geen inzichten"
   },
   "walkthrough": {
     "phase0": "Welkom in je Memory Palace, {name}. Klik op de ingang om naar binnen te gaan.",
@@ -1889,7 +1931,11 @@
     "optionalEnrichments": "Optioneel: Voeg levensgebeurtenissen en bronnen toe voor rijkere gegevens",
     "datePrefixCirca": "ca.",
     "datePrefixBefore": "vóór",
-    "datePrefixAfter": "na"
+    "datePrefixAfter": "na",
+    "shareLoading": "Je deellink wordt voorbereid…",
+    "viewModeLabel": "Weergavemodus van de boom",
+    "sharedTreeEmptyTitle": "Deze stamboom is leeg",
+    "sharedTreeEmpty": "Er staan nog geen personen in deze stamboom."
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1926,7 +1972,9 @@
     "trustSsl": "Versleuteld bij opslag & verzending",
     "trustGdpr": "AVG Conform",
     "trustGuarantee": "Gratis abonnement — geen creditcard nodig",
-    "currency": "Valuta"
+    "currency": "Valuta",
+    "subscriptionActivated": "Abonnement geactiveerd!",
+    "billingInterval": "Facturatieperiode"
   },
   "cookieConsent": {
     "message": "We gebruiken cookies om je ingelogd te houden en je voorkeuren te onthouden.",
@@ -2074,7 +2122,15 @@
     "resume": "Hervatten",
     "pause": "Pauze",
     "stopRecording": "Stop opname",
-    "recorderError": "Er is een probleem met de microfoon. Controleer je machtigingen en probeer het opnieuw."
+    "recorderError": "Er is een probleem met de microfoon. Controleer je machtigingen en probeer het opnieuw.",
+    "interviewQuotaReached": "Interviewlimiet bereikt",
+    "interviewsRemaining": "interviews resterend",
+    "nextInterviewDate": "Volgend interview beschikbaar op {date}",
+    "upgradeForUnlimited": "Upgrade voor onbeperkte interviews",
+    "noAnswersYet": "Je hebt nog geen antwoorden gedeeld, dus er is nog geen verhaal om op te slaan. Neem er minstens één op of typ er één om je verhaal te weven.",
+    "leaveTitle": "Dit interview verlaten?",
+    "leaveCancel": "Doorgaan",
+    "leaveConfirmBtn": "Verlaten"
   },
   "sharingPanel": {
     "publicLinkCreated": "Openbare link aangemaakt!",
@@ -2116,7 +2172,11 @@
     "privacyInfo": "Je vleugel is altijd privé. Alleen deze specifieke kamer kan worden gedeeld. Uitgenodigden zien de kamerinhoud maar hebben geen toegang tot andere vleugels of kamers.",
     "accepted": "Geaccepteerd",
     "declined": "Geweigerd",
-    "pending": "In afwachting"
+    "pending": "In afwachting",
+    "enablePublicLinkFirst": "Schakel eerst de openbare link in om zo te delen.",
+    "noCollaboratorsForDownload": "Nodig eerst iemand uit voordat je downloadrechten instelt.",
+    "downloadPermissionFailed": "Kon de downloadinstelling niet bijwerken. Probeer het opnieuw.",
+    "shareViaQR": "Delen via QR-code"
   },
   "bustBuilder": {
     "failedToProcess": "Foto verwerken mislukt. Probeer een andere afbeelding.",
@@ -2162,7 +2222,11 @@
     "altCroppedFace": "Bijgesneden gezicht",
     "altSculpting": "Beeldhouwen",
     "maleShort": "M",
-    "femaleShort": "V"
+    "femaleShort": "V",
+    "faceDetected": "Gezicht gedetecteerd en gekalibreerd!",
+    "imageTooSmall": "Afbeelding is te klein. Gebruik een foto met hogere resolutie.",
+    "noFaceCenterCropped": "Gezicht kon niet automatisch worden herkend. De foto wordt in het midden bijgesneden. Gebruik voor het beste resultaat een duidelijke portretfoto.",
+    "savedLocallyWillSync": "Lokaal opgeslagen — wordt gesynchroniseerd zodra je weer online bent."
   },
   "uploadPanel": {
     "fileTooLarge": "Bestand is te groot ({size} MB). Maximale grootte voor {type} is {max}.",
@@ -2432,7 +2496,9 @@
     "accessFullDesc": "Toegang tot je gehele paleis",
     "accessWings": "Geselecteerde vleugels",
     "accessWingsDesc": "Alleen toegang tot specifieke vleugels",
-    "cancel": "Annuleren"
+    "cancel": "Annuleren",
+    "removeConfirmTitle": "Deze contactpersoon verwijderen?",
+    "removeConfirmBody": "{name} kan dan geen toegang meer tot je paleis ontvangen. Je kunt deze persoon later altijd opnieuw toevoegen."
   },
   "roomGallery": {
     "gallery": "Galerij",
@@ -2665,7 +2731,8 @@
     "stepCompleted": "Stap voltooid!",
     "trackComplete": "Traject voltooid!",
     "youEarnedBonus": "Je hebt een bonus verdiend van",
-    "tapToContinue": "Tik ergens om door te gaan"
+    "tapToContinue": "Tik ergens om door te gaan",
+    "dueToday": "Vandaag"
   },
   "trackDetail": {
     "of": "van",
@@ -2770,7 +2837,8 @@
     "newWingPlaceholder": "Vleugelnaam...",
     "wingLimit": "{current} van {max} vleugels",
     "deleteWing": "Verwijder deze vleugel",
-    "deleteConfirm": "Deze vleugel en alle kamers verwijderen? Dit kan niet ongedaan worden."
+    "deleteConfirm": "Deze vleugel en alle kamers verwijderen? Dit kan niet ongedaan worden.",
+    "maxWingsReached": "Maximum van {max} vleugels bereikt"
   },
   "featureSpotlight": {
     "importTitle": "Importeer je foto's",
@@ -2806,7 +2874,8 @@
     "allWings": "Alle vleugels",
     "thisWing": "Deze vleugel",
     "noPhotos": "Geen fotoherinneringen gevonden. Voeg foto's toe aan je kamers of upload een afbeelding.",
-    "hint": "Foto's die hier worden toegewezen verschijnen als schilderijen in de gang. Klik op een schilderij in de scene om de kamer te betreden."
+    "hint": "Foto's die hier worden toegewezen verschijnen als schilderijen in de gang. Klik op een schilderij in de scene om de kamer te betreden.",
+    "filterSource": "Filter fotobron"
   },
   "roomMedia": {
     "title": "Kamermedia",
@@ -2907,7 +2976,8 @@
     "moveTo": "Verplaats naar...",
     "currentRoom": "Huidige kamer",
     "memoryMoved": "Herinnering verplaatst",
-    "ariaOpenRoomMedia": "Kamermedia openen"
+    "ariaOpenRoomMedia": "Kamermedia openen",
+    "importFailed": "Importeren mislukt. Probeer het opnieuw."
   },
   "memoryMap": {
     "title": "Herinneringenkaart",
@@ -2991,7 +3061,9 @@
     "mobileHint": "Links: bewegen · Rechts: rondkijken · Tik op herinneringen om te bekijken",
     "move": "Bewegen",
     "look": "Kijken",
-    "gotIt": "Begrepen"
+    "gotIt": "Begrepen",
+    "corridorHint": "Sleep om rond te kijken · Tik op een deur om binnen te gaan",
+    "roomHint": "Joystick om te bewegen · Sleep om te kijken · Tik op herinneringen om te bekijken"
   },
   "tutorial": {
     "skip": "Overslaan",
@@ -3060,7 +3132,8 @@
     "typeOrbs": "Bollen",
     "typeVitrines": "Vitrines",
     "typeAudio": "Audio",
-    "typeDocs": "Documenten"
+    "typeDocs": "Documenten",
+    "clearFilter": "Zoekopdracht en filters wissen"
   },
   "statusBar": {
     "achievements": "Prestaties",
@@ -3197,7 +3270,8 @@
     "shareButton": "Delen",
     "shareText": "Ik heb zojuist de {name} badge verdiend in The Memory Palace!",
     "copiedToClipboard": "Gekopieerd!",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "shareFailed": "Delen is mislukt. Probeer het opnieuw."
   },
   "directoryPanel": {
     "title": "Overzicht",
@@ -3224,7 +3298,9 @@
     "shareTextRoom": "{icon} {name} — {count} herinneringen in The Memory Palace",
     "shareTextDefault": "The Memory Palace",
     "brandName": "The Memory Palace",
-    "brandWatermark": "The Memory Palace"
+    "brandWatermark": "The Memory Palace",
+    "email": "E-mail",
+    "shareVia": "Delen via {{platform}}"
   },
   "sharedWithMe": {
     "title": "Met mij gedeeld",
@@ -3238,7 +3314,10 @@
     "memories": "{count} herinneringen",
     "permView": "bekijken",
     "permContribute": "bijdragen",
-    "sharedBy": "Gedeeld door {name}"
+    "sharedBy": "Gedeeld door {name}",
+    "loadError": "Kon je gedeelde kamers niet laden.",
+    "retry": "Opnieuw proberen",
+    "emptyWing": "Nog geen kamers in deze vleugel"
   },
   "inviteNotifications": {
     "title": "Uitnodigingen",
@@ -3502,7 +3581,8 @@
     "dStep2Body": "Klik op het gouden medaillon rechtsonder om je eigen foto's en media aan de gangschilderijen toe te voegen.",
     "skip": "Overslaan",
     "next": "Volgende",
-    "done": "Begrepen"
+    "done": "Begrepen",
+    "stepXofY": "Stap {current} van {total}"
   },
   "entranceHallTour": {
     "stepTitle": "Handmatige navigatie",
@@ -3513,7 +3593,8 @@
     "dStep2Body": "Gebruik de navigatiebalk bovenaan om direct naar een vleugel of kamer te springen zonder ernaartoe te lopen.",
     "skip": "Overslaan",
     "next": "Volgende",
-    "done": "Begrepen"
+    "done": "Begrepen",
+    "stepXofY": "Stap {current} van {total}"
   },
   "palaceTour": {
     "step1Title": "Navigeer vanaf de top",
@@ -3528,7 +3609,8 @@
     "dStep2Body": "Klik op de deur van de entreehal of een vleugeldeur van het paleis om naar binnen te gaan. Gebruik de navigatiebalk bovenaan om direct naar een vleugel of kamer te springen.",
     "skip": "Overslaan",
     "next": "Volgende",
-    "done": "Begrepen"
+    "done": "Begrepen",
+    "stepXofY": "Stap {current} van {total}"
   },
   "entranceHall": {
     "unmute": "Muziek dempen opheffen",
@@ -3671,7 +3753,10 @@
     "cookiePrefTitle": "Cookievoorkeuren",
     "cookiePrefLabel": "Niet-essentiële cookies",
     "cookiePrefDetail": "Sta niet-essentiële cookies toe om ons te helpen je ervaring te verbeteren. We gebruiken cookies nooit voor advertenties of tracking op andere websites.",
-    "cookiePrefToggleLabel": "Niet-essentiële cookies in- of uitschakelen"
+    "cookiePrefToggleLabel": "Niet-essentiële cookies in- of uitschakelen",
+    "sectionSignInAccess": "Aanmelden & toegang",
+    "sectionPrivacyData": "Privacy & je gegevens",
+    "sectionDangerZone": "Gevarenzone"
   },
   "cookieSettings": {
     "pageTitle": "Cookie-voorkeuren",
@@ -4347,7 +4432,17 @@
     "byRoom": "Kamers",
     "expandSidebar": "Vleugels tonen",
     "collapseSidebar": "Vleugels verbergen",
-    "allYears": "Alle jaren"
+    "allYears": "Alle jaren",
+    "importFailedRetry": "Importeren mislukt. Je bestanden staan er nog — probeer het opnieuw.",
+    "jumpToDate": "Ga naar datum",
+    "jumpTo": "Ga naar {label}",
+    "tileType_image": "Foto",
+    "tileType_video": "Video",
+    "tileType_audio": "Audio",
+    "tileType_document": "Document",
+    "tileType_memory": "Herinnering",
+    "tileSelected": "Geselecteerd",
+    "memoryCountOne": "{count} herinnering"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",
@@ -4628,7 +4723,79 @@
     "relay.q27": "Welke foto betekent het meest voor je, en waarom?",
     "relay.q28": "Welk geluid van vroeger mis je?",
     "relay.q29": "Beschrijf een moment waarop je echt vrede voelde.",
-    "relay.q30": "Wat zou je zeggen tegen wie je twintig jaar geleden was?"
+    "relay.q30": "Wat zou je zeggen tegen wie je twintig jaar geleden was?",
+    "relay": {
+      "wingsCount": "{count} vleugels",
+      "roomsCount": "{count} kamers",
+      "memoriesCount": "{count} herinneringen",
+      "recordedCount": "{count} opgenomen",
+      "sharedCount": "{count} gedeeld",
+      "enterPalaceTitle": "Betreed je paleis",
+      "enterPalaceDesc": "Wandel in 3D door je kamers",
+      "enterLibraryTitle": "Open je bibliotheek",
+      "enterLibraryDesc": "Je hele collectie",
+      "laneCapture": "Vastleggen",
+      "laneBringToLife": "Tot leven brengen",
+      "laneShare": "Delen & doorgeven",
+      "tilePhotos": "Foto's toevoegen",
+      "tilePhotosDesc": "Voeg je foto's toe",
+      "tileCloud": "Importeren uit cloud",
+      "tileCloudDesc": "Google Foto's, iCloud en meer",
+      "tileRestore": "Foto herstellen",
+      "tileRestoreDesc": "Herstel een oude foto",
+      "tileWrite": "Herinnering schrijven",
+      "tileWriteDesc": "Breng het onder woorden",
+      "tileInterviews": "Interviews",
+      "tileInterviewsDesc": "Vertel je verhaal hardop",
+      "tileWhatsapp": "Vastleggen via WhatsApp",
+      "tileWhatsappDesc": "Bewaar via bericht",
+      "tileCapsule": "Tijdcapsule",
+      "tileCapsuleDesc": "Een herinnering voor later",
+      "tileMap": "Herinneringenkaart",
+      "tileMapDesc": "Herinneringen op de wereldkaart",
+      "tileTimeline": "Tijdlijn",
+      "tileTimelineDesc": "Je leven in de tijd",
+      "tileHighlights": "Hoogtepunten",
+      "tileHighlightsDesc": "Patronen in je herinneringen",
+      "tileFamilyTree": "Stamboom",
+      "tileFamilyTreeDesc": "Wie is wie, door de generaties heen",
+      "tileGallery": "Galerij maken",
+      "tileGalleryDesc": "Stel een selectie samen",
+      "tileOrganize": "Ruim je kamers op",
+      "tileOrganizeDesc": "Herinneringen ordenen",
+      "tileExplore": "Ontdekken",
+      "tileExploreDesc": "Openbare paleizen om te bezoeken",
+      "tileLifeStory": "Levensverhaal",
+      "tileLifeStoryDesc": "Je leven, verweven tot één verhaal",
+      "tileFamilyGroup": "Start een familiegroep",
+      "tileFamilyGroupDesc": "Nodig je familie uit",
+      "tileCocreate": "Samen bouwen",
+      "tileCocreateDesc": "Laat het paleis samen groeien",
+      "tileInvite": "Familieleden uitnodigen",
+      "tileInviteDesc": "Breng anderen naar je paleis",
+      "tilePublish": "Openbaar delen",
+      "tilePublishDesc": "Publiceer op Ontdekken",
+      "tileShared": "Met jou gedeeld",
+      "tileSharedDesc": "Vleugels die je familie deelde",
+      "tileLegacy": "Plan je nalatenschap",
+      "tileLegacyDesc": "Bepaal wie erft",
+      "youJourneys": "Jouw reizen",
+      "youMilestones": "Mijlpalen",
+      "youProfile": "Jouw profiel",
+      "youSettings": "Instellingen",
+      "youHelp": "Help & handleidingen",
+      "sgFamilySharedTitle": "Je familie heeft iets met je gedeeld",
+      "sgFamilySharedReason": "Bekijk wat ze toevoegden",
+      "sgOnThisDayTitle": "Op deze dag",
+      "sgOnThisDayReason": "Een herinnering uit een vervlogen jaar",
+      "sgFirstPhotosTitle": "Voeg je eerste foto's toe",
+      "sgFirstPhotosReason": "De snelste manier om je paleis te vullen",
+      "sgContinueTrack": "Ga verder met je {name}",
+      "sgStepsOf": "{done} van {total} stappen",
+      "sgRecordTitle": "Neem je verhaal op",
+      "sgRecordReason": "Een paar minuten, een leven bewaard",
+      "stripSummary": "{photos} foto's · {videos} video's · {stories} verhalen · {wings} vleugels"
+    }
   },
   "enhance": {
     "sectionTitle": "Verrijk je herinneringen",
@@ -4757,7 +4924,14 @@
     "noMemories": "Nog geen herinneringen om te tonen",
     "brandName": "The Memory Palace",
     "tagline": "Een prachtige plek om je meest dierbare herinneringen te bewaren — foto's, video's en verhalen op een plek zo uniek als je leven.",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "type_photo": "Foto",
+    "type_video": "Video",
+    "type_orb": "Orb",
+    "type_case": "Vitrine",
+    "type_album": "Album",
+    "linkExpired": "Deze gedeelde link is verlopen.",
+    "linkTryAgain": "Kon deze galerij nu niet laden. Probeer het over een moment opnieuw."
   },
   "nudge": {
     "exploreSearch": "Zoek naar paleizen op naam of gebruikersnaam — ontdek makers van over de hele wereld.",
@@ -4947,7 +5121,13 @@
     "waWelcomeForward": "Stuur foto's, video's of berichten door vanuit elke chat en ik help je ze in de juiste kamer te plaatsen.",
     "activeRoom": "Actieve kamer",
     "aiRouting": "AI-routing",
-    "useAiRouting": "AI-routing gebruiken"
+    "useAiRouting": "AI-routing gebruiken",
+    "selectAll": "Alles selecteren ({count})",
+    "loadError": "Kon je openstaande vastleggingen niet laden.",
+    "routePartialError": "Sommige vastleggingen konden niet worden toegewezen en staan nog open.",
+    "retry": "Opnieuw proberen",
+    "wizardCreateError": "We konden je Kep niet aanmaken. Controleer je verbinding en probeer het opnieuw.",
+    "wizardStep3DescRouting": "Laat AI elke herinnering automatisch in de juiste kamer plaatsen."
   },
   "kepLanding": {
     "title": "Maak kennis met Kep",
@@ -5035,7 +5215,19 @@
     "faq3Q": "Wat gebeurt er met mijn gegevens?",
     "faq3A": "Je herinneringen worden veilig opgeslagen in je prive-paleis. Alleen jij hebt er toegang toe.",
     "faq4Q": "Kan ik op elk moment stoppen?",
-    "faq4A": "Ja, stuur STOP naar Kep en het stopt direct met verzamelen. Stuur START om te hervatten."
+    "faq4A": "Ja, stuur STOP naar Kep en het stopt direct met verzamelen. Stuur START om te hervatten.",
+    "flowRoomLabel": "Jouw kamer",
+    "commandsAreEnglish": "Deze commando's typ je in het Engels.",
+    "vcardName": "Kep - Memory Palace",
+    "vcardOrg": "The Memory Palace",
+    "vcardNote": "Je persoonlijke herinneringskruier op WhatsApp",
+    "flowWhatsapp": "WhatsApp",
+    "flowKep": "Kep",
+    "flowRoom": "Jouw kamer",
+    "cmdExampleKitchen": "Keuken",
+    "cmdExampleHolidays": "Vakanties",
+    "waPrefill": "Hoi Kep",
+    "unavailable": "Kep is tijdelijk niet beschikbaar. Probeer het later opnieuw."
   },
   "social": {
     "editProfile": "Profiel bewerken",
@@ -5241,7 +5433,26 @@
     "visitorMode": "Bezoekersmodus",
     "walkThrough3D": "Doorloop in 3D",
     "sharingTitle": "Delen",
-    "sharingSubtitle": "Kies wie je paleis kan zien — publiceer vleugels, deel met familie of geef tijdelijke bezoekcodes."
+    "sharingSubtitle": "Kies wie je paleis kan zien — publiceer vleugels, deel met familie of geef tijdelijke bezoekcodes.",
+    "exploreFeaturedEmpty": "Nog niets uitgelicht",
+    "exploreNewEmpty": "Nog geen nieuwe paleizen",
+    "exploreHomeLink": "The Memory Palace",
+    "passcodeSelectWingSingle": "Selecteer een vleugel om te delen",
+    "passcodeCustomInvalid": "Toegangscode moet {min}–{max} tekens bevatten.",
+    "passcodeLoadError": "Kan je actieve toegangscodes niet laden.",
+    "safetyReportError": "Kan je melding niet versturen. Probeer het opnieuw.",
+    "safetyBlockError": "Kan dit account niet blokkeren. Mogelijk moet je eerst inloggen.",
+    "passcodeWing": "Vleugel",
+    "passcodeCreateError": "Er kon geen bezoekcode worden aangemaakt. Probeer het opnieuw.",
+    "publishFailed": "Sommige wijzigingen konden niet worden opgeslagen. Probeer het opnieuw.",
+    "copyFailed": "Kopiëren mislukt",
+    "palaceOf": "Paleis van {name}",
+    "wingLabelSingular": "vleugel",
+    "wingsLabel": "vleugels",
+    "wingLabelSingularCap": "Vleugel",
+    "wingsLabelCap": "Vleugels",
+    "guestbookSendError": "Kon je bericht niet verzenden. Probeer het opnieuw.",
+    "commentFailed": "Het plaatsen van je bericht is mislukt."
   },
   "help": {
     "title": "Helpcentrum",
@@ -5290,7 +5501,8 @@
     "footerTerms": "Voorwaarden",
     "footerSecurity": "Beveiliging",
     "faq9q": "Waar vind ik dingen in de app?",
-    "faq9a": "Je Atrium is een conciërgebord dat toont wat belangrijk is en je naar elk gebied begeleidt. Gebruik de onder- of zijnavigatie voor je Bibliotheek (de Il Muro-fotomuur), je 3D-Paleis, Ontdek en Ik — je persoonlijke identiteitspagina. Accountopties staan onder Instellingen."
+    "faq9a": "Je Atrium is een conciërgebord dat toont wat belangrijk is en je naar elk gebied begeleidt. Gebruik de onder- of zijnavigatie voor je Bibliotheek (de Il Muro-fotomuur), je 3D-Paleis, Ontdek en Ik — je persoonlijke identiteitspagina. Accountopties staan onder Instellingen.",
+    "contactAttachTooLarge": "Dat bestand is te groot. Kies een bijlage van maximaal 5 MB."
   },
   "landingV2": {
     "nav": {
@@ -5414,7 +5626,10 @@
       "shot1": "De paleisgalerij met ingelijste herinneringen",
       "shot2": "Een gang met herinneringskamers",
       "shot3": "Het paleisoverzicht met vleugels en kamers",
-      "mapVignette": "Herinneringen vastgepind op een kaart"
+      "mapVignette": "Herinneringen vastgepind op een kaart",
+      "menu": "Menu",
+      "mainNav": "Hoofdmenu",
+      "language": "Taal"
     },
     "usps": {
       "eyebrow": "Wat je kunt doen",
@@ -5512,7 +5727,8 @@
       "capsuleRole": "Nu verzegeld, geopend wanneer jij kiest",
       "cocreateRole": "Bouw je paleis als familie",
       "sharingRole": "Laat één kamer zien, of het hele paleis",
-      "legacyRole": "Kies wie de sleutels erft"
+      "legacyRole": "Kies wie de sleutels erft",
+      "kepScene": "Kruier Kep: een familiefoto die je via de chat stuurt, wordt in je paleis bewaard en in goud omlijst."
     },
     "notes": {
       "n1": "je paleis, van bovenaf",
@@ -5523,5 +5739,29 @@
       "n7": "een bibliotheek vol herinneringen",
       "n8": "kleine overwinningen onderweg"
     }
+  },
+  "dataDeletion": {
+    "legal": "Juridisch",
+    "title": "Instructies voor gegevensverwijdering",
+    "appName": "The Memory Palace",
+    "introPre": "Als je je gegevens uit ",
+    "introPost": " wilt verwijderen, heb je de volgende opties:",
+    "option1Title": "Optie 1: Verwijder je account (verwijdert alle gegevens)",
+    "option1Step1Pre": "Log in op ",
+    "option1Step2": "Ga naar Instellingen → Beveiliging",
+    "option1Step3": "Scroll naar beneden en klik op \"Account verwijderen\"",
+    "option1Step4": "Bevestig de verwijdering — al je gegevens (herinneringen, foto's, opnames, stamboom, paleis) worden permanent verwijderd",
+    "option2Title": "Optie 2: Verwijder alleen WhatsApp Kep-gegevens",
+    "option2Step1Pre": "Stuur ",
+    "option2Step1Command": "\"STOP\"",
+    "option2Step1Post": " in het WhatsApp-gesprek om het verzamelen van gegevens te stoppen",
+    "option2Step2": "Log in en ga naar Paleis → Keps",
+    "option2Step3": "Verwijder afzonderlijke opnames of de hele Kep",
+    "option3Title": "Optie 3: Neem contact met ons op",
+    "option3Pre": "Mail naar ",
+    "option3Post": " en we verwijderen je gegevens binnen 30 dagen.",
+    "footerPre": "Zie ons volledige ",
+    "footerPrivacyLink": "privacybeleid",
+    "footerPost": " voor meer informatie over hoe we met je gegevens omgaan."
   }
 }

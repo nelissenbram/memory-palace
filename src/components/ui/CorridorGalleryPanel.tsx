@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
+import { HAIRLINE } from "@/lib/libraryTokens";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -53,7 +54,9 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   const isMobile = useIsMobile();
   const { t } = useTranslation("corridorGallery");
   const { t: tWings } = useTranslation("wings");
+  const { t: tDemos } = useTranslation("demos");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
+  const { containerRef: pickerRef, handleKeyDown: pickerHandleKeyDown } = useFocusTrap(true);
   const accent = wing.accent;
   const userMems = useMemoryStore((s) => s.userMems);
   const { getWingRooms } = useRoomStore();
@@ -61,6 +64,9 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   const [paintings, setPaintings] = useState<CorridorPaintings>(currentPaintings);
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<"all" | "wing" | "upload">("all");
+
+  // Sync external prop changes into the open panel (memory deleted/moved, reset elsewhere).
+  useEffect(() => { setPaintings(currentPaintings); }, [currentPaintings]);
 
   // Painting slots — 1 per room (one painting next to each door)
   const slots = rooms.map((r) => r.id);
@@ -87,15 +93,17 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
     : allMems;
 
   const handleAssign = useCallback((slotRoomId: string, mem: Mem, fromRoomId: string) => {
-    const next: CorridorPaintings = {
-      ...paintings,
-      [slotRoomId]: { url: mem.dataUrl || undefined, title: mem.title, memId: mem.id, roomId: fromRoomId },
-    };
-    setPaintings(next);
-    saveCorridorPaintings(wing.id, next);
-    onPaintingsChange(next);
+    setPaintings((prev) => {
+      const next: CorridorPaintings = {
+        ...prev,
+        [slotRoomId]: { url: mem.dataUrl || undefined, title: mem.title, memId: mem.id, roomId: fromRoomId },
+      };
+      saveCorridorPaintings(wing.id, next);
+      onPaintingsChange(next);
+      return next;
+    });
     // Keep picker open so user can change selection or pick for next painting.
-  }, [paintings, wing.id, onPaintingsChange]);
+  }, [wing.id, onPaintingsChange]);
 
   const handleUpload = useCallback((slotRoomId: string) => {
     const input = document.createElement("input");
@@ -108,32 +116,40 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
       reader.onload = () => {
         const dataUrl = reader.result as string;
         const title = file.name.replace(/\.[^.]+$/, "");
-        const next: CorridorPaintings = {
-          ...paintings,
-          [slotRoomId]: { url: dataUrl, title },
-        };
-        setPaintings(next);
-        saveCorridorPaintings(wing.id, next);
-        onPaintingsChange(next);
+        setPaintings((prev) => {
+          const next: CorridorPaintings = {
+            ...prev,
+            [slotRoomId]: { url: dataUrl, title },
+          };
+          saveCorridorPaintings(wing.id, next);
+          onPaintingsChange(next);
+          return next;
+        });
         setPickingSlot(null);
       };
       reader.readAsDataURL(file);
     };
     input.click();
-  }, [paintings, wing.id, onPaintingsChange]);
+  }, [wing.id, onPaintingsChange]);
 
   const handleClear = useCallback((slotRoomId: string) => {
-    const next = { ...paintings };
-    delete next[slotRoomId];
-    setPaintings(next);
-    saveCorridorPaintings(wing.id, next);
-    onPaintingsChange(next);
-  }, [paintings, wing.id, onPaintingsChange]);
+    setPaintings((prev) => {
+      const next = { ...prev };
+      delete next[slotRoomId];
+      saveCorridorPaintings(wing.id, next);
+      onPaintingsChange(next);
+      return next;
+    });
+  }, [wing.id, onPaintingsChange]);
 
   const handleResetAll = useCallback(() => {
-    setPaintings({});
-    saveCorridorPaintings(wing.id, {});
-    onPaintingsChange({});
+    // "Reset to defaults" restores the seeded demo paintings for this wing (not an empty wall).
+    const def: CorridorPaintings = DEFAULT_CORRIDOR_PAINTINGS[wing.id]
+      ? { ...DEFAULT_CORRIDOR_PAINTINGS[wing.id] }
+      : {};
+    setPaintings(def);
+    saveCorridorPaintings(wing.id, def);
+    onPaintingsChange(def);
     setPickingSlot(null);
   }, [wing.id, onPaintingsChange]);
 
@@ -145,7 +161,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
         background: "rgba(255,255,255,0.82)",
         backdropFilter: "blur(1.5rem) saturate(1.4)",
         WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
-        borderLeft: isMobile ? "none" : `0.0625rem solid ${T.color.cream}`,
+        borderLeft: isMobile ? "none" : `0.0625rem solid ${HAIRLINE}`,
         boxShadow: `-1rem 0 2.5rem rgba(44,44,42,0.12), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
         paddingTop: `max(${isMobile ? "1.25rem" : "1.75rem"}, env(safe-area-inset-top, 0px))`,
         paddingBottom: `max(${isMobile ? "1.25rem" : "1.75rem"}, env(safe-area-inset-bottom, 0px))`,
@@ -154,7 +170,9 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
         overflowY: "auto",
         animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
       }}>
-        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+          .corridor-focusable:focus-visible{outline:0.1875rem solid ${T.color.gold};outline-offset:0.1875rem;border-radius:0.5rem;}
+          @media (prefers-reduced-motion: reduce){.mp-scroll{animation:none !important;}}`}</style>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
@@ -173,9 +191,9 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
               <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{tWings(wing.nameKey) || wing.name} {t("wing")}</p>
             </div>
           </div>
-          <button onClick={onClose} aria-label={t("close")} style={{
+          <button onClick={onClose} aria-label={t("close")} className="corridor-focusable" style={{
             width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem",
-            border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
+            border: `1px solid ${HAIRLINE}`, background: T.color.warmStone,
             color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             minWidth: "2.75rem", minHeight: "2.75rem",
@@ -189,9 +207,9 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
         {/* Reset button */}
         {Object.keys(paintings).length > 0 && (
-          <button onClick={handleResetAll} style={{
+          <button onClick={handleResetAll} className="corridor-focusable" style={{
             marginBottom: "1rem", padding: "0.5rem 1rem", borderRadius: "0.625rem",
-            border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
+            border: `1px solid ${HAIRLINE}`, background: T.color.warmStone,
             fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut,
             cursor: "pointer", transition: "all .15s",
           }}>
@@ -202,82 +220,100 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
         {/* Painting slots — compact grid of tiles. Clicking a tile opens a single picker modal. */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${isMobile ? 2 : 2}, 1fr)`,
+          gridTemplateColumns: "repeat(2, 1fr)",
           gap: "0.75rem",
         }}>
           {slots.map((roomId, idx) => {
             const override = paintings[roomId];
             const isPicking = pickingSlot === roomId;
             return (
-              <button
+              <div
                 key={roomId}
-                onClick={() => setPickingSlot(roomId)}
                 style={{
                   background: "rgba(255,255,255,0.72)",
                   backdropFilter: "blur(0.75rem) saturate(1.3)",
                   WebkitBackdropFilter: "blur(0.75rem) saturate(1.3)",
                   borderRadius: "1rem",
-                  border: `0.0625rem solid ${isPicking ? accent + "70" : T.color.cream}`,
+                  border: `0.0625rem solid ${isPicking ? accent + "70" : HAIRLINE}`,
                   boxShadow: isPicking
                     ? `0 0.5rem 1.5rem ${accent}25, inset 0 0.0625rem 0 rgba(255,255,255,0.7)`
                     : `0 0.125rem 0.5rem rgba(44,44,42,0.05), inset 0 0.0625rem 0 rgba(255,255,255,0.5)`,
                   padding: "0.625rem",
                   transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.5rem",
                   position: "relative",
                 }}
               >
-                <div style={{
-                  width: "100%", aspectRatio: "4 / 3", borderRadius: "0.625rem",
-                  border: `0.0625rem solid ${T.color.cream}`,
-                  overflow: "hidden", position: "relative",
-                  background: override?.url
-                    ? `url(${override.url}) center/cover no-repeat`
-                    : `linear-gradient(135deg, ${accent}35, ${accent}15)`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {!override?.url && (
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
-                      <rect x="3" y="4" width="18" height="14" rx="1.5"/>
-                      <circle cx="8.5" cy="9.5" r="1.5"/>
-                      <path d="M21 15l-5-5L5 18"/>
-                    </svg>
-                  )}
-                  {override && (
-                    <span
-                      role="button"
-                      aria-label={t("removeOverride")}
-                      onClick={(e) => { e.stopPropagation(); handleClear(roomId); }}
-                      style={{
-                        position: "absolute", top: "0.3125rem", right: "0.3125rem",
-                        width: "1.5rem", height: "1.5rem", borderRadius: "50%",
-                        background: "rgba(42,34,24,0.75)", color: "#FFF",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: "0.75rem", cursor: "pointer",
-                      }}
-                    >{"\u2715"}</span>
-                  )}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem", minWidth: 0 }}>
+                <button
+                  onClick={() => setPickingSlot(roomId)}
+                  className="corridor-focusable"
+                  style={{
+                    all: "unset",
+                    boxSizing: "border-box",
+                    width: "100%",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.5rem",
+                  }}
+                >
                   <div style={{
-                    fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    width: "100%", aspectRatio: "4 / 3", borderRadius: "0.625rem",
+                    border: `0.0625rem solid ${HAIRLINE}`,
+                    overflow: "hidden", position: "relative",
+                    background: override?.url
+                      ? `url(${override.url}) center/cover no-repeat`
+                      : `linear-gradient(135deg, ${accent}35, ${accent}15)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    {t("painting")} {idx + 1}
+                    {!override?.url && (
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                        <rect x="3" y="4" width="18" height="14" rx="1.5"/>
+                        <circle cx="8.5" cy="9.5" r="1.5"/>
+                        <path d="M21 15l-5-5L5 18"/>
+                      </svg>
+                    )}
                   </div>
-                  <div style={{
-                    fontFamily: T.font.body, fontSize: "0.625rem",
-                    color: override ? accent : T.color.muted,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                    {override?.title || t("tapToChoose")}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem", minWidth: 0 }}>
+                    <div style={{
+                      fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {t("painting")} {idx + 1}
+                    </div>
+                    <div style={{
+                      fontFamily: T.font.body, fontSize: "0.625rem",
+                      color: override ? accent : T.color.muted,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {override?.title || t("tapToChoose")}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+                {override && (
+                  <button
+                    type="button"
+                    aria-label={t("removeOverride")}
+                    onClick={(e) => { e.stopPropagation(); handleClear(roomId); }}
+                    className="corridor-focusable"
+                    style={{
+                      position: "absolute", top: "0.375rem", right: "0.375rem",
+                      width: "2.75rem", height: "2.75rem", borderRadius: "50%",
+                      border: "none", padding: 0,
+                      background: "transparent",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span style={{
+                      width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+                      background: "rgba(64,59,54,0.75)", color: "#FFF",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.75rem",
+                    }}>{"\u2715"}</span>
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -299,13 +335,18 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
             }}
           >
             <div
+              ref={pickerRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("title")}
+              onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setPickingSlot(null); return; } pickerHandleKeyDown(e); }}
               onClick={(e) => e.stopPropagation()}
               style={{
                 background: "rgba(255,255,255,0.95)",
                 backdropFilter: "blur(1.5rem) saturate(1.4)",
                 WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
                 borderRadius: "1.25rem",
-                border: `0.0625rem solid ${T.color.cream}`,
+                border: `0.0625rem solid ${HAIRLINE}`,
                 boxShadow: `0 1.5rem 3rem rgba(44,44,42,0.25), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
                 padding: "1.25rem",
                 width: "min(40rem, 100%)",
@@ -320,38 +361,41 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                 <button
                   onClick={() => setPickingSlot(null)}
                   aria-label={t("close")}
+                  className="corridor-focusable"
                   style={{
-                    width: "2.25rem", height: "2.25rem", borderRadius: "50%",
-                    border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone,
+                    width: "2.75rem", height: "2.75rem", borderRadius: "50%",
+                    border: `0.0625rem solid ${HAIRLINE}`, background: T.color.warmStone,
                     color: T.color.muted, cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >{"\u2715"}</button>
               </div>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                <button onClick={() => handleUpload(pickingSlot)} style={{
-                  padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.5rem",
+                <button onClick={() => handleUpload(pickingSlot)} className="corridor-focusable" style={{
+                  padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.75rem",
                   border: `0.0625rem solid ${accent}`, background: `${accent}15`,
                   fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
                   color: accent, cursor: "pointer",
                 }}>{t("uploadImage")}</button>
                 <div style={{ flex: 1 }} />
-                <button onClick={() => setSourceFilter("all")} style={{
-                  padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.5rem",
-                  border: `0.0625rem solid ${sourceFilter === "all" ? accent : T.color.cream}`,
-                  background: sourceFilter === "all" ? `${accent}15` : T.color.warmStone,
-                  fontFamily: T.font.body, fontSize: "0.6875rem",
-                  color: sourceFilter === "all" ? accent : T.color.muted,
-                  cursor: "pointer",
-                }}>{t("allWings")}</button>
-                <button onClick={() => setSourceFilter("wing")} style={{
-                  padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.5rem",
-                  border: `0.0625rem solid ${sourceFilter === "wing" ? accent : T.color.cream}`,
-                  background: sourceFilter === "wing" ? `${accent}15` : T.color.warmStone,
-                  fontFamily: T.font.body, fontSize: "0.6875rem",
-                  color: sourceFilter === "wing" ? accent : T.color.muted,
-                  cursor: "pointer",
-                }}>{t("thisWing")}</button>
+                <div role="radiogroup" aria-label={t("filterSource")} style={{ display: "flex", gap: "0.5rem" }}>
+                  <button role="radio" aria-checked={sourceFilter === "all"} onClick={() => setSourceFilter("all")} className="corridor-focusable" style={{
+                    padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.75rem",
+                    border: `0.0625rem solid ${sourceFilter === "all" ? accent : HAIRLINE}`,
+                    background: sourceFilter === "all" ? `${accent}15` : T.color.warmStone,
+                    fontFamily: T.font.body, fontSize: "0.6875rem",
+                    color: sourceFilter === "all" ? accent : T.color.muted,
+                    cursor: "pointer",
+                  }}>{t("allWings")}</button>
+                  <button role="radio" aria-checked={sourceFilter === "wing"} onClick={() => setSourceFilter("wing")} className="corridor-focusable" style={{
+                    padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.75rem",
+                    border: `0.0625rem solid ${sourceFilter === "wing" ? accent : HAIRLINE}`,
+                    background: sourceFilter === "wing" ? `${accent}15` : T.color.warmStone,
+                    fontFamily: T.font.body, fontSize: "0.6875rem",
+                    color: sourceFilter === "wing" ? accent : T.color.muted,
+                    cursor: "pointer",
+                  }}>{t("thisWing")}</button>
+                </div>
               </div>
               {filteredMems.length === 0 ? (
                 <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, textAlign: "center", padding: "2rem 0" }}>
@@ -371,10 +415,10 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                   {filteredMems.map(({ mem, room: memRoom, wingName }) => {
                     const selected = paintings[pickingSlot]?.memId === mem.id;
                     return (
-                      <button key={mem.id} onClick={() => handleAssign(pickingSlot, mem, memRoom.id)} style={{
+                      <button key={mem.id} onClick={() => handleAssign(pickingSlot, mem, memRoom.id)} className="corridor-focusable" style={{
                         display: "flex", alignItems: "center", gap: "0.75rem",
                         width: "100%", height: "4.5rem", flexShrink: 0,
-                        border: selected ? `0.125rem solid ${accent}` : `0.0625rem solid ${T.color.cream}`,
+                        border: selected ? `0.125rem solid ${accent}` : `0.0625rem solid ${HAIRLINE}`,
                         borderRadius: "0.75rem", overflow: "hidden", cursor: "pointer",
                         padding: "0.375rem", background: selected ? `${accent}12` : "rgba(255,255,255,0.7)",
                         textAlign: "left", transition: "all .15s",
@@ -388,7 +432,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                           <div style={{
                             fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal,
                             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                          }}>{mem.title}</div>
+                          }}>{(mem.titleKey && tDemos(mem.titleKey)) || mem.title}</div>
                           <div style={{
                             fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",

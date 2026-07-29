@@ -2303,7 +2303,7 @@ function EntranceHallScene({
         const rect = el.getBoundingClientRect();
         const rx = (tch.clientX - rect.left) / rect.width;
         const ry = (tch.clientY - rect.top) / rect.height;
-        if (rx < 0.25 && ry > 0.75 && touchMoveId === null) {
+        if (rx < 0.25 && ry > 0.75 && touchMoveId === null && !document.querySelector('[data-mp-joystick]')) {
           touchMoveId = tch.identifier;
           touchMoveDir.x = 0;
           touchMoveDir.z = 0;

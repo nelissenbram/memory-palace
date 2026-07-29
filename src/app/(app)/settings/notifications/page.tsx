@@ -8,152 +8,153 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { isNative } from "@/lib/native/platform";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
+import { INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, TRAY, GOLD } from "@/lib/libraryTokens";
 
-// ── Custom SVG Icons (Roman/Tuscan aesthetic) — glyphs in #9A4F2A /* Atrium token: terracotta glyph */ ──
+// ── Custom SVG Icons (Roman/Tuscan aesthetic) — glyphs in EMBER_GLYPH terracotta ──
 
 function IconBell() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2C12 2 12.5 2 13 2.5C13.5 3 14 4 14 5V5.5C16.5 6.5 18 9 18 12V16L20 18H4L6 16V12C6 9 7.5 6.5 10 5.5V5C10 4 10.5 3 11 2.5C11.5 2 12 2 12 2Z" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 18C10 19.1 10.9 20 12 20C13.1 20 14 19.1 14 18" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="12" cy="5" r="1" fill="#9A4F2A" opacity="0.4" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <path d="M12 2C12 2 12.5 2 13 2.5C13.5 3 14 4 14 5V5.5C16.5 6.5 18 9 18 12V16L20 18H4L6 16V12C6 9 7.5 6.5 10 5.5V5C10 4 10.5 3 11 2.5C11.5 2 12 2 12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 18C10 19.1 10.9 20 12 20C13.1 20 14 19.1 14 18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="5" r="1" fill="currentColor" opacity="0.4" />
     </svg>
   );
 }
 
 function IconOnThisDay() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="4" width="18" height="17" rx="2" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M3 9H21" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M8 2V5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M16 2V5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M12 13L13.1 15.3L15.7 15.6L13.8 17.3L14.3 19.9L12 18.6L9.7 19.9L10.2 17.3L8.3 15.6L10.9 15.3L12 13Z" fill="#9A4F2A" opacity="0.5" stroke="#9A4F2A" strokeWidth="1" strokeLinejoin="round" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3 9H21" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 2V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M16 2V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 13L13.1 15.3L15.7 15.6L13.8 17.3L14.3 19.9L12 18.6L9.7 19.9L10.2 17.3L8.3 15.6L10.9 15.3L12 13Z" fill="currentColor" opacity="0.5" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function IconTimeCapsule() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2C9 2 8 3.5 8 5V6H16V5C16 3.5 15 2 12 2Z" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="7" y="6" width="10" height="4" rx="1" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M8 10L7 20C7 21 7.5 22 9 22H15C16.5 22 17 21 17 20L16 10" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 14V18" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="12" cy="14" r="1" fill="#9A4F2A" opacity="0.5" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <path d="M12 2C9 2 8 3.5 8 5V6H16V5C16 3.5 15 2 12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="7" y="6" width="10" height="4" rx="1" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 10L7 20C7 21 7.5 22 9 22H15C16.5 22 17 21 17 20L16 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 14V18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="14" r="1" fill="currentColor" opacity="0.5" />
     </svg>
   );
 }
 
 function IconMilestone() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2L14.5 7.5L20.5 8.2L16 12.4L17.2 18.3L12 15.5L6.8 18.3L8 12.4L3.5 8.2L9.5 7.5L12 2Z" stroke="#9A4F2A" strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx="12" cy="10" r="2" fill="#9A4F2A" opacity="0.3" />
-      <path d="M8 21H16" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M12 18V21" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <path d="M12 2L14.5 7.5L20.5 8.2L16 12.4L17.2 18.3L12 15.5L6.8 18.3L8 12.4L3.5 8.2L9.5 7.5L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="12" cy="10" r="2" fill="currentColor" opacity="0.3" />
+      <path d="M8 21H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 18V21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
 
 function IconFamily() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="9" cy="7" r="3" stroke="#9A4F2A" strokeWidth="1.5" />
-      <circle cx="17" cy="7" r="2.5" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M3 20C3 16.7 5.7 14 9 14C10.5 14 11.8 14.5 12.8 15.4" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M14 20C14 17.2 15.3 15 17 15C18.7 15 20 17.2 20 20" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M5 19L7 17L9 19L11 17" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <circle cx="9" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="17" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3 20C3 16.7 5.7 14 9 14C10.5 14 11.8 14.5 12.8 15.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 20C14 17.2 15.3 15 17 15C18.7 15 20 17.2 20 20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 19L7 17L9 19L11 17" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
     </svg>
   );
 }
 
 function IconInterview() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="10" r="5" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M12 7V10L14 11.5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 18C5 16 8 14.5 12 14.5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-      <path d="M17 17L19 19" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M15 19L17 17L19 19" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <circle cx="12" cy="10" r="5" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M12 7V10L14 11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 18C5 16 8 14.5 12 14.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+      <path d="M17 17L19 19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M15 19L17 17L19 19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 function IconWeeklySummary() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="4" y="3" width="16" height="18" rx="2" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M8 8H16" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M8 12H14" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M8 16H12" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="17" cy="17" r="1.5" fill="#9A4F2A" opacity="0.4" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 8H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 12H14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 16H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="17" cy="17" r="1.5" fill="currentColor" opacity="0.4" />
     </svg>
   );
 }
 
 function IconScroll() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M6 3C4.9 3 4 3.9 4 5V19C4 20.1 4.9 21 6 21" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M6 3H18C19.1 3 20 3.9 20 5V17C20 18.1 19.1 19 18 19H8C6.9 19 6 19.9 6 21V3Z" stroke="#9A4F2A" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M10 8H16" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M10 12H15" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="17" cy="20" r="2" stroke="#9A4F2A" strokeWidth="1.5" fill="#9A4F2A" opacity="0.3" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <path d="M6 3C4.9 3 4 3.9 4 5V19C4 20.1 4.9 21 6 21" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6 3H18C19.1 3 20 3.9 20 5V17C20 18.1 19.1 19 18 19H8C6.9 19 6 19.9 6 21V3Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M10 8H16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M10 12H15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="17" cy="20" r="2" stroke="currentColor" strokeWidth="1.5" fill="currentColor" opacity="0.3" />
     </svg>
   );
 }
 
 function IconCalendarTablet() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="3" width="18" height="18" rx="2" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M3 8H21" stroke="#9A4F2A" strokeWidth="1.5" />
-      <rect x="6" y="11" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.3" />
-      <rect x="10.5" y="11" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.3" />
-      <rect x="15" y="11" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.3" />
-      <rect x="6" y="15.5" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.2" />
-      <rect x="10.5" y="15.5" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.2" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M3 8H21" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="6" y="11" width="3" height="2.5" rx="0.5" fill="currentColor" opacity="0.3" />
+      <rect x="10.5" y="11" width="3" height="2.5" rx="0.5" fill="currentColor" opacity="0.3" />
+      <rect x="15" y="11" width="3" height="2.5" rx="0.5" fill="currentColor" opacity="0.3" />
+      <rect x="6" y="15.5" width="3" height="2.5" rx="0.5" fill="currentColor" opacity="0.2" />
+      <rect x="10.5" y="15.5" width="3" height="2.5" rx="0.5" fill="currentColor" opacity="0.2" />
     </svg>
   );
 }
 
 function IconMemories() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9A4F2A" strokeWidth="1.5" />
-      <rect x="6" y="6" width="12" height="12" rx="1" stroke="#9A4F2A" strokeWidth="1" opacity="0.4" />
-      <path d="M6 16L10 12L13 15L16 11L18 14" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 8C1.5 6 2 4 2 4" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-      <path d="M22 8C22.5 6 22 4 22 4" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-      <path d="M2 16C1.5 18 2 20 2 20" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-      <path d="M22 16C22.5 18 22 20 22 20" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <rect x="6" y="6" width="12" height="12" rx="1" stroke="currentColor" strokeWidth="1" opacity="0.4" />
+      <path d="M6 16L10 12L13 15L16 11L18 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 8C1.5 6 2 4 2 4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M22 8C22.5 6 22 4 22 4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M2 16C1.5 18 2 20 2 20" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M22 16C22.5 18 22 20 22 20" stroke="currentColor" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
     </svg>
   );
 }
 
 function IconInfoPillar() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="8" y="6" width="8" height="14" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M6 6H18" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M6 20H18" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M5 4H19" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M5 22H19" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="12" cy="11" r="1.5" fill="#9A4F2A" opacity="0.5" />
-      <path d="M12 14V17" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <rect x="8" y="6" width="8" height="14" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M6 6H18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6 20H18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 4H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 22H19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="11" r="1.5" fill="currentColor" opacity="0.5" />
+      <path d="M12 14V17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
 
 function IconSystemUpdates() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="8" stroke="#9A4F2A" strokeWidth="1.5" />
-      <path d="M12 8V12L15 14" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 3L3 5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M19 3L21 5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M12 4V2" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ color: EMBER_GLYPH }} aria-hidden="true">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M12 8V12L15 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 3L3 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M19 3L21 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 4V2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -192,6 +193,10 @@ export default function NotificationsPage() {
   const { t } = useTranslation("notifications");
   const isMobile = useIsMobile();
   const { prefs, init, setPrefs } = usePushNotificationStore();
+  // Web Push works on desktop Chrome/Firefox/Edge too — gate the push section on
+  // CAPABILITY (Notification API present), not viewport, so desktop-web and iPad
+  // portrait users aren't stripped of push management. Resolved after mount.
+  const [pushCapable, setPushCapable] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [subscribing, setSubscribing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -212,26 +217,46 @@ export default function NotificationsPage() {
       setPermission("unsupported");
     } else {
       setPermission(Notification.permission);
+      setPushCapable(true);
     }
-    // Load email preferences from server profile
+    // Load preferences from the server: email prefs from `profiles`, and push
+    // category prefs from `push_subscriptions` so the local store can never
+    // silently diverge from the DB across devices / after a pruned row.
     (async () => {
       try {
         const { createClient } = await import("@/lib/supabase/client");
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("email_digest, monthly_highlights, family_updates_email")
-            .eq("id", user.id)
-            .single();
+          const [{ data: profile }, { data: sub }] = await Promise.all([
+            supabase
+              .from("profiles")
+              .select("email_digest, monthly_highlights, family_updates_email")
+              .eq("id", user.id)
+              .single(),
+            supabase
+              .from("push_subscriptions")
+              .select("on_this_day, time_capsule, memory_milestones, family_activity, interview_reminders, weekly_summary_push, system_updates")
+              .eq("user_id", user.id)
+              .limit(1)
+              .maybeSingle(),
+          ]);
+          const updates: Partial<NotificationPreferences> = {};
           if (profile) {
-            const updates: Partial<NotificationPreferences> = {};
             if (typeof profile.email_digest === "boolean") updates.emailDigest = profile.email_digest;
             if (typeof profile.monthly_highlights === "boolean") updates.monthlyHighlights = profile.monthly_highlights;
             if (typeof profile.family_updates_email === "boolean") updates.familyUpdatesEmail = profile.family_updates_email;
-            if (Object.keys(updates).length > 0) setPrefs(updates);
           }
+          if (sub) {
+            if (typeof sub.on_this_day === "boolean") updates.onThisDay = sub.on_this_day;
+            if (typeof sub.time_capsule === "boolean") updates.timeCapsule = sub.time_capsule;
+            if (typeof sub.memory_milestones === "boolean") updates.memoryMilestones = sub.memory_milestones;
+            if (typeof sub.family_activity === "boolean") updates.familyActivity = sub.family_activity;
+            if (typeof sub.interview_reminders === "boolean") updates.interviewReminders = sub.interview_reminders;
+            if (typeof sub.weekly_summary_push === "boolean") updates.weeklySummaryPush = sub.weekly_summary_push;
+            if (typeof sub.system_updates === "boolean") updates.systemUpdates = sub.system_updates;
+          }
+          if (Object.keys(updates).length > 0) setPrefs(updates);
         }
       } catch {
         // Silently fail — localStorage default will be used
@@ -263,9 +288,10 @@ export default function NotificationsPage() {
       } catch (err) {
         console.error("Failed to unsubscribe:", err);
         setToast({ message: t("pushDisableFailed"), type: "error" });
+      } finally {
+        subscribingRef.current = false;
+        setSubscribing(false);
       }
-      subscribingRef.current = false;
-      setSubscribing(false);
       return;
     }
 
@@ -277,7 +303,6 @@ export default function NotificationsPage() {
       stage = "requestPermission";
       if (typeof Notification === "undefined") {
         setToast({ message: t("pushErrorNoApi"), type: "error" });
-        setSubscribing(false);
         return;
       }
       const perm = await Notification.requestPermission();
@@ -285,14 +310,12 @@ export default function NotificationsPage() {
 
       if (perm !== "granted") {
         setToast({ message: t("pushErrorPermission", { perm }), type: "error" });
-        setSubscribing(false);
         return;
       }
 
       stage = "serviceWorker.ready";
       if (!("serviceWorker" in navigator)) {
         setToast({ message: t("pushErrorNoServiceWorker"), type: "error" });
-        setSubscribing(false);
         return;
       }
       const reg = await navigator.serviceWorker.ready;
@@ -301,7 +324,6 @@ export default function NotificationsPage() {
       const vapidKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "").replace(/[\r\n]/g, "").replace("\\n", "").trim() || undefined;
       if (!vapidKey) {
         setToast({ message: t("pushErrorNoVapid"), type: "error" });
-        setSubscribing(false);
         return;
       }
 
@@ -321,7 +343,6 @@ export default function NotificationsPage() {
           message: t("pushErrorRevoked"),
           type: "error",
         });
-        setSubscribing(false);
         return;
       }
 
@@ -343,9 +364,10 @@ export default function NotificationsPage() {
       console.error("Failed to subscribe:", err);
       const msg = (err as Error).message || String(err);
       setToast({ message: t("pushErrorStage", { stage, msg: msg.slice(0, 180) }), type: "error" });
+    } finally {
+      subscribingRef.current = false;
+      setSubscribing(false);
     }
-    subscribingRef.current = false;
-    setSubscribing(false);
   }, [setPrefs, t]);
 
   const handleToggleCategory = useCallback(async (key: keyof NotificationPreferences) => {
@@ -355,11 +377,27 @@ export default function NotificationsPage() {
 
     setSaving(true);
     try {
-      await fetch("/api/notifications/subscribe", {
+      const res = await fetch("/api/notifications/subscribe", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [key]: newVal }),
       });
+      // fetch only rejects on a network error — a 500/401/429/409 resolves
+      // normally, so an unchecked response would silently drop the write while
+      // the optimistic toggle persisted to localStorage. Roll back on any
+      // non-OK status and surface the reason.
+      if (!res.ok) {
+        setPrefs({ [key]: !newVal });
+        if (res.status === 429) {
+          setToast({ message: t("saveRateLimited"), type: "error" });
+        } else if (res.status === 409) {
+          // Push preference could not be stored because no push subscription
+          // row exists — prompt the user to (re-)enable push.
+          setToast({ message: t("savePushReenable"), type: "error" });
+        } else {
+          setToast({ message: t("saveFailed"), type: "error" });
+        }
+      }
     } catch {
       setPrefs({ [key]: !newVal });
       setToast({ message: t("saveFailed"), type: "error" });
@@ -372,14 +410,60 @@ export default function NotificationsPage() {
 
   if (!loaded) {
     return (
-      <div style={{ padding: "3rem", textAlign: "center", fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium token: muted */ }}>
-        {t("loading") || "Loading..."}
+      <div aria-busy="true" aria-label={t("loading")}>
+        <SettingsPageHeader
+          hidden={isMobile}
+          icon="notifications"
+          title={t("title")}
+          subtitle={t("description")}
+        />
+        {[0, 1].map((section) => (
+          <div key={section} style={{ marginTop: section === 0 ? 0 : "1.75rem" }}>
+            <SectionOverline label="" />
+            <div style={{
+              background: T.color.white,
+              borderRadius: "1rem",
+              border: `0.0625rem solid ${HAIRLINE}`,
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+              overflow: "hidden",
+            }}>
+              {[0, 1, 2].map((row) => (
+                <div key={row} style={{
+                  padding: "0.875rem 1.5rem",
+                  display: "flex", alignItems: "center", gap: "0.875rem",
+                  borderTop: row === 0 ? "none" : `0.0625rem solid ${HAIRLINE}`,
+                }}>
+                  <div className="np-skeleton" style={{
+                    width: "2.25rem", height: "2.25rem", borderRadius: "0.7rem",
+                    background: TRAY, flexShrink: 0,
+                  }} />
+                  <div style={{ flex: 1 }}>
+                    <div className="np-skeleton" style={{
+                      width: "8rem", height: "0.875rem", borderRadius: "0.3125rem",
+                      background: TRAY, marginBottom: "0.4375rem",
+                    }} />
+                    <div className="np-skeleton" style={{
+                      width: "12rem", height: "0.75rem", borderRadius: "0.3125rem",
+                      background: TRAY, maxWidth: "70%",
+                    }} />
+                  </div>
+                  <div className="np-skeleton" style={{
+                    width: "3rem", height: "1.75rem", borderRadius: "0.875rem",
+                    background: TRAY, flexShrink: 0,
+                  }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        <style>{`@keyframes npShimmer { 0% { opacity: 0.55; } 50% { opacity: 0.9; } 100% { opacity: 0.55; } } .np-skeleton { animation: npShimmer 1.4s ease-in-out infinite; } @media (prefers-reduced-motion: reduce) { .np-skeleton { animation: none !important; } }`}</style>
       </div>
     );
   }
 
   return (
     <div>
+      <ToggleStyles />
       {/* Toast */}
       {toast && (
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
@@ -393,8 +477,12 @@ export default function NotificationsPage() {
         subtitle={t("description")}
       />
 
-      {/* ── Push Notifications Section (mobile web only — dead inside native WKWebView) ── */}
-      {isMobile && !nativeApp && <>
+      {/* ── Push Notifications Section ──
+          Gate on CAPABILITY, not viewport: Web Push runs on desktop Chrome/
+          Firefox/Edge and iPad-portrait too, so we show it wherever the
+          Notification API exists. Still hidden inside the native WKWebView,
+          where the web-push stack is a dead toggle (Apple 2.1). */}
+      {pushCapable && !nativeApp && <>
 
       {/* Browser support warning */}
       {isUnsupported && (
@@ -404,7 +492,7 @@ export default function NotificationsPage() {
           border: "0.0625rem solid #E7D9C4" /* Atrium token: terracotta border */,
         }}>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium token: ink */,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: INK,
             margin: 0, lineHeight: 1.4,
           }}>
             {t("browserUnsupported")}
@@ -420,7 +508,7 @@ export default function NotificationsPage() {
           border: "0.0625rem solid #E7D9C4" /* Atrium token: terracotta border */,
         }}>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium token: ink */,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: INK,
             margin: 0, lineHeight: 1.4,
           }}>
             {t("permissionDenied")}
@@ -431,7 +519,7 @@ export default function NotificationsPage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+        border: `0.0625rem solid ${HAIRLINE}`,
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)" /* Atrium S1 + top highlight */,
         overflow: "hidden",
       }}>
@@ -442,7 +530,7 @@ export default function NotificationsPage() {
         }}>
           <div style={{
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", flexShrink: 0,
-            background: prefs.pushEnabled ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : "#F6EBE3" /* Atrium token: recessed tray */,
+            background: prefs.pushEnabled ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : TRAY,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <IconBell />
@@ -451,12 +539,12 @@ export default function NotificationsPage() {
           <div style={{ flex: 1 }}>
             <h3 style={{
               fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-              color: "#403B36" /* Atrium token: ink */, margin: "0 0 0.125rem",
+              color: INK, margin: "0 0 0.125rem",
             }}>
               {t("pushNotifications")}
             </h3>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
               margin: 0,
             }}>
               {t("pushDescription")}
@@ -464,6 +552,7 @@ export default function NotificationsPage() {
           </div>
 
           <ToggleSwitch
+            label={t("pushNotifications")}
             enabled={prefs.pushEnabled}
             onChange={handleTogglePush}
             disabled={isUnsupported || isDenied || subscribing}
@@ -474,16 +563,16 @@ export default function NotificationsPage() {
         {/* Push sub-category toggles */}
         {prefs.pushEnabled && (
           <>
-            {PUSH_CATEGORIES.map((cat, i) => (
+            {PUSH_CATEGORIES.map((cat) => (
               <div key={cat.key}>
-                <div style={{ height: "0.0625rem", background: "#E3D6BC" /* Atrium token: hairline */, margin: "0 1.5rem" }} />
+                <Divider />
                 <div style={{
                   padding: "0.875rem 1.5rem",
                   display: "flex", alignItems: "center", gap: "0.875rem",
                 }}>
                   <div style={{
                     width: "2.25rem", height: "2.25rem", borderRadius: "0.7rem", flexShrink: 0,
-                    background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : "#F6EBE3" /* Atrium token: recessed tray */,
+                    background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : TRAY,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {cat.icon}
@@ -491,18 +580,19 @@ export default function NotificationsPage() {
                   <div style={{ flex: 1 }}>
                     <h4 style={{
                       fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                      color: "#403B36" /* Atrium token: ink */, margin: "0 0 0.0625rem",
+                      color: INK, margin: "0 0 0.0625rem",
                     }}>
                       {t(cat.titleKey)}
                     </h4>
                     <p style={{
-                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */,
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
                       margin: 0, lineHeight: 1.4,
                     }}>
                       {t(cat.descKey)}
                     </p>
                   </div>
                   <ToggleSwitch
+                    label={t(cat.titleKey)}
                     enabled={prefs[cat.key]}
                     onChange={() => handleToggleCategory(cat.key)}
                     disabled={saving}
@@ -522,23 +612,21 @@ export default function NotificationsPage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+        border: `0.0625rem solid ${HAIRLINE}`,
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)" /* Atrium S1 + top highlight */,
         overflow: "hidden",
         paddingTop: "0.5rem",
       }}>
         {EMAIL_CATEGORIES.map((cat, i) => (
           <div key={cat.key}>
-            {i > 0 && (
-              <div style={{ height: "0.0625rem", background: "#E3D6BC" /* Atrium token: hairline */, margin: "0 1.5rem" }} />
-            )}
+            {i > 0 && <Divider />}
             <div style={{
               padding: "0.875rem 1.5rem",
               display: "flex", alignItems: "center", gap: "0.875rem",
             }}>
               <div style={{
                 width: "2.25rem", height: "2.25rem", borderRadius: "0.7rem", flexShrink: 0,
-                background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : "#F6EBE3" /* Atrium token: recessed tray */,
+                background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : TRAY,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {cat.icon}
@@ -546,18 +634,19 @@ export default function NotificationsPage() {
               <div style={{ flex: 1 }}>
                 <h4 style={{
                   fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  color: "#403B36" /* Atrium token: ink */, margin: "0 0 0.0625rem",
+                  color: INK, margin: "0 0 0.0625rem",
                 }}>
                   {t(cat.titleKey)}
                 </h4>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
                   margin: 0, lineHeight: 1.4,
                 }}>
                   {t(cat.descKey)}
                 </p>
               </div>
               <ToggleSwitch
+                label={t(cat.titleKey)}
                 enabled={prefs[cat.key]}
                 onChange={() => handleToggleCategory(cat.key)}
                 disabled={saving}
@@ -571,15 +660,15 @@ export default function NotificationsPage() {
       {/* Notification Schedule note */}
       <div style={{
         marginTop: "1.5rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
-        background: "#F6EBE3" /* Atrium token: recessed tray */,
-        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+        background: TRAY,
+        border: `0.0625rem solid ${HAIRLINE}`,
         display: "flex", alignItems: "flex-start", gap: "0.75rem",
       }}>
         <div style={{ flexShrink: 0, marginTop: "0.125rem" }}>
           <IconInfoPillar />
         </div>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium token: ink */,
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: INK,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("scheduleNote")}
@@ -592,14 +681,29 @@ export default function NotificationsPage() {
   );
 }
 
+// ── Shared row divider (one rule for both PUSH and EMAIL maps) ──
+function Divider() {
+  return <div style={{ height: "0.0625rem", background: HAIRLINE, margin: "0 1.5rem" }} />;
+}
+
+// ── Toggle-switch keyframes / focus ring / reduced-motion — hoisted once
+// (was previously duplicated inside every ToggleSwitch, ~11 copies). ──
+function ToggleStyles() {
+  return (
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { .np-spin { animation: none !important; } .np-toggle-pill, .np-toggle-pill > div { transition: none !important; } } .np-toggle:focus-visible { outline: 0.1875rem solid ${GOLD}; outline-offset: 0.1875rem; border-radius: 0.5rem; } /* GOLD focus ring — the sanctioned ceremonial gold use */`}</style>
+  );
+}
+
 // ── Toggle Switch Component ──
 
 function ToggleSwitch({
+  label,
   enabled,
   onChange,
   disabled = false,
   loading = false,
 }: {
+  label: string;
   enabled: boolean;
   onChange: () => void;
   disabled?: boolean;
@@ -609,50 +713,65 @@ function ToggleSwitch({
     <button
       role="switch"
       aria-checked={enabled}
+      aria-label={label}
       onClick={onChange}
       disabled={disabled}
       className="np-toggle"
       style={{
+        // The visible pill stays 3rem × 1.75rem, but the button's tap area is
+        // expanded to >=2.75rem tall via vertical padding so touch targets meet
+        // the 44px minimum on a surface whose whole job is tapping toggles.
         width: "3rem",
-        height: "1.75rem",
-        borderRadius: "0.875rem",
+        minHeight: "2.75rem",
+        padding: "0.5rem 0",
         border: "none",
-        background: enabled
-          ? "#B85C38" /* Atrium token: ember — interactive ON */
-          : "#E3D6BC" /* Atrium token: hairline track */,
-        position: "relative",
+        background: "transparent",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
-        transition: "background .2s ease",
         flexShrink: 0,
-        padding: 0,
       }}
     >
-      <div
+      <span
+        className="np-toggle-pill"
         style={{
-          width: "1.375rem",
-          height: "1.375rem",
-          borderRadius: "0.6875rem",
-          background: "#FFF",
-          position: "absolute",
-          top: "0.1875rem",
-          left: enabled ? "1.4375rem" : "0.1875rem",
-          transition: "left .2s ease",
-          boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)" /* Atrium warm ink */,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          width: "3rem",
+          height: "1.75rem",
+          borderRadius: "0.875rem",
+          background: enabled ? EMBER : HAIRLINE,
+          position: "relative",
+          transition: "background .2s ease",
+          flexShrink: 0,
+          display: "block",
         }}
       >
-        {loading && (
-          <div className="np-spin" style={{
-            width: "0.75rem", height: "0.75rem", border: "0.125rem solid rgba(113,106,94,0.25)" /* Atrium token: muted, pre-mixed */,
-            borderTopColor: "#716A5E", borderRadius: "50%",
-            animation: "spin .6s linear infinite",
-          }} />
-        )}
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { .np-spin { animation: none !important; } .np-toggle, .np-toggle > div { transition: none !important; } } .np-toggle:focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; } /* Atrium token: gold focus ring — the sanctioned gold use */`}</style>
+        <span
+          style={{
+            width: "1.375rem",
+            height: "1.375rem",
+            borderRadius: "0.6875rem",
+            background: "#FFF",
+            position: "absolute",
+            top: "0.1875rem",
+            left: enabled ? "1.4375rem" : "0.1875rem",
+            transition: "left .2s ease",
+            boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)" /* Atrium warm ink */,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {loading && (
+            <span className="np-spin" style={{
+              width: "0.75rem", height: "0.75rem", border: `0.125rem solid rgba(113,106,94,0.25)`,
+              borderTopColor: MUTED, borderRadius: "50%", display: "block",
+              animation: "spin .6s linear infinite",
+            }} />
+          )}
+        </span>
+      </span>
     </button>
   );
 }

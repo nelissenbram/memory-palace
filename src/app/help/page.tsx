@@ -8,6 +8,9 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { isIOS } from "@/lib/native/platform";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
+
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 const F = T.font;
 // Re-skin the whole /help page to the app canon by remapping the local color
@@ -20,12 +23,14 @@ const C = {
   walnut: "#716A5E",    // secondary text → muted
   sandstone: "#E3D6BC", // borders/hairlines
   terracotta: "#B85C38",// interactive/CTA → ember
+  sage: "#56683C",      // success hue → canon SAGE
 };
 
 export default function HelpPage() {
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("help");
   const { t: tc } = useTranslation("common");
+  const isMobile = useIsMobile();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [category, setCategory] = useState("general");
   const [message, setMessage] = useState("");
@@ -99,7 +104,7 @@ export default function HelpPage() {
           <button onClick={() => router.back()} aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "2rem", height: "2rem", borderRadius: "0.5rem",
-            border: `1px solid ${C.sandstone}50`, background: "none",
+            border: `1px solid ${C.sandstone}60`, background: "none",
             color: C.walnut, cursor: "pointer",
           }}>
             <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -108,9 +113,11 @@ export default function HelpPage() {
           </button>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.625rem", textDecoration: "none" }}>
             <PalaceLogo variant="mark" color="dark" size="sm" />
-            <span style={{ fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500, color: C.charcoal, letterSpacing: "-0.3px" }}>
-              The Memory Palace
-            </span>
+            {!isMobile && (
+              <span style={{ fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500, color: C.charcoal, letterSpacing: "-0.3px" }}>
+                The Memory Palace
+              </span>
+            )}
           </Link>
         </div>
         <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
@@ -160,6 +167,9 @@ export default function HelpPage() {
               }}>
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  aria-expanded={openFaq === i}
+                  aria-controls={`help-faq-answer-${i}`}
+                  id={`help-faq-trigger-${i}`}
                   style={{
                     width: "100%", padding: "1rem 1.25rem",
                     display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -171,7 +181,7 @@ export default function HelpPage() {
                   }}
                 >
                   {faq.q}
-                  <span style={{
+                  <span aria-hidden="true" style={{
                     flexShrink: 0, marginLeft: "1rem",
                     transform: openFaq === i ? "rotate(180deg)" : "rotate(0)",
                     transition: "transform 0.2s", fontSize: "0.75rem", color: C.muted,
@@ -180,10 +190,15 @@ export default function HelpPage() {
                   </span>
                 </button>
                 {openFaq === i && (
-                  <div style={{
-                    padding: "0 1.25rem 1rem",
-                    fontSize: "0.875rem", color: C.walnut, lineHeight: 1.7,
-                  }}>
+                  <div
+                    id={`help-faq-answer-${i}`}
+                    role="region"
+                    aria-labelledby={`help-faq-trigger-${i}`}
+                    style={{
+                      padding: "0 1.25rem 1rem",
+                      fontSize: "0.875rem", color: C.walnut, lineHeight: 1.7,
+                    }}
+                  >
                     {faq.a}
                   </div>
                 )}
@@ -208,7 +223,7 @@ export default function HelpPage() {
           {ticketId ? (
             <div style={{
               background: `${C.sage}15`, border: `1px solid ${C.sage}40`,
-              borderRadius: "0.75rem", padding: "2rem", textAlign: "center",
+              borderRadius: "0.75rem", padding: isMobile ? "1.5rem 1.25rem" : "2rem", textAlign: "center",
             }}>
               <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>{"\u2713"}</div>
               <p style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal, marginBottom: "0.5rem" }}>
@@ -287,7 +302,17 @@ export default function HelpPage() {
                   ref={fileRef}
                   type="file"
                   accept="image/*,.pdf,.txt"
-                  onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (file && file.size > MAX_ATTACHMENT_BYTES) {
+                      setError(t("contactAttachTooLarge"));
+                      setAttachment(null);
+                      if (fileRef.current) fileRef.current.value = "";
+                      return;
+                    }
+                    setError(null);
+                    setAttachment(file);
+                  }}
                   style={{ display: "none" }}
                 />
                 <button

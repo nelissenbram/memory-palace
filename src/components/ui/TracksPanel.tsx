@@ -7,7 +7,7 @@ import { GOAL_TRACK_PRIORITY } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TrackIcon from "./TrackIcons";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
@@ -19,6 +19,9 @@ interface TracksPanelProps {
 
 export default function TracksPanel({ onClose }: TracksPanelProps) {
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
+  // iPad portrait (768–1024) reports desktop on useIsMobile; treat it as compact for padding.
+  const dense = isMobile || isCompact;
   const { t } = useTranslation("tracksPanel");
   const { t: tc } = useTranslation("common");
   const { t: tl } = useTranslation("levels");
@@ -43,8 +46,11 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
 
   const goalPriority = GOAL_TRACK_PRIORITY[userGoal] || GOAL_TRACK_PRIORITY["preserve"];
   const sortedTracks = [...TRACKS].sort((a, b) => {
-    const aIdx = goalPriority.indexOf(a.id);
-    const bIdx = goalPriority.indexOf(b.id);
+    // Normalize missing (-1) to the end so unlisted tracks fall last deterministically.
+    const rawA = goalPriority.indexOf(a.id);
+    const rawB = goalPriority.indexOf(b.id);
+    const aIdx = rawA === -1 ? Number.MAX_SAFE_INTEGER : rawA;
+    const bIdx = rawB === -1 ? Number.MAX_SAFE_INTEGER : rawB;
     return aIdx - bIdx;
   });
 
@@ -90,7 +96,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
       }}>
         {/* Header */}
         <div style={{
-          padding: isMobile ? "1rem 0.875rem 0.875rem" : "1.5rem 1.5rem 1.25rem", borderBottom: "0.0625rem solid #E3D6BC", // Atrium hairline
+          padding: dense ? "1rem 0.875rem 0.875rem" : "1.5rem 1.5rem 1.25rem", borderBottom: "0.0625rem solid #E3D6BC", // Atrium hairline
           background: `linear-gradient(180deg, ${T.color.warmStone} 0%, ${T.color.linen} 100%)`,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -171,7 +177,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
         {/* Track cards — scrollable area */}
         <div style={{
           flex: 1, overflowY: "auto", overflowX: "hidden",
-          padding: isMobile ? "0.75rem" : "1rem 1.25rem 1.5rem",
+          padding: dense ? "0.75rem" : "1rem 1.25rem 1.5rem",
         }}>
           {/* My Resolutions mini-section */}
           {resolutions.length > 0 && <div style={{
@@ -190,7 +196,10 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
             {resolutions.map((m) => {
               const pct = m.resolution?.progress ?? 0;
               const hasTarget = !!m.resolution?.targetDate;
-              const daysLeft = hasTarget ? Math.ceil((new Date(m.resolution!.targetDate! + "T00:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+              // Floor both to local midnight so daysLeft===0 means "due today" (not past due).
+              const todayMidnight = new Date();
+              todayMidnight.setHours(0, 0, 0, 0);
+              const daysLeft = hasTarget ? Math.round((new Date(m.resolution!.targetDate! + "T00:00:00").getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24)) : null;
               return (
                 <div key={m.id} style={{
                   padding: "0.625rem 0.875rem", borderRadius: "0.7rem",
@@ -207,10 +216,10 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     {hasTarget && daysLeft !== null && (
                       <span style={{
                         fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                        color: daysLeft > 0 ? "#56683C" : T.color.error, // Atrium sage
+                        color: daysLeft >= 0 ? "#56683C" : T.color.error, // Atrium sage
                         flexShrink: 0,
                       }}>
-                        {daysLeft > 0 ? t("daysLeft", { count: String(daysLeft) }) : t("pastDue")}
+                        {daysLeft > 0 ? t("daysLeft", { count: String(daysLeft) }) : daysLeft === 0 ? t("dueToday") : t("pastDue")}
                       </span>
                     )}
                   </div>
@@ -261,7 +270,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                 onClick={() => handleTrackClick(track.id)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleTrackClick(track.id); } }}
                 style={{
-                  padding: isMobile ? "0.75rem" : "1rem 1.125rem",
+                  padding: dense ? "0.75rem" : "1rem 1.125rem",
                   borderRadius: "1rem",
                   border: isRecommended ? `0.125rem solid ${track.color}44` : "0.0625rem solid #E3D6BC", // Atrium hairline
                   background: isComplete ? `${track.color}08` : T.color.white,

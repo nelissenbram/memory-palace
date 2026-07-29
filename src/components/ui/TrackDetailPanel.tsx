@@ -2,6 +2,7 @@
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { TRACK_MAP } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import TrackIcon from "./TrackIcons";
@@ -15,6 +16,10 @@ interface TrackDetailPanelProps {
 export default function TrackDetailPanel({ trackId, onClose, onNavigate }: TrackDetailPanelProps) {
   const { t } = useTranslation("trackDetail");
   const { t: tTrack } = useTranslation("tracksPanel");
+  const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
+  // iPad portrait reports desktop on useIsMobile; treat it as compact for padding.
+  const dense = isMobile || isCompact;
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { getTrackProgress, setShowLegacyPanel } = useTrackStore();
   const track = TRACK_MAP[trackId];
@@ -44,7 +49,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
     }}>
       <div onClick={onClose} style={{
         position: "absolute", inset: 0,
-        background: "rgba(42,34,24,.45)", backdropFilter: "blur(6px)",
+        background: "rgba(42,34,24,.45)", backdropFilter: "blur(0.375rem)",
       }} />
 
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={tTrack(track.nameKey)} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{
@@ -59,7 +64,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
       }}>
         {/* Header */}
         <div style={{
-          padding: "1.5rem 1.5rem 1.25rem",
+          padding: dense ? "1rem 0.875rem 0.875rem" : "1.5rem 1.5rem 1.25rem",
           borderBottom: "0.0625rem solid #E3D6BC", // Atrium hairline
           background: `linear-gradient(180deg, ${track.color}08 0%, ${T.color.linen} 100%)`,
         }}>
@@ -82,7 +87,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
               </div>
             </div>
             <button onClick={onClose} aria-label={t("close")} style={{
-              width: "2rem", height: "2rem", borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", // Atrium hairline
+              width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem", border: "0.0625rem solid #E3D6BC", // Atrium hairline
               background: T.color.white, cursor: "pointer", fontSize: "1rem", color: "#716A5E",
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
               transition: "opacity .2s ease",
@@ -137,7 +142,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
 
         {/* Steps list */}
         <div style={{
-          flex: 1, overflowY: "auto", padding: "1rem 1.25rem 1.5rem",
+          flex: 1, overflowY: "auto", padding: dense ? "0.75rem 0.875rem 1.25rem" : "1rem 1.25rem 1.5rem",
           display: "flex", flexDirection: "column", gap: "0.125rem",
         }}>
           {track.steps.map((step, i) => {

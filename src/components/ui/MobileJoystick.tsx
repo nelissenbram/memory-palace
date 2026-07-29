@@ -20,10 +20,12 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
   const [knobPos, setKnobPos] = useState({ x: 0, y: 0 });
   const touchIdRef = useRef<number | null>(null);
   const centerRef = useRef({ x: 0, y: 0 });
+  const outerRadiusRef = useRef(50); // measured outer radius in px, refreshed on touch start
   const activeKeysRef = useRef<Set<string>>(new Set());
-  const OUTER_SIZE_REM = 6.25; // 100px equivalent in rem
-  const OUTER_R = 50; // outer radius in px (for SVG/knob math)
-  const KNOB_R = 20;  // knob radius
+  const OUTER_SIZE_REM = 6.25; // outer diameter in rem
+  const KNOB_SIZE_REM = 2.5;   // knob diameter in rem (was 40px)
+  const OUTER_R = 50; // SVG viewBox reference only (internal coordinate space)
+  const KNOB_R = 20;  // knob radius in the same SVG-nominal space (touch math ratio)
   const DEAD_ZONE = 0.15;
 
   // Dispatch synthetic keyboard events to drive the 3D scene.
@@ -80,6 +82,7 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
     const rect = outerRef.current?.getBoundingClientRect();
     if (rect) {
       centerRef.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      outerRadiusRef.current = rect.width / 2;
     }
     e.stopPropagation();
   }, []);
@@ -93,7 +96,10 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       const dx = touch.clientX - centerRef.current.x;
       const dy = touch.clientY - centerRef.current.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = OUTER_R - KNOB_R;
+      // Track the actual rendered size (root font-size / zoom) rather than the
+      // nominal px constants — scale the knob radius by the measured/nominal ratio.
+      const measuredR = outerRadiusRef.current;
+      const maxDist = measuredR - KNOB_R * (measuredR / OUTER_R);
       const clampedDist = Math.min(dist, maxDist);
       const angle = Math.atan2(dy, dx);
       const cx = clampedDist * Math.cos(angle);
@@ -138,9 +144,9 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
         height: `${OUTER_SIZE_REM}rem`,
         borderRadius: "50%",
         background: "rgba(42, 34, 24, 0.25)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-        border: "1.5px solid rgba(212, 197, 178, 0.3)",
+        backdropFilter: "blur(0.375rem)",
+        WebkitBackdropFilter: "blur(0.375rem)",
+        border: "0.09375rem solid rgba(212, 197, 178, 0.3)",
         zIndex: 47,
         touchAction: "none",
         userSelect: "none",
@@ -149,10 +155,11 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
         justifyContent: "center",
       }}
     >
-      {/* Directional indicators */}
+      {/* Directional indicators — SVG scales with the rem-sized container via
+          its viewBox, so it stays correct under a non-16px root font-size. */}
       <svg
-        width={OUTER_R * 2}
-        height={OUTER_R * 2}
+        width="100%"
+        height="100%"
         viewBox={`0 0 ${OUTER_R * 2} ${OUTER_R * 2}`}
         style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
       >
@@ -181,12 +188,12 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       {/* Inner knob */}
       <div
         style={{
-          width: KNOB_R * 2,
-          height: KNOB_R * 2,
+          width: `${KNOB_SIZE_REM}rem`,
+          height: `${KNOB_SIZE_REM}rem`,
           borderRadius: "50%",
           background: "rgba(250, 250, 247, 0.35)",
-          border: "1.5px solid rgba(250, 250, 247, 0.45)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          border: "0.09375rem solid rgba(250, 250, 247, 0.45)",
+          boxShadow: "0 0.125rem 0.5rem rgba(64,59,54,0.15)",
           transform: `translate(${knobPos.x}px, ${knobPos.y}px)`,
           transition: touchIdRef.current !== null ? "none" : "transform 0.15s ease-out",
           pointerEvents: "none",

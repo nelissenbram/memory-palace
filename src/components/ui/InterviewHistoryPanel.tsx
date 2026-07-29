@@ -13,6 +13,20 @@ interface InterviewHistoryPanelProps {
   onClose: () => void;
 }
 
+/** Line-art microphone — empty-state glyph in the warm stroke language (wing roots accent). */
+function MicrophoneIcon({ size = 40 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+      fill="none" stroke="#9A4F2A" /* Atrium terracotta glyph */ strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round"
+      style={{ display: "block", margin: "0 auto" }}>
+      <rect x="9" y="2.5" width="6" height="11" rx="3" />
+      <path d="M6.5 11a5.5 5.5 0 0011 0" />
+      <line x1="12" y1="16.5" x2="12" y2="20" />
+      <line x1="8.5" y1="20" x2="15.5" y2="20" />
+    </svg>
+  );
+}
+
 function fmtDate(iso: string, locale: string): string {
   try {
     return new Date(iso).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
@@ -113,7 +127,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                     display: "flex", alignItems: "center", gap: "0.75rem",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {template ? <InterviewIcon templateId={template.id} wingId={template.wingId} size={22} /> : <span style={{ fontSize: "1.25rem" }}>{"\uD83D\uDCDD"}</span>}
+                      {template ? <InterviewIcon templateId={template.id} wingId={template.wingId} size={22} /> : <InterviewIcon templateId="__fallback__" wingId="roots" size={22} />}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: "#403B36" /* Atrium ink */ }}>
@@ -244,7 +258,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
           ) : (
             !inProgressSessions.length && (
               <div style={{ textAlign: "center", padding: "2.5rem 1.25rem" }}>
-                <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>{"\uD83C\uDF99\uFE0F"}</div>
+                <div style={{ marginBottom: "0.75rem" }}><MicrophoneIcon size={40} /></div>
                 <p style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, color: "#403B36" /* Atrium ink */, marginBottom: "0.5rem" }}>
                   {t("noInterviewsTitle")}
                 </p>

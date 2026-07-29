@@ -3,6 +3,7 @@
 import { useState, lazy, Suspense, memo } from "react";
 import { T } from "@/lib/theme";
 import { isIOS } from "@/lib/native/platform";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
@@ -48,7 +49,8 @@ function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
 const NAV_ITEMS: { tab: SettingsTab; labelKey: string; iconKey: string; hideInNative?: boolean }[] = [
   { tab: "profile", labelKey: "profile", iconKey: "profile" },
   { tab: "family", labelKey: "family", iconKey: "family" },
-  // iOS is free-tier only (Apple 3.1.1) — hide the Subscription tab in the native app.
+  // Subscription is hidden on iOS only while IAP is off (Apple 3.1.1); with IAP
+  // live the tab shows so users can manage their StoreKit subscription.
   { tab: "subscription", labelKey: "subscription", iconKey: "subscription", hideInNative: true },
   { tab: "connections", labelKey: "connections", iconKey: "connections" },
   { tab: "notifications", labelKey: "alerts", iconKey: "notifications" },
@@ -85,7 +87,10 @@ function SettingsInline() {
   const { t: tc } = useTranslation("common");
   const [tourOpen, setTourOpen] = useSettingsTutorial();
 
-  const filteredItems = NAV_ITEMS.filter((item) => !(item.hideInNative && isIOS()));
+  // Mirror settings/layout.tsx: hideInNative items (Subscription) stay hidden on
+  // iOS only while IAP is OFF. With IAP live the Subscription tab shows so users
+  // can reach the paywall / manage their subscription.
+  const filteredItems = NAV_ITEMS.filter((item) => !(item.hideInNative && isIOS() && !IAP_ENABLED));
   const ActivePage = PAGE_MAP[activeTab];
 
   return (

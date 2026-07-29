@@ -12,6 +12,8 @@ import type { PublishedMemory } from "@/lib/social/visit-actions";
 import type { Comment, ReactionSummary } from "@/lib/social/comment-actions";
 
 interface RoomVisitClientProps {
+  /** Route userId — always defined, used to build breadcrumb hrefs. */
+  userId: string;
   room: {
     id: string;
     name: string;
@@ -43,10 +45,12 @@ function MemoryCard({
   index: number;
   isMobile: boolean;
 }) {
-  const isImage =
-    memory.type === "photo" || memory.type === "image" || memory.type === "video";
+  const isImage = memory.type === "photo" || memory.type === "image";
+  const isVideo = memory.type === "video";
   const isAudio = memory.type === "audio";
-  const hasMedia = isImage && (memory.file_url || memory.thumbnail_url);
+  const hasImage = isImage && (memory.file_url || memory.thumbnail_url);
+  const hasVideo = isVideo && !!memory.file_url;
+  const hasMedia = hasImage || hasVideo;
   const bgColor = `hsl(${memory.hue}, ${memory.saturation}%, ${memory.lightness}%)`;
 
   return (
@@ -59,7 +63,7 @@ function MemoryCard({
       }}
     >
       {/* Image / thumbnail */}
-      {hasMedia && (
+      {hasImage && (
         <div
           style={{
             width: "100%",
@@ -78,6 +82,33 @@ function MemoryCard({
               objectFit: "cover",
               display: "block",
               borderRadius: 0,
+            }}
+          />
+        </div>
+      )}
+
+      {/* Video with native controls */}
+      {hasVideo && (
+        <div
+          style={{
+            width: "100%",
+            aspectRatio: isMobile ? "4 / 3" : "16 / 10",
+            overflow: "hidden",
+            background: bgColor,
+          }}
+        >
+          <video
+            controls
+            preload="none"
+            playsInline
+            poster={memory.thumbnail_url || undefined}
+            src={memory.file_url || undefined}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+              background: "#000",
             }}
           />
         </div>
@@ -161,6 +192,7 @@ function MemoryCard({
 }
 
 export default function RoomVisitClient({
+  userId,
   room,
   wing,
   owner,
@@ -176,7 +208,7 @@ export default function RoomVisitClient({
     <div
       style={{
         minHeight: "100dvh",
-        background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
+        background: T.color.cream,
         padding: isMobile ? "1rem 0.75rem 4rem" : "2rem 1rem 4rem",
       }}
     >
@@ -201,7 +233,7 @@ export default function RoomVisitClient({
               textDecoration: "none",
               transition: "color 0.15s ease",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.ember; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = T.color.muted; }}
           >
             {t("exploreBackToExplore")}
@@ -211,7 +243,7 @@ export default function RoomVisitClient({
           {owner && (
             <>
               <a
-                href={owner.username ? `/u/${owner.username}` : `/visit/${owner.id}/${wing.slug}`}
+                href={owner.username ? `/u/${owner.username}` : `/visit/${userId}`}
                 style={{
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
@@ -219,7 +251,7 @@ export default function RoomVisitClient({
                   textDecoration: "none",
                   transition: "color 0.15s ease",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = T.color.ember; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = T.color.muted; }}
               >
                 {owner.name || t("anonymous")}
@@ -228,8 +260,11 @@ export default function RoomVisitClient({
             </>
           )}
 
+          {/* Wing subpage no longer exists — /visit/[userId]/[wingSlug]
+              redirects to the palace overview, so link there directly to
+              avoid the extra hop. */}
           <a
-            href={`/visit/${owner?.id}/${wing.slug}`}
+            href={`/visit/${userId}`}
             style={{
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
@@ -238,7 +273,7 @@ export default function RoomVisitClient({
               fontWeight: 500,
               transition: "color 0.15s ease",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.ember; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = T.color.walnut; }}
           >
             {wing.name}

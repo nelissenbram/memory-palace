@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { WINGS } from "@/lib/constants/wings";
 import { useTrackStore } from "@/lib/stores/trackStore";
@@ -31,6 +32,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
   const { t } = useTranslation("legacyPanel");
   const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
+  const isMobile = useIsMobile();
 
   const RELATIONSHIPS = [
     { id: "spouse", label: t("relSpouse") },
@@ -57,6 +59,8 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
   const [formAccessLevel, setFormAccessLevel] = useState("full");
   const [formWings, setFormWings] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
+  const confirmRemoveContact = contacts.find((c) => c.id === confirmRemoveId);
 
   useEffect(() => {
     loadContacts();
@@ -143,13 +147,13 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
     }}>
       <div onClick={onClose} style={{
         position: "absolute", inset: 0,
-        background: "rgba(42,34,24,.45)", backdropFilter: "blur(6px)",
+        background: "rgba(64,59,54,0.35)" /* Atrium warm-ink scrim */, backdropFilter: "blur(6px)",
       }} />
 
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{
         position: "relative", zIndex: 1,
         width: "95%", maxWidth: "33.75rem", maxHeight: "88vh",
-        background: T.color.linen, borderRadius: "1rem",
+        background: "#FCFAF5" /* Atrium cream */, borderRadius: "1rem",
         boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token S2
         border: "0.0625rem solid #E3D6BC", // Atrium hairline
         display: "flex", flexDirection: "column",
@@ -158,9 +162,9 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
       }}>
         {/* Header */}
         <div style={{
-          padding: "1.5rem 1.5rem 1.25rem",
+          padding: isMobile ? "1.125rem 1.125rem 1rem" : "1.5rem 1.5rem 1.25rem",
           borderBottom: "0.0625rem solid #E3D6BC", // Atrium hairline
-          background: `linear-gradient(180deg, ${T.color.warmStone} 0%, ${T.color.linen} 100%)`,
+          background: "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)" /* Atrium terracotta tileBg */,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -175,7 +179,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                   <path d="M3 9L12 4L21 9" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
                   <line x1="3" y1="9" x2="21" y2="9" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
                   <line x1="6" y1="9.5" x2="6" y2="19" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-                  <line x1="12" y1="9.5" x2="12" y2="19" stroke="#B85C38" strokeWidth={1.2} strokeLinecap="round" />
+                  <line x1="12" y1="9.5" x2="12" y2="19" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" />
                   <line x1="18" y1="9.5" x2="18" y2="19" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
                   <line x1="2" y1="20" x2="22" y2="20" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -190,7 +194,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 }}>{t("subtitle")}</p>
               </div>
             </div>
-            <button onClick={onClose} style={{
+            <button onClick={onClose} aria-label={t("cancel")} className="legacy-panel-focus-ring" style={{
               width: "2rem", height: "2rem", borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", // Atrium hairline
               background: T.color.white, cursor: "pointer", fontSize: "1rem", color: "#716A5E",
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -213,7 +217,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
 
         {/* Content */}
         <div className="mp-scroll" style={{
-          flex: 1, overflowY: "auto", padding: "1rem 1.25rem 1.5rem",
+          flex: 1, overflowY: "auto", padding: isMobile ? "0.875rem 1rem 1.25rem" : "1rem 1.25rem 1.5rem",
           display: "flex", flexDirection: "column", gap: "0.875rem",
         }}>
           {/* Loading */}
@@ -244,15 +248,15 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                   <div style={{ display: "flex", gap: "0.375rem", marginTop: "0.375rem", flexWrap: "wrap" }}>
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem", padding: "0.125rem 0.5rem",
-                      borderRadius: "2rem", background: `${T.color.sandstone}15`, // Atrium pill radius
+                      borderRadius: "2rem", background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", // Atrium cream pill + hairline
                       color: "#716A5E",
                     }}>
                       {RELATIONSHIPS.find((r) => r.id === contact.relationship)?.label || contact.relationship}
                     </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem", padding: "0.125rem 0.5rem",
-                      borderRadius: "2rem", background: `${T.color.sandstone}15`, // Atrium pill radius
-                      color: "#716A5E",
+                      borderRadius: "2rem", background: "#EFF2E8", border: "0.0625rem solid #DFE3D2", // Atrium sage tray + hairline
+                      color: "#56683C", // Atrium sage
                     }}>
                       {contact.access_level === "full" ? t("fullAccess") :
                        t("wingsAccess", { count: String((contact.accessible_wings || []).length) })}
@@ -260,12 +264,12 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: "0.375rem" }}>
-                  <button onClick={() => startEdit(contact)} style={{
+                  <button onClick={() => startEdit(contact)} className="legacy-panel-focus-ring" style={{
                     padding: "0.375rem 0.625rem", borderRadius: "0.7rem", border: "0.0625rem solid #E3D6BC",
-                    background: T.color.linen, cursor: "pointer", fontFamily: T.font.body,
+                    background: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body,
                     fontSize: "0.6875rem", color: "#716A5E", minHeight: "2.75rem",
                   }}>{t("edit")}</button>
-                  <button onClick={() => handleRemove(contact.id)} style={{
+                  <button onClick={() => setConfirmRemoveId(contact.id)} className="legacy-panel-focus-ring" style={{
                     padding: "0.375rem 0.625rem", borderRadius: "0.7rem", border: "0.0625rem solid rgba(184,92,56,0.25)", // Atrium ember
                     background: "rgba(184,92,56,0.05)", cursor: "pointer", fontFamily: T.font.body,
                     fontSize: "0.6875rem", color: "#B85C38", minHeight: "2.75rem",
@@ -312,7 +316,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
             <div style={{
               padding: "1.125rem 1rem", borderRadius: "1rem",
               border: "0.0625rem solid #E3D6BC", // Atrium hairline
-              background: "#EDE7DC", // Atrium pre-mixed opaque tray (was warmStone alpha band)
+              background: "#FCFAF5", // Atrium cream inset (matches settings page)
               animation: "fadeUp .3s ease",
             }}>
               <div style={{
@@ -358,15 +362,15 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               />
 
               {/* Relationship */}
-              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
+              <label id="legacy-panel-rel-label" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("relationship")}
               </label>
-              <div style={{
+              <div role="group" aria-labelledby="legacy-panel-rel-label" style={{
                 display: "flex", flexWrap: "wrap", gap: "0.375rem",
                 marginTop: "0.375rem", marginBottom: "0.875rem",
               }}>
                 {RELATIONSHIPS.map((rel) => (
-                  <button key={rel.id} onClick={() => setFormRelationship(rel.id)} style={{
+                  <button key={rel.id} onClick={() => setFormRelationship(rel.id)} aria-pressed={formRelationship === rel.id} className="legacy-panel-focus-ring" style={{
                     padding: "0.375rem 0.75rem", borderRadius: "0.7rem", minHeight: "2.75rem",
                     border: formRelationship === rel.id ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", // Atrium ember active / hairline
                     background: formRelationship === rel.id ? "rgba(154,79,42,0.10)" : T.color.white,
@@ -378,15 +382,15 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               </div>
 
               {/* Access level */}
-              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
+              <label id="legacy-panel-access-label" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("whatAccess")}
               </label>
-              <div style={{
+              <div role="group" aria-labelledby="legacy-panel-access-label" style={{
                 display: "flex", flexDirection: "column", gap: "0.375rem",
                 marginTop: "0.375rem", marginBottom: "0.875rem",
               }}>
                 {ACCESS_LEVELS.map((level) => (
-                  <button key={level.id} onClick={() => setFormAccessLevel(level.id)} style={{
+                  <button key={level.id} onClick={() => setFormAccessLevel(level.id)} aria-pressed={formAccessLevel === level.id} className="legacy-panel-focus-ring" style={{
                     padding: "0.625rem 0.875rem", borderRadius: "0.7rem", textAlign: "left", minHeight: "2.75rem",
                     border: formAccessLevel === level.id ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", // Atrium ember active / hairline
                     background: formAccessLevel === level.id ? "rgba(154,79,42,0.08)" : T.color.white,
@@ -406,14 +410,14 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               {/* Wing picker */}
               {formAccessLevel === "selected_wings" && (
                 <div style={{ marginBottom: "0.875rem" }}>
-                  <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
+                  <label id="legacy-panel-wings-label" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                     {t("selectWings")}
                   </label>
-                  <div style={{
+                  <div role="group" aria-labelledby="legacy-panel-wings-label" style={{
                     display: "flex", flexWrap: "wrap", gap: "0.375rem", marginTop: "0.375rem",
                   }}>
                     {WINGS.filter((w) => w.id !== "attic").map((wing) => (
-                      <button key={wing.id} onClick={() => toggleWing(wing.id)} style={{
+                      <button key={wing.id} onClick={() => toggleWing(wing.id)} aria-pressed={formWings.includes(wing.id)} className="legacy-panel-focus-ring" style={{
                         padding: "0.5rem 0.75rem", borderRadius: "0.7rem", display: "flex", minHeight: "2.75rem",
                         alignItems: "center", gap: "0.375rem", cursor: "pointer",
                         border: formWings.includes(wing.id) ? `0.125rem solid ${wing.accent}` : "0.0625rem solid #E3D6BC", // Atrium hairline
@@ -432,19 +436,20 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
 
               {/* Actions */}
               <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
-                <button onClick={resetForm} style={{
-                  padding: "0.5rem 1rem", borderRadius: "0.7rem",
+                <button onClick={resetForm} className="legacy-panel-focus-ring" style={{
+                  padding: "0.5rem 1rem", borderRadius: "0.7rem", minHeight: "2.75rem",
                   border: "0.0625rem solid #E3D6BC", background: "transparent", // Atrium hairline
                   cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
                 }}>{t("cancel")}</button>
                 <button
                   onClick={() => editingId ? handleUpdate(editingId) : handleAdd()}
                   disabled={saving || !formName.trim() || !formEmail.trim()}
+                  className="legacy-panel-focus-ring"
                   style={{
                     padding: "0.5rem 1.25rem", borderRadius: "0.7rem", border: "none",
                     background: formName.trim() && formEmail.trim()
-                      ? "linear-gradient(135deg,#9A4F2A,#B85C38)" // Atrium terracotta/ember
-                      : "#E5DDD0",
+                      ? "#B85C38" // Atrium ember (flat, matches settings page)
+                      : "#EEE9DF", // Atrium disabled fill
                     color: formName.trim() && formEmail.trim() ? "#FCFAF5" : "#716A5E",
                     cursor: formName.trim() && formEmail.trim() ? "pointer" : "default",
                     fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
@@ -458,8 +463,8 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
 
           {/* Add button */}
           {!showAddForm && !loading && (
-            <button onClick={() => setShowAddForm(true)} style={{
-              padding: "0.875rem", borderRadius: "1rem", border: "0.125rem dashed #E3D6BC", // Atrium hairline ink
+            <button onClick={() => setShowAddForm(true)} className="legacy-panel-focus-ring" style={{
+              padding: "0.875rem", borderRadius: "1rem", border: "0.125rem dashed #E3D6BC", minHeight: "2.75rem", // Atrium hairline ink
               background: "transparent", cursor: "pointer", textAlign: "center",
               fontFamily: T.font.body, fontSize: "0.9375rem", color: "#9A4F2A", // Atrium body + terracotta
               transition: "all .2s ease",
@@ -472,6 +477,58 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
           )}
         </div>
       </div>
+
+      {/* Remove-contact confirmation */}
+      {confirmRemoveId && confirmRemoveContact && (
+        <div
+          role="dialog" aria-modal="true" aria-label={t("removeConfirmTitle")}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmRemoveId(null); }}
+          onKeyDown={(e) => { if (e.key === "Escape") setConfirmRemoveId(null); }}
+          style={{
+            position: "absolute", inset: 0, zIndex: 2,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(64,59,54,0.35)" /* Atrium warm-ink scrim */, padding: "1rem",
+          }}
+        >
+          <div style={{
+            background: "#FCFAF5" /* cream */, borderRadius: "1rem",
+            padding: "1.5rem 1.75rem", maxWidth: "24rem", width: "100%",
+            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+            border: "0.0625rem solid #E3D6BC",
+          }}>
+            <h4 style={{
+              fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+              color: "#403B36", margin: "0 0 0.5rem",
+            }}>{t("removeConfirmTitle")}</h4>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E",
+              margin: "0 0 1.25rem", lineHeight: 1.6,
+            }}>{t("removeConfirmBody", { name: confirmRemoveContact.contact_name })}</p>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setConfirmRemoveId(null)} className="legacy-panel-focus-ring" style={{
+                padding: "0.625rem 1.25rem", minHeight: "2.75rem", borderRadius: "0.75rem",
+                border: "0.0625rem solid #E3D6BC", background: "transparent",
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: "#716A5E", cursor: "pointer",
+              }}>{t("cancel")}</button>
+              <button onClick={() => { const id = confirmRemoveId; setConfirmRemoveId(null); handleRemove(id); }} className="legacy-panel-focus-ring" style={{
+                padding: "0.625rem 1.25rem", minHeight: "2.75rem", borderRadius: "0.75rem",
+                border: "none", background: "#B85C38", // Atrium ember
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: "#FCFAF5", cursor: "pointer",
+              }}>{t("removeBtn")}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .legacy-panel-focus-ring:focus-visible {
+          outline: 0.1875rem solid #D4AF37 !important;
+          outline-offset: 0.1875rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .legacy-panel-focus-ring { transition: none !important; }
+        }
+      `}</style>
     </div>
   );
 }

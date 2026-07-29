@@ -233,6 +233,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
       last_name: data.last_name,
       birth_date: data.birth_date,
       death_date: data.death_date,
+      birth_place: data.birth_place,
+      death_place: data.death_place,
       gender: data.gender,
     });
     if ("error" in result && result.error) {
@@ -845,7 +847,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
 
       // Inline font style so text renders correctly in the serialized SVG
       const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
-      styleEl.textContent = `text, foreignObject * { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif; }`;
+      styleEl.textContent = `text, foreignObject * { font-family: ${T.font.body}; }`;
       const defs = clone.querySelector("defs");
       if (defs) {
         defs.appendChild(styleEl);
@@ -1059,8 +1061,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
   };
 
   const zoomBtnStyle: React.CSSProperties = {
-    width: isMobile ? "2rem" : "2.75rem",
-    height: isMobile ? "2rem" : "2.75rem",
+    width: "2.75rem",
+    height: "2.75rem",
     borderRadius: isMobile ? "50%" : "0.75rem",
     border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
     background: `${T.color.linen}E8`,
@@ -1111,6 +1113,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
 
   /* ── Phase 3B: Focus mode handler ── */
   const handleFocusPerson = useCallback((person: FamilyTreePerson) => {
+    setDescendancyRootId(null);
     setFocusPersonId(person.id);
     setFocusedNodeId(person.id);
     setSelectedPerson(null);
@@ -1125,6 +1128,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
 
   /* ── Descendancy view handler ── */
   const handleViewDescendants = useCallback((person: FamilyTreePerson) => {
+    setFocusPersonId(null);
+    setFocusedNodeId(null);
     setDescendancyRootId(person.id);
     setSelectedPerson(null);
     setInitialFitDone(false);
@@ -1221,14 +1226,14 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
     }
 
     if (e.key === "Enter" && focusedNodeId) {
-      const p = effectiveData.persons.find((p) => p.id === focusedNodeId);
+      const p = persons.find((p) => p.id === focusedNodeId);
       if (p) setSelectedPerson(p);
       return;
     }
 
     // F key for focus mode
     if (e.key === "f" && focusedNodeId && !e.ctrlKey && !e.metaKey) {
-      const p = effectiveData.persons.find((p) => p.id === focusedNodeId);
+      const p = persons.find((p) => p.id === focusedNodeId);
       if (p) handleFocusPerson(p);
       return;
     }
@@ -1260,7 +1265,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
       saveViewState(newPan, zoom);
       return;
     }
-  }, [focusedNodeId, layoutOrderIds, effectiveData.persons, centerOnPerson, handleFocusPerson, selfPersonId, pan, zoom]);
+  }, [focusedNodeId, layoutOrderIds, persons, centerOnPerson, handleFocusPerson, selfPersonId, pan, zoom]);
 
   // Keyboard navigation via window listener (SVG focus is unreliable)
   useEffect(() => {
@@ -1342,8 +1347,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
         height: "100dvh",
         maxHeight: "100dvh",
         background: onClose
-          ? `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 40%, ${T.color.sandstone} 70%, ${T.color.linen} 100%)`
-          : `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 40%, ${T.color.sandstone}30 70%, ${T.color.linen} 100%)`,
+          ? `linear-gradient(165deg, ${T.color.cream} 0%, ${T.color.linen} 40%, ${T.color.warmStone} 70%, ${T.color.cream} 100%)`
+          : `linear-gradient(165deg, ${T.color.cream} 0%, ${T.color.linen} 40%, ${T.color.warmStone}30 70%, ${T.color.cream} 100%)`,
         display: "flex",
         flexDirection: "column",
         ...(onClose ? { position: "fixed" as const, inset: 0, zIndex: 90 } : {}),
@@ -1415,7 +1420,10 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
 
           {/* View mode switcher — always visible in row 1 */}
           {persons.length > 0 && (
-            <div style={{
+            <div
+              role="radiogroup"
+              aria-label={t("viewModeLabel")}
+              style={{
               display: "flex",
               borderRadius: "1.5rem",
               border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
@@ -1432,11 +1440,13 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                   <button
                     key={mode}
                     onClick={() => handleViewMode(mode)}
+                    role="radio"
+                    aria-checked={isActive}
                     aria-label={t(mode === "portrait" ? "viewPortrait" : mode === "fan" ? "viewFan" : "viewList")}
                     title={t(mode === "portrait" ? "viewPortrait" : mode === "fan" ? "viewFan" : "viewList")}
                     style={{
-                      width: "2.25rem",
-                      height: "2.25rem",
+                      width: isMobile ? "2.75rem" : "2.25rem",
+                      height: isMobile ? "2.75rem" : "2.25rem",
                       border: "none",
                       borderRadius: "1.25rem",
                       background: isActive
@@ -1554,7 +1564,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               fontSize: "0.8125rem",
               cursor: "pointer",
               flexShrink: 0,
-              minHeight: "2.125rem",
+              minHeight: isMobile ? "2.75rem" : "2.125rem",
               whiteSpace: "nowrap",
               transition: "all 0.2s ease",
             }}
@@ -1584,7 +1594,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               fontWeight: 500,
               fontSize: "0.8125rem",
               flexShrink: 0,
-              minHeight: "2.125rem",
+              minHeight: isMobile ? "2.75rem" : "2.125rem",
               whiteSpace: "nowrap",
               transition: "all 0.2s ease",
             }}
@@ -1611,7 +1621,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 fontWeight: 500,
                 fontSize: "0.8125rem",
                 flexShrink: 0,
-                minHeight: "2.125rem",
+                minHeight: isMobile ? "2.75rem" : "2.125rem",
                 whiteSpace: "nowrap",
                 transition: "all 0.2s ease",
               }}
@@ -1700,12 +1710,18 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 setShowShareDialog(true);
                 setShowImportExport(false);
                 setShowAddForm(false);
-                if (!activeShare) {
-                  setShareLoading(true);
+                if (activeShare) return;
+                setShareLoading(true);
+                // Re-check for an existing active share before minting a new
+                // one — avoids a duplicate link when loadData hasn't finished.
+                const existing = await getActiveShare();
+                if (existing.share) {
+                  setActiveShare(existing.share);
+                } else {
                   const result = await createShareLink();
                   if (result.share) setActiveShare(result.share);
-                  setShareLoading(false);
                 }
+                setShareLoading(false);
               }}
               title={t("shareTree")}
               style={{
@@ -1722,7 +1738,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 fontWeight: 500,
                 fontSize: "0.8125rem",
                 flexShrink: 0,
-                minHeight: "2.125rem",
+                minHeight: isMobile ? "2.75rem" : "2.125rem",
                 whiteSpace: "nowrap",
                 transition: "all 0.2s ease",
               }}
@@ -1783,7 +1799,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             </div>
 
             {shareLoading ? (
-              <p style={{ color: "#716A5E", fontSize: "0.9375rem" }}>...</p>
+              <p style={{ color: "#716A5E", fontSize: "0.9375rem" }}>{t("shareLoading")}</p>
             ) : activeShare ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 <div style={{
@@ -1817,10 +1833,12 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                       borderRadius: "0.5rem",
                       border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                       fontFamily: T.font.body,
-                      fontSize: "0.8125rem",
+                      fontSize: isMobile ? "1rem" : "0.8125rem",
+                      minHeight: "2.75rem",
                       color: "#403B36",
                       background: T.color.cream,
                       minWidth: 0,
+                      boxSizing: "border-box",
                     }}
                     onClick={(e) => (e.target as HTMLInputElement).select()}
                   />

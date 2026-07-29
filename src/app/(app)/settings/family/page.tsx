@@ -3,9 +3,13 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { T } from "@/lib/theme";
+import { INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, GOLD_SOFT, CREAM, TRAY, CARD_BORDER } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { SettingsPageHeader } from "../_SettingsChrome";
+
+/* ── Surface-local neutral (canon-derived) ── */
+const DISABLED = "#EEE9DF"; // muted disabled fill — sandstone neutral
 import {
   createFamilyGroup,
   inviteFamilyMember,
@@ -88,6 +92,7 @@ interface PendingInviteEntry {
 export default function FamilyPage() {
   const { t } = useTranslation("familySettings");
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   // Multi-group state
   const [groups, setGroups] = useState<FamilyGroupEntry[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInviteEntry[]>([]);
@@ -116,10 +121,17 @@ export default function FamilyPage() {
 
   useEffect(() => {
     if (toast) {
-      const t = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Reset per-invite state when switching which group is expanded so role/email
+  // never leak across groups (inviteRole/inviteEmail are shared global state).
+  useEffect(() => {
+    setInviteEmail("");
+    setInviteRole("member");
+  }, [expandedGroupId]);
 
   const loadGroups = useCallback(async () => {
     try {
@@ -172,6 +184,7 @@ export default function FamilyPage() {
     } else {
       showToast(t("inviteSent", { email: inviteEmail.trim() }), "success");
       setInviteEmail("");
+      setInviteRole("member");
       await loadGroups();
     }
   };
@@ -203,17 +216,6 @@ export default function FamilyPage() {
       showToast(t("loadError"), "error");
     } finally {
       setResendingId(null);
-    }
-  };
-
-  const handleCopyInviteLink = async (groupId: string) => {
-    const link = `${window.location.origin}/join-family?group=${groupId}`;
-    try {
-      await navigator.clipboard.writeText(link);
-      showToast(t("inviteLinkCopied"), "success");
-    } catch {
-      // Clipboard write blocked by browser
-      showToast(t("clipboardError"), "error");
     }
   };
 
@@ -294,15 +296,53 @@ export default function FamilyPage() {
   };
 
   const roleColor = (role: string) => {
-    if (role === "owner") return "#9A4F2A"; /* Atrium token: terracotta glyph */
-    if (role === "admin") return "#8A6410"; /* Atrium gold-lane glyph brown */
-    return "#56683C"; /* Atrium token: sage canonical */
+    if (role === "owner") return EMBER_GLYPH; /* terracotta glyph */
+    if (role === "admin") return GOLD_SOFT; /* canon soft gold */
+    return T.color.sage; /* canon sage */
   };
 
   if (loading) {
     return (
-      <div style={{ padding: "3rem", textAlign: "center", fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" }}>
-        {t("loading")}
+      <div>
+        <div style={{ marginBottom: "2rem" }}>
+          <SettingsPageHeader
+            hidden={isMobile}
+            icon="family"
+            title={t("title")}
+            subtitle={t("description")}
+          />
+        </div>
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            background: T.color.white,
+            borderRadius: "1rem",
+            border: `0.0625rem solid ${HAIRLINE}`,
+            padding: isMobile ? "1.75rem 1.25rem" : "1.75rem 2rem",
+            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
+            minHeight: "8rem",
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED,
+          }}
+        >
+          <span
+            aria-hidden="true"
+            className="mp-fam-spinner"
+            style={{
+              width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+              border: `0.1875rem solid ${HAIRLINE}`,
+              borderTopColor: EMBER,
+              display: "inline-block",
+            }}
+          />
+          {t("loading")}
+          <style>{`
+            @keyframes mpFamSpin { to { transform: rotate(360deg); } }
+            .mp-fam-spinner { animation: mpFamSpin 0.8s linear infinite; }
+            @media (prefers-reduced-motion: reduce) { .mp-fam-spinner { animation: none; } }
+          `}</style>
+        </div>
       </div>
     );
   }
@@ -322,12 +362,14 @@ export default function FamilyPage() {
     const activeMembers = mems.filter((m) => m.status === "active");
     const pendingMembers = mems.filter((m) => m.status === "invited");
     const hasOnlyOwner = activeMembers.length <= 1 && pendingMembers.length === 0;
+    // Single source of truth for the invite button's enabled state (styling + disabled agree).
+    const inviteDisabled = !inviteEmail.trim() || !inviteEmail.includes("@") || inviting;
 
     return (
       <div key={grp.id} style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: isExpanded ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", /* Atrium: ember active / hairline */
+        border: isExpanded ? `0.125rem solid ${EMBER}` : `0.0625rem solid ${HAIRLINE}`, /* ember active / hairline */
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium token S1 + top highlight */
         marginBottom: "1rem",
         overflow: "hidden",
@@ -343,7 +385,7 @@ export default function FamilyPage() {
             flexWrap: "wrap",
           }}>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36",
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: INK,
               margin: 0, lineHeight: 1.5, flex: 1,
             }}>
               {t("deleteGroupConfirm")}
@@ -356,9 +398,9 @@ export default function FamilyPage() {
                   padding: "0.5rem 1rem",
                   minHeight: "2.75rem",
                   borderRadius: "0.75rem",
-                  border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                  border: `0.0625rem solid ${HAIRLINE}`,
                   background: T.color.white,
-                  color: "#716A5E",
+                  color: MUTED,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
                   fontWeight: 500,
@@ -396,9 +438,10 @@ export default function FamilyPage() {
         {isEditing && (
           <div style={{
             padding: "1rem 1.5rem",
-            background: "#FCFAF5", /* Atrium token: cream */
-            borderBottom: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-            display: "flex", alignItems: "center", gap: "0.625rem",
+            background: CREAM,
+            borderBottom: `0.0625rem solid ${HAIRLINE}`,
+            display: "flex", flexDirection: isMobile ? "column" : "row",
+            alignItems: isMobile ? "stretch" : "center", gap: "0.625rem",
           }}>
             <input
               className="mp-settings-input"
@@ -422,15 +465,16 @@ export default function FamilyPage() {
                 borderRadius: "0.75rem",
                 border: "none",
                 background: !editGroupName.trim() || renamingSaving
-                  ? "#EEE9DF" /* Atrium disabled */
-                  : "#B85C38", /* Atrium token: ember (active) */
-                color: !editGroupName.trim() || renamingSaving ? "#716A5E" : "#FFF",
+                  ? DISABLED
+                  : EMBER,
+                color: !editGroupName.trim() || renamingSaving ? MUTED : "#FFF",
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
                 fontWeight: 600,
                 cursor: !editGroupName.trim() || renamingSaving ? "default" : "pointer",
                 transition: "all .2s ease",
                 flexShrink: 0,
+                width: isMobile ? "100%" : undefined,
               }}
             >
               {renamingSaving ? t("renaming") : t("save")}
@@ -442,15 +486,16 @@ export default function FamilyPage() {
                 padding: "0.625rem 1rem",
                 minHeight: "2.75rem",
                 borderRadius: "0.75rem",
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                border: `0.0625rem solid ${HAIRLINE}`,
                 background: "transparent",
-                color: "#716A5E",
+                color: MUTED,
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
                 fontWeight: 500,
                 cursor: "pointer",
                 transition: "all .2s ease",
                 flexShrink: 0,
+                width: isMobile ? "100%" : undefined,
               }}
             >
               {t("cancel")}
@@ -463,7 +508,7 @@ export default function FamilyPage() {
           onClick={() => setExpandedGroupId(isExpanded ? null : grp.id)}
           style={{
             width: "100%",
-            padding: "1.25rem 1.5rem",
+            padding: isMobile ? "1.25rem 1rem" : isTablet ? "1.375rem 1.75rem" : "1.25rem 1.5rem",
             background: "transparent",
             border: "none",
             cursor: "pointer",
@@ -475,26 +520,26 @@ export default function FamilyPage() {
             width: "3rem", height: "3rem", borderRadius: "0.875rem",
             background: `linear-gradient(135deg, rgba(154,79,42,0.14), rgba(154,79,42,0.07))`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            border: "0.0625rem solid #E7D9C4", /* Atrium terracotta-zone border */
+            border: `0.0625rem solid ${CARD_BORDER}`, /* warm card edge */
             flexShrink: 0,
-            color: "#9A4F2A",
+            color: EMBER_GLYPH,
           }}>
-            <FamilyIcon name="palace" size={22} color={"#9A4F2A"} />
+            <FamilyIcon name="palace" size={22} color={EMBER_GLYPH} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{
               fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-              color: "#403B36", margin: 0,
+              color: INK, margin: 0,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
               {grp.name}
             </h3>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.125rem",
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, marginTop: "0.125rem",
               display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap",
             }}>
               <span>{mems.length !== 1 ? t("membersCount", { count: String(mems.length) }) : t("memberCount", { count: String(mems.length) })}</span>
-              <span style={{ color: "#E3D6BC" }}>{"\u00B7"}</span>
+              <span style={{ color: HAIRLINE }}>{"\u00B7"}</span>
               <span style={{
                 display: "inline-block",
                 padding: "0.125rem 0.5rem",
@@ -527,15 +572,15 @@ export default function FamilyPage() {
                 title={t("renameGroup")}
                 style={{
                   width: "2.25rem", height: "2.25rem", borderRadius: "0.75rem",
-                  border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                  border: `0.0625rem solid ${HAIRLINE}`,
                   background: "rgba(154,79,42,0.06)",
-                  color: "#9A4F2A",
+                  color: EMBER_GLYPH,
                   cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all .2s ease",
                 }}
               >
-                <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <svg style={{ width: "0.875rem", height: "0.875rem" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                   <path d="m15 5 4 4" />
                 </svg>
@@ -551,7 +596,7 @@ export default function FamilyPage() {
                   title={t("deleteGroup")}
                   style={{
                     width: "2.25rem", height: "2.25rem", borderRadius: "0.75rem",
-                    border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                    border: `0.0625rem solid ${HAIRLINE}`,
                     background: `${T.color.error}06`,
                     color: T.color.error,
                     cursor: "pointer",
@@ -559,7 +604,7 @@ export default function FamilyPage() {
                     transition: "all .2s ease",
                   }}
                 >
-                  <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <svg style={{ width: "0.875rem", height: "0.875rem" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6h18" />
                     <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
                     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
@@ -570,9 +615,9 @@ export default function FamilyPage() {
           )}
 
           <svg
-            width="1.25rem" height="1.25rem" viewBox="0 0 24 24"
-            fill="none" stroke={"#716A5E"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
-            style={{ flexShrink: 0, transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}
+            viewBox="0 0 24 24"
+            fill="none" stroke={MUTED} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+            style={{ width: "1.25rem", height: "1.25rem", flexShrink: 0, transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}
           >
             <path d="m9 18 6-6-6-6" />
           </svg>
@@ -580,7 +625,7 @@ export default function FamilyPage() {
 
         {/* Expanded content */}
         {isExpanded && (
-          <div style={{ padding: "0 1.5rem 1.5rem" }}>
+          <div style={{ padding: isMobile ? "0 1rem 1.25rem" : "0 1.5rem 1.5rem" }}>
             {/* Invite first member CTA */}
             {hasOnlyOwner && canManage && (
               <div style={{
@@ -592,7 +637,7 @@ export default function FamilyPage() {
                 textAlign: "center",
               }}>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", /* Atrium token: ink */
+                  fontFamily: T.font.body, fontSize: "0.9375rem", color: INK, /* Atrium token: ink */
                   margin: "0 0 1rem", lineHeight: 1.5,
                 }}>
                   {t("inviteFirstMember")}
@@ -600,14 +645,18 @@ export default function FamilyPage() {
                 <button
                   onClick={() => {
                     const el = document.getElementById(`invite-email-${grp.id}`);
-                    if (el) el.focus();
+                    if (el) {
+                      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                      el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+                      el.focus();
+                    }
                   }}
                   style={{
                     padding: "0.75rem 1.75rem",
                     minHeight: "2.75rem",
                     borderRadius: "0.75rem",
                     border: "none",
-                    background: "linear-gradient(135deg, #B85C38, #9A4F2A)", /* Atrium ember register */
+                    background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`, /* ember register */
                     color: "#FFF",
                     fontFamily: T.font.body,
                     fontSize: "0.9375rem",
@@ -625,19 +674,22 @@ export default function FamilyPage() {
             {canManage && (
               <div style={{
                 padding: "1.25rem 1.375rem",
-                background: "#FCFAF5", /* Atrium token: cream */
+                background: CREAM,
                 borderRadius: "0.875rem",
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                border: `0.0625rem solid ${HAIRLINE}`,
                 marginBottom: "1.25rem",
               }}>
                 <label htmlFor={`invite-email-${grp.id}`} style={labelStyle}>{t("inviteMember")}</label>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
                   margin: "0 0 0.75rem", lineHeight: 1.5,
                 }}>
                   {t("inviteExplanation")}
                 </p>
-                <div style={{ display: "flex", gap: "0.625rem", marginBottom: "0.75rem" }}>
+                <div style={{
+                  display: "flex", flexDirection: isMobile ? "column" : "row",
+                  gap: "0.625rem", marginBottom: "0.75rem",
+                }}>
                   <input
                     className="mp-settings-input"
                     id={`invite-email-${grp.id}`}
@@ -650,44 +702,59 @@ export default function FamilyPage() {
                   />
                   <button
                     onClick={() => handleInvite(grp.id)}
-                    disabled={!inviteEmail.trim() || !inviteEmail.includes("@") || inviting}
+                    disabled={inviteDisabled}
                     style={{
                       padding: "0.875rem 1.5rem",
                       minHeight: "2.75rem",
                       borderRadius: "0.75rem",
                       border: "none",
-                      background: !inviteEmail.trim() || inviting
-                        ? "#EEE9DF" /* Atrium disabled */
-                        : "#B85C38", /* Atrium token: ember (active) */
-                      color: !inviteEmail.trim() || inviting ? "#716A5E" : "#FFF",
+                      background: inviteDisabled ? DISABLED : EMBER,
+                      color: inviteDisabled ? MUTED : "#FFF",
                       fontFamily: T.font.body,
                       fontSize: "0.9375rem",
                       fontWeight: 600,
-                      cursor: !inviteEmail.trim() || inviting ? "default" : "pointer",
+                      cursor: inviteDisabled ? "default" : "pointer",
                       transition: "all .2s ease",
                       flexShrink: 0,
+                      width: isMobile ? "100%" : undefined,
                     }}
                   >
                     {inviting ? t("inviting") : t("invite")}
                   </button>
                 </div>
 
-                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.875rem" }}>
-                  {(["member", "admin"] as const).map((r) => (
+                <div
+                  role="radiogroup"
+                  aria-label={t("inviteMember")}
+                  style={{ display: "flex", gap: "0.5rem", marginBottom: "0.875rem" }}
+                >
+                  {(["member", "admin"] as const).map((r) => {
+                    const selected = inviteRole === r;
+                    return (
                     <button
                       key={r}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      tabIndex={selected ? 0 : -1}
                       onClick={() => setInviteRole(r)}
-                      aria-pressed={inviteRole === r}
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setInviteRole((prev) => (prev === "member" ? "admin" : "member"));
+                        }
+                      }}
                       style={{
                         padding: "0.5rem 1rem",
+                        minHeight: "2.75rem",
                         borderRadius: "0.75rem",
-                        border: `0.0625rem solid ${inviteRole === r ? "#9A4F2A" + "40" : "#E3D6BC"}`,
-                        background: inviteRole === r ? `${"#9A4F2A"}10` : T.color.white,
+                        border: `0.0625rem solid ${selected ? EMBER_GLYPH + "40" : HAIRLINE}`,
+                        background: selected ? `${EMBER_GLYPH}10` : T.color.white,
                         cursor: "pointer",
                         fontFamily: T.font.body,
                         fontSize: "0.8125rem",
-                        color: inviteRole === r ? "#9A4F2A" : "#716A5E",
-                        fontWeight: inviteRole === r ? 600 : 500,
+                        color: selected ? EMBER_GLYPH : MUTED,
+                        fontWeight: selected ? 600 : 500,
                         transition: "all .2s ease",
                         textAlign: "left",
                         flex: 1,
@@ -698,37 +765,14 @@ export default function FamilyPage() {
                       </div>
                       <div style={{
                         fontSize: "0.8125rem", fontWeight: 500,
-                        color: inviteRole === r ? "#9A4F2A" : "#716A5E",
+                        color: selected ? EMBER_GLYPH : MUTED,
                       }}>
                         {r === "member" ? t("roleMemberDesc") : t("roleAdminDesc")}
                       </div>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
-
-                <button
-                  onClick={() => handleCopyInviteLink(grp.id)}
-                  className="mp-fam-quiet"
-                  style={{
-                    padding: "0.5rem 1rem",
-                    minHeight: "2.75rem",
-                    borderRadius: "0.75rem",
-                    border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-                    background: T.color.white,
-                    cursor: "pointer",
-                    fontFamily: T.font.body,
-                    fontSize: "0.8125rem",
-                    color: "#9A4F2A", /* Atrium: terracotta action */
-                    fontWeight: 500,
-                    transition: "all .2s ease",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.375rem",
-                  }}
-                >
-                  <FamilyIcon name="link" size={14} color="#9A4F2A" />
-                  {t("copyInviteLink")}
-                </button>
               </div>
             )}
 
@@ -741,29 +785,29 @@ export default function FamilyPage() {
                     <div key={member.id} role="listitem" style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       padding: "0.75rem 1rem", borderRadius: "0.75rem",
-                      background: `${"#9A4F2A"}06`,
-                      border: `0.0625rem dashed ${"#9A4F2A"}25`,
+                      background: `${EMBER_GLYPH}06`,
+                      border: `0.0625rem dashed ${EMBER_GLYPH}25`,
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", minWidth: 0 }}>
                         <div style={{
                           width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem",
-                          background: `${"#9A4F2A"}15`,
+                          background: `${EMBER_GLYPH}15`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                          color: "#9A4F2A",
+                          color: EMBER_GLYPH,
                         }}>
                           {member.email.charAt(0).toUpperCase()}
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div style={{
                             fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                            color: "#403B36",
+                            color: INK,
                             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                           }}>
                             {member.email}
                           </div>
                           <div style={{
-                            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+                            fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
                             display: "flex", alignItems: "center", gap: "0.375rem", marginTop: "0.125rem",
                           }}>
                             <span style={{
@@ -783,9 +827,9 @@ export default function FamilyPage() {
                               padding: "0.375rem 0.75rem",
                               minHeight: "2.75rem",
                               borderRadius: "0.75rem",
-                              border: `0.0625rem solid ${"#9A4F2A"}30`,
+                              border: `0.0625rem solid ${EMBER_GLYPH}30`,
                               background: T.color.white,
-                              color: "#9A4F2A",
+                              color: EMBER_GLYPH,
                               fontFamily: T.font.body,
                               fontSize: "0.8125rem",
                               fontWeight: 600,
@@ -802,9 +846,9 @@ export default function FamilyPage() {
                             title={t("cancelInvite")}
                             style={{
                               width: "2rem", height: "2rem", borderRadius: "0.75rem",
-                              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                              border: `0.0625rem solid ${HAIRLINE}`,
                               background: "transparent",
-                              color: "#716A5E",
+                              color: MUTED,
                               fontSize: "0.8125rem",
                               cursor: "pointer",
                               display: "flex", alignItems: "center", justifyContent: "center",
@@ -826,12 +870,12 @@ export default function FamilyPage() {
             <label style={labelStyle}>{t("members")}</label>
             {activeMembers.length === 0 && (
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
                 margin: "0 0 1rem", lineHeight: 1.5, fontStyle: "italic",
                 padding: "1rem 1.25rem",
-                background: "#FCFAF5", /* Atrium token: cream */
+                background: CREAM,
                 borderRadius: "0.75rem",
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                border: `0.0625rem solid ${HAIRLINE}`,
               }}>
                 {t("noActiveMembers")}
               </p>
@@ -841,8 +885,8 @@ export default function FamilyPage() {
                 <div key={member.id} role="listitem" style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "0.875rem 1.125rem", borderRadius: "0.75rem",
-                  background: "#FCFAF5", /* Atrium token: cream */
-                  border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                  background: CREAM,
+                  border: `0.0625rem solid ${HAIRLINE}`,
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                     <div style={{
@@ -858,18 +902,18 @@ export default function FamilyPage() {
                     <div>
                       <div style={{
                         fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                        color: "#403B36",
+                        color: INK,
                       }}>
                         {member.email}
                         {member.email.toLowerCase() === userEmail.toLowerCase() && (
                           <span style={{
-                            fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
+                            fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED,
                             marginLeft: "0.375rem", fontStyle: "italic",
                           }}>({t("youLabel")})</span>
                         )}
                       </div>
                       <div style={{
-                        fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
                         display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.125rem",
                       }}>
                         <span style={{
@@ -884,10 +928,10 @@ export default function FamilyPage() {
                         }}>
                           {member.role === "owner" ? t("roleOwner") : member.role === "admin" ? t("roleAdmin") : t("roleMember")}
                         </span>
-                        <span style={{ color: "#56683C", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                        <span style={{ color: T.color.sage, display: "flex", alignItems: "center", gap: "0.25rem" }}>
                           <span style={{
                             display: "inline-block", width: "0.375rem", height: "0.375rem",
-                            borderRadius: "50%", background: "#56683C",
+                            borderRadius: "50%", background: T.color.sage,
                           }} />
                           {t("statusActive")}
                         </span>
@@ -905,9 +949,9 @@ export default function FamilyPage() {
                           display: "inline-flex", alignItems: "center", gap: "0.375rem",
                           padding: "0.375rem 0.75rem",
                           borderRadius: "0.75rem",
-                          border: `0.0625rem solid ${"#56683C"}30`,
-                          background: `${"#56683C"}08`,
-                          color: "#56683C",
+                          border: `0.0625rem solid ${T.color.sage}30`,
+                          background: `${T.color.sage}08`,
+                          color: T.color.sage,
                           fontFamily: T.font.body,
                           fontSize: "0.8125rem",
                           fontWeight: 600,
@@ -917,7 +961,7 @@ export default function FamilyPage() {
                           minHeight: "2rem",
                         }}
                       >
-                        <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                        <svg style={{ width: "0.875rem", height: "0.875rem" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                           <rect width="20" height="16" x="2" y="4" rx="2" />
                           <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
                         </svg>
@@ -930,9 +974,9 @@ export default function FamilyPage() {
                         title={member.role === "admin" ? t("makeMember") : t("makeAdmin")}
                         style={{
                           padding: "0.375rem 0.625rem", borderRadius: "0.75rem",
-                          border: `0.0625rem solid ${"#9A4F2A"}30`,
+                          border: `0.0625rem solid ${EMBER_GLYPH}30`,
                           background: T.color.white,
-                          color: "#9A4F2A",
+                          color: EMBER_GLYPH,
                           fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                           cursor: "pointer", transition: "all .2s ease",
                           minHeight: "2.75rem",
@@ -944,7 +988,7 @@ export default function FamilyPage() {
                     {canManage && member.role !== "owner" && member.user_id && (
                       confirmRemoveMember?.userId === member.user_id && confirmRemoveMember?.groupId === grp.id ? (
                         <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" }}>
+                          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: INK }}>
                             {t("confirmRemoveShort")}
                           </span>
                           <button
@@ -965,8 +1009,8 @@ export default function FamilyPage() {
                             onClick={() => setConfirmRemoveMember(null)}
                             style={{
                               padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
-                              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */ background: T.color.white,
-                              color: "#716A5E", fontFamily: T.font.body, fontSize: "0.6875rem",
+                              border: `0.0625rem solid ${HAIRLINE}`, background: T.color.white,
+                              color: MUTED, fontFamily: T.font.body, fontSize: "0.6875rem",
                               fontWeight: 500, cursor: "pointer", transition: "all .2s ease",
                             }}
                           >
@@ -979,9 +1023,9 @@ export default function FamilyPage() {
                           aria-label={t("removeMember", { email: member.email })}
                           style={{
                             width: "2rem", height: "2rem", borderRadius: "0.75rem",
-                            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                            border: `0.0625rem solid ${HAIRLINE}`,
                             background: "transparent",
-                            color: "#716A5E",
+                            color: MUTED,
                             fontSize: "0.8125rem",
                             cursor: "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center",
@@ -1008,9 +1052,13 @@ export default function FamilyPage() {
       {/* Toast */}
       {toast && (
         <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
+          position: "fixed", top: "1.5rem",
+          right: isMobile ? "1rem" : "1.5rem",
+          left: isMobile ? "1rem" : "auto",
+          zIndex: 100,
+          maxWidth: isMobile ? undefined : "24rem",
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? "#56683C" : T.color.error,
+          background: toast.type === "success" ? T.color.success : T.color.error,
           color: "#FFF",
           fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
           boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 (overlay) */
@@ -1036,7 +1084,7 @@ export default function FamilyPage() {
         />
         {/* Inclusive note */}
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", /* Atrium token: muted */
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, /* Atrium token: muted */
           margin: isMobile ? 0 : "-1rem 0 0", lineHeight: 1.5, fontStyle: "italic",
         }}>
           {t("inclusiveNote")}
@@ -1048,21 +1096,21 @@ export default function FamilyPage() {
         const invGroup = inv.group as FamilyGroup;
         return (
           <div key={invGroup.id} style={{
-            background: `${"#9A4F2A"}08`,
+            background: `${EMBER_GLYPH}08`,
             borderRadius: "1rem",
-            border: `0.125rem solid ${"#9A4F2A"}30`,
-            padding: "1.75rem 2rem",
+            border: `0.125rem solid ${EMBER_GLYPH}30`,
+            padding: isMobile ? "1.5rem 1.25rem" : "1.75rem 2rem",
             boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium token S1 + top highlight */
             marginBottom: "1rem",
           }}>
             <h3 style={{
               fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-              color: "#403B36", margin: "0 0 0.5rem",
+              color: INK, margin: "0 0 0.5rem",
             }}>
               {t("invitedTitle")}
             </h3>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", /* Atrium token: muted */
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED, /* Atrium token: muted */
               margin: "0 0 1.25rem", lineHeight: 1.5,
             }}>
               {t("invitedDescription", { name: invGroup.name })}
@@ -1075,8 +1123,8 @@ export default function FamilyPage() {
                 minHeight: "2.75rem",
                 borderRadius: "0.75rem",
                 border: "none",
-                background: saving ? "#EEE9DF" /* Atrium disabled */ : `linear-gradient(135deg, #B85C38, #9A4F2A)`,
-                color: saving ? "#716A5E" : "#FFF",
+                background: saving ? DISABLED : `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
+                color: saving ? MUTED : "#FFF",
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
                 fontWeight: 600,
@@ -1093,7 +1141,7 @@ export default function FamilyPage() {
       {/* NO GROUPS: one muted sentence above the create-group form (change 19) */}
       {!hasGroups && !hasPendingInvites && (
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", /* Atrium token: muted */
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED, /* Atrium token: muted */
           margin: "0 0 1.25rem", lineHeight: 1.6, maxWidth: "34rem",
         }}>
           {t("noGroupDesc")}
@@ -1105,19 +1153,19 @@ export default function FamilyPage() {
         <div style={{
           background: T.color.white,
           borderRadius: "1rem",
-          border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-          padding: "1.75rem 2rem",
+          border: `0.0625rem solid ${HAIRLINE}`,
+          padding: isMobile ? "1.5rem 1.25rem" : "1.75rem 2rem",
           boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium token S1 + top highlight */
           marginBottom: "1.5rem",
         }}>
           <h3 style={{
             fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-            color: "#403B36", margin: "0 0 0.375rem",
+            color: INK, margin: "0 0 0.375rem",
           }}>
             {t("createGroup")}
           </h3>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
             margin: "0 0 1.375rem", lineHeight: 1.5,
           }}>
             {t("createGroupDesc")}
@@ -1147,9 +1195,9 @@ export default function FamilyPage() {
                 borderRadius: "0.75rem",
                 border: "none",
                 background: !groupName.trim() || saving
-                  ? "#EEE9DF" /* Atrium disabled */
-                  : `linear-gradient(135deg, #B85C38, #9A4F2A)`,
-                color: !groupName.trim() || saving ? "#716A5E" : "#FFF",
+                  ? DISABLED
+                  : `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
+                color: !groupName.trim() || saving ? MUTED : "#FFF",
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
                 fontWeight: 600,
@@ -1167,9 +1215,9 @@ export default function FamilyPage() {
                   padding: "0.875rem 1.5rem",
                   minHeight: "2.75rem",
                   borderRadius: "0.75rem",
-                  border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                  border: `0.0625rem solid ${HAIRLINE}`,
                   background: "transparent",
-                  color: "#716A5E",
+                  color: MUTED,
                   fontFamily: T.font.body,
                   fontSize: "0.9375rem",
                   fontWeight: 500,
@@ -1202,9 +1250,9 @@ export default function FamilyPage() {
                   padding: "0.5rem 1rem",
                   minHeight: "2.75rem",
                   borderRadius: "0.75rem",
-                  border: `0.09375rem solid ${"#9A4F2A"}40`,
-                  background: `${"#9A4F2A"}08`,
-                  color: "#9A4F2A",
+                  border: `0.09375rem solid ${EMBER_GLYPH}40`,
+                  background: `${EMBER_GLYPH}08`,
+                  color: EMBER_GLYPH,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
@@ -1227,9 +1275,9 @@ export default function FamilyPage() {
           {/* ═══ FAMILY TREE LINK ═══ */}
           <Link href="/family-tree" style={{ textDecoration: "none", display: "block" }}>
             <div style={{
-              background: "linear-gradient(135deg, rgba(86,104,60,0.07), rgba(86,104,60,0.03))", /* sage zone */
+              background: `linear-gradient(135deg, ${T.color.sage}12, ${T.color.sage}08)`, /* sage zone */
               borderRadius: "1rem",
-              border: `0.09375rem solid ${"#56683C"}25`,
+              border: `0.09375rem solid ${T.color.sage}25`,
               padding: "1.25rem 1.5rem",
               marginBottom: "1.5rem",
               display: "flex", alignItems: "center", gap: "1rem",
@@ -1238,11 +1286,11 @@ export default function FamilyPage() {
             }}>
               <div style={{
                 width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
-                background: `linear-gradient(135deg, ${"#56683C"}20, ${"#56683C"}10)`,
+                background: `linear-gradient(135deg, ${T.color.sage}20, ${T.color.sage}10)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
               }}>
-                <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke={"#56683C"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <svg style={{ width: "1.25rem", height: "1.25rem" }} viewBox="0 0 24 24" fill="none" stroke={T.color.sage} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
                   <path d="M5 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
                   <path d="M19 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
@@ -1253,17 +1301,17 @@ export default function FamilyPage() {
               <div style={{ flex: 1 }}>
                 <div style={{
                   fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
-                  color: "#403B36", marginBottom: "0.125rem",
+                  color: INK, marginBottom: "0.125rem",
                 }}>
                   {t("viewFamilyTree")}
                 </div>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", lineHeight: 1.4,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, lineHeight: 1.4,
                 }}>
                   {t("familyTreeDesc")}
                 </div>
               </div>
-              <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ width: "1.25rem", height: "1.25rem", flexShrink: 0 }}>
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </div>
@@ -1274,7 +1322,7 @@ export default function FamilyPage() {
             <div style={{
               background: T.color.white,
               borderRadius: "1rem",
-              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              border: `0.0625rem solid ${HAIRLINE}`,
               padding: "1.25rem 1.5rem",
               boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium token S1 + top highlight */
               marginBottom: "1.5rem",
@@ -1286,24 +1334,24 @@ export default function FamilyPage() {
                 width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
                 background: "rgba(154,79,42,0.11)", /* Atrium terracotta medallion */
                 display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0, color: "#9A4F2A",
+                flexShrink: 0, color: EMBER_GLYPH,
               }}>
-                <FamilyIcon name="palace" size={20} color={"#9A4F2A"} />
+                <FamilyIcon name="palace" size={20} color={EMBER_GLYPH} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
-                  color: "#403B36", marginBottom: "0.125rem",
+                  color: INK, marginBottom: "0.125rem",
                 }}>
                   {t("manageWingSharing") !== "manageWingSharing" ? t("manageWingSharing") : "Manage who sees your wings"}
                 </div>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", lineHeight: 1.4,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, lineHeight: 1.4,
                 }}>
                   {t("wingSharingDesc")}
                 </div>
               </div>
-              <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ width: "1.25rem", height: "1.25rem", flexShrink: 0 }}>
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </div>
@@ -1312,18 +1360,18 @@ export default function FamilyPage() {
           {/* Info footer */}
           <div style={{
             padding: "1rem 1.25rem",
-            background: "#F6EBE3", /* Atrium token: recessed tray */
+            background: TRAY,
             borderRadius: "0.75rem",
-            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+            border: `0.0625rem solid ${HAIRLINE}`,
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.375rem" }}>
-              <FamilyIcon name="lock" size={14} color="#716A5E" />
-              <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#403B36" }}>
+              <FamilyIcon name="lock" size={14} color={MUTED} />
+              <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: INK }}>
                 {t("howItWorks")}
               </span>
             </div>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
               lineHeight: 1.6, margin: 0,
             }}>
               {t("howItWorksDesc")}
@@ -1354,7 +1402,7 @@ const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "0.6875rem", /* Atrium overline: the one small-caps voice */
   fontWeight: 700,
-  color: "#716A5E",
+  color: MUTED,
   letterSpacing: "0.12em",
   textTransform: "uppercase",
   display: "block",
@@ -1365,11 +1413,11 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.875rem 1.125rem",
   borderRadius: "0.75rem",
-  border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+  border: `0.0625rem solid ${HAIRLINE}`,
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: "0.9375rem",
-  color: "#403B36",
+  fontSize: "1rem", /* >=1rem prevents iOS focus-zoom */
+  color: INK,
   outline: "none",
   boxSizing: "border-box",
   transition: "border-color .2s, box-shadow .2s",

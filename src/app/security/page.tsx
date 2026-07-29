@@ -289,7 +289,7 @@ function CommitmentDove({ size = 40 }: { size?: number }) {
 export default function SecurityPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
-  const { t, locale, setLocale } = useTranslation("securityPage");
+  const { t, locale, setLocaleNoReload } = useTranslation("securityPage");
   const { t: tc } = useTranslation("common");
 
   return (
@@ -298,9 +298,9 @@ export default function SecurityPage() {
         width: "100vw",
         minHeight: "100vh",
         overflowX: "hidden",
-        background: C.linen,
+        background: C.cream,
         fontFamily: F.body,
-        color: C.charcoal,
+        color: C.inkSoft,
       }}
     >
       {/* --- Nav --- */}
@@ -353,7 +353,7 @@ export default function SecurityPage() {
                   fontFamily: F.display,
                   fontSize: 20,
                   fontWeight: 500,
-                  color: C.charcoal,
+                  color: C.inkSoft,
                   letterSpacing: "-0.3px",
                 }}
               >
@@ -366,14 +366,14 @@ export default function SecurityPage() {
           {/* Language selector */}
           <select
             value={locale}
-            onChange={(e) => setLocale(e.target.value as typeof locale)}
+            onChange={(e) => setLocaleNoReload(e.target.value as typeof locale)}
             aria-label={tc("a11ySwitchLanguage")}
             style={{
               background: "none",
               border: `1px solid ${C.sandstone}60`,
               borderRadius: "0.375rem",
               padding: "0.25rem 0.5rem",
-              fontSize: "0.75rem",
+              fontSize: "1rem",
               fontFamily: F.body,
               fontWeight: 600,
               color: C.walnut,
@@ -384,7 +384,7 @@ export default function SecurityPage() {
               appearance: "none",
               WebkitAppearance: "none",
               paddingRight: "1.25rem",
-              backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+              backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "right 0.375rem center",
             }}
@@ -428,7 +428,7 @@ export default function SecurityPage() {
             fontSize: "clamp(32px, 5vw, 56px)",
             fontWeight: 300,
             lineHeight: 1.15,
-            color: C.charcoal,
+            color: C.inkSoft,
             marginBottom: 16,
           }}
         >
@@ -473,7 +473,7 @@ export default function SecurityPage() {
                   fontFamily: F.display,
                   fontSize: "clamp(24px, 3vw, 32px)",
                   fontWeight: 500,
-                  color: C.charcoal,
+                  color: C.inkSoft,
                   margin: 0,
                 }}
               >
@@ -511,7 +511,7 @@ export default function SecurityPage() {
                       fontFamily: F.display,
                       fontSize: "clamp(18px, 2vw, 22px)",
                       fontWeight: 500,
-                      color: C.charcoal,
+                      color: C.inkSoft,
                       marginBottom: 8,
                     }}
                   >
@@ -536,7 +536,7 @@ export default function SecurityPage() {
         {/* --- Commitment --- */}
         <div
           style={{
-            background: `linear-gradient(135deg, ${C.charcoal}, #3D3D3A)`,
+            background: `linear-gradient(135deg, ${C.charcoal}, ${C.inkSoft})`,
             borderRadius: 20,
             padding: isMobile ? "36px 24px" : "48px 40px",
             textAlign: "center",
@@ -596,7 +596,7 @@ export default function SecurityPage() {
             fontFamily: F.display,
             fontSize: "clamp(24px, 3.5vw, 38px)",
             fontWeight: 300,
-            color: C.charcoal,
+            color: C.inkSoft,
             marginBottom: 16,
             lineHeight: 1.2,
           }}
@@ -626,7 +626,7 @@ export default function SecurityPage() {
             padding: "16px 36px",
             borderRadius: 14,
             background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-            boxShadow: "0 4px 20px rgba(198,107,61,0.3)",
+            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
           }}
         >
           {t("ctaButton")}

@@ -12,7 +12,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
+import { hasAnalyticsConsent, initAnalytics, optOutAnalytics } from "@/lib/analytics";
+import { INK, MUTED, EMBER_GLYPH, EMBER, SAGE, HAIRLINE, CREAM } from "@/lib/libraryTokens";
 import BlockedAccountsPanel from "@/components/social/BlockedAccountsPanel";
 import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
@@ -21,14 +23,17 @@ import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 const F = T.font;
 
-/* Atrium tokens (INK & EMBER) — inlined from the elevation system */
-const INK = "#403B36"; // titles / body-strong
-const MUTED = "#716A5E"; // secondary text, full opacity
-const TERRA = "#9A4F2A"; // terracotta glyph / at-rest accent
-const EMBER = "#B85C38"; // interactive / active
-const SAGE = "#56683C"; // sage glyph (success register)
-const HAIRLINE = "#E3D6BC"; // opaque hairline
-const CREAM = "#FCFAF5"; // flat page cream / recessed panels
+/* Canon tokens imported from libraryTokens (INK/MUTED/EMBER_GLYPH/EMBER/SAGE/HAIRLINE/CREAM).
+   EMBER_GLYPH is the terracotta at-rest glyph accent (was locally named TERRA). */
+const TERRA = EMBER_GLYPH; // terracotta glyph / at-rest accent (canon EMBER_GLYPH)
+
+/* Danger register — a small warm-red ramp local to this destructive surface.
+   Not a generic accent (GDPR Art.17 delete only); kept here because libraryTokens
+   is out of scope for this fix. */
+const DANGER = "#C05050";        // danger base (dot, headings, error toast)
+const DANGER_STRONG = "#A83A3A"; // danger strong (confirm text, active delete)
+const DANGER_DEEP = "#8C3434";   // danger deep (description)
+const INK_DEEP = "#2E2A26";      // keystone second ink (gradient end)
 
 /* ─── Category icons (compact versions for settings context) ─── */
 
@@ -98,18 +103,6 @@ function EssentialIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-function PreferencesIcon({ size = 24 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="11" fill={TERRA} opacity="0.1" stroke={TERRA} strokeWidth="1.5" />
-      <path d="M10 12h12M10 16h12M10 20h12" stroke={TERRA} strokeWidth="1.3" strokeLinecap="round" />
-      <circle cx="14" cy="12" r="1.5" fill={TERRA} />
-      <circle cx="20" cy="16" r="1.5" fill={TERRA} />
-      <circle cx="16" cy="20" r="1.5" fill={TERRA} />
-    </svg>
-  );
-}
-
 function AnalyticsIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
@@ -143,35 +136,53 @@ function Toggle({
       disabled={disabled}
       className="mp-cookie-toggle"
       style={{
+        // The BUTTON is the tap target (>=2.75rem tall); the visual track/thumb
+        // stay small inside it. Horizontal padding keeps the whole hit-zone
+        // comfortable on phones without changing the switch's look.
         flexShrink: 0,
-        width: "3rem",
-        height: "1.625rem",
-        borderRadius: "0.8125rem",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "2.75rem",
+        minWidth: "2.75rem",
+        padding: "0 0.5rem",
         border: "none",
+        background: "transparent",
         cursor: disabled ? "not-allowed" : "pointer",
-        background: checked ? EMBER : HAIRLINE,
-        position: "relative",
-        transition: "background 0.2s ease",
         opacity: disabled ? 0.6 : 1,
       }}
     >
-      <div style={{
-        width: "1.25rem",
-        height: "1.25rem",
-        borderRadius: "50%",
-        background: "#FFFFFF",
-        position: "absolute",
-        top: "0.1875rem",
-        left: checked ? "1.5625rem" : "0.1875rem",
-        transition: "left 0.2s ease",
-        boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)", // Atrium warm ink
-      }} />
+      <span
+        aria-hidden="true"
+        style={{
+          display: "block",
+          width: "3rem",
+          height: "1.625rem",
+          borderRadius: "0.8125rem",
+          background: checked ? EMBER : HAIRLINE,
+          position: "relative",
+          transition: "background 0.2s ease",
+        }}
+      >
+        <span style={{
+          display: "block",
+          width: "1.25rem",
+          height: "1.25rem",
+          borderRadius: "50%",
+          background: "#FFFFFF",
+          position: "absolute",
+          top: "0.1875rem",
+          left: checked ? "1.5625rem" : "0.1875rem",
+          transition: "left 0.2s ease",
+          boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)", // Atrium warm ink
+        }} />
+      </span>
     </button>
   );
 }
 
-/* ─── Cookie categories — localStorage keys mp-cookie-consent / mp-cookie-analytics
-       (GDPR consent toggles: moved here from /settings/cookies, behavior unchanged) ─── */
+/* ─── Cookie categories — localStorage key mp-cookie-analytics (GDPR analytics
+       consent toggle; honours the banner's '0'/'1' contract, moved from /settings/cookies) ─── */
 
 type CookieCategory = {
   IconComponent: React.FC<{ size?: number }>;
@@ -188,12 +199,10 @@ const COOKIE_CATEGORIES: CookieCategory[] = [
     descriptionKey: "essentialDescription",
     alwaysOn: true,
   },
-  {
-    IconComponent: PreferencesIcon,
-    titleKey: "preferencesTitle",
-    descriptionKey: "preferencesDescription",
-    storageKey: "mp-cookie-consent",
-  },
+  // NOTE: the "Preferences" category was removed — it persisted to `mp-cookie-consent`
+  // (hyphen), a key read nowhere, so the toggle changed no behavior. Rather than ship a
+  // GDPR consent control that does nothing, we drop it until a real preference behavior
+  // exists to wire it to.
   {
     IconComponent: AnalyticsIcon,
     titleKey: "analyticsTitle",
@@ -289,7 +298,7 @@ const inputStyle: React.CSSProperties = {
   border: `0.0625rem solid ${HAIRLINE}`,
   background: "#FFFFFF",
   fontFamily: T.font.body,
-  fontSize: "0.9375rem",
+  fontSize: "1rem", // >= 1rem so iOS Safari never zooms on focus
   color: INK,
   outline: "none",
   boxSizing: "border-box" as const,
@@ -302,6 +311,14 @@ export default function SecuritySettingsPage() {
   const { t: tck } = useTranslation("cookieSettings");
   const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
+
+  // Card padding tightens on phone / iPad portrait so content isn't cramped by
+  // desktop-scale gutters. Vertical rhythm is preserved; only the horizontal
+  // gutter shrinks. (Inline-style responsiveness — no @media.)
+  const cardPadX = isCompact ? "1rem" : "1.75rem";
+  const cardPad = `1.5rem ${cardPadX}`;
+  const card: React.CSSProperties = { ...cardStyle, padding: cardPad };
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [brochureOpen, setBrochureOpen] = useState(false);
@@ -331,7 +348,14 @@ export default function SecuritySettingsPage() {
       const state: Record<string, boolean> = {};
       for (const cat of COOKIE_CATEGORIES) {
         if (cat.storageKey) {
-          state[cat.storageKey] = localStorage.getItem(cat.storageKey) === "1";
+          // Derive the analytics toggle from the real runtime contract
+          // (hasAnalyticsConsent honours both the explicit '0'/'1' override AND
+          // the banner's mp_cookie_consent decision) so the switch can never
+          // display out of sync with what actually captures.
+          state[cat.storageKey] =
+            cat.storageKey === "mp-cookie-analytics"
+              ? hasAnalyticsConsent()
+              : localStorage.getItem(cat.storageKey) === "1";
         }
       }
       setConsents(state);
@@ -347,11 +371,26 @@ export default function SecuritySettingsPage() {
     try {
       if (newValue) {
         localStorage.setItem(storageKey, "1");
+      } else if (storageKey === "mp-cookie-analytics") {
+        // GDPR opt-out must be explicit: hasAnalyticsConsent() treats a MISSING
+        // analytics key as "undecided" and falls through to mp_cookie_consent.
+        // Removing the key would leave analytics ENABLED after an accepted banner,
+        // so we write the banner's exact opt-out contract ('0') instead.
+        localStorage.setItem(storageKey, "0");
       } else {
         localStorage.removeItem(storageKey);
       }
     } catch {
       /* private browsing */
+    }
+    // Apply the decision to the live session immediately (GDPR consent
+    // withdrawal / grant must take effect without a reload).
+    if (storageKey === "mp-cookie-analytics") {
+      if (newValue) {
+        void initAnalytics();
+      } else {
+        optOutAnalytics();
+      }
     }
   };
 
@@ -389,7 +428,7 @@ export default function SecuritySettingsPage() {
         <div role={toast.type === "success" ? "status" : "alert"} aria-live={toast.type === "success" ? "polite" : "assertive"} className="mp-security-toast" style={{
           position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? SAGE : "#C05050",
+          background: toast.type === "success" ? SAGE : DANGER,
           color: "#FFF",
           fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 500,
           boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 */
@@ -420,7 +459,7 @@ export default function SecuritySettingsPage() {
       <MFASetup />
 
       {/* ── 2. Password ── */}
-      <div style={cardStyle}>
+      <div style={card}>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: "1rem", flexWrap: "wrap",
@@ -473,7 +512,7 @@ export default function SecuritySettingsPage() {
         {COOKIE_CATEGORIES.map((cat, i) => {
           const isOn = cat.alwaysOn || (cat.storageKey ? consents[cat.storageKey] ?? false : false);
           return (
-            <div key={i} style={cardStyle}>
+            <div key={i} style={card}>
               <div style={{
                 display: "flex", alignItems: "center", gap: "0.75rem",
                 marginBottom: "1rem",
@@ -532,7 +571,7 @@ export default function SecuritySettingsPage() {
           style={{
             width: "100%",
             display: "flex", alignItems: "center", gap: "0.75rem",
-            padding: "1.25rem 1.75rem",
+            padding: `1.25rem ${cardPadX}`,
             minHeight: "2.75rem",
             background: "transparent",
             border: "none",
@@ -560,7 +599,7 @@ export default function SecuritySettingsPage() {
         </button>
 
         {brochureOpen && (
-          <div style={{ padding: "0 1.75rem 1.5rem" }}>
+          <div style={{ padding: `0 ${cardPadX} 1.5rem` }}>
             {SECTIONS.map((section, si) => (
               <div key={si} style={{ marginBottom: "1.25rem" }}>
                 <div style={{
@@ -603,7 +642,7 @@ export default function SecuritySettingsPage() {
 
             {/* Commitment */}
             <div style={{
-              background: "linear-gradient(135deg, #403B36, #2E2A26)", // Atrium token: warm-ink keystone
+              background: `linear-gradient(135deg, ${INK}, ${INK_DEEP})`, // warm-ink keystone
               borderRadius: "1rem",
               padding: "1.75rem 2rem",
             }}>
@@ -634,32 +673,33 @@ export default function SecuritySettingsPage() {
         )}
       </div>
 
+      {/* ── 7. Danger Zone — last (GDPR Art. 17, terracotta register, never gold) ── */}
+      <section role="region" aria-labelledby="danger-zone-heading">
       {/* Section overline — Danger zone (danger register — the one non-ember overline) */}
       <div style={{
         display: "flex", alignItems: "center", gap: "0.5rem",
         marginTop: "1.75rem", marginBottom: "1rem",
       }}>
-        <span aria-hidden="true" style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: "#C05050", flexShrink: 0 }} />
+        <span aria-hidden="true" style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: DANGER, flexShrink: 0 }} />
         <span style={{
           fontFamily: F.body, fontSize: "0.6875rem", fontWeight: 700,
-          letterSpacing: "0.12em", textTransform: "uppercase", color: "#C05050", whiteSpace: "nowrap",
+          letterSpacing: "0.12em", textTransform: "uppercase", color: DANGER, whiteSpace: "nowrap",
         }}>
           {tf("sectionDangerZone", "Danger zone")}
         </span>
         <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, #EFD3D3, transparent)" }} />
       </div>
 
-      {/* ── 7. Danger Zone — last (GDPR Art. 17, terracotta register, never gold) ── */}
       <div style={{
         background: "#FFFFFF",
         borderRadius: "1rem",
         border: "0.0625rem solid #EFD3D3", /* Atrium pre-mixed: danger 25% on white */
-        padding: "1.75rem 2rem",
+        padding: isCompact ? "1.5rem 1rem" : "1.75rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
       }}>
-        <h3 style={{
+        <h3 id="danger-zone-heading" style={{
           fontFamily: F.display, fontSize: "1.1875rem", fontWeight: 600,
-          color: "#C05050", margin: "0 0 0.375rem",
+          color: DANGER, margin: "0 0 0.375rem",
         }}>
           {ts("dangerZone")}
         </h3>
@@ -682,7 +722,7 @@ export default function SecuritySettingsPage() {
               fontFamily: F.body,
               fontSize: "0.9375rem",
               fontWeight: 600,
-              color: "#C05050",
+              color: DANGER,
               cursor: "pointer",
               transition: "all 0.2s ease",
               minHeight: "2.75rem",
@@ -698,18 +738,21 @@ export default function SecuritySettingsPage() {
           }}>
             <p style={{
               fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 500,
-              color: "#A83A3A" /* danger strong, one ramp */, margin: "0 0 0.75rem",
+              color: DANGER_STRONG, margin: "0 0 0.75rem",
             }}>
               {ts("deleteConfirmTitle")}
             </p>
             <p style={{
-              fontFamily: F.body, fontSize: "0.9375rem", color: "#8C3434" /* danger deep, one ramp */,
+              fontFamily: F.body, fontSize: "0.9375rem", color: DANGER_DEEP,
               margin: "0 0 1rem", lineHeight: 1.4,
             }}>
               {(() => {
                 const raw = ts("deleteConfirmDescription");
                 const parts = raw.split(/\{boldStart\}|\{boldEnd\}/);
-                // parts[0] = before, parts[1] = bold text, parts[2] = after
+                // Expect [before, bold, after]. If a locale is missing the
+                // {boldStart}/{boldEnd} placeholders the split yields <3 parts —
+                // render the raw string verbatim so no text is silently dropped.
+                if (parts.length < 3) return raw;
                 return (
                   <>
                     {parts[0]}
@@ -744,7 +787,7 @@ export default function SecuritySettingsPage() {
                   border: "none",
                   background:
                     deleteText === ts("deleteConfirmWord") && !deleting
-                      ? "#A83A3A" /* danger strong, one ramp */
+                      ? DANGER_STRONG
                       : "#EEE9DF" /* Atrium pre-mixed: sandstone 37% on cream */,
                   color:
                     deleteText === ts("deleteConfirmWord") && !deleting
@@ -789,12 +832,13 @@ export default function SecuritySettingsPage() {
           </div>
         )}
       </div>
+      </section>
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
         @media (prefers-reduced-motion: reduce) {
           .mp-security-toast { animation: none !important; }
-          .mp-cookie-toggle, .mp-cookie-toggle > div { transition: none !important; }
+          .mp-cookie-toggle span { transition: none !important; }
           .mp-security-chevron { transition: none !important; }
         }
         @media (hover: hover) {

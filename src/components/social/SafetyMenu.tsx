@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { confirmDialog } from "@/lib/ui/confirm";
 import {
   blockUser,
@@ -35,12 +38,25 @@ export default function SafetyMenu({
   onBlocked,
 }: SafetyMenuProps) {
   const { t } = useTranslation("social");
+  const isMobile = useIsMobile();
+  const isPortrait = useIsPortrait();
+  const asSheet = isMobile && isPortrait;
   const [open, setOpen] = useState(false);
   const [dialog, setDialog] = useState<null | "report">(null);
+  const { containerRef, handleKeyDown } = useFocusTrap(dialog === "report");
+
+  // Escape-to-close for the report dialog (focus trap handles Tab + restore).
+  useEffect(() => {
+    if (dialog !== "report") return;
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setDialog(null); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [dialog]);
   const [reason, setReason] = useState<(typeof REASONS)[number]>("spam");
   const [details, setDetails] = useState("");
   const [done, setDone] = useState(false);
   const [error, setError] = useState(false);
+  const [blockError, setBlockError] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleReport = () => {
@@ -65,12 +81,14 @@ export default function SafetyMenu({
 
   const handleBlock = async () => {
     if (!targetUserId) return;
+    setBlockError(false);
     if (!(await confirmDialog({ message: t("safetyBlockConfirm"), destructive: true }))) return;
     startTransition(async () => {
       const res = await blockUser(targetUserId);
       if (!res?.blocked) {
-        // Blocking requires an account; surface the failure rather than pretending it worked.
-        window.alert(res?.error || "Could not complete this action.");
+        // Blocking requires an account; surface the failure with a branded inline
+        // notice rather than a raw system alert (origin-prefixed in WKWebView).
+        setBlockError(true);
         return;
       }
       setOpen(false);
@@ -95,7 +113,7 @@ export default function SafetyMenu({
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen((o) => { const next = !o; if (next) setBlockError(false); return next; })}
         aria-label={t("safetyMenuLabel")}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -108,10 +126,13 @@ export default function SafetyMenu({
           lineHeight: 1,
           padding: "0.25rem 0.5rem",
           minHeight: "2.75rem",
-          minWidth: "2.5rem",
+          minWidth: "2.75rem",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        {"⋯"}
+        <MoreIcon />
       </button>
 
       {open && (
@@ -131,32 +152,48 @@ export default function SafetyMenu({
               minWidth: "11rem",
               maxWidth: "calc(100vw - 2rem)",
               background: T.color.cream,
-              border: `1px solid ${T.color.sandstone}`,
+              border: `1px solid ${T.color.hairline}`,
               borderRadius: "0.625rem",
-              boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,0.18)",
+              boxShadow: T.shadow[2],
               overflow: "hidden",
             }}
           >
             <button
               role="menuitem"
-              style={menuBtn}
+              style={{ ...menuBtn, display: "flex", alignItems: "center", gap: "0.5rem" }}
               onClick={() => {
                 setOpen(false);
                 setDone(false);
+                setError(false);
                 setDialog("report");
               }}
             >
-              {"⚑"} {t("safetyReport")}
+              <FlagIcon /> {t("safetyReport")}
             </button>
             {showBlock && targetUserId && (
               <button
                 role="menuitem"
-                style={{ ...menuBtn, color: T.color.terracotta }}
+                style={{ ...menuBtn, color: T.color.terracotta, display: "flex", alignItems: "center", gap: "0.5rem" }}
                 onClick={handleBlock}
                 disabled={isPending}
               >
-                {"⊘"} {t("safetyBlock")}
+                <BlockIcon /> {t("safetyBlock")}
               </button>
+            )}
+            {blockError && (
+              <p
+                role="alert"
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.75rem",
+                  color: T.color.error,
+                  lineHeight: 1.4,
+                  margin: 0,
+                  padding: "0.5rem 0.875rem 0.625rem",
+                }}
+              >
+                {t("safetyBlockError")}
+              </p>
             )}
           </div>
         </>
@@ -169,25 +206,28 @@ export default function SafetyMenu({
             position: "fixed",
             inset: 0,
             zIndex: 60,
-            background: "rgba(20,16,12,0.55)",
+            background: "rgba(64,59,54,0.55)",
             display: "flex",
-            alignItems: "center",
+            alignItems: asSheet ? "flex-end" : "center",
             justifyContent: "center",
-            padding: "1rem",
+            padding: asSheet ? 0 : "1rem",
           }}
         >
           <div
+            ref={containerRef}
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={handleKeyDown}
             role="dialog"
             aria-modal="true"
             style={{
               width: "100%",
-              maxWidth: "26rem",
+              maxWidth: asSheet ? "none" : "26rem",
               background: T.color.cream,
-              border: `1px solid ${T.color.sandstone}`,
-              borderRadius: "1rem",
+              border: `1px solid ${T.color.hairline}`,
+              borderRadius: asSheet ? "1rem 1rem 0 0" : "1rem",
               padding: "1.5rem",
-              boxShadow: "0 1rem 3rem rgba(0,0,0,0.3)",
+              paddingBottom: asSheet ? "max(1.5rem, env(safe-area-inset-bottom, 0px))" : "1.5rem",
+              boxShadow: T.shadow[2],
             }}
           >
             {done ? (
@@ -227,7 +267,7 @@ export default function SafetyMenu({
                   style={{
                     fontFamily: T.font.body,
                     fontSize: "0.8125rem",
-                    color: T.color.walnut,
+                    color: T.color.muted,
                     margin: "0 0 1rem",
                     lineHeight: 1.5,
                   }}
@@ -248,6 +288,7 @@ export default function SafetyMenu({
                         color: T.color.charcoal,
                         cursor: "pointer",
                         padding: "0.375rem 0",
+                        minHeight: "2.75rem",
                       }}
                     >
                       <input
@@ -283,7 +324,7 @@ export default function SafetyMenu({
                     fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.error,
                     margin: "0 0 0.75rem", lineHeight: 1.5,
                   }}>
-                    {t("safetyReportError") !== "safetyReportError" ? t("safetyReportError") : "Could not file your report. Please try again."}
+                    {t("safetyReportError")}
                   </p>
                 )}
 
@@ -311,7 +352,8 @@ const primaryBtn: React.CSSProperties = {
   padding: "0.625rem 1.25rem",
   borderRadius: "2rem",
   border: "none",
-  background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+  // Canon: EMBER is the interactive/CTA color; gold is ceremonial-only.
+  background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.rustDeep})`,
   color: T.color.cream,
   cursor: "pointer",
   minHeight: "2.75rem",
@@ -323,9 +365,38 @@ const ghostBtn: React.CSSProperties = {
   fontWeight: 600,
   padding: "0.625rem 1.25rem",
   borderRadius: "2rem",
-  border: `1px solid ${T.color.sandstone}`,
+  border: `1px solid ${T.color.hairline}`,
   background: "transparent",
-  color: T.color.walnut,
+  color: T.color.muted,
   cursor: "pointer",
   minHeight: "2.75rem",
 };
+
+/** ── Canon-colored SVG icons (rem-sized) replacing native emoji glyphs. ── */
+function MoreIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ width: "1.25rem", height: "1.25rem" }}>
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
+    </svg>
+  );
+}
+
+function FlagIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ width: "1rem", height: "1rem", flexShrink: 0 }}>
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V4s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
+  );
+}
+
+function BlockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ width: "1rem", height: "1rem", flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="5.6" y1="5.6" x2="18.4" y2="18.4" />
+    </svg>
+  );
+}

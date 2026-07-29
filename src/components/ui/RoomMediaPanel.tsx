@@ -2,8 +2,9 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
+import { INK, EMBER, EMBER_GLYPH, CREAM, SHADOW } from "@/lib/libraryTokens";
 import { confirmDialog } from "@/lib/ui/confirm";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
@@ -157,9 +158,9 @@ function DisplayedPill({
     const occupants = allMems.filter(
       m => m.displayed !== false && m.displayUnit && m.id !== mem.id &&
         DISPLAY_UNITS[normalizeType(m)]?.find(u => u.key === m.displayUnit)?.slotType === slotType
-    );
+    ).sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
     if (occupants.length >= limit) {
-      // Auto-unassign the oldest
+      // Auto-unassign the oldest (earliest createdAt)
       const oldest = occupants[0];
       if (oldest) onUpdate(oldest.id, { displayed: false, displayUnit: undefined });
       setToast(t("unitFull"));
@@ -167,7 +168,7 @@ function DisplayedPill({
     }
     onUpdate(mem.id, { displayed: true, displayUnit: unitKey });
     setDropdownOpen(false);
-  }, [mem, allMems, onUpdate, t]);
+  }, [mem, allMems, onUpdate, t, slotCounts]);
 
   const handleUnassign = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -184,15 +185,17 @@ function DisplayedPill({
       <div style={{ position: "absolute", top: "0.375rem", right: "0.375rem", zIndex: 5 }}>
         <button
           onClick={(e) => { e.stopPropagation(); setDropdownOpen(!dropdownOpen); }}
+          aria-haspopup="menu"
+          aria-expanded={dropdownOpen}
           style={{
             padding: "0.1875rem 0.5rem",
             borderRadius: "0.75rem",
             border: "none",
-            background: isDisplayed ? accent : "rgba(42,34,24,0.55)",
+            background: isDisplayed ? accent : "rgba(64,59,54,0.55)",
             backdropFilter: "blur(0.5rem)",
-            color: "#FFF",
+            color: CREAM,
             fontFamily: T.font.body,
-            fontSize: "0.5625rem",
+            fontSize: "0.6875rem",
             fontWeight: 600,
             cursor: "pointer",
             transition: "all 0.15s ease",
@@ -208,6 +211,7 @@ function DisplayedPill({
         </button>
         {dropdownOpen && (
           <div
+            role="menu"
             onClick={(e) => e.stopPropagation()}
             style={{
               position: "absolute",
@@ -218,7 +222,7 @@ function DisplayedPill({
               background: T.color.white,
               borderRadius: "0.75rem",
               border: `0.0625rem solid ${T.color.cream}`,
-              boxShadow: "0 0.5rem 1.5rem rgba(44,44,42,0.12)",
+              boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.12)",
               padding: "0.375rem",
               minWidth: "9rem",
               animation: "fadeIn 0.15s ease both",
@@ -231,6 +235,8 @@ function DisplayedPill({
               return (
                 <button
                   key={unit.key}
+                  role="menuitemradio"
+                  aria-checked={isActive}
                   onClick={(e) => { e.stopPropagation(); handleSelect(unit.key, unit.slotType); }}
                   style={{
                     display: "flex",
@@ -250,7 +256,7 @@ function DisplayedPill({
                     fontFamily: T.font.body,
                     fontSize: "0.75rem",
                     fontWeight: isActive ? 600 : 500,
-                    color: isActive ? accent : T.color.charcoal,
+                    color: isActive ? accent : INK,
                   }}>
                     {t(unit.label) || unit.label}
                   </span>
@@ -309,8 +315,8 @@ function DisplayedPill({
             zIndex: 6,
             padding: "0.25rem 0.5rem",
             borderRadius: "0.5rem",
-            background: "rgba(42,34,24,0.85)",
-            color: "#FFF",
+            background: "rgba(64,59,54,0.85)",
+            color: CREAM,
             fontFamily: T.font.body,
             fontSize: "0.5rem",
             animation: "fadeIn .2s ease",
@@ -425,7 +431,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const { t: tLayout } = useTranslation("roomLayouts");
   const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const accent = wing?.accent || T.color.terracotta;
+  const accent = wing?.accent || EMBER_GLYPH;
+  const isTablet = useIsTablet();
 
   const [activeTab, setActiveTab] = useState<"library" | "gallery">(initialTab);
   // Upload panel removed — Import Hub handles both import and upload
@@ -443,6 +450,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const [movingMem, setMovingMem] = useState<Mem | null>(null);
   const [expandedMoveWing, setExpandedMoveWing] = useState<string | null>(null);
   const [movedToast, setMovedToast] = useState(false);
+  const [importErrorToast, setImportErrorToast] = useState(false);
   const { moveMemory } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
 
@@ -670,6 +678,23 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
     }
   }, [selectedIds.size, displayedMems]);
 
+  // When the active filter/search changes, prune selection to currently-visible
+  // ids so a bulk delete/move never touches items the user can no longer see.
+  useEffect(() => {
+    setSelectedIds(prev => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(displayedMems.map(m => m.id));
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visible.has(id)) next.add(id); else changed = true;
+      }
+      return changed ? next : prev;
+    });
+    // Only re-run when the filter inputs change, not on every mems mutation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, filterType]);
+
   const handleDeleteSelected = useCallback(async () => {
     if (!(await confirmDialog({ message: t("confirmDelete"), destructive: true }))) return;
     for (const id of selectedIds) onDelete(id);
@@ -705,7 +730,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
       role="button" tabIndex={0}
       onClick={() => { if (!showImportHub && !cloudBrowserProvider) onClose(); }}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!showImportHub && !cloudBrowserProvider) onClose(); } }}
-      style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(0.5rem)", zIndex: 55, animation: "fadeIn .2s ease" }}
+      style={{ position: "absolute", inset: 0, background: "rgba(64,59,54,.4)", backdropFilter: "blur(0.5rem)", zIndex: 55, animation: "fadeIn .2s ease" }}
     >
       <LibraryStyles />
       <div
@@ -720,7 +745,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
           backdropFilter: "blur(1.5rem) saturate(1.4)",
           WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
           borderLeft: isMobile ? "none" : `0.0625rem solid ${T.color.cream}`,
-          boxShadow: `-1rem 0 2.5rem rgba(44,44,42,0.12), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
+          boxShadow: `-1rem 0 2.5rem rgba(64,59,54,0.12), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
           padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem",
           overflowY: "auto",
           animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
@@ -749,7 +774,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 <RoomIcon roomId={room?.id || ""} size={26} color={accent} />
               </div>
               <div style={{ minWidth: 0 }}>
-                <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: INK, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {room?.name || t("title")}
                 </h3>
                 <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: accent, margin: "0.25rem 0 0" }}>
@@ -758,7 +783,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               </div>
             </div>
             <button onClick={onClose} aria-label={t("close")} style={{
-              width: isMobile ? "2.75rem" : "2rem", height: isMobile ? "2.75rem" : "2rem", borderRadius: "1rem",
+              width: (isMobile || isTablet) ? "2.75rem" : "2rem", height: (isMobile || isTablet) ? "2.75rem" : "2rem", borderRadius: "1rem",
               border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone,
               color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -779,7 +804,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                   flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem",
                   border: "none", cursor: "pointer",
                   background: activeTab === tab ? T.color.white : "transparent",
-                  boxShadow: activeTab === tab ? "0 0.0625rem 0.25rem rgba(44,44,42,0.08)" : "none",
+                  boxShadow: activeTab === tab ? "0 0.0625rem 0.25rem rgba(64,59,54,0.08)" : "none",
                   fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: activeTab === tab ? 600 : 500,
                   color: activeTab === tab ? accent : T.color.muted,
                   transition: "all 0.2s ease",
@@ -810,13 +835,13 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
             display: "inline-flex", alignItems: "center", gap: "0.375rem",
             padding: "0.375rem 0.875rem",
             borderRadius: "0.5rem",
-            background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+            background: `linear-gradient(135deg, ${EMBER}, #9A4F2A 60%, #6B3318)`,
             border: "none",
             cursor: "pointer",
             fontFamily: T.font.body, fontSize: "0.75rem",
-            fontWeight: 600, color: T.color.white,
+            fontWeight: 600, color: CREAM,
             letterSpacing: "0.02em",
-            boxShadow: "0 0.0625rem 0.25rem rgba(212,175,55,0.2)",
+            boxShadow: SHADOW[1],
             flexShrink: 0,
           }}>
             <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -850,6 +875,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
           <div style={{ position: "relative" }}>
             <button
               onClick={() => setSortOpen(!sortOpen)}
+              aria-haspopup="menu"
+              aria-expanded={sortOpen}
               style={{
                 display: "inline-flex", alignItems: "center", gap: "0.25rem",
                 padding: "0.375rem 0.625rem",
@@ -865,18 +892,20 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               {tLib(`sort${sortMode.charAt(0).toUpperCase() + sortMode.slice(1)}` as "sortNewest")}
             </button>
             {sortOpen && (
-              <div style={{
+              <div role="menu" style={{
                 position: "absolute", top: "100%", right: 0, zIndex: 20,
                 marginTop: "0.25rem",
                 background: T.color.white, borderRadius: "0.75rem",
                 border: `0.0625rem solid ${T.color.cream}`,
-                boxShadow: "0 0.5rem 1.5rem rgba(44,44,42,0.12)",
+                boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.12)",
                 padding: "0.375rem", minWidth: "10rem",
                 animation: "fadeIn 0.15s ease both",
               }}>
                 {(["newest", "oldest", "alpha", "type"] as const).map((mode) => (
                   <button
                     key={mode}
+                    role="menuitemradio"
+                    aria-checked={sortMode === mode}
                     onClick={() => { setSortMode(mode); setSortOpen(false); }}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
@@ -891,7 +920,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem",
                       fontWeight: sortMode === mode ? 600 : 500,
-                      color: sortMode === mode ? accent : T.color.charcoal,
+                      color: sortMode === mode ? accent : INK,
                     }}>
                       {tLib(`sort${mode.charAt(0).toUpperCase() + mode.slice(1)}` as "sortNewest")}
                     </span>
@@ -927,7 +956,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
             background: `${accent}08`,
             border: `0.0625rem solid ${accent}20`,
           }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.375rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.375rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", color: INK }}>
               <input
                 type="checkbox"
                 checked={selectedIds.size === displayedMems.length && displayedMems.length > 0}
@@ -947,10 +976,10 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 }}>
                   {t("deleteSelected")} ({selectedIds.size})
                 </button>
-                {onSelect && (
+                {room && (
                   <button onClick={handleMoveSelected} style={{
                     padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
-                    border: "none", background: accent, color: T.color.white,
+                    border: "none", background: accent, color: CREAM,
                     fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                     cursor: "pointer",
                   }}>
@@ -1108,6 +1137,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 <button
                   key={slot.key}
                   onClick={() => setPickingSlot(slot.key)}
+                  aria-label={firstMem ? `${slotLabel}: ${firstMem.title}` : `${slotLabel} — ${t("tapToChoose")}`}
                   style={{
                     background: "rgba(255,255,255,0.72)",
                     backdropFilter: "blur(0.75rem) saturate(1.3)",
@@ -1116,7 +1146,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     border: `0.0625rem solid ${isPicking ? accent + "70" : T.color.cream}`,
                     boxShadow: isPicking
                       ? `0 0.5rem 1.5rem ${accent}25, inset 0 0.0625rem 0 rgba(255,255,255,0.7)`
-                      : `0 0.125rem 0.5rem rgba(44,44,42,0.05), inset 0 0.0625rem 0 rgba(255,255,255,0.5)`,
+                      : `0 0.125rem 0.5rem rgba(64,59,54,0.05), inset 0 0.0625rem 0 rgba(255,255,255,0.5)`,
                     padding: "0.625rem",
                     transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
                     cursor: "pointer",
@@ -1166,7 +1196,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                         style={{
                           position: "absolute", top: "0.3125rem", right: "0.3125rem",
                           width: "1.5rem", height: "1.5rem", borderRadius: "50%",
-                          background: "rgba(42,34,24,0.75)", color: "#FFF",
+                          background: "rgba(64,59,54,0.75)", color: CREAM,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: "0.75rem", cursor: "pointer",
                         }}
@@ -1176,8 +1206,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     <span style={{
                       position: "absolute", bottom: "0.3125rem", right: "0.3125rem",
                       padding: "0.125rem 0.375rem", borderRadius: "0.375rem",
-                      background: assigned.length > 0 ? accent : "rgba(42,34,24,0.55)",
-                      color: "#FFF", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
+                      background: assigned.length > 0 ? accent : "rgba(64,59,54,0.55)",
+                      color: CREAM, fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                     }}>
                       {assigned.length}/{limit}
                     </span>
@@ -1187,7 +1217,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                   {/* Label */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem", minWidth: 0 }}>
                     <div style={{
-                      fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal,
+                      fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500, color: INK,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
                       {slotLabel}
@@ -1223,7 +1253,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 onClick={() => setPickingSlot(null)}
                 style={{
                   position: "fixed", inset: 0, zIndex: 60,
-                  background: "rgba(42,34,24,0.55)",
+                  background: "rgba(64,59,54,0.55)",
                   backdropFilter: "blur(0.75rem)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   padding: "1rem",
@@ -1238,7 +1268,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
                     borderRadius: "1.25rem",
                     border: `0.0625rem solid ${T.color.cream}`,
-                    boxShadow: `0 1.5rem 3rem rgba(44,44,42,0.25), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
+                    boxShadow: `0 1.5rem 3rem rgba(64,59,54,0.25), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
                     padding: "1.25rem",
                     width: "min(40rem, 100%)",
                     maxHeight: "85vh",
@@ -1247,7 +1277,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 >
                   {/* Picker header */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500, color: T.color.charcoal }}>
+                    <div style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500, color: INK }}>
                       {slotLabel}
                     </div>
                     <button
@@ -1291,7 +1321,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                                 } else {
                                   // Check slot capacity and auto-evict (use exhibition-aware counts)
                                   const limit = activeSlotCounts[slot.slotType] || ROOM_SLOT_COUNTS[slot.slotType] || 1;
-                                  const occupants = mems.filter(m => m.displayed !== false && m.displayUnit === slot.unitKey && m.id !== mem.id);
+                                  const occupants = mems.filter(m => m.displayed !== false && m.displayUnit === slot.unitKey && m.id !== mem.id)
+                                    .sort((a, b) => (a.createdAt || "").localeCompare(b.createdAt || ""));
                                   if (occupants.length >= limit) {
                                     const oldest = occupants[0];
                                     if (oldest) onUpdate(oldest.id, { displayed: false, displayUnit: undefined });
@@ -1329,7 +1360,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                               })()}
                               <div style={{
                                 fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 500,
-                                color: isAssigned ? accent : T.color.charcoal,
+                                color: isAssigned ? accent : INK,
                                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                               }}>
                                 {mem.title}
@@ -1403,8 +1434,14 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 });
                 if (res.ok) {
                   await useMemoryStore.getState().fetchRoomMemories(targetRoom);
+                } else {
+                  setImportErrorToast(true);
+                  setTimeout(() => setImportErrorToast(false), 3000);
                 }
-              } catch { /* ignore */ }
+              } catch {
+                setImportErrorToast(true);
+                setTimeout(() => setImportErrorToast(false), 3000);
+              }
             }
             setCloudBrowserProvider(null);
           }}
@@ -1412,6 +1449,9 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
       )}
 
       {/* ─── ROOM MEDIA PLAYER (full-screen viewer) ─── */}
+      {/* NOTE: player navigation is intentionally scoped to the active filter/search
+          (displayedMems). When a memory is opened from a 3D object, the effect above
+          clears the filter/search first so the item is always present in this list. */}
       {mediaPlayerIndex !== null && (
         <div onClick={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} style={{ position: "fixed", inset: 0, zIndex: 100 }}>
           <RoomMediaPlayer
@@ -1433,7 +1473,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
           onClick={() => { setMovingMem(null); setExpandedMoveWing(null); }}
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(44,44,42,.35)",
+            background: "rgba(64,59,54,.35)",
             backdropFilter: "blur(0.75rem)",
             WebkitBackdropFilter: "blur(0.75rem)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -1447,7 +1487,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               backdropFilter: "blur(1.5rem) saturate(1.4)",
               WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
               borderRadius: "1.25rem",
-              boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18), 0 0.5rem 1.25rem rgba(44,44,42,.08)",
+              boxShadow: "0 1.5rem 3rem rgba(64,59,54,.18), 0 0.5rem 1.25rem rgba(64,59,54,.08)",
               border: `0.0625rem solid ${T.color.cream}`,
               width: "min(26rem, 90vw)",
               maxHeight: "min(32rem, 80vh)",
@@ -1456,7 +1496,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
             }}
           >
             <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0 }}>
-              <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+              <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: INK, margin: 0 }}>
                 {t("moveTo")}
               </h3>
               <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
@@ -1477,7 +1517,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                         border: "none", cursor: "pointer",
                         display: "flex", alignItems: "center", gap: "0.625rem",
                         fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                        color: T.color.charcoal,
+                        color: INK,
                       }}
                     >
                       <WingIcon wingId={w.id} size={18} color={w.accent} />
@@ -1524,13 +1564,27 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
       {movedToast && (
         <div style={{
           position: "fixed", bottom: "6rem", left: "50%", transform: "translateX(-50%)",
-          background: `${T.color.charcoal}f0`, color: "#fff",
+          background: `${INK}f0`, color: CREAM,
           padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-          boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,0.3)",
+          boxShadow: SHADOW[2],
           zIndex: 10000, animation: "fadeIn 0.2s ease both",
         }}>
           {t("memoryMoved")}
+        </div>
+      )}
+
+      {/* ─── IMPORT ERROR TOAST ─── */}
+      {importErrorToast && (
+        <div role="alert" style={{
+          position: "fixed", bottom: "6rem", left: "50%", transform: "translateX(-50%)",
+          background: `${T.color.error}f0`, color: CREAM,
+          padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
+          boxShadow: SHADOW[2],
+          zIndex: 10000, animation: "fadeIn 0.2s ease both",
+        }}>
+          {t("importFailed")}
         </div>
       )}
     </div>

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { T } from "@/lib/theme";
+import { CREAM, INK, MUTED, HAIRLINE, EMBER, GOLD, SHADOW, RT } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useTouchControls } from "@/lib/hooks/useIsMobile";
-
-const STORAGE_KEY = "mp_corridor_tour_seen_v1";
 
 interface CorridorTourState {
   open: boolean;
@@ -38,9 +37,24 @@ export default function CorridorTutorial({ open, onClose }: Props) {
   const [step, setStep] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [targetBox, setTargetBox] = useState<Rect | null>(null);
+  const nextRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (open) setStep(0); }, [open]);
+
+  // Escape-to-dismiss + move focus to the primary action while open.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    const prev = (typeof document !== "undefined" ? document.activeElement : null) as HTMLElement | null;
+    const focusId = setTimeout(() => nextRef.current?.focus(), 0);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      clearTimeout(focusId);
+      try { prev?.focus?.(); } catch {}
+    };
+  }, [open, onClose]);
 
   const totalSteps = 2;
 
@@ -50,8 +64,8 @@ export default function CorridorTutorial({ open, onClose }: Props) {
       let el: HTMLElement | null = null;
       if (isMobile) {
         if (step === 0) {
-          el = document.querySelector<HTMLElement>("[data-mp-joystick]")
-            || document.querySelector<HTMLElement>("[data-mp-palace-bars]");
+          // Corridor step 0 highlights the joystick; no exterior-only fallback.
+          el = document.querySelector<HTMLElement>("[data-mp-joystick]");
         } else {
           el = document.querySelector<HTMLElement>("[data-mp-corridor-media]");
         }
@@ -78,10 +92,9 @@ export default function CorridorTutorial({ open, onClose }: Props) {
 
   if (!mounted || !open) return null;
 
-  const cardBg = "rgba(42,34,24,0.92)";
-  const cardBorder = "rgba(212,175,55,0.2)";
-  const cardShadow = "0 0.5rem 2rem rgba(0,0,0,0.3)";
-  const goldLight = (T.color as Record<string, string>).goldLight || "#E8C870";
+  const cardBg = CREAM;
+  const cardBorder = HAIRLINE;
+  const cardShadow = SHADOW[2];
 
   let titleKey: string;
   let bodyKey: string;
@@ -94,8 +107,10 @@ export default function CorridorTutorial({ open, onClose }: Props) {
     bodyKey  = step === 0 ? "dStep1Body"  : "dStep2Body";
   }
 
+  const remToPx = (rem: number) => rem * parseFloat(typeof window !== "undefined" ? getComputedStyle(document.documentElement).fontSize || "16" : "16");
   const pad = 8;
-  const r = 14;
+  const rRem = 0.875;
+  const r = remToPx(rRem);
   const t_ = targetBox ? targetBox.top - pad : 0;
   const l_ = targetBox ? targetBox.left - pad : 0;
   const w_ = targetBox ? targetBox.width + pad * 2 : 0;
@@ -103,7 +118,6 @@ export default function CorridorTutorial({ open, onClose }: Props) {
 
   const vw = typeof window !== "undefined" ? window.innerWidth : 360;
   const vh = typeof window !== "undefined" ? window.innerHeight : 640;
-  const remToPx = (rem: number) => rem * parseFloat(typeof window !== "undefined" ? getComputedStyle(document.documentElement).fontSize || "16" : "16");
   const tipWidth = remToPx(isMobile ? 16.25 : 17.5);
 
   let tipTop = 80;
@@ -145,7 +159,7 @@ export default function CorridorTutorial({ open, onClose }: Props) {
             <rect
               width="100%"
               height="100%"
-              fill="rgba(0,0,0,0.45)"
+              fill="rgba(36,28,21,0.45)"
               mask="url(#mp-corridor-cutout)"
               onClick={onClose}
             />
@@ -154,8 +168,8 @@ export default function CorridorTutorial({ open, onClose }: Props) {
             style={{
               position: "absolute",
               top: t_, left: l_, width: w_, height: h_,
-              borderRadius: `${r}px`,
-              border: `2px solid ${goldLight}70`,
+              borderRadius: `${rRem}rem`,
+              border: `0.1875rem solid ${GOLD}`,
               animation: "mpCtPulse 2s ease-in-out infinite",
               pointerEvents: "none",
               boxSizing: "border-box",
@@ -164,7 +178,7 @@ export default function CorridorTutorial({ open, onClose }: Props) {
         </>
       ) : (
         <div
-          style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", pointerEvents: "auto" }}
+          style={{ position: "absolute", inset: 0, background: "rgba(36,28,21,0.45)", pointerEvents: "auto" }}
           onClick={onClose}
         />
       )}
@@ -179,8 +193,6 @@ export default function CorridorTutorial({ open, onClose }: Props) {
         <div
           style={{
             background: cardBg,
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
             borderRadius: "0.875rem",
             padding: "0.875rem 1rem",
             border: `1px solid ${cardBorder}`,
@@ -193,9 +205,9 @@ export default function CorridorTutorial({ open, onClose }: Props) {
           <div
             style={{
               fontFamily: T.font.display,
-              fontSize: "0.9375rem",
+              fontSize: RT.body,
               fontWeight: 600,
-              color: goldLight,
+              color: INK,
               letterSpacing: "0.02em",
             }}
           >
@@ -204,8 +216,8 @@ export default function CorridorTutorial({ open, onClose }: Props) {
           <div
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.8125rem",
-              color: "rgba(250,250,247,0.88)",
+              fontSize: RT.meta,
+              color: MUTED,
               lineHeight: 1.5,
             }}
           >
@@ -217,10 +229,11 @@ export default function CorridorTutorial({ open, onClose }: Props) {
               type="button"
               onClick={(e) => { e.stopPropagation(); onClose(); }}
               style={{
-                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
-                color: "rgba(250,250,247,0.55)",
+                fontFamily: T.font.body, fontSize: RT.overline, fontWeight: 500,
+                color: MUTED,
                 background: "transparent", border: "none",
                 padding: "0.4375rem 0.5rem",
+                minHeight: T.touch,
                 cursor: "pointer", letterSpacing: "0.02em",
               }}
             >
@@ -228,7 +241,11 @@ export default function CorridorTutorial({ open, onClose }: Props) {
             </button>
 
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <div style={{ display: "flex", gap: "0.25rem" }}>
+              <div
+                role="group"
+                aria-label={t("stepXofY", { current: String(step + 1), total: String(totalSteps) })}
+                style={{ display: "flex", gap: "0.25rem" }}
+              >
                 {Array.from({ length: totalSteps }).map((_, i) => (
                   <div
                     key={i}
@@ -236,17 +253,14 @@ export default function CorridorTutorial({ open, onClose }: Props) {
                       width: i === step ? "1rem" : "0.3125rem",
                       height: "0.3125rem",
                       borderRadius: "0.1875rem",
-                      background: i === step
-                        ? `linear-gradient(90deg, ${T.color.gold}, ${goldLight})`
-                        : i < step
-                          ? `${T.color.gold}80`
-                          : "rgba(255,255,255,0.14)",
+                      background: i <= step ? EMBER : HAIRLINE,
                       transition: "all 0.3s ease",
                     }}
                   />
                 ))}
               </div>
               <button
+                ref={nextRef}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -254,11 +268,12 @@ export default function CorridorTutorial({ open, onClose }: Props) {
                   else setStep(step + 1);
                 }}
                 style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                  fontFamily: T.font.body, fontSize: RT.overline, fontWeight: 600,
                   color: "#FFF",
-                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                  background: EMBER,
                   border: "none", borderRadius: "0.5rem",
                   padding: "0.4375rem 1.125rem",
+                  minHeight: T.touch,
                   cursor: "pointer", letterSpacing: "0.02em",
                 }}
               >
@@ -272,28 +287,4 @@ export default function CorridorTutorial({ open, onClose }: Props) {
   );
 
   return createPortal(overlay, document.body);
-}
-
-export function useCorridorTutorial(shouldShow: boolean): [boolean, (v: boolean) => void] {
-  const open = useCorridorTourStore((s) => s.open);
-  const setOpen = useCorridorTourStore((s) => s.setOpen);
-  useEffect(() => {
-    if (!shouldShow) return;
-    try {
-      if (typeof window === "undefined") return;
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("corridorTour") === "1") {
-        window.localStorage.removeItem(STORAGE_KEY);
-        setOpen(true);
-        window.localStorage.setItem(STORAGE_KEY, "1");
-        return;
-      }
-      const seen = window.localStorage.getItem(STORAGE_KEY);
-      if (!seen) {
-        setOpen(true);
-        window.localStorage.setItem(STORAGE_KEY, "1");
-      }
-    } catch {}
-  }, [shouldShow, setOpen]);
-  return [open, setOpen];
 }

@@ -19,14 +19,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { isIOS } from "@/lib/native/platform";
 import NudgeProvider from "@/components/ui/NudgeTooltip";
-import { CREAM, INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
+import { CREAM, INK, MUTED, EMBER, EMBER_GLYPH, GOLD, HAIRLINE, TRAY, SHADOW, TOP_HIGHLIGHT, RT, focusRing } from "@/lib/libraryTokens";
 
 interface MeProfile {
   displayName: string | null;
@@ -50,7 +50,7 @@ interface MeClientProps {
 }
 
 /* ── Door icons (same visual family as the settings tab icons) ── */
-function DoorIcon({ name, size = 18 }: { name: string; size?: number }) {
+function DoorIcon({ name, size = "1.125rem" }: { name: string; size?: string }) {
   const s = {
     width: size,
     height: size,
@@ -121,18 +121,19 @@ function DoorIcon({ name, size = 18 }: { name: string; size?: number }) {
 
 function Chevron() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+    <svg width="1.125rem" height="1.125rem" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
       <path d="m9 18 6-6-6-6" />
     </svg>
   );
 }
 
 export default function MeClient({ profile, stats, isNativeIOS = false }: MeClientProps) {
-  const { t } = useTranslation("settings");
+  const { t, locale } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
   const router = useRouter();
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
+  const isSmall = useIsSmall();
   // iPad portrait (768-1024px): the NavigationBar renders as a bottom bar there
   // (same treatment as settings/layout.tsx), so pad like mobile.
   const stacked = isMobile || isCompact;
@@ -153,8 +154,11 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
   };
 
   const displayName = profile.displayName || profile.email || "";
-  const initial = (profile.displayName || profile.email || "?").trim().charAt(0).toUpperCase() || "?";
+  const initial = (profile.displayName || profile.email || "").trim().charAt(0).toUpperCase();
   const hasPublicPage = profile.isPublic && !!profile.username;
+
+  // Locale-aware grouping for the stewardship stats (1,234 / 1.234 / 1 234…).
+  const nf = new Intl.NumberFormat(locale);
 
   const doors: { key: string; icon: string; label: string; href: string }[] = [
     { key: "family", icon: "family", label: tc("family"), href: "/settings/family" },
@@ -172,7 +176,10 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
   const stewardStats: { key: string; label: string; value: number }[] = [
     { key: "wings", label: tf("meStatsWings", "Wings"), value: stats.wings },
     { key: "memories", label: tf("meStatsMemories", "Memories"), value: stats.memories },
-    { key: "visitors", label: tf("meStatsVisitors", "Visitors"), value: stats.visitors },
+    // The underlying query counts total visit rows (events), not DISTINCT
+    // visitor_id — a unique-visitor count needs a new RPC (outside this file
+    // set). Label honestly as "Visits" so the number is not misleading.
+    { key: "visits", label: tf("meStatsVisits", "Visits"), value: stats.visitors },
   ];
 
   return (
@@ -205,15 +212,16 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
           <div style={{ display: "flex", alignItems: "center", gap: "1.25rem" }}>
             {/* Portrait */}
             <div
-              aria-hidden="true"
+              role="img"
+              aria-label={tf("meAvatarAlt", "Portrait of {name}").replace("{name}", displayName || tf("meUnnamed", "Your palace"))}
               style={{
                 width: "4.5rem", height: "4.5rem", borderRadius: "50%",
                 flexShrink: 0,
-                background: "linear-gradient(135deg, #B85C38, #9A4F2A)",
+                background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 overflow: "hidden",
-                color: "#FFF",
-                fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
+                color: CREAM,
+                fontFamily: T.font.display, fontSize: RT.h1m, fontWeight: 600,
               }}
             >
               {profile.avatarUrl && !avatarFailed ? (
@@ -226,8 +234,14 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                   onError={() => setAvatarFailed(true)}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
-              ) : (
+              ) : initial ? (
                 initial
+              ) : (
+                /* Truly-empty case — canon keeper mark, never a literal '?' */
+                <svg width="2rem" height="2rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1" />
+                </svg>
               )}
             </div>
 
@@ -236,20 +250,21 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
               {stewardStats.map((s) => (
                 <div key={s.key} style={{
                   display: "flex", flexDirection: "column", alignItems: "center",
-                  minHeight: "2.75rem", minWidth: "2.75rem",
+                  minHeight: "2.75rem", minWidth: "2.75rem", flex: 1,
                   justifyContent: "center",
                   padding: "0.25rem 0.375rem",
                 }}>
                   <span style={{
-                    fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
-                    color: INK, lineHeight: 1.15,
+                    fontFamily: T.font.display, fontSize: RT.titleL, fontWeight: 600,
+                    color: INK, lineHeight: RT.lhDisplay,
                     fontVariantNumeric: "tabular-nums",
                   }}>
-                    {s.value}
+                    {nf.format(s.value)}
                   </span>
                   <span style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
+                    fontFamily: T.font.body, fontSize: isSmall ? "0.75rem" : RT.meta, color: MUTED,
                     marginTop: "0.125rem",
+                    textAlign: "center", overflowWrap: "anywhere", hyphens: "auto",
                   }}>
                     {s.label}
                   </span>
@@ -262,22 +277,22 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
 
           {/* ── BAND 2: name + one-line bio ── */}
           <h1 style={{
-            fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
-            color: INK, margin: 0, lineHeight: 1.15,
+            fontFamily: T.font.display, fontSize: RT.titleL, fontWeight: 600,
+            color: INK, margin: 0, lineHeight: RT.lhDisplay,
           }}>
             {displayName || tf("meUnnamed", "Your palace")}
           </h1>
           {profile.username && (
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, marginTop: "0.25rem",
+              fontFamily: T.font.body, fontSize: RT.meta, color: MUTED, marginTop: "0.25rem",
             }}>
               @{profile.username}
             </div>
           )}
           {profile.bio && (
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED,
-              margin: "0.5rem 0 0", lineHeight: 1.4,
+              fontFamily: T.font.body, fontSize: RT.body, color: MUTED,
+              margin: "0.5rem 0 0", lineHeight: RT.lhBody,
               display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
             }}>
               {profile.bio.length > 150 ? `${profile.bio.slice(0, 150)}…` : profile.bio}
@@ -296,7 +311,7 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                 border: `0.0625rem solid ${EMBER}`,
                 background: "transparent",
                 color: EMBER,
-                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                fontFamily: T.font.body, fontSize: RT.body, fontWeight: 600,
                 textDecoration: "none",
                 flex: isMobile ? 1 : undefined,
               }}
@@ -314,7 +329,7 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                   border: `0.0625rem solid ${HAIRLINE}`,
                   background: "transparent",
                   color: INK,
-                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+                  fontFamily: T.font.body, fontSize: RT.body, fontWeight: 500,
                   textDecoration: "none",
                   flex: isMobile ? 1 : undefined,
                 }}
@@ -332,7 +347,7 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                   border: `0.0625rem solid ${HAIRLINE}`,
                   background: "transparent",
                   color: MUTED,
-                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+                  fontFamily: T.font.body, fontSize: RT.body, fontWeight: 500,
                   textDecoration: "none",
                   flex: isMobile ? 1 : undefined,
                 }}
@@ -351,7 +366,7 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                 background: EMBER_GLYPH, flexShrink: 0,
               }} aria-hidden="true" />
               <span style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+                fontFamily: T.font.body, fontSize: RT.overline, fontWeight: 700,
                 letterSpacing: "0.12em", textTransform: "uppercase",
                 color: EMBER_GLYPH,
               }}>
@@ -364,7 +379,9 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
             </div>
 
             <div style={{
-              background: "#FFFFFF",
+              // Warm off-white (not clinical #FFF) so it lifts off the CREAM page
+              // while staying in the warm-ink family; gilt HAIRLINE reads true.
+              background: "#FFFDFA",
               borderRadius: "1rem",
               border: `0.0625rem solid ${HAIRLINE}`,
               boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
@@ -390,14 +407,17 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                   </span>
                   <span style={{
                     flex: 1,
-                    fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+                    fontFamily: T.font.body, fontSize: RT.body, fontWeight: 500,
                   }}>
                     {door.label}
                   </span>
                   <Chevron />
                 </Link>
               ))}
-              {/* Sign out — last door */}
+              {/* TRAY break — sets the terminal sign-out action apart from the
+                  navigational doors above it. */}
+              <div style={{ height: "0.5rem", background: TRAY }} aria-hidden="true" />
+              {/* Sign out — terminal action, visually grouped apart */}
               <button
                 onClick={handleSignOut}
                 className="mp-me-door"
@@ -407,6 +427,7 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                   minHeight: "3rem",
                   padding: "0.75rem 1.125rem",
                   border: "none",
+                  borderTop: `0.0625rem solid ${HAIRLINE}`,
                   background: "transparent",
                   color: MUTED,
                   cursor: "pointer",
@@ -418,7 +439,7 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                 </span>
                 <span style={{
                   flex: 1,
-                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+                  fontFamily: T.font.body, fontSize: RT.body, fontWeight: 500,
                 }}>
                   {tc("signOut")}
                 </span>
@@ -437,12 +458,12 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
             .mp-me-board { animation: none !important; }
           }
           @media (hover: hover) {
-            .mp-me-door:hover { background: rgba(154,79,42,0.07) !important; }
-            .mp-me-action:hover { background: rgba(154,79,42,0.07) !important; }
+            .mp-me-door:hover { background: ${EMBER_GLYPH}12 !important; }
+            .mp-me-action:hover { background: ${EMBER_GLYPH}12 !important; }
           }
-          .mp-me-door:active, .mp-me-action:active { background: rgba(154,79,42,0.12) !important; }
+          .mp-me-door:active, .mp-me-action:active { background: ${EMBER_GLYPH}1F !important; }
           .mp-me-door:focus-visible, .mp-me-action:focus-visible {
-            outline: 0.1875rem solid #D4AF37;
+            outline: ${focusRing.outline};
             outline-offset: -0.1875rem;
           }
         `}</style>

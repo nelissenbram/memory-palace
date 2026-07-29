@@ -570,7 +570,7 @@ export default function HomeView() {
   const _greetKey = _hr < 12 ? "goodMorning" : _hr < 18 ? "goodAfternoon" : "goodEvening";
   const relayGreeting = t(_greetKey);
   const relayDatum = totalMemories > 0
-    ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")} · ${totalMemories} ${t("memories")}`
+    ? `${t("relay.wingsCount", { count: String(totalWings) })} · ${t("relay.roomsCount", { count: String(totalRooms) })} · ${t("relay.memoriesCount", { count: String(totalMemories) })}`
     : t("firstMemoryPrompt");
   const goUpload = () => { localStorage.setItem("mp_spotlight_target", "import-upload"); handleNavigateLibrary(); };
   const yrs = allMemories.map((m) => (m.mem.createdAt ? new Date(m.mem.createdAt).getFullYear() : 0)).filter(Boolean);
@@ -622,18 +622,18 @@ export default function HomeView() {
   const relaySuggestion = eveningFind
     ? { key: "lantern", title: t("relay.eveningFind"), reason: `${eveningFind.mem.title || t("relay.aMemory")} · ${translateWingName(eveningFind.wing, tWings)}${eveningFind.mem.createdAt ? `, ${new Date(eveningFind.mem.createdAt).getFullYear()}` : ""}`, onClick: () => handleMemoryClick(eveningFind.mem) }
     : sharedWithMe.length > 0
-    ? { key: "shared", title: "Your family shared with you", reason: "See what they added", onClick: () => setShowSharedWithMe(true) }
+    ? { key: "shared", title: t("relay.sgFamilySharedTitle"), reason: t("relay.sgFamilySharedReason"), onClick: () => setShowSharedWithMe(true) }
     : dailyQuestion
     ? { key: "letter", title: dailyQuestion, reason: t("relay.sixtySeconds"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); } }
     : onThisDayMemories.length > 0
-      ? { key: "timeline", title: "On this day", reason: onThisDayMemories[0].mem.title || "A memory from a year gone by", onClick: () => handleMemoryClick(onThisDayMemories[0].mem) }
+      ? { key: "timeline", title: t("relay.sgOnThisDayTitle"), reason: onThisDayMemories[0].mem.title || t("relay.sgOnThisDayReason"), onClick: () => handleMemoryClick(onThisDayMemories[0].mem) }
       : totalMemories === 0
-        ? { key: "photos", title: "Bring in your first photos", reason: "The fastest way to fill your palace", onClick: goUpload }
+        ? { key: "photos", title: t("relay.sgFirstPhotosTitle"), reason: t("relay.sgFirstPhotosReason"), onClick: goUpload }
         : activeTrack
-          ? { key: "journeys", title: `Continue your ${activeTrack.name}`, reason: `${activeTrack.progress} of ${activeTrack.total} steps`, onClick: () => { setSelectedTrackId(activeTrack.id); setShowTracksPanel(true); }, progress: { done: activeTrack.progress, total: activeTrack.total } }
+          ? { key: "journeys", title: t("relay.sgContinueTrack", { name: activeTrack.name }), reason: t("relay.sgStepsOf", { done: String(activeTrack.progress), total: String(activeTrack.total) }), onClick: () => { setSelectedTrackId(activeTrack.id); setShowTracksPanel(true); }, progress: { done: activeTrack.progress, total: activeTrack.total } }
           : lastVisitedRoom
             ? { key: "continue", title: t("continueWhereLeft"), reason: lastVisitedRoom.name, onClick: handleContinueLastRoom }
-            : { key: "record", title: "Record your story", reason: "A few minutes, a lifetime kept", onClick: () => setShowInterviewLibrary(true) };
+            : { key: "record", title: t("relay.sgRecordTitle"), reason: t("relay.sgRecordReason"), onClick: () => setShowInterviewLibrary(true) };
   // Chips retired: they duplicated board tiles (Add a memory / WhatsApp).
   const relayChips: { key: string; label: string; onClick: () => void }[] = [];
   // Personalization returns: compact "tuned for you" summary, or the full
@@ -661,7 +661,7 @@ export default function HomeView() {
     else mtc.story++;
   }
   const memoriesStrip = stripItems.length > 0 ? (
-    <section aria-label="Your memories" style={{ borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", background: T.color.cream, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.06)", padding: "1rem 1.1rem" }}>
+    <section aria-label={t("relay.yourMemories")} style={{ borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", background: T.color.cream, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.06)", padding: "1rem 1.1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
         <Overline color="#8A6410">{t("relay.yourMemories")}</Overline>
         <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, rgba(169,116,27,0.35), transparent)" }} />
@@ -695,7 +695,7 @@ export default function HomeView() {
         })}
       </div>
       <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.6rem", fontVariantNumeric: "tabular-nums" }}>
-        {mtc.photo} photos · {mtc.video} videos · {mtc.story} stories · {totalWings} wings
+        {t("relay.stripSummary", { photos: String(mtc.photo), videos: String(mtc.video), stories: String(mtc.story), wings: String(totalWings) })}
       </div>
     </section>
   ) : null;
@@ -717,8 +717,8 @@ export default function HomeView() {
   // wings rest as quiet empty frames — the fan doubles as a coverage map.
   const wingChips = wingsData.slice(0, 6).map((w) => ({ id: w.id, label: String(w.memoryCount), empty: w.memoryCount === 0 }));
   const relayAnchors = [
-    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, chips: wingChips },
-    { key: "library", title: "Enter Your Library", desc: "Your whole collection", onClick: handleNavigateLibrary, datum: totalMemories > 0 ? `${totalMemories} ${t("memories")}` : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },
+    { key: "palace", title: t("relay.enterPalaceTitle"), desc: t("relay.enterPalaceDesc"), onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${t("relay.wingsCount", { count: String(totalWings) })} · ${t("relay.roomsCount", { count: String(totalRooms) })}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, chips: wingChips },
+    { key: "library", title: t("relay.enterLibraryTitle"), desc: t("relay.enterLibraryDesc"), onClick: handleNavigateLibrary, datum: totalMemories > 0 ? t("relay.memoriesCount", { count: String(totalMemories) }) : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },
   ];
   // score & badge total, for those who like keeping count.
   const relayScore = { points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) };
@@ -729,7 +729,9 @@ export default function HomeView() {
     if (tileKeys.includes(relaySuggestion.key)) return relaySuggestion.key;
     if (laneId === "capture") return totalMemories > 0 ? "record" : "photos";
     if (laneId === "bringtolife") return "timeline";
-    return sharedWithMe.length > 0 ? "shared" : "familyGroup";
+    // Only lead the share lane with "shared" when the tile is genuinely
+    // present (loaded AND non-empty) — tileKeys already excludes hidden tiles.
+    return sharedWithMe.length > 0 && tileKeys.includes("shared") ? "shared" : "familyGroup";
   };
   const markHero = <Tl extends { key: string; hidden?: boolean; soon?: boolean }>(laneId: string, tiles: Tl[]): (Tl & { hero?: boolean })[] => {
     const hk = heroFor(laneId, tiles.filter((tl) => !tl.hidden && !tl.soon).map((tl) => tl.key));
@@ -737,48 +739,48 @@ export default function HomeView() {
   };
   const relayLanes = [
     {
-      id: "capture", overline: "Capture", accent: "terracotta" as const,
+      id: "capture", overline: t("relay.laneCapture"), accent: "terracotta" as const,
       tiles: [
-        { key: "photos", title: "Add Photos", desc: "Bring in your pictures", onClick: goUpload, datum: mtc.photo > 0 ? `${mtc.photo} ${t("relay.photosCount")}` : undefined },
-        { key: "cloud", title: "Import from Cloud", desc: "Google Photos, iCloud & more", onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
-        { key: "restore", title: "Restore a Photo", desc: "Repair an old photo", onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
-        { key: "write", title: "Write a Memory", desc: "Put it into words", onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? `${mtc.story} ${t("relay.storiesCount")}` : undefined },
-        { key: "record", title: "Interviews", desc: "Tell your story aloud", onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? `${interviewSessions.length} recorded` : undefined },
-        { key: "whatsapp", title: "Capture by WhatsApp", desc: "Save by message", onClick: () => setShowKepCapture(true) },
-        { key: "capsule", title: "Time Capsule", desc: "A memory for later", onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
+        { key: "photos", title: t("relay.tilePhotos"), desc: t("relay.tilePhotosDesc"), onClick: goUpload, datum: mtc.photo > 0 ? `${mtc.photo} ${t("relay.photosCount")}` : undefined },
+        { key: "cloud", title: t("relay.tileCloud"), desc: t("relay.tileCloudDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
+        { key: "restore", title: t("relay.tileRestore"), desc: t("relay.tileRestoreDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
+        { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? `${mtc.story} ${t("relay.storiesCount")}` : undefined },
+        { key: "record", title: t("relay.tileInterviews"), desc: t("relay.tileInterviewsDesc"), onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? t("relay.recordedCount", { count: String(interviewSessions.length) }) : undefined },
+        { key: "whatsapp", title: t("relay.tileWhatsapp"), desc: t("relay.tileWhatsappDesc"), onClick: () => setShowKepCapture(true) },
+        { key: "capsule", title: t("relay.tileCapsule"), desc: t("relay.tileCapsuleDesc"), onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
       ],
     },
     {
-      id: "bringtolife", overline: "Bring to life", accent: "gold" as const,
+      id: "bringtolife", overline: t("relay.laneBringToLife"), accent: "gold" as const,
       tiles: [
-        { key: "map", title: "Memory Map", desc: "Memories placed in the world", onClick: () => setShowMemoryMap(true) },
-        { key: "timeline", title: "Timeline", desc: "Your life in time", onClick: () => setShowTimeline(true), datum: yearRange },
-        { key: "insights", title: "Highlights", desc: "Patterns in your memories", onClick: () => setShowStatistics(true) },
-        { key: "family", title: "Family Tree", desc: "Who's who, across generations", onClick: () => setShowFamilyTree(true) },
-        { key: "gallery", title: "Create a Gallery", desc: "Curate a set", onClick: () => handleNavigateLibrary() },
-        { key: "organize", title: "Tidy Your Rooms", desc: "Organise memories", onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
-        { key: "explore", title: "Explore", desc: "Public palaces to visit", onClick: () => router.push("/explore") },
-        { key: "lifestory", title: "Life Story", desc: "Your life, woven into one story", onClick: () => {}, soon: true },
+        { key: "map", title: t("relay.tileMap"), desc: t("relay.tileMapDesc"), onClick: () => setShowMemoryMap(true) },
+        { key: "timeline", title: t("relay.tileTimeline"), desc: t("relay.tileTimelineDesc"), onClick: () => setShowTimeline(true), datum: yearRange },
+        { key: "insights", title: t("relay.tileHighlights"), desc: t("relay.tileHighlightsDesc"), onClick: () => setShowStatistics(true) },
+        { key: "family", title: t("relay.tileFamilyTree"), desc: t("relay.tileFamilyTreeDesc"), onClick: () => setShowFamilyTree(true) },
+        { key: "gallery", title: t("relay.tileGallery"), desc: t("relay.tileGalleryDesc"), onClick: () => handleNavigateLibrary() },
+        { key: "organize", title: t("relay.tileOrganize"), desc: t("relay.tileOrganizeDesc"), onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
+        { key: "explore", title: t("relay.tileExplore"), desc: t("relay.tileExploreDesc"), onClick: () => router.push("/explore") },
+        { key: "lifestory", title: t("relay.tileLifeStory"), desc: t("relay.tileLifeStoryDesc"), onClick: () => {}, soon: true },
       ],
     },
     {
-      id: "share", overline: "Share & pass on", accent: "sage" as const,
+      id: "share", overline: t("relay.laneShare"), accent: "sage" as const,
       tiles: [
-        { key: "familyGroup", title: "Start a Family Group", desc: "Invite your family in", onClick: () => router.push("/settings/family") },
-        { key: "cocreate", title: "Build Together", desc: "Grow the palace as a family", onClick: () => router.push("/settings/family") },
-        { key: "invite", title: "Invite Relatives", desc: "Bring others to your palace", onClick: () => router.push("/settings/family") },
-        { key: "publish", title: "Share Publicly", desc: "Publish to Explore", onClick: () => router.push("/explore") },
-        { key: "shared", title: "Shared with you", desc: "Wings your family shared", onClick: () => setShowSharedWithMe(true), datum: sharedWithMe.length > 0 ? `${sharedWithMe.length} shared` : undefined, hidden: !(sharedLoading || sharedWithMe.length > 0) },
-        { key: "legacy", title: "Plan Your Legacy", desc: "Decide who inherits", onClick: () => router.push("/settings/legacy") },
+        { key: "familyGroup", title: t("relay.tileFamilyGroup"), desc: t("relay.tileFamilyGroupDesc"), onClick: () => router.push("/settings/family") },
+        { key: "cocreate", title: t("relay.tileCocreate"), desc: t("relay.tileCocreateDesc"), onClick: () => router.push("/settings/family") },
+        { key: "invite", title: t("relay.tileInvite"), desc: t("relay.tileInviteDesc"), onClick: () => router.push("/settings/family") },
+        { key: "publish", title: t("relay.tilePublish"), desc: t("relay.tilePublishDesc"), onClick: () => router.push("/explore") },
+        { key: "shared", title: t("relay.tileShared"), desc: t("relay.tileSharedDesc"), onClick: () => setShowSharedWithMe(true), datum: sharedWithMe.length > 0 ? t("relay.sharedCount", { count: String(sharedWithMe.length) }) : undefined, hidden: !(sharedLoading || sharedWithMe.length > 0) },
+        { key: "legacy", title: t("relay.tileLegacy"), desc: t("relay.tileLegacyDesc"), onClick: () => router.push("/settings/legacy") },
       ],
     },
   ].map((lane) => ({ ...lane, tiles: markHero(lane.id, lane.tiles) }));
   const relayYou = [
-    { key: "journeys", label: "Your Journeys", onClick: () => setShowTracksPanel(true) },
-    { key: "milestones", label: "Milestones", onClick: () => setShowAchievementPanel(true) },
-    { key: "profile", label: "Your Profile", onClick: () => router.push("/settings/profile") },
-    { key: "settings", label: "Settings", onClick: () => router.push("/settings") },
-    { key: "help", label: "Help & Guides", onClick: () => router.push("/help") },
+    { key: "journeys", label: t("relay.youJourneys"), onClick: () => setShowTracksPanel(true) },
+    { key: "milestones", label: t("relay.youMilestones"), onClick: () => setShowAchievementPanel(true) },
+    { key: "profile", label: t("relay.youProfile"), onClick: () => router.push("/settings/profile") },
+    { key: "settings", label: t("relay.youSettings"), onClick: () => router.push("/settings") },
+    { key: "help", label: t("relay.youHelp"), onClick: () => router.push("/help") },
   ];
 
   return (
@@ -865,7 +867,8 @@ export default function HomeView() {
           <AtriumRelay
             greeting={relayGreeting}
             userName={userName}
-            ledger={null}
+            datumLine={relayDatum}
+            ledger={relayLedger}
             embers={relayEmbers}
             topWash={TIME_WASH[timeOfDay]}
             warmth={warmthLevel}

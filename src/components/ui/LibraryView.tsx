@@ -1111,7 +1111,7 @@ export default function LibraryView() {
   const openMediaAt = useCallback((i: number) => setMediaPlayerIndex(i), []);
   // Dates follow the app locale (mp_locale), not the browser locale
   const monthLabelOf = useCallback((d: Date) => d.toLocaleDateString(locale, { month: "long", year: "numeric" }), [locale]);
-  const countLabelOf = useCallback((n: number) => `${n}`, []);
+  const countLabelOf = useCallback((n: number) => t(n === 1 ? "memoryCountOne" : "memoryCount", { count: `${n}` }), [t]);
   const handleTileDragEnd = useCallback(() => setDraggingMemId(null), []);
 
   // "Stored in" provenance for the fullscreen viewer: Wing › Room + accent

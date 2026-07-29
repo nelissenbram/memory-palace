@@ -131,6 +131,9 @@ export const useKepStore = create<KepState>((set, get) => ({
   },
 
   fetchPendingCaptures: async () => {
+    // Dedupe concurrent fetches (e.g. StrictMode double-effect / rapid remounts)
+    // so we don't fire redundant requests or clobber in-flight state.
+    if (get().isLoading) return;
     set({ isLoading: true, error: null });
     try {
       const res = await fetch("/api/keps/pending");
@@ -151,9 +154,20 @@ export const useKepStore = create<KepState>((set, get) => ({
         body: JSON.stringify({ action: "route", capture_ids: captureIds, room_id: roomId, wing_id: wingId }),
       });
       if (!res.ok) throw new Error("Failed to route captures");
-      // Remove routed captures from pending list
+      // Only remove the ids the server actually reports as routed. The API
+      // silently skips captures with a stale/invalid id or a non-pending
+      // status, so trusting res.ok alone would make those captures vanish
+      // from the queue without any memory being created (data desync).
+      const data = await res.json().catch(() => ({ results: [] }));
+      const routedIds = new Set(
+        (Array.isArray(data?.results) ? data.results : [])
+          .filter((r: { status?: string }) => r?.status === "routed")
+          .map((r: { id: string }) => r.id),
+      );
+      const skipped = captureIds.filter((id) => !routedIds.has(id));
       set((state) => ({
-        pendingCaptures: state.pendingCaptures.filter((c) => !captureIds.includes(c.id)),
+        pendingCaptures: state.pendingCaptures.filter((c) => !routedIds.has(c.id)),
+        error: skipped.length > 0 ? "routePartial" : null,
       }));
     } catch (err) {
       set({ error: (err as Error).message });
@@ -169,8 +183,17 @@ export const useKepStore = create<KepState>((set, get) => ({
         body: JSON.stringify({ action: "reject", capture_ids: captureIds, reason }),
       });
       if (!res.ok) throw new Error("Failed to reject captures");
+      const data = await res.json().catch(() => ({ results: [] }));
+      const rejectedIds = new Set(
+        (Array.isArray(data?.results) ? data.results : [])
+          .filter((r: { status?: string }) => r?.status === "rejected")
+          .map((r: { id: string }) => r.id),
+      );
+      // Fall back to the requested ids if the server returned no results
+      // array (older/partial responses) so reject still clears the queue.
+      const toRemove = rejectedIds.size > 0 ? rejectedIds : new Set(captureIds);
       set((state) => ({
-        pendingCaptures: state.pendingCaptures.filter((c) => !captureIds.includes(c.id)),
+        pendingCaptures: state.pendingCaptures.filter((c) => !toRemove.has(c.id)),
       }));
     } catch (err) {
       set({ error: (err as Error).message });

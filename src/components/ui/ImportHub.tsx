@@ -57,12 +57,6 @@ const CloseIcon = () => (
   </svg>
 );
 
-const CheckIcon = () => (
-  <svg width="1rem" height="1rem" viewBox="0 0 16 16" fill="none" stroke="#56683C" /* Atrium token: sage */ strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 8l4 4 6-7" />
-  </svg>
-);
-
 const TrashIcon = () => (
   <svg width="0.875rem" height="0.875rem" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
     <path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4" />
@@ -170,10 +164,13 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
 
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
-  const [dragFileInfo, setDragFileInfo] = useState<{ count: number; size: number } | null>(null);
+  // Only the file count is knowable on dragenter (dataTransfer.files is empty
+  // until drop), so we don't track a bogus size here.
+  const [dragFileInfo, setDragFileInfo] = useState<{ count: number } | null>(null);
   const [clipboardAvailable, setClipboardAvailable] = useState(false);
   const [, setActiveSection] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -261,13 +258,12 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
     setDragOver(true);
     if (e.dataTransfer.items) {
       let count = 0;
-      let size = 0;
       for (let i = 0; i < e.dataTransfer.items.length; i++) {
         if (e.dataTransfer.items[i].kind === "file") {
           count++;
         }
       }
-      setDragFileInfo({ count, size });
+      setDragFileInfo({ count });
     }
   }, []);
 
@@ -348,15 +344,19 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
     if (queue.length === 0) return;
     if (!targetRoomId) return;
     setImporting(true);
+    setImportError(null);
     try {
       await onImportFiles(queue, targetRoomId);
-    } catch {
-      /* import errors handled upstream */
+      // Only clear the queue and close on success — a failed import must keep
+      // the user's queue intact so they can retry.
+      clearQueue();
+      setImporting(false);
+      onClose();
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : t("importFailedRetry"));
+      setImporting(false);
     }
-    clearQueue();
-    setImporting(false);
-    onClose();
-  }, [queue, onImportFiles, clearQueue, onClose, targetRoomId]);
+  }, [queue, onImportFiles, clearQueue, onClose, targetRoomId, t]);
 
   /* ── Total queue stats ─────────────────── */
 
@@ -408,10 +408,6 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
         @keyframes impHubSlideUp {
           from { opacity: 0; transform: translateY(1.5rem); }
           to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes impHubSpin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
         }
         @media (prefers-reduced-motion: reduce) {
           .imp-hub-anim { animation: none !important; transition: none !important; }
@@ -492,6 +488,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                 color: "#716A5E", /* Atrium muted */ padding: "0.25rem",
                 borderRadius: "0.375rem", transition: "color 0.2s",
                 display: "flex", alignItems: "center", justifyContent: "center",
+                minWidth: "2.75rem", minHeight: "2.75rem",
               }}
               onMouseEnter={e => { e.currentTarget.style.color = "#403B36"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "#716A5E"; }}
@@ -828,56 +825,56 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                           </span>
                         </div>
                       )}
-                      {/* Remove button */}
+                      {/* Remove button — on mobile the hit area is expanded to the
+                          2.75rem touch minimum via padding while the visible chip
+                          stays compact (the trash glyph sits in a small circle). */}
                       <button
                         onClick={() => removeFromQueue(item.id)}
                         className="imp-hub-anim imp-hub-focus"
                         style={{
-                          position: "absolute", top: "0.125rem", right: "0.125rem",
-                          width: "1.25rem", height: "1.25rem",
-                          borderRadius: "50%",
-                          background: "rgba(64,59,54,0.65)", /* Atrium warm ink */
+                          position: "absolute", top: 0, right: 0,
+                          width: isMobile ? "2.75rem" : "1.5rem",
+                          height: isMobile ? "2.75rem" : "1.5rem",
+                          padding: 0,
+                          background: "transparent",
                           border: "none",
                           cursor: "pointer",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          color: T.color.white,
-                          transition: "background 0.2s",
+                          display: "flex", alignItems: "flex-start", justifyContent: "flex-end",
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = T.color.error; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(64,59,54,0.65)"; }}
                         aria-label={tc("remove")}
                       >
-                        <TrashIcon />
-                      </button>
-                      {/* Status indicator */}
-                      {item.status === "done" && (
-                        <div style={{
-                          position: "absolute", bottom: "0.125rem", right: "0.125rem",
-                          background: "rgba(255,255,255,0.9)", borderRadius: "50%",
-                          width: "1rem", height: "1rem",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <CheckIcon />
-                        </div>
-                      )}
-                      {item.status === "uploading" && (
-                        <div style={{
-                          position: "absolute", inset: 0,
-                          background: "rgba(64,59,54,0.3)", /* Atrium warm ink */
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <div className="imp-hub-anim" style={{
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            margin: "0.125rem",
                             width: "1.25rem", height: "1.25rem",
-                            border: `0.125rem solid ${T.color.white}`,
-                            borderTopColor: "transparent",
                             borderRadius: "50%",
-                            animation: "impHubSpin 0.8s linear infinite",
-                          }} />
-                        </div>
-                      )}
+                            background: "rgba(64,59,54,0.65)", /* Atrium warm ink */
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            color: T.color.white,
+                            transition: "background 0.2s",
+                          }}
+                        >
+                          <TrashIcon />
+                        </span>
+                      </button>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ═══ IMPORT ERROR ═══ */}
+            {importError && (
+              <div role="alert" style={{
+                display: "flex", alignItems: "center", gap: "0.625rem",
+                padding: "0.75rem 1rem", borderRadius: "0.75rem",
+                background: "#F7EEEA", border: "0.0625rem solid #EBD4D0", /* Atrium: opaque warning tint */
+                marginBottom: "0.75rem",
+              }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A63D3D", lineHeight: 1.5 }}>
+                  {importError}
+                </span>
               </div>
             )}
 

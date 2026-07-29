@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { T } from "@/lib/theme";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { locales, type Locale } from "@/i18n/config";
 // en.json (~295KB) is type-only here and dynamically imported at runtime — it
 // must never ship in the landing first-paint chunk.
@@ -174,7 +175,7 @@ function CtaLink({
           fontWeight: 600,
           fontSize: large ? L.type.lead : L.type.body,
           textDecoration: "none",
-          boxShadow: "0 2px 12px rgba(107, 51, 24, 0.28)",
+          boxShadow: L.shadow.cta,
         }}
       >
         {label}
@@ -277,8 +278,7 @@ function HeroMedia({ pauseLabel, playLabel, alt }: { pauseLabel: string; playLab
         style={{
           position: "absolute",
           inset: 0,
-          background:
-            "linear-gradient(180deg, rgba(36,28,21,0.30) 0%, rgba(36,28,21,0.55) 55%, rgba(36,28,21,0.78) 100%)",
+          background: L.scrim.hero,
         }}
       />
       {wantVideo ? (
@@ -416,63 +416,98 @@ export default function LandingV2Client({
   const [howMode, setHowMode] = useState<"self" | "gift">("self");
   const stripRef = useRef<HTMLDivElement>(null);
 
+  /* Layout breakpoints via canon hooks (no @media for layout). The full nav row
+     (logo + 6 links + language select + CTA) runs to ~900px in DE/FR, so it
+     collapses to a burger across the whole compact band (≤1024px, which also
+     covers iPad portrait). The USP chapter-rail and the 3-up steps grid follow
+     the same compact/mobile split the old @media rules used. */
+  const isCompact = useIsCompact(); // ≤1024px
+  const isMobile = useIsMobile();   // ≤767px (or short landscape)
+
 
   const { v2, faq, footer, compare8 } = slices;
 
   useEffect(() => setMounted(true), []);
 
+  /* Load a locale's landing slices in place (separate chunk, never in the main
+     bundle) and swap them into state — shared by the localStorage-restore effect
+     and the language <select>. Applies the iOS seal (client-side twin of
+     page.tsx sealForIos()) since native iOS skips the locale cookie. */
+  const applyLocale = useCallback(async (next: Locale) => {
+    type Mod = { default: EnMessages };
+    let mod: Mod | null = null;
+    switch (next) {
+      case "nl": mod = await import("@/messages/nl.json") as unknown as Mod; break;
+      case "de": mod = await import("@/messages/de.json") as unknown as Mod; break;
+      case "es": mod = await import("@/messages/es.json") as unknown as Mod; break;
+      case "fr": mod = await import("@/messages/fr.json") as unknown as Mod; break;
+      default: mod = await import("@/messages/en.json") as unknown as Mod;
+    }
+    if (!mod?.default?.landingV2) return;
+    let v2n = mod.default.landingV2;
+    let faqN = mod.default.landing.faq;
+    let footerN = mod.default.landing.footer;
+    if (isIosApp) {
+      // Seal the raw locale JSON on iOS too (Apple 3.1.1): no price/free/CC copy.
+      v2n = {
+        ...v2n,
+        hero: { ...v2n.hero, sub: v2n.hero.sub_ios, ctaMicro: v2n.hero.ctaMicro_ios },
+        how: { ...v2n.how, midCta: v2n.how.midCta_ios, toggleGift: "", g1t: "", g1d: "", g2t: "", g2d: "", g3t: "", g3d: "" },
+        nav: { ...v2n.nav, pricing: "" },
+      };
+      const f = { ...faqN } as Record<string, string>;
+      for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+        const ios = f[`a${n}_ios`];
+        if (ios) f[`a${n}`] = ios;
+      }
+      faqN = f as typeof faqN;
+      footerN = { ...footerN, pricing: "", getStartedFree: footerN.signIn };
+    }
+    setLocaleState(next);
+    setSlices({ v2: v2n, faq: faqN, footer: footerN, compare8: mod.default.landing.comparison });
+    document.documentElement.lang = next;
+  }, [isIosApp]);
+
   /* If the visitor previously chose a locale that the server couldn't see
-     (no cookie — native app or rejected consent), load that locale's slice
-     via dynamic import (separate chunk, not in the main bundle). */
+     (no cookie — native app or rejected consent), restore it in place. Also
+     re-write the cookie so downstream server-rendered routes inherit it (native
+     iOS excepted — it must stay cookie-free per Apple 5.1.2i). */
   useEffect(() => {
     const stored = (typeof window !== "undefined" && localStorage.getItem("mp_locale")) as Locale | null;
     if (!stored || stored === initialLocale || !locales.includes(stored)) return;
-    const load = async () => {
-      type Mod = { default: EnMessages };
-      let mod: Mod | null = null;
-      switch (stored) {
-        case "nl": mod = await import("@/messages/nl.json") as unknown as Mod; break;
-        case "de": mod = await import("@/messages/de.json") as unknown as Mod; break;
-        case "es": mod = await import("@/messages/es.json") as unknown as Mod; break;
-        case "fr": mod = await import("@/messages/fr.json") as unknown as Mod; break;
-        default: mod = await import("@/messages/en.json") as unknown as Mod;
+    void applyLocale(stored).then(() => {
+      if (!isIosApp) {
+        document.cookie = `mp_locale=${stored};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
       }
-      if (mod?.default?.landingV2) {
-        let v2n = mod.default.landingV2;
-        let faqN = mod.default.landing.faq;
-        let footerN = mod.default.landing.footer;
-        if (isIosApp) {
-          // Client-side twin of page.tsx sealForIos(): native iOS skips the
-          // locale cookie (Apple 5.1.2i), so this path loads raw locale JSON —
-          // it must be sealed here too (Apple 3.1.1).
-          v2n = {
-            ...v2n,
-            hero: { ...v2n.hero, sub: v2n.hero.sub_ios, ctaMicro: v2n.hero.ctaMicro_ios },
-            how: { ...v2n.how, midCta: v2n.how.midCta_ios, toggleGift: "", g1t: "", g1d: "", g2t: "", g2d: "", g3t: "", g3d: "" },
-            nav: { ...v2n.nav, pricing: "" },
-          };
-          const f = { ...faqN } as Record<string, string>;
-          for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
-            const ios = f[`a${n}_ios`];
-            if (ios) f[`a${n}`] = ios;
-          }
-          faqN = f as typeof faqN;
-          footerN = { ...footerN, pricing: "", getStartedFree: footerN.signIn };
-        }
-        setLocaleState(stored);
-        setSlices({ v2: v2n, faq: faqN, footer: footerN, compare8: mod.default.landing.comparison });
-        document.documentElement.lang = stored;
-      }
-    };
-    void load();
-  }, [initialLocale]);
+    });
+  }, [initialLocale, isIosApp, applyLocale]);
 
+  /* Change language in place — swap the locale chunk, keep in-page state
+     (open FAQ items, scroll position, how-it-works toggle). No full reload. */
   const switchLocale = useCallback((next: Locale) => {
     localStorage.setItem("mp_locale", next);
     document.cookie = `mp_locale=${next};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
     document.documentElement.lang = next;
-    window.location.reload();
-  }, []);
+    void applyLocale(next);
+  }, [applyLocale]);
+
+  /* Mobile menu: lock body scroll while open, focus the first item, and close on
+     Escape. Link/anchor items already call setMenuOpen(false) on activation. */
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    menuRef.current?.querySelector<HTMLElement>("a, button, [href]")?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   /* Nav gets a solid background once the page scrolls — a threshold boolean
      via IO sentinel, never a per-frame scroll listener. */
@@ -487,6 +522,14 @@ export default function LandingV2Client({
 
   const heroSub = isIosApp ? v2.hero.sub_ios : v2.hero.sub;
   const heroMicro = isIosApp ? v2.hero.ctaMicro_ios : v2.hero.ctaMicro;
+
+  /* Localized aria labels (merged into landingV2.a11y across all 5 locales).
+     Accessed via a Record cast so this stays TS-valid before the keys land in
+     en.json; the ?? fallbacks keep the accessible names sensible either way. */
+  const a11y = v2.a11y as unknown as Record<string, string>;
+  const a11yMenu = a11y.menu ?? "Menu";
+  const a11yMainNav = a11y.mainNav ?? "Main";
+  const a11yLanguage = a11y.language ?? "Language";
 
   /* ── USP scrollytelling (STEMMA pattern): sticky group rail + one block per
      USP. Active step is computed in a rAF-throttled passive scroll handler
@@ -568,7 +611,16 @@ export default function LandingV2Client({
     },
   ];
 
-  const USP_FLAT = USP_GROUPS.flatMap((g, gi) => g.items.map((item) => ({ ...item, group: g.label, gi })));
+  // Stable numeric id per USP (assigned once in flat order) so the scroll-active
+  // rail keys off `idx`, never a translated title string — title collisions
+  // across locales would otherwise light up the wrong rail entry.
+  const uspIdxByGroup: number[][] = [];
+  {
+    let c = 0;
+    for (const g of USP_GROUPS) {
+      uspIdxByGroup.push(g.items.map(() => c++));
+    }
+  }
 
   const steps =
     howMode === "gift" && !isIosApp
@@ -646,7 +698,7 @@ export default function LandingV2Client({
         .lv2-cta:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: 0 6px 18px rgba(107,51,24,0.35); }
         .lv2-cta:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(107,51,24,0.25); }
         .lv2-cta:focus-visible, .lv2-video-toggle:focus-visible, .lv2-faq-q:focus-visible, .lv2-navlink:focus-visible, .lv2-chip:focus-visible {
-          outline: 2px solid ${T.color.terracotta}; outline-offset: 3px;
+          outline: 2px solid ${T.color.gold}; outline-offset: 3px;
         }
         .lv2-navlink { color: inherit; text-decoration: none; font-weight: 500; padding: 0.5rem 0.75rem; border-radius: 0.5rem; min-height: ${T.touch}; display: inline-flex; align-items: center; transition: background ${M.fast} ${M.ease}; }
         .lv2-navlink:hover { background: rgba(154, 79, 42, 0.08); }
@@ -654,11 +706,8 @@ export default function LandingV2Client({
         @media (prefers-reduced-motion: reduce) {
           .lv2-pre { opacity: 1 !important; transform: none !important; transition: none !important; }
         }
-        .lv2-steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
         .lv2-table-wrap { overflow-x: auto; }
         .lv2-chap { display: grid; column-gap: clamp(2.5rem, 5vw, 4.5rem); align-items: start; }
-        .lv2-chap-left { grid-template-columns: 16rem 1fr; }
-        .lv2-chap-right { grid-template-columns: 1fr 16rem; }
         /* Native horizontal screenshot strip — proximity snap, never traps vertical scroll */
         .lv2-strip {
           display: flex; gap: 1.25rem; overflow-x: auto; padding: 0.5rem 0.25rem 1rem;
@@ -681,24 +730,6 @@ export default function LandingV2Client({
         }
         @media (prefers-reduced-motion: reduce) {
           .lv2-cta-final { animation: none !important; }
-        }
-        @media (max-width: 1023px) {
-          .lv2-chap-left, .lv2-chap-right { grid-template-columns: 1fr; }
-          .lv2-chap-rail { display: none; }
-        }
-        @media (max-width: 768px) {
-          .lv2-steps-grid { grid-template-columns: 1fr; }
-        }
-        /* Collapse the full nav to a burger across the whole small-landscape
-           band: the intrinsic width of logo + 6 links + language select + CTA
-           runs to ~900px in the longer locales (DE/FR), so revealing the row
-           before 900px overflowed the viewport in the 769-899px window. */
-        @media (max-width: 899px) {
-          .lv2-nav-links { display: none !important; }
-          .lv2-nav-burger { display: inline-flex !important; }
-        }
-        @media (min-width: 900px) {
-          .lv2-nav-burger { display: none !important; }
         }
       `}</style>
 
@@ -723,7 +754,7 @@ export default function LandingV2Client({
         }}
       >
         <nav
-          aria-label="Main"
+          aria-label={a11yMainNav}
           style={{
             maxWidth: L.space.wide,
             margin: "0 auto",
@@ -738,7 +769,7 @@ export default function LandingV2Client({
           <Link href="/" aria-label="The Memory Palace" style={{ textDecoration: "none", display: "flex" }}>
             <PalaceLogo variant="full" color={navSolid ? "dark" : "light"} size="sm" />
           </Link>
-          <div className="lv2-nav-links" style={{ display: "flex", alignItems: "center", gap: "0.25rem", color: navSolid ? T.color.charcoal : T.color.cream, fontFamily: FONT_BODY, fontSize: L.type.bodyS }}>
+          <div style={{ display: isCompact ? "none" : "flex", alignItems: "center", gap: "0.25rem", color: navSolid ? T.color.charcoal : T.color.cream, fontFamily: FONT_BODY, fontSize: L.type.bodyS }}>
             <a className="lv2-navlink" href="#tour">{v2.nav.tour}</a>
             <a className="lv2-navlink" href="#features">{v2.nav.features}</a>
             <a className="lv2-navlink" href="#how-it-works">{v2.nav.how}</a>
@@ -748,12 +779,12 @@ export default function LandingV2Client({
             )}
             <Link className="lv2-navlink" href="/login">{v2.nav.signIn}</Link>
             <select
-              aria-label="Language"
+              aria-label={a11yLanguage}
               value={locale}
               onChange={(e) => switchLocale(e.target.value as Locale)}
               style={{
                 marginLeft: "0.5rem",
-                minHeight: "2.25rem",
+                minHeight: T.touch,
                 borderRadius: "0.5rem",
                 border: `1px solid ${navSolid ? L.hairline : "rgba(252,250,245,0.4)"}`,
                 background: "transparent",
@@ -795,13 +826,12 @@ export default function LandingV2Client({
           {/* Mobile burger */}
           <button
             type="button"
-            className="lv2-nav-burger"
-            aria-label={menuOpen ? v2.a11y.close : "Menu"}
+            aria-label={menuOpen ? v2.a11y.close : a11yMenu}
             aria-expanded={menuOpen}
             aria-controls="lv2-mobile-menu"
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
-              display: "none",
+              display: isCompact ? "inline-flex" : "none",
               width: T.touch,
               height: T.touch,
               alignItems: "center",
@@ -824,6 +854,7 @@ export default function LandingV2Client({
         {menuOpen ? (
           <div
             id="lv2-mobile-menu"
+            ref={menuRef}
             style={{
               background: L.canvas,
               borderBottom: `1px solid ${L.hairline}`,
@@ -961,7 +992,7 @@ export default function LandingV2Client({
                     fontWeight: 600,
                     fontSize: L.type.body,
                     textDecoration: "none",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
+                    boxShadow: L.shadow.ctaHero,
                   }}
                 >
                   {v2.hero.cta}
@@ -971,7 +1002,7 @@ export default function LandingV2Client({
                   className="lv2-navlink"
                   style={{ color: T.color.cream, fontSize: L.type.body, textDecoration: "underline", textUnderlineOffset: "0.25em" }}
                 >
-                  ▶ {v2.hero.secondary}
+                  <span aria-hidden="true">▶ </span>{v2.hero.secondary}
                 </a>
               </div>
               <span style={{ fontFamily: FONT_BODY, fontSize: "0.875rem", color: "rgba(252,250,245,0.75)" }}>
@@ -987,6 +1018,7 @@ export default function LandingV2Client({
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "0.375rem",
+                      minHeight: T.touch,
                       color: "rgba(252,250,245,0.85)",
                       fontSize: "0.875rem",
                       padding: "0.25rem 0.5rem",
@@ -1061,17 +1093,25 @@ export default function LandingV2Client({
               return (
                 <div
                   key={group.label}
-                  className={`lv2-chap ${railLeft ? "lv2-chap-left" : "lv2-chap-right"}`}
-                  style={{ marginTop: gi === 0 ? 0 : "clamp(3.5rem, 7vw, 6rem)" }}
+                  className="lv2-chap"
+                  style={{
+                    // Rail collapses on the compact band (≤1024px, iPad portrait
+                    // incl.): single column, rail hidden — was the 1023px @media.
+                    gridTemplateColumns: isCompact ? "1fr" : railLeft ? "16rem 1fr" : "1fr 16rem",
+                    marginTop: gi === 0 ? 0 : "clamp(3.5rem, 7vw, 6rem)",
+                  }}
                 >
                   {/* Chapter menu rail */}
-                  <nav aria-label={group.label} className="lv2-chap-rail" style={{ order: railLeft ? 0 : 1, alignSelf: "stretch" }}>
+                  <nav
+                    aria-label={group.label}
+                    style={{ display: isCompact ? "none" : "block", order: railLeft ? 0 : 1, alignSelf: "stretch" }}
+                  >
                     <div style={{ position: "sticky", top: "6rem" }}>
                       <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.75rem" }}>
                         {group.label}
                       </p>
-                      {group.items.map((item) => {
-                        const flatIdx = USP_FLAT.findIndex((f) => f.t === item.t);
+                      {group.items.map((item, ii) => {
+                        const flatIdx = uspIdxByGroup[gi][ii];
                         const isActive = activeUsp === flatIdx;
                         const isPast = activeUsp > flatIdx;
                         return (
@@ -1079,6 +1119,7 @@ export default function LandingV2Client({
                             key={item.t}
                             type="button"
                             className="lv2-navlink"
+                            aria-current={isActive ? "true" : undefined}
                             onClick={() => uspRefs.current[flatIdx]?.scrollIntoView({ block: "center" })}
                             style={{
                               display: "flex",
@@ -1110,8 +1151,8 @@ export default function LandingV2Client({
 
                   {/* Chapter cards */}
                   <div style={{ order: railLeft ? 1 : 0, display: "flex", flexDirection: "column", gap: "clamp(4rem, 8vw, 6.5rem)" }}>
-                    {group.items.map((item) => {
-                      const flatIdx = USP_FLAT.findIndex((f) => f.t === item.t);
+                    {group.items.map((item, ii) => {
+                      const flatIdx = uspIdxByGroup[gi][ii];
                       return (
                         <div key={item.t} ref={(el) => { uspRefs.current[flatIdx] = el; }} data-usp-idx={flatIdx} style={{ scrollMarginTop: "6rem" }}>
                           <Reveal>
@@ -1193,7 +1234,7 @@ export default function LandingV2Client({
             </Reveal>
             <Reveal>
               <div
-                className="lv2-steps-grid"
+                style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: "2rem" }}
                 {...(!isIosApp ? { id: "lv2-how-panel", role: "tabpanel", "aria-labelledby": `lv2-how-tab-${howMode}` } : {})}
               >
                 {steps.map((step, i) => (
@@ -1396,10 +1437,10 @@ export default function LandingV2Client({
                           {label}
                         </th>
                         <td style={{ padding: "0.875rem 0.75rem", color: concession ? T.color.charcoal : L.inkMutedLight, fontWeight: concession ? 600 : 400, borderBottom: `1px solid ${L.hairline}`, verticalAlign: "top", lineHeight: 1.5 }}>
-                          {concession ? "✓ " : ""}{left}
+                          {concession ? <span aria-hidden="true" style={{ color: T.color.success }}>✓ </span> : null}{left}
                         </td>
                         <td style={{ padding: "0.875rem 0.75rem", color: L.inkBody, borderBottom: `1px solid ${L.hairline}`, background: L.surface, verticalAlign: "top", lineHeight: 1.5, fontWeight: concession ? 400 : 500 }}>
-                          {concession ? "" : "✓ "}{right}
+                          {concession ? null : <span aria-hidden="true" style={{ color: T.color.success }}>✓ </span>}{right}
                         </td>
                       </tr>
                     ))}
@@ -1431,7 +1472,7 @@ export default function LandingV2Client({
         {/* ── 10. Final CTA — end on a peak ── */}
         <section aria-labelledby="lv2-final-h" style={{ position: "relative", background: L.dark, padding: "clamp(7rem, 14vw, 11rem) 0", overflow: "hidden" }}>
           <Image src="/video/hero-poster.jpg" alt="" fill sizes="100vw" style={{ objectFit: "cover", opacity: 0.6 }} />
-          <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 45%, rgba(36,28,21,0.30) 0%, rgba(36,28,21,0.82) 85%)" }} />
+          <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: L.scrim.final }} />
           <div style={{ position: "relative", textAlign: "center", padding: "0 1.5rem" }}>
             <p
               style={{

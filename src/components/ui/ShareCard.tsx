@@ -65,6 +65,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  const [cardReady, setCardReady] = useState(false);
 
   const getShareUrl = useCallback(() => {
     const base = typeof window !== "undefined" ? window.location.origin + window.location.pathname : "";
@@ -83,6 +84,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   }, []);
 
   useEffect(() => {
+    setCardReady(false);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -181,6 +183,8 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
         ctx.globalAlpha = 0.5;
         ctx.fillRect(100, H - 110, W - 200, 1);
         ctx.globalAlpha = 1;
+
+        setCardReady(true);
       };
 
       if (mem.dataUrl) {
@@ -253,6 +257,10 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
       ctx.globalAlpha = 0.5;
       ctx.fillRect(100, H - 110, W - 200, 1);
       ctx.globalAlpha = 1;
+      setCardReady(true);
+    } else {
+      // Default share card (no mem, no room): background + panel already drawn.
+      setCardReady(true);
     }
   }, [mem, roomName, roomIcon, wingName, wingIcon, memCount, accent, t]);
 
@@ -299,7 +307,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   const socialLinks = [
     { name: "WhatsApp", icon: "\uD83D\uDCAC", url: `https://wa.me/?text=${encodedText}%20${encodedUrl}` },
     { name: "X / Twitter", icon: "\uD83D\uDC26", url: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}` },
-    { name: "Email", icon: "\u2709\uFE0F", url: `mailto:?subject=${encodeURIComponent(title)}&body=${encodedText}%0A%0A${encodedUrl}` },
+    { name: t("email"), icon: "\u2709\uFE0F", url: `mailto:?subject=${encodeURIComponent(title)}&body=${encodedText}%0A%0A${encodedUrl}` },
     { name: "Facebook", icon: "\uD83D\uDC4D", url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}` },
   ];
 
@@ -320,14 +328,14 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
         <div style={{ padding: "1rem 1.25rem 1.25rem" }}>
           {/* Action buttons */}
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-            <button onClick={handleCopyLink} style={{ ...btnBase, flex: 1, background: copied ? `${accent}15` : T.color.white, color: copied ? accent : T.color.charcoal }}>
+            <button onClick={handleCopyLink} style={{ ...btnBase, flex: 1, background: copied ? `${accent}15` : T.color.white, color: copied ? accent : T.color.inkSoft }}>
               {copied ? `\u2713 ${t("copied")}` : `\uD83D\uDD17 ${t("copyLink")}`}
             </button>
-            <button onClick={handleDownload} style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.charcoal }}>
+            <button onClick={handleDownload} disabled={!cardReady} style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.inkSoft, cursor: cardReady ? "pointer" : "not-allowed", opacity: cardReady ? 1 : 0.5 }}>
               {`\u2B07\uFE0F ${t("download")}`}
             </button>
             {canShare && (
-              <button onClick={handleShare} style={{ ...btnBase, flex: 1, background: accent, color: T.color.white, border: "none" }}>
+              <button onClick={handleShare} disabled={!cardReady} style={{ ...btnBase, flex: 1, background: accent, color: T.color.white, border: "none", cursor: cardReady ? "pointer" : "not-allowed", opacity: cardReady ? 1 : 0.5 }}>
                 <><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:"0.25rem"}}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>{t("share")}</>
               </button>
             )}
@@ -338,7 +346,8 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
             {socialLinks.map(s => (
               <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer"
-                style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.charcoal, textDecoration: "none", justifyContent: "center", fontSize: "0.75rem", padding: "0.625rem 0.5rem" }}>
+                aria-label={t("shareVia", { platform: s.name })}
+                style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.inkSoft, textDecoration: "none", justifyContent: "center", fontSize: "0.75rem", padding: "0.625rem 0.5rem" }}>
                 <span style={{ fontSize: "1rem" }}>{s.icon}</span>
                 <span>{s.name}</span>
               </a>

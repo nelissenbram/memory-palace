@@ -51,7 +51,7 @@ export function AddPersonForm({
     border: `1px solid ${T.color.sandstone}`,
     background: T.color.white,
     fontFamily: T.font.body,
-    fontSize: "0.875rem",
+    fontSize: isMobile ? "1rem" : "0.875rem",
     color: T.color.charcoal,
     outline: "none",
     minHeight: "2.75rem",

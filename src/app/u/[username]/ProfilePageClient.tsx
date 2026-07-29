@@ -15,6 +15,10 @@ import type { SocialProfile } from "@/lib/social/profile-actions";
 import type { FeedItem } from "@/lib/social/feed-actions";
 import type { PublishedWing } from "@/lib/social/visit-actions";
 
+/** Canon interactive/CTA color; gold stays ceremonial (Enter-Palace only). */
+const EMBER = "#B85C38";
+const EMBER_GLYPH = "#9A4F2A";
+
 interface ProfilePageClientProps {
   profile: SocialProfile;
   activities: FeedItem[];
@@ -96,7 +100,7 @@ export default function ProfilePageClient({
           animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.05s both`,
         }}>
           <TuscanCard variant="elevated" padding="1.5rem">
-            <ProfileCard profile={profile} />
+            <ProfileCard profile={profile} isAuthenticated={isAuthenticated} />
             {/* Self-view bridge (change 24): owners see one Edit affordance where
                 visitors see Follow — self view = public view + Edit. */}
             {profile.is_own && (
@@ -108,15 +112,15 @@ export default function ProfilePageClient({
                     minHeight: "2.75rem",
                     padding: "0.5rem 1.375rem",
                     borderRadius: "2rem",
-                    border: "0.0625rem solid #B85C38", /* Atrium ember — interactive */
+                    border: `0.0625rem solid ${EMBER}`, /* Atrium ember — interactive */
                     background: "transparent",
-                    color: "#B85C38",
+                    color: EMBER,
                     fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                     cursor: "pointer",
                     transition: `background 0.2s ${EASE}`,
                   }}
                 >
-                  {t("editProfile") !== "editProfile" ? t("editProfile") : "Edit profile"}
+                  {t("editProfile")}
                 </button>
               </div>
             )}
@@ -167,7 +171,7 @@ export default function ProfilePageClient({
             { label: t("visits"), value: publishedWings.reduce((sum, w) => sum + w.visit_count, 0) },
           ].map((stat) => (
             <div key={stat.label} style={{ textAlign: "center", minWidth: "4rem" }}>
-              <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.charcoal }}>
+              <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.inkSoft }}>
                 {stat.value}
               </div>
               <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -176,7 +180,7 @@ export default function ProfilePageClient({
             </div>
           ))}
           <div style={{ textAlign: "center", minWidth: "4rem" }}>
-            <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.charcoal }}>
+            <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.inkSoft }}>
               {new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
             </div>
             <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -244,7 +248,7 @@ export default function ProfilePageClient({
           }}>
             <p style={{
               fontFamily: T.font.display, fontSize: "1.25rem",
-              color: T.color.charcoal, margin: "0 0 0.375rem",
+              color: T.color.inkSoft, margin: "0 0 0.375rem",
             }}>
               {t("profileEmpty")}
             </p>
@@ -344,7 +348,7 @@ function WingCard({
           {/* Wing name */}
           <div style={{
             fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600,
-            color: T.color.charcoal, marginBottom: "0.25rem",
+            color: T.color.inkSoft, marginBottom: "0.25rem",
           }}>
             {wing.custom_name || wing.slug}
           </div>
@@ -382,7 +386,7 @@ function WingCard({
               {wing.visit_count} {t("visits")}
             </span>
             <span style={{
-              marginLeft: "auto", color: T.color.goldDark, fontWeight: 500,
+              marginLeft: "auto", color: EMBER_GLYPH, fontWeight: 500,
               display: "flex", alignItems: "center", gap: "0.25rem",
             }}>
               {t("exploreVisitWing")} →

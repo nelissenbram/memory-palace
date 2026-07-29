@@ -34,11 +34,11 @@ export default function BlockedAccountsPanel() {
   return (
     <div
       style={{
-        background: "#FFF",
+        background: T.color.cream,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: `1px solid ${T.color.hairline}`,
         padding: "1.5rem 1.75rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: T.shadow[1],
         marginBottom: "1rem",
       }}
     >
@@ -90,7 +90,7 @@ export default function BlockedAccountsPanel() {
               padding: "0.625rem 0.875rem",
               borderRadius: "0.625rem",
               background: T.color.linen,
-              border: `1px solid ${T.color.cream}`,
+              border: `1px solid ${T.color.hairline}`,
             }}
           >
             <div

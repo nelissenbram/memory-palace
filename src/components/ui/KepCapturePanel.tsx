@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -15,12 +15,15 @@ const F = T.font;
 function formatPhone(phone: string): string {
   if (!phone) return "";
   const clean = phone.replace(/\D/g, "");
-  if (clean.length >= 10) {
-    const cc = clean.slice(0, clean.length - 9);
-    const rest = clean.slice(clean.length - 9);
-    return `+${cc} ${rest.slice(0, 1)} ${rest.slice(1, 5)} ${rest.slice(5)}`;
-  }
-  return `+${clean}`;
+  if (!clean) return "";
+  // We can't reliably split country code from national number without a full
+  // phone library, so format loosely: assume a 1–3 digit country code, then
+  // group the remaining national digits in readable blocks of 3.
+  const ccLen = clean.length > 11 ? 3 : clean.length > 10 ? 2 : 1;
+  const cc = clean.slice(0, Math.min(ccLen, clean.length));
+  const rest = clean.slice(cc.length);
+  const grouped = rest.replace(/(\d{3})(?=\d)/g, "$1 ").trim();
+  return grouped ? `+${cc} ${grouped}` : `+${cc}`;
 }
 
 function downloadVCard(phone: string) {
@@ -74,13 +77,13 @@ function KepPorterIllustration({ size = 140 }: { size?: number }) {
   );
 }
 
-function KepFlowIllustration() {
+function KepFlowIllustration({ t }: { t: (key: string) => string }) {
   return (
     <svg width="100%" height="100" viewBox="5 0 280 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxWidth: "22rem", margin: "0 auto", display: "block", overflow: "visible" }}>
-      <rect x="10" y="20" width="60" height="60" rx="14" fill="#25D366" opacity="0.15" stroke="#25D366" strokeWidth="1.5" />
+      <rect x="10" y="20" width="60" height="60" rx="14" fill={C.warmStone} opacity="0.5" stroke="#E3D6BC" strokeWidth="1.5" />
       <rect x="22" y="36" width="36" height="4" rx="2" fill="#25D366" opacity="0.6" />
-      <rect x="22" y="44" width="28" height="4" rx="2" fill="#25D366" opacity="0.4" />
-      <rect x="22" y="52" width="20" height="4" rx="2" fill="#25D366" opacity="0.3" />
+      <rect x="22" y="44" width="28" height="4" rx="2" fill="#716A5E" opacity="0.4" />
+      <rect x="22" y="52" width="20" height="4" rx="2" fill="#716A5E" opacity="0.3" />
       <rect x="28" y="60" width="12" height="9" rx="1.5" stroke="#25D366" strokeWidth="1" fill="none" />
       <circle cx="32" cy="64" r="1.5" fill="#25D366" opacity="0.5" />
       <line x1="80" y1="50" x2="118" y2="50" stroke="#9A4F2A" strokeWidth="1.5" strokeDasharray="4 3" />
@@ -101,9 +104,9 @@ function KepFlowIllustration() {
       <circle cx="256" cy="52" r="2" fill={C.gold} />
       <rect x="230" y="76" width="36" height="5" rx="2" fill={C.gold} opacity="0.3" />
       <rect x="226" y="24" width="6" height="8" rx="1" fill={C.sage} opacity="0.3" stroke={C.walnut} strokeWidth="0.5" />
-      <text x="40" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">WhatsApp</text>
-      <text x="150" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">Kep</text>
-      <text x="248" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">Your Room</text>
+      <text x="40" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">{t("flowWhatsapp")}</text>
+      <text x="150" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">{t("flowKep")}</text>
+      <text x="248" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">{t("flowRoom")}</text>
     </svg>
   );
 }
@@ -127,6 +130,18 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
   const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
   const [copied, setCopied] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Escape-to-close (document-level so it fires regardless of focus) and
+  // move initial focus into the dialog for keyboard/screen-reader users.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    dialogRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   const waPhone = process.env.NEXT_PUBLIC_KEP_WHATSAPP_NUMBER || "";
   const waLink = waPhone ? `https://wa.me/${waPhone}?text=Hi%20Kep` : "#";
@@ -155,11 +170,13 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
 
       {/* Dialog */}
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={t("navTitle")}
-        onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+        tabIndex={-1}
         style={{
+          outline: "none",
           position: "relative", zIndex: 1,
           width: isMobile ? "100%" : "95%",
           maxWidth: isMobile ? undefined : "52rem",
@@ -248,7 +265,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
             animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} 0.1s both`,
             display: "flex", justifyContent: "center",
           }}>
-            <KepFlowIllustration />
+            <KepFlowIllustration t={t} />
           </div>
 
           {/* Steps */}
@@ -346,7 +363,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                     display: "flex", flexWrap: "wrap", gap: "0.375rem",
                     marginTop: "0.5rem",
                   }}>
-                    {["ROOM Kitchen", "NEW Holidays", "ROOMS"].map((cmd) => (
+                    {[`ROOM ${t("cmdExampleKitchen")}`, `NEW ${t("cmdExampleHolidays")}`, "ROOMS"].map((cmd) => (
                       <code key={cmd} style={{
                         fontFamily: "monospace", fontSize: "0.8125rem", fontWeight: 600, // Atrium token: meta
                         color: "#403B36", background: C.linen,

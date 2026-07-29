@@ -17,6 +17,57 @@ import { hapticSuccess } from "@/lib/native/haptics";
 import { captureOrPick } from "@/lib/native/camera";
 import { isNative } from "@/lib/native/platform";
 
+/* ═══ Tuscan line-art icons (terracotta glyph #9A4F2A) — matches ImportHub ═══ */
+const GLYPH = "#9A4F2A"; // Atrium token: terracotta glyph
+
+const UploadGlyph = ({ color = GLYPH }: { color?: string }) => (
+  <svg width="2rem" height="2rem" viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="4" y="8" width="32" height="24" rx="3" />
+    <path d="M20 14v12M14 20l6 6 6-6" />
+    <path d="M4 12l16-6 16 6" strokeDasharray="2 2" opacity="0.5" />
+  </svg>
+);
+
+const CameraGlyph = ({ size = 18, color = GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </svg>
+);
+
+const PinGlyph = ({ size = 14, color = GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </svg>
+);
+
+const GlobeGlyph = ({ size = 15, color = GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c2.5 2.5 3.8 5.7 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.7-3.8-9S9.5 5.5 12 3z" />
+  </svg>
+);
+
+const SparkleGlyph = ({ size = 15, color = "#FCFAF5" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />
+  </svg>
+);
+
+const LockGlyph = ({ size = 15, color = "#FCFAF5" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 018 0v3" />
+  </svg>
+);
+
+const CloseGlyph = ({ size = 18, color = "currentColor" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <path d="M5 5l10 10M15 5L5 15" />
+  </svg>
+);
+
 interface UploadPanelProps {
   wing: Wing | null | undefined;
   room: WingRoom | null | undefined;
@@ -70,7 +121,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const [contextAccepted,setContextAccepted]=useState(false);
   const [fileSizeError,setFileSizeError]=useState<string|null>(null);
   const fileRef=useRef<HTMLInputElement|null>(null);
-  const accent=wing?.accent||T.color.terracotta;
+  const accent=wing?.accent||"#B85C38"; // Atrium EMBER — canon interactive accent (not off-canon T.color.terracotta)
   // Atrium tokens: ink #403B36, muted #716A5E, hairline #E3D6BC, sage #56683C, warm-ink shadows rgba(64,59,54,…)
 
   const MAX_IMAGE_SIZE=50*1024*1024; // 50 MB
@@ -168,14 +219,14 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const demos=UPLOAD_DEMOS;
 
   return(
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
-      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("addMemory")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e=>e.stopPropagation()} style={{position:"fixed",right:0,top:0,bottom:0,width:isMobile?"100%":"min(380px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":"0.0625rem solid #E3D6BC",paddingTop:isMobile?`max(1.25rem, env(safe-area-inset-top, 0px))`:"1.75rem",paddingBottom:isMobile?`max(1.25rem, env(safe-area-inset-bottom, 0px))`:"1.75rem",paddingLeft:isMobile?`max(1rem, env(safe-area-inset-left, 0px))`:"1.5rem",paddingRight:isMobile?`max(1rem, env(safe-area-inset-right, 0px))`:"1.5rem",overflowY:"auto",animation:"slideInRight .3s ease"}}>
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(64,59,54,0.55)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
+      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("addMemory")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e=>e.stopPropagation()} style={{position:"fixed",right:0,top:0,bottom:0,width:isMobile?"100%":"min(23.75rem, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":"0.0625rem solid #E3D6BC",paddingTop:isMobile?`max(1.25rem, env(safe-area-inset-top, 0px))`:"1.75rem",paddingBottom:isMobile?`max(1.25rem, env(safe-area-inset-bottom, 0px))`:"1.75rem",paddingLeft:isMobile?`max(1rem, env(safe-area-inset-left, 0px))`:"1.5rem",paddingRight:isMobile?`max(1rem, env(safe-area-inset-right, 0px))`:"1.5rem",overflowY:"auto",animation:"slideInRight .3s ease"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem"}}>
           <div>
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:600,color:"#403B36",margin:0}}>{t("addMemory")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:accent,margin:"0.25rem 0 0"}}>{room?.icon} {room ? translateRoomName(room, tWings) : ""}</p>
           </div>
-          <button onClick={onClose} aria-label={tc("close")} style={{width:isMobile?"2.5rem":"2rem",height:isMobile?"2.5rem":"2rem",borderRadius:isMobile?"1.25rem":"1rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,color:"#716A5E",fontSize:isMobile?"1rem":"0.8125rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}>✕</button>
+          <button onClick={onClose} aria-label={tc("close")} style={{width:isMobile?"2.5rem":"2rem",height:isMobile?"2.5rem":"2rem",borderRadius:isMobile?"1.25rem":"1rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,color:"#716A5E",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}><CloseGlyph size={16}/></button>
         </div>
 
         {/* Method tabs */}
@@ -190,14 +241,14 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           <label htmlFor="upload-url" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("imageOrVideoUrl")}</label>
           <div style={{display:"flex",gap:"0.375rem",marginBottom:"0.75rem"}}>
             <input id="upload-url" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadUrl();}} placeholder={t("urlPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:"#403B36",boxSizing:"border-box"}}/>
-            <button onClick={loadUrl} style={{padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:"none",background:accent,color:"#FCFAF5",fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>{t("load")}</button>
+            <button onClick={loadUrl} style={{padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:"none",background:accent,color:"#FCFAF5",fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",minHeight:"2.75rem"}}>{t("load")}</button>
           </div>
           {/* Quick demo images */}
           <div style={{marginBottom:"1rem"}}>
             <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",display:"block",marginBottom:"0.375rem"}}>{t("tryDemoImage")}</label>
             <div style={{display:"flex",gap:"0.375rem"}}>
               {demos.map((d,i)=>(
-                <button key={i} onClick={()=>{setImageUrl(d.url);setPreview(d.url);if(!title)setTitle(d.title);}} style={{flex:1,padding:"0.375rem 0.5rem",borderRadius:"0.5rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",cursor:"pointer"}}>{d.title}</button>
+                <button key={i} onClick={()=>{setImageUrl(d.url);setPreview(d.url);if(!title)setTitle(d.title);}} style={{flex:1,padding:isMobile?"0.625rem 0.5rem":"0.375rem 0.5rem",borderRadius:"0.5rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",cursor:"pointer",minHeight:"2.75rem"}}>{d.title}</button>
               ))}
             </div>
           </div>
@@ -207,7 +258,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             onClick={()=>fileRef.current?.click()}
             onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fileRef.current?.click();}}}
             style={{border:`0.125rem dashed ${dragOver?accent:T.color.sandstone}`,borderRadius:"1rem",padding:"2rem",textAlign:"center",cursor:"pointer",background:dragOver?`${accent}08`:T.color.warmStone,marginBottom:"1rem",transition:"all .2s"}}>
-            <div style={{fontSize:"2rem",marginBottom:"0.5rem"}}>{dragOver?"✨":"📸"}</div>
+            <div style={{marginBottom:"0.5rem",display:"flex",justifyContent:"center"}}>{dragOver?<SparkleGlyph size={32} color={accent}/>:<UploadGlyph color={accent}/>}</div>
             <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",margin:0}}>{t("dropOrBrowse")}</p>
             <p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",margin:"0.25rem 0 0"}}>{t("fileTypes")}</p>
           </div>
@@ -220,7 +271,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             const file=new File([blob],"photo.jpg",{type:blob.type||"image/jpeg"});
             processFile(file);
           }} style={{width:"100%",padding:isMobile?"0.875rem":"0.75rem",borderRadius:"0.75rem",border:`0.125rem solid ${accent}`,background:`${accent}10`,color:accent,fontFamily:T.font.body,fontSize:isMobile?"0.9375rem":"0.8125rem",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.5rem",marginBottom:"1rem",transition:"all .2s"}}>
-            <span style={{fontSize:"1.125rem"}}>&#x1F4F7;</span> {t("takePhoto")}
+            <CameraGlyph size={18} color={accent}/> {t("takePhoto")}
           </button>}
           {fileName&&<p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",marginBottom:"0.5rem"}}>{t("fileLabel", { name: fileName })}</p>}
           {fileSizeError&&<p role="alert" style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.error,background:`${T.color.error}10`,padding:"0.625rem 0.875rem",borderRadius:"0.75rem",marginBottom:"0.75rem",lineHeight:1.5}}>{fileSizeError}</p>}
@@ -308,7 +359,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           {/* GPS uses CoreLocation on iOS; no NSLocation purpose string is shipped, so
               keep it web-only to avoid an unprompted permission (Apple 5.1.5). */}
           {!isNative() && <button onClick={useCurrentLocation} disabled={geoLoading} style={{padding:"0.625rem 0.75rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",cursor:geoLoading?"wait":"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:"0.25rem"}}>
-            {geoLoading?<span style={{display:"inline-block",width:"0.75rem",height:"0.75rem",border:"0.125rem solid transparent",borderTopColor:"#9A4F2A",borderRadius:"50%",animation:"spin .6s linear infinite"}}/>:"\uD83D\uDCCD"} {t("gps")}
+            {geoLoading?<span style={{display:"inline-block",width:"0.75rem",height:"0.75rem",border:"0.125rem solid transparent",borderTopColor:"#9A4F2A",borderRadius:"50%",animation:"spin .6s linear infinite"}}/>:<PinGlyph size={14}/>} {t("gps")}
           </button>}
         </div>
         {lat!==null&&lng!==null&&<p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",margin:"0 0 0.75rem",paddingLeft:"0.125rem"}}>{t("coordinates", { lat: lat.toFixed(4), lng: lng.toFixed(4) })}</p>}
@@ -387,7 +438,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             </span>
           </div>
           :<button onClick={fetchContext} style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem dashed ${T.color.sandstone}`,background:"transparent",fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.375rem"}}>
-            <span>&#x1F30D;</span> {t("addHistoricalContext")}
+            <GlobeGlyph size={15} color="#716A5E"/> {t("addHistoricalContext")}
           </button>}
         </div>}
         {/* Saved offline indicator */}
@@ -395,8 +446,8 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,color:"#56683C"}}>{t("savedOffline")}</span>
         </div>}
         {/* Submit */}
-        <button onClick={submit} disabled={!title.trim()||!capsuleValid||savedOffline} style={{width:"100%",padding:isMobile?"1rem":"0.875rem",borderRadius:"0.75rem",border:"none",background:title.trim()&&capsuleValid&&!savedOffline?accent:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid&&!savedOffline?"#FCFAF5":"#716A5E",fontFamily:T.font.body,fontSize:isMobile?"1rem":"0.9375rem",fontWeight:600,cursor:title.trim()&&capsuleValid&&!savedOffline?"pointer":"default",transition:"all .2s",minHeight:"3rem"}}>
-          {savedOffline?t("saved"):timeCapsule&&revealDate?t("sealCapsule", { date: new Date(revealDate+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"short",day:"numeric",year:"numeric"}) }):t("addToRoom", { room: room ? translateRoomName(room, tWings) : "room" })} {savedOffline?"":timeCapsule?"🔒":"✨"}
+        <button onClick={submit} disabled={!title.trim()||!capsuleValid||savedOffline} style={{width:"100%",padding:isMobile?"1rem":"0.875rem",borderRadius:"0.75rem",border:"none",background:title.trim()&&capsuleValid&&!savedOffline?accent:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid&&!savedOffline?"#FCFAF5":"#716A5E",fontFamily:T.font.body,fontSize:isMobile?"1rem":"0.9375rem",fontWeight:600,cursor:title.trim()&&capsuleValid&&!savedOffline?"pointer":"default",transition:"all .2s",minHeight:"3rem",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:"0.375rem"}}>
+          {savedOffline?t("saved"):timeCapsule&&revealDate?t("sealCapsule", { date: new Date(revealDate+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"short",day:"numeric",year:"numeric"}) }):t("addToRoom", { room: room ? translateRoomName(room, tWings) : "room" })} {savedOffline?null:timeCapsule?<LockGlyph size={15} color={title.trim()&&capsuleValid&&!savedOffline?"#FCFAF5":"#716A5E"}/>:<SparkleGlyph size={15} color={title.trim()&&capsuleValid&&!savedOffline?"#FCFAF5":"#716A5E"}/>}
         </button>
       </div>
     </div>

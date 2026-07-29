@@ -6,6 +6,7 @@ import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { navigateInApp, isIOS } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useUserStore } from "@/lib/stores/userStore";
+import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
@@ -67,16 +68,37 @@ function loadPhase(): Phase | null {
 }
 function cleanupStorage() { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
 
+/* Reduced-motion — mirrors OnboardingSceneHost/OnboardingCelebration so the
+   intro video (the most prominent motion in the flow) is skipped for
+   motion-sensitive users instead of autoplaying 12.5s of moving footage. */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
 /* ── Text size (mirrors AccessibilityProvider ScaleLevel) ── */
 type TextSize = ScaleLevel;
 
 /* ── Quiet canon step dots (AtriumRelay lane-dot grammar): filled=EMBER_GLYPH,
-   unfilled=HAIRLINE, no numeric total, no growing bar. ── */
-function StepDots({ current, total }: { current: number; total: number }) {
+   unfilled=HAIRLINE, no numeric total, no growing bar. Intentionally scoped to
+   the 3 form cards (lang_a11y / name / style_era) — the full-screen video intro
+   and the do-first upload/celebration are ceremonial beats, not numbered setup
+   steps, so they carry no dot. ── */
+function StepDots({ current, total, label }: { current: number; total: number; label: string }) {
   return (
-    <div style={{ position: "absolute", top: "calc(2rem + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+    <div
+      role="progressbar"
+      aria-valuenow={current}
+      aria-valuemin={1}
+      aria-valuemax={total}
+      aria-label={label}
+      style={{ position: "absolute", top: "calc(2rem + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "0.5rem", alignItems: "center" }}
+    >
       {Array.from({ length: total }, (_, i) => (
-        <div key={i} style={{
+        <div key={i} aria-hidden style={{
           width: "0.6rem", height: "0.6rem", borderRadius: "50%",
           background: i + 1 <= current ? EMBER_GLYPH : HAIRLINE,
           transition: "background .4s ease",
@@ -125,8 +147,11 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   useEffect(() => { setLocaleNoReload(selectedLocale); }, []);
 
   // ── Phase state ── (retired saved phases remapped by loadPhase) ──
-  // Brand-new run (no saved phase) -> "video_intro" (the intro video plays first).
-  const [phase, setPhaseRaw] = useState<Phase>(() => loadPhase() || "video_intro");
+  // Brand-new run (no saved phase) -> "video_intro" (the intro video plays first),
+  // UNLESS the user prefers reduced motion — then skip straight to the first setup
+  // card (no autoplaying full-screen video), mirroring the reduced-motion swaps in
+  // OnboardingSceneHost/OnboardingCelebration.
+  const [phase, setPhaseRaw] = useState<Phase>(() => loadPhase() || (prefersReducedMotion() ? "lang_a11y" : "video_intro"));
 
   const setPhase = useCallback((p: Phase) => {
     setPhaseRaw(p);
@@ -135,6 +160,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
   const memoryUploadedRef = useRef(false);
   const [uploadedMemory, setUploadedMemory] = useState<any>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // ── Language / A11y state ──
   // Check localStorage directly — the hook's `locale` hasn't hydrated yet on first render
@@ -160,14 +186,18 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // then advance — softening the transition.
   const [showWelcome, setShowWelcome] = useState(false);
   const outroRef = useRef(false);
+  const outroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const beginOutro = useCallback(() => {
     if (outroRef.current) return;
     outroRef.current = true;
     setVideoPlayed(true);
     if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
     setShowWelcome(true);
-    setTimeout(() => setPhase("lang_a11y"), 2600);
+    outroTimerRef.current = setTimeout(() => setPhase("lang_a11y"), 2600);
   }, [setPhase]);
+  // Own the outro timer's teardown — clear it on unmount so a fast skip/unmount
+  // never fires setPhase on a gone component.
+  useEffect(() => () => { if (outroTimerRef.current) clearTimeout(outroTimerRef.current); }, []);
 
   // Force-play on mobile — autoplay can fail silently on iOS/Android. If it's
   // blocked during the intro, skip straight to the first setup card.
@@ -176,8 +206,10 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     if (!v) return;
     if (phase === "video_intro") {
       v.play().catch(() => {
-        setVideoPlayed(true);
-        setPhase("lang_a11y");
+        // Autoplay blocked (common on iOS/Android): route through the same
+        // graceful welcome outro desktop gets, rather than hard-cutting — the
+        // outro beat then advances to lang_a11y on its own timer.
+        beginOutro();
       });
     } else if (SETUP_PHASES.includes(phase)) {
       v.loop = true;
@@ -310,7 +342,7 @@ ${KEYFRAMES}
       <style>{`@keyframes onb-spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{
         width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-        border: `3px solid ${HAIRLINE}`, borderTopColor: EMBER,
+        border: `0.1875rem solid ${HAIRLINE}`, borderTopColor: EMBER,
         animation: "onb-spin 0.8s linear infinite",
       }} />
       <button className="onb-focusable" onClick={handleSkip} style={{
@@ -323,6 +355,33 @@ ${KEYFRAMES}
       </button>
     </div>
   );
+
+  // Roving-tabindex radiogroup keyboard pattern: Arrow keys (and Home/End) move
+  // selection+focus; only the checked radio is a Tab stop. Fulfills the ARIA
+  // radiogroup contract both radiogroups assert.
+  const handleRadioKeyDown = <V,>(
+    e: React.KeyboardEvent,
+    values: readonly V[],
+    current: V,
+    onSelect: (v: V) => void,
+  ) => {
+    const idx = values.indexOf(current);
+    if (idx < 0) return;
+    let next = idx;
+    switch (e.key) {
+      case "ArrowRight": case "ArrowDown": next = (idx + 1) % values.length; break;
+      case "ArrowLeft": case "ArrowUp": next = (idx - 1 + values.length) % values.length; break;
+      case "Home": next = 0; break;
+      case "End": next = values.length - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    onSelect(values[next]);
+    // Move focus to the newly selected radio within the same group.
+    const group = e.currentTarget as HTMLElement;
+    const radios = group.querySelectorAll<HTMLElement>('[role="radio"]');
+    radios[next]?.focus();
+  };
 
   // ══════════════════════════════════════════════
   // PHASE RENDERS
@@ -372,7 +431,7 @@ ${KEYFRAMES}
             <div style={{
               fontFamily: T.font.display, fontStyle: "italic",
               fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 600,
-              color: "#E8C766", textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
+              color: GOLD, textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
               textShadow: "0 0.25rem 1.75rem rgba(0,0,0,0.55)",
             }}>
               {t("welcomeToPalace") !== "welcomeToPalace" ? t("welcomeToPalace") : "Welcome to your Memory Palace"}
@@ -380,10 +439,11 @@ ${KEYFRAMES}
           </div>
         )}
 
-        {/* Skip button */}
+        {/* Skip button — warm-ink chrome so even the video overlay stays on palette */}
         <button
           onClick={() => {
             outroRef.current = true;
+            if (outroTimerRef.current) { clearTimeout(outroTimerRef.current); outroTimerRef.current = null; }
             setVideoPlayed(true);
             if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
             setPhase("lang_a11y");
@@ -391,10 +451,10 @@ ${KEYFRAMES}
           style={{
             position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
             fontFamily: T.font.body, fontSize: "0.75rem",
-            color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.3)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-            cursor: "pointer", backdropFilter: "blur(4px)", minHeight: "2.5rem",
+            color: "rgba(255,255,255,0.9)", background: "rgba(64,59,54,0.45)",
+            border: "0.0625rem solid rgba(64,59,54,0.55)",
+            borderRadius: "0.5rem", padding: "0.5rem 1rem",
+            cursor: "pointer", backdropFilter: "blur(0.25rem)", minHeight: "2.75rem",
           }}
         >
           {t("cinematicSkip")}
@@ -422,7 +482,7 @@ ${KEYFRAMES}
           justifyContent: isLandscapePhone ? "flex-start" : "center",
           overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
-          <StepDots current={1} total={3} />
+          <StepDots current={1} total={3} label={t("stepOf", { current: "1", total: "3" })} />
 
           <div style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -445,7 +505,9 @@ ${KEYFRAMES}
                 }}>
                   {langLabel}
                 </h3>
-                <div role="radiogroup" aria-label={langLabel} style={{
+                <div role="radiogroup" aria-label={langLabel}
+                  onKeyDown={(e) => handleRadioKeyDown(e, locales, selectedLocale, (loc) => { setSelectedLocale(loc); setLocaleNoReload(loc); })}
+                  style={{
                   display: "grid",
                   gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
                   gap: "0.4375rem",
@@ -458,6 +520,7 @@ ${KEYFRAMES}
                         className="onb-focusable"
                         role="radio"
                         aria-checked={active}
+                        tabIndex={active ? 0 : -1}
                         onClick={() => { setSelectedLocale(loc); setLocaleNoReload(loc); }}
                         style={{
                           fontFamily: T.font.body, fontSize: "0.9375rem",
@@ -490,7 +553,9 @@ ${KEYFRAMES}
                 }}>
                   {sizeLabel}
                 </h3>
-                <div role="radiogroup" aria-label={sizeLabel} style={{ display: "flex", gap: "0.375rem" }}>
+                <div role="radiogroup" aria-label={sizeLabel}
+                  onKeyDown={(e) => handleRadioKeyDown(e, ["standard", "comfortable", "large"] as TextSize[], textSize, setTextSize)}
+                  style={{ display: "flex", gap: "0.375rem" }}>
                   {(["standard", "comfortable", "large"] as TextSize[]).map((size) => {
                     const active = size === textSize;
                     const label = t(`textSize${size.charAt(0).toUpperCase() + size.slice(1)}` as any);
@@ -501,6 +566,7 @@ ${KEYFRAMES}
                         className="onb-focusable"
                         role="radio"
                         aria-checked={active}
+                        tabIndex={active ? 0 : -1}
                         onClick={() => setTextSize(size)}
                         style={{
                           flex: 1, fontFamily: T.font.body, fontSize: "0.75rem",
@@ -562,7 +628,7 @@ ${KEYFRAMES}
           justifyContent: isLandscapePhone ? "flex-start" : "center",
           overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
-          <StepDots current={2} total={3} />
+          <StepDots current={2} total={3} label={t("stepOf", { current: "2", total: "3" })} />
 
           <div style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -600,7 +666,9 @@ ${KEYFRAMES}
                   }}
                   onFocus={(e) => { e.target.style.borderColor = EMBER; }}
                   onBlur={(e) => { e.target.style.borderColor = HAIRLINE; }}
-                  autoFocus
+                  // Desktop keeps the convenience; on mobile skip autoFocus so we
+                  // don't force the keyboard up / scroll-jump on the AT/touch flow.
+                  autoFocus={!isMobile}
                   onKeyDown={(e) => { if (e.key === "Enter") advanceFromName(); }}
                 />
                 {!nameValid && (
@@ -663,7 +731,7 @@ ${KEYFRAMES}
           justifyContent: isLandscapePhone ? "flex-start" : "center",
           overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
-          <StepDots current={3} total={3} />
+          <StepDots current={3} total={3} label={t("stepOf", { current: "3", total: "3" })} />
 
           <div style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -751,6 +819,22 @@ ${KEYFRAMES}
             the guidance; a floating tooltip overlapped it (owner feedback). The
             ImportHub close button doubles as "skip". */}
 
+        {uploadError && (
+          <div role="alert" style={{
+            position: "absolute",
+            top: "calc(1rem + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)",
+            zIndex: 8100, maxWidth: "26rem", width: "90%",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+            padding: "0.75rem 1rem", borderRadius: "0.75rem",
+            background: "#F7EEEA", border: `0.0625rem solid #EBD4D0`,
+            boxShadow: SHADOW[2],
+          }}>
+            <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A63D3D", lineHeight: 1.5, textAlign: "center" }}>
+              {uploadError}
+            </span>
+          </div>
+        )}
+
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
             onClose={() => { if (!memoryUploadedRef.current) completeAndFinish((isIOS() && !IAP_ENABLED) ? "done" : "paywall"); }}
@@ -768,14 +852,40 @@ ${KEYFRAMES}
                   });
                 } catch { /* use previewUrl fallback */ }
               }
-              setUploadedMemory({
-                id: "onboarding-upload",
+              // If nothing renderable survived all fallbacks, don't persist/celebrate
+              // an empty memory — surface an error and keep the user on upload.
+              if (!dataUrl) {
+                setUploadError(t("uploadFailed"));
+                throw new Error("no-dataurl");
+              }
+              const mem = {
+                id: `onboarding-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 title: f.name,
                 type: "photo",
                 dataUrl,
-                hue: 18, s: 50, l: 60,
+                hue: 18, s: 50, l: 60, desc: "",
                 createdAt: new Date().toISOString(),
-              });
+              };
+              // Persist the first memory through the SAME store path the in-app
+              // ImportHub uses (optimistic local add + server upload + DB create).
+              // addMemory rolls back its optimistic entry on failure, so verify the
+              // memory actually landed in room 'ro1' before advancing/celebrating.
+              setUploadError(null);
+              const store = useMemoryStore.getState();
+              const before = (store.userMems["ro1"] || []).length;
+              try {
+                await store.addMemory("ro1", mem as any);
+              } catch {
+                setUploadError(t("uploadFailed"));
+                throw new Error("save-failed");
+              }
+              const after = (useMemoryStore.getState().userMems["ro1"] || []).length;
+              if (after <= before) {
+                // Optimistic add was rolled back — the write did NOT persist.
+                setUploadError(t("uploadFailed"));
+                throw new Error("save-rolled-back");
+              }
+              setUploadedMemory(mem);
               handleMemoryAdded();
             }}
             onOpenCloudProvider={() => {}}
@@ -790,7 +900,10 @@ ${KEYFRAMES}
   /* ── Celebration — calm gold threshold echoing the user's name (change 15) ── */
   if (phase === "celebration") {
     // Personalized copy that already exists in all 5 locales; degrade the {name}
-    // token gracefully when empty (change 13). CTA always enters (never a paywall).
+    // token gracefully when empty (change 13). The threshold CTA branches by
+    // platform: on iOS (IAP off) it always ENTERS the palace (celebrationContinue
+    // -> done, no paywall, Apple 3.1.1); on web it offers the soft trial step
+    // (celebrationAtrium "Select your plan" -> paywall).
     const displayName = trimmedName || t("namePlaceholder");
     const celebTitle = (t("celebrationTitle") !== "celebrationTitle"
       ? t("celebrationTitle")
@@ -831,48 +944,42 @@ ${KEYFRAMES}
     ];
 
     return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
+        {canonStyle}
         <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
         </Suspense>
 
-        {/* Dark overlay */}
+        {/* Warm-cream scrim (matches the calm celebration hand-off, not a dark cut) */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 10,
-          background: "rgba(26,25,23,0.75)",
-          backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(252,250,245,0.72)",
+          backdropFilter: "blur(0.375rem)", WebkitBackdropFilter: "blur(0.375rem)",
+          display: "flex",
+          alignItems: isLandscapePhone ? "flex-start" : "center",
+          justifyContent: "center",
+          overflowY: isLandscapePhone ? "auto" : undefined,
+          padding: isLandscapePhone ? "1.5rem 0" : undefined,
         }}>
-          {/* Glass card */}
+          {/* Opaque warm-cream card (Library canon) */}
           <div style={{
             maxWidth: "28rem", width: "92%",
             padding: isMobile ? "2rem 1.5rem" : "2.5rem 2.25rem",
-            background: "rgba(40, 34, 26, 0.85)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.15)",
-            boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.4), inset 0 1px 0 rgba(198,107,61,0.08)",
+            background: CREAM,
+            borderRadius: "1rem",
+            border: `0.0625rem solid ${HAIRLINE}`,
+            boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
             animation: "onb-fadeUp .6s ease",
           }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
 
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
+              {/* Canon overline */}
+              <Overline>{t("appName")}</Overline>
 
               {/* Title */}
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
                 {t("paywallTitle", { name: trimmedName || t("namePlaceholder") })}
               </h2>
@@ -880,7 +987,7 @@ ${KEYFRAMES}
               {/* Subtitle */}
               <p style={{
                 fontFamily: T.font.body, fontSize: "0.875rem",
-                color: "#A09889", maxWidth: "24rem", lineHeight: 1.6, margin: 0,
+                color: MUTED, maxWidth: "24rem", lineHeight: 1.6, margin: 0,
               }}>
                 {t("paywallSubtitle")}
               </p>
@@ -889,16 +996,16 @@ ${KEYFRAMES}
               <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
                 {paywallFeatures.map((feat) => (
                   <div key={feat} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                    <span style={{
+                    <span aria-hidden style={{
                       width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                      background: `${T.color.terracotta}18`,
+                      background: `${EMBER}18`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "0.625rem", color: T.color.terracotta, flexShrink: 0,
+                      fontSize: "0.625rem", color: EMBER_GLYPH, flexShrink: 0,
                     }}>
                       {"✓"}
                     </span>
                     <span style={{
-                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#D4CBC0", lineHeight: 1.4,
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: INK, lineHeight: 1.4,
                     }}>
                       {feat}
                     </span>
@@ -908,45 +1015,36 @@ ${KEYFRAMES}
 
               {/* Trial CTA — /pricing drives Apple IAP on iOS, Stripe on web */}
               <button
+                className="onb-cta onb-focusable"
                 onClick={() => {
                   track("paywall_trial_clicked", { source: "onboarding" });
                   navigateInApp("/pricing");
                   setPhase("done");
                 }}
-                style={{
-                  width: "100%", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  padding: "0.875rem 0", borderRadius: "0.625rem", border: "none",
-                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  color: "#FFF", cursor: "pointer", transition: "all .3s",
-                  boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.3)",
-                  minHeight: "3rem",
-                }}
+                style={{ ...primaryCtaStyle, width: "100%" }}
               >
                 {t("paywallTrialCta")}
               </button>
 
               {/* Subscription disclosure (Apple Guideline 3.1.2) */}
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.625rem", color: "#8A8073",
+                fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED,
                 lineHeight: 1.5, margin: "-0.5rem 0 0", textAlign: "center", maxWidth: "22rem",
               }}>
                 {t("paywallAutoRenew") !== "paywallAutoRenew" ? t("paywallAutoRenew") : "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings."}{" "}
-                <a href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
+                <a href="/terms" className="onb-focusable" style={{ display: "inline-block", padding: "0.375rem 0.25rem", color: EMBER_GLYPH, textDecoration: "underline", textUnderlineOffset: "0.1875rem" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
                 {" · "}
-                <a href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
+                <a href="/privacy" className="onb-focusable" style={{ display: "inline-block", padding: "0.375rem 0.25rem", color: EMBER_GLYPH, textDecoration: "underline", textUnderlineOffset: "0.1875rem" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
               </p>
 
               {/* Free continue */}
               <button
+                className="onb-focusable"
                 onClick={() => {
                   track("paywall_skipped", { source: "onboarding" });
                   setPhase("done");
                 }}
-                style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem",
-                  color: "#6B6155", background: "none", border: "none",
-                  cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-                }}
+                style={skipLinkStyle}
               >
                 {t("paywallContinueFree")}
               </button>

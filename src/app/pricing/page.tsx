@@ -7,8 +7,10 @@ import { T } from "@/lib/theme";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { isAndroid, isIOS } from "@/lib/native/platform";
-import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases, IAP_ENABLED } from "@/lib/native/iap";
+import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases, isIAPReady, waitForProducts, IAP_ENABLED } from "@/lib/native/iap";
+import { EMBER, HAIRLINE, focusRing } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -17,10 +19,19 @@ import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } fro
 const F = T.font;
 const C = T.color;
 
+// Canon interactive/border/secondary tokens (libraryTokens). The page historically
+// painted every CTA/toggle/badge/link with the off-canon terracotta #C66B3D and
+// bordered with sandstone; repoint to EMBER / HAIRLINE / MUTED so /pricing matches
+// the rest of the palace.
+const EMBER_CTA = EMBER;        // #B85C38 interactive / active
+const HAIRLINE_BORDER = HAIRLINE; // #E3D6BC canon 1px border
+// Secondary text already resolves to canon MUTED (#716A5E) via C.muted (theme.ts).
+
 export default function PricingPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const isCompact = useIsCompact();
+  const isPortrait = useIsPortrait();
   const [interval, setInterval] = useState<BillingInterval>("annual");
   const [currency, setCurrency] = useState<SupportedCurrency>("EUR");
   const [loading, setLoading] = useState<PlanId | null>(null);
@@ -54,14 +65,26 @@ export default function PricingPage() {
     }
   }, [router]);
 
-  // Initialize IAP on iOS
+  // Initialize IAP on iOS. A successful initIAP() alone does NOT mean anything is
+  // purchasable — cordova-plugin-purchase populates prices asynchronously after
+  // initialize() resolves. Gate iapReady on waitForProducts() (the documented
+  // contract in iap.ts) so the Upgrade button only enables once a real price has
+  // loaded, never erroring on tap (Apple Guideline 2.1).
   useEffect(() => {
-    if (isApple && IAP_ENABLED) {
-      initIAP().then((ok) => {
-        setIapReady(ok);
-        if (!ok) setIapError(getIAPError());
-      });
-    }
+    if (!(isApple && IAP_ENABLED)) return;
+    let isMounted = true;
+    (async () => {
+      const ok = await initIAP();
+      if (!ok) {
+        if (isMounted) setIapError(getIAPError());
+        return;
+      }
+      const ready = await waitForProducts();
+      if (!isMounted) return;
+      setIapReady(ready);
+      if (!ready) setIapError(getIAPError() || "Subscriptions are taking longer than usual to load. Please try again.");
+    })();
+    return () => { isMounted = false; };
   }, [isApple]);
 
   const handleSubscribe = async (planId: PlanId) => {
@@ -81,7 +104,7 @@ export default function PricingPage() {
         const productId = getIAPProductId(planId as "keeper" | "guardian", interval);
         const success = await purchase(productId);
         if (success) {
-          setToast({ message: t("subscriptionActivated") || "Subscription activated!", type: "success" });
+          setToast({ message: t("subscriptionActivated") !== "subscriptionActivated" ? t("subscriptionActivated") : "Subscription activated!", type: "success" });
           setTimeout(() => router.push("/settings/subscription"), 1500);
         } else {
           setToast({ message: t("somethingWentWrong"), type: "error" });
@@ -98,7 +121,7 @@ export default function PricingPage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId, interval }),
+        body: JSON.stringify({ plan: planId, interval, currency }),
         redirect: "manual",
       });
       // Middleware redirects unauthenticated users — detect redirect
@@ -106,7 +129,10 @@ export default function PricingPage() {
         window.location.href = "/register";
         return;
       }
-      if (res.status === 401) {
+      // Auth middleware may answer with 401/403 (or a 302 redirect) for
+      // unauthenticated users — route them to register rather than falling
+      // through to the JSON error path.
+      if (res.status === 401 || res.status === 403 || res.status === 302) {
         window.location.href = "/register";
         return;
       }
@@ -157,17 +183,17 @@ export default function PricingPage() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0 clamp(20px, 5vw, 60px)",
-          height: 64,
+          height: "4rem",
           background: `${C.linen}e8`,
           backdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${C.sandstone}40`,
+          borderBottom: `1px solid ${HAIRLINE_BORDER}`,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Link href="/" aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            width: 32, height: 32, borderRadius: 8,
-            border: `1px solid ${C.sandstone}50`,
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
+            border: `1px solid ${HAIRLINE_BORDER}`,
             background: "none", color: C.walnut, textDecoration: "none",
             transition: "border-color 0.2s",
           }}>
@@ -199,14 +225,17 @@ export default function PricingPage() {
           </Link>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
-            background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
-            padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
+          <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")}
+            onFocus={(e) => { e.currentTarget.style.outline = focusRing.outline; e.currentTarget.style.outlineOffset = focusRing.outlineOffset; }}
+            onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
+            style={{
+            background: "none", border: `1px solid ${HAIRLINE_BORDER}`, borderRadius: "0.375rem",
+            padding: "0.5rem 0.625rem", minHeight: "2.75rem", fontSize: "1rem", fontFamily: F.body,
             fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
             textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
-            appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
-            backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
-            backgroundRepeat: "no-repeat", backgroundPosition: "right 0.375rem center",
+            appearance: "none", WebkitAppearance: "none", paddingRight: "1.5rem",
+            backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
+            backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center",
           }}>
             {locales.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
           </select>
@@ -218,7 +247,7 @@ export default function PricingPage() {
                 fontSize: 14,
                 color: C.walnut,
                 textDecoration: "none",
-                padding: "8px 16px",
+                padding: "0.5rem 1rem",
               }}
             >
               {t("signIn")}
@@ -232,9 +261,9 @@ export default function PricingPage() {
               fontWeight: 600,
               color: C.white,
               textDecoration: "none",
-              padding: "8px 20px",
+              padding: "0.5rem 1.25rem",
               borderRadius: 10,
-              background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+              background: `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
             }}
           >
             {t("getStarted")}
@@ -245,7 +274,9 @@ export default function PricingPage() {
       {/* Header */}
       <section
         style={{
-          padding: isMobile ? "60px 20px 40px" : "80px 40px 56px",
+          // Tighten the tall top padding on landscape phones (short viewport)
+          // so the hero isn't pushed below the fold; keep the roomy portrait value.
+          padding: isMobile ? (isPortrait ? "3.75rem 1.25rem 2.5rem" : "2rem 1.25rem 1.75rem") : "5rem 2.5rem 3.5rem",
           textAlign: "center",
           background: `radial-gradient(ellipse at 50% 30%, ${C.warmStone}, ${C.linen} 70%)`,
         }}
@@ -255,7 +286,7 @@ export default function PricingPage() {
             fontSize: 12,
             letterSpacing: "2.5px",
             textTransform: "uppercase",
-            color: C.terracotta,
+            color: EMBER_CTA,
             fontWeight: 600,
             marginBottom: 16,
           }}
@@ -300,22 +331,27 @@ export default function PricingPage() {
         }}
       >
         <div
+          role="radiogroup"
+          aria-label={t("billingInterval") !== "billingInterval" ? t("billingInterval") : "Billing interval"}
           style={{
             display: "inline-flex",
-            borderRadius: 12,
+            borderRadius: "0.75rem",
             background: `${C.warmStone}`,
-            padding: 4,
+            padding: "0.25rem",
             gap: 0,
           }}
         >
           <button
+            role="radio"
+            aria-checked={interval === "monthly"}
             onClick={() => setInterval("monthly")}
             style={{
-              padding: "10px 24px",
-              borderRadius: 10,
+              padding: "0.625rem 1.5rem",
+              minHeight: "2.75rem",
+              borderRadius: "0.625rem",
               border: "none",
               background: interval === "monthly"
-                ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
+                ? `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`
                 : "transparent",
               color: interval === "monthly" ? C.white : C.walnut,
               fontFamily: F.body,
@@ -329,13 +365,16 @@ export default function PricingPage() {
             {t("monthly") !== "monthly" ? t("monthly") : "Monthly"}
           </button>
           <button
+            role="radio"
+            aria-checked={interval === "annual"}
             onClick={() => setInterval("annual")}
             style={{
-              padding: "10px 24px",
-              borderRadius: 10,
+              padding: "0.625rem 1.5rem",
+              minHeight: "2.75rem",
+              borderRadius: "0.625rem",
               border: "none",
               background: interval === "annual"
-                ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
+                ? `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`
                 : "transparent",
               color: interval === "annual" ? C.white : C.walnut,
               fontFamily: F.body,
@@ -358,8 +397,8 @@ export default function PricingPage() {
                 borderRadius: 8,
                 background: interval === "annual"
                   ? "rgba(255,255,255,0.25)"
-                  : `${C.terracotta}18`,
-                color: interval === "annual" ? C.white : C.terracotta,
+                  : `${EMBER_CTA}18`,
+                color: interval === "annual" ? C.white : EMBER_CTA,
                 whiteSpace: "nowrap",
               }}
             >
@@ -371,12 +410,15 @@ export default function PricingPage() {
           value={currency}
           onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
           aria-label={t("currency")}
+          onFocus={(e) => { e.currentTarget.style.outline = focusRing.outline; e.currentTarget.style.outlineOffset = focusRing.outlineOffset; }}
+          onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
           style={{
             background: "none",
-            border: `1px solid ${C.sandstone}60`,
+            border: `1px solid ${HAIRLINE_BORDER}`,
             borderRadius: "0.5rem",
             padding: "0.5rem 1.75rem 0.5rem 0.625rem",
-            fontSize: "0.8125rem",
+            minHeight: "2.75rem",
+            fontSize: "1rem",
             fontFamily: F.body,
             fontWeight: 600,
             color: C.walnut,
@@ -386,7 +428,7 @@ export default function PricingPage() {
             appearance: "none",
             WebkitAppearance: "none",
             backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
             backgroundRepeat: "no-repeat",
             backgroundPosition: "right 0.5rem center",
           }}
@@ -461,24 +503,25 @@ export default function PricingPage() {
       {isApple && iapError && (
         <div style={{
           maxWidth: 600, margin: "1.5rem auto 0", padding: "1rem 1.25rem",
-          background: `${C.terracotta}10`, border: `1px solid ${C.terracotta}30`,
+          background: `${EMBER_CTA}10`, border: `1px solid ${EMBER_CTA}30`,
           borderRadius: 12, textAlign: "center",
         }}>
           <p style={{ fontSize: 14, color: C.charcoal, margin: 0, fontFamily: F.body }}>
             {iapError}
           </p>
           <button
-            onClick={() => {
+            onClick={async () => {
               setIapError(null);
-              initIAP().then((ok) => {
-                setIapReady(ok);
-                if (!ok) setIapError(getIAPError());
-              });
+              const ok = await initIAP();
+              if (!ok) { setIapError(getIAPError()); return; }
+              const ready = await waitForProducts();
+              setIapReady(ready);
+              if (!ready) setIapError(getIAPError() || "Subscriptions are taking longer than usual to load. Please try again.");
             }}
             style={{
               marginTop: 8, padding: "0.5rem 1.25rem", borderRadius: 8,
-              border: `1px solid ${C.terracotta}`, background: "transparent",
-              color: C.terracotta, fontFamily: F.body, fontSize: 13,
+              border: `1px solid ${EMBER_CTA}`, background: "transparent",
+              color: EMBER_CTA, fontFamily: F.body, fontSize: 13,
               fontWeight: 600, cursor: "pointer",
             }}
           >
@@ -492,6 +535,17 @@ export default function PricingPage() {
         <div style={{ textAlign: "center", marginTop: "1rem" }}>
           <button
             onClick={async () => {
+              // Distinguish "store not ready yet" from a genuine empty restore,
+              // so we never show "No purchases" when the store simply hasn't loaded.
+              if (!isIAPReady()) {
+                setToast({
+                  message: tc("restoreLoading") !== "restoreLoading"
+                    ? tc("restoreLoading")
+                    : "Connecting to the App Store… please try again in a moment.",
+                  type: "error",
+                });
+                return;
+              }
               const ok = await restorePurchases();
               setToast({
                 message: ok
@@ -501,7 +555,7 @@ export default function PricingPage() {
               });
             }}
             style={{
-              background: "none", border: "none", color: C.terracotta,
+              background: "none", border: "none", color: EMBER_CTA,
               fontFamily: F.body, fontSize: 14, fontWeight: 600, cursor: "pointer",
               textDecoration: "underline", textUnderlineOffset: 3, minHeight: "2.75rem",
             }}
@@ -541,13 +595,13 @@ export default function PricingPage() {
                   background: C.white,
                   borderRadius: 20,
                   border: isHighlighted
-                    ? `2px solid ${C.terracotta}`
-                    : `1px solid ${C.sandstone}50`,
+                    ? `2px solid ${EMBER_CTA}`
+                    : `1px solid ${HAIRLINE_BORDER}`,
                   padding: isMobile ? "28px 24px" : "36px 32px",
                   position: "relative",
                   boxShadow: isHighlighted
-                    ? `0 8px 32px rgba(198,107,61,0.15)`
-                    : "0 2px 12px rgba(0,0,0,0.04)",
+                    ? "0 0.5rem 1.5rem rgba(64,59,54,0.14)"
+                    : "0 0.25rem 1rem rgba(64,59,54,0.07)",
                   transform: isHighlighted && !isSmall && !isCompact ? "scale(1.03)" : undefined,
                 }}
               >
@@ -559,7 +613,7 @@ export default function PricingPage() {
                       top: -14,
                       left: "50%",
                       transform: "translateX(-50%)",
-                      background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                      background: `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
                       color: C.white,
                       fontFamily: F.body,
                       fontSize: 12,
@@ -611,7 +665,7 @@ export default function PricingPage() {
                     <span
                       style={{
                         fontFamily: F.display,
-                        fontSize: 42,
+                        fontSize: "2.625rem",
                         fontWeight: 500,
                         color: C.charcoal,
                       }}
@@ -632,7 +686,7 @@ export default function PricingPage() {
                         <span
                           style={{
                             fontFamily: F.display,
-                            fontSize: 42,
+                            fontSize: "2.625rem",
                             fontWeight: 500,
                             color: C.charcoal,
                           }}
@@ -663,16 +717,20 @@ export default function PricingPage() {
                 <button
                   onClick={() => handleSubscribe(planId)}
                   disabled={loading !== null || (isApple && !isFree && !iapReady)}
+                  aria-busy={loading === planId}
+                  onFocus={(e) => { e.currentTarget.style.outline = focusRing.outline; e.currentTarget.style.outlineOffset = focusRing.outlineOffset; }}
+                  onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
                   style={{
                     width: "100%",
-                    padding: "16px 24px",
+                    padding: "1rem 1.5rem",
+                    minHeight: "2.75rem",
                     borderRadius: 14,
                     border: isFree
-                      ? `1.5px solid ${C.sandstone}`
+                      ? `1.5px solid ${HAIRLINE_BORDER}`
                       : "none",
                     background: isFree
                       ? "transparent"
-                      : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                      : `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
                     color: isFree ? C.charcoal : C.white,
                     fontFamily: F.body,
                     fontSize: 16,
@@ -696,7 +754,7 @@ export default function PricingPage() {
                 {plan.trial && (
                   <p style={{
                     fontSize: 13,
-                    color: C.terracotta,
+                    color: EMBER_CTA,
                     textAlign: "center" as const,
                     marginTop: -16,
                     marginBottom: 16,
@@ -721,9 +779,9 @@ export default function PricingPage() {
                       </p>
                     )}
                     <p style={{ fontSize: 11, color: C.muted, textAlign: "center" as const, margin: 0 }}>
-                      <a href="/terms" style={{ color: C.terracotta, textDecoration: "none" }}>{ts("disclosureTerms")}</a>
+                      <a href="/terms" style={{ color: EMBER_CTA, textDecoration: "none" }}>{ts("disclosureTerms")}</a>
                       {"  ·  "}
-                      <a href="/privacy" style={{ color: C.terracotta, textDecoration: "none" }}>{ts("disclosurePrivacy")}</a>
+                      <a href="/privacy" style={{ color: EMBER_CTA, textDecoration: "none" }}>{ts("disclosurePrivacy")}</a>
                     </p>
                   </div>
                 )}
@@ -754,13 +812,13 @@ export default function PricingPage() {
                           height: 20,
                           borderRadius: 10,
                           background: isHighlighted
-                            ? `${C.terracotta}18`
+                            ? `${EMBER_CTA}18`
                             : `${C.sage}15`,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           fontSize: 11,
-                          color: isHighlighted ? C.terracotta : C.sage,
+                          color: isHighlighted ? EMBER_CTA : C.sage,
                           flexShrink: 0,
                         }}
                       >
@@ -812,7 +870,7 @@ export default function PricingPage() {
                 background: C.white,
                 borderRadius: 14,
                 padding: isMobile ? "20px" : "22px 28px",
-                border: `1px solid ${C.sandstone}40`,
+                border: `1px solid ${HAIRLINE_BORDER}`,
               }}
             >
               <h4
@@ -845,7 +903,7 @@ export default function PricingPage() {
       <footer
         style={{
           padding: "32px clamp(20px, 5vw, 60px)",
-          borderTop: `1px solid ${C.sandstone}40`,
+          borderTop: `1px solid ${HAIRLINE_BORDER}`,
           background: C.charcoal,
           textAlign: "center",
         }}

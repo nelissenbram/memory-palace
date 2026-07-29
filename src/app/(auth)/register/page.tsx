@@ -7,9 +7,21 @@ import { signUp } from "@/lib/auth/actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
+import { EMBER, HAIRLINE, MUTED, INK, GOLD } from "@/lib/libraryTokens";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { track } from "@/lib/analytics";
 import { isIOS, isNative } from "@/lib/native/platform";
+
+// Canon-consistent focus handlers for inline-styled inputs: EMBER border +
+// ceremonial GOLD ring on focus (inline styles cannot express :focus).
+function applyFocus(el: HTMLInputElement) {
+  el.style.borderColor = EMBER;
+  el.style.boxShadow = `0 0 0 0.1875rem ${GOLD}66`;
+}
+function clearFocus(el: HTMLInputElement) {
+  el.style.borderColor = HAIRLINE;
+  el.style.boxShadow = "none";
+}
 
 export default function RegisterPage() {
   return <Suspense><RegisterContent /></Suspense>;
@@ -53,9 +65,16 @@ function RegisterContent() {
     setLoading(true);
     const formData = new FormData(e.currentTarget);
 
-    const password = formData.get("password") as string;
-    const confirm = formData.get("confirmPassword") as string;
+    const password = formData.get("password") as string | null;
+    const confirm = formData.get("confirmPassword") as string | null;
 
+    // Guard against a bypassed `required` attribute (e.g. autofill/scripting)
+    // so a null password can never .length-deref before the try/catch below.
+    if (!password) {
+      setError(t("passwordTooShort"));
+      setLoading(false);
+      return;
+    }
     if (password.length < 8) {
       setError(t("passwordTooShort"));
       setLoading(false);
@@ -67,6 +86,9 @@ function RegisterContent() {
       return;
     }
 
+    // Enforce the age attestation server-side too (see signUp): submit it in the
+    // FormData rather than merely gating the button client-side.
+    formData.set("ageConfirmed", ageConfirmed ? "true" : "false");
     if (redirect) formData.set("redirect", redirect);
     try {
       const result = await signUp(formData);
@@ -96,7 +118,7 @@ function RegisterContent() {
         }
       }
     } catch {
-      setError(t("unexpectedError") || "Something went wrong. Please try again.");
+      setError(tc("somethingWentWrong"));
     }
     setLoading(false);
   }
@@ -106,11 +128,11 @@ function RegisterContent() {
       <div style={{ textAlign: "center" }}>
         <div style={{
           width: "4rem", height: "4rem", borderRadius: "2rem",
-          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          background: `linear-gradient(135deg, ${EMBER}20, ${T.color.walnut}20)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 1rem",
         }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={EMBER} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2"/>
             <path d="M22 4L12 13 2 4"/>
           </svg>
@@ -126,10 +148,10 @@ function RegisterContent() {
         >
           {t("checkEmail")}
         </h2>
-        <p style={{ fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6 }}>
+        <p style={{ fontSize: "0.875rem", color: MUTED, lineHeight: 1.6 }}>
           {t("confirmationSent")}
           {redirect && (
-            <span style={{ display: "block", marginTop: "0.5rem", color: T.color.terracotta }}>
+            <span style={{ display: "block", marginTop: "0.5rem", color: EMBER }}>
               {t("afterConfirming")}
             </span>
           )}
@@ -139,7 +161,8 @@ function RegisterContent() {
           style={{
             display: "inline-block",
             marginTop: "1.25rem",
-            color: T.color.terracotta,
+            padding: "0.5rem 0.75rem",
+            color: EMBER,
             textDecoration: "none",
             fontWeight: 600,
             fontSize: "0.875rem",
@@ -167,7 +190,7 @@ function RegisterContent() {
         >
           {t("title")}
         </h1>
-        <p style={{ fontSize: "0.875rem", color: T.color.muted, marginTop: "0.375rem" }}>
+        <p style={{ fontSize: "0.875rem", color: MUTED, marginTop: "0.375rem" }}>
           {t("subtitle")}
         </p>
       </div>
@@ -197,6 +220,8 @@ function RegisterContent() {
         type="text"
         autoComplete="name"
         placeholder={t("namePlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget)}
         style={inputStyle}
       />
 
@@ -209,6 +234,8 @@ function RegisterContent() {
         required
         aria-describedby={error ? "register-error" : undefined}
         placeholder={t("emailPlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget)}
         style={inputStyle}
       />
 
@@ -221,6 +248,8 @@ function RegisterContent() {
         required
         aria-describedby={error ? "register-error" : undefined}
         placeholder={t("passwordPlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget)}
         style={inputStyle}
       />
 
@@ -233,6 +262,8 @@ function RegisterContent() {
         required
         aria-describedby={error ? "register-error" : undefined}
         placeholder={t("confirmPasswordPlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget)}
         style={inputStyle}
       />
 
@@ -243,8 +274,10 @@ function RegisterContent() {
           alignItems: "center",
           gap: "0.5rem",
           marginTop: "1rem",
+          minHeight: "2.75rem",
+          padding: "0.5rem 0",
           fontSize: "0.8125rem",
-          color: T.color.muted,
+          color: MUTED,
           cursor: "pointer",
         }}
       >
@@ -253,7 +286,7 @@ function RegisterContent() {
           type="checkbox"
           checked={ageConfirmed}
           onChange={(e) => setAgeConfirmed(e.target.checked)}
-          style={{ width: "1rem", height: "1rem", accentColor: T.color.terracotta }}
+          style={{ width: "1.25rem", height: "1.25rem", flexShrink: 0, accentColor: EMBER }}
         />
         {t("ageConfirm")}
       </label>
@@ -285,7 +318,9 @@ function RegisterContent() {
           try {
             // onDismiss resets the spinner if the in-app auth sheet closes without
             // completing, so a cancelled/failed sign-up never looks frozen.
-            const { error: oauthErr } = await fn({ onDismiss: clear });
+            // Thread the deep-link redirect so social sign-up honors invite/kep
+            // links like the password path does.
+            const { error: oauthErr } = await fn({ onDismiss: clear, redirect });
             if (oauthErr) {
               clear();
               setError(oauthErr);
@@ -327,7 +362,7 @@ function RegisterContent() {
         style={{
           textAlign: "center",
           fontSize: "0.8125rem",
-          color: T.color.muted,
+          color: MUTED,
           marginTop: "1.25rem",
           marginBottom: 0,
         }}
@@ -335,7 +370,7 @@ function RegisterContent() {
         {t("alreadyHaveAccount")}{" "}
         <Link
           href="/login"
-          style={{ color: T.color.terracotta, textDecoration: "none", fontWeight: 600 }}
+          style={{ color: EMBER, textDecoration: "none", fontWeight: 600, display: "inline-block", padding: "0.5rem 0.25rem" }}
         >
           {t("signIn")}
         </Link>
@@ -345,18 +380,18 @@ function RegisterContent() {
         style={{
           textAlign: "center",
           fontSize: "0.6875rem",
-          color: T.color.muted,
+          color: MUTED,
           marginTop: "1rem",
           marginBottom: 0,
           lineHeight: 1.6,
         }}
       >
         {t("agreeTerms")}{" "}
-        <Link href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>
+        <Link href="/terms" style={{ color: EMBER, textDecoration: "none" }}>
           {tc("termsOfService")}
         </Link>{" "}
         {t("and")}{" "}
-        <Link href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>
+        <Link href="/privacy" style={{ color: EMBER, textDecoration: "none" }}>
           {tc("privacyPolicy")}
         </Link>
         .
@@ -368,7 +403,7 @@ function RegisterContent() {
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "0.6875rem",
-  color: T.color.muted,
+  color: MUTED,
   letterSpacing: ".5px",
   textTransform: "uppercase",
   display: "block",
@@ -379,14 +414,14 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.8125rem 1rem",
   borderRadius: "0.625rem",
-  border: `1.5px solid ${T.color.sandstone}`,
+  border: `1.5px solid ${HAIRLINE}`,
   background: T.color.white,
   fontFamily: T.font.body,
   fontSize: "1rem",
-  color: T.color.charcoal,
+  color: INK,
   outline: "none",
   boxSizing: "border-box",
-  transition: "border-color 0.2s",
+  transition: "border-color 0.2s, box-shadow 0.2s",
 };
 
 const buttonStyle = (disabled: boolean): React.CSSProperties => ({
@@ -396,8 +431,8 @@ const buttonStyle = (disabled: boolean): React.CSSProperties => ({
   border: "none",
   background: disabled
     ? `${T.color.sandstone}40`
-    : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-  color: disabled ? T.color.muted : T.color.white,
+    : `linear-gradient(135deg, ${EMBER}, ${T.color.walnut})`,
+  color: disabled ? MUTED : T.color.white,
   fontFamily: T.font.body,
   fontSize: "0.9375rem",
   fontWeight: 600,
@@ -416,13 +451,13 @@ const dividerStyle: React.CSSProperties = {
 const dividerLineStyle: React.CSSProperties = {
   flex: 1,
   height: 1,
-  background: T.color.sandstone,
+  background: HAIRLINE,
 };
 
 const dividerTextStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "0.75rem",
-  color: T.color.muted,
+  color: MUTED,
   whiteSpace: "nowrap",
 };
 
@@ -446,7 +481,7 @@ const googleButtonStyle: React.CSSProperties = {
   ...socialButtonBase,
   background: T.color.white,
   color: "#3C4043",
-  border: `1.5px solid ${T.color.sandstone}`,
+  border: `1.5px solid ${HAIRLINE}`,
   marginBottom: "0.625rem",
 };
 

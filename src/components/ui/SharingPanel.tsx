@@ -177,9 +177,18 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
     setTimeout(()=>setCopied(false),2000);
   };
 
+  // A generic share target only works via the DB-backed public link (/public/{slug}).
+  // The old /palace?shared= param is read nowhere, so it silently loses context.
+  const genericShareUrl=publicShare?.is_active&&publicShare.slug
+    ?`${typeof window!=="undefined"?window.location.origin:""}/public/${publicShare.slug}`
+    :null;
+
   const copyGenericLink=()=>{
-    const url=`${window.location.origin}/palace?shared=${roomId}`;
-    navigator.clipboard.writeText(url).catch(()=>{});
+    if(!genericShareUrl){
+      setError(t("enablePublicLinkFirst"));
+      return;
+    }
+    navigator.clipboard.writeText(genericShareUrl).catch(()=>{});
     hapticLight();
     setCopied(true);
     setTimeout(()=>setCopied(false),2000);
@@ -305,7 +314,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
               <span style={{fontSize:"0.9375rem"}}>{copied?"&#x2705;":"&#x1F517;"}</span>
               <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:copied?"#56683C":"#716A5E",fontWeight:500}}>{copied?t("linkCopied"):t("copyShareLink")}</span>
             </button>
-            <button onClick={()=>setShowQR(true)} aria-label="QR Code" style={{padding:"0.75rem 1rem",borderRadius:"0.75rem",border:"0.0625rem solid #E3D6BC",background:T.color.warmStone,cursor:"pointer",display:"flex",alignItems:"center",gap:"0.375rem",transition:"all .2s",whiteSpace:"nowrap"}}>
+            <button onClick={()=>{if(genericShareUrl){setShowQR(true);}else{setError(t("enablePublicLinkFirst"));}}} disabled={!genericShareUrl} aria-label={t("shareViaQR")} style={{padding:"0.75rem 1rem",borderRadius:"0.75rem",border:"0.0625rem solid #E3D6BC",background:T.color.warmStone,cursor:genericShareUrl?"pointer":"not-allowed",opacity:genericShareUrl?1:.5,display:"flex",alignItems:"center",gap:"0.375rem",transition:"all .2s",whiteSpace:"nowrap",minHeight:"2.75rem"}}>
               <span style={{fontSize:"0.9375rem"}}>{"\u{1F4F1}"}</span>
               <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",fontWeight:500}}>QR</span>
             </button>
@@ -376,11 +385,14 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                 <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E"}}>{t("allowDownloadDesc")}</div>
               </div>
               <button onClick={async()=>{
+                if(shares.length===0){setError(t("noCollaboratorsForDownload"));return;}
                 const next=!allowDownload;
-                setAllowDownload(next);
+                setAllowDownload(next);setError(null);
                 // Update all shares for this room
-                for(const share of shares){
-                  await updateShareDownloadPermission(share.id,next);
+                const results=await Promise.all(shares.map(share=>updateShareDownloadPermission(share.id,next)));
+                if(results.some(r=>r&&"error"in r&&r.error)){
+                  setAllowDownload(!next);
+                  setError(t("downloadPermissionFailed"));
                 }
               }} role="switch" aria-checked={allowDownload} aria-label={t("allowDownload")} style={{width:"2.75rem",height:"1.5rem",borderRadius:"0.75rem",border:"none",background:allowDownload?"#B85C38":T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
                 <div style={{width:"1.125rem",height:"1.125rem",borderRadius:"0.5625rem",background:T.color.white,position:"absolute",top:"0.1875rem",left:allowDownload?"1.4375rem":"0.1875rem",transition:"left .2s",boxShadow:"0 0.0625rem 0.1875rem rgba(64,59,54,0.2)"}}/>
@@ -395,8 +407,12 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
               </div>
               <button onClick={async()=>{
                 const next=!showPublicPalace;
-                setShowPublicPalace(next);
-                await updateRoomPublicVisibility(roomId,next);
+                setShowPublicPalace(next);setError(null);
+                const result=await updateRoomPublicVisibility(roomId,next);
+                if(result&&"error"in result&&result.error){
+                  setShowPublicPalace(!next);
+                  setError(result.error);
+                }
               }} role="switch" aria-checked={showPublicPalace} aria-label={t("showPublicView")} style={{width:"2.75rem",height:"1.5rem",borderRadius:"0.75rem",border:"none",background:showPublicPalace?"#B85C38":T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
                 <div style={{width:"1.125rem",height:"1.125rem",borderRadius:"0.5625rem",background:T.color.white,position:"absolute",top:"0.1875rem",left:showPublicPalace?"1.4375rem":"0.1875rem",transition:"left .2s",boxShadow:"0 0.0625rem 0.1875rem rgba(64,59,54,0.2)"}}/>
               </button>
@@ -414,9 +430,14 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                         <div style={{display:"flex",gap:"0.25rem"}}>
                           {(["view","contribute","admin"] as const).map(p=>(
                             <button key={p} onClick={async()=>{
+                              const prevPerm=share.permission;
                               setShares(prev=>prev.map(s=>s.id===share.id?{...s,permission:p}:s));
-                              setEditingPermFor(null);
-                              await updateSharePermission(share.id,p);
+                              setEditingPermFor(null);setError(null);
+                              const result=await updateSharePermission(share.id,p);
+                              if(result&&"error"in result&&result.error){
+                                setShares(prev=>prev.map(s=>s.id===share.id?{...s,permission:prevPerm}:s));
+                                setError(result.error);
+                              }
                             }} style={{
                               padding:"0.25rem 0.625rem",borderRadius:"0.75rem",
                               border:`0.0625rem solid ${share.permission===p?accent+"40":"#E3D6BC"}`,
@@ -466,9 +487,9 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
       }
     `}</style>
 
-    {showQR && (
+    {showQR && genericShareUrl && (
       <QRShareModal
-        url={`${typeof window !== "undefined" ? window.location.origin : ""}/palace?shared=${roomId}`}
+        url={genericShareUrl}
         title={room?.name || "Memory Palace"}
         onClose={() => setShowQR(false)}
       />

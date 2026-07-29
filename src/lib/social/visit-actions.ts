@@ -175,6 +175,12 @@ export async function getPublishedMemories(
     .from("memories")
     .select("id, title, description, type, file_url, thumbnail_url, hue, saturation, lightness")
     .eq("room_id", roomId)
+    // Honor the owner's "displayed" visibility flag, mirroring the 3D visitor
+    // paths (getVisitorWingData / getVisitorPalaceData), which treat null/true
+    // as visible and only hide explicit false. `.not(...is,false)` keeps NULL
+    // and TRUE while excluding only explicitly-hidden memories, so hidden
+    // memories don't leak into the 2D deep-view gallery.
+    .not("displayed", "is", false)
     .order("sort_order", { ascending: true });
 
   if (!memories || memories.length === 0) return [];

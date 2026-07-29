@@ -37,6 +37,32 @@ async function getShareData(slug: string) {
     return null;
   }
 
+  const { data: owner } = await supabase
+    .from("public_profiles")
+    .select("display_name")
+    .eq("id", share.created_by)
+    .single();
+  const ownerName =
+    owner?.display_name || serverT("someone", await getServerLocale());
+
+  // Wing-only share (room_id is null): load the wing directly instead of
+  // dead-ending on a missing room lookup.
+  if (!share.room_id) {
+    if (!share.wing_id) return null;
+    const { data: wing } = await supabase
+      .from("wings")
+      .select("id, slug, name")
+      .eq("id", share.wing_id)
+      .single();
+    if (!wing) return null;
+    return {
+      roomName: null,
+      wingSlug: wing.slug || null,
+      wingName: wing.name || null,
+      ownerName,
+    };
+  }
+
   const { data: room } = await supabase
     .from("rooms")
     .select("id, name, wing_id")
@@ -55,17 +81,11 @@ async function getShareData(slug: string) {
     wing = wingData;
   }
 
-  const { data: owner } = await supabase
-    .from("public_profiles")
-    .select("display_name")
-    .eq("id", share.created_by)
-    .single();
-
   return {
     roomName: room.name,
     wingSlug: wing?.slug || null,
     wingName: wing?.name || null,
-    ownerName: owner?.display_name || serverT("someone", await getServerLocale()),
+    ownerName,
   };
 }
 

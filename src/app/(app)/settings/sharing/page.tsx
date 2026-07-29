@@ -4,9 +4,30 @@ import { useState, useEffect, useCallback, useTransition } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
+import { EMBER, EMBER_GLYPH, HAIRLINE, CREAM, INK, MUTED, SAGE } from "@/lib/libraryTokens";
 import type { PublishableWing } from "@/lib/social/share-actions";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
+
+/* Shared loading spinner — one ember-topped ring for every sharing section,
+ * with a reduced-motion guard, so the three cards never diverge in treatment. */
+function SharingSpinner({ scale, label }: { scale: number; label: string }) {
+  return (
+    <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
+      <div className="sharing-spin" style={{
+        width: "2.5rem", height: "2.5rem", margin: "0 auto 1rem",
+        border: `0.1875rem solid ${HAIRLINE}`,
+        borderTopColor: EMBER,
+        borderRadius: "50%",
+        animation: "spin 0.8s linear infinite",
+      }} />
+      <p style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: MUTED, margin: 0 }}>
+        {label}
+      </p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce){ .sharing-spin{ animation: none; } }`}</style>
+    </div>
+  );
+}
 
 export default function SharingPage() {
   const { t } = useTranslation("social");
@@ -42,24 +63,30 @@ export default function SharingPage() {
   useEffect(() => {
     (async () => {
       try {
-        const { flushSettingsToServer } = await import("@/lib/stores/settingsSync");
-        await flushSettingsToServer();
-      } catch {}
-      const { getMyPublishableContent } = await import("@/lib/social/share-actions");
-      const content = await getMyPublishableContent();
-      setWings(content);
-      const preWings = new Set<string>();
-      const preRooms = new Set<string>();
-      for (const w of content) {
-        if (w.published) preWings.add(w.id);
-        for (const r of w.rooms) {
-          if (r.published || w.published) preRooms.add(r.id);
+        try {
+          const { flushSettingsToServer } = await import("@/lib/stores/settingsSync");
+          await flushSettingsToServer();
+        } catch {}
+        const { getMyPublishableContent } = await import("@/lib/social/share-actions");
+        const content = await getMyPublishableContent();
+        setWings(content);
+        const preWings = new Set<string>();
+        const preRooms = new Set<string>();
+        for (const w of content) {
+          if (w.published) preWings.add(w.id);
+          for (const r of w.rooms) {
+            if (r.published || w.published) preRooms.add(r.id);
+          }
         }
+        setSelectedWings(preWings);
+        setSelectedRooms(preRooms);
+      } catch {
+        showToast(ts("loadError"), "error");
+      } finally {
+        setLoading(false);
       }
-      setSelectedWings(preWings);
-      setSelectedRooms(preRooms);
-      setLoading(false);
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleWing = (wingId: string) => {
@@ -112,29 +139,59 @@ export default function SharingPage() {
   const handleSave = () => {
     startTransition(async () => {
       const { publishWing, unpublishWing, publishRoom, unpublishRoom } = await import("@/lib/social/share-actions");
-      const ops: Promise<unknown>[] = [];
+      // Track each op with its target so we only mark what actually succeeded.
+      type OpResult = { ok?: boolean; error?: string } | unknown;
+      const wingOps: { id: string; run: Promise<OpResult> }[] = [];
+      const roomOps: { id: string; run: Promise<OpResult> }[] = [];
       for (const w of wings) {
         if (selectedWings.has(w.id) && !w.published) {
-          ops.push(publishWing({ wingId: w.id }));
+          wingOps.push({ id: w.id, run: publishWing({ wingId: w.id }) });
         } else if (!selectedWings.has(w.id) && w.published) {
-          ops.push(unpublishWing(w.id));
+          wingOps.push({ id: w.id, run: unpublishWing(w.id) });
         }
         for (const r of w.rooms) {
           if (selectedRooms.has(r.id) && !r.published) {
-            ops.push(publishRoom({ roomId: r.id, wingId: w.id }));
+            roomOps.push({ id: r.id, run: publishRoom({ roomId: r.id, wingId: w.id }) });
           } else if (!selectedRooms.has(r.id) && r.published) {
-            ops.push(unpublishRoom(r.id));
+            roomOps.push({ id: r.id, run: unpublishRoom(r.id) });
           }
         }
       }
-      await Promise.all(ops);
-      // Update local state
+
+      const isOk = (r: OpResult): boolean => {
+        if (r && typeof r === "object") {
+          const rec = r as { ok?: boolean; error?: string };
+          if (rec.error) return false;
+          if (rec.ok === false) return false;
+        }
+        return true;
+      };
+
+      const [wingSettled, roomSettled] = await Promise.all([
+        Promise.all(wingOps.map(async (o) => ({ id: o.id, ok: isOk(await o.run.catch(() => ({ error: "failed" })) ) }))),
+        Promise.all(roomOps.map(async (o) => ({ id: o.id, ok: isOk(await o.run.catch(() => ({ error: "failed" })) ) }))),
+      ]);
+
+      const failedWings = new Set(wingSettled.filter((r) => !r.ok).map((r) => r.id));
+      const failedRooms = new Set(roomSettled.filter((r) => !r.ok).map((r) => r.id));
+      const anyFailed = failedWings.size > 0 || failedRooms.size > 0;
+
+      // Only apply the optimistic published flag for targets that actually succeeded;
+      // failed ops keep their previous published state so the UI reflects reality.
       setWings((prev) => prev.map((w) => ({
         ...w,
-        published: selectedWings.has(w.id),
-        rooms: w.rooms.map((r) => ({ ...r, published: selectedRooms.has(r.id) })),
+        published: failedWings.has(w.id) ? w.published : selectedWings.has(w.id),
+        rooms: w.rooms.map((r) => ({
+          ...r,
+          published: failedRooms.has(r.id) ? r.published : selectedRooms.has(r.id),
+        })),
       })));
-      showToast(t("publishSuccess"), "success");
+
+      if (anyFailed) {
+        showToast(tf("publishError", "Some changes could not be saved. Please try again."), "error");
+      } else {
+        showToast(t("publishSuccess"), "success");
+      }
     });
   };
 
@@ -147,11 +204,11 @@ export default function SharingPage() {
     <>
       {/* Toast */}
       {toast && (
-        <div className="sharing-toast" style={{
+        <div className="sharing-toast" role={toast.type === "success" ? "status" : "alert"} aria-live={toast.type === "success" ? "polite" : "assertive"} style={{
           position: "fixed", top: "1rem", right: "1rem", zIndex: 9999,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? "#56683C" /* Atrium token: sage */ : "#C05050",
-          color: "#FCFAF5", fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
+          background: toast.type === "success" ? SAGE : "#C05050",
+          color: CREAM, fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
           fontWeight: 500, boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
           animation: "fadeIn .2s ease",
         }}>
@@ -173,9 +230,9 @@ export default function SharingPage() {
 
       {/* Published Content Card */}
       <div style={{
-        background: "#FFFFFF",
+        background: CREAM,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+        border: `0.0625rem solid ${HAIRLINE}`,
         padding: `${1.75 * scale}rem ${2 * scale}rem`,
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S1 + top highlight
         marginBottom: "1.5rem",
@@ -183,12 +240,12 @@ export default function SharingPage() {
         <div style={{ marginBottom: "1.25rem" }}>
           <h3 style={{
             fontFamily: T.font.display, fontSize: `${1.1875 * scale}rem`, fontWeight: 600, lineHeight: 1.15,
-            color: "#403B36", margin: "0 0 0.375rem",
+            color: INK, margin: "0 0 0.375rem",
           }}>
             {t("publishManage")}
           </h3>
           <p style={{
-            fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E",
+            fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: MUTED,
             margin: 0, lineHeight: 1.4,
           }}>
             {t("publishManageHint")}
@@ -196,25 +253,13 @@ export default function SharingPage() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
-            <div className="sharing-spin" style={{
-              width: "2.5rem", height: "2.5rem", margin: "0 auto 1rem",
-              border: "0.1875rem solid #E3D6BC", // Atrium token: hairline
-              borderTopColor: "#B85C38", // Atrium token: ember
-              borderRadius: "50%",
-              animation: "spin 0.8s linear infinite",
-            }} />
-            <p style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E", margin: 0 }}>
-              {ts("loadingWings")}
-            </p>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce){ .sharing-spin{ animation: none; } }`}</style>
-          </div>
+          <SharingSpinner scale={scale} label={ts("loadingWings")} />
         ) : wings.length === 0 ? (
           <div style={{
             padding: "1.5rem 1.25rem", borderRadius: "0.75rem",
-            background: "#FCFAF5", border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+            background: CREAM, border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
             textAlign: "center",
-            fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, color: "#716A5E",
+            fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, color: MUTED,
           }}>
             {ts("noWingsYet")}
           </div>
@@ -230,7 +275,7 @@ export default function SharingPage() {
                   padding: "0.375rem 0.75rem", borderRadius: "2rem", // Atrium token: pill
                   minHeight: "2.75rem",
                   border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: "transparent",
-                  color: "#716A5E", cursor: "pointer",
+                  color: MUTED, cursor: "pointer",
                 }}
               >
                 {t("selectAll")}
@@ -243,7 +288,7 @@ export default function SharingPage() {
                   padding: "0.375rem 0.75rem", borderRadius: "2rem", // Atrium token: pill
                   minHeight: "2.75rem",
                   border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: "transparent",
-                  color: "#716A5E", cursor: "pointer",
+                  color: MUTED, cursor: "pointer",
                 }}
               >
                 {t("deselectAll")}
@@ -255,11 +300,12 @@ export default function SharingPage() {
               {wings.map((wing) => (
                 <div
                   key={wing.id}
+                  className="mp-sharing-anim"
                   style={{
-                    border: `0.0625rem solid ${selectedWings.has(wing.id) ? "#B85C38" /* Atrium token: ember */ : "#E3D6BC" /* hairline */}`,
+                    border: `0.0625rem solid ${selectedWings.has(wing.id) ? EMBER : HAIRLINE}`,
                     borderRadius: "0.75rem",
                     overflow: "hidden",
-                    background: selectedWings.has(wing.id) ? "#FBF2EC" /* Atrium: premixed terracotta wash */ : "#FCFAF5",
+                    background: selectedWings.has(wing.id) ? "#FBF2EC" /* Atrium: premixed terracotta wash */ : CREAM,
                     transition: "border-color 0.2s ease, background 0.2s ease",
                   }}
                 >
@@ -267,23 +313,24 @@ export default function SharingPage() {
                   <label style={{
                     display: "flex", alignItems: "center", gap: "0.625rem",
                     padding: "0.875rem 1rem", cursor: "pointer",
-                    borderBottom: wing.rooms.length > 0 ? "0.0625rem solid #E3D6BC" /* Atrium token: hairline */ : "none",
+                    minHeight: "2.75rem",
+                    borderBottom: wing.rooms.length > 0 ? `0.0625rem solid ${HAIRLINE}` : "none",
                   }}>
                     <input
                       type="checkbox"
                       checked={selectedWings.has(wing.id)}
                       onChange={() => toggleWing(wing.id)}
-                      style={{ accentColor: "#B85C38" /* Atrium token: ember */, width: "1rem", height: "1rem", flexShrink: 0 }}
+                      style={{ accentColor: EMBER /* Atrium token: ember */, width: "1rem", height: "1rem", flexShrink: 0 }}
                     />
                     <span style={{
                       fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, fontWeight: 500,
-                      color: "#403B36", flex: 1,
+                      color: INK, flex: 1,
                     }}>
                       {wing.name}
                     </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem`, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", // Atrium: the one small-caps voice
-                      color: wing.published ? "#9A4F2A" /* Atrium token: terracotta glyph */ : "#716A5E",
+                      color: wing.published ? EMBER_GLYPH /* Atrium token: terracotta glyph */ : MUTED,
                       padding: "0.125rem 0.5rem", borderRadius: "2rem", // Atrium token: pill
                       background: wing.published ? "rgba(154,79,42,0.11)" : "rgba(113,106,94,0.12)",
                     }}>
@@ -301,18 +348,19 @@ export default function SharingPage() {
                             display: "flex", alignItems: "center", gap: "0.5rem",
                             padding: "0.375rem 0.5rem", cursor: "pointer",
                             borderRadius: "0.375rem",
+                            minHeight: "2.75rem",
                           }}
                         >
                           <input
                             type="checkbox"
                             checked={selectedRooms.has(room.id)}
                             onChange={() => toggleRoom(room.id, wing.id)}
-                            style={{ accentColor: "#B85C38" /* Atrium token: ember */, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
+                            style={{ accentColor: EMBER /* Atrium token: ember */, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
                           />
-                          <span style={{ fontSize: `${1 * scale}rem` }}>{room.icon}</span>
+                          <span aria-hidden style={{ fontSize: `${1 * scale}rem` }}>{room.icon}</span>
                           <span style={{
                             fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`,
-                            color: "#403B36",
+                            color: INK,
                           }}>
                             {room.name}
                           </span>
@@ -337,7 +385,7 @@ export default function SharingPage() {
                   background: hasChanges
                     ? "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium: ember → terracotta */
                     : "#EEE9DF" /* Atrium: disabled */,
-                  color: hasChanges ? "#FCFAF5" : "#716A5E",
+                  color: hasChanges ? CREAM : MUTED,
                   cursor: isPending ? "wait" : hasChanges ? "pointer" : "not-allowed",
                   opacity: isPending ? 0.6 : 1,
                   transition: "all 0.2s ease",
@@ -372,6 +420,12 @@ export default function SharingPage() {
           outline: 0.1875rem solid #D4AF37;
           outline-offset: 0.125rem;
         }
+        @media (prefers-reduced-motion: reduce) {
+          .mp-sharing-anim,
+          .mp-sharing-ghost,
+          .mp-sharing-pill,
+          .mp-sharing-cta { transition: none !important; }
+        }
       `}</style>
     </>
   );
@@ -399,6 +453,7 @@ interface WingShareEntry {
 
 function FamilyWingSharingSection({ scale }: { scale: number }) {
   const { t: tf } = useTranslation("familySettings");
+  const { t: ts } = useTranslation("settings");
 
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<{ id: string; email: string }[]>([]);
@@ -507,7 +562,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
     fontFamily: T.font.body,
     fontSize: "0.6875rem", /* Atrium overline: the one small-caps voice */
     fontWeight: 700,
-    color: "#716A5E",
+    color: MUTED,
     letterSpacing: "0.12em",
     textTransform: "uppercase",
     display: "block",
@@ -516,20 +571,20 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
 
   return (
     <div style={{
-      background: "#FFFFFF",
+      background: CREAM,
       borderRadius: "1rem",
-      border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+      border: `0.0625rem solid ${HAIRLINE}`,
       padding: `${1.75 * scale}rem ${2 * scale}rem`,
       boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S1 + top highlight
       marginBottom: "1.5rem",
     }}>
-      {/* Toast (section-local) */}
+      {/* Toast (section-local — offset below the page-level slot to avoid collision) */}
       {toast && (
         <div className="sharing-toast" role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: "1rem", right: "1rem", zIndex: 9999,
+          position: "fixed", top: "2.625rem", right: "1rem", zIndex: 9999,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? "#56683C" /* Atrium token: sage */ : "#C05050",
-          color: "#FCFAF5", fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
+          background: toast.type === "success" ? SAGE /* Atrium token: sage */ : "#C05050",
+          color: CREAM, fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
           fontWeight: 500, boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
         }}>
           {toast.message}
@@ -538,26 +593,26 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
 
       <h3 style={{
         fontFamily: T.font.display, fontSize: `${1.1875 * scale}rem`, fontWeight: 600, lineHeight: 1.15,
-        color: "#403B36", margin: "0 0 0.375rem",
+        color: INK, margin: "0 0 0.375rem",
       }}>
         {tf("wingSharing")}
       </h3>
       <p style={{
-        fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E",
+        fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: MUTED,
         margin: "0 0 1.25rem", lineHeight: 1.4,
       }}>
         {tf("wingSharingDesc")}
       </p>
 
       {loading ? (
-        <div style={{ padding: "1rem", textAlign: "center", color: "#716A5E", fontFamily: T.font.body }}>...</div>
+        <SharingSpinner scale={scale} label={ts("loading")} />
       ) : (
         <>
           {/* Share a wing form */}
           {members.length > 0 && wingOptions.length > 0 && (
             <div style={{
               padding: "1.25rem 1.375rem",
-              background: "#FCFAF5",
+              background: CREAM,
               borderRadius: "0.875rem",
               border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
               marginBottom: "1.5rem",
@@ -575,12 +630,12 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                       padding: "0.5rem 1rem",
                       minHeight: "2.75rem",
                       borderRadius: "0.75rem",
-                      border: `0.0625rem solid ${shareWingSlug === wing.slug ? "#B85C38" /* Atrium ember */ : "#E3D6BC"}`,
+                      border: `0.0625rem solid ${shareWingSlug === wing.slug ? EMBER /* Atrium ember */ : HAIRLINE}`,
                       background: shareWingSlug === wing.slug ? "#FBF2EC" /* premixed terracotta wash */ : "#FFFFFF",
                       cursor: "pointer",
                       fontFamily: T.font.body,
                       fontSize: "0.8125rem",
-                      color: shareWingSlug === wing.slug ? "#9A4F2A" : "#716A5E",
+                      color: shareWingSlug === wing.slug ? EMBER_GLYPH : MUTED,
                       fontWeight: shareWingSlug === wing.slug ? 600 : 500,
                       transition: "all .2s ease",
                     }}
@@ -599,7 +654,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                   width: "100%", fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
                   padding: "0.75rem 1rem", borderRadius: "0.75rem",
                   border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: "#FFFFFF",
-                  color: "#403B36", outline: "none",
+                  color: INK, outline: "none",
                   marginBottom: "0.875rem",
                   minHeight: "2.75rem",
                   cursor: "pointer",
@@ -624,12 +679,12 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                       padding: "0.5rem 1rem",
                       minHeight: "2.75rem",
                       borderRadius: "0.75rem",
-                      border: `0.0625rem solid ${sharePermission === perm ? "#B85C38" /* Atrium ember */ : "#E3D6BC"}`,
+                      border: `0.0625rem solid ${sharePermission === perm ? EMBER /* Atrium ember */ : HAIRLINE}`,
                       background: sharePermission === perm ? "#FBF2EC" : "#FFFFFF",
                       cursor: "pointer",
                       fontFamily: T.font.body,
                       fontSize: "0.8125rem",
-                      color: sharePermission === perm ? "#9A4F2A" : "#716A5E",
+                      color: sharePermission === perm ? EMBER_GLYPH : MUTED,
                       fontWeight: sharePermission === perm ? 600 : 500,
                       transition: "all .2s ease",
                     }}
@@ -651,7 +706,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                   background: !shareMemberEmail || sharing
                     ? "#EEE9DF" /* Atrium: disabled */
                     : "linear-gradient(135deg, #B85C38, #9A4F2A)", /* Atrium: ember → terracotta */
-                  color: !shareMemberEmail || sharing ? "#716A5E" : "#FFF",
+                  color: !shareMemberEmail || sharing ? MUTED : "#FFF",
                   fontFamily: T.font.body,
                   fontSize: "0.9375rem",
                   fontWeight: 600,
@@ -667,13 +722,13 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
           {members.length === 0 && (
             <div style={{
               padding: "1rem 1.25rem",
-              background: "#FCFAF5",
+              background: CREAM,
               borderRadius: "0.75rem",
               border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
               marginBottom: "1.5rem",
             }}>
               <p style={{
-                fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, color: "#716A5E",
+                fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, color: MUTED,
                 margin: 0, lineHeight: 1.5,
               }}>
                 {tf("inviteToShare")}
@@ -683,7 +738,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
 
           {members.length > 0 && myShares.length === 0 && sharedWithMe.length === 0 && (
             <p style={{
-              fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E",
+              fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: MUTED,
               margin: "0 0 1rem", lineHeight: 1.5, fontStyle: "italic",
             }}>
               {tf("noWingSharesYet")}
@@ -698,7 +753,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                   <div key={share.id} role="listitem" style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "0.75rem 1rem", borderRadius: "0.75rem",
-                    background: "#FCFAF5",
+                    background: CREAM,
                     border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                     gap: "0.625rem", flexWrap: "wrap",
                   }}>
@@ -708,7 +763,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                         padding: "0.1875rem 0.625rem",
                         borderRadius: "2rem",
                         background: "rgba(154,79,42,0.11)",
-                        color: "#9A4F2A", /* Atrium terracotta glyph */
+                        color: EMBER_GLYPH, /* Atrium terracotta glyph */
                         fontFamily: T.font.body,
                         fontSize: "0.8125rem",
                         fontWeight: 600,
@@ -717,14 +772,14 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                         {wingLabel(share.wing_id)}
                       </span>
                       <span style={{
-                        fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: INK,
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
                       }}>
                         {share.shared_with_email}
                       </span>
                       <span style={{
-                        fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
-                        padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
+                        fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED,
+                        padding: "0.125rem 0.5rem", borderRadius: "2rem", // Atrium token: pill
                         background: "rgba(113,106,94,0.12)",
                         flexShrink: 0,
                       }}>
@@ -733,7 +788,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                     </div>
                     {confirmUnshareId === share.id ? (
                       <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", flexShrink: 0 }}>
-                        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" }}>
+                        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: INK }}>
                           {tf("confirmUnshareShort")}
                         </span>
                         <button
@@ -755,7 +810,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                             padding: "0.375rem 0.75rem", borderRadius: "0.375rem",
                             minHeight: "2.75rem",
                             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */ background: "#FFFFFF",
-                            color: "#716A5E", fontFamily: T.font.body, fontSize: "0.6875rem",
+                            color: MUTED, fontFamily: T.font.body, fontSize: "0.6875rem",
                             fontWeight: 500, cursor: "pointer", transition: "all .2s ease",
                           }}
                         >
@@ -771,7 +826,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                           borderRadius: "0.75rem",
                           border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                           background: "transparent",
-                          color: "#716A5E",
+                          color: MUTED,
                           fontSize: "0.8125rem",
                           cursor: "pointer",
                           display: "flex", alignItems: "center", justifyContent: "center",
@@ -805,7 +860,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                       padding: "0.1875rem 0.625rem",
                       borderRadius: "2rem",
                       background: "rgba(86,104,60,0.16)",
-                      color: "#56683C", /* Atrium sage */
+                      color: SAGE, /* Atrium sage */
                       fontFamily: T.font.body,
                       fontSize: "0.8125rem",
                       fontWeight: 600,
@@ -814,13 +869,13 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                       {wingLabel(share.wing_id)}
                     </span>
                     <span style={{
-                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: INK,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
                     }}>
                       {tf("from")} {share.owner_email}
                     </span>
                     <span style={{
-                      fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED,
                       padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
                       background: "rgba(113,106,94,0.12)",
                       flexShrink: 0,
@@ -843,39 +898,61 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
 function PasscodeSection({ scale }: { scale: number }) {
   const { t } = useTranslation("social");
   const { t: ts } = useTranslation("settings");
+  const isCompact = useIsCompact();
   const [codes, setCodes] = useState<{ id: string; passcode: string; expiresAt: string; wingId: string | null; roomId: string | null; createdAt: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [wings, setWings] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [selectedWingId, setSelectedWingId] = useState("");
   const [hours, setHours] = useState(24);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   useEffect(() => {
     (async () => {
-      const [{ getMyPasscodes }, { getMyPublishableContent }] = await Promise.all([
-        import("@/lib/social/passcode-actions"),
-        import("@/lib/social/share-actions"),
-      ]);
-      const [codeResult, content] = await Promise.all([
-        getMyPasscodes(),
-        getMyPublishableContent(),
-      ]);
-      if (codeResult.ok) setCodes(codeResult.shares);
-      setWings(content.map((w) => ({ id: w.id, name: w.name, slug: w.slug })));
-      if (content.length > 0) setSelectedWingId(content[0].id);
-      setLoading(false);
+      try {
+        const [{ getMyPasscodes }, { getMyPublishableContent }] = await Promise.all([
+          import("@/lib/social/passcode-actions"),
+          import("@/lib/social/share-actions"),
+        ]);
+        const [codeResult, content] = await Promise.all([
+          getMyPasscodes(),
+          getMyPublishableContent(),
+        ]);
+        if (codeResult.ok) setCodes(codeResult.shares);
+        setWings(content.map((w) => ({ id: w.id, name: w.name, slug: w.slug })));
+        if (content.length > 0) setSelectedWingId(content[0].id);
+      } catch {
+        setToast({ message: ts("loadError"), type: "error" });
+      } finally {
+        setLoading(false);
+      }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreate = async () => {
     if (!selectedWingId) return;
     setCreating(true);
-    const { createPasscode } = await import("@/lib/social/passcode-actions");
-    const result = await createPasscode({ wingId: selectedWingId, expiresInHours: hours });
-    if (result.ok && result.share) {
-      setCodes((prev) => [result.share!, ...prev]);
+    try {
+      const { createPasscode } = await import("@/lib/social/passcode-actions");
+      const result = await createPasscode({ wingId: selectedWingId, expiresInHours: hours });
+      if (result.ok && result.share) {
+        setCodes((prev) => [result.share!, ...prev]);
+      } else {
+        setToast({ message: t("passcodeCreateError"), type: "error" });
+      }
+    } catch {
+      setToast({ message: t("passcodeCreateError"), type: "error" });
+    } finally {
+      setCreating(false);
     }
-    setCreating(false);
   };
 
   const handleRevoke = async (id: string) => {
@@ -896,38 +973,54 @@ function PasscodeSection({ scale }: { scale: number }) {
 
   return (
     <div style={{
-      background: "#FFFFFF",
+      background: CREAM,
       borderRadius: "1rem",
-      border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+      border: `0.0625rem solid ${HAIRLINE}`,
       padding: `${1.75 * scale}rem ${2 * scale}rem`,
       boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S1 + top highlight
       marginBottom: "1.5rem",
     }}>
+      {/* Toast (section-local) */}
+      {toast && (
+        <div className="sharing-toast" role={toast.type === "success" ? "status" : "alert"} style={{
+          position: "fixed", top: "4.25rem", right: "1rem", zIndex: 9999,
+          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
+          background: toast.type === "success" ? SAGE : "#C05050",
+          color: CREAM, fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
+          fontWeight: 500, boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+        }}>
+          {toast.message}
+        </div>
+      )}
+
       <h3 style={{
         fontFamily: T.font.display, fontSize: `${1.1875 * scale}rem`, fontWeight: 600, lineHeight: 1.15,
-        color: "#403B36", margin: "0 0 0.375rem",
+        color: INK, margin: "0 0 0.375rem",
       }}>
         {t("passcodeAction")}
       </h3>
       <p style={{
-        fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E",
+        fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: MUTED,
         margin: "0 0 1.25rem", lineHeight: 1.4,
       }}>
         {t("passcodeDesc") || "Create temporary visiting codes so others can access your palace without publishing."}
       </p>
 
       {loading ? (
-        <div style={{ padding: "1rem", textAlign: "center", color: "#716A5E", fontFamily: T.font.body }}>...</div>
+        <SharingSpinner scale={scale} label={ts("loading")} />
       ) : (
         <>
-          {/* Create new code */}
+          {/* Create new code — stacks full-width on compact (iPad portrait) */}
           <div style={{
-            display: "flex", gap: "0.5rem", alignItems: "flex-end", flexWrap: "wrap",
+            display: "flex", gap: "0.5rem",
+            flexDirection: isCompact ? "column" : "row",
+            alignItems: isCompact ? "stretch" : "flex-end",
+            flexWrap: "wrap",
             marginBottom: codes.length > 0 ? "1.25rem" : 0,
           }}>
-            <div style={{ flex: 1, minWidth: "8rem" }}>
-              <label style={{ fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem` /* Atrium overline */, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E", display: "block", marginBottom: "0.25rem" }}>
-                Wing
+            <div style={{ flex: 1, minWidth: isCompact ? "auto" : "8rem" }}>
+              <label style={{ fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem` /* Atrium overline */, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: MUTED, display: "block", marginBottom: "0.25rem" }}>
+                {t("passcodeWing")}
               </label>
               <select
                 value={selectedWingId}
@@ -937,8 +1030,8 @@ function PasscodeSection({ scale }: { scale: number }) {
                   width: "100%", fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`,
                   padding: "0.5rem 0.625rem", borderRadius: "0.75rem", // Atrium: small-control radius
                   minHeight: "2.75rem",
-                  border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: "#FCFAF5",
-                  color: "#403B36", outline: "none",
+                  border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: CREAM,
+                  color: INK, outline: "none",
                 }}
               >
                 {wings.map((w) => (
@@ -947,7 +1040,7 @@ function PasscodeSection({ scale }: { scale: number }) {
               </select>
             </div>
             <div style={{ minWidth: "5rem" }}>
-              <label style={{ fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem` /* Atrium overline */, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E", display: "block", marginBottom: "0.25rem" }}>
+              <label style={{ fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem` /* Atrium overline */, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: MUTED, display: "block", marginBottom: "0.25rem" }}>
                 {t("passcodeExpiry") || "Duration"}
               </label>
               <select
@@ -958,8 +1051,8 @@ function PasscodeSection({ scale }: { scale: number }) {
                   width: "100%", fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`,
                   padding: "0.5rem 0.625rem", borderRadius: "0.75rem", // Atrium: small-control radius
                   minHeight: "2.75rem",
-                  border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: "#FCFAF5",
-                  color: "#403B36", outline: "none",
+                  border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: CREAM,
+                  color: INK, outline: "none",
                 }}
               >
                 <option value={1}>1h</option>
@@ -978,7 +1071,7 @@ function PasscodeSection({ scale }: { scale: number }) {
                 padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "none", // Atrium: small-control radius
                 minHeight: "2.75rem",
                 background: "linear-gradient(135deg, #B85C38, #9A4F2A)", // Atrium: ember → terracotta
-                color: "#FCFAF5", cursor: creating ? "wait" : "pointer",
+                color: CREAM, cursor: creating ? "wait" : "pointer",
                 opacity: creating ? 0.6 : 1, whiteSpace: "nowrap",
               }}
             >
@@ -997,20 +1090,20 @@ function PasscodeSection({ scale }: { scale: number }) {
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       padding: "0.75rem 1rem", borderRadius: "0.75rem", // Atrium: small-control radius
-                      background: "#FCFAF5", border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+                      background: CREAM, border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
                       gap: "0.75rem", flexWrap: "wrap",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
                       <code style={{
                         fontFamily: "monospace", fontSize: `${1 * scale}rem`, fontWeight: 700,
-                        color: "#9A4F2A" /* Atrium token: terracotta glyph */, letterSpacing: "0.1em",
+                        color: EMBER_GLYPH /* Atrium token: terracotta glyph */, letterSpacing: "0.1em",
                         background: "rgba(154,79,42,0.11)", padding: "0.25rem 0.625rem",
                         borderRadius: "0.375rem",
                       }}>
                         {code.passcode.toUpperCase()}
                       </code>
-                      <span style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E" }}>
+                      <span style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: MUTED }}>
                         {wing?.name || "—"} · {formatExpiry(code.expiresAt)}
                       </span>
                     </div>

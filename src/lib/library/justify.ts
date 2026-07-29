@@ -39,6 +39,9 @@ export function packJustifiedRows<T extends { id: string; ar: number }>(
   containerWidth: number,
   targetRowHeight: number,
   gap: number,
+  /** touch-target floor (px): the packed row height — and therefore each tile's
+   *  height — is never allowed below this, so tiles stay tappable on phones. */
+  minRowHeight = 0,
 ): PackedRow<T>[] {
   const rows: PackedRow<T>[] = [];
   if (containerWidth <= 0 || items.length === 0) return rows;
@@ -50,15 +53,27 @@ export function packJustifiedRows<T extends { id: string; ar: number }>(
     // natural row height if this row filled the width
     const h = (containerWidth - gap * (cur.length - 1)) / sumAR;
     if (h <= targetRowHeight) {
-      const tiles = cur.map((item) => ({ item, w: item.ar * h, h }));
-      rows.push({ tiles, height: h });
+      // Enforce a tap-target floor: if flushing to the container width would
+      // shrink tiles below the minimum, close the row at its current height
+      // (clamped to the floor) rather than packing them ever smaller.
+      const flushH = Math.max(h, minRowHeight);
+      const tiles = cur.map((item) => ({ item, w: item.ar * flushH, h: flushH }));
+      rows.push({ tiles, height: flushH });
       cur = [];
       sumAR = 0;
     }
   }
   // trailing short row: left-align at target height, never stretch (Photos behaviour)
   if (cur.length) {
-    const h = targetRowHeight;
+    let h = targetRowHeight;
+    // …but if the summed tile widths (wide/panoramic tiles) plus seams would
+    // overflow the container, solve the row height down so the row fits flush
+    // instead of spilling past the right edge.
+    const sumAR = cur.reduce((acc, item) => acc + item.ar, 0);
+    const gaps = gap * (cur.length - 1);
+    const fitH = (containerWidth - gaps) / sumAR;
+    if (sumAR * h + gaps > containerWidth && fitH > 0) h = fitH;
+    if (h < minRowHeight) h = minRowHeight; // keep the last row tappable too
     rows.push({ tiles: cur.map((item) => ({ item, w: item.ar * h, h })), height: h, last: true });
   }
   return rows;

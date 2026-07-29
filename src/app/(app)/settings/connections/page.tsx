@@ -5,9 +5,17 @@ import { useSearchParams } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact, useIsTablet } from "@/lib/hooks/useIsMobile";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { isIOS } from "@/lib/native/platform";
+import { INK, MUTED, HAIRLINE, TRAY, SAGE, CREAM, EMBER } from "@/lib/libraryTokens";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
+
+// ── Local semantic tokens ──
+// DANGER is not (yet) in libraryTokens; the audit asked to promote it there, but
+// libraryTokens.ts is out of scope for this surface, so it is named locally.
+const DANGER = "#A63D3D";
+const SUCCESS = SAGE; // success uses the canon sage
 
 // ── Provider definitions ──
 type ProviderIconKey = "photos" | "dropbox" | "cloud" | "folder" | "apple";
@@ -23,7 +31,7 @@ interface ProviderDef {
   comingSoon?: boolean;
 }
 
-function ProviderIcon({ name, color, size = 26 }: { name: ProviderIconKey; color: string; size?: number }) {
+function ProviderIcon({ name, color, size = "1.625rem" }: { name: ProviderIconKey; color: string; size?: string }) {
   const s = {
     width: size,
     height: size,
@@ -33,6 +41,7 @@ function ProviderIcon({ name, color, size = 26 }: { name: ProviderIconKey; color
     strokeWidth: 1.6,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
   };
   switch (name) {
     case "photos":
@@ -104,6 +113,15 @@ const PROVIDERS: ProviderDef[] = [
   },
 ];
 
+// Map the short provider slug used in OAuth callback error redirects
+// (?provider=google|dropbox|onedrive|box) to a PROVIDERS entry.
+function providerFromErrorSlug(slug: string | null): ProviderDef | undefined {
+  if (!slug) return undefined;
+  const alias: Record<string, string> = { google: "google_photos" };
+  const id = alias[slug] || slug;
+  return PROVIDERS.find((p) => p.id === id);
+}
+
 interface ConnectedAccount {
   id: string;
   provider: string;
@@ -114,11 +132,35 @@ interface ConnectedAccount {
 }
 
 export default function ConnectionsPage() {
-  const { t } = useTranslation("connections");
   return (
-    <Suspense fallback={<div style={{padding:"2.5rem",textAlign:"center",fontFamily:T.font.body,color:"#716A5E"}}>{t("loading")}</div>}>
+    <Suspense fallback={<ConnectionsSkeleton />}>
       <ConnectionsContent />
     </Suspense>
+  );
+}
+
+// Skeleton provider cards matching the loaded layout footprint.
+function ConnectionsSkeleton() {
+  return (
+    <div aria-hidden="true" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="conn-shimmer" style={{
+          background: CREAM,
+          borderRadius: "1rem",
+          border: `0.0625rem solid ${HAIRLINE}`,
+          padding: "1.25rem 1.5rem",
+          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+          display: "flex", alignItems: "center", gap: "1rem",
+        }}>
+          <div style={{ width: "3.25rem", height: "3.25rem", borderRadius: "0.85rem", background: TRAY, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ width: "40%", height: "1.1875rem", borderRadius: "0.375rem", background: TRAY, marginBottom: "0.5rem" }} />
+            <div style={{ width: "70%", height: "0.8125rem", borderRadius: "0.375rem", background: TRAY }} />
+          </div>
+          <div style={{ width: "6rem", height: "2.75rem", borderRadius: "0.75rem", background: TRAY, flexShrink: 0 }} />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -126,6 +168,9 @@ function ConnectionsContent() {
   const { t, locale } = useTranslation("connections");
   const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
+  const isTablet = useIsTablet();
+  const isPortrait = useIsPortrait();
   const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,6 +180,13 @@ function ConnectionsContent() {
   // Hide not-yet-shipped "coming soon" providers on iOS (Apple Guideline 2.3.1).
   const [hideComingSoon, setHideComingSoon] = useState(false);
   useEffect(() => { setHideComingSoon(isIOS()); }, []);
+  // Guard so the OAuth URL-param branch fires at most once per param value even
+  // if fetchAccounts / effect deps re-run before replaceState settles.
+  const processedParamRef = useRef<string | null>(null);
+
+  // Wider padding / full-width buttons on iPad portrait (compact but not phone).
+  const stack = isMobile || (isCompact && isPortrait);
+  const cardPadding = isMobile ? "1rem" : isTablet ? "1.25rem 1.5rem" : "1.25rem 1.5rem";
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -155,6 +207,12 @@ function ConnectionsContent() {
   useEffect(() => {
     const connected = searchParams.get("connected");
     const error = searchParams.get("error");
+    const errorProvider = searchParams.get("provider");
+
+    // Compose a stable signature so we react at most once per unique param set.
+    const signature = connected ? `c:${connected}` : error ? `e:${error}:${errorProvider ?? ""}` : null;
+    if (!signature || processedParamRef.current === signature) return;
+    processedParamRef.current = signature;
 
     if (connected) {
       const provider = PROVIDERS.find((p) => p.id === connected);
@@ -163,20 +221,30 @@ function ConnectionsContent() {
         type: "success",
       });
       fetchAccounts();
-      // Clean up URL
+      window.history.replaceState({}, "", "/settings/connections");
+    } else if (error) {
+      const provider = providerFromErrorSlug(errorProvider);
+      const providerName = provider?.name || errorProvider || "";
+      // Map known callback error codes to specific, provider-aware messages.
+      let message: string;
+      if (error === "invalid_state" || error === "auth_failed") {
+        message = providerName
+          ? t("connectionFailedProvider", { provider: providerName })
+          : t("connectionFailedGeneric");
+      } else {
+        message = t("connectionFailedGeneric");
+      }
+      setToast({ message, type: "error" });
       window.history.replaceState({}, "", "/settings/connections");
     }
-    if (error) {
-      setToast({ message: t("connectionFailedGeneric"), type: "error" });
-      window.history.replaceState({}, "", "/settings/connections");
-    }
-  }, [searchParams, fetchAccounts]);
+    // t/locale intentionally read so a locale switch re-derives the message.
+  }, [searchParams, fetchAccounts, t, locale]);
 
   // Auto-dismiss toast
   useEffect(() => {
     if (toast) {
-      const t = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
     }
   }, [toast]);
 
@@ -200,28 +268,38 @@ function ConnectionsContent() {
 
   const connectedMap = new Map(accounts.map((a) => [a.provider, a]));
 
+  // On iOS we suppress Connect CTAs and not-yet-shipped providers, but STILL show
+  // any account the user connected on web so they can view + disconnect it.
+  const visibleProviders = hideComingSoon
+    ? PROVIDERS.filter((p) => connectedMap.has(p.id))
+    : PROVIDERS;
+  const showNativeNote = hideComingSoon && visibleProviders.length === 0;
+
   return (
     <div className="conn-page">
       {/* Toast */}
       {toast && (
         <div role={toast.type === "success" ? "status" : "alert"} className="conn-fade" style={{
-          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
+          position: "fixed", top: "1.5rem", zIndex: 100,
+          ...(isMobile
+            ? { left: "1rem", right: "1rem" }
+            : { right: "1.5rem", maxWidth: "calc(100% - 3rem)" }),
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? "#56683C" : "#A63D3D", // Atrium token: sage
+          background: toast.type === "success" ? SUCCESS : DANGER,
           color: "#FFF",
           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-          boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
+          boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
           animation: "fadeIn .2s ease",
           display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
-          <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
+          <span aria-hidden="true">{toast.type === "success" ? "✓" : "⚠"}</span>
           {toast.message}
           <button onClick={() => setToast(null)} aria-label={tc("close")} style={{
             background: "none", border: "none", color: "rgba(255,255,255,0.75)",
-            fontSize: "0.8125rem", cursor: "pointer", marginLeft: "0.5rem",
+            fontSize: "0.8125rem", cursor: "pointer", marginLeft: "auto",
             minWidth: "2.75rem", minHeight: "2.75rem",
             display: "flex", alignItems: "center", justifyContent: "center",
-          }}>{"\u2715"}</button>
+          }}>{"✕"}</button>
         </div>
       )}
 
@@ -234,52 +312,66 @@ function ConnectionsContent() {
       />
 
       {/* Section overline — Photo & file sources */}
-      {!loading && !hideComingSoon && (
-        <SectionOverline label={t("sourcesOverline") !== "sourcesOverline" ? t("sourcesOverline") : "Photo & file sources"} />
+      {!loading && !showNativeNote && (
+        <SectionOverline label={t("sourcesOverline")} />
       )}
 
       {/* Provider cards */}
       {loading ? (
+        <ConnectionsSkeleton />
+      ) : showNativeNote ? (
+        // On iOS the cloud OAuth connect flows are raw web redirects — with no
+        // connected accounts to show, present a warm note card (4.2 / 2.3.1).
         <div style={{
-          textAlign: "center", padding: "3rem",
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E",
+          padding: "1.5rem 1.25rem", borderRadius: "1rem",
+          background: TRAY,
+          border: `0.0625rem solid ${HAIRLINE}`,
+          display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "0.875rem",
         }}>
-          {t("loading")}
-        </div>
-      ) : hideComingSoon ? (
-        // On iOS the cloud OAuth connect flows are raw web redirects — hide the grid
-        // and show a neutral note instead of dead/heavyweight web surfaces (4.2 / 2.3.1).
-        <div style={{ textAlign: "center", padding: "2rem", fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", lineHeight: 1.4 }}>
-          {t("cloudUnavailableNative") !== "cloudUnavailableNative" ? t("cloudUnavailableNative") : "Connecting external cloud photo services isn’t available in the app. You can still add photos and videos directly from your device."}
+          <span aria-hidden="true" style={{
+            width: "3rem", height: "3rem", borderRadius: "50%", flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "rgba(184,92,56,0.09)", color: EMBER,
+            boxShadow: "inset 0 0.0625rem 0 rgba(255,255,255,0.35)",
+          }}>
+            <ProviderIcon name="cloud" color={EMBER} size="1.375rem" />
+          </span>
+          <p style={{
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED,
+            margin: 0, lineHeight: 1.4, maxWidth: "28rem",
+          }}>
+            {t("cloudUnavailableNative")}
+          </p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {PROVIDERS.map((provider) => {
+          {visibleProviders.map((provider) => {
             const account = connectedMap.get(provider.id);
             const isConnected = !!account;
             const isComingSoon = !!provider.comingSoon;
 
             return (
               <div key={provider.id} style={{
-                background: "#FFFFFF",
+                background: CREAM,
                 borderRadius: "1rem",
-                border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
-                padding: isMobile ? "1rem" : "1.25rem 1.5rem",
-                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S1 + top highlight
+                border: `0.0625rem solid ${HAIRLINE}`,
+                padding: cardPadding,
+                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
                 transition: "all .2s ease",
                 ...(isComingSoon ? { opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" as const } : {}),
               }}>
-                <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", gap: isMobile ? "0.75rem" : "1rem", flexWrap: isMobile ? "wrap" : "nowrap" }}>
+                <div style={{ display: "flex", alignItems: stack ? "flex-start" : "center", gap: stack ? "0.75rem" : "1rem", flexWrap: stack ? "wrap" : "nowrap" }}>
                   {/* Icon */}
                   <div style={{
                     width: "3.25rem", height: "3.25rem", borderRadius: "0.85rem", flexShrink: 0,
+                    // Warm/desaturate the medallion toward TRAY; brand colour stays on the glyph.
                     background: isConnected
-                      ? `${provider.accentColor}12`
-                      : "#F6EBE3", // Atrium token: recessed tray
+                      ? `${provider.accentColor}0F`
+                      : TRAY,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     border: isConnected ? `0.125rem solid ${provider.accentColor}25` : "none",
                   }}>
-                    <ProviderIcon name={provider.iconKey} color={isConnected ? provider.accentColor : "#716A5E"} size={26} />
+                    <ProviderIcon name={provider.iconKey} color={isConnected ? provider.accentColor : MUTED} size="1.625rem" />
                   </div>
 
                   {/* Info */}
@@ -287,7 +379,7 @@ function ConnectionsContent() {
                     <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "0.25rem" }}>
                       <h3 style={{
                         fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-                        color: "#403B36", margin: 0, // Atrium token: titleM ink
+                        color: INK, margin: 0,
                       }}>
                         {provider.name}
                       </h3>
@@ -295,10 +387,10 @@ function ConnectionsContent() {
                         <span style={{
                           display: "inline-flex", alignItems: "center", gap: "0.25rem",
                           padding: "0.1875rem 0.625rem", borderRadius: "2rem",
-                          background: "rgba(86,104,60,0.16)", color: "#56683C", // Atrium token: sage
+                          background: "rgba(86,104,60,0.16)", color: SAGE,
                           fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                         }}>
-                          <span aria-hidden="true" style={{ fontSize: "0.625rem" }}>{"\u2713"}</span>
+                          <span aria-hidden="true" style={{ fontSize: "0.625rem" }}>{"✓"}</span>
                           {t("connected")}
                         </span>
                       )}
@@ -306,8 +398,8 @@ function ConnectionsContent() {
                         <span style={{
                           display: "inline-flex", alignItems: "center",
                           padding: "0.1875rem 0.625rem", borderRadius: "2rem",
-                          background: "#F6EBE3", // Atrium token: recessed tray
-                          color: "#716A5E",
+                          background: TRAY,
+                          color: MUTED,
                           fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
                           fontStyle: "italic",
                         }}>
@@ -317,7 +409,7 @@ function ConnectionsContent() {
                     </div>
 
                     <p style={{
-                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
                       margin: 0, lineHeight: 1.4,
                     }}>
                       {t(provider.descKey)}
@@ -326,8 +418,8 @@ function ConnectionsContent() {
                     {/* Connection details */}
                     {isConnected && account && (
                       <div style={{
-                        display: "flex", gap: isMobile ? "0.5rem" : "1rem", marginTop: "0.5rem",
-                        fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium token: meta
+                        display: "flex", gap: stack ? "0.5rem" : "1rem", marginTop: "0.5rem",
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
                         flexWrap: "wrap",
                       }}>
                         {account.provider_email && (
@@ -342,18 +434,19 @@ function ConnectionsContent() {
                   </div>
 
                   {/* Action button */}
-                  <div style={{ flexShrink: 0, ...(isMobile ? { width: "100%" } : {}) }}>
+                  <div style={{ flexShrink: 0, ...(stack ? { width: "100%" } : {}) }}>
                     {isConnected ? (
                       <button
                         onClick={() => setConfirmDisconnect(provider.id)}
                         disabled={disconnecting === provider.id}
                         className="conn-danger"
                         style={{
+                          width: stack ? "100%" : undefined,
                           padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-                          border: `0.0625rem solid #A63D3D33`,
-                          background: "#A63D3D08",
+                          border: `0.0625rem solid ${DANGER}33`,
+                          background: `${DANGER}08`,
                           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-                          color: "#A63D3D", cursor: "pointer",
+                          color: DANGER, cursor: "pointer",
                           opacity: disconnecting === provider.id ? 0.5 : 1,
                           transition: "all .2s ease", minHeight: "2.75rem",
                         }}
@@ -361,14 +454,17 @@ function ConnectionsContent() {
                         {disconnecting === provider.id ? t("disconnecting") : t("disconnect")}
                       </button>
                     ) : (
+                      // Connect CTA is suppressed entirely on iOS (hideComingSoon):
+                      // visibleProviders only contains already-connected accounts there.
                       <a
                         href={provider.connectUrl}
                         className="conn-primary"
                         style={{
                           display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: stack ? "100%" : undefined,
                           padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
                           border: "none",
-                          background: "linear-gradient(135deg, #B85C38, #9A4F2A)", // Atrium token: ember → terracotta
+                          background: "linear-gradient(135deg, #B85C38, #9A4F2A)",
                           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                           color: "#FFF", cursor: "pointer",
                           textDecoration: "none",
@@ -394,7 +490,7 @@ function ConnectionsContent() {
         border: "0.0625rem solid #E7D9C4", // Atrium token: terracotta-zone hairline
       }}>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
           margin: 0, lineHeight: 1.4,
         }}>
           {t("privacyNote")}
@@ -404,13 +500,13 @@ function ConnectionsContent() {
       {/* Apple Photos note */}
       <div style={{
         marginTop: "1rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
-        background: "#F6EBE3", // Atrium token: recessed tray
-        border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+        background: TRAY,
+        border: `0.0625rem solid ${HAIRLINE}`,
         display: "flex", alignItems: "center", gap: "0.875rem",
       }}>
-        <ProviderIcon name="apple" color={"#716A5E"} size={22} />
+        <ProviderIcon name="apple" color={MUTED} size="1.375rem" />
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED,
           margin: 0, lineHeight: 1.4,
         }}>
           {t("applePhotosNote")}
@@ -434,7 +530,9 @@ function ConnectionsContent() {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
-        @media (prefers-reduced-motion: reduce) { .conn-fade { animation: none !important; } .conn-page * { transition: none !important; } }
+        @keyframes connShimmer { 0% { opacity: 0.55; } 50% { opacity: 0.9; } 100% { opacity: 0.55; } }
+        .conn-shimmer { animation: connShimmer 1.4s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .conn-fade { animation: none !important; } .conn-shimmer { animation: none !important; } .conn-page * { transition: none !important; } }
         @media (hover: hover) {
           .conn-primary:hover { box-shadow: 0 0.25rem 1rem rgba(64,59,54,0.14); }
           .conn-secondary:hover { background: rgba(154,79,42,0.07) !important; }
@@ -506,20 +604,20 @@ function ConfirmModal({
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="conn-fade" style={{
-        background: "#FCFAF5", borderRadius: "1rem", // Atrium token: cream
+        background: CREAM, borderRadius: "1rem",
         padding: "1.75rem 2rem", maxWidth: "26rem", width: "90%",
-        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
-        border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+        border: `0.0625rem solid ${HAIRLINE}`,
         animation: "fadeIn .2s ease",
       }}>
         <h4 style={{
           fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
-          color: "#403B36", margin: "0 0 0.75rem", lineHeight: 1.15, // Atrium token: titleM ink
+          color: INK, margin: "0 0 0.75rem", lineHeight: 1.15,
         }}>
           {title}
         </h4>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E",
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED,
           margin: "0 0 1.5rem", lineHeight: 1.4,
         }}>
           {body}
@@ -527,19 +625,19 @@ function ConfirmModal({
         <div style={{ display: "flex", gap: "0.625rem", justifyContent: "flex-end" }}>
           <button onClick={onCancel} className="conn-secondary" style={{
             padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-            border: "0.0625rem solid #E3D6BC", background: "transparent", // Atrium token: hairline
+            border: `0.0625rem solid ${HAIRLINE}`, background: "transparent",
             fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-            color: "#716A5E", cursor: "pointer", transition: "all .2s ease",
+            color: MUTED, cursor: "pointer", transition: "all .2s ease",
             minHeight: "2.75rem",
           }}>
             {cancelLabel}
           </button>
           <button ref={confirmBtnRef} onClick={onConfirm} className="conn-danger" style={{
             padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-            border: "0.0625rem solid #A63D3D33",
-            background: "#A63D3D10",
+            border: `0.0625rem solid ${DANGER}33`,
+            background: `${DANGER}10`,
             fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-            color: "#A63D3D", cursor: "pointer", transition: "all .2s ease",
+            color: DANGER, cursor: "pointer", transition: "all .2s ease",
             minHeight: "2.75rem",
           }}>
             {confirmLabel}

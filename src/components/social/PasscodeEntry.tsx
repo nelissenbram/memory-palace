@@ -53,7 +53,7 @@ export default function PasscodeEntry() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: `linear-gradient(160deg, ${T.color.linen}, ${T.color.warmStone})`,
+        background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
         padding: "1rem",
       }}
     >
@@ -70,7 +70,7 @@ export default function PasscodeEntry() {
             height="48"
             viewBox="0 0 24 24"
             fill="none"
-            stroke={T.color.gold}
+            stroke={T.color.ember}
             strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -104,7 +104,7 @@ export default function PasscodeEntry() {
 
         {validatedShare ? (
           /* ── Valid passcode result ── */
-          <div>
+          <div role="status" aria-live="polite">
             <div
               style={{
                 background: `${T.color.success}10`,
@@ -176,7 +176,7 @@ export default function PasscodeEntry() {
                 padding: "0.875rem",
                 borderRadius: "0.625rem",
                 border: "none",
-                background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                 color: T.color.cream,
                 cursor: "pointer",
               }}
@@ -196,6 +196,11 @@ export default function PasscodeEntry() {
               maxLength={20}
               autoComplete="off"
               autoCapitalize="characters"
+              enterKeyHint="go"
+              spellCheck={false}
+              aria-label={t("passcodeEntryTitle")}
+              aria-invalid={!!error}
+              aria-describedby={error ? "passcode-error" : undefined}
               style={{
                 width: "100%",
                 fontFamily: "monospace",
@@ -222,6 +227,9 @@ export default function PasscodeEntry() {
 
             {error && (
               <p
+                id="passcode-error"
+                role="alert"
+                aria-live="assertive"
                 style={{
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
@@ -245,7 +253,7 @@ export default function PasscodeEntry() {
                 padding: "0.875rem",
                 borderRadius: "0.625rem",
                 border: "none",
-                background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                 color: T.color.cream,
                 cursor: isPending ? "wait" : "pointer",
                 opacity: isPending || !code.trim() ? 0.6 : 1,
@@ -263,6 +271,11 @@ export default function PasscodeEntry() {
           <a
             href="/"
             style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: T.touch,
+              padding: "0.5rem 0.75rem",
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
               color: T.color.walnut,

@@ -33,6 +33,15 @@ export async function signUp(formData: FormData) {
     return { error: t("passwordTooShort") };
   }
 
+  // Enforce the age attestation server-side (the client checkbox merely gates
+  // the button). Reject when the confirmation is absent/false so the
+  // attestation cannot be bypassed by scripting the form. Uses the generic
+  // localized message — this path is only reachable by a bypassed client, and a
+  // dedicated key would require adding to server-errors.ts (out of scope here).
+  if (formData.get("ageConfirmed") !== "true") {
+    return { error: t("somethingWentWrong") };
+  }
+
   const displayName = (formData.get("displayName") as string) || "";
   const redirectTo = formData.get("redirect") as string | null;
 
@@ -86,7 +95,13 @@ export async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: error.message };
+    // Never hand a raw, unlocalized, provider-worded Supabase string to the UI.
+    // Collapse every sign-in failure (bad credentials, unconfirmed email,
+    // rate-limit, etc.) to the generic localized message so the copy stays in
+    // the user's language and does not leak provider internals. (Granular
+    // per-code copy would need new localized keys in server-errors.ts.)
+    console.error("[auth] signIn error:", (error as { code?: string }).code ?? error.status, error.message);
+    return { error: t("somethingWentWrong") };
   }
 
   // Check if MFA is required (AAL1 achieved but AAL2 needed)

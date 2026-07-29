@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useTransition } from "react";
+import React, { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -24,6 +24,11 @@ import {
   SHADOW,
   HOVER_SHADOW,
   TOP_HIGHLIGHT,
+  CARD_BG,
+  CARD_BORDER,
+  INK_DEEP,
+  INPUT_SHADOW,
+  INPUT_SHADOW_FOCUS,
 } from "@/lib/libraryTokens";
 
 /* ── Types ─────────────────────────────────────────── */
@@ -45,8 +50,6 @@ type RailFilter = "featured" | "new" | "following" | null;
 /* ── Constants ─────────────────────────────────────── */
 
 const EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
-const CARD_BG = "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)";
-const CARD_BORDER = "#E7D9C4";
 const EMBER_WASH = "rgba(154,79,42,0.07)";
 const MOBILE_CARD_CAP = 8;
 
@@ -63,6 +66,13 @@ const srOnly: React.CSSProperties = {
 };
 
 /* ── Helpers ───────────────────────────────────────── */
+
+/** Humanise an untranslated DB slug: underscores→spaces, title-case each word. */
+function formatSlug(slug: string): string {
+  return slug
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 function timeAgo(dateStr: string | null | undefined, locale: string): string {
   if (!dateStr) return "";
@@ -110,6 +120,14 @@ export default function ExplorePageClient({
   const searchSeq = useRef(0);
   const [searchFocused, setSearchFocused] = useState(false);
 
+  // Cancel any pending debounce + in-flight search response on unmount.
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      searchSeq.current++;
+    };
+  }, []);
+
   const handleSearch = (value: string) => {
     setQuery(value);
     setSearchError(false);
@@ -141,6 +159,7 @@ export default function ExplorePageClient({
     setQuery("");
     setSearchResults(null);
     setSearchError(false);
+    setShowAll(false);
   };
 
   // Navigate to app modes via full page navigation (not soft nav)
@@ -245,7 +264,7 @@ export default function ExplorePageClient({
         >
           <Link
             href="/"
-            aria-label="The Memory Palace"
+            aria-label={t("exploreHomeLink")}
             className="explore-link"
             style={{ textDecoration: "none", display: "flex", alignItems: "center", minHeight: "2.75rem" }}
           >
@@ -278,8 +297,8 @@ export default function ExplorePageClient({
                 minHeight: "2.75rem",
                 padding: "0 1.25rem",
                 borderRadius: "2rem",
-                background: "linear-gradient(165deg, #403B36, #2E2A26)",
-                border: `0.0625rem solid ${T.color.goldLight}`,
+                background: `linear-gradient(165deg, ${INK}, ${INK_DEEP})`,
+                border: `0.0625rem solid ${HAIRLINE}`,
                 color: CREAM,
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
@@ -321,24 +340,22 @@ export default function ExplorePageClient({
 
         {/* ── Search ──────────────────────────────────────── */}
         <div role="search" data-nudge="explore_search" style={{ maxWidth: "32rem", margin: "0 auto 1.5rem" }}>
-          <div style={{
+          <div className="explore-search-field" style={{
             position: "relative",
             borderRadius: "0.875rem",
             border: `0.0625rem solid ${searchFocused ? EMBER : HAIRLINE}`,
             background: CREAM,
-            boxShadow: searchFocused
-              ? "0 0.125rem 0.5rem rgba(64,59,54,0.08)"
-              : "0 0.0625rem 0.25rem rgba(64,59,54,0.05)",
+            boxShadow: searchFocused ? INPUT_SHADOW_FOCUS : INPUT_SHADOW,
             transition: `border-color 0.3s ${EASE}, box-shadow 0.3s ${EASE}`,
             display: "flex", alignItems: "center", gap: "0.75rem",
             padding: "0 0.5rem 0 1rem",
           }}>
             {isPending ? (
-              <svg className="explore-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={EMBER} strokeWidth="2" strokeLinecap="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+              <svg className="explore-spin" width="1.125rem" height="1.125rem" viewBox="0 0 24 24" fill="none" stroke={EMBER} strokeWidth="2" strokeLinecap="round" aria-hidden="true" style={{ flexShrink: 0 }}>
                 <path d="M21 12a9 9 0 1 1-6.22-8.56" />
               </svg>
             ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={searchFocused ? EMBER : MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, transition: "stroke 0.3s" }}>
+              <svg width="1.125rem" height="1.125rem" viewBox="0 0 24 24" fill="none" stroke={searchFocused ? EMBER : MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0, transition: "stroke 0.3s" }}>
                 <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
               </svg>
             )}
@@ -370,7 +387,7 @@ export default function ExplorePageClient({
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                <svg width="1rem" height="1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             )}
           </div>
@@ -404,7 +421,7 @@ export default function ExplorePageClient({
                 display: "inline-flex", alignItems: "center", gap: "0.5rem",
                 fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                 minHeight: "2.75rem", padding: "0 1.25rem", borderRadius: "2rem",
-                border: `0.0625rem solid ${T.color.warmStone}`,
+                border: `0.0625rem solid ${HAIRLINE}`,
                 background: "transparent",
                 color: MUTED, cursor: "pointer",
               }}
@@ -419,7 +436,7 @@ export default function ExplorePageClient({
           <section aria-busy={isPending}>
             <LaneHeader
               badge={
-                <span style={{
+                <span aria-hidden="true" style={{
                   fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
                   fontVariantNumeric: "tabular-nums", color: EMBER_GLYPH,
                   background: EMBER_WASH, padding: "0.125rem 0.5rem", borderRadius: "1rem",
@@ -462,7 +479,7 @@ export default function ExplorePageClient({
                       minHeight: "2.75rem", padding: "0 1.25rem",
                       borderRadius: "2rem", cursor: "pointer",
                       background: "transparent",
-                      border: `0.0625rem solid ${active ? EMBER : T.color.warmStone}`,
+                      border: `0.0625rem solid ${active ? EMBER : HAIRLINE}`,
                       color: active ? EMBER : MUTED,
                     }}
                   >
@@ -495,7 +512,7 @@ export default function ExplorePageClient({
                         style={{
                           fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                           minHeight: "2.75rem", padding: "0 1.5rem", borderRadius: "2rem",
-                          border: `0.0625rem solid ${T.color.warmStone}`,
+                          border: `0.0625rem solid ${HAIRLINE}`,
                           background: "transparent", color: MUTED, cursor: "pointer",
                         }}
                       >
@@ -506,6 +523,10 @@ export default function ExplorePageClient({
                 </>
               ) : rail === "following" ? (
                 <EmptyState text={t("exploreFollowEmpty")} />
+              ) : rail === "featured" ? (
+                <EmptyState text={t("exploreFeaturedEmpty")} />
+              ) : rail === "new" ? (
+                <EmptyState text={t("exploreNewEmpty")} />
               ) : (
                 <div style={{ textAlign: "center" }}>
                   <EmptyState
@@ -567,6 +588,7 @@ export default function ExplorePageClient({
         .explore-card:focus-visible, .explore-pill:focus-visible, .explore-quiet:focus-visible,
         .explore-icon-btn:focus-visible, .explore-keystone:focus-visible, .explore-link:focus-visible,
         .explore-cta:focus-visible { outline: 0.1875rem solid ${GOLD}; outline-offset: 0.1875rem; }
+        .explore-search-field:focus-within { outline: 0.1875rem solid ${GOLD}; outline-offset: 0.1875rem; }
         @media (prefers-reduced-motion: no-preference) {
           .explore-board { animation: explore-rise 0.5s ease both; }
           .explore-spin { animation: explore-spin 0.8s linear infinite; }
@@ -650,7 +672,7 @@ function PalaceCard({
 
   const categoryKey = palace.category ? `category_${palace.category}` : null;
   const categoryLabel = categoryKey
-    ? (t(categoryKey) === categoryKey ? palace.category : t(categoryKey))
+    ? (t(categoryKey) === categoryKey ? formatSlug(palace.category as string) : t(categoryKey))
     : null;
   const meta = categoryLabel
     ? categoryLabel
@@ -693,7 +715,7 @@ function PalaceCard({
           title={t("featured")}
           style={{ position: "absolute", top: "0.75rem", right: "0.875rem", display: "inline-flex" }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill={GOLD} stroke={GOLD} strokeWidth="1" strokeLinejoin="round" aria-hidden="true">
+          <svg width="1rem" height="1rem" viewBox="0 0 24 24" fill={GOLD} stroke={GOLD} strokeWidth="1" strokeLinejoin="round" aria-hidden="true">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
         </span>
@@ -811,7 +833,7 @@ function EmptyState({ text, hint }: { text: string; hint?: string }) {
         background: TRAY,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.5" aria-hidden="true">
+        <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.5" aria-hidden="true">
           <circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
         </svg>
       </div>

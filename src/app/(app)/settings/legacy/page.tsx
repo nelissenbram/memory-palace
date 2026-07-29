@@ -182,6 +182,18 @@ export default function LegacyPage() {
   const [showOnboarding, setShowOnboarding] = useState(true);
   const dirtyRef = useRef(false);
   const [pendingTab, setPendingTab] = useState<"contacts" | "messages" | "settings" | null>(null);
+  // Set when the active section was changed via keyboard arrow nav, so focus
+  // follows the tab that actually committed (not one a dirty-guard modal blocked).
+  const arrowNavRef = useRef(false);
+
+  // Move focus only after activeSection commits (avoids acting on stale state
+  // when a dirty-changes modal defers or cancels the switch).
+  useEffect(() => {
+    if (arrowNavRef.current) {
+      arrowNavRef.current = false;
+      document.getElementById(`tab-${activeSection}`)?.focus();
+    }
+  }, [activeSection]);
 
   const showToast = useCallback((message: string, type: "success" | "error" | "warning") => {
     setToast({ message, type });
@@ -369,7 +381,7 @@ export default function LegacyPage() {
             setActiveSection(pendingTab);
             setPendingTab(null);
           }}
-          onCancel={() => setPendingTab(null)}
+          onCancel={() => { arrowNavRef.current = false; setPendingTab(null); }}
         />
       )}
 
@@ -380,13 +392,13 @@ export default function LegacyPage() {
         if (e.key === "ArrowRight") {
           e.preventDefault();
           const next = tabs[(idx + 1) % tabs.length];
+          arrowNavRef.current = true;
           handleTabSwitch(next);
-          document.getElementById(`tab-${next}`)?.focus();
         } else if (e.key === "ArrowLeft") {
           e.preventDefault();
           const prev = tabs[(idx - 1 + tabs.length) % tabs.length];
+          arrowNavRef.current = true;
           handleTabSwitch(prev);
-          document.getElementById(`tab-${prev}`)?.focus();
         }
       }} style={{
         display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.5rem",
@@ -416,8 +428,7 @@ export default function LegacyPage() {
               display: "flex", alignItems: "center", gap: "0.5rem",
             }}
           >
-            <span className="legacy-tab-full">{tab.label}</span>
-            <span className="legacy-tab-short">{tab.shortLabel}</span>
+            <span>{isMobile ? tab.shortLabel : tab.label}</span>
             {tab.count !== null && (
               <span style={{
                 background: activeSection === tab.key ? "#B85C38" : "#E3D6BC", // Atrium ember / hairline
@@ -468,11 +479,6 @@ export default function LegacyPage() {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
-        .legacy-tab-short { display: none; }
-        @media (max-width: 600px) {
-          .legacy-tab-full { display: none; }
-          .legacy-tab-short { display: inline; }
-        }
         .legacy-focus-ring:focus-visible {
           outline: 0.1875rem solid #D4AF37 !important;
           outline-offset: 0.1875rem;
@@ -480,7 +486,6 @@ export default function LegacyPage() {
         @media (prefers-reduced-motion: reduce) {
           .legacy-focus-ring, [role=dialog] > div { animation: none !important; transition: none !important; }
         }
-        ${settingsFocusStyle}
       `}</style>
     </div>
   );
@@ -604,7 +609,14 @@ function ContactsSection({
       if (result.error) {
         showToast(result.error, "error");
       } else if (result.contact) {
-        setContacts((prev) => [...prev, result.contact!]);
+        // createLegacyContact upserts on (user_id, contact_email): re-adding an
+        // existing email UPDATES the row rather than inserting. Dedupe by id so
+        // the list never shows two cards for one DB row.
+        setContacts((prev) =>
+          prev.some((c) => c.id === result.contact!.id)
+            ? prev.map((c) => (c.id === result.contact!.id ? result.contact! : c))
+            : [...prev, result.contact!]
+        );
         showToast(t("contactAdded"), "success");
         resetForm();
       }
@@ -992,7 +1004,7 @@ function ContactsSection({
             <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.375rem" }}>
               <button onClick={handleSave} disabled={saving} style={{
                 ...primaryBtnStyle,
-                ...(saving ? { background: "#EEE9DF", color: "#716A5E", cursor: "not-allowed" } : {}), // Atrium disabled
+                ...(saving ? { background: DISABLED_BTN.fill, color: DISABLED_BTN.text, cursor: "not-allowed" } : {}),
               }}>
                 {saving ? tc("saving") : editingId ? tc("save") : t("addContact")}
               </button>
@@ -1075,10 +1087,9 @@ function MessagesSection({
       showToast(t("invalidEmail"), "error");
       return;
     }
-    // Empty body warning (#11)
-    if (!body.trim()) {
-      showToast(t("emptyBodyWarning"), "warning");
-    }
+    // An empty body is allowed (some users want to send only a subject line).
+    // The prior warning toast here was immediately overwritten by the success
+    // toast, so it never registered — dropped rather than left misleading.
     setSaving(true);
 
     if (editingId) {
@@ -1207,8 +1218,9 @@ function MessagesSection({
                   </div>
                   {m.message_body && (
                     <p style={{
-                      fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted, full opacity
-                      margin: "0.625rem 0 0", lineHeight: 1.6,
+                      fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
+                      margin: "0.625rem 0 0", lineHeight: 1.6, fontStyle: "italic",
+                      paddingLeft: "0.75rem", borderLeft: "0.125rem solid #E3D6BC", // Atrium hairline left-rule = excerpt
                       maxHeight: "5rem", overflow: "hidden",
                     }}>
                       {m.message_body.slice(0, 200)}{m.message_body.length > 200 ? "..." : ""}
@@ -1345,7 +1357,6 @@ function MessagesSection({
                   resize: "vertical",
                   minHeight: "12.5rem",
                   lineHeight: 1.7,
-                  fontSize: "0.9375rem",
                   ...(saving ? { pointerEvents: "none" as const, opacity: 0.6 } : {}),
                 }}
               />
@@ -1403,7 +1414,7 @@ function MessagesSection({
             <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.375rem" }}>
               <button onClick={handleSave} disabled={saving} style={{
                 ...primaryBtnStyle,
-                ...(saving ? { background: "#EEE9DF", color: "#716A5E", cursor: "not-allowed" } : {}), // Atrium disabled
+                ...(saving ? { background: DISABLED_BTN.fill, color: DISABLED_BTN.text, cursor: "not-allowed" } : {}),
               }}>
                 {saving ? tc("saving") : editingId ? tc("save") : t("saveMessage")}
               </button>
@@ -1484,16 +1495,19 @@ function SettingsSection({
         cancelLabel={t("modalCancel")}
         onConfirm={async () => {
           setShowRetryModal(false);
-          const { retryLegacyDelivery } = await import("@/lib/auth/legacy-actions");
+          const { retryLegacyDelivery, fetchLegacySettings } = await import("@/lib/auth/legacy-actions");
           setSaving(true);
           const result = await retryLegacyDelivery();
-          setSaving(false);
           if (result.success) {
+            // Refresh settings in place (status may flip to transferred) rather
+            // than a full window.location.reload() that would discard unsaved edits.
+            const fresh = await fetchLegacySettings();
+            if (fresh) setSettings(fresh);
             showToast(t("retrySuccess", { count: String(result.sent || 0) }), "success");
-            window.location.reload();
           } else {
             showToast(result.error || t("retryFailed"), "error");
           }
+          setSaving(false);
         }}
         onCancel={() => setShowRetryModal(false)}
       />
@@ -1618,12 +1632,16 @@ function SettingsSection({
             fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
             margin: 0, lineHeight: 1.5,
           }}>
-            {t("statusLabel")}: <strong>{settings?.status === "triggered" ? t("statusTriggered") : settings?.status === "transferred" ? t("statusTransferred") : settings?.status === "partially_delivered" ? t("statusPartial") : t("statusActive")}</strong>
-            {(!settings || settings.status === "active") && (
+            {t("statusLabel")}: <strong>{!settings ? t("statusNotConfigured") : settings.status === "triggered" ? t("statusTriggered") : settings.status === "transferred" ? t("statusTransferred") : settings.status === "partially_delivered" ? t("statusPartial") : t("statusActive")}</strong>
+            {!settings ? (
+              <span style={{ color: "#716A5E" /* Atrium muted */ }}>
+                {t("statusNotConfiguredHint")}
+              </span>
+            ) : settings.status === "active" ? (
               <span style={{ color: "#716A5E" /* Atrium muted */ }}>
                 {t("statusSafe")}
               </span>
-            )}
+            ) : null}
           </p>
           {settings?.status === "partially_delivered" && (
             <button
@@ -1647,7 +1665,7 @@ function SettingsSection({
             disabled={!hasChanges || saving}
             style={{
               ...primaryBtnStyle,
-              ...(!hasChanges || saving ? { background: "#EEE9DF", color: "#716A5E" } : {}), // Atrium disabled
+              ...(!hasChanges || saving ? { background: DISABLED_BTN.fill, color: DISABLED_BTN.text } : {}),
               cursor: !hasChanges || saving ? "default" : "pointer",
             }}
           >
@@ -1701,20 +1719,16 @@ const inputStyle: React.CSSProperties = {
   border: "0.0625rem solid #E3D6BC", // Atrium hairline
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: "0.9375rem",
+  fontSize: "1rem", // >=16px so iOS Safari/WKWebView never auto-zooms on focus
   color: "#403B36", // Atrium ink
   outline: "none",
   boxSizing: "border-box" as const,
   transition: "border-color .2s, box-shadow .2s",
 };
 
-/* ── Global focus-visible ring for settings inputs ── */
-const settingsFocusStyle = `
-  .mp-settings-input:focus-visible {
-    outline: 0.1875rem solid #D4AF37; /* Atrium gold focus ring */
-    outline-offset: 0.1875rem;
-  }
-`;
+/** Shared disabled-button tokens (Atrium): fill + muted text for any button
+ *  in a saving / no-changes state, so the two values live in one place. */
+const DISABLED_BTN = { fill: "#EEE9DF", text: "#716A5E" } as const;
 
 const primaryBtnStyle: React.CSSProperties = {
   padding: "0.75rem 1.5rem",

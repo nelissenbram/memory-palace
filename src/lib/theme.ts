@@ -9,7 +9,7 @@ export const T = {
     charcoal: "#1F1B1A",
     cream: "#FCFAF5",
     white: "#FCFAF5",
-    muted: "#857B70",
+    muted: "#716A5E",
     gold: "#D4AF37",
     goldLight: "#C9A84C",
     goldDark: "#B8922E",
@@ -23,6 +23,16 @@ export const T = {
     ivory: "#F9F5EE",
     lineFaint: "#EBE3D4",
     inkSoft: "#403B36",
+    hairline: "#E3D6BC",   // canon card border (libraryTokens HAIRLINE)
+    ink: "#403B36",        // canon body ink (libraryTokens INK)
+    inkMuted: "#716A5E",   // canon secondary text (libraryTokens MUTED)
+    ember: "#B85C38",      // canon interactive / CTA (libraryTokens EMBER)
+  },
+  /** Warm-ink shadow ramp (libraryTokens SHADOW) — never cold black. */
+  shadow: {
+    1: "0 0.25rem 1rem rgba(64,59,54,0.07)",
+    2: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+    hover: "0 0.75rem 1.75rem rgba(64,59,54,0.16)",
   },
   font: {
     display: "'Fraunces', Georgia, serif",
@@ -87,7 +97,21 @@ export const T = {
     inkMutedDark: "#B5ADA3",  // muted on dark (≥4.5:1)
     accentLight: "#9A4F2A",   // rustDeep — eyebrows/links/stats on light
     accentDark: "#D4AF37",    // gold — accents on dark only
-    ctaGrad: "linear-gradient(135deg, #9A4F2A, #6B3318)",
+    // Interactive CTA gradient built on canon EMBER (#B85C38); #9A4F2A/rustDeep
+    // stays reserved for at-rest accent text (accentLight above).
+    ctaGrad: "linear-gradient(135deg, #B85C38, #6B3318)",
+    // Warm-umber wash + warm-ink shadows for the dark hero/showcase/CTA bands,
+    // so raw rgba values stop being hand-typed at call sites.
+    scrim: {
+      // Bottom-weighted hero gradient over the video.
+      hero: "linear-gradient(180deg, rgba(36,28,21,0.30) 0%, rgba(36,28,21,0.55) 55%, rgba(36,28,21,0.78) 100%)",
+      // Radial vignette for the final CTA band.
+      final: "radial-gradient(ellipse at 50% 45%, rgba(36,28,21,0.30) 0%, rgba(36,28,21,0.82) 85%)",
+    },
+    shadow: {
+      cta: "0 2px 12px rgba(64,59,54,0.28)",
+      ctaHero: "0 4px 20px rgba(64,59,54,0.35)",
+    },
     type: {
       micro: "0.75rem",
       bodyS: "1rem",

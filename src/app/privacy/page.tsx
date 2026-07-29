@@ -10,16 +10,16 @@ const F = T.font;
 const C = T.color;
 
 export default function PrivacyPolicyPage() {
-  const { t, locale, setLocale } = useTranslation("privacy");
+  const { t, locale, setLocaleNoReload } = useTranslation("privacy");
   const { t: tc } = useTranslation("common");
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: C.linen,
+        background: C.cream,
         fontFamily: F.body,
-        color: C.charcoal,
+        color: C.inkSoft,
         paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
         paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
       }}
@@ -64,7 +64,7 @@ export default function PrivacyPolicyPage() {
                 fontFamily: F.display,
                 fontSize: 20,
                 fontWeight: 500,
-                color: C.charcoal,
+                color: C.inkSoft,
                 letterSpacing: "-0.3px",
               }}
             >
@@ -72,13 +72,13 @@ export default function PrivacyPolicyPage() {
             </span>
           </Link>
         </div>
-        <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
+        <select value={locale} onChange={(e) => setLocaleNoReload(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
           background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
-          padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
+          padding: "0.25rem 0.5rem", fontSize: "1rem", fontFamily: F.body,
           fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
           textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
           appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
-          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
           backgroundRepeat: "no-repeat", backgroundPosition: "right 0.375rem center",
         }}>
           {locales.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
@@ -112,7 +112,7 @@ export default function PrivacyPolicyPage() {
             fontSize: "clamp(32px, 5vw, 48px)",
             fontWeight: 300,
             lineHeight: 1.2,
-            color: C.charcoal,
+            color: C.inkSoft,
             marginBottom: 8,
           }}
         >
@@ -176,7 +176,7 @@ export default function PrivacyPolicyPage() {
               fontFamily: F.display,
               fontSize: "1.125rem",
               fontWeight: 500,
-              color: C.charcoal,
+              color: C.inkSoft,
               marginBottom: "0.5rem",
               marginTop: "1.5rem",
               lineHeight: 1.3,
@@ -359,7 +359,7 @@ export default function PrivacyPolicyPage() {
               fontFamily: F.display,
               fontSize: "1.125rem",
               fontWeight: 500,
-              color: C.charcoal,
+              color: C.inkSoft,
               marginBottom: "0.5rem",
               marginTop: "1.5rem",
               lineHeight: 1.3,
@@ -375,7 +375,7 @@ export default function PrivacyPolicyPage() {
               fontFamily: F.display,
               fontSize: "1.125rem",
               fontWeight: 500,
-              color: C.charcoal,
+              color: C.inkSoft,
               marginBottom: "0.5rem",
               marginTop: "1.5rem",
               lineHeight: 1.3,
@@ -495,7 +495,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           fontFamily: F.display,
           fontSize: 24,
           fontWeight: 500,
-          color: C.charcoal,
+          color: C.inkSoft,
           marginBottom: 14,
           lineHeight: 1.3,
         }}

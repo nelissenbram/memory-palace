@@ -4,6 +4,7 @@ import { navigateInApp, isNative, isIOS } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
+import { SHADOW } from "@/lib/libraryTokens";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { syncSettingsFromServer } from "@/lib/stores/settingsSync";
 import PalaceLoadingScreen from "@/components/ui/PalaceLoadingScreen";
@@ -75,7 +76,6 @@ import MobileJoystick from "@/components/ui/MobileJoystick";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 import { useTutorialStore } from "@/lib/stores/tutorialStore";
-import TutorialOverlay from "@/components/ui/TutorialOverlay";
 import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpotlight";
 const GettingStartedChecklist = lazy(() => import("@/components/ui/GettingStartedChecklist"));
 import { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
@@ -114,7 +114,7 @@ function DelayedFallback() {
   const [show, setShow] = useState(false);
   useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t); }, []);
   if (!show) return null;
-  return <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"rgba(0,0,0,.3)",backdropFilter:"blur(0.25rem)"}}><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style><div style={{width:"2.5rem",height:"2.5rem",border:"0.1875rem solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}} /></div>;
+  return <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"rgba(64,59,54,.5)",backdropFilter:"blur(0.25rem)"}}><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style><div style={{width:"2.5rem",height:"2.5rem",border:"0.1875rem solid rgba(184,92,56,.3)",borderTopColor:"#B85C38",borderRadius:"50%",animation:"spin 0.8s linear infinite"}} /></div>;
 }
 
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
@@ -132,6 +132,17 @@ export default function MemoryPalace(){
   const { t: tWings } = useTranslation("wings");
   const { t: tLayout } = useTranslation("roomLayouts");
   const { daylightEnabled, daylightMode, resolvedHour } = useDaylight();
+  // Reduced-motion gate — drops the portal flash + toast/celebration entrance
+  // animations for users who ask the OS to minimise motion.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduceMotion(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
   // Key fragment for scene remounting when daylight mode changes manually
   // Only remount scene when daylight is toggled on/off or mode changes — NOT on slider changes.
   // The 3D scene reads resolvedHour via the global setDaylightHour() helper (no remount needed).
@@ -167,7 +178,6 @@ export default function MemoryPalace(){
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const setHovWing = usePalaceStore((s) => s.setHovWing);
   const setHovDoor = usePalaceStore((s) => s.setHovDoor);
-  const enterWing = usePalaceStore((s) => s.enterWing);
   const enterEntrance = usePalaceStore((s) => s.enterEntrance);
   const enterCorridor = usePalaceStore((s) => s.enterCorridor);
   const enterRoom = usePalaceStore((s) => s.enterRoom);
@@ -272,7 +282,6 @@ export default function MemoryPalace(){
   const [sharedWingData, setSharedWingData] = useState<{ wing: any; rooms: any[] } | null>(null);
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
   const [showSpotlight, setShowSpotlight] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [showNotificationsPage, setShowNotificationsPage] = useState(() => {
     if (typeof window !== "undefined") {
@@ -316,9 +325,10 @@ export default function MemoryPalace(){
   // showHints removed — bottom hints replaced by PalaceSubNav
 
   // ── Tutorial ──
+  // The interactive tour is driven by the NudgeTooltip system via the
+  // `mp:open-palace-tutorial` event; only the shared `active` flag is still read
+  // here to suppress spotlights/contextual tooltips while a tour is running.
   const tutorialActive = useTutorialStore((s) => s.active);
-  const tutorialCompleted = useTutorialStore((s) => s.completed);
-  const startTutorial = useTutorialStore((s) => s.start);
 
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings } = useNavigation();
@@ -337,17 +347,45 @@ export default function MemoryPalace(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allWings, customRooms]);
 
+  // Resolve the wing that actually owns a room. Checks the real room store
+  // (default + custom rooms) first so custom rooms route to their true wing,
+  // and only falls back to the id-prefix table for legacy/default room ids —
+  // instead of silently defaulting every unknown room to "roots".
+  const wingForRoom = useCallback((roomId: string): string => {
+    for (const w of allWings) {
+      if (getWingRooms(w.id).some(r => r.id === roomId)) return w.id;
+    }
+    const prefix = roomId.slice(0, 2);
+    const byPrefix: Record<string, string> = { ro: "roots", tv: "travel", ne: "nest", cf: "craft", pa: "passions" };
+    return byPrefix[prefix] || "roots";
+  }, [allWings, getWingRooms]);
+
   // ── Universal Actions (available in all modes) ──
+  // Upload/Share panels only mount over a live 3D room (they need activeRoomId).
+  // From Atrium/Library or 3D exterior/entrance there is no active room, so we
+  // must enter a default room FIRST before opening the panel — otherwise the
+  // action is a silent no-op (and, in 3D, soft-locks the UI by hiding the nav).
+  // Mirrors the TrackDetailPanel 'upload'/'share' cases.
+  const ROOM_PREFIX: Record<string, string> = { roots: "ro", nest: "ne", craft: "cf", travel: "tv", passions: "pa" };
+  const openInRoom = useCallback((open: () => void) => {
+    if (activeRoomId && navMode === "3d") { open(); return; }
+    const wing = activeWing || "roots";
+    const roomId = activeRoomId || `${ROOM_PREFIX[wing] || "ro"}1`;
+    setNavMode("3d");
+    enterWingRoom(wing, roomId);
+    setTimeout(open, 600);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoomId, activeWing, navMode, setNavMode, enterWingRoom]);
   const actionGroups = useActions({
-    onAddMemory: () => { setShowTools(false); setShowUpload(true); },
+    onAddMemory: () => { setShowTools(false); openInRoom(() => setShowUpload(true)); },
     onUploadPhotos: () => { setShowTools(false); setShowImportHub(true); setNavMode("library"); },
     onRecordInterview: () => { setShowTools(false); setShowInterviewLibrary(true); },
-    onWriteStory: () => { setShowTools(false); setShowUpload(true); },
+    onWriteStory: () => { setShowTools(false); openInRoom(() => setShowUpload(true)); },
     onMemoryMap: () => { setShowTools(false); setShowMemoryMap(true); },
     onTimeline: () => { setShowTools(false); setShowTimeline(true); },
     onStatistics: () => { setShowTools(false); setShowStatistics(true); },
     onFamilyTree: () => { setShowTools(false); setShowFamilyTree(true); },
-    onShareRoom: () => { setShowTools(false); setShowSharing(true); },
+    onShareRoom: () => { setShowTools(false); openInRoom(() => setShowSharing(true)); },
     onInvites: () => { setShowTools(false); setShowInvites(true); },
     onSharedWithMe: () => { setShowTools(false); setShowSharedWithMe(true); },
   });
@@ -949,9 +987,6 @@ export default function MemoryPalace(){
 
   // SearchBar auto-hide logic removed (SearchBar deleted from room view)
 
-  // Old tutorial auto-start — disabled, replaced by NudgeTooltip system
-  // useEffect(() => { ... }, [view, tutorialCompleted, tutorialActive, startTutorial]);
-
   // Show feature spotlight for returning users who haven't seen all cards yet
   // Deferred: only show on 2nd+ visit (not during the first session after onboarding)
   useEffect(() => {
@@ -996,7 +1031,7 @@ export default function MemoryPalace(){
     try {
       await finishOnboarding();
     } catch {
-      try { window.dispatchEvent(new CustomEvent("mp:toast", { detail: { message: "Something went wrong finishing setup — please try again.", type: "error" } })); } catch {}
+      try { window.dispatchEvent(new CustomEvent("mp:toast", { detail: { message: tPalace("onboardingFinishError"), type: "error" } })); } catch {}
       return;
     }
     setOnboardDate();
@@ -1115,12 +1150,12 @@ export default function MemoryPalace(){
   const sharedPanelOverlays = (<>
     {showTimeline&&<Suspense fallback={lazyFallback}><MemoryTimeline onClose={()=>setShowTimeline(false)} onNavigateLibrary={()=>{setShowTimeline(false);setNavMode("library");}}/></Suspense>}
     {showStatistics&&<Suspense fallback={lazyFallback}><StatisticsPanel onClose={()=>setShowStatistics(false)}/></Suspense>}
-    {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
+    {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=wingForRoom(roomId);setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
     {showFamilyTree&&<Suspense fallback={lazyFallback}><FamilyTreePanel onClose={()=>setShowFamilyTree(false)}/></Suspense>}
     {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
-    {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/>}
+    {showAchievements&&<Suspense fallback={lazyFallback}><AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/></Suspense>}
     {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterWingRoom(wing,activeRoomId||`${prefix[wing]||"ro"}1`);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterWingRoom(wing,roomId);setTimeout(()=>setShowSharing(true),600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
+    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterWingRoom(wing,activeRoomId||`${prefix[wing]||"ro"}1`);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterWingRoom(wing,roomId);setTimeout(()=>setShowSharing(true),600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterCorridor(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
     {showKepCapture&&<KepCapturePanel onClose={()=>setShowKepCapture(false)}/>}
     {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
     {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
@@ -1131,7 +1166,7 @@ export default function MemoryPalace(){
       addMemoryToRoom(roomId, mem);
     }}/></Suspense>}
     {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
-    {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setNavMode("3d");enterWingRoom(wingId,roomId);}}/>}
+    {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId,wingId)=>{setShowSharedWithMe(false);const resolvedWing=wingId||wingForRoom(roomId);setNavMode("3d");enterWingRoom(resolvedWing,roomId);}}/>}
   </>);
 
   // ── Helper: shared NavigationBar props ──
@@ -1212,7 +1247,7 @@ export default function MemoryPalace(){
         key={"nav-3d-"+orientKey}
         currentMode="3d"
         {...navBarProps}
-        hidden={!!selMem || showUpload || showSharing || walkthroughActive}
+        hidden={!!selMem || (showUpload && !!activeRoomId) || (showSharing && !!activeRoomId) || walkthroughActive}
       />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <PalaceSubNav
@@ -1226,7 +1261,7 @@ export default function MemoryPalace(){
         wings={allWings}
         wingRooms={wingRoomsMap}
         sharedWings={sharedWings}
-        hidden={!!selMem || showUpload || showSharing || walkthroughActive}
+        hidden={!!selMem || (showUpload && !!activeRoomId) || (showSharing && !!activeRoomId) || walkthroughActive}
         isMobile={isMobile}
         pending={palacePending}
         onPendingChange={setPalacePending}
@@ -1251,7 +1286,7 @@ export default function MemoryPalace(){
       />
 
       {/* Portal transition overlay */}
-      {portalAnim&&<div style={{position:"absolute",inset:0,zIndex:45,pointerEvents:"none",animation:"portalFlash .5s ease both",background:"radial-gradient(ellipse at center,rgba(200,168,104,.6) 0%,rgba(200,168,104,.15) 40%,transparent 70%)"}}/>}
+      {portalAnim&&!reduceMotion&&<div style={{position:"absolute",inset:0,zIndex:45,pointerEvents:"none",animation:"portalFlash .5s ease both",background:"radial-gradient(ellipse at center,rgba(212,175,55,.55) 0%,rgba(212,175,55,.14) 40%,transparent 70%)"}}/>}
 
 
 
@@ -1280,7 +1315,7 @@ export default function MemoryPalace(){
       {/* Visible mobile joystick — room, corridor & entrance views */}
       {touchControls && (view === "room" || view === "corridor" || view === "entrance") && (
         <MobileJoystick
-          visible={roomTourOpen || (!selMem && !showUpload && !showSharing && !moreMenuOpen)}
+          visible={(roomTourOpen || entranceTourOpen || corridorTourOpen || !selMem) && !showUpload && !showSharing}
           onMove={() => {}}
         />
       )}
@@ -1310,7 +1345,7 @@ export default function MemoryPalace(){
       {showRoomShare&&activeRoomData&&wingData&&<ShareCard roomName={activeRoomData.name} roomIcon={activeRoomData.icon} wingName={wingData.nameKey ? (tWings(wingData.nameKey) || wingData.name) : wingData.name} wingIcon={wingData.icon} memCount={allRoomMems.length} accent={wingData.accent} onClose={()=>setShowRoomShare(false)}/>}
       {showTimeline&&<Suspense fallback={lazyFallback}><MemoryTimeline onClose={()=>setShowTimeline(false)} onNavigateLibrary={()=>{setShowTimeline(false);setNavMode("library");}}/></Suspense>}
       {showStatistics&&<Suspense fallback={lazyFallback}><StatisticsPanel onClose={()=>setShowStatistics(false)}/></Suspense>}
-      {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
+      {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=wingForRoom(roomId);setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
       {showFamilyTree&&<Suspense fallback={lazyFallback}><FamilyTreePanel onClose={()=>setShowFamilyTree(false)}/></Suspense>}
       {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
       {showGallery&&activeRoomId&&<RoomMediaPanel mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={(mem)=>{handleAddMemory(mem);if(galleryAutoAssignUnit){setTimeout(()=>{handleUpdateMemory(mem.id,{displayed:true,displayUnit:galleryAutoAssignUnit});setGalleryAutoAssignUnit(null);},100);}}} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} initialMemId={galleryInitialMemId} initialTab={galleryInitialTab} roomLayout={roomLayouts[activeRoomId]||""} onRoomLayoutChange={(id)=>setRoomLayout(activeRoomId,id)}/>}
@@ -1336,7 +1371,7 @@ export default function MemoryPalace(){
               backdropFilter:"blur(1.5rem) saturate(180%)",
               WebkitBackdropFilter:"blur(1.5rem) saturate(180%)",
               border:"0.0625rem solid rgba(238,234,227,0.6)",
-              color:T.color.charcoal,
+              color:T.color.ink,
               cursor:"pointer",
               zIndex:46,
               display:"inline-flex",alignItems:"center",justifyContent:"center",gap:"0.375rem",
@@ -1347,7 +1382,7 @@ export default function MemoryPalace(){
             onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.03)";}}
             onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";}}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={wingData?.accent||T.color.ember} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="5 3 19 12 5 21 5 3"/>
             </svg>
           </button>
@@ -1370,7 +1405,7 @@ export default function MemoryPalace(){
             backdropFilter:"blur(1.5rem) saturate(180%)",
             WebkitBackdropFilter:"blur(1.5rem) saturate(180%)",
             border:"0.0625rem solid rgba(238,234,227,0.6)",
-            color:T.color.charcoal,
+            color:T.color.ink,
             cursor:"pointer",
             zIndex:52,
             display:"inline-flex",alignItems:"center",gap:"0.375rem",
@@ -1408,7 +1443,7 @@ export default function MemoryPalace(){
             backdropFilter:"blur(1.5rem) saturate(180%)",
             WebkitBackdropFilter:"blur(1.5rem) saturate(180%)",
             border:"0.0625rem solid rgba(238,234,227,0.6)",
-            color:T.color.charcoal,
+            color:T.color.ink,
             cursor:"pointer",
             zIndex:46,
             display:"inline-flex",alignItems:"center",gap:"0.375rem",
@@ -1419,7 +1454,7 @@ export default function MemoryPalace(){
           onMouseEnter={(e)=>{(e.currentTarget as HTMLButtonElement).style.transform="scale(1.03)";}}
           onMouseLeave={(e)=>{(e.currentTarget as HTMLButtonElement).style.transform="scale(1)";}}
         >
-          <svg width="14" height="14" viewBox="0 0 20 20" fill={T.color.gold} stroke="none">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill={wingData?.accent||T.color.ember} stroke="none">
             <rect x="1" y="1" width="8" height="8" rx="1.5"/>
             <rect x="11" y="1" width="8" height="8" rx="1.5"/>
             <rect x="1" y="11" width="8" height="8" rx="1.5"/>
@@ -1430,9 +1465,6 @@ export default function MemoryPalace(){
       )}
       {showStoragePlayer&&<StoragePlayerPanel onClose={()=>setShowStoragePlayer(false)}/>}
 
-
-      {/* Old tutorial overlay — disabled, replaced by NudgeTooltip system */}
-      {/* <TutorialOverlay /> */}
 
       {/* Feature spotlight — shown once after onboarding completes */}
       {showSpotlight && !tutorialActive && !walkthroughActive && <FeatureSpotlight
@@ -1461,24 +1493,28 @@ export default function MemoryPalace(){
       {showDiscoveryMenu && <DiscoveryMenu
         onMassImport={() => { setShowImportHub(true); setNavMode("library"); }}
         onInterview={() => setShowInterviewLibrary(true)}
-        onTimeCapsule={() => {/* navigate to room for time capsule */}}
-        onShare={() => { if (activeRoomId) setShowSharing(true); }}
+        onTimeCapsule={() => {
+          try { localStorage.setItem("mp_upload_time_capsule", "true"); } catch {}
+          if (activeRoomId) setShowUpload(true);
+          else { setShowImportHub(true); setNavMode("library"); }
+        }}
+        onShare={() => { if (activeRoomId) setShowSharing(true); else { setShowImportHub(true); setNavMode("library"); } }}
         onTracks={() => setShowTracksPanel(true)}
         onCustomize={() => { if (activeWing) setShowRoomManager(true); else setShowWingManager(true); }}
         onDismiss={() => setShowDiscoveryMenu(false)}
       />}
 
       {/* Era picker modal — for existing users who haven't chosen a style */}
-      {showEraPicker && <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(44,44,42,.6)",backdropFilter:"blur(0.375rem)"}} onClick={()=>setShowEraPicker(false)}>
-        <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowEraPicker(false);}} onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:"1.25rem",padding:isMobile?"1.75rem 1.25rem":"2.25rem 2.5rem",maxWidth:"30rem",width:"90%",textAlign:"center",boxShadow:"0 0.75rem 3rem rgba(0,0,0,.2)"}}>
-          <h2 style={{fontFamily:T.font.display,fontSize:isMobile?"1.375rem":"1.625rem",fontWeight:500,color:T.color.charcoal,marginBottom:"0.5rem"}}>{tPalace("eraPickerTitle")}</h2>
+      {showEraPicker && <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.6)",backdropFilter:"blur(0.375rem)"}} onClick={()=>setShowEraPicker(false)}>
+        <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowEraPicker(false);}} onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:"1.25rem",padding:isMobile?"1.75rem 1.25rem":"2.25rem 2.5rem",maxWidth:"30rem",width:"90%",textAlign:"center",boxShadow:SHADOW[2]}}>
+          <h2 style={{fontFamily:T.font.display,fontSize:isMobile?"1.375rem":"1.625rem",fontWeight:500,color:T.color.ink,marginBottom:"0.5rem"}}>{tPalace("eraPickerTitle")}</h2>
           <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,marginBottom:"1.25rem"}}>{tPalace("eraPickerSubtitle")}</p>
-          <div style={{display:"flex",gap:"0.75rem",marginBottom:"1.25rem"}}>
+          <div role="radiogroup" aria-label={tPalace("eraPickerTitle")} style={{display:"flex",gap:"0.75rem",marginBottom:"1.25rem"}}>
             {(["roman","renaissance"] as const).map(era=>(
-              <button key={era} className="era-btn" onClick={async()=>{setStyleEra(era);await updateProfile({styleEra:era});setShowEraPicker(false);}}
-                style={{flex:1,padding:"1rem 0.75rem",borderRadius:"0.875rem",border:`2px solid ${era==="roman"?T.era.roman.secondary:T.era.renaissance.accent}40`,
+              <button key={era} role="radio" aria-checked={styleEra===era} className="era-btn" onClick={async()=>{setStyleEra(era);await updateProfile({styleEra:era});setShowEraPicker(false);}}
+                style={{flex:1,padding:"1rem 0.75rem",borderRadius:"0.875rem",border:`0.125rem solid ${era==="roman"?T.era.roman.secondary:T.era.renaissance.accent}40`,
                   background:T.color.linen,cursor:"pointer",transition:"all .2s"}}>
-                <div style={{fontFamily:T.font.display,fontSize:"1.0625rem",fontWeight:600,color:T.color.charcoal,marginBottom:"0.25rem"}}>
+                <div style={{fontFamily:T.font.display,fontSize:"1.0625rem",fontWeight:600,color:T.color.ink,marginBottom:"0.25rem"}}>
                   {era==="roman"?tPalace("eraRoman"):tPalace("eraRenaissance")}
                 </div>
                 <div style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.muted,lineHeight:1.4}}>
@@ -1495,20 +1531,20 @@ export default function MemoryPalace(){
       </div>}
 
       {/* Storage full prompt overlay — triggered when storage quota is exceeded */}
-      {showUpgradePrompt && <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(44,44,42,.5)",backdropFilter:"blur(0.25rem)"}}
+      {showUpgradePrompt && <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.55)",backdropFilter:"blur(0.25rem)"}}
         onClick={()=>setShowUpgradePrompt(false)}>
         <TuscanCard variant="elevated" padding="2rem 2.25rem" style={{maxWidth:"23.75rem",textAlign:"center",borderRadius:"1.125rem"}} animate>
           <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowUpgradePrompt(false);}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:"2.5rem",marginBottom:"0.75rem"}}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" stroke={T.color.terracotta} strokeWidth="1.5"/><path d="M7 11V7a5 5 0 1 1 10 0v4" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="16.5" r="1.5" fill={T.color.terracotta}/></svg></div>
-            <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,marginBottom:"0.5rem"}}>{tPalace("storageFull") || "Storage Full"}</h3>
-            <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{(isNative() && !(isIOS() && IAP_ENABLED)) ? (tPalace("storageFullDescNative") || "Your storage is full. Please remove some memories to free up space.") : (tPalace("storageFullDesc") || "Your storage is full. Upgrade your plan for more space.")}</p>
+            <div style={{fontSize:"2.5rem",marginBottom:"0.75rem"}}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" stroke={T.color.ember} strokeWidth="1.5"/><path d="M7 11V7a5 5 0 1 1 10 0v4" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="16.5" r="1.5" fill={T.color.ember}/></svg></div>
+            <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.ink,marginBottom:"0.5rem"}}>{tPalace("storageFull")}</h3>
+            <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{(isNative() && !(isIOS() && IAP_ENABLED)) ? tPalace("storageFullDescNative") : tPalace("storageFullDesc")}</p>
             <div style={{display:"flex",flexDirection:"column",gap:"0.5rem"}}>
               {/* Web always shows the upgrade CTA. iOS shows it only when IAP is
                   live (IAP_ENABLED), leading to the IAP paywall at /pricing.
                   Android has no IAP, so it stays hidden there. */}
               {(!isNative() || (isIOS() && IAP_ENABLED)) && <button onClick={()=>{setShowUpgradePrompt(false);navigateInApp("/pricing");}}
                 style={{fontFamily:T.font.body,fontSize:"0.9375rem",fontWeight:600,padding:"0.75rem 2rem",borderRadius:"0.625rem",border:"none",
-                  background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer",width:"100%"}}>
+                  background:`linear-gradient(135deg,${T.color.ember},${T.color.rustDeep})`,color:T.color.cream,cursor:"pointer",width:"100%"}}>
                 {tPalace("viewPlans")}
               </button>}
               <button onClick={()=>setShowUpgradePrompt(false)}
@@ -1524,20 +1560,20 @@ export default function MemoryPalace(){
 
 
       {/* Achievement toast notification */}
-      {achToast&&<div role="status" onClick={()=>{dismissAchToast();openAchWithHighlight(achToast.id);}} style={{position:"absolute",top:isMobile?"3.5rem":"4.125rem",right:isMobile?"max(0.75rem, env(safe-area-inset-right, 0.75rem))":"1.375rem",left:isMobile?"max(0.75rem, env(safe-area-inset-left, 0.75rem))":undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.875rem 1.125rem",border:`1.5px solid ${T.color.gold}66`,boxShadow:"0 0.5rem 2rem rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"20rem"}}>
+      {achToast&&<div role="status" onClick={()=>{dismissAchToast();openAchWithHighlight(achToast.id);}} style={{position:"absolute",top:isMobile?"3.5rem":"4.125rem",right:isMobile?"max(0.75rem, env(safe-area-inset-right, 0.75rem))":"1.375rem",left:isMobile?"max(0.75rem, env(safe-area-inset-left, 0.75rem))":undefined,zIndex:90,cursor:"pointer",animation:reduceMotion?undefined:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.875rem 1.125rem",border:`0.09375rem solid ${T.color.gold}66`,boxShadow:SHADOW[2],display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"20rem"}}>
         <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.75rem",background:`linear-gradient(135deg,${T.color.goldLight}22,${T.color.gold}22)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><AchievementIcon id={achToast.icon} size={24} /></div>
         <div>
           <div style={{fontFamily:T.font.body,fontSize:"0.625rem",fontWeight:600,color:T.color.goldLight,textTransform:"uppercase",letterSpacing:"0.0625rem",marginBottom:"0.125rem"}}>{tAch("achievementUnlocked")}</div>
-          <div style={{fontFamily:T.font.display,fontSize:"0.9375rem",fontWeight:600,color:T.color.charcoal}}>{tAch(achToast.titleKey)}</div>
+          <div style={{fontFamily:T.font.display,fontSize:"0.9375rem",fontWeight:600,color:T.color.ink}}>{tAch(achToast.titleKey)}</div>
           <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,lineHeight:1.3}}>{tAch(achToast.descKey)}</div>
         </div>
       </div>}
 
-      {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/>}
+      {showAchievements&&<Suspense fallback={lazyFallback}><AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/></Suspense>}
 
       {/* Invite & shared panels */}
       {showInvites&&<InviteNotificationsPanel onClose={()=>setShowInvites(false)}/>}
-      {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setNavMode("3d");enterWingRoom(wingId,roomId);}}/>}
+      {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId,wingId)=>{setShowSharedWithMe(false);const resolvedWing=wingId||wingForRoom(roomId);setNavMode("3d");enterWingRoom(resolvedWing,roomId);}}/>}
       {showSharingSettings&&<SharingSettingsPanel open={showSharingSettings} onClose={()=>setShowSharingSettings(false)}/>}
 
       {/* Interview panels */}
@@ -1554,25 +1590,25 @@ export default function MemoryPalace(){
 
       {/* Track panels */}
       {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterWingRoom(wing,activeRoomId||`${prefix[wing]||"ro"}1`);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterWingRoom(wing,roomId);setTimeout(()=>setShowSharing(true),600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
+      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterWingRoom(wing,activeRoomId||`${prefix[wing]||"ro"}1`);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterWingRoom(wing,roomId);setTimeout(()=>setShowSharing(true),600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterCorridor(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
       {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
 
       {/* Track step completion toast */}
-      {trackToast&&<div role="status" onClick={()=>{dismissTrackToast();setShowTracksPanel(true);}} style={{position:"absolute",top:isMobile?"6.25rem":"4.125rem",left:isMobile?"max(0.75rem, env(safe-area-inset-left, 0.75rem))":undefined,right:isMobile?"max(0.75rem, env(safe-area-inset-right, 0.75rem))":"1.375rem",zIndex:88,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.75rem 1rem",border:`1.5px solid ${T.color.sage}44`,boxShadow:"0 0.5rem 2rem rgba(74,103,65,.2)",display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"21.25rem"}}>
+      {trackToast&&<div role="status" onClick={()=>{dismissTrackToast();setShowTracksPanel(true);}} style={{position:"absolute",top:isMobile?"6.25rem":"4.125rem",left:isMobile?"max(0.75rem, env(safe-area-inset-left, 0.75rem))":undefined,right:isMobile?"max(0.75rem, env(safe-area-inset-right, 0.75rem))":"1.375rem",zIndex:88,cursor:"pointer",animation:reduceMotion?undefined:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.75rem 1rem",border:`0.09375rem solid ${T.color.sage}44`,boxShadow:SHADOW[2],display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"21.25rem"}}>
         <div style={{width:"2.5rem",height:"2.5rem",borderRadius:"0.625rem",background:`linear-gradient(135deg,${T.color.sage}18,${T.color.sage}08)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.25rem",flexShrink:0}}>{"\u2713"}</div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontFamily:T.font.body,fontSize:"0.625rem",fontWeight:600,color:T.color.sage,textTransform:"uppercase",letterSpacing:"0.0625rem",marginBottom:"0.0625rem"}}>{tTrack("stepCompleted")}</div>
-          <div style={{fontFamily:T.font.display,fontSize:"0.875rem",fontWeight:600,color:T.color.charcoal}}>{tTrack(trackToast.stepTitleKey)}</div>
+          <div style={{fontFamily:T.font.display,fontSize:"0.875rem",fontWeight:600,color:T.color.ink}}>{tTrack(trackToast.stepTitleKey)}</div>
           <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted}}>{tTrack(trackToast.trackNameKey)}</div>
         </div>
         <div style={{fontFamily:T.font.body,fontSize:"0.875rem",fontWeight:700,color:T.color.goldLight}}>+{trackToast.points} MP</div>
       </div>}
 
       {/* Track completion celebration */}
-      {trackCelebration&&<div onClick={dismissCelebration} onKeyDown={e=>{if(e.key==="Escape")dismissCelebration();}} style={{position:"fixed",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(42,34,24,.5)",backdropFilter:"blur(0.25rem)",animation:"fadeIn .3s ease",cursor:"pointer"}}>
-        <div role="dialog" aria-modal="true" tabIndex={-1} style={{background:T.color.linen,borderRadius:"1.5rem",padding:"2.5rem 3rem",textAlign:"center",maxWidth:"23.75rem",boxShadow:"0 1.5rem 5rem rgba(44,44,42,.35)",animation:"fadeUp .5s ease",border:`2px solid ${T.color.gold}44`}}>
+      {trackCelebration&&<div onClick={dismissCelebration} onKeyDown={e=>{if(e.key==="Escape")dismissCelebration();}} style={{position:"fixed",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.55)",backdropFilter:"blur(0.25rem)",animation:reduceMotion?undefined:"fadeIn .3s ease",cursor:"pointer"}}>
+        <div role="dialog" aria-modal="true" tabIndex={-1} style={{background:T.color.linen,borderRadius:"1.5rem",padding:"2.5rem 3rem",textAlign:"center",maxWidth:"23.75rem",boxShadow:SHADOW[2],animation:reduceMotion?undefined:"fadeUp .5s ease",border:`0.125rem solid ${T.color.gold}44`}}>
           <div style={{fontSize:"3rem",marginBottom:"1rem"}}>{"\u2728"}</div>
-          <div style={{fontFamily:T.font.display,fontSize:"1.75rem",fontWeight:600,color:T.color.charcoal,marginBottom:"0.5rem"}}>{tTrack("trackComplete")}</div>
+          <div style={{fontFamily:T.font.display,fontSize:"1.75rem",fontWeight:600,color:T.color.ink,marginBottom:"0.5rem"}}>{tTrack("trackComplete")}</div>
           <div style={{fontFamily:T.font.display,fontSize:"1.125rem",fontWeight:500,color:T.color.walnut,marginBottom:"0.75rem",fontStyle:"italic"}}>{tTrack(trackCelebration.trackNameKey)}</div>
           <div style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,marginBottom:"1rem"}}>{tTrack("youEarnedBonus")}</div>
           <div style={{fontFamily:T.font.body,fontSize:"2rem",fontWeight:700,color:T.color.goldLight}}>+{trackCelebration.bonus} MP</div>

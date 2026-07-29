@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
@@ -231,7 +231,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                 {sharedWings && sharedWings.length > 0 && (
                   <>
                     <div style={{ padding: "0.375rem 0.25rem 0.25rem", marginTop: "0.25rem", borderTop: `1px solid ${T.color.cream}` }}>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.03125rem" }}>
+                      <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         {t("sharedWithYou")}
                       </span>
                     </div>
@@ -303,7 +303,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                 <span style={{
                   fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
                   color: T.color.muted, textTransform: "uppercase",
-                  letterSpacing: "0.03125rem",
+                  letterSpacing: "0.06em",
                 }}>
                   {t("preferences")}
                 </span>
@@ -690,7 +690,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
         <span style={{
           fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
           color: T.color.muted, textTransform: "uppercase",
-          letterSpacing: "0.03125rem",
+          letterSpacing: "0.06em",
         }}>
           {t("preferences")}
         </span>
@@ -878,7 +878,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
 
 /** Wings dropdown — shows wings with expandable room lists for direct navigation */
 function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateSharedWing, onSharingSettings }: {
-  wings: { id: string; name: string; icon: string; accent: string }[];
+  wings: { id: string; name: string; nameKey?: string; icon: string; accent: string }[];
   activeWing: string | null;
   switchWing: (id: string) => void;
   sharedWings?: SharedWingItem[];
@@ -930,7 +930,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
         }}
       >
         <span style={{ fontSize: "0.75rem" }} aria-hidden="true">{activeWingData ? activeWingData.icon : "\u{1F3DB}\uFE0F"}</span>
-        {activeWingData ? activeWingData.name : tc("palaceMap")}
+        {activeWingData ? translateWingName(activeWingData, tWings) : tc("palaceMap")}
         <span style={{ fontSize: "0.625rem", marginLeft: "0.125rem", transition: "transform .2s", transform: wingsOpen ? "rotate(180deg)" : "none" }} aria-hidden="true">{"\u25BE"}</span>
       </button>
 
@@ -1032,7 +1032,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
               }}>
                 <span style={{
                   fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
-                  color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.03125rem",
+                  color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.06em",
                 }}>{tc("sharedWithYou")}</span>
               </div>
               {sharedWings.map(sw => {

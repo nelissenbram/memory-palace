@@ -247,7 +247,7 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} className="ilp-slide" style={{
         position: "absolute", right: 0, top: 0, bottom: 0,
         width: isMobile ? "100%" : "min(480px, 95vw)",
-        background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
+        background: "#FCFAF5f8" /* Atrium token: cream board surface */, backdropFilter: "blur(20px)",
         borderLeft: isMobile ? "none" : "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
         boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2 overlay shadow
         overflowY: "auto",
@@ -261,7 +261,7 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
         {/* Header */}
         <div style={{
           position: "sticky", top: 0, zIndex: 2,
-          background: `${T.color.linen}f0`, backdropFilter: "blur(16px)",
+          background: "#FCFAF5f0" /* Atrium token: cream board surface */, backdropFilter: "blur(16px)",
           padding: isMobile ? "1.25rem 1.25rem 1rem" : "1.5rem 1.75rem 1rem",
           borderBottom: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
         }}>
@@ -286,12 +286,22 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
             </button>
           </div>
 
-          {/* Wing filter tabs */}
-          <div style={{ display: "flex", gap: "0.25rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
-            <FilterTab label={t("all")} active={filter === "all"} onClick={() => setFilter("all")} />
-            {WING_ORDER.map((wid) => (
-              <FilterTab key={wid} label={t(WING_ID_TO_LABEL_KEY[wid] || wid)} active={filter === wid} onClick={() => setFilter(wid)} highlight={wid === highlightWingId} />
-            ))}
+          {/* Wing filter tabs — scroll-snap strip with a right-edge fade affordance */}
+          <div style={{ position: "relative" }}>
+            <div role="tablist" aria-label={t("title")} style={{
+              display: "flex", gap: "0.25rem", overflowX: "auto", paddingBottom: "0.25rem",
+              scrollSnapType: "x proximity", WebkitOverflowScrolling: "touch",
+            }}>
+              <FilterTab label={t("all")} active={filter === "all"} onClick={() => setFilter("all")} />
+              {WING_ORDER.map((wid) => (
+                <FilterTab key={wid} label={t(WING_ID_TO_LABEL_KEY[wid] || wid)} active={filter === wid} onClick={() => setFilter(wid)} highlight={wid === highlightWingId} />
+              ))}
+            </div>
+            {/* Right-edge fade hints there is more to scroll */}
+            <div aria-hidden="true" style={{
+              position: "absolute", top: 0, right: 0, bottom: "0.25rem", width: "1.5rem",
+              background: "linear-gradient(90deg, rgba(252,250,245,0), #FCFAF5)", pointerEvents: "none",
+            }} />
           </div>
         </div>
 
@@ -332,8 +342,9 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
 
 function FilterTab({ label, active, onClick, highlight }: { label: string; active: boolean; onClick: () => void; highlight?: boolean }) {
   return (
-    <button onClick={onClick} style={{
+    <button role="tab" aria-selected={active} onClick={onClick} style={{
       padding: "0.5rem 0.875rem", borderRadius: "2rem", border: "none", whiteSpace: "nowrap", minHeight: "2.75rem", // Atrium token: pill radius
+      scrollSnapAlign: "start", flexShrink: 0,
       background: active ? "#403B36" : highlight ? "rgba(154,79,42,0.11)" : T.color.warmStone, // Atrium tokens: ink / terracotta tint
       color: active ? "#FCFAF5" : highlight ? "#9A4F2A" : T.color.walnut,
       fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: active ? 600 : 500,

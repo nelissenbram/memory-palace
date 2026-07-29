@@ -45,6 +45,13 @@ export default async function MePage() {
 
   const p = profileRes.data;
 
+  // Visitors degrades to 0 when the admin client falls back to anon (no
+  // service-role key, e.g. Preview deploys) — surface that as a log so a
+  // masked 0 on production is distinguishable from a genuinely quiet palace.
+  if (visitorsRes.error) {
+    console.warn("[/me] visitors count query failed (is SUPABASE_SERVICE_ROLE_KEY set?):", visitorsRes.error.message);
+  }
+
   return (
     <MeClient
       profile={{

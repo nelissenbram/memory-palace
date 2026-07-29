@@ -3,6 +3,8 @@
 import React, { useState, useTransition, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import type { PublishableWing } from "@/lib/social/share-actions";
 
 interface PublishModalProps {
@@ -15,6 +17,8 @@ export default function PublishModal({
   onPublished,
 }: PublishModalProps) {
   const { t } = useTranslation("social");
+  const isMobile = useIsMobile();
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -106,7 +110,7 @@ export default function PublishModal({
     startTransition(async () => {
       setError(null);
       const { publishWing, unpublishWing, publishRoom, unpublishRoom } = await import("@/lib/social/share-actions");
-      const ops: Promise<unknown>[] = [];
+      const ops: Promise<{ ok: boolean; error?: string }>[] = [];
       for (const w of wings) {
         if (selectedWings.has(w.id) && !w.published) {
           ops.push(publishWing({ wingId: w.id }));
@@ -121,7 +125,16 @@ export default function PublishModal({
           }
         }
       }
-      await Promise.all(ops);
+      try {
+        const results = await Promise.all(ops);
+        if (results.some((r) => r && r.ok === false)) {
+          setError(t("publishFailed"));
+          return;
+        }
+      } catch {
+        setError(t("publishFailed"));
+        return;
+      }
       setDone(true);
       setTimeout(() => { onPublished?.(); onClose(); }, 1200);
     });
@@ -133,19 +146,19 @@ export default function PublishModal({
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(0.25rem)",
+        background: "rgba(42,34,24,.5)", backdropFilter: "blur(0.25rem)",
       }}
       onClick={(e) => { if (e.target === e.currentTarget && !isPending) onClose(); }}
     >
-      <div className="mp-scroll" style={{
+      <div ref={containerRef} onKeyDown={handleKeyDown} className="mp-scroll" style={{
         width: "min(32rem, 92vw)", maxHeight: "90dvh", overflow: "auto",
-        background: T.color.cream, borderRadius: "1rem", padding: "1.75rem",
+        background: T.color.cream, borderRadius: "1rem", padding: isMobile ? "1.25rem" : "1.75rem",
         paddingBottom: "max(1.75rem, env(safe-area-inset-bottom, 0px))",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+        boxShadow: "0 0.5rem 2rem rgba(64,59,54,0.18)",
       }}>
         <h2 id="publish-title" style={{
           fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
-          color: T.color.charcoal, margin: "0 0 0.25rem",
+          color: T.color.inkSoft, margin: "0 0 0.25rem",
         }}>
           {t("publishSelectContent")}
         </h2>
@@ -156,7 +169,7 @@ export default function PublishModal({
         {done ? (
           <div style={{ textAlign: "center", padding: "2rem 0" }}>
             <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>&#10003;</div>
-            <p style={{ fontFamily: T.font.body, fontSize: "1rem", color: T.color.charcoal }}>
+            <p style={{ fontFamily: T.font.body, fontSize: "1rem", color: T.color.inkSoft }}>
               {t("publishSuccess")}
             </p>
           </div>
@@ -172,7 +185,7 @@ export default function PublishModal({
             <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, margin: 0 }}>
               {t("loadingContent") || "Loading your wings & rooms..."}
             </p>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { .mp-scroll [style*="animation"] { animation: none !important; } }`}</style>
           </div>
         ) : (
           <>
@@ -208,10 +221,10 @@ export default function PublishModal({
                 <div
                   key={wing.id}
                   style={{
-                    border: `1px solid ${selectedWings.has(wing.id) ? T.color.gold : T.color.sandstone}`,
+                    border: `1px solid ${selectedWings.has(wing.id) ? T.color.ember : T.color.sandstone}`,
                     borderRadius: "0.75rem",
                     overflow: "hidden",
-                    background: selectedWings.has(wing.id) ? `${T.color.gold}06` : "transparent",
+                    background: selectedWings.has(wing.id) ? `${T.color.ember}0D` : "transparent",
                     transition: "border-color 0.15s ease, background 0.15s ease",
                   }}
                 >
@@ -225,11 +238,11 @@ export default function PublishModal({
                       type="checkbox"
                       checked={selectedWings.has(wing.id)}
                       onChange={() => toggleWing(wing.id)}
-                      style={{ accentColor: T.color.gold, width: "1rem", height: "1rem", flexShrink: 0 }}
+                      style={{ accentColor: T.color.ember, width: "1rem", height: "1rem", flexShrink: 0 }}
                     />
                     <span style={{
                       fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
-                      color: T.color.charcoal, flex: 1,
+                      color: T.color.inkSoft, flex: 1,
                     }}>
                       {wing.name}
                     </span>
@@ -259,12 +272,12 @@ export default function PublishModal({
                             type="checkbox"
                             checked={selectedRooms.has(room.id)}
                             onChange={() => toggleRoom(room.id, wing.id)}
-                            style={{ accentColor: T.color.gold, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
+                            style={{ accentColor: T.color.ember, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
                           />
                           <span style={{ fontSize: "1rem" }}>{room.icon}</span>
                           <span style={{
                             fontFamily: T.font.body, fontSize: "0.8125rem",
-                            color: T.color.charcoal,
+                            color: T.color.inkSoft,
                           }}>
                             {room.name}
                           </span>
@@ -284,7 +297,7 @@ export default function PublishModal({
                 style={{
                   fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
                   borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
-                  background: "transparent", color: T.color.walnut, cursor: "pointer",
+                  background: "transparent", color: T.color.walnut, cursor: "pointer", minHeight: T.touch,
                 }}
               >
                 {t("cancel")}
@@ -295,10 +308,10 @@ export default function PublishModal({
                   fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                   padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "none",
                   background: hasSelection
-                    ? `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`
+                    ? `linear-gradient(135deg, ${T.color.ember}, ${T.color.rustDeep})`
                     : T.color.sandstone,
                   color: T.color.cream, cursor: isPending ? "wait" : hasSelection ? "pointer" : "not-allowed",
-                  opacity: isPending ? 0.6 : 1,
+                  opacity: isPending ? 0.6 : 1, minHeight: T.touch,
                 }}
               >
                 {isPending ? t("publishing") : t("publishSelected")}

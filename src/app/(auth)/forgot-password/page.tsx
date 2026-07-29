@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div style={{ textAlign: "center" }}>
+      <div role="status" aria-live="polite" style={{ textAlign: "center" }}>
         <div style={{
           width: "4rem", height: "4rem", borderRadius: "2rem",
           background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
@@ -55,19 +55,47 @@ export default function ForgotPasswordPage() {
         <p style={{ fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6 }}>
           {t("resetLinkSent")}
         </p>
-        <Link
-          href="/login"
+        <button
+          type="button"
+          onClick={() => setSuccess(false)}
           style={{
-            display: "inline-block",
-            marginTop: "1.25rem",
-            color: T.color.terracotta,
-            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: T.touch,
+            padding: "0.5rem 0.75rem",
+            marginTop: "0.75rem",
+            background: "none",
+            border: "none",
+            color: T.color.muted,
+            textDecoration: "underline",
+            fontFamily: T.font.body,
             fontWeight: 600,
-            fontSize: "0.875rem",
+            fontSize: "0.8125rem",
+            cursor: "pointer",
           }}
         >
-          {t("backToSignIn")}
-        </Link>
+          {t("tryDifferentEmail")}
+        </button>
+        <div>
+          <Link
+            href="/login"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: T.touch,
+              padding: "0.5rem 0.75rem",
+              marginTop: "0.25rem",
+              color: T.color.terracotta,
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+            }}
+          >
+            {t("backToSignIn")}
+          </Link>
+        </div>
       </div>
     );
   }
@@ -114,7 +142,7 @@ export default function ForgotPasswordPage() {
             borderRadius: "0.625rem",
             background: "#FDF2F2",
             border: "1px solid #FECACA",
-            color: "#B91C1C",
+            color: T.color.error,
             fontSize: "0.8125rem",
             marginBottom: "1rem",
           }}
@@ -193,7 +221,16 @@ export default function ForgotPasswordPage() {
       >
         <Link
           href="/login"
-          style={{ color: T.color.terracotta, textDecoration: "none", fontWeight: 600 }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: T.touch,
+            padding: "0.5rem 0.75rem",
+            color: T.color.terracotta,
+            textDecoration: "none",
+            fontWeight: 600,
+          }}
         >
           {t("backToSignIn")}
         </Link>

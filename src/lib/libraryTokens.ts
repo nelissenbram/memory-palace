@@ -28,8 +28,13 @@ export const SHADOW = {
 export const HOVER_SHADOW = "0 0.75rem 1.75rem rgba(64,59,54,0.16)";
 export const TOP_HIGHLIGHT = "inset 0 0.0625rem 0 rgba(255,255,255,0.5)";
 
+/* Named low steps for inset fields (search/inputs) — same warm ink, tighter. */
+export const INPUT_SHADOW = "0 0.0625rem 0.25rem rgba(64,59,54,0.05)";
+export const INPUT_SHADOW_FOCUS = "0 0.125rem 0.5rem rgba(64,59,54,0.08)";
+
 /* INK & EMBER. */
 export const INK = "#403B36";
+export const INK_DEEP = "#2E2A26";        // darkest ink stop — keystone CTA gradient base
 export const MUTED = "#716A5E";          // secondary text — FULL opacity, never double-dimmed
 export const EMBER_GLYPH = "#9A4F2A";     // terracotta glyph / at-rest accent ink
 export const EMBER = "#B85C38";           // interactive / active / unread
@@ -40,6 +45,11 @@ export const SAGE_SOFT = "#7A8C64";
 export const CREAM = "#FCFAF5";
 export const HAIRLINE = "#E3D6BC";
 export const TRAY = "#F6EBE3";            // recessed sandstone tray
+
+/* Warm card surface — the tile gradient + its resting edge, shared so sibling
+ * board surfaces (Atrium, Explore) reuse the identical value instead of drifting. */
+export const CARD_BG = "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)";
+export const CARD_BORDER = "#E7D9C4";     // warm hairline for the card gradient edge
 
 /* Per-wing accent (identity colour at rest). Falls back to ember glyph. */
 export const WING_ACCENT: Record<string, string> = {

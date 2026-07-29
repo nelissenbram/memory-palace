@@ -489,6 +489,20 @@ export default function TuscanStyles() {
       .aw-viewall:hover .aw-viewall-arrow {
         transform: translateX(0.375rem);
       }
+
+      /* ══════════════════════════════════════
+         Reduced-motion — respect the OS setting
+         ══════════════════════════════════════ */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
     `}</style>
   );
 }
