@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
+import { navigateInApp, isIOS } from "@/lib/native/platform";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
@@ -21,29 +22,29 @@ const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
    -> done (lands the user into the seeded room to place their first memory). The
    intro video, quiz, cinematic pre-roll, 4-leg auto-walk gauntlet and paywall are cut. */
 type Phase =
+  | "video_intro"      // Intro video plays first (full-screen)
   | "lang_a11y"        // Language + legibility (warm-cream card)
   | "name"             // Name input
   | "style_era"        // Roman Tuscany confirmation
   | "upload"           // Seeded room + ImportHub (first memory)
   | "celebration"      // Gold ceremonial threshold
+  | "paywall"          // Soft trial offer (non-iOS only)
   | "done";
 
-const SETUP_PHASES: Phase[] = ["lang_a11y", "name", "style_era"];
+const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "style_era"];
 const PHASE_ORDER: Phase[] = [
-  "lang_a11y", "name", "style_era", "upload", "celebration", "done",
+  "video_intro", "lang_a11y", "name", "style_era", "upload", "celebration", "paywall", "done",
 ];
 
 /* Retired phases from the old flow -> nearest surviving phase, so any stale saved
    state resolves instead of resurrecting a removed phase. */
 const RETIRED_PHASE_MAP: Record<string, Phase> = {
-  video_intro: "lang_a11y",
   quiz: "name",
   cinematic: "name",
   walk_exterior: "name",
   walk_entrance: "name",
   walk_corridor: "name",
   walk_room: "name",
-  paywall: "celebration",
 };
 
 const STORAGE_KEY = "mp_onboarding_phase";
@@ -54,6 +55,9 @@ function loadPhase(): Phase | null {
   try {
     const v = localStorage.getItem(STORAGE_KEY) as string | null;
     if (!v) return null;
+    // iOS free-tier seal (Apple 3.1.1): a saved 'paywall' state must NEVER resume
+    // the paywall on iOS — remap it to 'done' so the /pricing CTA is unreachable.
+    if (v === "paywall" && isIOS()) return "done";
     if (PHASE_ORDER.includes(v as Phase)) return v as Phase;
     if (RETIRED_PHASE_MAP[v]) return RETIRED_PHASE_MAP[v];
   } catch {}
@@ -118,7 +122,8 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   useEffect(() => { setLocaleNoReload(selectedLocale); }, []);
 
   // ── Phase state ── (retired saved phases remapped by loadPhase) ──
-  const [phase, setPhaseRaw] = useState<Phase>(() => loadPhase() || "lang_a11y");
+  // Brand-new run (no saved phase) -> "video_intro" (the intro video plays first).
+  const [phase, setPhaseRaw] = useState<Phase>(() => loadPhase() || "video_intro");
 
   const setPhase = useCallback((p: Phase) => {
     setPhaseRaw(p);
@@ -144,20 +149,41 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const setTextSize = setScaleLevel;
   const [selectedEra] = useState<"roman">("roman");
 
+  // ── Video state ── (intro video plays first, then loops as a soft background) ──
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoPlayed, setVideoPlayed] = useState(false);
+
+  // Force-play on mobile — autoplay can fail silently on iOS/Android. If it's
+  // blocked during the intro, skip straight to the first setup card.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (phase === "video_intro") {
+      v.play().catch(() => {
+        setVideoPlayed(true);
+        setPhase("lang_a11y");
+      });
+    } else if (SETUP_PHASES.includes(phase)) {
+      v.loop = true;
+      v.play().catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
   // ── Name validation (change 13) ──
   const trimmedName = userName.trim();
 
   // ── Unified completion (change 21): skip and normal finish converge on the SAME
   // atomic path. Persist the trimmed name, set a default goal explicitly (the quiz
   // was the only goal writer), then advance to 'done' whose effect calls onFinish. ──
-  const completeAndFinish = useCallback(() => {
+  const completeAndFinish = useCallback((target: Phase = "done") => {
     setUserName(trimmedName);
     const savedGoal = (() => { try { return localStorage.getItem("mp_user_goal"); } catch { return null; } })();
     setUserGoal(savedGoal || "preserve");
     setStyleEra(selectedEra);
     setFirstWing("roots");
     useWalkthroughStore.getState().skip();
-    setPhase("done");
+    setPhase(target);
   }, [trimmedName, setUserName, setUserGoal, setStyleEra, setFirstWing, selectedEra, setPhase]);
 
   const handleSkip = useCallback(() => {
@@ -170,6 +196,13 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     memoryUploadedRef.current = true;
     setPhase("celebration");
   }, [setPhase]);
+
+  // ── iOS free-tier seal (Apple 3.1.1): the paywall must be UNREACHABLE on iOS.
+  // All entries are isIOS()-guarded, but if 'paywall' is ever reached on iOS
+  // (e.g. an unforeseen path), coerce it to 'done' so no /pricing surface renders. ──
+  useEffect(() => {
+    if (phase === "paywall" && isIOS()) setPhase("done");
+  }, [phase, setPhase]);
 
   // ── Done ──
   useEffect(() => {
@@ -278,6 +311,75 @@ ${KEYFRAMES}
   // ══════════════════════════════════════════════
   // PHASE RENDERS
   // ══════════════════════════════════════════════
+
+  /* ── Video intro — full-screen /video/hero-ob.mp4, plays once then advances ── */
+  if (phase === "video_intro") {
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", overflow: "hidden", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+
+        {/* Background video */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop={videoPlayed}
+          playsInline
+          preload="metadata"
+          onEnded={() => {
+            setVideoPlayed(true);
+            if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
+            setPhase("lang_a11y");
+          }}
+          style={{
+            position: "fixed", inset: 0,
+            width: "100%", height: "100%",
+            objectFit: "cover",
+            objectPosition: isMobile ? "60% center" : "center center",
+            opacity: 0.65,
+            filter: "saturate(0.7) brightness(1.1)",
+            zIndex: 0,
+          }}
+        >
+          <source src="/video/hero-ob.mp4" type="video/mp4" />
+        </video>
+
+        {/* Gradient overlay for legibility */}
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "linear-gradient(180deg, rgba(26,25,23,0.15) 0%, rgba(26,25,23,0.3) 50%, rgba(26,25,23,0.7) 100%)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }} />
+
+        {/* Skip button */}
+        <button
+          onClick={() => {
+            setVideoPlayed(true);
+            if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
+            setPhase("lang_a11y");
+          }}
+          style={{
+            position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
+            fontFamily: T.font.body, fontSize: "0.75rem",
+            color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.3)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
+            cursor: "pointer", backdropFilter: "blur(4px)", minHeight: "2.5rem",
+          }}
+        >
+          {t("cinematicSkip")}
+        </button>
+
+        {/* Auto-advance after 15s if the video hasn't ended */}
+        <VideoAutoAdvance seconds={15} onAdvance={() => {
+          setVideoPlayed(true);
+          if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
+          setPhase("lang_a11y");
+        }} />
+      </div>
+    );
+  }
 
   /* ── Language + Legibility — warm-cream Library canon ── */
   if (phase === "lang_a11y") {
@@ -625,7 +727,7 @@ ${KEYFRAMES}
 
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
-            onClose={() => { if (!memoryUploadedRef.current) completeAndFinish(); }}
+            onClose={() => { if (!memoryUploadedRef.current) completeAndFinish(isIOS() ? "done" : "paywall"); }}
             onImportFiles={async (files) => {
               if (files.length === 0) return;
               const f = files[0];
@@ -681,7 +783,7 @@ ${KEYFRAMES}
             title={celebTitle}
             subtitle={celebSubtitle}
             buttonLabel={t("celebrationAtrium")}
-            onContinue={() => setPhase("done")}
+            onContinue={() => setPhase(isIOS() ? "done" : "paywall")}
             transparent
           />
         </Suspense>
@@ -689,5 +791,157 @@ ${KEYFRAMES}
     );
   }
 
+  /* ── Paywall — soft trial offer after the celebration (NON-iOS ONLY) ──
+     iOS free-tier seal (Apple 3.1.1): the paywall and its /pricing CTA must be
+     UNREACHABLE on iOS. Every entry is guarded by isIOS() (celebration exit,
+     ImportHub-close exit, and the loadPhase() resume remap). This render is
+     itself iOS-guarded as defense-in-depth: on iOS we fall through to done. */
+  if (phase === "paywall" && !isIOS()) {
+    const paywallFeatures = [
+      t("paywallFeat1"),
+      t("paywallFeat2"),
+      t("paywallFeat3"),
+      t("paywallFeat4"),
+    ];
+
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        <Suspense fallback={sceneLoadingFallback}>
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
+        </Suspense>
+
+        {/* Dark overlay */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 10,
+          background: "rgba(26,25,23,0.75)",
+          backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          {/* Glass card */}
+          <div style={{
+            maxWidth: "28rem", width: "92%",
+            padding: isMobile ? "2rem 1.5rem" : "2.5rem 2.25rem",
+            background: "rgba(40, 34, 26, 0.85)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "1.25rem",
+            border: "1px solid rgba(198,107,61,0.15)",
+            boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.4), inset 0 1px 0 rgba(198,107,61,0.08)",
+            animation: "onb-fadeUp .6s ease",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
+
+              {/* Ornamental header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+                <span style={{
+                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
+                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
+                }}>
+                  {t("appName")}
+                </span>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+              </div>
+
+              {/* Title */}
+              <h2 style={{
+                fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem",
+                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+              }}>
+                {t("paywallTitle", { name: trimmedName || t("namePlaceholder") })}
+              </h2>
+
+              {/* Subtitle */}
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.875rem",
+                color: "#A09889", maxWidth: "24rem", lineHeight: 1.6, margin: 0,
+              }}>
+                {t("paywallSubtitle")}
+              </p>
+
+              {/* Features */}
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
+                {paywallFeatures.map((feat) => (
+                  <div key={feat} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                    <span style={{
+                      width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                      background: `${T.color.terracotta}18`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.625rem", color: T.color.terracotta, flexShrink: 0,
+                    }}>
+                      {"✓"}
+                    </span>
+                    <span style={{
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#D4CBC0", lineHeight: 1.4,
+                    }}>
+                      {feat}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Trial CTA — /pricing is NON-iOS only (guarded above) */}
+              <button
+                onClick={() => {
+                  track("paywall_trial_clicked", { source: "onboarding" });
+                  navigateInApp("/pricing");
+                  setPhase("done");
+                }}
+                style={{
+                  width: "100%", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                  padding: "0.875rem 0", borderRadius: "0.625rem", border: "none",
+                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                  color: "#FFF", cursor: "pointer", transition: "all .3s",
+                  boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.3)",
+                  minHeight: "3rem",
+                }}
+              >
+                {t("paywallTrialCta")}
+              </button>
+
+              {/* Subscription disclosure (Apple Guideline 3.1.2) */}
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.625rem", color: "#8A8073",
+                lineHeight: 1.5, margin: "-0.5rem 0 0", textAlign: "center", maxWidth: "22rem",
+              }}>
+                {t("paywallAutoRenew") !== "paywallAutoRenew" ? t("paywallAutoRenew") : "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings."}{" "}
+                <a href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
+                {" · "}
+                <a href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
+              </p>
+
+              {/* Free continue */}
+              <button
+                onClick={() => {
+                  track("paywall_skipped", { source: "onboarding" });
+                  setPhase("done");
+                }}
+                style={{
+                  fontFamily: T.font.body, fontSize: "0.75rem",
+                  color: "#6B6155", background: "none", border: "none",
+                  cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+                }}
+              >
+                {t("paywallContinueFree")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/* ── Helper: auto-advance after N seconds ── */
+function VideoAutoAdvance({ seconds, onAdvance }: { seconds: number; onAdvance: () => void }) {
+  const firedRef = useRef(false);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!firedRef.current) { firedRef.current = true; onAdvance(); }
+    }, seconds * 1000);
+    return () => clearTimeout(t);
+  }, [seconds, onAdvance]);
   return null;
 }
