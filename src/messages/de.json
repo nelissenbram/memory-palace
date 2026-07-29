@@ -297,7 +297,8 @@
     "styleConfirmTitle": "Der Stil deines Palasts: Römische Toskana",
     "styleConfirmAside": "Marmoratrien, Säulengärten — wir bauen es um dich herum.",
     "styleConfirmReversible": "Du kannst dies jederzeit ändern.",
-    "firstMemoryHint": "Platziere hier deine erste Erinnerung — ein Foto, ein Name, irgendetwas."
+    "firstMemoryHint": "Platziere hier deine erste Erinnerung — ein Foto, ein Name, irgendetwas.",
+    "welcomeToPalace": "Willkommen in deinem Memory Palace"
   },
   "palace": {
     "uploadMemory": "Erinnerung hochladen",

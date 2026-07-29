@@ -297,7 +297,8 @@
     "styleConfirmTitle": "Le style de votre palais : Toscane romaine",
     "styleConfirmAside": "Atriums de marbre, jardins à colonnades — nous le bâtirons autour de vous.",
     "styleConfirmReversible": "Vous pouvez modifier cela à tout moment.",
-    "firstMemoryHint": "Placez ici votre premier souvenir — une photo, un nom, n'importe quoi."
+    "firstMemoryHint": "Placez ici votre premier souvenir — une photo, un nom, n'importe quoi.",
+    "welcomeToPalace": "Bienvenue dans votre Memory Palace"
   },
   "palace": {
     "uploadMemory": "Ajouter un Souvenir",

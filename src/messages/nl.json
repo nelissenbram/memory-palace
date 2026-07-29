@@ -297,7 +297,8 @@
     "styleConfirmTitle": "De stijl van jouw paleis: Romeins Toscane",
     "styleConfirmAside": "Marmeren atria, zuilengalerijen — we bouwen het rond jou.",
     "styleConfirmReversible": "Je kunt dit altijd wijzigen.",
-    "firstMemoryHint": "Plaats hier je eerste herinnering — een foto, een naam, wat dan ook."
+    "firstMemoryHint": "Plaats hier je eerste herinnering — een foto, een naam, wat dan ook.",
+    "welcomeToPalace": "Welkom in jouw Memory Palace"
   },
   "palace": {
     "uploadMemory": "Herinnering uploaden",

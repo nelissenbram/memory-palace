@@ -91,6 +91,7 @@ const KEYFRAMES = `
 @keyframes onb-subtitleReveal{0%{opacity:0;transform:translateY(0.5rem)}100%{opacity:1;transform:translateY(0)}}
 @keyframes onb-pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes onb-slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes onb-welcomeIn{0%{opacity:0}30%{opacity:0}100%{opacity:1}}
 `;
 
 interface OnboardingWizardProps {
@@ -152,6 +153,19 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // ── Video state ── (intro video plays first, then loops as a soft background) ──
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoPlayed, setVideoPlayed] = useState(false);
+  // Graceful outro: instead of cutting straight to the first menu, fade in a
+  // "Welcome to your Memory Palace" title over the last moments of the video,
+  // then advance — softening the transition.
+  const [showWelcome, setShowWelcome] = useState(false);
+  const outroRef = useRef(false);
+  const beginOutro = useCallback(() => {
+    if (outroRef.current) return;
+    outroRef.current = true;
+    setVideoPlayed(true);
+    if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
+    setShowWelcome(true);
+    setTimeout(() => setPhase("lang_a11y"), 2600);
+  }, [setPhase]);
 
   // Force-play on mobile — autoplay can fail silently on iOS/Android. If it's
   // blocked during the intro, skip straight to the first setup card.
@@ -326,11 +340,7 @@ ${KEYFRAMES}
           loop={videoPlayed}
           playsInline
           preload="metadata"
-          onEnded={() => {
-            setVideoPlayed(true);
-            if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
-            setPhase("lang_a11y");
-          }}
+          onEnded={beginOutro}
           style={{
             position: "fixed", inset: 0,
             width: "100%", height: "100%",
@@ -352,9 +362,26 @@ ${KEYFRAMES}
           zIndex: 1,
         }} />
 
+        {/* Welcome outro — fades in over the last moments of the video, in the
+            app's warm gold display voice, so the hand-off to the first menu
+            isn't an abrupt cut. */}
+        {showWelcome && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 15, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 1.5rem", background: "radial-gradient(ellipse at center, rgba(26,25,23,0.35) 0%, rgba(26,25,23,0.72) 100%)", animation: "onb-welcomeIn 1.1s ease both" }}>
+            <div style={{
+              fontFamily: T.font.display, fontStyle: "italic",
+              fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 600,
+              color: "#E8C766", textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
+              textShadow: "0 0.25rem 1.75rem rgba(0,0,0,0.55)",
+            }}>
+              {t("welcomeToPalace") !== "welcomeToPalace" ? t("welcomeToPalace") : "Welcome to your Memory Palace"}
+            </div>
+          </div>
+        )}
+
         {/* Skip button */}
         <button
           onClick={() => {
+            outroRef.current = true;
             setVideoPlayed(true);
             if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
             setPhase("lang_a11y");
@@ -371,12 +398,9 @@ ${KEYFRAMES}
           {t("cinematicSkip")}
         </button>
 
-        {/* Auto-advance after 15s if the video hasn't ended */}
-        <VideoAutoAdvance seconds={15} onAdvance={() => {
-          setVideoPlayed(true);
-          if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
-          setPhase("lang_a11y");
-        }} />
+        {/* Start the welcome outro at ~12.5s (then advance ~2.6s later), so a
+            long/looping video still hands off gracefully. */}
+        <VideoAutoAdvance seconds={12.5} onAdvance={beginOutro} />
       </div>
     );
   }
