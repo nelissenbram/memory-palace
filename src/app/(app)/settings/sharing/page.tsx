@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useTransition } from "react";
+import { useState, useEffect, useCallback, useMemo, useTransition } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
@@ -210,6 +210,18 @@ export default function SharingPage() {
     return w.rooms.some((r) => r.published !== selectedRooms.has(r.id));
   });
 
+  // Lightweight wing summaries (id/name/slug) shared with the Passcode and Family
+  // sharing sections. Fetched once here (parent already loads getMyPublishableContent
+  // after flushing settings), so the two child sections no longer re-run that heavy
+  // server action independently. Memoized on the wing identity list so a save's
+  // optimistic `published` flips (which don't touch id/name/slug) don't churn the
+  // prop and re-render the children needlessly.
+  const wingSummaries = useMemo(
+    () => wings.map((w) => ({ id: w.id, name: w.name, slug: w.slug })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [wings.map((w) => `${w.id}:${w.name}:${w.slug}`).join("|")],
+  );
+
   return (
     <>
       {/* Toast */}
@@ -408,11 +420,11 @@ export default function SharingPage() {
 
       {/* Passcode / Temp Visiting Codes */}
       <SectionOverline label={tf("sectionVisitingCodes", "Visiting codes")} style={{ marginTop: "1.75rem" }} />
-      <PasscodeSection scale={scale} />
+      <PasscodeSection scale={scale} wings={wingSummaries} wingsLoading={loading} />
 
       {/* Family wing permissions (moved here from Settings > Family — change 20) */}
       <SectionOverline label={tf("sectionFamilyAccess", "Family access")} style={{ marginTop: "1.75rem" }} />
-      <FamilyWingSharingSection scale={scale} />
+      <FamilyWingSharingSection scale={scale} wings={wingSummaries} wingsLoading={loading} />
 
       {/* Canon hover / pressed / focus states (Me-page grammar) */}
       <style>{`
@@ -459,13 +471,19 @@ interface WingShareEntry {
   created_at: string;
 }
 
-function FamilyWingSharingSection({ scale }: { scale: number }) {
+function FamilyWingSharingSection({ scale, wings, wingsLoading }: {
+  scale: number;
+  wings: { id: string; slug: string; name: string }[];
+  wingsLoading: boolean;
+}) {
   const { t: tf } = useTranslation("familySettings");
   const { t: ts } = useTranslation("settings");
 
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<{ id: string; email: string }[]>([]);
-  const [wingOptions, setWingOptions] = useState<{ id: string; slug: string; name: string }[]>([]);
+  // Wing options now come from the parent (fetched once via getMyPublishableContent),
+  // rather than this section re-running that heavy action itself.
+  const wingOptions = wings;
   const [myShares, setMyShares] = useState<WingShareEntry[]>([]);
   const [sharedWithMe, setSharedWithMe] = useState<WingShareEntry[]>([]);
   const [shareWingSlug, setShareWingSlug] = useState("");
@@ -501,14 +519,8 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
   useEffect(() => {
     (async () => {
       try {
-        const [{ getAllFamilyGroups }, { getMyPublishableContent }] = await Promise.all([
-          import("@/lib/auth/family-actions"),
-          import("@/lib/social/share-actions"),
-        ]);
-        const [groupsRes, content] = await Promise.all([
-          getAllFamilyGroups(),
-          getMyPublishableContent(),
-        ]);
+        const { getAllFamilyGroups } = await import("@/lib/auth/family-actions");
+        const groupsRes = await getAllFamilyGroups();
         // All active family members across all groups (deduped, excluding self)
         const userEmail = (groupsRes.userEmail || "").toLowerCase();
         const groupEntries = (groupsRes.groups || []) as unknown as { members?: { id: string; email: string; status: string }[] }[];
@@ -519,10 +531,6 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
           (m, i, arr) => arr.findIndex((x) => x.email.toLowerCase() === m.email.toLowerCase()) === i
         );
         setMembers(unique.map((m) => ({ id: m.id, email: m.email })));
-        // Real wing list (fixes the hardcoded 5-wing list — 18-room era)
-        const opts = content.map((w) => ({ id: w.id, slug: w.slug, name: w.name }));
-        setWingOptions(opts);
-        if (opts.length > 0) setShareWingSlug(opts[0].slug);
       } catch {
         /* section stays usable with what loaded */
       }
@@ -530,6 +538,14 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
       setLoading(false);
     })();
   }, [loadShares]);
+
+  // Default the selected wing to the first available option once the parent's
+  // wing list arrives (was previously set inside the removed content fetch).
+  useEffect(() => {
+    if (wingOptions.length > 0) {
+      setShareWingSlug((prev) => (prev ? prev : wingOptions[0].slug));
+    }
+  }, [wingOptions]);
 
   const wingLabel = (wingSlug: string) => {
     // wing_shares.wing_id is the canonical wing SLUG end-to-end: shareWing()
@@ -617,7 +633,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
         {tf("wingSharingDesc")}
       </p>
 
-      {loading ? (
+      {loading || wingsLoading ? (
         <SharingSpinner scale={scale} label={ts("loading")} />
       ) : (
         <>
@@ -906,14 +922,19 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
 
 /* ── Passcode Section ────────────────────────────────── */
 
-function PasscodeSection({ scale }: { scale: number }) {
+function PasscodeSection({ scale, wings, wingsLoading }: {
+  scale: number;
+  wings: { id: string; name: string; slug: string }[];
+  wingsLoading: boolean;
+}) {
   const { t } = useTranslation("social");
   const { t: ts } = useTranslation("settings");
   const isCompact = useIsCompact();
   const [codes, setCodes] = useState<{ id: string; passcode: string; expiresAt: string; wingId: string | null; roomId: string | null; createdAt: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [wings, setWings] = useState<{ id: string; name: string; slug: string }[]>([]);
+  // Wing list now comes from the parent (fetched once via getMyPublishableContent),
+  // so this section no longer re-runs that heavy action just to populate the picker.
   const [selectedWingId, setSelectedWingId] = useState("");
   const [hours, setHours] = useState(24);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -928,17 +949,9 @@ function PasscodeSection({ scale }: { scale: number }) {
   useEffect(() => {
     (async () => {
       try {
-        const [{ getMyPasscodes }, { getMyPublishableContent }] = await Promise.all([
-          import("@/lib/social/passcode-actions"),
-          import("@/lib/social/share-actions"),
-        ]);
-        const [codeResult, content] = await Promise.all([
-          getMyPasscodes(),
-          getMyPublishableContent(),
-        ]);
+        const { getMyPasscodes } = await import("@/lib/social/passcode-actions");
+        const codeResult = await getMyPasscodes();
         if (codeResult.ok) setCodes(codeResult.shares);
-        setWings(content.map((w) => ({ id: w.id, name: w.name, slug: w.slug })));
-        if (content.length > 0) setSelectedWingId(content[0].id);
       } catch {
         setToast({ message: ts("loadError"), type: "error" });
       } finally {
@@ -947,6 +960,14 @@ function PasscodeSection({ scale }: { scale: number }) {
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Default the selected wing to the first available option once the parent's
+  // wing list arrives (was previously set inside the removed content fetch).
+  useEffect(() => {
+    if (wings.length > 0) {
+      setSelectedWingId((prev) => (prev ? prev : wings[0].id));
+    }
+  }, [wings]);
 
   const handleCreate = async () => {
     if (!selectedWingId) return;
@@ -1017,7 +1038,7 @@ function PasscodeSection({ scale }: { scale: number }) {
         {t("passcodeDesc") || "Create temporary visiting codes so others can access your palace without publishing."}
       </p>
 
-      {loading ? (
+      {loading || wingsLoading ? (
         <SharingSpinner scale={scale} label={ts("loading")} />
       ) : (
         <>

@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
@@ -17,7 +17,7 @@ interface MobileJoystickProps {
 export default function MobileJoystick({ onMove, visible }: MobileJoystickProps) {
   const { t } = useTranslation("mobileJoystick");
   const outerRef = useRef<HTMLDivElement | null>(null);
-  const [knobPos, setKnobPos] = useState({ x: 0, y: 0 });
+  const knobRef = useRef<HTMLDivElement | null>(null);
   const touchIdRef = useRef<number | null>(null);
   const centerRef = useRef({ x: 0, y: 0 });
   const outerRadiusRef = useRef(50); // measured outer radius in px, refreshed on touch start
@@ -61,7 +61,13 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       window.dispatchEvent(new KeyboardEvent("keyup", { key: k, bubbles: true }));
     });
     activeKeysRef.current = new Set();
-    setKnobPos({ x: 0, y: 0 });
+    // Snap the knob back to center imperatively (with the ease-out transition)
+    // rather than via React state, avoiding a re-render.
+    const knob = knobRef.current;
+    if (knob) {
+      knob.style.transition = "transform 0.15s ease-out";
+      knob.style.transform = "translate(0px, 0px)";
+    }
     onMove({ x: 0, y: 0 });
   }, [onMove]);
 
@@ -96,6 +102,9 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       centerRef.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       outerRadiusRef.current = rect.width / 2;
     }
+    // Drop the snap-back transition while dragging so the knob tracks the finger
+    // immediately (the imperative transform updates every touchmove).
+    if (knobRef.current) knobRef.current.style.transition = "none";
     e.stopPropagation();
   }, []);
 
@@ -116,7 +125,13 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       const angle = Math.atan2(dy, dx);
       const cx = clampedDist * Math.cos(angle);
       const cy = clampedDist * Math.sin(angle);
-      setKnobPos({ x: cx, y: cy });
+      // Drive the knob imperatively — this is a pure presentational transform
+      // that fires on every touchmove (60-120Hz). Routing it through React state
+      // would schedule a full re-render each event, competing with the R3F
+      // render loop while the user is navigating the palace.
+      if (knobRef.current) {
+        knobRef.current.style.transform = `translate(${cx}px, ${cy}px)`;
+      }
 
       // Normalize to -1..1
       const nx = cx / maxDist;
@@ -197,8 +212,10 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
         />
       </svg>
 
-      {/* Inner knob */}
+      {/* Inner knob — position driven imperatively via knobRef during drag to
+          avoid a React re-render on every touchmove event. */}
       <div
+        ref={knobRef}
         style={{
           width: `${KNOB_SIZE_REM}rem`,
           height: `${KNOB_SIZE_REM}rem`,
@@ -206,8 +223,8 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
           background: "rgba(250, 250, 247, 0.35)",
           border: "0.09375rem solid rgba(250, 250, 247, 0.45)",
           boxShadow: "0 0.125rem 0.5rem rgba(64,59,54,0.15)",
-          transform: `translate(${knobPos.x}px, ${knobPos.y}px)`,
-          transition: touchIdRef.current !== null ? "none" : "transform 0.15s ease-out",
+          transform: "translate(0px, 0px)",
+          transition: "transform 0.15s ease-out",
           pointerEvents: "none",
         }}
       />

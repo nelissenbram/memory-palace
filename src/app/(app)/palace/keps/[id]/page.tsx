@@ -15,7 +15,19 @@ export default function KepDetailPage() {
   const params = useParams();
   const router = useRouter();
   const kepId = params.id as string;
-  const { currentKep, captures, stats, isLoading, fetchKep, fetchCaptures, fetchStats, updateKep, deleteKep } = useKepStore();
+  // Narrow selectors: only re-render on the data fields this page reads, not on
+  // unrelated store writes (keps[], pendingCaptures[], isCreating, error).
+  // Action functions have stable identities (created once at store init), so
+  // selecting each individually is safe and does not add re-renders.
+  const currentKep = useKepStore((s) => s.currentKep);
+  const captures = useKepStore((s) => s.captures);
+  const stats = useKepStore((s) => s.stats);
+  const isLoading = useKepStore((s) => s.isLoading);
+  const fetchKep = useKepStore((s) => s.fetchKep);
+  const fetchCaptures = useKepStore((s) => s.fetchCaptures);
+  const fetchStats = useKepStore((s) => s.fetchStats);
+  const updateKep = useKepStore((s) => s.updateKep);
+  const deleteKep = useKepStore((s) => s.deleteKep);
   const [activeTab, setActiveTab] = useState<"captures" | "settings" | "stats">("captures");
 
   useEffect(() => {

@@ -59,7 +59,16 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
   const isTablet = useIsTablet();
   const touch = isMobile || isTablet;
   const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const { getWingRooms, renameRoom, changeRoomIcon, addRoom, deleteRoom, reorderRoom } = useRoomStore();
+  // Actions are stable method references that never change, so read them once
+  // from getState() instead of subscribing. Only subscribe to the reactive
+  // slice that actually drives the rendered list (this wing's custom rooms),
+  // so unrelated store mutations (other wings, wing customizations, cross-device
+  // syncs mid-edit) no longer re-render the whole panel + full room list.
+  const { getWingRooms, renameRoom, changeRoomIcon, addRoom, deleteRoom, reorderRoom } = useRoomStore.getState();
+  // Subscribe narrowly: re-render only when THIS wing's room array identity
+  // changes. getWingRooms falls back to WING_ROOMS defaults when there's no
+  // custom entry, preserving the exact same result.
+  useRoomStore(s => s.customRooms[wing.id]);
   const rooms = getWingRooms(wing.id);
   const accent = wing.accent;
 

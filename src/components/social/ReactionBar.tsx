@@ -6,7 +6,7 @@ import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, SHADOW } from "@/lib/libraryT
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { ReactionSummary } from "@/lib/social/comment-actions";
-import { toggleReaction, getReactions } from "@/lib/social/comment-actions";
+import { toggleReaction } from "@/lib/social/comment-actions";
 
 const REACTION_EMOJIS = [
   { emoji: "candle", label: "Candle" },
@@ -50,6 +50,9 @@ export default function ReactionBar({
   const [showPicker, setShowPicker] = useState(false);
   const [isPending, startTransition] = useTransition();
   const pickerRef = useRef<HTMLDivElement>(null);
+  // Monotonic token guarding against out-of-order toggle responses: only the
+  // most recently started toggle may commit the authoritative server summary.
+  const toggleSeqRef = useRef(0);
 
   useEffect(() => {
     if (!showPicker) return;
@@ -71,10 +74,30 @@ export default function ReactionBar({
   }, [showPicker]);
 
   const handleToggle = (emoji: string) => {
+    const seq = ++toggleSeqRef.current;
+    setShowPicker(false);
     startTransition(async () => {
-      const { reacted } = await toggleReaction({ targetType, targetId, emoji });
+      const { reacted, summary } = await toggleReaction({
+        targetType,
+        targetId,
+        emoji,
+      });
 
-      // Optimistic update for instant feedback.
+      // Ignore a stale response if a newer toggle has since started, so an
+      // out-of-order server reply can't clobber fresher state (last-write race).
+      if (seq !== toggleSeqRef.current) return;
+
+      // toggleReaction now returns the authoritative fresh summary in the same
+      // round-trip, so no separate getReactions read is needed. This is the
+      // exact grouping getReactions would have produced (includes other users'
+      // reactions), so cross-user counts stay accurate.
+      if (summary) {
+        setReactions(summary);
+        return;
+      }
+
+      // Fallback (e.g. unauthenticated, where no summary is returned): apply the
+      // optimistic delta so this viewer still sees instant feedback.
       setReactions((prev) => {
         const existing = prev.find((r) => r.emoji === emoji);
         if (existing) {
@@ -87,18 +110,6 @@ export default function ReactionBar({
         if (reacted) return [...prev, { emoji, count: 1, reacted: true }];
         return prev;
       });
-
-      setShowPicker(false);
-
-      // Reconcile with server truth so counts stay accurate across users.
-      // The optimistic delta above only tracks this viewer's own toggle; other
-      // users' reactions land here. Failure is non-fatal — we keep the optimistic value.
-      try {
-        const fresh = await getReactions(targetType, targetId);
-        setReactions(fresh);
-      } catch {
-        // Network hiccup: leave the optimistic state in place.
-      }
     });
   };
 

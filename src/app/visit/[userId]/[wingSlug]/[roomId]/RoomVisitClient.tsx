@@ -88,9 +88,15 @@ function MemoryCard({
           }}
         >
           <img
-            src={memory.file_url || memory.thumbnail_url || ""}
+            // Grid cards are ~16rem wide; prefer the pre-scaled thumbnail so an
+            // image-heavy room doesn't download full-resolution originals into a
+            // tiny card (falls back to file_url when no thumbnail exists). hasImage
+            // already guards on (file_url || thumbnail_url), so this order is free.
+            src={memory.thumbnail_url || memory.file_url || ""}
             alt={memory.title}
             loading="lazy"
+            decoding="async"
+            sizes={isMobile ? "100vw" : "16rem"}
             style={{
               width: "100%",
               height: "100%",

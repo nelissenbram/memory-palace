@@ -96,7 +96,14 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   const { t } = useTranslation("wingManager");
   const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const { getWings, renameWing, changeWingIcon, changeWingAccent, changeWingDesc, addWing, deleteWing, extraWings } = useRoomStore();
+  // Actions are stable method references that never change, so read them once
+  // from getState() instead of subscribing to the whole store. Subscribe only
+  // to the two reactive slices that drive the rendered list (customWings +
+  // extraWings), so unrelated mutations (room edits, cross-device syncs) no
+  // longer re-render the entire panel and its full wing list.
+  const { getWings, renameWing, changeWingIcon, changeWingAccent, changeWingDesc, addWing, deleteWing } = useRoomStore.getState();
+  useRoomStore(s => s.customWings);
+  const extraWings = useRoomStore(s => s.extraWings);
   const wings = getWings();
   const extraWingIds = new Set(extraWings.map(w => w.id));
 

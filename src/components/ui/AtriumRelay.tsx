@@ -203,7 +203,7 @@ function ThumbFan({ thumbs }: { thumbs: string[] }) {
   );
 }
 
-function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel }: { tile: RelayTile; accent: RelayAccent; index: number; isMobile: boolean; suggestionKey?: string; warmth: WarmthLevel; soonLabel: string }) {
+const Tile = React.memo(function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel }: { tile: RelayTile; accent: RelayAccent; index: number; isMobile: boolean; suggestionKey?: string; warmth: WarmthLevel; soonLabel: string }) {
   if (tile.hidden) return null;
   const a = ACCENT[accent];
 
@@ -308,7 +308,7 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
       <span aria-hidden="true" className="relay-sec-openarrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop, opacity: 0.5, pointerEvents: "none" }}>→</span>
     </button>
   );
-}
+});
 
 function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -369,7 +369,7 @@ export function EmbersRow({ embers }: { embers: RelayEmbers }) {
   );
 }
 
-export default function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, warmth = 1, score, suggestion, personaLabel, personaQuiz, onChangeStyle, onChooseJourney, onAddName, memoriesStrip, anchors, lanes, you, isMobile, weekHistory, labels }: AtriumRelayProps) {
+function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, warmth = 1, score, suggestion, personaLabel, personaQuiz, onChangeStyle, onChooseJourney, onAddName, memoriesStrip, anchors, lanes, you, isMobile, weekHistory, labels }: AtriumRelayProps) {
   const [mounted, setMounted] = useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   useEffect(() => { const id = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(id); }, []);
@@ -595,3 +595,9 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
     </div>
   );
 }
+
+/* React.memo: the board is a plain leaf of HomeView that receives many props.
+   Wrapped so unrelated parent re-renders (10-min timeOfDay tick, store ticks)
+   skip a full board reconciliation whenever the props are referentially stable
+   (memoized anchors/art on the HomeView side). */
+export default React.memo(AtriumRelay);

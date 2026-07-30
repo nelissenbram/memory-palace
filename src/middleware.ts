@@ -48,6 +48,13 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/api/webhooks/") ||
     path.startsWith("/api/stripe/webhook") ||
     path.startsWith("/api/apple/webhook") ||
+    // /api/media/ fully authenticates + authorizes itself (route.ts calls
+    // supabase.auth.getUser() plus ownership/share/published-wing checks), so the
+    // middleware's updateSession()->getUser() here is pure duplicate cost. A 3D room
+    // render fans out one /api/media/ request per thumbnail + full asset, so skipping
+    // the middleware Auth round-trip here removes one GoTrue round-trip per image with
+    // zero security loss.
+    path.startsWith("/api/media/") ||
     // Note: /api/admin/ is NOT fast-pathed — it needs session refresh for admin auth fallback
     path.startsWith("/api/email/") ||
     path.startsWith("/api/legacy/") ||

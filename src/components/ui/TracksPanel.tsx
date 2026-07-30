@@ -5,6 +5,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { TRACKS } from "@/lib/constants/tracks";
 import { GOAL_TRACK_PRIORITY } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
+import { getLevelForPoints, getLevelProgress } from "@/lib/constants/levels";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
@@ -24,10 +25,16 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
   const dense = isMobile || isCompact;
   const { t } = useTranslation("tracksPanel");
   const { t: tl } = useTranslation("levels");
-  const { tracks, totalPoints, getLevelInfo, getLevelProgressInfo, setSelectedTrackId } = useTrackStore();
+  // Atomic selectors: isolate the panel from floatingPoints/toast/celebration churn
+  // (runProgressCheck mutates those on a 500ms-debounced effect while the panel is open).
+  const tracks = useTrackStore((s) => s.tracks);
+  const totalPoints = useTrackStore((s) => s.totalPoints);
+  const setSelectedTrackId = useTrackStore((s) => s.setSelectedTrackId);
   const { userGoal } = useUserStore();
   const { userMems } = useMemoryStore();
-  const levelInfo = getLevelInfo();
+  // Level info/progress are pure derivations of totalPoints — memoize so they only
+  // recompute when points change, matching the store getters' output exactly.
+  const levelInfo = useMemo(() => getLevelForPoints(totalPoints), [totalPoints]);
 
   const resolutions = useMemo(() => {
     const allMems: Record<string, Mem[]> = { ...ROOM_MEMS };
@@ -40,7 +47,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
     }
     return results;
   }, [userMems]);
-  const progressInfo = getLevelProgressInfo();
+  const progressInfo = useMemo(() => getLevelProgress(totalPoints), [totalPoints]);
 
   const goalPriority = GOAL_TRACK_PRIORITY[userGoal] || GOAL_TRACK_PRIORITY["preserve"];
   const sortedTracks = [...TRACKS].sort((a, b) => {

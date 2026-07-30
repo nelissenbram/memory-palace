@@ -39,6 +39,19 @@ export default function CorridorTutorial({ open, onClose }: Props) {
   const [targetBox, setTargetBox] = useState<Rect | null>(null);
   const nextRef = useRef<HTMLButtonElement | null>(null);
 
+  // Cache the root font-size once (it never changes within a session) so remToPx
+  // doesn't force a synchronous getComputedStyle reflow on every call/render.
+  // Refreshed only on resize (covers browser zoom / responsive root sizing).
+  const rootPxRef = useRef(16);
+  useEffect(() => {
+    const read = () => {
+      rootPxRef.current = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (open) setStep(0); }, [open]);
 
@@ -58,9 +71,12 @@ export default function CorridorTutorial({ open, onClose }: Props) {
 
   const totalSteps = 2;
 
+  const lastBoxRef = useRef<Rect | null>(null);
+  const rafRef = useRef<number | null>(null);
   useLayoutEffect(() => {
-    if (!open) { setTargetBox(null); return; }
-    const measure = () => {
+    if (!open) { setTargetBox(null); lastBoxRef.current = null; return; }
+
+    const computeBox = (): Rect | null => {
       let el: HTMLElement | null = null;
       if (isMobile) {
         if (step === 0) {
@@ -71,21 +87,45 @@ export default function CorridorTutorial({ open, onClose }: Props) {
         }
       } else {
         // Desktop: step 0 = no target (centered navigation text), step 1 = media button
-        if (step === 0) { setTargetBox(null); return; }
+        if (step === 0) return null;
         el = document.querySelector<HTMLElement>("[data-mp-corridor-media]");
       }
-      if (!el) { setTargetBox(null); return; }
+      if (!el) return null;
       const r = el.getBoundingClientRect();
-      setTargetBox({ top: r.top, left: r.left, width: r.width, height: r.height });
+      return { top: r.top, left: r.left, width: r.width, height: r.height };
     };
+
+    const sameRect = (a: Rect | null, b: Rect | null) =>
+      a === b || (!!a && !!b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height);
+
+    // Layout read + commit, but bail if the rect is unchanged so scroll/resize
+    // ticks that don't move the target don't re-render the portal + SVG mask.
+    const measure = () => {
+      const next = computeBox();
+      if (sameRect(next, lastBoxRef.current)) return;
+      lastBoxRef.current = next;
+      setTargetBox(next);
+    };
+
+    // rAF-coalesced handler: skip if a frame is already pending so momentum/
+    // inertial scroll collapses many events into one layout read per frame.
+    const onScrollOrResize = () => {
+      if (rafRef.current != null) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        measure();
+      });
+    };
+
     measure();
     const id = setTimeout(measure, 60);
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
+    window.addEventListener("scroll", onScrollOrResize, { capture: true, passive: true });
     return () => {
       clearTimeout(id);
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+      if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, step, isMobile]);
@@ -107,7 +147,7 @@ export default function CorridorTutorial({ open, onClose }: Props) {
     bodyKey  = step === 0 ? "dStep1Body"  : "dStep2Body";
   }
 
-  const remToPx = (rem: number) => rem * parseFloat(typeof window !== "undefined" ? getComputedStyle(document.documentElement).fontSize || "16" : "16");
+  const remToPx = (rem: number) => rem * rootPxRef.current;
   const pad = 8;
   const rRem = 0.875;
   const r = remToPx(rRem);

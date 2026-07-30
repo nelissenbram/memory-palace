@@ -13,20 +13,33 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
  */
 
 const _attempted = new Set<string>();
-let _running = false;
 const _queue: Array<() => Promise<void>> = [];
 
-async function processQueue() {
-  if (_running) return;
-  _running = true;
+// Drain the queue with a small pool of concurrent workers instead of one task
+// at a time. On a fresh/large library, thumbnails are the ONLY thing that lets
+// the wall stop painting full-resolution originals into ~116-200px tiles
+// (see PhotoWall.tileSources / MediaThumb), so getting thumbnailUrl populated
+// quickly is the win. Bounded (3) + a short inter-task yield keeps this from
+// hammering /api/upload or stalling the main thread — same tasks, same DB
+// writes, same result, just parallelised.
+const _POOL = 3;
+const _GAP_MS = 60;
+let _activeWorkers = 0;
+
+async function worker() {
   while (_queue.length > 0) {
     const task = _queue.shift();
-    if (task) {
-      try { await task(); } catch { /* swallow — non-critical */ }
-      await new Promise((r) => setTimeout(r, 250));
-    }
+    if (!task) break;
+    try { await task(); } catch { /* swallow — non-critical */ }
+    if (_queue.length > 0) await new Promise((r) => setTimeout(r, _GAP_MS));
   }
-  _running = false;
+}
+
+function processQueue() {
+  while (_activeWorkers < _POOL && _queue.length > 0) {
+    _activeWorkers++;
+    void worker().finally(() => { _activeWorkers--; });
+  }
 }
 
 function looksLikeUuid(s: string): boolean {

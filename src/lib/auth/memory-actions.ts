@@ -348,14 +348,22 @@ export async function fetchAllMemories() {
     .eq("user_id", user.id);
   if (!rooms || rooms.length === 0) return { roomMemories: {} as Record<string, any[]> };
 
-  // Fetch all memories for all rooms in one query
+  // Fetch all memories for all rooms in one query.
+  // Project only the columns the client mapper consumes (see memoryStore
+  // fetchAllRoomMemories) instead of select('*') so we don't pull large
+  // unused columns and can serve from index-only reads. A generous .limit()
+  // guards against pathological payloads for power users; 2000 is well above
+  // any real per-user memory count and won't truncate normal data.
   const roomIds = rooms.map((r: any) => r.id);
   const { data: memories, error } = await supabase
     .from("memories")
-    .select("*")
+    .select(
+      "id, title, hue, saturation, lightness, type, description, file_url, thumbnail_url, location_name, lat, lng, created_at, displayed, display_unit, room_id, sort_order",
+    )
     .in("room_id", roomIds)
     .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(2000);
 
   if (error) return { roomMemories: {} as Record<string, any[]>, error: error.message };
 

@@ -141,10 +141,12 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // than the short viewport. Switch to top-aligned + scrollable. Portrait unchanged.
   const isLandscapePhone = isMobile && !isPortrait;
   const { t, setLocaleNoReload } = useTranslation("onboarding");
-  const {
-    userName,
-    setUserName, setUserGoal, setFirstWing, setStyleEra,
-  } = useUserStore();
+  // Selector: subscribe ONLY to userName (the sole reactive store field this
+  // render reads). Setters are stable action references, pulled once via
+  // getState() so the wizard no longer re-renders on every unrelated store write
+  // (styleEra/bust*/goal/wing) the 3D host makes while the canvas is live.
+  const userName = useUserStore((s) => s.userName);
+  const { setUserName, setUserGoal, setFirstWing, setStyleEra } = useUserStore.getState();
   const { scaleLevel, setScaleLevel } = useAccessibility();
 
   useEffect(() => {

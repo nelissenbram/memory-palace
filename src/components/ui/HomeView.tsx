@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useCallback, useEffect, useState, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -194,10 +195,28 @@ export default function HomeView() {
   const { t: tAch } = useTranslation("achievementsPanel");
   const { t: tPersona } = useTranslation("persona" as "common");
   const { t: tWings } = useTranslation("wings");
-  const { userName } = useUserStore();
-  const { navMode, setNavMode, enterEntrance } = usePalaceStore();
-  const { getWings, getWingRooms } = useRoomStore();
-  const { userMems, fetchRoomMemories } = useMemoryStore();
+  const userName = useUserStore((s) => s.userName);
+  // Atomic selectors — actions/getters are stable in Zustand, so selecting each
+  // individually avoids the whole-store subscription that re-rendered this tree
+  // on every unrelated set() (palaceStore hover/opacity/portalAnim ticks,
+  // memoryStore per-memory optimistic writes + the poll). navMode was
+  // destructured but never read in render, so it is dropped entirely.
+  const setNavMode = usePalaceStore((s) => s.setNavMode);
+  const enterEntrance = usePalaceStore((s) => s.enterEntrance);
+  const getWings = useRoomStore((s) => s.getWings);
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
+  // Subscribe to the raw slices getWings() derives from so `wings` recomputes
+  // ONLY when wing state actually changes identity (customWings/extraWings), not
+  // on every render. Without this, calling getWings() bare in render made `wings`
+  // an unstable dep of allMemories/totalRooms/sharedRooms/wingsData and the whole
+  // derived-data pyramid re-ran on every unrelated tick (persona toggle, confetti,
+  // 10-min timeOfDay, notification load, locale change, any store update).
+  const customWings = useRoomStore((s) => s.customWings);
+  const extraWings = useRoomStore((s) => s.extraWings);
+  const userMems = useMemoryStore((s) => s.userMems);
+  const fetchAllRoomMemories = useMemoryStore((s) => s.fetchAllRoomMemories);
+  // useShallow grouped reads — subscribe only to these named slices/actions and
+  // re-render on shallow-equality change, not on any set() to the whole store.
   const {
     tracks: trackProgressMap,
     totalPoints,
@@ -209,20 +228,42 @@ export default function HomeView() {
     legacyReviewed,
     getLevel,
     getLevelProgressInfo,
-  } = useTrackStore();
+  } = useTrackStore(useShallow((s) => ({
+    tracks: s.tracks,
+    totalPoints: s.totalPoints,
+    getTrackProgress: s.getTrackProgress,
+    getNextStep: s.getNextStep,
+    setShowTracksPanel: s.setShowTracksPanel,
+    setSelectedTrackId: s.setSelectedTrackId,
+    setShowLegacyPanel: s.setShowLegacyPanel,
+    legacyReviewed: s.legacyReviewed,
+    getLevel: s.getLevel,
+    getLevelProgressInfo: s.getLevelProgressInfo,
+  })));
   const {
     setShowPanel: setShowAchievementPanel,
     openWithHighlight: openAchievementWithHighlight,
     getProgress: getAchievementProgress,
     earnedIds,
     earnedDates,
-  } = useAchievementStore();
+  } = useAchievementStore(useShallow((s) => ({
+    setShowPanel: s.setShowPanel,
+    openWithHighlight: s.openWithHighlight,
+    getProgress: s.getProgress,
+    earnedIds: s.earnedIds,
+    earnedDates: s.earnedDates,
+  })));
   const {
     sessions: interviewSessions,
     setShowLibrary: setShowInterviewLibrary,
     setShowInterview: setShowInterview,
     startSession: startInterviewSession,
-  } = useInterviewStore();
+  } = useInterviewStore(useShallow((s) => ({
+    sessions: s.sessions,
+    setShowLibrary: s.setShowLibrary,
+    setShowInterview: s.setShowInterview,
+    startSession: s.startSession,
+  })));
   const setShowMemoryMap = useUIPanelStore((s) => s.setShowMemoryMap);
   const setShowTimeline = useUIPanelStore((s) => s.setShowTimeline);
   const setShowStatistics = useUIPanelStore((s) => s.setShowStatistics);
@@ -233,7 +274,11 @@ export default function HomeView() {
 
   const { startTransition, transitionProps } = useModeTransition();
 
-  const wings = getWings();
+  // Referentially stable across renders — recomputes only when customWings or
+  // extraWings change. (getWings() itself is cached in roomStore on the same
+  // slice identities, so this returns the same array reference; the memo makes
+  // the dependency explicit and shields the pyramid from getWings identity.)
+  const wings = useMemo(() => getWings(), [getWings, customWings, extraWings]);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -262,19 +307,15 @@ export default function HomeView() {
     } catch { /* ignore parse errors */ }
   }, []);
 
-  // Prefetch memories on mount — only if total rooms <= 50 to avoid
-  // hammering the API for large palaces. Beyond that threshold rooms
-  // are fetched lazily when the user navigates to them.
+  // Prefetch every room's memories on mount with ONE batched query
+  // (fetchAllMemories → single .in('room_id', …) round-trip), the same pattern
+  // LibraryView adopted. This replaces the old per-room loop that fired up to
+  // ~50 concurrent Supabase requests + IndexedDB writes (and, combined with the
+  // now-stable getWings/getWingRooms, re-ran the allMemories memo 50x on cold
+  // load). The room-count threshold is gone: the batch is one query regardless
+  // of palace size.
   useEffect(() => {
-    let roomCount = 0;
-    for (const w of wings) roomCount += getWingRooms(w.id).length;
-    if (roomCount > 50) return; // defer to lazy loading for large palaces
-
-    for (const w of wings) {
-      for (const r of getWingRooms(w.id)) {
-        fetchRoomMemories(r.id);
-      }
-    }
+    fetchAllRoomMemories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -572,36 +613,42 @@ export default function HomeView() {
   const relayDatum = totalMemories > 0
     ? `${totalWings === 1 ? t("relay.wingsCountOne", { count: String(totalWings) }) : t("relay.wingsCount", { count: String(totalWings) })} · ${totalRooms === 1 ? t("relay.roomsCountOne", { count: String(totalRooms) }) : t("relay.roomsCount", { count: String(totalRooms) })} · ${totalMemories === 1 ? t("relay.memoriesCountOne", { count: String(totalMemories) }) : t("relay.memoriesCount", { count: String(totalMemories) })}`
     : t("firstMemoryPrompt");
-  const goUpload = () => { localStorage.setItem("mp_spotlight_target", "import-upload"); handleNavigateLibrary(); };
-  const yrs = allMemories.map((m) => (m.mem.createdAt ? new Date(m.mem.createdAt).getFullYear() : 0)).filter(Boolean);
-  const yearRange = yrs.length ? `${Math.min(...yrs)}–${Math.max(...yrs)}` : undefined;
+  const goUpload = useCallback(() => { localStorage.setItem("mp_spotlight_target", "import-upload"); handleNavigateLibrary(); }, [handleNavigateLibrary]);
+  const yearRange = useMemo(() => {
+    const yrs = allMemories.map((m) => (m.mem.createdAt ? new Date(m.mem.createdAt).getFullYear() : 0)).filter(Boolean);
+    return yrs.length ? `${Math.min(...yrs)}–${Math.max(...yrs)}` : undefined;
+  }, [allMemories]);
   // Same source logic as MediaThumb (the component the Library itself uses):
   // photos/paintings/albums paint their dataUrl DIRECTLY; video/audio only a
   // stored thumbnailUrl. Preferring thumbnailUrl for photos was the source of
   // the dead fan thumbs (stale/expired poster references).
-  const validImg = (s: string | null | undefined): string | null =>
-    s && (s.startsWith("data:image") || s.startsWith("http") || s.startsWith("blob:") || s.startsWith("/")) ? s : null;
-  const memSrc = (m: Mem): string | null => {
+  // Pure source-resolvers, stabilised with useCallback so the memoized strip /
+  // thumb lists below can list them as deps without breaking on every render.
+  const validImg = useCallback((s: string | null | undefined): string | null =>
+    s && (s.startsWith("data:image") || s.startsWith("http") || s.startsWith("blob:") || s.startsWith("/")) ? s : null, []);
+  const memSrc = useCallback((m: Mem): string | null => {
     const isImage = m.type === "photo" || m.type === "painting" || m.type === "album";
     if (isImage) return validImg(m.dataUrl) || validImg(m.thumbnailUrl);
     const isVideo = m.type === "video" || !!m.videoBlob;
     const isAudio = m.type === "audio" || m.type === "voice" || m.type === "interview" || !!m.voiceBlob;
     if (isVideo || isAudio) return validImg(m.thumbnailUrl);
     return validImg(m.dataUrl) || validImg(m.thumbnailUrl);
-  };
-  const libThumbs = Array.from(new Set(
+  }, [validImg]);
+  const libThumbs = useMemo(() => Array.from(new Set(
     recentMemories.map((r) => memSrc(r.mem)).filter((x): x is string => !!x)
-  )).slice(0, 3);
+  )).slice(0, 3), [recentMemories, memSrc]);
   // Steward brain — one smart, non-duplicative suggestion (never re-offers the
   // Palace/Library anchors that already sit right below).
   // Memory tracks brought forward: an in-progress (persona-informed) journey
   // becomes the steward suggestion, with a real progress bar.
-  const activeTrack = trackData.find((tk) => tk.progress > 0 && tk.progress < tk.total)
+  const activeTrack = useMemo(() =>
+    trackData.find((tk) => tk.progress > 0 && tk.progress < tk.total)
     || (personaType ? trackData.find((tk) => (PERSONA_TRACKS[personaType] || []).includes(tk.id) && tk.progress < tk.total) : undefined)
-    || trackData.find((tk) => tk.progress < tk.total);
+    || trackData.find((tk) => tk.progress < tk.total),
+  [trackData, personaType]);
   // Evening Return (change 10): at dusk, if MP was already opened this morning,
   // the steward comes back from the archives with a find. Grief-mute respected.
-  const eveningFind = (timeOfDay === "golden" || timeOfDay === "night") && openedEarlierToday
+  const eveningFind = useMemo(() => (timeOfDay === "golden" || timeOfDay === "night") && openedEarlierToday
     ? (() => {
         const pool = allMemories.filter(({ mem }) => mem.createdAt && !griefMuted.has(mem.id));
         if (pool.length === 0) return null;
@@ -611,15 +658,18 @@ export default function HomeView() {
         const oldest = [...pool].sort((a, b) => new Date(a.mem.createdAt!).getTime() - new Date(b.mem.createdAt!).getTime())[0];
         return anniversary || audio || oldest;
       })()
-    : null;
+    : null,
+  [timeOfDay, openedEarlierToday, allMemories, griefMuted]);
   // Daily Question (change 9): exactly one sealed prompt per day; answered
   // (memory added today) falls through to the next branch.
-  const _now = new Date();
-  const dayOfYear = Math.floor((_now.getTime() - new Date(_now.getFullYear(), 0, 0).getTime()) / 86400000);
-  const answeredToday = allMemories.some(({ mem }) => mem.createdAt && new Date(mem.createdAt).toDateString() === _now.toDateString());
-  const dailyQuestion = totalMemories > 0 && !answeredToday ? t(`relay.q${(dayOfYear % 30) + 1}`) : null;
+  const dailyQuestion = useMemo(() => {
+    const now = new Date();
+    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+    const answeredToday = allMemories.some(({ mem }) => mem.createdAt && new Date(mem.createdAt).toDateString() === now.toDateString());
+    return totalMemories > 0 && !answeredToday ? t(`relay.q${(dayOfYear % 30) + 1}`) : null;
+  }, [allMemories, totalMemories, t]);
 
-  const relaySuggestion = eveningFind
+  const relaySuggestion = useMemo(() => eveningFind
     ? { key: "lantern", title: t("relay.eveningFind"), reason: `${eveningFind.mem.title || t("relay.aMemory")} · ${translateWingName(eveningFind.wing, tWings)}${eveningFind.mem.createdAt ? `, ${new Date(eveningFind.mem.createdAt).getFullYear()}` : ""}`, onClick: () => handleMemoryClick(eveningFind.mem) }
     : sharedWithMe.length > 0
     ? { key: "shared", title: t("relay.sgFamilySharedTitle"), reason: t("relay.sgFamilySharedReason"), onClick: () => setShowSharedWithMe(true) }
@@ -633,7 +683,8 @@ export default function HomeView() {
           ? { key: "journeys", title: t("relay.sgContinueTrack", { name: activeTrack.name }), reason: t("relay.sgStepsOf", { done: String(activeTrack.progress), total: String(activeTrack.total) }), onClick: () => { setSelectedTrackId(activeTrack.id); setShowTracksPanel(true); }, progress: { done: activeTrack.progress, total: activeTrack.total } }
           : lastVisitedRoom
             ? { key: "continue", title: t("continueWhereLeft"), reason: lastVisitedRoom.name, onClick: handleContinueLastRoom }
-            : { key: "record", title: t("relay.sgRecordTitle"), reason: t("relay.sgRecordReason"), onClick: () => setShowInterviewLibrary(true) };
+            : { key: "record", title: t("relay.sgRecordTitle"), reason: t("relay.sgRecordReason"), onClick: () => setShowInterviewLibrary(true) },
+  [eveningFind, sharedWithMe, dailyQuestion, onThisDayMemories, totalMemories, activeTrack, lastVisitedRoom, t, tWings, handleMemoryClick, setShowSharedWithMe, handleNavigateLibrary, goUpload, setSelectedTrackId, setShowTracksPanel, handleContinueLastRoom, setShowInterviewLibrary]);
   // Personalization returns: compact "tuned for you" summary, or the full
   // selector when no persona is set yet.
   // Style quiz: label (subtle chip) when taken; the full selector otherwise.
@@ -645,20 +696,25 @@ export default function HomeView() {
   // "Your memories" strip — brings back Recent Memories + On This Day + a
   // compact portrait, the emotional content that the plain relay had dropped.
   const memImg = memSrc;
-  const otdIds = new Set(onThisDayMemories.map((x) => x.mem.id));
   // No blank squares: on-this-day items always show (imageless ones get the
   // story-card treatment), the recent long-tail only when it has an image.
-  const stripItems = [
-    ...onThisDayMemories.filter((x) => memImg(x.mem) || x.mem.title).map((x) => ({ mem: x.mem, otd: true })),
-    ...recentMemories.filter((x) => !otdIds.has(x.mem.id) && !!memImg(x.mem)).map((x) => ({ mem: x.mem, otd: false })),
-  ].filter((it) => it.otd || !brokenImgIds.has(it.mem.id)).slice(0, 10);
-  const mtc = { photo: 0, video: 0, story: 0 };
-  for (const { mem } of allMemories) {
-    if (mem.type === "photo" || mem.type === "album") mtc.photo++;
-    else if (mem.type === "video") mtc.video++;
-    else mtc.story++;
-  }
-  const memoriesStrip = stripItems.length > 0 ? (
+  const stripItems = useMemo(() => {
+    const otdIds = new Set(onThisDayMemories.map((x) => x.mem.id));
+    return [
+      ...onThisDayMemories.filter((x) => memImg(x.mem) || x.mem.title).map((x) => ({ mem: x.mem, otd: true })),
+      ...recentMemories.filter((x) => !otdIds.has(x.mem.id) && !!memImg(x.mem)).map((x) => ({ mem: x.mem, otd: false })),
+    ].filter((it) => it.otd || !brokenImgIds.has(it.mem.id)).slice(0, 10);
+  }, [onThisDayMemories, recentMemories, brokenImgIds, memImg]);
+  const mtc = useMemo(() => {
+    const c = { photo: 0, video: 0, story: 0 };
+    for (const { mem } of allMemories) {
+      if (mem.type === "photo" || mem.type === "album") c.photo++;
+      else if (mem.type === "video") c.video++;
+      else c.story++;
+    }
+    return c;
+  }, [allMemories]);
+  const memoriesStrip = useMemo(() => stripItems.length > 0 ? (
     <section aria-label={t("relay.yourMemories")} style={{ borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", background: T.color.cream, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.06)", padding: "1rem 1.1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
         <Overline color="#8A6410">{t("relay.yourMemories")}</Overline>
@@ -696,36 +752,48 @@ export default function HomeView() {
         {t("relay.stripSummary", { photos: String(mtc.photo), videos: String(mtc.video), stories: String(mtc.story), wings: String(totalWings) })}
       </div>
     </section>
-  ) : null;
+  ) : null, [stripItems, t, handleNavigateLibrary, brokenImgIds, memImg, otdSeen, markOtdSeen, handleMemoryClick, markImgBroken, mtc, totalWings]);
   // Keeper's Ledger — forgiving weekly "kept warm" line; always invitational,
   // never "streak lost" (grief-adjacent product, see ACTIVATING_MENU_RESEARCH).
-  const relayLedger = totalMemories === 0
+  const relayLedger = useMemo(() => totalMemories === 0
     ? null
     : warmWeeks > 1
       ? { text: t("relay.keptWarm", { count: String(warmWeeks) }), warm: true }
       : warmWeeks === 1
         ? { text: t("relay.keptWarmOne"), warm: true }
-        : { text: t("relay.quietHearth"), warm: false };
-  const relayEmbers = emberPeople.length > 0
+        : { text: t("relay.quietHearth"), warm: false }, [totalMemories, warmWeeks, t]);
+  const relayEmbers = useMemo(() => emberPeople.length > 0
     ? { title: t("relay.familyEmbers"), people: emberPeople, onOpen: () => setNotificationsOpen(true), scrollHint: t("relay.embersScrollHint") }
-    : null;
+    : null, [emberPeople, t, setNotificationsOpen]);
+  // Stable identities for the board's remaining scalar props so the React.memo
+  // wrapper on AtriumRelay can actually skip reconciliation on unrelated ticks.
+  const relayWeekHistory = useMemo(() => computeWeekHistory(creationDates), [creationDates]);
+  const relayLabels = useMemo(() => ({ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), otherJourneys: t("relay.otherJourneys"), weeksWarm: t("relay.weeksWarm"), quietKept: t("relay.quietKept") }), [t]);
   // Palace + Library stay ON TOP as anchors. The Palace card's counterpart to
   // the Library's photo fan: wing seals — the lived-in wings with their counts.
   // The complete set: every wing gets its seal (canonical order); untouched
   // wings rest as quiet empty frames — the fan doubles as a coverage map.
-  const wingChips = wingsData.slice(0, 6).map((w) => ({ id: w.id, label: String(w.memoryCount), empty: w.memoryCount === 0 }));
-  const relayAnchors = [
-    { key: "palace", title: t("relay.enterPalaceTitle"), desc: t("relay.enterPalaceDesc"), onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings === 1 ? t("relay.wingsCountOne", { count: String(totalWings) }) : t("relay.wingsCount", { count: String(totalWings) })} · ${totalRooms === 1 ? t("relay.roomsCountOne", { count: String(totalRooms) }) : t("relay.roomsCount", { count: String(totalRooms) })}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, chips: wingChips },
-    { key: "library", title: t("relay.enterLibraryTitle"), desc: t("relay.enterLibraryDesc"), onClick: handleNavigateLibrary, datum: totalMemories > 0 ? (totalMemories === 1 ? t("relay.memoriesCountOne", { count: String(totalMemories) }) : t("relay.memoriesCount", { count: String(totalMemories) })) : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },
-  ];
+  const wingChips = useMemo(() => wingsData.slice(0, 6).map((w) => ({ id: w.id, label: String(w.memoryCount), empty: w.memoryCount === 0 })), [wingsData]);
+  // The two 300×180 anchor SVG subtrees are the single heaviest render cost on
+  // the board and depend ONLY on warmth + time-of-day. Memoize the ELEMENTS so
+  // unrelated re-renders (10-min timeOfDay tick, notifications load, shared-with-me
+  // fetch, persona/panel/store ticks) reuse the identical element reference —
+  // React then bails out of reconciling the SVG subtree entirely.
+  const palaceArt = useMemo(() => <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, [warmthLevel, timeOfDay]);
+  const libraryArt = useMemo(() => <LibraryIllustration hover={false} warmth={warmthLevel} />, [warmthLevel]);
+  const relayAnchors = useMemo(() => [
+    { key: "palace", title: t("relay.enterPalaceTitle"), desc: t("relay.enterPalaceDesc"), onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings === 1 ? t("relay.wingsCountOne", { count: String(totalWings) }) : t("relay.wingsCount", { count: String(totalWings) })} · ${totalRooms === 1 ? t("relay.roomsCountOne", { count: String(totalRooms) }) : t("relay.roomsCount", { count: String(totalRooms) })}` : undefined, art: palaceArt, chips: wingChips },
+    { key: "library", title: t("relay.enterLibraryTitle"), desc: t("relay.enterLibraryDesc"), onClick: handleNavigateLibrary, datum: totalMemories > 0 ? (totalMemories === 1 ? t("relay.memoriesCountOne", { count: String(totalMemories) }) : t("relay.memoriesCount", { count: String(totalMemories) })) : undefined, thumbs: libThumbs, art: libraryArt },
+  ], [t, handleNavigatePalace, handleNavigateLibrary, totalMemories, totalWings, totalRooms, palaceArt, libraryArt, wingChips, libThumbs]);
   // score & badge total, for those who like keeping count.
-  const relayScore = { points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) };
+  const relayScore = useMemo(() => ({ points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) }), [totalPoints, achievementProgress.earned, achievementProgress.total, setShowAchievementPanel]);
   // Grouped by the LANDING triptych, each verb-zone its own key colour.
   // Hero-per-lane (elevation change 5): the steward leads each verb with ONE
   // full tile. The suggestion key is NEVER the lane hero (item 5): the top
   // steward card already carries that action with richer copy/progress, so
   // promoting it again would show the same action twice. Each lane instead
   // leads with a sensible default, skipping the suggested key if it collides.
+  const relayLanes = useMemo(() => {
   const heroFor = (laneId: string, tileKeys: string[]): string => {
     const sug = relaySuggestion.key;
     const pick = (...prefs: string[]): string => {
@@ -749,7 +817,7 @@ export default function HomeView() {
     const hk = heroFor(laneId, tiles.filter((tl) => !tl.hidden && !tl.soon).map((tl) => tl.key));
     return tiles.map((tl) => (tl.key === hk && !tl.soon && !tl.hidden ? { ...tl, hero: true } : tl));
   };
-  const relayLanes = [
+  return [
     {
       id: "capture", overline: t("relay.laneCapture"), accent: "terracotta" as const,
       tiles: [
@@ -787,13 +855,14 @@ export default function HomeView() {
       ],
     },
   ].map((lane) => ({ ...lane, tiles: markHero(lane.id, lane.tiles) }));
-  const relayYou = [
+  }, [t, goUpload, mtc, handleNavigateLibrary, setShowInterviewLibrary, interviewSessions, setShowKepCapture, setShowMemoryMap, setShowTimeline, yearRange, setShowStatistics, setShowFamilyTree, startTransition, setNavMode, enterEntrance, router, setShowSharedWithMe, sharedWithMe, sharedLoading, relaySuggestion.key, totalMemories]);
+  const relayYou = useMemo(() => [
     { key: "journeys", label: t("relay.youJourneys"), onClick: () => setShowTracksPanel(true) },
     { key: "milestones", label: t("relay.youMilestones"), onClick: () => setShowAchievementPanel(true) },
     { key: "profile", label: t("relay.youProfile"), onClick: () => router.push("/settings/profile") },
     { key: "settings", label: t("relay.youSettings"), onClick: () => router.push("/settings") },
     { key: "help", label: t("relay.youHelp"), onClick: () => router.push("/help") },
-  ];
+  ], [t, setShowTracksPanel, setShowAchievementPanel, router]);
 
   return (
     <div
@@ -884,8 +953,8 @@ export default function HomeView() {
             embers={relayEmbers}
             topWash={TIME_WASH[timeOfDay]}
             warmth={warmthLevel}
-            weekHistory={computeWeekHistory(creationDates)}
-            labels={{ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), otherJourneys: t("relay.otherJourneys"), weeksWarm: t("relay.weeksWarm"), quietKept: t("relay.quietKept") }}
+            weekHistory={relayWeekHistory}
+            labels={relayLabels}
             score={relayScore}
             suggestion={relaySuggestion}
             personaLabel={personaLabel}

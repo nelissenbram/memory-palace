@@ -101,7 +101,10 @@ export default function ExplorePageClient({
   following = [],
   isAuthenticated = false,
 }: ExplorePageClientProps) {
-  const { t } = useTranslation("social");
+  const { t, locale } = useTranslation("social");
+  // Stable translation slice threaded to every card so they don't each mount
+  // their own useTranslation() (only re-created when t/locale actually change).
+  const cardI18n = useMemo<CardI18n>(() => ({ t, locale }), [t, locale]);
   const router = useRouter();
   const isMobile = useIsMobile();
   // NavigationBar internally switches to the bottom-bar treatment on compact
@@ -184,24 +187,34 @@ export default function ExplorePageClient({
   }, [palaces, newestIds]);
 
   // Short featured rail above the grid (default view only, max 5, curated).
-  const featuredRail = featuredAll.slice(0, 5);
+  // Memoized so its array identity is stable across keystroke re-renders,
+  // letting React.memo skip the featured PalaceGrid while typing.
+  const featuredRail = useMemo(() => featuredAll.slice(0, 5), [featuredAll]);
   const railIds = useMemo(
     () => new Set(featuredRail.map((p) => p.user_id)),
     [featuredRail]
   );
 
-  const gridPalaces: CardPalace[] =
-    rail === "featured"
-      ? featuredAll
-      : rail === "new"
-        ? newestList
-        : rail === "following"
-          ? following
-          : palaces.filter((p) => !railIds.has(p.user_id));
+  // Memoized so the default-view filtered array keeps a stable identity across
+  // keystroke re-renders (searchResults === null), letting React.memo skip the grid.
+  const gridPalaces: CardPalace[] = useMemo(
+    () =>
+      rail === "featured"
+        ? featuredAll
+        : rail === "new"
+          ? newestList
+          : rail === "following"
+            ? following
+            : palaces.filter((p) => !railIds.has(p.user_id)),
+    [rail, featuredAll, newestList, following, palaces, railIds]
+  );
 
   // Mobile: cap the initial render, expand on demand.
   const capped = isMobile && !showAll && gridPalaces.length > MOBILE_CARD_CAP;
-  const visiblePalaces = capped ? gridPalaces.slice(0, MOBILE_CARD_CAP) : gridPalaces;
+  const visiblePalaces = useMemo(
+    () => (capped ? gridPalaces.slice(0, MOBILE_CARD_CAP) : gridPalaces),
+    [capped, gridPalaces]
+  );
 
   const gridLabel =
     rail === "featured"
@@ -450,7 +463,7 @@ export default function ExplorePageClient({
             {searchResults.length === 0 ? (
               <EmptyState text={t("noResults")} />
             ) : (
-              <PalaceGrid palaces={searchResults} />
+              <PalaceGrid palaces={searchResults} i18n={cardI18n} />
             )}
           </section>
         ) : (
@@ -493,7 +506,7 @@ export default function ExplorePageClient({
             {rail === null && featuredRail.length > 0 && (
               <section style={{ marginBottom: "2rem" }}>
                 <LaneHeader>{t("featured")}</LaneHeader>
-                <PalaceGrid palaces={featuredRail} featured />
+                <PalaceGrid palaces={featuredRail} i18n={cardI18n} featured />
               </section>
             )}
 
@@ -503,7 +516,7 @@ export default function ExplorePageClient({
 
               {visiblePalaces.length > 0 ? (
                 <>
-                  <PalaceGrid palaces={visiblePalaces} featured={rail === "featured"} />
+                  <PalaceGrid palaces={visiblePalaces} i18n={cardI18n} featured={rail === "featured"} />
                   {capped && (
                     <div style={{ textAlign: "center", marginTop: "1.25rem" }}>
                       <button
@@ -632,11 +645,22 @@ function LaneHeader({ children, badge }: { children: React.ReactNode; badge?: Re
 
 /* ── Palace Grid ───────────────────────────────────── */
 
-function PalaceGrid({
+/**
+ * Translation slice threaded down from the parent so cards don't each mount
+ * their own useTranslation() instance (~36 duplicate locale subscriptions).
+ */
+type CardI18n = {
+  t: (key: string, params?: Record<string, string>) => string;
+  locale: string;
+};
+
+const PalaceGrid = React.memo(function PalaceGrid({
   palaces,
+  i18n,
   featured = false,
 }: {
   palaces: CardPalace[];
+  i18n: CardI18n;
   featured?: boolean;
 }) {
   return (
@@ -648,22 +672,24 @@ function PalaceGrid({
       }}
     >
       {palaces.map((p) => (
-        <PalaceCard key={p.user_id} palace={p} featured={featured} />
+        <PalaceCard key={p.user_id} palace={p} i18n={i18n} featured={featured} />
       ))}
     </div>
   );
-}
+});
 
 /* ── Palace Card (Atrium secondary-tile anatomy) ───── */
 
-function PalaceCard({
+const PalaceCard = React.memo(function PalaceCard({
   palace,
+  i18n,
   featured = false,
 }: {
   palace: CardPalace;
+  i18n: CardI18n;
   featured?: boolean;
 }) {
-  const { t, locale } = useTranslation("social");
+  const { t, locale } = i18n;
   const [imgFailed, setImgFailed] = useState(false);
 
   // One destination per card: the public profile (SafetyMenu / follow live there).
@@ -820,7 +846,7 @@ function PalaceCard({
       </div>
     </Link>
   );
-}
+});
 
 /* ── Empty State ──────────────────────────────────── */
 

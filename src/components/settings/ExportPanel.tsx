@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, TRAY } from "@/lib/libraryTokens";
 import { createClient } from "@/lib/supabase/client";
-import JSZip from "jszip";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { scanExportTree, fetchSharedRoomMemoriesForExport } from "@/lib/auth/export-scan-action";
@@ -458,7 +457,10 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
       if (sel.connections) exportData.connected_accounts = safeAccounts;
       if (sel.notifications) exportData.notifications = notifications;
 
-      // Build ZIP
+      // Build ZIP. Lazy-load JSZip (~100KB) here at the point of use so it is
+      // NOT pulled into the /settings/security initial bundle for the vast
+      // majority of users who open the page but never run an export.
+      const { default: JSZip } = await import("jszip");
       const zip = new JSZip();
       zip.file("data.json", JSON.stringify(exportData, null, 2));
       setExportProgress(45);

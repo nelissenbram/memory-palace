@@ -119,14 +119,57 @@ function applyWingCustom(wing: Wing, custom?: WingCustom): Wing {
   };
 }
 
+// ── Stable-identity caches (perf) ─────────────────────────────────────────
+// getWings()/getWingRooms() used to allocate a fresh array on every call, which
+// defeated every downstream useMemo/effect that listed them as deps (the deps
+// were "new" every render). We memoize the derived results here and only
+// recompute when the underlying state slices (customWings/extraWings/customRooms)
+// change identity. Zustand only ever REPLACES these slices (never mutates in
+// place — every action spreads into a new object), so an identity check is a
+// correct cache key.
+let _wingsCache: { key: string; value: Wing[] } | null = null;
+function computeWings(customWings: Record<string, WingCustom>, extraWings: Wing[]): Wing[] {
+  // Cache key = identities of the two source slices. Different identity ⇒ recompute.
+  const key = `${_identityId(customWings)}|${_identityId(extraWings)}`;
+  if (_wingsCache && _wingsCache.key === key) return _wingsCache.value;
+  const value = [...WINGS, ...extraWings].map(w => applyWingCustom(w, customWings[w.id]));
+  _wingsCache = { key, value };
+  return value;
+}
+
+// Per-wing room-array cache. Invalidated wholesale whenever the customRooms
+// slice identity changes (any room mutation replaces customRooms).
+let _roomsSource: Record<string, WingRoom[]> | null = null;
+const _roomsCache = new Map<string, WingRoom[]>();
+function computeWingRooms(customRooms: Record<string, WingRoom[]>, wingId: string): WingRoom[] {
+  if (_roomsSource !== customRooms) { _roomsSource = customRooms; _roomsCache.clear(); }
+  const cached = _roomsCache.get(wingId);
+  if (cached) return cached;
+  const value = customRooms[wingId] || WING_ROOMS[wingId] || _EMPTY_ROOMS;
+  _roomsCache.set(wingId, value);
+  return value;
+}
+
+// Stable empty array so wings with no rooms don't hand back a fresh [] each call.
+const _EMPTY_ROOMS: WingRoom[] = [];
+
+// Assign a stable id to an object so we can use it in a cache key. WeakMap keeps
+// this from leaking and ties the id to the object's identity.
+let _idSeq = 0;
+const _idMap = new WeakMap<object, number>();
+function _identityId(obj: object): number {
+  let id = _idMap.get(obj);
+  if (id === undefined) { id = ++_idSeq; _idMap.set(obj, id); }
+  return id;
+}
+
 export const useRoomStore = create<RoomState>((set, get) => ({
   customRooms: loadCustomRooms(),
   customWings: loadCustomWings(),
   extraWings: loadExtraWings(),
 
   getWingRooms: (wingId: string) => {
-    const { customRooms } = get();
-    return customRooms[wingId] || WING_ROOMS[wingId] || [];
+    return computeWingRooms(get().customRooms, wingId);
   },
 
   getWing: (wingId: string) => {
@@ -137,8 +180,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
 
   getWings: () => {
     const { customWings, extraWings } = get();
-    const all = [...WINGS, ...extraWings];
-    return all.map(w => applyWingCustom(w, customWings[w.id]));
+    return computeWings(customWings, extraWings);
   },
 
   renameWing: (wingId, name) => {

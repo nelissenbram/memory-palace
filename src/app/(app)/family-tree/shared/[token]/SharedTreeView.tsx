@@ -83,12 +83,21 @@ export function SharedTreeView({
     [persons, relationships, selfPersonId]
   );
 
-  const nodeWPx = remToPx(NODE_W);
-  const nodeHPx = remToPx(NODE_H);
-  const spouseGapPx = remToPx(SPOUSE_GAP);
-  const coupleWPx = remToPx(COUPLE_W);
-  const vertGapPx = remToPx(VERTICAL_GAP);
-  const horizGapPx = remToPx(HORIZONTAL_GAP);
+  /* Root font-size does not change during a session, so resolve all six rem→px
+     values once. Reading getComputedStyle on every render (incl. every pan
+     frame) forced synchronous style reads on the main thread. */
+  const { nodeWPx, nodeHPx, spouseGapPx, coupleWPx, vertGapPx, horizGapPx } =
+    useMemo(
+      () => ({
+        nodeWPx: remToPx(NODE_W),
+        nodeHPx: remToPx(NODE_H),
+        spouseGapPx: remToPx(SPOUSE_GAP),
+        coupleWPx: remToPx(COUPLE_W),
+        vertGapPx: remToPx(VERTICAL_GAP),
+        horizGapPx: remToPx(HORIZONTAL_GAP),
+      }),
+      []
+    );
 
   const treeLayouts = useMemo(() => {
     if (forest.length === 0) return [];
@@ -283,17 +292,21 @@ export function SharedTreeView({
     touchRef.current = null;
   };
 
-  const handleSelectPerson = (p: FamilyTreePerson) => {
+  const handleSelectPerson = useCallback((p: FamilyTreePerson) => {
     // Ignore taps that were actually a drag/pan (single-finger move on touch).
+    // Reads/writes movedRef (a ref) only, so no reactive deps are needed.
     if (movedRef.current) {
       movedRef.current = false;
       return;
     }
     setSelectedPerson(p);
-  };
+  }, []);
 
-  /* ── Render SVG tree ── */
-  const renderTree = () => {
+  /* ── SVG tree elements ──
+     Built once per layout (not per pan/zoom frame). With a stable onSelect
+     the memo() on CoupleNode holds, so panning only re-runs the cheap
+     <g> transform instead of reconciling every card. */
+  const treeElements = useMemo(() => {
     if (treeLayouts.length === 0) return null;
     const links: React.ReactNode[] = [];
     const nodes: React.ReactNode[] = [];
@@ -349,7 +362,15 @@ export function SharedTreeView({
         {nodes}
       </>
     );
-  };
+  }, [
+    treeLayouts,
+    coupleWPx,
+    nodeWPx,
+    nodeHPx,
+    spouseGapPx,
+    horizGapPx,
+    handleSelectPerson,
+  ]);
 
   const lifespan = (p: FamilyTreePerson) => {
     const y = (d: string | null) => d?.match(/^[~<>]?(\d{4})/)?.[1] || "";
@@ -501,7 +522,7 @@ export function SharedTreeView({
             style={{ display: "block" }}
           >
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-              {renderTree()}
+              {treeElements}
             </g>
           </svg>
         )}

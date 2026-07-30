@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useKepStore } from "@/lib/stores/kepStore";
@@ -13,7 +13,13 @@ import type { KepSourceType } from "@/types/kep";
 export function KepCreationWizard() {
   const { t } = useTranslation("kep");
   const router = useRouter();
-  const { createKep, isCreating, error, clearError } = useKepStore();
+  // Individual selectors so this component only re-renders when the specific
+  // slices it uses change — a whole-store subscription would wake it on any
+  // keps mutation elsewhere in the app.
+  const createKep = useKepStore((s) => s.createKep);
+  const isCreating = useKepStore((s) => s.isCreating);
+  const error = useKepStore((s) => s.error);
+  const clearError = useKepStore((s) => s.clearError);
   const [step, setStep] = useState(0);
   const [data, setData] = useState<WizardData>(INITIAL_WIZARD_DATA);
   // Google Photos link status: null while loading, boolean once known. A photos
@@ -71,7 +77,13 @@ export function KepCreationWizard() {
     }
   };
 
-  const update = (partial: Partial<WizardData>) => setData({ ...data, ...partial });
+  // Stable functional-update callback: identity never changes across renders,
+  // so the React.memo'd Step components below don't re-render just because the
+  // parent re-rendered. Functional form avoids closing over stale `data`.
+  const update = useCallback(
+    (partial: Partial<WizardData>) => setData((prev) => ({ ...prev, ...partial })),
+    [],
+  );
 
   return (
     <div style={{ minHeight: "100%", background: "#FCFAF5", padding: "1.5rem 1rem", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
@@ -174,7 +186,7 @@ export function KepCreationWizard() {
   );
 }
 
-function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string }) {
+const StepSource = memo(function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string }) {
   const sources: { type: KepSourceType; label: string; desc: string }[] = [
     { type: "whatsapp", label: t("sourceWhatsapp"), desc: t("wizardWhatsappDesc") },
     { type: "photos", label: t("sourcePhotos"), desc: t("wizardPhotosDesc") },
@@ -234,9 +246,9 @@ function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial
       </div>
     </div>
   );
-}
+});
 
-function StepConfigure({ data, update, t, photosLinked, router }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string; photosLinked: boolean | null; router: ReturnType<typeof useRouter> }) {
+const StepConfigure = memo(function StepConfigure({ data, update, t, photosLinked, router }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string; photosLinked: boolean | null; router: ReturnType<typeof useRouter> }) {
   const showConnectCta = data.source_type === "photos" && photosLinked === false;
   // While the accounts fetch is still resolving for a photos Kep, tell the user
   // we're checking the connection — Next stays disabled until the link is known.
@@ -345,9 +357,9 @@ function StepConfigure({ data, update, t, photosLinked, router }: { data: Wizard
       )}
     </div>
   );
-}
+});
 
-function StepRouting({ data, update, t }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string }) {
+const StepRouting = memo(function StepRouting({ data, update, t }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string }) {
   return (
     <div>
       <h2 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", marginBottom: "0.25rem" }}>{t("wizardStep3")}</h2>
@@ -391,7 +403,7 @@ function StepRouting({ data, update, t }: { data: WizardData; update: (d: Partia
       </TuscanCard>
     </div>
   );
-}
+});
 
 function CheckMark() {
   return (
@@ -437,7 +449,7 @@ function CrossMark() {
   );
 }
 
-function StepReview({ data, t }: { data: WizardData; t: (key: string, params?: Record<string, string>) => string }) {
+const StepReview = memo(function StepReview({ data, t }: { data: WizardData; t: (key: string, params?: Record<string, string>) => string }) {
   const sourceLabel = data.source_type === "whatsapp" ? t("sourceWhatsapp") : t("sourcePhotos");
   return (
     <div>
@@ -466,7 +478,7 @@ function StepReview({ data, t }: { data: WizardData; t: (key: string, params?: R
       </TuscanCard>
     </div>
   );
-}
+});
 
 const inputStyle: React.CSSProperties = {
   width: "100%",

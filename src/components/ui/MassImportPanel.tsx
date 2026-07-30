@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback, useEffect, lazy, Suspense } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense, memo } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -175,10 +175,36 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
   const { t } = useTranslation("massImport");
   const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const store = useImportStore();
+  // Subscribe to individual state slices (selectors) instead of the whole store,
+  // so unrelated store mutations (e.g. per-keystroke item edits inside a
+  // ReviewCard) don't force the entire panel to re-render.
+  const step = useImportStore((s) => s.step);
+  const items = useImportStore((s) => s.items);
+  const mode = useImportStore((s) => s.mode);
+  const progress = useImportStore((s) => s.progress);
+  const targetWingId = useImportStore((s) => s.targetWingId);
+  const targetRoomId = useImportStore((s) => s.targetRoomId);
+  // Actions are stable references in Zustand — pulling them via selectors keeps
+  // the panel from re-subscribing to the whole store.
+  const addFiles = useImportStore((s) => s.addFiles);
+  const removeItem = useImportStore((s) => s.removeItem);
+  const setMode = useImportStore((s) => s.setMode);
+  const setTarget = useImportStore((s) => s.setTarget);
+  const acceptAll = useImportStore((s) => s.acceptAll);
+  const setStep = useImportStore((s) => s.setStep);
+  const updateItem = useImportStore((s) => s.updateItem);
+  const setProgress = useImportStore((s) => s.setProgress);
+  const reset = useImportStore((s) => s.reset);
   const addMemory = useMemoryStore((s) => s.addMemory);
-  const { getWings, getWingRooms } = useRoomStore();
-  const wings = getWings();
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
+  // `getWings()` builds a fresh array every call; memoize against the room-store
+  // slices it derives from so `wings` keeps a stable identity across renders
+  // (lets React.memo on ReviewCard actually skip re-renders) and only rebuilds
+  // when wings/customizations change.
+  const customWings = useRoomStore((s) => s.customWings);
+  const extraWings = useRoomStore((s) => s.extraWings);
+  const getWings = useRoomStore((s) => s.getWings);
+  const wings = useMemo(() => getWings(), [getWings, customWings, extraWings]);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [tab, setTab] = useState<"review" | "accepted" | "rejected" | "all">("review");
@@ -187,7 +213,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
   // Initialize targets from props
   useEffect(() => {
-    if (initialWingId) store.setTarget(initialWingId, initialRoomId || null);
+    if (initialWingId) setTarget(initialWingId, initialRoomId || null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Revoke blob object URLs on unmount to prevent memory leaks
@@ -209,8 +235,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
     const oversized = supported.filter(isFileTooLarge);
     const arr = supported.filter((f) => !isFileTooLarge(f));
     if (oversized.length > 0) setSkippedOversized((prev) => prev + oversized.length);
-    if (arr.length > 0) store.addFiles(arr);
-  }, [store]);
+    if (arr.length > 0) addFiles(arr);
+  }, [addFiles]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
@@ -219,15 +245,15 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
   // ── Processing pipeline ──
   const startProcessing = async () => {
-    const items = store.items.filter((i) => i.status === "queued");
-    if (items.length === 0) return;
-    store.setStep("processing");
-    store.setProgress({ total: items.length, processed: 0, errors: 0 });
+    const queuedItems = useImportStore.getState().items.filter((i) => i.status === "queued");
+    if (queuedItems.length === 0) return;
+    setStep("processing");
+    setProgress({ total: queuedItems.length, processed: 0, errors: 0 });
 
     // Phase 1: Read files, extract EXIF, generate thumbnails
-    for (const item of items) {
+    for (const item of queuedItems) {
       try {
-        store.updateItem(item.localId, { status: "reading" });
+        updateItem(item.localId, { status: "reading" });
 
         // Read as dataUrl
         const maxLabel = item.file.type.startsWith("video/") ? "100 MB" : "50 MB";
@@ -236,7 +262,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         const dataUrl = await readFileAsDataUrl(item.file, fileTooLargeMsg, readErrorMsg);
         const previewUrl = await generateThumbnail(item.file) || (item.file.type.startsWith("image/") ? URL.createObjectURL(item.file) : null);
 
-        store.updateItem(item.localId, { status: "extracting", dataUrl, previewUrl });
+        updateItem(item.localId, { status: "extracting", dataUrl, previewUrl });
 
         // Extract EXIF
         const exif = await extractExif(item.file);
@@ -250,17 +276,17 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         if (exif?.dateTaken) {
           // Use EXIF date for createdAt later
         }
-        store.updateItem(item.localId, updates);
-        store.setProgress({ processed: (useImportStore.getState().progress.processed || 0) + 1 });
+        updateItem(item.localId, updates);
+        setProgress({ processed: (useImportStore.getState().progress.processed || 0) + 1 });
       } catch (err: any) {
-        store.updateItem(item.localId, { status: "error", error: err.message || t("failedToReadFile") });
-        store.setProgress({ errors: (useImportStore.getState().progress.errors || 0) + 1 });
+        updateItem(item.localId, { status: "error", error: err.message || t("failedToReadFile") });
+        setProgress({ errors: (useImportStore.getState().progress.errors || 0) + 1 });
       }
     }
 
     // Phase 2: AI tagging (if AI mode + API key)
     const readyItems = useImportStore.getState().items.filter((i) => i.status === "extracting");
-    if (store.mode === "ai") {
+    if (useImportStore.getState().mode === "ai") {
       // Resolve a guaranteed-valid fallback room so no AI-tagged item can reach
       // commit with an empty roomId: prefer the selected default room, else the
       // first room of the selected default wing, else the first room anywhere.
@@ -281,7 +307,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
       // Batch into groups of 10
       for (let i = 0; i < readyItems.length; i += 10) {
         const batch = readyItems.slice(i, i + 10);
-        for (const item of batch) store.updateItem(item.localId, { status: "tagging" });
+        for (const item of batch) updateItem(item.localId, { status: "tagging" });
 
         try {
           const wingsData = wings.map((w) => ({
@@ -307,7 +333,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             const { suggestions } = await res.json();
             for (let j = 0; j < batch.length && j < suggestions.length; j++) {
               const s = suggestions[j];
-              const needsReview = Math.random() < store.reviewSampleRate;
+              const needsReview = Math.random() < useImportStore.getState().reviewSampleRate;
               // Only trust the AI's roomId when it names a real room in the
               // AI's suggested wing; otherwise fall back to the item's existing
               // target, then to the resolved default. This keeps every item on
@@ -318,7 +344,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 roomId = getWingRooms(wingId)[0]?.id || fallback.roomId;
                 if (!roomId) { wingId = fallback.wingId; roomId = fallback.roomId; }
               }
-              store.updateItem(batch[j].localId, {
+              updateItem(batch[j].localId, {
                 aiSuggestions: s,
                 confirmed: {
                   ...useImportStore.getState().items.find((it) => it.localId === batch[j].localId)!.confirmed,
@@ -336,7 +362,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           } else {
             // AI failed — fall back to smart defaults (the resolved default room)
             for (const item of batch) {
-              store.updateItem(item.localId, {
+              updateItem(item.localId, {
                 status: "ready", needsReview: true,
                 confirmed: {
                   ...useImportStore.getState().items.find((it) => it.localId === item.localId)!.confirmed,
@@ -348,7 +374,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           }
         } catch {
           for (const item of batch) {
-            store.updateItem(item.localId, {
+            updateItem(item.localId, {
               status: "ready", needsReview: true,
               confirmed: {
                 ...useImportStore.getState().items.find((it) => it.localId === item.localId)!.confirmed,
@@ -364,25 +390,25 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
       // (needsReview:true so the default Review tab shows every processed item;
       // otherwise the manual pipeline lands on an empty Review tab).
       for (const item of readyItems) {
-        store.updateItem(item.localId, { status: "ready", needsReview: true });
+        updateItem(item.localId, { status: "ready", needsReview: true });
       }
     }
 
     // Mark remaining extracting items as ready
     for (const item of useImportStore.getState().items) {
       if (item.status === "extracting" || item.status === "tagging") {
-        store.updateItem(item.localId, { status: "ready" });
+        updateItem(item.localId, { status: "ready" });
       }
     }
 
-    store.setStep("review");
+    setStep("review");
   };
 
   // ── Commit ──
   const commitAll = async () => {
-    store.setStep("committing");
+    setStep("committing");
     const accepted = useImportStore.getState().items.filter((i) => i.status === "accepted");
-    store.setProgress({ total: accepted.length, committed: 0, errors: 0 });
+    setProgress({ total: accepted.length, committed: 0, errors: 0 });
 
     // Build the set of real room IDs so we never commit a memory to an empty or
     // unknown room key (which would orphan it under userMems[""] — never rendered
@@ -426,18 +452,17 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         if (item.confirmed.locationName) mem.locationName = item.confirmed.locationName;
 
         await addMemory(item.confirmed.roomId, mem);
-        store.updateItem(item.localId, { status: "committed" });
-        store.setProgress({ committed: (useImportStore.getState().progress.committed || 0) + 1 });
+        updateItem(item.localId, { status: "committed" });
+        setProgress({ committed: (useImportStore.getState().progress.committed || 0) + 1 });
       } catch (err: any) {
-        store.updateItem(item.localId, { status: "error", error: err.message });
-        store.setProgress({ errors: (useImportStore.getState().progress.errors || 0) + 1 });
+        updateItem(item.localId, { status: "error", error: err.message });
+        setProgress({ errors: (useImportStore.getState().progress.errors || 0) + 1 });
       }
     }
 
-    store.setStep("done");
+    setStep("done");
   };
 
-  const { step, items, mode, progress, targetWingId, targetRoomId } = store;
   const totalSize = items.reduce((n, i) => n + i.fileSizeBytes, 0);
 
   return (
@@ -549,7 +574,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           {step === "drop" && <>
             {/* Mode selection */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem", marginBottom: "1.25rem" }}>
-              <button onClick={() => store.setMode("ai")} style={{
+              <button onClick={() => setMode("ai")} style={{
                 padding: "1rem 0.875rem", borderRadius: "1rem", // Atrium token: card radius
                 border: mode === "ai" ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC",
                 background: mode === "ai" ? "#FBF2EC" : T.color.white, // Atrium token: terracotta tray
@@ -559,7 +584,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: mode === "ai" ? "#9A4F2A" : "#403B36" }}>{t("aiAssisted")}</div>
                 <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: "#716A5E", lineHeight: 1.4, marginTop: "0.25rem" }}>{t("aiAssistedDesc")}</div>
               </button>
-              <button onClick={() => store.setMode("manual")} style={{
+              <button onClick={() => setMode("manual")} style={{
                 padding: "1rem 0.875rem", borderRadius: "1rem", // Atrium token: card radius
                 border: mode === "manual" ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC",
                 background: mode === "manual" ? "#FBF2EC" : T.color.white, // Atrium token: terracotta tray
@@ -577,7 +602,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.375rem" }}>
                   {mode === "manual" ? t("targetWing") : t("defaultWingAi")}
                 </label>
-                <select value={targetWingId || ""} onChange={(e) => store.setTarget(e.target.value || null, null)}
+                <select value={targetWingId || ""} onChange={(e) => setTarget(e.target.value || null, null)}
                   style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
                   <option value="">{t("selectWing")}</option>
                   {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
@@ -587,7 +612,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.375rem" }}>
                   {mode === "manual" ? t("targetRoom") : t("defaultRoomAi")}
                 </label>
-                <select value={targetRoomId || ""} onChange={(e) => store.setTarget(targetWingId, e.target.value || null)}
+                <select value={targetRoomId || ""} onChange={(e) => setTarget(targetWingId, e.target.value || null)}
                   disabled={!targetWingId}
                   style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "0.0625rem solid #E3D6BC", background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: !targetWingId ? "#716A5E" : "#403B36", cursor: targetWingId ? "pointer" : "not-allowed" }}>
                   <option value="">{t("selectRoom")}</option>
@@ -639,7 +664,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             {items.length > 0 && <>
               <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginBottom: "0.5rem", display: "flex", justifyContent: "space-between" }}>
                 <span>{t("fileCount", { count: String(items.length), size: formatBytes(totalSize) })}</span>
-                <button onClick={() => store.reset()} style={{ background: "none", border: "none", color: "#9A4F2A", fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer", minHeight: "2.75rem", padding: "0.25rem 0.5rem" }}>{t("clearAll")}</button>
+                <button onClick={() => reset()} style={{ background: "none", border: "none", color: "#9A4F2A", fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer", minHeight: "2.75rem", padding: "0.25rem 0.5rem" }}>{t("clearAll")}</button>
               </div>
               <div style={{ maxHeight: "12.5rem", overflowY: "auto", borderRadius: "0.75rem", border: "0.0625rem solid #E3D6BC", background: T.color.white }}>
                 {items.map((item) => (
@@ -651,7 +676,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                       <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fileName}</div>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>{formatBytes(item.fileSizeBytes)}</div>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); store.removeItem(item.localId); }}
+                    <button onClick={(e) => { e.stopPropagation(); removeItem(item.localId); }}
                       aria-label={tc("remove")}
                       style={{ background: "none", border: "none", color: "#716A5E", fontSize: "0.9375rem", cursor: "pointer", padding: "0.25rem", minWidth: "2.75rem", minHeight: "2.75rem", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
                   </div>
@@ -719,7 +744,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
             {/* Batch actions */}
             <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
-              <button onClick={() => store.acceptAll()} style={{
+              <button onClick={() => acceptAll()} style={{
                 padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC",
                 background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#56683C", cursor: "pointer",
                 minHeight: "2.75rem",
@@ -795,7 +820,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 );
               })()}
               <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center", marginTop: "1.25rem" }}>
-                <button onClick={() => store.reset()} style={{
+                <button onClick={() => reset()} style={{
                   padding: "0.75rem 1.5rem", borderRadius: "0.75rem", border: "0.0625rem solid #E3D6BC",
                   background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#403B36", cursor: "pointer", minHeight: "2.75rem",
                 }}>{t("importMore")}</button>
@@ -846,12 +871,18 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function ReviewCard({ item, wings, getWingRooms }: {
+const ReviewCard = memo(function ReviewCard({ item, wings, getWingRooms }: {
   item: ImportItem;
   wings: Array<{ id: string; name: string; icon: string; accent: string }>;
   getWingRooms: (wingId: string) => Array<{ id: string; name: string; icon: string }>;
 }) {
-  const store = useImportStore();
+  // Subscribe to only the actions this card uses. Zustand action refs are stable,
+  // so the card no longer re-renders when unrelated items change in the store —
+  // only when its own `item` prop changes (via React.memo below).
+  const updateConfirmed = useImportStore((s) => s.updateConfirmed);
+  const updateItem = useImportStore((s) => s.updateItem);
+  const acceptItem = useImportStore((s) => s.acceptItem);
+  const rejectItem = useImportStore((s) => s.rejectItem);
   const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const { t } = useTranslation("massImport");
@@ -895,11 +926,11 @@ function ReviewCard({ item, wings, getWingRooms }: {
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", border: "0.0625rem solid #E3D6BC",
             background: T.color.warmStone, fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#716A5E",
           }}><EditGlyph size={16} color="#716A5E" /></button>
-          {item.status !== "accepted" && <button onClick={() => store.acceptItem(item.localId)} aria-label={t("acceptItem")} style={{
+          {item.status !== "accepted" && <button onClick={() => acceptItem(item.localId)} aria-label={t("acceptItem")} style={{
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", border: "0.0625rem solid #DBDDD0", // Atrium: pre-mixed sage tint
             background: "#F2F1E9", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#56683C",
           }}>{"\u2713"}</button>}
-          {item.status !== "rejected" && <button onClick={() => store.rejectItem(item.localId)} aria-label={t("rejectItem")} style={{
+          {item.status !== "rejected" && <button onClick={() => rejectItem(item.localId)} aria-label={t("rejectItem")} style={{
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", border: "0.0625rem solid #EBD4D0", // Atrium: pre-mixed warning tint
             background: "#F7EEEA", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A63D3D",
           }}>{"\u2715"}</button>}
@@ -912,18 +943,18 @@ function ReviewCard({ item, wings, getWingRooms }: {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem", marginBottom: "0.625rem" }}>
             <div>
               <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("title")}</label>
-              <input value={item.confirmed.title} onChange={(e) => store.updateConfirmed(item.localId, { title: e.target.value })}
+              <input value={item.confirmed.title} onChange={(e) => updateConfirmed(item.localId, { title: e.target.value })}
                 style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: "#403B36", boxSizing: "border-box" }} />
             </div>
             <div>
               <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("location")}</label>
-              <input value={item.confirmed.locationName} onChange={(e) => store.updateConfirmed(item.localId, { locationName: e.target.value })} placeholder={t("locationPlaceholder")}
+              <input value={item.confirmed.locationName} onChange={(e) => updateConfirmed(item.localId, { locationName: e.target.value })} placeholder={t("locationPlaceholder")}
                 style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: "#403B36", boxSizing: "border-box" }} />
             </div>
           </div>
           <div style={{ marginBottom: "0.625rem" }}>
             <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("description")}</label>
-            <textarea value={item.confirmed.desc} onChange={(e) => store.updateConfirmed(item.localId, { desc: e.target.value })} rows={2} placeholder={t("descriptionPlaceholder")}
+            <textarea value={item.confirmed.desc} onChange={(e) => updateConfirmed(item.localId, { desc: e.target.value })} rows={2} placeholder={t("descriptionPlaceholder")}
               style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: "#403B36", boxSizing: "border-box", resize: "none" }} />
           </div>
           {/* Editable date — resolves to the memory's createdAt at commit time.
@@ -938,7 +969,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
               max={toDateInputValue(new Date().toISOString())}
               onChange={(e) => {
                 const iso = fromDateInputValue(e.target.value, item.exif?.dateTaken);
-                store.updateItem(item.localId, { exif: { ...(item.exif || {}), dateTaken: iso } });
+                updateItem(item.localId, { exif: { ...(item.exif || {}), dateTaken: iso } });
               }}
               aria-label={t("dateTaken")}
               style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: "#403B36", boxSizing: "border-box", cursor: "pointer" }}
@@ -947,7 +978,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.625rem" }}>
             <div>
               <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("type")}</label>
-              <select value={item.confirmed.type} onChange={(e) => store.updateConfirmed(item.localId, { type: e.target.value })}
+              <select value={item.confirmed.type} onChange={(e) => updateConfirmed(item.localId, { type: e.target.value })}
                 style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
                 {DISPLAY_TYPES.map(([v, labelKey]) => <option key={v} value={v}>{t(labelKey)}</option>)}
               </select>
@@ -956,7 +987,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
               <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("wing")}</label>
               <select value={item.confirmed.wingId} onChange={(e) => {
                 const rooms = getWingRooms(e.target.value);
-                store.updateConfirmed(item.localId, { wingId: e.target.value, roomId: rooms[0]?.id || "" });
+                updateConfirmed(item.localId, { wingId: e.target.value, roomId: rooms[0]?.id || "" });
               }}
                 style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
                 <option value="">—</option>
@@ -965,7 +996,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
             </div>
             <div>
               <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("room")}</label>
-              <select value={item.confirmed.roomId} onChange={(e) => store.updateConfirmed(item.localId, { roomId: e.target.value })}
+              <select value={item.confirmed.roomId} onChange={(e) => updateConfirmed(item.localId, { roomId: e.target.value })}
                 disabled={!item.confirmed.wingId}
                 style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: !item.confirmed.wingId ? "#716A5E" : "#403B36", cursor: item.confirmed.wingId ? "pointer" : "not-allowed" }}>
                 <option value="">—</option>
@@ -984,7 +1015,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
       )}
     </div>
   );
-}
+});
 
 function filteredItems(items: ImportItem[], tab: string): ImportItem[] {
   switch (tab) {

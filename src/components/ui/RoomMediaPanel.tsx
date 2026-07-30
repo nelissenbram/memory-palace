@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import { INK, EMBER, EMBER_GLYPH, CREAM, SHADOW } from "@/lib/libraryTokens";
@@ -114,12 +114,13 @@ const DISPLAY_UNITS: Record<string, { key: string; label: string; slotType: stri
 };
 
 // ─── Display unit allocator pill ─────────────────────────────────────────────
-function DisplayedPill({
+const DisplayedPill = React.memo(function DisplayedPill({
   mem,
   accent,
   t,
   onUpdate,
   allMems,
+  slotOccupancy,
   slotCounts,
   isExhibition,
 }: {
@@ -128,6 +129,7 @@ function DisplayedPill({
   t: (k: string, params?: Record<string, string>) => string;
   onUpdate: (memId: string, updates: Partial<Mem>) => void;
   allMems: Mem[];
+  slotOccupancy: Record<string, number>;
   slotCounts?: Record<string, number>;
   isExhibition?: boolean;
 }) {
@@ -147,19 +149,8 @@ function DisplayedPill({
   const currentUnit = mem.displayUnit || null;
   const isDisplayed = mem.displayed !== false && !!currentUnit;
 
-  // Count occupancy per slot type
-  const slotOccupancy = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const m of allMems) {
-      if (m.displayed !== false && m.displayUnit) {
-        const unit = DISPLAY_UNITS[normalizeType(m)]?.find(u => u.key === m.displayUnit);
-        if (unit) {
-          map[unit.slotType] = (map[unit.slotType] || 0) + 1;
-        }
-      }
-    }
-    return map;
-  }, [allMems]);
+  // Occupancy per slot type is computed once in the parent (O(N)) and passed
+  // down, avoiding an O(N²) rescan of allMems in every pill on every render.
 
   const handleSelect = useCallback((unitKey: string, slotType: string) => {
     const limit = (slotCounts || ROOM_SLOT_COUNTS)[slotType] || 1;
@@ -351,7 +342,7 @@ function DisplayedPill({
       )}
     </>
   );
-}
+});
 
 // ─── Showing count per type ─────────────────────────────────────────────────
 function ShowingCounts({
@@ -477,8 +468,9 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const [expandedMoveWing, setExpandedMoveWing] = useState<string | null>(null);
   const [movedToast, setMovedToast] = useState(false);
   const [importErrorToast, setImportErrorToast] = useState(false);
-  const { moveMemory } = useMemoryStore();
-  const { getWings, getWingRooms } = useRoomStore();
+  const moveMemory = useMemoryStore((s) => s.moveMemory);
+  const getWings = useRoomStore((s) => s.getWings);
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
 
   // ── Exhibition-aware furniture slots ──
   const currentLayout = useMemo(() => {
@@ -648,6 +640,21 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
     }
     return c;
   }, [mems, normalizeDisplayType]);
+
+  // Occupancy per slot type — computed once (O(N)) and shared by every pill,
+  // instead of each DisplayedPill re-scanning the full mems array (O(N²)).
+  const slotOccupancy = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const m of mems) {
+      if (m.displayed !== false && m.displayUnit) {
+        const unit = DISPLAY_UNITS[normalizeType(m)]?.find(u => u.key === m.displayUnit);
+        if (unit) {
+          map[unit.slotType] = (map[unit.slotType] || 0) + 1;
+        }
+      }
+    }
+    return map;
+  }, [mems]);
 
   const displayedMems = useMemo(() => {
     let result = [...mems];
@@ -1090,6 +1097,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     t={t}
                     onUpdate={onUpdate}
                     allMems={mems}
+                    slotOccupancy={slotOccupancy}
                     slotCounts={activeSlotCounts}
                     isExhibition={isExhibition}
                   />

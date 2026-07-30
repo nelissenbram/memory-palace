@@ -172,8 +172,12 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   const reduceMotion = usePrefersReducedMotion();
   const { t, locale } = useTranslation("statistics");
   const { t: tWings } = useTranslation("wings");
-  const { userMems } = useMemoryStore();
-  const { getWings, getWingRooms } = useRoomStore();
+  // Narrow selectors: scope re-renders to actual userMems changes and stable
+  // getter method refs — avoid re-rendering on unrelated slices (e.g. selMem,
+  // which memoryStore mutates on every open/close/edit of a memory).
+  const userMems = useMemoryStore((s) => s.userMems);
+  const getWings = useRoomStore((s) => s.getWings);
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
   // Subscribe to the underlying wing/room config slices (not just the stable
   // getter method refs) so the stats useMemo re-runs when a wing or room is
   // renamed/customized/added — otherwise the memo goes stale on customization.

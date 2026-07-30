@@ -215,7 +215,13 @@ export async function getPublishedMemories(
     // and TRUE while excluding only explicitly-hidden memories, so hidden
     // memories don't leak into the 2D deep-view gallery.
     .not("displayed", "is", false)
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    // Bound the initial gallery payload so a power room with hundreds of
+    // memories doesn't mount hundreds of card subtrees (each a TuscanCard +
+    // media element) in one synchronous render. 500 is a generous cap well
+    // above any real room's memory count, so no live data is truncated; if a
+    // room ever exceeds this a paginated "load more" tail should be added.
+    .limit(500);
 
   if (!memories || memories.length === 0) return [];
 
@@ -432,11 +438,20 @@ export async function getVisitorWingData(
 
   // Get all memories for all rooms in parallel
   const roomIds = safeRooms.map((r) => r.id);
-  const { data: allMemories } = await supabase
-    .from("memories")
-    .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, room_id, displayed, sort_order, display_unit")
-    .in("room_id", roomIds)
-    .order("sort_order", { ascending: true });
+  // Bound the visitor 3D payload: this walks every room of the wing and inlines
+  // each memory (file_url is treated as dataUrl downstream and may be a base64
+  // data: URI for pre-migration owners), so an unbounded select can serialize a
+  // multi-megabyte tree into SSR/RSC props and block TTFB/hydration. 1000 is a
+  // generous cap far above any real single-wing corpus, so no live data is
+  // truncated; if a wing ever exceeds this, a paginated tail should be added.
+  const { data: allMemories } = roomIds.length > 0
+    ? await supabase
+        .from("memories")
+        .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, room_id, displayed, sort_order, display_unit")
+        .in("room_id", roomIds)
+        .order("sort_order", { ascending: true })
+        .limit(1000)
+    : { data: [] };
 
   // Group memories by room
   const memsByRoom = new Map<string, typeof allMemories>();
@@ -576,13 +591,21 @@ export async function getVisitorPalaceData(
   const safeRooms = allRooms || [];
   const roomIds = safeRooms.map((r) => r.id);
 
-  // Get all memories for all rooms
+  // Get all memories for all rooms.
+  // Bound the palace-wide visitor 3D payload: this walks EVERY published wing x
+  // EVERY room x EVERY memory and inlines each (file_url is treated as dataUrl
+  // downstream and may be a base64 data: URI for pre-migration owners), so an
+  // unbounded select is the worst-case unbounded SSR/RSC document — it blocks
+  // TTFB and hydration on the visitor walk path. 2000 is a generous cap far
+  // above any real whole-palace corpus, so no live data is truncated; if a
+  // palace ever exceeds this, a paginated / per-wing lazy tail should be added.
   const { data: allMemories } = roomIds.length > 0
     ? await supabase
         .from("memories")
         .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, room_id, displayed, sort_order, display_unit")
         .in("room_id", roomIds)
         .order("sort_order", { ascending: true })
+        .limit(2000)
     : { data: [] };
 
   // Group rooms by wing

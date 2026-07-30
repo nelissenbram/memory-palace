@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useCallback, useId } from "react";
+import { memo, useEffect, useRef, useState, useCallback, useId } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsCompact, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -101,7 +101,14 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
   const isCompact = useIsCompact();
   const isTouch = useTouchControls();
   const { t, locale } = useTranslation("achievementsPanel");
-  const { earnedIds, earnedDates, getProgress } = useAchievementStore();
+  // Fine-grained selectors: the panel only displays earnedIds/earnedDates and
+  // reads getProgress (a stable store method). Selecting each slice isolates the
+  // panel from stats/lastCheck/visitedWings/visitedRooms writes that occur while
+  // it is mounted (checkAchievements/trackWingVisit/trackRoomVisit), which a
+  // selector-less whole-store subscription would otherwise re-render on.
+  const earnedIds = useAchievementStore((s) => s.earnedIds);
+  const earnedDates = useAchievementStore((s) => s.earnedDates);
+  const getProgress = useAchievementStore((s) => s.getProgress);
   const { earned, total, percentage } = getProgress();
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -229,7 +236,12 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
   );
 }
 
-function AchievementCard({ achievement, earned, earnedDate, highlighted, onShareToast, locale, isTouch, reduceMotion }: {
+// Memoized: all props are primitives or stable refs (ACHIEVEMENTS object
+// identity is module-constant, onShareToast is useCallback-stable, locale/
+// isTouch/reduceMotion are primitives), so React.memo cleanly blocks the
+// parent's toast-state re-renders (setToast on share + its 2.5s auto-clear)
+// from cascading through all 24 cards.
+const AchievementCard = memo(function AchievementCard({ achievement, earned, earnedDate, highlighted, onShareToast, locale, isTouch, reduceMotion }: {
   achievement: Achievement; earned: boolean; earnedDate?: string; highlighted?: boolean;
   onShareToast: (msg: string) => void;
   locale: string; isTouch: boolean; reduceMotion: boolean;
@@ -393,4 +405,4 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
       )}
     </div>
   );
-}
+});

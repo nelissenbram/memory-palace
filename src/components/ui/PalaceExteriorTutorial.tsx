@@ -39,6 +39,19 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
   const [targetBox, setTargetBox] = useState<Rect | null>(null);
   const nextRef = useRef<HTMLButtonElement | null>(null);
 
+  // Cache the root font-size once (it never changes within a session) so remToPx
+  // doesn't force a synchronous getComputedStyle reflow on every call/render.
+  // Refreshed only on resize (covers browser zoom / responsive root sizing).
+  const rootPxRef = useRef(16);
+  useEffect(() => {
+    const read = () => {
+      rootPxRef.current = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (open) setStep(0); }, [open]);
 
@@ -64,14 +77,18 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
     { titleKey: "dStep2Title", bodyKey: "dStep2Body", target: "[data-palace-subnav]" },
   ];
 
-  // Measure target(s) for each step
+  // Measure target(s) for each step.
+  const lastBoxRef = useRef<Rect | null>(null);
+  const rafRef = useRef<number | null>(null);
   useLayoutEffect(() => {
-    if (!open) { setTargetBox(null); return; }
-    const measure = () => {
+    if (!open) { setTargetBox(null); lastBoxRef.current = null; return; }
+
+    // Compute the target rect for the current step, or null if none/not found.
+    const computeBox = (): Rect | null => {
       if (isMobile) {
         if (step === 0) {
           const bars = Array.from(document.querySelectorAll<HTMLElement>("[data-mp-palace-bars]"));
-          if (bars.length === 0) { setTargetBox(null); return; }
+          if (bars.length === 0) return null;
           let top = Infinity, left = Infinity, right = -Infinity, bottom = -Infinity;
           bars.forEach((b) => {
             const r = b.getBoundingClientRect();
@@ -80,12 +97,12 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
             right = Math.max(right, r.right);
             bottom = Math.max(bottom, r.bottom);
           });
-          setTargetBox({ top, left, width: right - left, height: bottom - top });
+          return { top, left, width: right - left, height: bottom - top };
         } else if (step === 1) {
           const el = document.querySelector<HTMLElement>("[data-mp-palace-enter]");
-          if (!el) { setTargetBox(null); return; }
+          if (!el) return null;
           const r = el.getBoundingClientRect();
-          setTargetBox({ top: r.top, left: r.left, width: r.width, height: r.height });
+          return { top: r.top, left: r.left, width: r.width, height: r.height };
         } else if (step === 2) {
           const bars = Array.from(document.querySelectorAll<HTMLElement>("[data-mp-palace-bars]"));
           let topY = 0;
@@ -94,26 +111,51 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
           const vh = window.innerHeight;
           const padTop = topY + 12;
           const padBottom = 96;
-          setTargetBox({ top: padTop, left: 12, width: vw - 24, height: vh - padTop - padBottom });
+          return { top: padTop, left: 12, width: vw - 24, height: vh - padTop - padBottom };
         }
+        return null;
       } else {
         // Desktop
         const ds = desktopSteps[step];
-        if (!ds || !ds.target) { setTargetBox(null); return; }
+        if (!ds || !ds.target) return null;
         const el = document.querySelector<HTMLElement>(ds.target);
-        if (!el) { setTargetBox(null); return; }
+        if (!el) return null;
         const r = el.getBoundingClientRect();
-        setTargetBox({ top: r.top, left: r.left, width: r.width, height: r.height });
+        return { top: r.top, left: r.left, width: r.width, height: r.height };
       }
     };
+
+    const sameRect = (a: Rect | null, b: Rect | null) =>
+      a === b || (!!a && !!b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height);
+
+    // Layout read + commit, but bail if the rect is unchanged so scroll/resize
+    // ticks that don't move the target don't re-render the portal + SVG mask.
+    const measure = () => {
+      const next = computeBox();
+      if (sameRect(next, lastBoxRef.current)) return;
+      lastBoxRef.current = next;
+      setTargetBox(next);
+    };
+
+    // rAF-coalesced handler: skip if a frame is already pending so momentum/
+    // inertial scroll collapses many events into one layout read per frame.
+    const onScrollOrResize = () => {
+      if (rafRef.current != null) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        measure();
+      });
+    };
+
     measure();
     const id = setTimeout(measure, 60);
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
+    window.addEventListener("scroll", onScrollOrResize, { capture: true, passive: true });
     return () => {
       clearTimeout(id);
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+      if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize, true);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, step, isMobile]);
@@ -146,7 +188,7 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
 
   const vw = typeof window !== "undefined" ? window.innerWidth : 360;
   const vh = typeof window !== "undefined" ? window.innerHeight : 640;
-  const remToPx = (rem: number) => rem * parseFloat(typeof window !== "undefined" ? getComputedStyle(document.documentElement).fontSize || "16" : "16");
+  const remToPx = (rem: number) => rem * rootPxRef.current;
   const tipWidth = remToPx(isMobile ? 16.25 : 17.5);
 
   let tipTop = 80;

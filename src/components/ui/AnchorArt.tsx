@@ -4,6 +4,23 @@
 import React from "react";
 import { T } from "@/lib/theme";
 
+/* Reduced-motion detector (SSR-safe): starts false so server + first client
+   render match, then reads the media query after mount. Used to strip the
+   continuous SMIL from the anchor illustrations for users who ask for less
+   motion — the elements freeze at their at-rest keyframe (identical still). */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+  return reduced;
+}
+
 export function PalaceIllustration({ hover, warmth, timeOfDay }: {
   hover: boolean;
   /** Palace-warmth level (src/lib/warmth.ts): 0 quiet · 1 embers · 2 candlelit. Omit for legacy resting glow. */
@@ -11,6 +28,12 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
   /** Ambient sky tint; omit for neutral. */
   timeOfDay?: "morning" | "day" | "golden" | "night";
 }) {
+  const reducedMotion = useReducedMotion();
+  // Perf/a11y gate: the ~20 always-on SMIL animations are stripped when the
+  // user prefers reduced motion OR the villa is quiet (warmth 0) — both cases
+  // leave every element frozen at its first keyframe, which equals its at-rest
+  // attribute, so the still image is visually identical.
+  const animate = !reducedMotion && warmth !== 0;
   // Warmth sets the RESTING glow of the windows (the villa dims over quiet
   // weeks, one memory relights it); hover still brightens on top. Floors are
   // high enough that the window life stays clearly visible on the dark
@@ -79,13 +102,13 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
         { cx: 45, cy: 20 }, { cx: 145, cy: 3 }, { cx: 190, cy: 18 },
       ].map((s, i) => (
         <circle key={`star-${i}`} cx={s.cx} cy={s.cy} r="0.6" fill={T.color.gold} opacity={(0.1 + (i % 3) * 0.025) * starBoost}>
-          <animate attributeName="opacity" values={`${(0.1 + (i % 3) * 0.025) * starBoost};${0.15 * starBoost};${(0.1 + (i % 3) * 0.025) * starBoost}`} dur={`${3 + i * 0.5}s`} repeatCount="indefinite" />
+          {animate && <animate attributeName="opacity" values={`${(0.1 + (i % 3) * 0.025) * starBoost};${0.15 * starBoost};${(0.1 + (i % 3) * 0.025) * starBoost}`} dur={`${3 + i * 0.5}s`} repeatCount="indefinite" />}
         </circle>
       ))}
 
       {/* Ambient glow behind structure */}
       <ellipse cx="150" cy="80" rx="120" ry="70" fill="url(#palaceAmbient)" opacity={ambientGlow}>
-        <animate attributeName="opacity" values={`${ambientGlow};${ambientGlow + 0.15};${ambientGlow}`} dur="4s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${ambientGlow};${ambientGlow + 0.15};${ambientGlow}`} dur="4s" repeatCount="indefinite" />}
       </ellipse>
 
       {/* Ground line */}
@@ -110,14 +133,14 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           {/* inhabited window: candle-flicker shimmer + an occasional
               light-out-and-relight on its own long cycle */}
           <ellipse cx={x} cy={106} rx="4.5" ry="6.5" fill="url(#windowWarmth)" opacity={windowGlow}>
-            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 1.35};${windowGlow * 0.9};${windowGlow * 1.2};${windowGlow * 0.1};${windowGlow * 0.1};${windowGlow}`} keyTimes="0;0.2;0.38;0.55;0.68;0.86;1" dur={`${5 + (x % 4)}s`} begin={`${-(x % 5)}s`} repeatCount="indefinite" />
+            {animate && <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 1.35};${windowGlow * 0.9};${windowGlow * 1.2};${windowGlow * 0.1};${windowGlow * 0.1};${windowGlow}`} keyTimes="0;0.2;0.38;0.55;0.68;0.86;1" dur={`${5 + (x % 4)}s`} begin={`${-(x % 5)}s`} repeatCount="indefinite" />}
           </ellipse>
         </React.Fragment>
       ))}
       {/* Left wing door */}
       <rect x="44" y="125" width="14" height="30" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="7" />
       <ellipse cx="51" cy="135" rx="5" ry="10" fill="url(#windowWarmth)" opacity={windowGlow * 0.6}>
-        <animate attributeName="opacity" values={`${windowGlow * 0.6};${windowGlow * 0.85};${windowGlow * 0.5};${windowGlow * 0.6}`} dur="4.6s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${windowGlow * 0.6};${windowGlow * 0.85};${windowGlow * 0.5};${windowGlow * 0.6}`} dur="4.6s" repeatCount="indefinite" />}
       </ellipse>
 
       {/* ── Vines / ivy on left wing ── */}
@@ -148,13 +171,13 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           <line x1={x} y1={100} x2={x} y2={112} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           <line x1={x - 4} y1={106} x2={x + 4} y2={106} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           <ellipse cx={x} cy={106} rx="4.5" ry="6.5" fill="url(#windowWarmth)" opacity={windowGlow}>
-            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 0.12};${windowGlow * 0.12};${windowGlow * 1.3};${windowGlow};${windowGlow * 1.15};${windowGlow}`} keyTimes="0;0.12;0.3;0.45;0.62;0.8;1" dur={`${6 + (x % 4)}s`} begin={`${-(x % 7)}s`} repeatCount="indefinite" />
+            {animate && <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 0.12};${windowGlow * 0.12};${windowGlow * 1.3};${windowGlow};${windowGlow * 1.15};${windowGlow}`} keyTimes="0;0.12;0.3;0.45;0.62;0.8;1" dur={`${6 + (x % 4)}s`} begin={`${-(x % 7)}s`} repeatCount="indefinite" />}
           </ellipse>
         </React.Fragment>
       ))}
       <rect x="242" y="125" width="14" height="30" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="7" />
       <ellipse cx="249" cy="135" rx="5" ry="10" fill="url(#windowWarmth)" opacity={windowGlow * 0.6}>
-        <animate attributeName="opacity" values={`${windowGlow * 0.6};${windowGlow * 0.45};${windowGlow * 0.8};${windowGlow * 0.6}`} dur="5.3s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${windowGlow * 0.6};${windowGlow * 0.45};${windowGlow * 0.8};${windowGlow * 0.6}`} dur="5.3s" repeatCount="indefinite" />}
       </ellipse>
 
       {/* ── Central temple ── */}
@@ -213,8 +236,8 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
       <rect x="138" y="108" width="24" height="47" fill="none" stroke={T.color.gold} strokeWidth="0.4" opacity="0.25" rx="12" />
       {/* Door warm glow — hearth-flicker, quicker and livelier than windows */}
       <ellipse cx="150" cy="125" rx="10" ry="18" fill="url(#windowWarmth)" opacity={windowGlow * 0.8}>
-        <animate attributeName="opacity" values={`${windowGlow * 0.8};${windowGlow * 1.15};${windowGlow * 0.7};${windowGlow * 1.05};${windowGlow * 0.85};${windowGlow * 0.8}`} keyTimes="0;0.2;0.45;0.65;0.85;1" dur="3.2s" repeatCount="indefinite" />
-        <animate attributeName="rx" values="10;10.8;9.6;10" dur="4.1s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${windowGlow * 0.8};${windowGlow * 1.15};${windowGlow * 0.7};${windowGlow * 1.05};${windowGlow * 0.85};${windowGlow * 0.8}`} keyTimes="0;0.2;0.45;0.65;0.85;1" dur="3.2s" repeatCount="indefinite" />}
+        {animate && <animate attributeName="rx" values="10;10.8;9.6;10" dur="4.1s" repeatCount="indefinite" />}
       </ellipse>
 
       {/* Human silhouette near entrance for scale */}
@@ -231,7 +254,7 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           <line x1={x} y1={72} x2={x} y2={83} stroke={T.color.gold} strokeWidth="0.25" opacity="0.2" />
           <line x1={x - 4} y1={77.5} x2={x + 4} y2={77.5} stroke={T.color.gold} strokeWidth="0.25" opacity="0.2" />
           <ellipse cx={x} cy={77} rx="4" ry="5.5" fill="url(#windowWarmth)" opacity={windowGlow * 0.9}>
-            <animate attributeName="opacity" values={`${windowGlow * 0.9};${windowGlow * 1.25};${windowGlow * 0.7};${windowGlow * 1.1};${windowGlow * 0.08};${windowGlow * 0.9}`} keyTimes="0;0.25;0.42;0.6;0.78;1" dur={`${5 + (x % 5)}s`} begin={`${-(x % 6)}s`} repeatCount="indefinite" />
+            {animate && <animate attributeName="opacity" values={`${windowGlow * 0.9};${windowGlow * 1.25};${windowGlow * 0.7};${windowGlow * 1.1};${windowGlow * 0.08};${windowGlow * 0.9}`} keyTimes="0;0.25;0.42;0.6;0.78;1" dur={`${5 + (x % 5)}s`} begin={`${-(x % 6)}s`} repeatCount="indefinite" />}
           </ellipse>
         </React.Fragment>
       ))}
@@ -246,13 +269,13 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
       <rect x="90" y="168" width="120" height="8" fill="none" stroke={T.color.gold} strokeWidth="0.3" opacity="0.12" rx="1.5" />
       {/* Water shimmer lines */}
       <line x1="100" y1="171" x2="118" y2="171" stroke={T.color.gold} strokeWidth="0.3" opacity="0.1">
-        <animate attributeName="opacity" values="0.1;0.18;0.1" dur="3s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values="0.1;0.18;0.1" dur="3s" repeatCount="indefinite" />}
       </line>
       <line x1="130" y1="173" x2="155" y2="173" stroke={T.color.gold} strokeWidth="0.3" opacity="0.08">
-        <animate attributeName="opacity" values="0.08;0.15;0.08" dur="4s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values="0.08;0.15;0.08" dur="4s" repeatCount="indefinite" />}
       </line>
       <line x1="165" y1="170.5" x2="200" y2="170.5" stroke={T.color.gold} strokeWidth="0.3" opacity="0.1">
-        <animate attributeName="opacity" values="0.1;0.16;0.1" dur="3.5s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values="0.1;0.16;0.1" dur="3.5s" repeatCount="indefinite" />}
       </line>
 
       {/* ── Cypress trees — detailed with inner foliage ── */}
@@ -287,7 +310,17 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
 }
 
 /* ── Detailed Library SVG — bookshelves, open book, candle ── */
-export function LibraryIllustration({ hover }: { hover: boolean }) {
+export function LibraryIllustration({ hover, warmth }: {
+  hover: boolean;
+  /** Palace-warmth level (src/lib/warmth.ts): 0 quiet · 1 embers · 2 candlelit. Omit for always-lit. */
+  warmth?: 0 | 1 | 2;
+}) {
+  const reducedMotion = useReducedMotion();
+  // Same gate as the Palace anchor: strip the always-on candle/glow SMIL when
+  // the user prefers reduced motion or the villa is quiet (warmth 0). Every
+  // element freezes at its first keyframe = its at-rest attribute, so the still
+  // image is unchanged.
+  const animate = !reducedMotion && warmth !== 0;
   const candleGlow = hover ? 0.6 : 0.3;
 
   const bookColors = [
@@ -340,11 +373,11 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
 
       {/* Candle warm ambient glow — larger outer halo */}
       <ellipse cx="245" cy="75" rx="90" ry="85" fill="url(#candleHaloOuter)" opacity={candleGlow * 0.7}>
-        <animate attributeName="opacity" values={`${candleGlow * 0.7};${candleGlow * 0.95};${candleGlow * 0.7}`} dur="4s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${candleGlow * 0.7};${candleGlow * 0.95};${candleGlow * 0.7}`} dur="4s" repeatCount="indefinite" />}
       </ellipse>
       {/* Inner candle warmth */}
       <ellipse cx="245" cy="80" rx="70" ry="70" fill="url(#candleWarmth)" opacity={candleGlow}>
-        <animate attributeName="opacity" values={`${candleGlow};${candleGlow * 1.3};${candleGlow}`} dur="3s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${candleGlow};${candleGlow * 1.3};${candleGlow}`} dur="3s" repeatCount="indefinite" />}
       </ellipse>
 
       {/* ── Bookshelf frame ── */}
@@ -592,30 +625,30 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
       <line x1="245" y1="75" x2="245" y2="70" stroke={T.color.gold} strokeWidth="0.5" opacity="0.4" />
       {/* Warm halo effect — amber outer ring */}
       <ellipse cx="245" cy="62" rx="12" ry="14" fill="none" stroke="#FFD699" strokeWidth="0.5" opacity={candleGlow * 0.3}>
-        <animate attributeName="opacity" values={`${candleGlow * 0.3};${candleGlow * 0.45};${candleGlow * 0.3}`} dur="2.5s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${candleGlow * 0.3};${candleGlow * 0.45};${candleGlow * 0.3}`} dur="2.5s" repeatCount="indefinite" />}
       </ellipse>
       <ellipse cx="245" cy="63" rx="8" ry="10" fill="#FFEEBB" opacity={candleGlow * 0.12}>
-        <animate attributeName="opacity" values={`${candleGlow * 0.12};${candleGlow * 0.2};${candleGlow * 0.12}`} dur="2s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${candleGlow * 0.12};${candleGlow * 0.2};${candleGlow * 0.12}`} dur="2s" repeatCount="indefinite" />}
       </ellipse>
       {/* Flame — a real candle sway: the whole flame leans and rights itself,
           stretches on the draft, and its inner tongue dances offset from it */}
       <g>
-        <animateTransform attributeName="transform" type="rotate" values="-5 245 71; 4 245 71; -2 245 71; 5 245 71; -5 245 71" dur="2.6s" repeatCount="indefinite" />
+        {animate && <animateTransform attributeName="transform" type="rotate" values="-5 245 71; 4 245 71; -2 245 71; 5 245 71; -5 245 71" dur="2.6s" repeatCount="indefinite" />}
         <ellipse cx="245" cy="64" rx="4" ry="7" fill="url(#flameGrad)" opacity={hover ? 0.85 : 0.65}>
-          <animate attributeName="ry" values="7;8.6;6.2;7.8;7" dur="1.5s" repeatCount="indefinite" />
-          <animate attributeName="cy" values="64;62.8;64.6;63.4;64" dur="1.9s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values={`${hover ? 0.85 : 0.65};${hover ? 0.95 : 0.8};${hover ? 0.78 : 0.55};${hover ? 0.85 : 0.65}`} dur="1.1s" repeatCount="indefinite" />
+          {animate && <animate attributeName="ry" values="7;8.6;6.2;7.8;7" dur="1.5s" repeatCount="indefinite" />}
+          {animate && <animate attributeName="cy" values="64;62.8;64.6;63.4;64" dur="1.9s" repeatCount="indefinite" />}
+          {animate && <animate attributeName="opacity" values={`${hover ? 0.85 : 0.65};${hover ? 0.95 : 0.8};${hover ? 0.78 : 0.55};${hover ? 0.85 : 0.65}`} dur="1.1s" repeatCount="indefinite" />}
         </ellipse>
         <ellipse cx="245" cy="65" rx="1.5" ry="3.5" fill="#FFF8E0" opacity="0.8">
-          <animate attributeName="ry" values="3.5;4.4;2.9;3.9;3.5" dur="1.15s" repeatCount="indefinite" />
-          <animate attributeName="cx" values="245;245.6;244.4;245.2;245" dur="1.4s" repeatCount="indefinite" />
+          {animate && <animate attributeName="ry" values="3.5;4.4;2.9;3.9;3.5" dur="1.15s" repeatCount="indefinite" />}
+          {animate && <animate attributeName="cx" values="245;245.6;244.4;245.2;245" dur="1.4s" repeatCount="indefinite" />}
         </ellipse>
       </g>
       {/* the occasional spark rising off the wick */}
       <circle cx="245" cy="60" r="0.6" fill="#FFD666" opacity="0">
-        <animate attributeName="opacity" values="0;0;0.8;0;0" keyTimes="0;0.62;0.68;0.8;1" dur="7s" repeatCount="indefinite" />
-        <animate attributeName="cy" values="60;60;52;46;46" keyTimes="0;0.62;0.72;0.8;1" dur="7s" repeatCount="indefinite" />
-        <animate attributeName="cx" values="245;245;246.5;244.8;244.8" keyTimes="0;0.62;0.72;0.8;1" dur="7s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values="0;0;0.8;0;0" keyTimes="0;0.62;0.68;0.8;1" dur="7s" repeatCount="indefinite" />}
+        {animate && <animate attributeName="cy" values="60;60;52;46;46" keyTimes="0;0.62;0.72;0.8;1" dur="7s" repeatCount="indefinite" />}
+        {animate && <animate attributeName="cx" values="245;245;246.5;244.8;244.8" keyTimes="0;0.62;0.72;0.8;1" dur="7s" repeatCount="indefinite" />}
       </circle>
 
       {/* ── A second, smaller candle on the desk (tealight by the scroll) ── */}
@@ -623,15 +656,15 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
       <ellipse cx="222" cy="138.5" rx="4" ry="1.4" fill={T.color.gold} opacity="0.3" />
       <line x1="222" y1="128" x2="222" y2="125.5" stroke={T.color.gold} strokeWidth="0.4" opacity="0.4" />
       <ellipse cx="222" cy="124" rx="5" ry="6" fill="#FFEEBB" opacity={candleGlow * 0.15}>
-        <animate attributeName="opacity" values={`${candleGlow * 0.15};${candleGlow * 0.26};${candleGlow * 0.15}`} dur="2.3s" repeatCount="indefinite" />
+        {animate && <animate attributeName="opacity" values={`${candleGlow * 0.15};${candleGlow * 0.26};${candleGlow * 0.15}`} dur="2.3s" repeatCount="indefinite" />}
       </ellipse>
       <g>
-        <animateTransform attributeName="transform" type="rotate" values="4 222 128; -5 222 128; 2 222 128; 4 222 128" dur="2.1s" repeatCount="indefinite" />
+        {animate && <animateTransform attributeName="transform" type="rotate" values="4 222 128; -5 222 128; 2 222 128; 4 222 128" dur="2.1s" repeatCount="indefinite" />}
         <ellipse cx="222" cy="123.5" rx="2.2" ry="4" fill="url(#flameGrad)" opacity={hover ? 0.8 : 0.55}>
-          <animate attributeName="ry" values="4;4.9;3.4;4" dur="1.3s" repeatCount="indefinite" />
+          {animate && <animate attributeName="ry" values="4;4.9;3.4;4" dur="1.3s" repeatCount="indefinite" />}
         </ellipse>
         <ellipse cx="222" cy="124.5" rx="0.9" ry="2" fill="#FFF8E0" opacity="0.75">
-          <animate attributeName="ry" values="2;2.5;1.6;2" dur="1s" repeatCount="indefinite" />
+          {animate && <animate attributeName="ry" values="2;2.5;1.6;2" dur="1s" repeatCount="indefinite" />}
         </ellipse>
       </g>
 

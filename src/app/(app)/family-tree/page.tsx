@@ -1095,6 +1095,13 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
     setToast({ message: t("recentered", { name: person.first_name }), type: "success" });
   }, [t]);
 
+  // Quick-add pop-over open handler — stable identity so memo()'d CoupleNode/
+  // PersonCard don't re-render on every pan/zoom frame (setQuickAddTarget is a
+  // stable state setter, so [] deps are correct).
+  const handleQuickAddOpen = useCallback((person: FamilyTreePerson, cx: number, cy: number) => {
+    setQuickAddTarget({ person, x: cx, y: cy });
+  }, []);
+
   // Quick-add: open form with pre-filled relation defaults
   const handleQuickAdd = (relationType: "parent" | "child" | "spouse", targetPerson: FamilyTreePerson) => {
     setQuickAddTarget(null);
@@ -1360,6 +1367,122 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
     }
     return path;
   }
+
+  /* ── Perf: memoize the static tree SVG content (bars + links + nodes) so a
+   * pan/zoom (which only changes the wrapping <g> transform) does NOT re-map
+   * over every link/node array and re-allocate fresh React elements each
+   * pointer frame. These fragments depend only on layout/data, never pan/zoom,
+   * so their identity is stable across drag frames and React skips
+   * reconciling the whole subtree — only the <g> transform string changes.
+   * makeLink/makeCoupleLinkPaths/makeExSpouseWavyPath depend solely on the
+   * stable pixel dims (nodeHPx/nodeWPx/spouseGapPx), so their closures are
+   * safe to capture here. */
+  const generationBarLines = useMemo(
+    () =>
+      generationBars.map((bar) => (
+        <line
+          key={`gen-line-${bar.gen}`}
+          x1={contentMinX}
+          y1={bar.y}
+          x2={contentMaxX}
+          y2={bar.y}
+          stroke={T.color.sandstone}
+          strokeWidth={1}
+          strokeDasharray="8 6"
+          opacity={0.25}
+        />
+      )),
+    [generationBars, contentMinX, contentMaxX]
+  );
+
+  const d3LinkPaths = useMemo(
+    () =>
+      layoutData.map((tree, ti) =>
+        tree.links.map((link, li) => {
+          if (link.hasSpouse) {
+            const [pathL, pathR] = makeCoupleLinkPaths(link);
+            return (
+              <g key={`link-${ti}-${li}`}>
+                <path d={pathL} fill="none" stroke={"#B85C38"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                <path d={pathR} fill="none" stroke={"#7A8C64"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+              </g>
+            );
+          }
+          return (
+            <path
+              key={`link-${ti}-${li}`}
+              d={makeLink(link)}
+              fill="none"
+              stroke={T.color.walnut}
+              strokeWidth={2}
+              strokeLinecap="round"
+              opacity={0.5}
+            />
+          );
+        })
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layoutData]
+  );
+
+  const exSpouseLinkPaths = useMemo(
+    () =>
+      exSpouseLinks.map((link, i) => (
+        <path
+          key={`ex-${i}`}
+          d={makeExSpouseWavyPath(link.x1, link.y1, link.x2, link.y2)}
+          fill="none"
+          stroke="#D4838A"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          opacity={0.6}
+        />
+      )),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [exSpouseLinks]
+  );
+
+  const extraParentChildLinkPaths = useMemo(
+    () =>
+      extraParentChildLinks.map((link, i) => {
+        if (link.hasSpouse) {
+          const [pathL, pathR] = makeCoupleLinkPaths(link);
+          return (
+            <g key={`extra-pc-${i}`}>
+              <path d={pathL} fill="none" stroke={"#B85C38"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+              <path d={pathR} fill="none" stroke={"#7A8C64"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+            </g>
+          );
+        }
+        return (
+          <path key={`extra-pc-${i}`} d={makeLink(link)} fill="none" stroke={T.color.walnut} strokeWidth={2} strokeLinecap="round" opacity={0.5} />
+        );
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [extraParentChildLinks]
+  );
+
+  const coupleNodes = useMemo(
+    () =>
+      layoutData.map((tree, ti) =>
+        tree.nodes.map((n, ni) => (
+          <CoupleNode
+            key={`node-${ti}-${ni}`}
+            x={n.x}
+            y={n.y}
+            node={n.data}
+            onSelect={setSelectedPerson}
+            nodeWPx={nodeWPx}
+            nodeHPx={nodeHPx}
+            spouseGapPx={spouseGapPx}
+            onQuickAdd={handleQuickAddOpen}
+            relCountMap={relCountMap}
+            focusedNodeId={focusedNodeId}
+          />
+        ))
+      ),
+    [layoutData, nodeWPx, nodeHPx, spouseGapPx, handleQuickAddOpen, relCountMap, focusedNodeId]
+  );
 
   // Legend collapsed state (for mobile)
   const [legendExpanded, setLegendExpanded] = useState(!isMobile);
@@ -2266,89 +2389,15 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             </defs>
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
               {/* Generation bar lines (labels moved to HTML overlay) */}
-              {generationBars.map((bar) => (
-                <line
-                  key={`gen-line-${bar.gen}`}
-                  x1={contentMinX}
-                  y1={bar.y}
-                  x2={contentMaxX}
-                  y2={bar.y}
-                  stroke={T.color.sandstone}
-                  strokeWidth={1}
-                  strokeDasharray="8 6"
-                  opacity={0.25}
-                />
-              ))}
+              {generationBarLines}
               {/* D3 hierarchy links */}
-              {layoutData.map((tree, ti) =>
-                tree.links.map((link, li) => {
-                  if (link.hasSpouse) {
-                    const [pathL, pathR] = makeCoupleLinkPaths(link);
-                    return (
-                      <g key={`link-${ti}-${li}`}>
-                        <path d={pathL} fill="none" stroke={"#B85C38"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
-                        <path d={pathR} fill="none" stroke={"#7A8C64"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
-                      </g>
-                    );
-                  }
-                  return (
-                    <path
-                      key={`link-${ti}-${li}`}
-                      d={makeLink(link)}
-                      fill="none"
-                      stroke={T.color.walnut}
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      opacity={0.5}
-                    />
-                  );
-                })
-              )}
+              {d3LinkPaths}
               {/* Ex-spouse links (wavy rose line) */}
-              {exSpouseLinks.map((link, i) => (
-                <path
-                  key={`ex-${i}`}
-                  d={makeExSpouseWavyPath(link.x1, link.y1, link.x2, link.y2)}
-                  fill="none"
-                  stroke="#D4838A"
-                  strokeWidth={1.5}
-                  strokeLinecap="round"
-                  opacity={0.6}
-                />
-              ))}
+              {exSpouseLinkPaths}
               {/* Extra parent-child links (not in D3 tree) */}
-              {extraParentChildLinks.map((link, i) => {
-                if (link.hasSpouse) {
-                  const [pathL, pathR] = makeCoupleLinkPaths(link);
-                  return (
-                    <g key={`extra-pc-${i}`}>
-                      <path d={pathL} fill="none" stroke={"#B85C38"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
-                      <path d={pathR} fill="none" stroke={"#7A8C64"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
-                    </g>
-                  );
-                }
-                return (
-                  <path key={`extra-pc-${i}`} d={makeLink(link)} fill="none" stroke={T.color.walnut} strokeWidth={2} strokeLinecap="round" opacity={0.5} />
-                );
-              })}
+              {extraParentChildLinkPaths}
               {/* Nodes (couples) */}
-              {layoutData.map((tree, ti) =>
-                tree.nodes.map((n, ni) => (
-                  <CoupleNode
-                    key={`node-${ti}-${ni}`}
-                    x={n.x}
-                    y={n.y}
-                    node={n.data}
-                    onSelect={setSelectedPerson}
-                    nodeWPx={nodeWPx}
-                    nodeHPx={nodeHPx}
-                    spouseGapPx={spouseGapPx}
-                    onQuickAdd={(person, cx, cy) => setQuickAddTarget({ person, x: cx, y: cy })}
-                    relCountMap={relCountMap}
-                    focusedNodeId={focusedNodeId}
-                  />
-                ))
-              )}
+              {coupleNodes}
               {/* Legend moved to HTML overlay below */}
             </g>
           </svg>

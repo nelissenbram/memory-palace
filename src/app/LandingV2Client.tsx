@@ -15,7 +15,7 @@
  *   may mention price, "free", or credit cards.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { T } from "@/lib/theme";
@@ -45,6 +45,28 @@ type V2 = EnMessages["landingV2"];
 type FaqSlice = EnMessages["landing"]["faq"];
 type FooterSlice = EnMessages["landing"]["footer"];
 type Compare8 = EnMessages["landing"]["comparison"];
+
+/* ── Memoized USP cards ───────────────────────────────────────────
+   Each USP vignette ships a large inline <style> block of @keyframes and a
+   deep element tree. Their props (m = the stable MOCK record, aiLabel = a
+   string) are referentially stable across the parent's scroll-driven
+   re-renders, so React.memo lets every card bail out of reconciliation
+   instead of re-diffing its keyframe strings during active scrolling. Wrapped
+   here at module scope (stable component identity) so the card source files
+   stay untouched. */
+const MUploadsCard = React.memo(UploadsCard);
+const MCloudImportCard = React.memo(CloudImportCard);
+const MKepCard = React.memo(KepCard);
+const MReceiveCard = React.memo(ReceiveCard);
+const MPalaceCard = React.memo(PalaceCard);
+const MInterviewsCard = React.memo(InterviewsCard);
+const MMapCard = React.memo(MapCard);
+const MTreeCard = React.memo(TreeCard);
+const MJourneysCard = React.memo(JourneysCard);
+const MCapsuleCard = React.memo(CapsuleCard);
+const MCocreateCard = React.memo(CocreateCard);
+const MSharingCard = React.memo(SharingCard);
+const MLegacyCard = React.memo(LegacyCard);
 
 const L = T.land;
 const M = T.motion;
@@ -487,6 +509,154 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
   );
 }
 
+/* ───────────────────────── USP chapters ─────────────────────────
+
+   The scroll-active USP rail lives here, isolated from the 1700-line page.
+   `activeUsp` is component-level state updated by a rAF-throttled passive
+   scroll handler; owning it here means scrolling past a USP boundary only
+   re-renders THIS subtree (the ~13 rail buttons), not the hero/tour/FAQ/footer.
+   The 13 USP cards inside are React.memo-wrapped with stable props, so they
+   bail out of reconciliation during these scroll re-renders instead of
+   re-diffing their large keyframe <style> strings.
+
+   `uspRefs`/`setUspRef` (the off-screen animation-pause observer) are owned by
+   the parent and threaded through unchanged — this component only reads
+   `uspRefs.current` in the rail click handler, exactly as before. */
+
+type UspGroup = { label: string; items: Array<{ name: string; t: string; b: string; media: React.ReactNode }> };
+
+function UspChapters({
+  groups,
+  uspIdxByGroup,
+  isCompact,
+  uspRefs,
+  setUspRef,
+}: {
+  groups: UspGroup[];
+  uspIdxByGroup: number[][];
+  isCompact: boolean;
+  uspRefs: React.MutableRefObject<Array<HTMLDivElement | null>>;
+  setUspRef: (flatIdx: number, el: HTMLDivElement | null) => void;
+}) {
+  const [activeUsp, setActiveUsp] = useState(0);
+  useEffect(() => {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const line = window.innerHeight * 0.4;
+      const els = uspRefs.current;
+      let best = 0;
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= line) best = i;
+        else break;
+      }
+      setActiveUsp((prev) => (prev === best ? prev : best));
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    update();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [uspRefs]);
+
+  return (
+    <>
+      {/* Three chapters, each with its own menu rail that alternates side */}
+      {groups.map((group, gi) => {
+        const railLeft = gi % 2 === 0; // Capture left, Bring-to-life right, Share left
+        return (
+          <div
+            key={group.label}
+            className="lv2-chap"
+            style={{
+              // Rail collapses on the compact band (≤1024px, iPad portrait
+              // incl.): single column, rail hidden — was the 1023px @media.
+              gridTemplateColumns: isCompact ? "1fr" : railLeft ? "16rem 1fr" : "1fr 16rem",
+              marginTop: gi === 0 ? 0 : "clamp(3.5rem, 7vw, 6rem)",
+            }}
+          >
+            {/* Chapter menu rail */}
+            <nav
+              aria-label={group.label}
+              style={{ display: isCompact ? "none" : "block", order: railLeft ? 0 : 1, alignSelf: "stretch" }}
+            >
+              <div style={{ position: "sticky", top: "6rem" }}>
+                <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.75rem" }}>
+                  {group.label}
+                </p>
+                {group.items.map((item, ii) => {
+                  const flatIdx = uspIdxByGroup[gi][ii];
+                  const isActive = activeUsp === flatIdx;
+                  const isPast = activeUsp > flatIdx;
+                  return (
+                    <button
+                      key={item.t}
+                      type="button"
+                      className="lv2-navlink"
+                      aria-current={isActive ? "true" : undefined}
+                      onClick={() => uspRefs.current[flatIdx]?.scrollIntoView({ block: "center" })}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        width: "100%",
+                        textAlign: "left",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        padding: "0.375rem 0.5rem",
+                        minHeight: "2.25rem",
+                        fontFamily: FONT_BODY,
+                        fontSize: "0.9375rem",
+                        fontWeight: isActive ? 700 : 500,
+                        color: isActive ? L.accentLight : isPast ? T.color.charcoal : L.inkMutedLight,
+                        transition: `color ${M.base} ${M.ease}`,
+                      }}
+                    >
+                      <span aria-hidden="true" style={{ width: "1rem", flexShrink: 0, color: T.color.success }}>
+                        {isPast ? "✓" : ""}
+                      </span>
+                      {item.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+
+            {/* Chapter cards */}
+            <div style={{ order: railLeft ? 1 : 0, display: "flex", flexDirection: "column", gap: "clamp(4rem, 8vw, 6.5rem)" }}>
+              {group.items.map((item, ii) => {
+                const flatIdx = uspIdxByGroup[gi][ii];
+                return (
+                  <div key={item.t} ref={(el) => setUspRef(flatIdx, el)} data-usp-idx={flatIdx} style={{ scrollMarginTop: "6rem" }}>
+                    <Reveal>
+                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.625rem" }}>
+                        {String(flatIdx + 1).padStart(2, "0")} · {group.label}
+                      </p>
+                      <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h3, lineHeight: 1.15, color: T.color.charcoal, margin: "0 0 0.875rem", textWrap: "balance" }}>
+                        {item.t}
+                      </h3>
+                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, maxWidth: "34em", margin: "0 0 1.75rem", textWrap: "pretty" }}>
+                        {item.b}
+                      </p>
+                      <div style={{ maxWidth: "36rem" }}>{item.media}</div>
+                    </Reveal>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 /* ───────────────────────── main component ───────────────────────── */
 
 export default function LandingV2Client({
@@ -629,34 +799,11 @@ export default function LandingV2Client({
   const a11yLanguage = a11y.language ?? "Language";
 
   /* ── USP scrollytelling (STEMMA pattern): sticky group rail + one block per
-     USP. Active step is computed in a rAF-throttled passive scroll handler
-     (IO callbacks can starve when other app code hogs the main thread). ── */
-  const [activeUsp, setActiveUsp] = useState(0);
+     USP. The scroll-active rail state now lives in <UspChapters> so scrolling
+     past a USP boundary only re-renders that subtree, not this whole page. The
+     shared `uspRefs` (flat DOM refs) is owned here because the off-screen
+     animation-pause observer below also wires into it. ── */
   const uspRefs = useRef<Array<HTMLDivElement | null>>([]);
-  useEffect(() => {
-    let ticking = false;
-    const update = () => {
-      ticking = false;
-      const line = window.innerHeight * 0.4;
-      const els = uspRefs.current;
-      let best = 0;
-      for (let i = 0; i < els.length; i++) {
-        const el = els[i];
-        if (!el) continue;
-        if (el.getBoundingClientRect().top <= line) best = i;
-        else break;
-      }
-      setActiveUsp(best);
-    };
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(update);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    update();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   // Pause the USP vignettes' (and logo medallions') infinite CSS loops while
   // they are off-screen: ~26+ perpetual composited animations otherwise run the
@@ -697,48 +844,57 @@ export default function LandingV2Client({
     if (el) uspLiveIoRef.current?.observe(el);
   }, []);
 
-  const MOCK = v2.mock as Record<string, string>;
-  const USP_GROUPS: Array<{ label: string; items: Array<{ name: string; t: string; b: string; media: React.ReactNode }> }> = [
-    {
-      label: v2.usps.groupCapture,
-      items: [
-        { name: v2.mock.uploadsName, t: v2.usps.u2t, b: v2.usps.u2b, media: <UploadsCard m={MOCK} /> },
-        { name: v2.mock.cloudName, t: v2.usps.u3t, b: v2.usps.u3b, media: <CloudImportCard m={MOCK} aiLabel={v2.mock.ai} /> },
-        { name: v2.mock.kepName, t: v2.usps.u1t, b: v2.usps.u1b, media: <KepCard m={MOCK} aiLabel={v2.mock.ai} /> },
-        { name: v2.mock.receiveName, t: v2.usps.u4t, b: v2.usps.u4b, media: <ReceiveCard m={MOCK} /> },
-      ],
-    },
-    {
-      label: v2.usps.groupEnrich,
-      items: [
-        { name: v2.mock.palaceName, t: v2.usps.u5t, b: v2.usps.u5b, media: <PalaceCard m={MOCK} /> },
-        { name: v2.mock.interviewName, t: v2.usps.u6t, b: v2.usps.u6b, media: <InterviewsCard m={MOCK} aiLabel={v2.mock.ai} /> },
-        { name: v2.mock.mapName, t: v2.usps.u7t, b: v2.usps.u7b, media: <MapCard m={MOCK} /> },
-        { name: v2.mock.treeName, t: v2.usps.u8t, b: v2.usps.u8b, media: <TreeCard m={MOCK} /> },
-        { name: v2.mock.journeyName, t: v2.usps.u9t, b: v2.usps.u9b, media: <JourneysCard m={MOCK} /> },
-      ],
-    },
-    {
-      label: v2.usps.groupShare,
-      items: [
-        { name: v2.mock.capsuleName, t: v2.usps.u10t, b: v2.usps.u10b, media: <CapsuleCard m={MOCK} /> },
-        { name: v2.mock.cocreateName, t: v2.usps.u11t, b: v2.usps.u11b, media: <CocreateCard m={MOCK} /> },
-        { name: v2.mock.sharingName, t: v2.usps.u12t, b: v2.usps.u12b, media: <SharingCard m={MOCK} /> },
-        { name: v2.mock.legacyName, t: v2.usps.u13t, b: v2.usps.u13b, media: <LegacyCard m={MOCK} /> },
-      ],
-    },
-  ];
+  // Hoist the 13 USP card elements + group structure into a memo keyed on the
+  // current locale slice (`v2`). Without this, every parent re-render (e.g. a
+  // scroll-driven state change elsewhere) re-instantiated 13 fresh card
+  // elements, defeating the React.memo on each card. `v2` is the only input;
+  // MOCK is derived from it, so a single dep is correct and complete.
+  const USP_GROUPS: UspGroup[] = useMemo(() => {
+    const MOCK = v2.mock as Record<string, string>;
+    return [
+      {
+        label: v2.usps.groupCapture,
+        items: [
+          { name: v2.mock.uploadsName, t: v2.usps.u2t, b: v2.usps.u2b, media: <MUploadsCard m={MOCK} /> },
+          { name: v2.mock.cloudName, t: v2.usps.u3t, b: v2.usps.u3b, media: <MCloudImportCard m={MOCK} aiLabel={v2.mock.ai} /> },
+          { name: v2.mock.kepName, t: v2.usps.u1t, b: v2.usps.u1b, media: <MKepCard m={MOCK} aiLabel={v2.mock.ai} /> },
+          { name: v2.mock.receiveName, t: v2.usps.u4t, b: v2.usps.u4b, media: <MReceiveCard m={MOCK} /> },
+        ],
+      },
+      {
+        label: v2.usps.groupEnrich,
+        items: [
+          { name: v2.mock.palaceName, t: v2.usps.u5t, b: v2.usps.u5b, media: <MPalaceCard m={MOCK} /> },
+          { name: v2.mock.interviewName, t: v2.usps.u6t, b: v2.usps.u6b, media: <MInterviewsCard m={MOCK} aiLabel={v2.mock.ai} /> },
+          { name: v2.mock.mapName, t: v2.usps.u7t, b: v2.usps.u7b, media: <MMapCard m={MOCK} /> },
+          { name: v2.mock.treeName, t: v2.usps.u8t, b: v2.usps.u8b, media: <MTreeCard m={MOCK} /> },
+          { name: v2.mock.journeyName, t: v2.usps.u9t, b: v2.usps.u9b, media: <MJourneysCard m={MOCK} /> },
+        ],
+      },
+      {
+        label: v2.usps.groupShare,
+        items: [
+          { name: v2.mock.capsuleName, t: v2.usps.u10t, b: v2.usps.u10b, media: <MCapsuleCard m={MOCK} /> },
+          { name: v2.mock.cocreateName, t: v2.usps.u11t, b: v2.usps.u11b, media: <MCocreateCard m={MOCK} /> },
+          { name: v2.mock.sharingName, t: v2.usps.u12t, b: v2.usps.u12b, media: <MSharingCard m={MOCK} /> },
+          { name: v2.mock.legacyName, t: v2.usps.u13t, b: v2.usps.u13b, media: <MLegacyCard m={MOCK} /> },
+        ],
+      },
+    ];
+  }, [v2]);
 
   // Stable numeric id per USP (assigned once in flat order) so the scroll-active
   // rail keys off `idx`, never a translated title string — title collisions
-  // across locales would otherwise light up the wrong rail entry.
-  const uspIdxByGroup: number[][] = [];
-  {
+  // across locales would otherwise light up the wrong rail entry. Memoized on
+  // the same input so the array identity stays stable across scroll re-renders.
+  const uspIdxByGroup: number[][] = useMemo(() => {
+    const out: number[][] = [];
     let c = 0;
     for (const g of USP_GROUPS) {
-      uspIdxByGroup.push(g.items.map(() => c++));
+      out.push(g.items.map(() => c++));
     }
-  }
+    return out;
+  }, [USP_GROUPS]);
 
   const steps =
     howMode === "gift" && !isIosApp
@@ -1213,93 +1369,13 @@ export default function LandingV2Client({
                 <H2>{v2.usps.h2}</H2>
               </div>
             </Reveal>
-            {/* Three chapters, each with its own menu rail that alternates side */}
-            {USP_GROUPS.map((group, gi) => {
-              const railLeft = gi % 2 === 0; // Capture left, Bring-to-life right, Share left
-              return (
-                <div
-                  key={group.label}
-                  className="lv2-chap"
-                  style={{
-                    // Rail collapses on the compact band (≤1024px, iPad portrait
-                    // incl.): single column, rail hidden — was the 1023px @media.
-                    gridTemplateColumns: isCompact ? "1fr" : railLeft ? "16rem 1fr" : "1fr 16rem",
-                    marginTop: gi === 0 ? 0 : "clamp(3.5rem, 7vw, 6rem)",
-                  }}
-                >
-                  {/* Chapter menu rail */}
-                  <nav
-                    aria-label={group.label}
-                    style={{ display: isCompact ? "none" : "block", order: railLeft ? 0 : 1, alignSelf: "stretch" }}
-                  >
-                    <div style={{ position: "sticky", top: "6rem" }}>
-                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.75rem" }}>
-                        {group.label}
-                      </p>
-                      {group.items.map((item, ii) => {
-                        const flatIdx = uspIdxByGroup[gi][ii];
-                        const isActive = activeUsp === flatIdx;
-                        const isPast = activeUsp > flatIdx;
-                        return (
-                          <button
-                            key={item.t}
-                            type="button"
-                            className="lv2-navlink"
-                            aria-current={isActive ? "true" : undefined}
-                            onClick={() => uspRefs.current[flatIdx]?.scrollIntoView({ block: "center" })}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.5rem",
-                              width: "100%",
-                              textAlign: "left",
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              padding: "0.375rem 0.5rem",
-                              minHeight: "2.25rem",
-                              fontFamily: FONT_BODY,
-                              fontSize: "0.9375rem",
-                              fontWeight: isActive ? 700 : 500,
-                              color: isActive ? L.accentLight : isPast ? T.color.charcoal : L.inkMutedLight,
-                              transition: `color ${M.base} ${M.ease}`,
-                            }}
-                          >
-                            <span aria-hidden="true" style={{ width: "1rem", flexShrink: 0, color: T.color.success }}>
-                              {isPast ? "✓" : ""}
-                            </span>
-                            {item.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </nav>
-
-                  {/* Chapter cards */}
-                  <div style={{ order: railLeft ? 1 : 0, display: "flex", flexDirection: "column", gap: "clamp(4rem, 8vw, 6.5rem)" }}>
-                    {group.items.map((item, ii) => {
-                      const flatIdx = uspIdxByGroup[gi][ii];
-                      return (
-                        <div key={item.t} ref={(el) => setUspRef(flatIdx, el)} data-usp-idx={flatIdx} style={{ scrollMarginTop: "6rem" }}>
-                          <Reveal>
-                            <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.625rem" }}>
-                              {String(flatIdx + 1).padStart(2, "0")} · {group.label}
-                            </p>
-                            <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h3, lineHeight: 1.15, color: T.color.charcoal, margin: "0 0 0.875rem", textWrap: "balance" }}>
-                              {item.t}
-                            </h3>
-                            <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, maxWidth: "34em", margin: "0 0 1.75rem", textWrap: "pretty" }}>
-                              {item.b}
-                            </p>
-                            <div style={{ maxWidth: "36rem" }}>{item.media}</div>
-                          </Reveal>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+            <UspChapters
+              groups={USP_GROUPS}
+              uspIdxByGroup={uspIdxByGroup}
+              isCompact={isCompact}
+              uspRefs={uspRefs}
+              setUspRef={setUspRef}
+            />
           </div>
         </section>
 

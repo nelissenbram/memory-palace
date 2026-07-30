@@ -486,11 +486,30 @@ export default function MemoryPalace(){
   }, [profileLoading]);
 
   // Sync localStorage settings from server (cross-device consistency)
-  // Then bulk-fetch all memories so stats/map/timeline are consistent across devices
+  // Then bulk-fetch all memories so stats/map/timeline are consistent across devices.
+  // Defer the (potentially large) bulk fetch behind requestIdleCallback so it runs
+  // after the atrium paints rather than competing with first render / first interaction.
   useEffect(() => {
-    syncSettingsFromServer().then(() => {
+    let cancelled = false;
+    const runBulkFetch = () => {
+      if (cancelled) return;
       useMemoryStore.getState().fetchAllRoomMemories();
-    });
+    };
+    const schedule = () => {
+      if (cancelled) return;
+      const ric = (globalThis as typeof globalThis & {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      }).requestIdleCallback;
+      if (typeof ric === "function") {
+        ric(runBulkFetch, { timeout: 2000 });
+      } else {
+        setTimeout(runBulkFetch, 0);
+      }
+    };
+    syncSettingsFromServer().then(schedule);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Fetch shared wings from family members

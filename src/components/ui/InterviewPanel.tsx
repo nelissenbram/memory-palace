@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { navigateInApp, isIOS } from "@/lib/native/platform";
@@ -72,6 +72,42 @@ function fmtTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/** Self-contained animated waveform. Owns its own ~60ms tick + setState so the
+ *  16 Hz re-render is isolated to these ~20 bars instead of the whole
+ *  InterviewPanel. Mounted only during the recording phase; the parent then
+ *  re-renders solely on the 250ms mm:ss clock. Visual output is identical to
+ *  the previous inline waveform. */
+const RecordingWaveform = memo(function RecordingWaveform({
+  isMobile, isListening, audioLevel,
+}: { isMobile: boolean; isListening: boolean; audioLevel: number }) {
+  const [waveTick, setWaveTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setWaveTick(Date.now()), 60);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", gap: "0.1875rem", marginBottom: "1.5rem", height: "3.75rem", alignItems: "center" }}>
+      {Array.from({ length: 20 }).map((_, i) => {
+        // On mobile (no MediaRecorder), simulate gentle pulse when listening
+        const level = isMobile
+          ? (isListening ? 0.3 + 0.15 * Math.sin((waveTick / 400 + i) * 0.6) : 0)
+          : audioLevel;
+        const height = 8 + level * 52 * (0.4 + 0.6 * Math.sin((waveTick / 200 + i) * 0.8));
+        return (
+          <div key={i} style={{
+            width: "0.25rem", borderRadius: "0.125rem",
+            height: Math.max(8, height),
+            background: `linear-gradient(180deg, ${EMBER}, ${EMBER_GLYPH})`,
+            transition: "height 0.1s ease",
+            opacity: 0.6 + level * 0.4,
+          }} />
+        );
+      })}
+    </div>
+  );
+});
+
 export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPanelProps) {
   const isMobile = useIsMobile();
   const { userName } = useUserStore();
@@ -140,14 +176,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
     };
   }, [phase]);
 
-  // Fast waveform driver — a short-interval tick so the mobile waveform animates
-  // smoothly (~60ms) instead of only re-rendering on the 250ms timer.
-  const [waveTick, setWaveTick] = useState(0);
-  useEffect(() => {
-    if (phase !== "recording") return;
-    const id = setInterval(() => setWaveTick(Date.now()), 60);
-    return () => clearInterval(id);
-  }, [phase]);
+  // Waveform driver lives inside <RecordingWaveform>, which owns its own ~60ms
+  // tick + setState so the 16 Hz animation no longer re-renders this whole panel.
 
   const question = getCurrentQuestion();
   const progress = getProgress();
@@ -673,25 +703,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               {question ? (tTpl(question.textKey) === question.textKey ? question.text : tTpl(question.textKey)) : ""}
             </h2>
 
-            {/* Waveform visualization */}
-            <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", gap: "0.1875rem", marginBottom: "1.5rem", height: "3.75rem", alignItems: "center" }}>
-              {Array.from({ length: 20 }).map((_, i) => {
-                // On mobile (no MediaRecorder), simulate gentle pulse when listening
-                const level = isMobile
-                  ? (speech.isListening ? 0.3 + 0.15 * Math.sin((waveTick / 400 + i) * 0.6) : 0)
-                  : recorder.audioLevel;
-                const height = 8 + level * 52 * (0.4 + 0.6 * Math.sin((waveTick / 200 + i) * 0.8));
-                return (
-                  <div key={i} style={{
-                    width: "0.25rem", borderRadius: "0.125rem",
-                    height: Math.max(8, height),
-                    background: `linear-gradient(180deg, ${EMBER}, ${EMBER_GLYPH})`,
-                    transition: "height 0.1s ease",
-                    opacity: 0.6 + level * 0.4,
-                  }} />
-                );
-              })}
-            </div>
+            {/* Waveform visualization — self-contained child owns the 60ms tick */}
+            <RecordingWaveform isMobile={isMobile} isListening={speech.isListening} audioLevel={recorder.audioLevel} />
 
             {/* Timer + status — announced to assistive tech */}
             <div role="status" aria-live="polite">

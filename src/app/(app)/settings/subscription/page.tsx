@@ -117,15 +117,14 @@ export default function SubscriptionPage() {
           return;
         }
 
-        // Parallelize queries — subscription and storage
-        const [subRes, storageRes] = await Promise.all([
-          supabase
-            .from("subscriptions")
-            .select("plan, status, current_period_end, stripe_customer_id")
-            .eq("user_id", user.id)
-            .single(),
-          supabase.from("memories").select("file_size").eq("user_id", user.id),
-        ]);
+        // Fetch the subscription record. Storage usage is derived server-side
+        // from /api/storage/limit below (SQL aggregate) — we deliberately do NOT
+        // pull every memory row's file_size to the client just to sum one column.
+        const subRes = await supabase
+          .from("subscriptions")
+          .select("plan, status, current_period_end, stripe_customer_id")
+          .eq("user_id", user.id)
+          .single();
 
         let subData = subRes.data as SubscriptionData | null;
 
@@ -164,22 +163,24 @@ export default function SubscriptionPage() {
           setSub({ plan: "free", status: "active", current_period_end: null, stripe_customer_id: null });
         }
 
-        const storageData = storageRes.data;
-        const totalStorageMb = storageData
-          ? Math.round(storageData.reduce((sum: number, m: { file_size: number }) => sum + (m.file_size || 0), 0) / (1024 * 1024))
-          : 0;
-
-        setUsage({
-          storageMb: totalStorageMb,
-        });
-        // Fetch effective storage limit (applies grandfathering for legacy free users)
+        // Fetch effective storage limit AND used storage from one endpoint. The
+        // route computes storageMb via a SQL aggregate (exact even past the
+        // PostgREST row cap), so we no longer transfer every memory row to the
+        // browser just to sum file_size. limitMb applies grandfathering for
+        // legacy free users.
         try {
           const storageLimitRes = await fetch("/api/storage/limit");
           if (storageLimitRes.ok) {
             const slData = await storageLimitRes.json();
             setEffectiveStorageLimitMb(slData.limitMb ?? null);
+            setUsage({ storageMb: slData.storageMb ?? 0 });
+          } else {
+            setUsage({ storageMb: 0 });
           }
-        } catch { /* non-critical */ }
+        } catch {
+          // non-critical — still show the usage card (at 0) rather than hiding it
+          setUsage({ storageMb: 0 });
+        }
         // Fetch referral info
         try {
           const refRes = await fetch("/api/referral");

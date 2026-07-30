@@ -259,12 +259,49 @@ export async function getComments(
 
 const VALID_REACTION_EMOJIS = ["candle", "key", "scroll", "heart", "star", "amphora"];
 
+/**
+ * Read + group the reactions for a target into per-emoji summaries.
+ * Shared by getReactions and toggleReaction so a toggle can return the
+ * authoritative fresh summary without a second server round-trip (extra
+ * getUser + canViewTarget + full read). Caller must have already resolved
+ * `user` and confirmed view access.
+ */
+async function summarizeReactions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  targetType: string,
+  targetId: string,
+  userId: string | null
+): Promise<ReactionSummary[]> {
+  const { data: rows } = await supabase
+    .from("reactions")
+    .select("emoji, user_id")
+    .eq("target_type", targetType)
+    .eq("target_id", targetId);
+
+  if (!rows || rows.length === 0) return [];
+
+  // Group by emoji
+  const groups = new Map<string, { count: number; reacted: boolean }>();
+  for (const row of rows) {
+    const group = groups.get(row.emoji) || { count: 0, reacted: false };
+    group.count++;
+    if (userId && row.user_id === userId) group.reacted = true;
+    groups.set(row.emoji, group);
+  }
+
+  return Array.from(groups.entries()).map(([emoji, g]) => ({
+    emoji,
+    count: g.count,
+    reacted: g.reacted,
+  }));
+}
+
 /** Toggle a reaction on a target */
 export async function toggleReaction(input: {
   targetType: string;
   targetId: string;
   emoji: string;
-}): Promise<{ reacted: boolean }> {
+}): Promise<{ reacted: boolean; summary?: ReactionSummary[] }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -296,7 +333,13 @@ export async function toggleReaction(input: {
 
   if (existing) {
     await supabase.from("reactions").delete().eq("id", existing.id);
-    return { reacted: false };
+    const summary = await summarizeReactions(
+      supabase,
+      input.targetType,
+      input.targetId,
+      user.id
+    );
+    return { reacted: false, summary };
   }
 
   await supabase.from("reactions").insert({
@@ -305,6 +348,15 @@ export async function toggleReaction(input: {
     target_id: input.targetId,
     emoji: input.emoji,
   });
+
+  // Authoritative fresh summary reflecting the new reaction, returned to the
+  // client so it can reconcile without a second getReactions round-trip.
+  const summary = await summarizeReactions(
+    supabase,
+    input.targetType,
+    input.targetId,
+    user.id
+  );
 
   // Record activity
   try {
@@ -356,7 +408,7 @@ export async function toggleReaction(input: {
     // Notifications may not be available
   }
 
-  return { reacted: true };
+  return { reacted: true, summary };
 }
 
 /** Get reaction summaries for a target */
@@ -377,26 +429,5 @@ export async function getReactions(
     }
   }
 
-  const { data: rows } = await supabase
-    .from("reactions")
-    .select("emoji, user_id")
-    .eq("target_type", targetType)
-    .eq("target_id", targetId);
-
-  if (!rows || rows.length === 0) return [];
-
-  // Group by emoji
-  const groups = new Map<string, { count: number; reacted: boolean }>();
-  for (const row of rows) {
-    const group = groups.get(row.emoji) || { count: 0, reacted: false };
-    group.count++;
-    if (user && row.user_id === user.id) group.reacted = true;
-    groups.set(row.emoji, group);
-  }
-
-  return Array.from(groups.entries()).map(([emoji, g]) => ({
-    emoji,
-    count: g.count,
-    reacted: g.reacted,
-  }));
+  return summarizeReactions(supabase, targetType, targetId, user?.id ?? null);
 }

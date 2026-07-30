@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { T } from "@/lib/theme";
 import { HAIRLINE } from "@/lib/libraryTokens";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
@@ -59,7 +59,11 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   const { containerRef: pickerRef, handleKeyDown: pickerHandleKeyDown } = useFocusTrap(true);
   const accent = wing.accent;
   const userMems = useMemoryStore((s) => s.userMems);
-  const { getWingRooms } = useRoomStore();
+  // Select the static action non-reactively (actions are stable → never re-renders),
+  // and subscribe only to the room DATA the panel consumes so we don't re-render on
+  // unrelated roomStore mutations (renameWing, changeWingAccent, sync events, …).
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
+  const customRooms = useRoomStore((s) => s.customRooms);
 
   const [paintings, setPaintings] = useState<CorridorPaintings>(currentPaintings);
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
@@ -68,29 +72,46 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   // Sync external prop changes into the open panel (memory deleted/moved, reset elsewhere).
   useEffect(() => { setPaintings(currentPaintings); }, [currentPaintings]);
 
-  // Painting slots — 1 per room (one painting next to each door)
-  const slots = rooms.map((r) => r.id);
+  // Painting slots — 1 per room (one painting next to each door). Stable identity
+  // so it doesn't rebuild on every unrelated render.
+  const slots = useMemo(() => rooms.map((r) => r.id), [rooms]);
 
-  // Get all memories with images from ALL wings (not just current wing)
-  const allMems: { mem: Mem; room: WingRoom; wingName: string }[] = [];
-  WINGS.forEach((w) => {
-    const wRooms = getWingRooms(w.id);
-    wRooms.forEach((room) => {
-      const mems = userMems[room.id] || ROOM_MEMS[room.id] || [];
-      mems.forEach((mem) => {
-        if (mem.dataUrl && mem.type === "photo") {
-          allMems.push({ mem, room, wingName: (w.nameKey ? tWings(w.nameKey) : w.name) || w.id });
-        }
+  // Get all memories with images from ALL wings (not just current wing).
+  // Memoized on the actual data it reads (userMems + customRooms via getWingRooms,
+  // plus the wing-name translator) so it doesn't re-walk WINGS×rooms×mems on every
+  // picker toggle, filter change, or unrelated store mutation.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- customRooms is read via getWingRooms
+  const allMems = useMemo<{ mem: Mem; room: WingRoom; wingName: string }[]>(() => {
+    const out: { mem: Mem; room: WingRoom; wingName: string }[] = [];
+    WINGS.forEach((w) => {
+      const wRooms = getWingRooms(w.id);
+      wRooms.forEach((room) => {
+        const mems = userMems[room.id] || ROOM_MEMS[room.id] || [];
+        mems.forEach((mem) => {
+          if (mem.dataUrl && mem.type === "photo") {
+            out.push({ mem, room, wingName: (w.nameKey ? tWings(w.nameKey) : w.name) || w.id });
+          }
+        });
       });
     });
-  });
+    return out;
+  }, [userMems, customRooms, getWingRooms, tWings]);
 
-  // Filtered mems based on source filter
-  const wingRooms = getWingRooms(wing.id);
-  const wingRoomIds = new Set(wingRooms.map((r) => r.id));
-  const filteredMems = sourceFilter === "wing"
-    ? allMems.filter(({ room }) => wingRoomIds.has(room.id))
-    : allMems;
+  // Room ids for the current wing (used by the "this wing" filter). Recomputes only
+  // when the wing or its room data changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- customRooms is read via getWingRooms
+  const wingRoomIds = useMemo(
+    () => new Set(getWingRooms(wing.id).map((r) => r.id)),
+    [wing.id, customRooms, getWingRooms],
+  );
+
+  // Filtered mems based on source filter — preserves the exact same set/order.
+  const filteredMems = useMemo(
+    () => (sourceFilter === "wing"
+      ? allMems.filter(({ room }) => wingRoomIds.has(room.id))
+      : allMems),
+    [sourceFilter, allMems, wingRoomIds],
+  );
 
   const handleAssign = useCallback((slotRoomId: string, mem: Mem, fromRoomId: string) => {
     setPaintings((prev) => {

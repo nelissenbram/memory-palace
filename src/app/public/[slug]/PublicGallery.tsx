@@ -416,7 +416,12 @@ function MemoryCard({
           position: "relative",
         }}>
           <Image
-            src={mem.fileUrl!}
+            /* Grid prefers the small poster/derivative so a wall of high-res
+               phone photos doesn't over-fetch tens of MB of full-resolution
+               originals into ~300px boxes. Falls back to the original only when
+               no thumbnail was generated (older uploads) — same visible image.
+               The full fileUrl stays reserved for the lightbox. */
+            src={mem.thumbnailUrl || mem.fileUrl!}
             alt={mem.title}
             fill sizes="(max-width: 768px) 50vw, 300px"
             unoptimized

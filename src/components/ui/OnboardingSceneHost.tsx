@@ -221,29 +221,49 @@ export default function OnboardingSceneHost({
     }
   }, [scene, reduce]);
 
+  // WINGS is a module-level constant — stable identity, safe to pass straight through.
   const allWings: Wing[] = WINGS;
   const noop = () => {};
 
-  // Demo corridor paintings for onboarding — only one painting (near first door)
-  const demoPaintings: Record<string, { url?: string; title?: string }> = onboardingMode
-    ? { ro1: { url: "/demo/between-two-hands.jpg", title: "Between Two Hands" } }
-    : {};
+  // Demo corridor paintings for onboarding — only one painting (near first door).
+  // Memoized on onboardingMode so scene props keep a stable identity across the
+  // host's own state transitions (transitioning/sceneReady) and store churn.
+  const demoPaintings = useMemo<Record<string, { url?: string; title?: string }>>(
+    () =>
+      (onboardingMode
+        ? { ro1: { url: "/demo/between-two-hands.jpg", title: "Between Two Hands" } }
+        : {}) as Record<string, { url?: string; title?: string }>,
+    [onboardingMode],
+  );
 
-  // Demo room memories — non-photo types so the upload placeholder painting stays visible
-  const demoRoomMemories =
-    onboardingMode && memories.length === 0
-      ? [
-          { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "audio", dataUrl: "/demo/song-of-summer.mp3", createdAt: new Date().toISOString(), hue: 200, s: 50, l: 55 },
-          { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/demo/piano-recital.mp4", createdAt: new Date().toISOString(), hue: 30, s: 45, l: 50 },
-          { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", dataUrl: "/demo/quiet-morning.jpg", createdAt: new Date().toISOString(), hue: 18, s: 40, l: 60 },
-        ]
-      : memories;
+  // Demo room memories — non-photo types so the upload placeholder painting stays
+  // visible. Memoized so InteriorScene's memories prop keeps a stable identity
+  // (a fresh array each render defeats R3F memoization and can trigger scene-graph
+  // rebuilds). The demo objects hold new Date().toISOString() timestamps, but those
+  // are already frozen at first compute — behavior/output is unchanged, just stable.
+  const demoRoomMemories = useMemo(
+    () =>
+      onboardingMode && memories.length === 0
+        ? [
+            { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "audio", dataUrl: "/demo/song-of-summer.mp3", createdAt: new Date().toISOString(), hue: 200, s: 50, l: 55 },
+            { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/demo/piano-recital.mp4", createdAt: new Date().toISOString(), hue: 30, s: 45, l: 50 },
+            { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", dataUrl: "/demo/quiet-morning.jpg", createdAt: new Date().toISOString(), hue: 18, s: 40, l: 60 },
+          ]
+        : memories,
+    [onboardingMode, memories],
+  );
 
-  // Override room name for onboarding — "[User]'s Self Portraits"
-  const corridorRooms: WingRoom[] = (WING_ROOMS[wingId] || []).map((r, i) => {
-    if (i === 0 && roomName) return { ...r, name: roomName, nameKey: undefined };
-    return r;
-  });
+  // Override room name for onboarding — "[User]'s Self Portraits". Memoized on the
+  // real inputs (wingId/roomName) so the corridor rooms array keeps a stable
+  // identity across unrelated re-renders.
+  const corridorRooms: WingRoom[] = useMemo(
+    () =>
+      (WING_ROOMS[wingId] || []).map((r, i) => {
+        if (i === 0 && roomName) return { ...r, name: roomName, nameKey: undefined };
+        return r;
+      }),
+    [wingId, roomName],
+  );
 
   // Static fallback path: WebGL unavailable — never mount the 3D canvas at all.
   if (noWebGL || boundaryFailed) {

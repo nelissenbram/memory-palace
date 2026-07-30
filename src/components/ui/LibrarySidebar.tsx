@@ -73,7 +73,7 @@ export default function LibrarySidebar({
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
-  const { getWingRooms } = useRoomStore();
+  const getWingRooms = useRoomStore(s => s.getWingRooms);
   // The desktop sidebar also renders on iPad portrait (768–1024px), where
   // useIsMobile() reports desktop but the device is touch-only. Enlarge the
   // small mouse-first hit boxes (search input font, room rows, ? tooltip,
