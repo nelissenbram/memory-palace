@@ -277,3 +277,67 @@ export async function incrementAutoTagCount(userId: string, batchSize: number): 
       { onConflict: "user_id,counter_key,counter_date" }
     );
 }
+
+// ── Photo-restore quota ──
+// free: 10 total (lifetime, never resets) · keeper: 50/month · guardian: 200/month.
+// Stored in usage_counters under counter_key "photo_restore", always keyed to the
+// first-of-month row; free sums every month (lifetime), paid checks the current month.
+const RESTORE_KEY = "photo_restore";
+
+export interface PhotoRestoreQuotaResult {
+  allowed: boolean;
+  used: number;
+  limit: number;
+  period: "lifetime" | "month";
+}
+
+function firstOfMonthISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+export async function checkPhotoRestoreQuota(userId: string): Promise<PhotoRestoreQuotaResult> {
+  const subscription = await getUserPlan(userId);
+  const supabase = await createClient();
+
+  if (subscription.plan === "free") {
+    // Lifetime total across every month's counter row.
+    const { data } = await supabase
+      .from("usage_counters")
+      .select("counter_value")
+      .eq("user_id", userId)
+      .eq("counter_key", RESTORE_KEY);
+    const used = (data || []).reduce((n, r) => n + ((r as { counter_value?: number }).counter_value ?? 0), 0);
+    return { allowed: used < 10, used, limit: 10, period: "lifetime" };
+  }
+
+  const limit = subscription.plan === "guardian" ? 200 : 50;
+  const { data } = await supabase
+    .from("usage_counters")
+    .select("counter_value")
+    .eq("user_id", userId)
+    .eq("counter_key", RESTORE_KEY)
+    .eq("counter_date", firstOfMonthISO())
+    .maybeSingle();
+  const used = data?.counter_value ?? 0;
+  return { allowed: used < limit, used, limit, period: "month" };
+}
+
+export async function incrementPhotoRestore(userId: string): Promise<void> {
+  const supabase = await createClient();
+  const month = firstOfMonthISO();
+  const { data } = await supabase
+    .from("usage_counters")
+    .select("counter_value")
+    .eq("user_id", userId)
+    .eq("counter_key", RESTORE_KEY)
+    .eq("counter_date", month)
+    .maybeSingle();
+  const current = data?.counter_value ?? 0;
+  await supabase
+    .from("usage_counters")
+    .upsert(
+      { user_id: userId, counter_key: RESTORE_KEY, counter_date: month, counter_value: current + 1 },
+      { onConflict: "user_id,counter_key,counter_date" }
+    );
+}

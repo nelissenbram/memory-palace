@@ -15,6 +15,11 @@ interface SheetProps {
   title?: React.ReactNode;
   /** Bottom-anchored rounded sheet on phones (default). When false, full-screen takeover. */
   bottomSheet?: boolean;
+  /** Desktop/tablet anchoring: "center" (default modal) or "right" (right-anchored,
+   *  full-height side sheet that slides in from the edge). Phones keep the bottom-sheet. */
+  side?: "center" | "right";
+  /** Max width of the panel surface on desktop (side sheets can opt for a wider rail). */
+  maxWidth?: string;
   /** Background of the panel surface. */
   background?: string;
   /** Hide the built-in close button (panel provides its own). */
@@ -31,7 +36,7 @@ interface SheetProps {
  */
 export function Sheet({
   open, onClose, children, title,
-  bottomSheet = true, background = T.color.linen, hideClose, contentStyle,
+  bottomSheet = true, side = "center", maxWidth, background = T.color.linen, hideClose, contentStyle,
 }: SheetProps) {
   const { containerRef, handleKeyDown } = useFocusTrap(open);
   const isMobile = useIsMobile();
@@ -40,6 +45,8 @@ export function Sheet({
   if (!open) return null;
 
   const asBottomSheet = isMobile && isPortrait && bottomSheet;
+  // Right-anchored side sheet on non-phone widths (phones keep the bottom-sheet).
+  const asSideSheet = side === "right" && !asBottomSheet;
 
   return (
     <div
@@ -52,32 +59,42 @@ export function Sheet({
         zIndex: 1000,
         background: "rgba(20,16,12,0.55)",
         display: "flex",
-        justifyContent: "center",
-        // Vertically center on desktop; pin to the bottom on a phone; top-align in landscape.
-        alignItems: asBottomSheet ? "flex-end" : isPortrait ? "center" : "flex-start",
+        animation: "mp-sheet-scrim-in 0.2s ease",
+        justifyContent: asSideSheet ? "flex-end" : "center",
+        // Vertically center on desktop; pin to the bottom on a phone; stretch full-height as a side sheet.
+        alignItems: asSideSheet ? "stretch" : asBottomSheet ? "flex-end" : isPortrait ? "center" : "flex-start",
       }}
     >
       <div
         ref={containerRef}
         onKeyDown={handleKeyDown}
-        className="mp-scroll"
+        className={asSideSheet ? "mp-scroll mp-sheet-right" : "mp-scroll"}
         style={{
           position: "relative",
           width: "100%",
-          maxWidth: asBottomSheet ? "100%" : "32rem",
+          maxWidth: asBottomSheet ? "100%" : maxWidth || (asSideSheet ? "30rem" : "32rem"),
           maxHeight: asBottomSheet ? "92dvh" : "100dvh",
-          height: asBottomSheet ? undefined : isMobile ? "100dvh" : undefined,
+          height: asBottomSheet ? undefined : (asSideSheet || isMobile) ? "100dvh" : undefined,
           overflowY: "auto",
           background,
-          borderRadius: asBottomSheet ? `${T.radius.xl} ${T.radius.xl} 0 0` : isMobile ? 0 : T.radius.lg,
+          borderRadius: asBottomSheet ? `${T.radius.xl} ${T.radius.xl} 0 0` : (asSideSheet || isMobile) ? 0 : T.radius.lg,
           paddingTop: `max(${T.space.md}, ${T.safe.top})`,
           paddingBottom: `max(${T.space.lg}, ${T.safe.bottom})`,
           paddingLeft: `max(${T.space.md}, ${T.safe.left})`,
           paddingRight: `max(${T.space.md}, ${T.safe.right})`,
           boxSizing: "border-box",
+          animation: asSideSheet ? "mp-sheet-slide-right 0.3s cubic-bezier(0.22,1,0.36,1)" : undefined,
+          boxShadow: asSideSheet ? "-1.25rem 0 3rem rgba(20,16,12,0.28)" : undefined,
           ...contentStyle,
         }}
       >
+        <style>{`
+          @keyframes mp-sheet-scrim-in { from { opacity: 0 } to { opacity: 1 } }
+          @keyframes mp-sheet-slide-right { from { transform: translateX(100%) } to { transform: translateX(0) } }
+          @media (prefers-reduced-motion: reduce) {
+            .mp-sheet-right { animation: none !important; }
+          }
+        `}</style>
         {(title || !hideClose) && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: T.space.sm, marginBottom: T.space.md }}>
             <div style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, color: T.color.charcoal, minWidth: 0 }}>{title}</div>

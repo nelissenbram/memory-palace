@@ -10,7 +10,7 @@ function prefersReducedMotion(): boolean {
     ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
     : false;
 }
-import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { Sheet } from "@/components/ui/Sheet";
 import { useAchievementStore, ACHIEVEMENTS, type Achievement } from "@/lib/stores/achievementStore";
 import { AchievementIcon } from "./AtriumWidgets";
 import { shareAchievement } from "@/lib/native/share";
@@ -101,7 +101,6 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
   const isCompact = useIsCompact();
   const isTouch = useTouchControls();
   const { t, locale } = useTranslation("achievementsPanel");
-  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { earnedIds, earnedDates, getProgress } = useAchievementStore();
   const { earned, total, percentage } = getProgress();
   const [toast, setToast] = useState<string | null>(null);
@@ -116,71 +115,33 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
   }, []);
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(64,59,54,0.55)", backdropFilter: "blur(12px)", // Atrium token: warm ink scrim
-        display: "flex", alignItems: "center", justifyContent: "center",
-        animation: reduceMotion ? undefined : "fadeIn .3s ease",
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="mp-scroll"
-        ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: isMobile ? "100%" : "min(40rem, 92vw)",
-          maxHeight: isMobile ? "100%" : "88vh",
-          height: isMobile ? "100%" : undefined,
-          overflow: "auto",
-          background: "linear-gradient(160deg, #F2EDE4 0%, #FCFAF5 78%)", // Atrium: linen → canon CREAM, matches StatisticsPanel
-          borderRadius: isMobile ? 0 : "1rem",
-          border: isMobile ? "none" : "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
-          boxShadow: isMobile ? "none" : "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
-          padding: isMobile ? "1.25rem 1rem 1rem" : isCompact ? "2.25rem 2rem 2rem" : "2rem 1.75rem 1.75rem",
-          paddingTop: isMobile ? "max(1.25rem, env(safe-area-inset-top, 0px))" : undefined,
-          paddingBottom: isMobile ? "max(1rem, env(safe-area-inset-bottom, 0px))" : undefined,
-          paddingLeft: isMobile ? "max(1rem, env(safe-area-inset-left, 0px))" : undefined,
-          paddingRight: isMobile ? "max(1rem, env(safe-area-inset-right, 0px))" : undefined,
-          animation: reduceMotion ? undefined : isMobile ? "fadeIn .2s ease" : "fadeUp .3s ease",
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <div style={{
-              width: "3rem", height: "3rem", borderRadius: "0.85rem",
-              background: "rgba(169,116,27,0.18)", // Atrium: gold-lane medallion tint, header focal (stronger than the 0.14 card wells)
-              border: "0.0625rem solid #E9DCBE", // Atrium token: gold-lane hairline ring — sets the header apart from the flat card wells
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.10)", // Atrium: S1 lifted for clear focal hierarchy
-            }}><TrophyIcon size={28} /></div>
+    <Sheet
+      open
+      onClose={onClose}
+      side="right"
+      maxWidth="40rem"
+      background="linear-gradient(160deg, #F2EDE4 0%, #FCFAF5 78%)"
+      title={
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{
+            width: "3rem", height: "3rem", borderRadius: "0.85rem",
+            background: "rgba(169,116,27,0.18)", // Atrium: gold-lane medallion tint, header focal (stronger than the 0.14 card wells)
+            border: "0.0625rem solid #E9DCBE", // Atrium token: gold-lane hairline ring — sets the header apart from the flat card wells
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.10)", // Atrium: S1 lifted for clear focal hierarchy
+          }}><TrophyIcon size={28} /></div>
 
-            <div>
-              <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#403B36", lineHeight: 1.15 }}>
-                {t("title")}
-              </div>
-              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
-                {t("unlocked", { earned: String(earned), total: String(total) })}
-              </div>
+          <div>
+            <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#403B36", lineHeight: 1.15 }}>
+              {t("title")}
+            </div>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
+              {t("unlocked", { earned: String(earned), total: String(total) })}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label={t("close")}
-            style={{
-              width: isTouch ? "2.75rem" : "2.25rem", height: isTouch ? "2.75rem" : "2.25rem", borderRadius: "1.5rem", border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
-              background: `${T.color.white}cc`, cursor: "pointer", fontSize: "1rem",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#716A5E", fontFamily: T.font.body,
-              transition: "opacity 0.2s ease",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-          >{"\u2715"}</button>
         </div>
-
+      }
+    >
         {/* Progress bar */}
         <div
           role="progressbar"
@@ -264,8 +225,7 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
             {toast}
           </div>
         )}
-      </div>
-    </div>
+    </Sheet>
   );
 }
 

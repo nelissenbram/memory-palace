@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard from "@/components/ui/TuscanCard";
+import { Sheet } from "@/components/ui/Sheet";
 import { ANIM, EASE } from "@/components/ui/TuscanStyles";
 
 const C = T.color;
@@ -16,7 +17,6 @@ const F = T.font;
    legacy linen/warmStone/sandstone, so this surface shares one source of truth
    with its Library/Atrium siblings. Kept as well-named locals to avoid touching
    the shared token files. */
-const CREAM = "#FCFAF5";   // canon page/surface base (libraryTokens CREAM)
 const TRAY = "#F2EDE4";    // canon lifted-tray neutral (libraryTokens TRAY)
 const HAIRLINE = "#E3D6BC"; // canon card border (libraryTokens HAIRLINE)
 const SAGE = "#56683C";    // canon sage (libraryTokens SAGE)
@@ -139,21 +139,8 @@ interface KepCapturePanelProps {
 
 export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
   const { t } = useTranslation("kepLanding");
-  const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
   const [copied, setCopied] = useState(false);
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  // Escape-to-close (document-level so it fires regardless of focus) and
-  // move initial focus into the dialog for keyboard/screen-reader users.
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    dialogRef.current?.focus();
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   const waPhone = process.env.NEXT_PUBLIC_KEP_WHATSAPP_NUMBER || "";
   const waLink = waPhone ? `https://wa.me/${waPhone}?text=Hi%20Kep` : "#";
@@ -168,79 +155,16 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
   };
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 60,
-      display: "flex",
-      alignItems: isMobile ? "stretch" : "center",
-      justifyContent: "center",
-    }}>
-      {/* Backdrop */}
-      <div onClick={onClose} style={{
-        position: "absolute", inset: 0,
-        background: "rgba(42,34,24,.45)", backdropFilter: "blur(6px)",
-      }} />
-
-      {/* Dialog */}
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("navTitle")}
-        tabIndex={-1}
-        style={{
-          outline: "none",
-          position: "relative", zIndex: 1,
-          width: isMobile ? "100%" : "95%",
-          maxWidth: isMobile ? undefined : "52rem",
-          height: isMobile ? "100%" : undefined,
-          maxHeight: isMobile ? undefined : "90vh",
-          background: TRAY, // canon lifted-tray neutral (was C.linen)
-          borderRadius: isMobile ? 0 : "1rem", // Atrium token: card radius
-          boxShadow: isMobile ? "none" : T.shadow[2], // Atrium token: S2 warm-ink overlay shadow
-          border: isMobile ? "none" : `0.0625rem solid ${HAIRLINE}`, // canon hairline
-          display: "flex", flexDirection: "column",
-          overflow: "hidden",
-          animation: "fadeUp .35s ease",
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: isMobile ? "1rem 1.25rem" : "1.25rem 1.5rem",
-          paddingTop: isMobile ? "max(1rem, env(safe-area-inset-top, 0px))" : undefined,
-          paddingLeft: isMobile ? "max(1.25rem, env(safe-area-inset-left, 0px))" : undefined,
-          paddingRight: isMobile ? "max(1.25rem, env(safe-area-inset-right, 0px))" : undefined,
-          borderBottom: `0.0625rem solid ${HAIRLINE}`, // canon hairline
-          background: `linear-gradient(180deg, ${NEUTRAL_SOFT} 0%, ${TRAY} 100%)`, // canon warm neutrals (was warmStone→linen)
-          flexShrink: 0,
-        }}>
-          <h2 style={{
-            fontFamily: F.display, fontSize: isMobile ? "1.1875rem" : "1.375rem", // Atrium token: titleM/titleL
-            fontWeight: 600, color: C.ink, margin: 0,
-          }}>
-            {t("navTitle")}
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label={tc("close")}
-            style={{
-              width: "2.75rem", height: "2.75rem", minWidth: "2.75rem", minHeight: "2.75rem",
-              borderRadius: "0.75rem", border: `0.0625rem solid ${HAIRLINE}`, // canon small-control radius + hairline
-              background: CREAM, cursor: "pointer", fontSize: "1rem", color: C.inkMuted,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "opacity 0.2s ease", flexShrink: 0, padding: 0,
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-          >{"\u2715"}</button>
-        </div>
-
-        {/* Scrollable content */}
-        <div className="mp-scroll" style={{
-          flex: 1, overflowY: "auto", overflowX: "hidden",
-          padding: isMobile ? "1.25rem" : "1.5rem",
-          paddingBottom: isMobile ? "max(1.25rem, env(safe-area-inset-bottom, 0px))" : undefined,
-        }}>
+    <Sheet
+      open
+      onClose={onClose}
+      title={t("navTitle")}
+      side="right"
+      maxWidth="30rem"
+      background={TRAY}
+    >
+      {/* Content \u2014 Sheet owns the outer overlay, scrim, header title, close button, scroll region, focus-trap and body-lock */}
+      <div>
           {/* Hero: Porter + Title */}
           <div style={{
             textAlign: "center",
@@ -437,9 +361,8 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
           }}>
             {t("commandsHint")}
           </p>
-        </div>
       </div>
-    </div>
+    </Sheet>
   );
 }
 

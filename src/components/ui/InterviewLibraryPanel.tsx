@@ -3,7 +3,7 @@ import React from "react";
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { Sheet } from "@/components/ui/Sheet";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { INTERVIEW_TEMPLATES, WING_ID_TO_LABEL_KEY, getTemplatesByWing } from "@/lib/constants/interviews";
 import type { InterviewTemplate } from "@/lib/constants/interviews";
@@ -208,12 +208,9 @@ const difficultyColors: Record<string, { bg: string; text: string; labelKey: str
 export default function InterviewLibraryPanel({ onClose, highlightWingId }: InterviewLibraryPanelProps) {
   const { t } = useTranslation("interviewLibrary");
   const isMobile = useIsMobile();
-  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { sessions, sessionsLoaded, loadHistory, startSession, resumeSession, setShowLibrary } = useInterviewStore();
   const [filter, setFilter] = useState<string>(highlightWingId || "all");
-  const [fadeIn, setFadeIn] = useState(false);
 
-  useEffect(() => { const t = setTimeout(() => setFadeIn(true), 30); return () => clearTimeout(t); }, []);
   useEffect(() => { if (!sessionsLoaded) loadHistory(); }, [sessionsLoaded, loadHistory]);
 
   // Build completion map: templateId -> session status
@@ -239,52 +236,20 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
   };
 
   return (
-    <div onClick={onClose} className="ilp-fade" style={{
-      position: "fixed", inset: 0, background: "rgba(42,34,24,.5)",
-      backdropFilter: "blur(8px)", zIndex: 56,
-      opacity: fadeIn ? 1 : 0, transition: "opacity 0.3s ease",
-    }}>
-      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} className="ilp-slide" style={{
-        position: "absolute", right: 0, top: 0, bottom: 0,
-        width: isMobile ? "100%" : "min(480px, 95vw)",
-        background: "#FCFAF5f8" /* Atrium token: cream board surface */, backdropFilter: "blur(20px)",
-        borderLeft: isMobile ? "none" : "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
-        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2 overlay shadow
-        overflowY: "auto",
-        animation: "slideInRight .3s ease",
-      }}>
-        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(2.5rem)}to{opacity:1;transform:translateX(0)}}
-.ilp-slide button:focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}
-.ilp-card:hover{transform:translateY(-0.1875rem);box-shadow:0 0.5rem 1.5rem rgba(64,59,54,0.14) !important}
-@media (prefers-reduced-motion: reduce){.ilp-fade{transition:none !important}.ilp-slide{animation:none !important}.ilp-card{transition:none !important}.ilp-card:hover{transform:none}}`}</style>
+    <Sheet open onClose={onClose} title={t("title")} side="right" maxWidth="30rem" background="#FCFAF5f8">
+      <style>{`.ilp-card:hover{transform:translateY(-0.1875rem);box-shadow:0 0.5rem 1.5rem rgba(64,59,54,0.14) !important}
+@media (prefers-reduced-motion: reduce){.ilp-card{transition:none !important}.ilp-card:hover{transform:none}}`}</style>
 
-        {/* Header */}
+        {/* Header \u2014 subtitle + wing filter tabs (title lives in the Sheet chrome) */}
         <div style={{
           position: "sticky", top: 0, zIndex: 2,
           background: "#FCFAF5f0" /* Atrium token: cream board surface */, backdropFilter: "blur(16px)",
-          padding: isMobile ? "1.25rem 1.25rem 1rem" : "1.5rem 1.75rem 1rem",
+          padding: isMobile ? "0 1.25rem 1rem" : "0 1.75rem 1rem",
           borderBottom: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-            <div>
-              <h2 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#403B36", lineHeight: 1.15, margin: 0 }}>
-                {t("title")}
-              </h2>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: "0.25rem 0 0" }}>
-                {t("subtitle")}
-              </p>
-            </div>
-            <button onClick={onClose} style={{
-              width: isMobile ? "2.75rem" : "2.25rem", height: isMobile ? "2.75rem" : "2.25rem",
-              borderRadius: isMobile ? "1.375rem" : "1.125rem",
-              border: "0.0625rem solid #E3D6BC", background: T.color.warmStone, // Atrium token: opaque hairline
-              color: "#716A5E", fontSize: isMobile ? "1rem" : "0.8125rem",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              minWidth: "2.75rem", minHeight: "2.75rem",
-            }}>
-              {"\u2715"}
-            </button>
-          </div>
+          <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: "0 0 1rem" }}>
+            {t("subtitle")}
+          </p>
 
           {/* Wing filter tabs — scroll-snap strip with a right-edge fade affordance */}
           <div style={{ position: "relative" }}>
@@ -335,8 +300,7 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
             ))
           )}
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 }
 

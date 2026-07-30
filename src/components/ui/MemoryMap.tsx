@@ -4,7 +4,7 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
-import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { Sheet } from "@/components/ui/Sheet";
 import { WINGS } from "@/lib/constants/wings";
 import { getAllDemoMems } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
@@ -630,9 +630,7 @@ function SVGWorldMap({
 export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLibrary, onNavigateToMemory }: MemoryMapProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryMap");
-  const { t: tc } = useTranslation("common");
   const { t: tw } = useTranslation("wings");
-  const { containerRef: focusTrapRef, handleKeyDown } = useFocusTrap(true);
   const [selectedPin, setSelectedPin] = useState<ClusteredPin | null>(null);
   const [hoveredPin, setHoveredPin] = useState<ClusteredPin | null>(null);
   const [filterWing, setFilterWing] = useState<string | null>(null);
@@ -717,46 +715,29 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
   }, []);
 
   return (
-    <div role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } }} style={{
-      position: "absolute", inset: 0, zIndex: 60,
-      background: "rgba(30,26,20,0.7)", backdropFilter: "blur(12px)",
-      animation: "fadeIn .25s ease",
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      <div ref={focusTrapRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{
-        width: isMobile ? "100%" : "min(68.75rem, 94vw)",
-        height: isMobile ? "100%" : "min(43.75rem, 88vh)",
-        background: `linear-gradient(145deg, ${T.color.linen}, ${T.color.warmStone})`,
-        borderRadius: isMobile ? 0 : "1rem", overflow: "hidden", display: "flex", flexDirection: "column",
-        boxShadow: `${SHADOW_S2}, inset 0 0.0625rem 0 rgba(255,255,255,0.5)`,
-        animation: "fadeUp .3s ease",
-      }}>
-        {/* Header */}
-        <div style={{
-          padding: "1.125rem 1.5rem",
-          paddingTop: isMobile ? "max(1.125rem, env(safe-area-inset-top, 0px))" : "1.125rem",
-          paddingLeft: isMobile ? "max(1.5rem, env(safe-area-inset-left, 0px))" : "1.5rem",
-          paddingRight: isMobile ? "max(1.5rem, env(safe-area-inset-right, 0px))" : "1.5rem",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          borderBottom: HAIRLINE, flexShrink: 0,
-        }}>
-          <div>
-            <h2 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, lineHeight: 1.15, color: INK, margin: 0 }}>
-              <GlobeIcon size={22} color={INK} /> {t("title")}
-            </h2>
-            <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, margin: "0.25rem 0 0" }}>
-              {t("memoriesAcross", { memCount: String(allLocMems.length), locCount: String(uniqueLocations) })}
-            </p>
-          </div>
-          <button onClick={onClose} aria-label={tc("close")} style={{
-            width: "2.25rem", height: "2.25rem", minWidth: "2.75rem", minHeight: "2.75rem",
-            borderRadius: "1.125rem",
-            border: HAIRLINE, background: T.color.warmStone,
-            color: MUTED, fontSize: "1rem", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>{"\u2715"}</button>
+    <Sheet
+      open
+      onClose={onClose}
+      side="right"
+      maxWidth="min(56rem, 96vw)"
+      background={`linear-gradient(145deg, ${T.color.linen}, ${T.color.warmStone})`}
+      contentStyle={{
+        display: "flex",
+        flexDirection: "column",
+        padding: 0,
+        paddingTop: `max(1rem, ${T.safe.top})`,
+      }}
+      title={
+        <div>
+          <h2 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, lineHeight: 1.15, color: INK, margin: 0 }}>
+            <GlobeIcon size={22} color={INK} /> {t("title")}
+          </h2>
+          <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, margin: "0.25rem 0 0" }}>
+            {t("memoriesAcross", { memCount: String(allLocMems.length), locCount: String(uniqueLocations) })}
+          </p>
         </div>
-
+      }
+    >
         {/* Wing filter tabs */}
         <div style={{
           padding: isMobile ? "0.5rem 0.75rem" : "0.625rem 1.5rem",
@@ -972,7 +953,6 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
             </div>
           ))}
         </div>
-      </div>
-    </div>
+    </Sheet>
   );
 }

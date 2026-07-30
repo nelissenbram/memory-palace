@@ -4,7 +4,6 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
-import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { getAllDemoMems } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -13,6 +12,7 @@ import { translateRoomName } from "@/lib/constants/wings";
 import { RoomIcon } from "@/components/ui/WingRoomIcons";
 import { DateInputAssisted } from "@/app/(app)/family-tree/DateInputAssisted";
 import { syncSettingsToServer } from "@/lib/stores/settingsSync";
+import { Sheet } from "@/components/ui/Sheet";
 
 /** Thumbnail with fallback — uses plain <img> to avoid Next.js Image optimization issues */
 function TimelineThumbnail({ src, roomId, wingId, color }: {
@@ -232,9 +232,7 @@ interface MemoryTimelineProps {
 export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTimelineProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryTimeline");
-  const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
-  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { userMems, setSelMem, fetchRoomMemories } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -509,100 +507,53 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
     );
   };
 
-  return (
-    <div
-      onClick={onClose}
-      className="mp-tl-root"
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: "rgba(42,34,24,.4)",
-        backdropFilter: "blur(8px)",
-        zIndex: 55,
-        animation: "fadeIn .2s ease",
-      }}
-    >
-      <div
-        ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }}
-        onClick={(e) => e.stopPropagation()}
+  const headerTitle = (
+    <div>
+      <h3
         style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: isMobile ? "100%" : "min(28rem, 94vw)",
-          background: `${T.color.linen}f8`,
-          backdropFilter: "blur(20px)",
-          borderRight: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-          padding: 0,
-          overflowY: "auto",
-          animation: "slideInLeft .3s ease",
-          display: "flex",
-          flexDirection: "column",
+          fontFamily: T.font.display,
+          fontSize: "1.375rem", /* Atrium titleL */
+          fontWeight: 600,
+          color: "#403B36", /* Atrium ink */
+          lineHeight: 1.15,
+          margin: 0,
         }}
       >
-        <style>{`@keyframes slideInLeft{from{opacity:0;transform:translateX(-2.5rem)}to{opacity:1;transform:translateX(0)}}@media (prefers-reduced-motion: reduce){.mp-tl-root,.mp-tl-root *{animation:none !important;transition:none !important}}.mp-tl-root :is(button,input):focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}`}</style>
+        {t("title")}
+      </h3>
+      <p
+        style={{
+          fontFamily: T.font.body,
+          fontSize: "0.8125rem", /* Atrium meta */
+          color: "#716A5E", /* Atrium muted */
+          margin: "0.25rem 0 0",
+        }}
+      >
+        {t("memoriesAcrossTime", { count: String(totalCount) })}
+      </p>
+    </div>
+  );
 
-        {/* Header */}
-        <div
-          style={{
-            padding: "1.5rem 1.5rem 0",
-            paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px))",
-            paddingLeft: "max(1.5rem, env(safe-area-inset-left, 0px))",
-            paddingRight: "max(1.5rem, env(safe-area-inset-right, 0px))",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "0.75rem",
-            flexShrink: 0,
-          }}
-        >
-          <div>
-            <h3
-              style={{
-                fontFamily: T.font.display,
-                fontSize: "1.375rem", /* Atrium titleL */
-                fontWeight: 600,
-                color: "#403B36", /* Atrium ink */
-                lineHeight: 1.15,
-                margin: 0,
-              }}
-            >
-              {t("title")}
-            </h3>
-            <p
-              style={{
-                fontFamily: T.font.body,
-                fontSize: "0.8125rem", /* Atrium meta */
-                color: "#716A5E", /* Atrium muted */
-                margin: "0.25rem 0 0",
-              }}
-            >
-              {t("memoriesAcrossTime", { count: String(totalCount) })}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label={tc("close")}
-            style={{
-              width: "2rem",
-              height: "2rem",
-              minWidth: "2.75rem",
-              minHeight: "2.75rem",
-              borderRadius: "2rem", /* pill */
-              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
-              background: T.color.warmStone,
-              color: "#716A5E", /* Atrium muted */
-              fontSize: "0.9375rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {"\u2715"}
-          </button>
-        </div>
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title={headerTitle}
+      side="right"
+      maxWidth="30rem"
+      background={`${T.color.linen}f8`}
+      contentStyle={{ display: "flex", flexDirection: "column", padding: 0 }}
+    >
+      <div
+        className="mp-tl-root"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        <style>{`@media (prefers-reduced-motion: reduce){.mp-tl-root,.mp-tl-root *{animation:none !important;transition:none !important}}.mp-tl-root :is(button,input):focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}`}</style>
 
         {/* Toolbar */}
         <div
@@ -1393,6 +1344,6 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
           </div>
         </div>
       </div>
-    </div>
+    </Sheet>
   );
 }

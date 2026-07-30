@@ -1,7 +1,7 @@
 "use client";
 import { useMemo } from "react";
 import { T } from "@/lib/theme";
-import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { Sheet } from "@/components/ui/Sheet";
 import { TRACKS } from "@/lib/constants/tracks";
 import { GOAL_TRACK_PRIORITY } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
@@ -23,9 +23,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
   // iPad portrait (768–1024) reports desktop on useIsMobile; treat it as compact for padding.
   const dense = isMobile || isCompact;
   const { t } = useTranslation("tracksPanel");
-  const { t: tc } = useTranslation("common");
   const { t: tl } = useTranslation("levels");
-  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { tracks, totalPoints, getLevelInfo, getLevelProgressInfo, setSelectedTrackId } = useTrackStore();
   const { userGoal } = useUserStore();
   const { userMems } = useMemoryStore();
@@ -84,68 +82,39 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
   };
 
   return (
-    <div className="tracksPanelRoot" style={{
-      position: "fixed", inset: 0, zIndex: 60,
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      {/* Atrium token: gold focus ring + reduced-motion gate */}
-      <style>{`
-        .tracksPanelRoot :is(button,[role="button"]):focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; }
-        @media (prefers-reduced-motion: reduce) {
-          .tracksPanelRoot, .tracksPanelRoot * { animation: none !important; transition: none !important; }
-        }
-      `}</style>
-      {/* Backdrop */}
-      <div onClick={onClose} style={{
-        position: "absolute", inset: 0,
-        background: "rgba(42,34,24,.45)", backdropFilter: "blur(0.375rem)",
-      }} />
-
-      {/* Panel */}
-      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{
-        position: "relative", zIndex: 1,
-        width: "95%", maxWidth: "37.5rem", maxHeight: "85vh",
-        background: T.color.linen, borderRadius: "1rem",
-        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token S2
-        border: "0.0625rem solid #E3D6BC", // Atrium hairline
-        display: "flex", flexDirection: "column",
-        animation: "fadeUp .3s ease",
-        overflow: "hidden",
-      }}>
-        {/* Header */}
-        <div style={{
-          padding: dense ? "1rem 0.875rem 0.875rem" : "1.5rem 1.5rem 1.25rem", borderBottom: "0.0625rem solid #E3D6BC", // Atrium hairline
-          background: `linear-gradient(180deg, ${T.color.warmStone} 0%, ${T.color.linen} 100%)`,
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <h2 style={{
-                fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, // Atrium titleL
-                color: "#403B36", margin: 0, // Atrium ink
-              }}>{t("title")}</h2>
-              <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.25rem",
-              }}>
-                {t("description")}
-              </p>
-            </div>
-            <button onClick={onClose} aria-label={tc("close")} style={{
-              width: "2.75rem", height: "2.75rem", borderRadius: "0.85rem", border: "0.0625rem solid #E3D6BC", // Atrium hairline
-              background: T.color.white, cursor: "pointer", fontSize: "0.9375rem", color: "#716A5E",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "opacity .2s ease", flexShrink: 0,
-            }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-            >{"\u2715"}</button>
-          </div>
-
-          {/* Points & Level summary */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: "0.875rem", marginTop: "1rem",
-            padding: "0.75rem 1rem", borderRadius: "0.75rem",
-            background: T.color.white, border: "0.0625rem solid #E3D6BC", // Atrium hairline
+    <Sheet
+      open
+      onClose={onClose}
+      side="right"
+      maxWidth="30rem"
+      title={
+        <div className="tracksPanelHead" style={{ minWidth: 0 }}>
+          <h2 style={{
+            fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, // Atrium titleL
+            color: "#403B36", margin: 0, // Atrium ink
+          }}>{t("title")}</h2>
+          <p style={{
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.25rem",
           }}>
+            {t("description")}
+          </p>
+        </div>
+      }
+    >
+      <div className="tracksPanelBody">
+        {/* Atrium token: gold focus ring + reduced-motion gate */}
+        <style>{`
+          .tracksPanelBody :is(button,[role="button"]):focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; }
+          @media (prefers-reduced-motion: reduce) {
+            .tracksPanelBody, .tracksPanelBody * { animation: none !important; transition: none !important; }
+          }
+        `}</style>
+        {/* Points & Level summary */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: "0.875rem", marginBottom: dense ? "0.75rem" : "1rem",
+          padding: "0.75rem 1rem", borderRadius: "0.75rem",
+          background: T.color.white, border: "0.0625rem solid #E3D6BC", // Atrium hairline
+        }}>
             <div style={{
               width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem",
               background: levelInfo.color,
@@ -190,13 +159,9 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Track cards — scrollable area */}
-        <div style={{
-          flex: 1, overflowY: "auto", overflowX: "hidden",
-          padding: dense ? "0.75rem" : "1rem 1.25rem 1.5rem",
-        }}>
+        {/* Track cards */}
+        <div>
           {/* My Resolutions mini-section */}
           {resolutions.length > 0 && <div style={{
             padding: "1rem", borderRadius: "1rem",
@@ -416,6 +381,6 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
           })}
         </div>
       </div>
-    </div>
+    </Sheet>
   );
 }

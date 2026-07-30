@@ -4,7 +4,7 @@ import { T } from "@/lib/theme";
 import { useIsMobile, useIsCompact, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
-import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { Sheet } from "@/components/ui/Sheet";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -172,7 +172,6 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   const reduceMotion = usePrefersReducedMotion();
   const { t, locale } = useTranslation("statistics");
   const { t: tWings } = useTranslation("wings");
-  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { userMems } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
   // Subscribe to the underlying wing/room config slices (not just the stable
@@ -441,49 +440,42 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
     d ? d.toLocaleDateString(localeDateCodes[locale as Locale], { year: "numeric", month: "short", day: "numeric" }) : "—";
 
   return (
-    <div
-      className="sp-stats-root"
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(64,59,54,0.45)", // Atrium token: warm-ink scrim (matches panel shadows)
-        backdropFilter: "blur(6px)",
-        zIndex: 800,
-        animation: reduceMotion ? "none" : "spFadeIn .25s ease",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: isMobile ? "stretch" : "center",
-      }}
+    <Sheet
+      open
+      onClose={onClose}
+      side="right"
+      maxWidth="40rem"
+      background={CREAM /* Atrium token: cream shell (canon bg); linen reserved for recessed trays/tracks */}
+      title={
+        <div className="sp-stats-root">
+          <h2
+            style={{
+              fontFamily: T.font.display,
+              fontSize: "1.375rem",
+              fontWeight: 600,
+              color: "#403B36" /* Atrium token: ink */,
+              margin: 0,
+            }}
+          >
+            {t("title")}
+          </h2>
+          <p style={{ ...mutedStyle, margin: "0.25rem 0 0" }}>
+            {t("subtitle")}
+          </p>
+        </div>
+      }
     >
-      <style>{`
-        @keyframes spFadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes spSlideUp{from{opacity:0;transform:translateY(2rem)}to{opacity:1;transform:translateY(0)}}
-        .sp-stats-root button:focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}
-        @media (prefers-reduced-motion: reduce){.sp-stats-root,.sp-stats-root *{animation:none!important;transition:none!important}}
-      `}</style>
-
       <div
-        ref={containerRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("title")}
-        onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "relative",
-          width: isMobile ? "100%" : "min(40rem, 92vw)",
-          height: isMobile ? "100%" : undefined,
-          maxHeight: isMobile ? undefined : "88vh",
-          background: CREAM, // Atrium token: cream shell (canon bg); linen reserved for recessed trays/tracks
-          borderRadius: isMobile ? 0 : "1rem",
-          boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
-          overflowY: "auto",
-          animation: reduceMotion ? "none" : "spSlideUp .3s ease",
-          display: "flex",
-          flexDirection: "column",
-        }}
+        className="sp-stats-root"
+        style={{ display: "flex", flexDirection: "column", flex: 1 }}
       >
+        <style>{`
+          @keyframes spFadeIn{from{opacity:0}to{opacity:1}}
+          @keyframes spSlideUp{from{opacity:0;transform:translateY(2rem)}to{opacity:1;transform:translateY(0)}}
+          .sp-stats-root button:focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}
+          @media (prefers-reduced-motion: reduce){.sp-stats-root,.sp-stats-root *{animation:none!important;transition:none!important}}
+        `}</style>
+
         {/* ── Weekly Digest Overlay ── */}
         {showDigest && (
           <div
@@ -492,7 +484,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             aria-label={t("weeklyDigestTitle")}
             onKeyDown={(e) => { if (e.key === "Escape") setShowDigest(false); }}
             style={{
-              position: "fixed", inset: 0, zIndex: 810,
+              position: "fixed", inset: 0, zIndex: 1010, // above the shared Sheet scrim (z-index 1000)
               background: CREAM, overflowY: "auto",
               animation: reduceMotion ? "none" : "spSlideUp .3s ease",
             }}
@@ -606,59 +598,6 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             </div>
           </div>
         )}
-
-        {/* ── Header ── */}
-        <div
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 2,
-            background: `${CREAM}f0`, // Atrium token: cream shell glass
-            backdropFilter: "blur(12px)",
-            padding: "1.25rem 1.5rem 1rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            borderBottom: "0.0625rem solid #E3D6BC", // Atrium token: hairline
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontFamily: T.font.display,
-                fontSize: "1.375rem",
-                fontWeight: 600,
-                color: "#403B36" /* Atrium token: ink */,
-                margin: 0,
-              }}
-            >
-              {t("title")}
-            </h2>
-            <p style={{ ...mutedStyle, margin: "0.25rem 0 0" }}>
-              {t("subtitle")}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label={t("close")}
-            style={{
-              width: "2.75rem",
-              height: "2.75rem",
-              borderRadius: "0.75rem",
-              border: `0.0625rem solid ${HAIRLINE}`, // Atrium token: hairline
-              background: CREAM, // Atrium token: cream card surface (matches sibling controls)
-              color: MUTED /* Atrium token: muted, full opacity */,
-              fontSize: "0.8125rem", // Atrium token: meta (no 0.875rem)
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            {"\u2715"}
-          </button>
-        </div>
 
         {/* ── Content ── */}
         {stats.totalMems === 0 ? (
@@ -1097,6 +1036,6 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
         </div>
         )}
       </div>
-    </div>
+    </Sheet>
   );
 }
