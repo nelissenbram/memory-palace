@@ -278,8 +278,18 @@ export async function searchPalaces(
   const q = query.trim().toLowerCase();
   if (!q || q.length < 2) return [];
 
-  // Escape special LIKE characters to prevent filter injection
-  const escaped = q.replace(/%/g, "\\%").replace(/_/g, "\\_");
+  // Sanitize for a PostgREST .or() string built on an RLS-BYPASSING admin
+  // client. Two distinct classes of dangerous characters:
+  //  1. PostgREST structural metacharacters — comma, period/dot, parentheses,
+  //     colon, quotes, backslash — let an attacker smuggle sibling filter
+  //     clauses into .or(...) (e.g. `),is_public.is.false` to exfiltrate
+  //     opted-out profiles). Since RLS is bypassed this is a data-leak
+  //     primitive, so we STRIP them entirely rather than escape.
+  //  2. LIKE wildcards (% and _) — escaped so they match literally.
+  const sanitized = q.replace(/[,.():"'\\*]/g, "").trim();
+  if (sanitized.length < 2) return []; // nothing safely searchable left
+
+  const escaped = sanitized.replace(/%/g, "\\%").replace(/_/g, "\\_");
 
   // Search profiles by display_name or username (case-insensitive LIKE)
   const { data: profiles, error } = await supabase

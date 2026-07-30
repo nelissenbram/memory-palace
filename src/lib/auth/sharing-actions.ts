@@ -580,12 +580,22 @@ export async function getAllMyShares() {
   const admin = createAdminClient();
   const userEmail = user.email?.toLowerCase();
 
+  // Received room shares are matched by shared_with_id OR shared_with_email.
+  // Run two parameterized .eq() queries and merge in JS instead of building a
+  // .or() filter with the raw email — interpolating an email into a PostgREST
+  // filter under the RLS-bypassing admin client allows injection (quotes,
+  // commas and parens are valid in an address local part and are PostgREST
+  // syntax). This call site was previously UNQUOTED, so any comma in the
+  // address corrupted the filter entirely.
+  const receivedRoomSelect = "id, room_id, permission, owner_id, status, can_add, can_edit, can_delete, placed_in_wing_id, created_at";
+
   // Fetch all shares in parallel
   const [
     { data: sentWings },
     { data: sentRooms },
     { data: receivedWings },
-    { data: receivedRooms },
+    { data: receivedRoomsById },
+    { data: receivedRoomsByEmail },
   ] = await Promise.all([
     admin
       .from("wing_shares")
@@ -604,10 +614,28 @@ export async function getAllMyShares() {
       .order("created_at", { ascending: false }),
     admin
       .from("room_shares")
-      .select("id, room_id, permission, owner_id, status, can_add, can_edit, can_delete, placed_in_wing_id, created_at")
-      .or(`shared_with_id.eq.${user.id}${userEmail ? `,shared_with_email.eq.${userEmail}` : ""}`)
-      .order("created_at", { ascending: false }),
+      .select(receivedRoomSelect)
+      .eq("shared_with_id", user.id),
+    userEmail
+      ? admin
+          .from("room_shares")
+          .select(receivedRoomSelect)
+          .eq("shared_with_email", userEmail)
+      : Promise.resolve({ data: [] as { id: string }[] }),
   ]);
+
+  // Merge received room shares by id (dedupe) and sort newest-first.
+  type ReceivedRoom = { id: string; owner_id: string; room_id: string; permission: string; status: string; can_add: boolean; can_edit: boolean; can_delete: boolean; placed_in_wing_id: string | null; created_at: string | null };
+  const receivedRoomsMap = new Map<string, ReceivedRoom>();
+  for (const row of (receivedRoomsById || []) as ReceivedRoom[]) receivedRoomsMap.set(row.id, row);
+  for (const row of (receivedRoomsByEmail || []) as ReceivedRoom[]) {
+    if (!receivedRoomsMap.has(row.id)) receivedRoomsMap.set(row.id, row);
+  }
+  const receivedRooms = Array.from(receivedRoomsMap.values()).sort((x, y) => {
+    const xk = x.created_at || "";
+    const yk = y.created_at || "";
+    return xk < yk ? 1 : xk > yk ? -1 : 0;
+  });
 
   // Collect all user IDs for profile resolution
   const allUserIds = new Set<string>();

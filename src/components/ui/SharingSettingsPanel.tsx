@@ -67,8 +67,8 @@ interface ReceivedRoomShare {
   can_add: boolean;
   can_edit: boolean;
   can_delete: boolean;
-  placed_in_wing_id: string;
-  created_at: string;
+  placed_in_wing_id: string | null;
+  created_at: string | null;
   ownerName: string;
   roomName: string;
   roomIcon: string;

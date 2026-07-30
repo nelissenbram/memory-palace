@@ -87,7 +87,18 @@ export default function PublicGallery({ slug }: { slug: string }) {
   const [selectedMemory, setSelectedMemory] = useState<PublicMemory | null>(null);
 
   useEffect(() => {
-    fetch(`/api/public-share/${slug}`)
+    // A scope='passcode' share is served only when a valid passcode-access
+    // token (minted by validatePasscode) is presented. Public (scope='view')
+    // shares ignore this header and work by slug as before.
+    let passcodeToken: string | null = null;
+    try {
+      passcodeToken = sessionStorage.getItem(`mp_passcode_token:${slug}`);
+    } catch {
+      passcodeToken = null;
+    }
+    fetch(`/api/public-share/${slug}`, {
+      headers: passcodeToken ? { "x-passcode-token": passcodeToken } : undefined,
+    })
       .then((res) => {
         if (res.ok) return res.json();
         // Distinguish permanent / expired / retryable failures.

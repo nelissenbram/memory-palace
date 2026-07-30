@@ -5,6 +5,24 @@ import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import { serverT, getServerLocale } from "@/lib/i18n/server";
 import { serverError } from "@/lib/i18n/server-errors";
 
+// ── Helper: merge two share result sets by id (dedupe) and sort newest-first ──
+// Used to replace injectable .or(shared_with_email/shared_with_id) filters with
+// two safe parameterized .eq() queries.
+function mergeById<T extends { id: string }>(
+  a: T[] | null | undefined,
+  b: T[] | null | undefined,
+  sortKey: "created_at" | "accepted_at" = "created_at"
+): T[] {
+  const map = new Map<string, T>();
+  for (const row of a || []) map.set(row.id, row);
+  for (const row of b || []) if (!map.has(row.id)) map.set(row.id, row);
+  return Array.from(map.values()).sort((x, y) => {
+    const xk = ((x as Record<string, unknown>)[sortKey] as string | null) || "";
+    const yk = ((y as Record<string, unknown>)[sortKey] as string | null) || "";
+    return xk < yk ? 1 : xk > yk ? -1 : 0;
+  });
+}
+
 // ── Helper: resolve local room ID to display name ──
 function roomDisplayName(dbName: string): string {
   for (const rooms of Object.values(WING_ROOMS)) {
@@ -357,21 +375,41 @@ export async function getPendingInvites() {
   const admin = createAdminClient();
   const userEmail = user.email.toLowerCase();
 
-  // Fetch pending room shares and wing shares in parallel
-  const [{ data: roomShares }, { data: wingShares }] = await Promise.all([
+  // Fetch pending room shares and wing shares in parallel.
+  // NOTE: we run separate .eq() queries per match column and merge in JS
+  // instead of building a .or() string with the user's email — interpolating
+  // an email into a PostgREST filter allows injection (quotes/commas/parens
+  // are valid in the local part) under the RLS-bypassing admin client.
+  const [
+    { data: roomByEmail },
+    { data: roomById },
+    { data: wingByEmail },
+    { data: wingById },
+  ] = await Promise.all([
     admin
       .from("room_shares")
       .select("id, room_id, owner_id, permission, status, invite_message, created_at")
-      .or(`shared_with_email.eq."${userEmail}",shared_with_id.eq.${user.id}`)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false }),
+      .eq("shared_with_email", userEmail)
+      .eq("status", "pending"),
+    admin
+      .from("room_shares")
+      .select("id, room_id, owner_id, permission, status, invite_message, created_at")
+      .eq("shared_with_id", user.id)
+      .eq("status", "pending"),
     admin
       .from("wing_shares")
       .select("id, wing_id, owner_id, permission, status, invite_message, can_add, can_edit, can_delete, created_at")
-      .or(`shared_with_email.eq."${userEmail}",shared_with_id.eq.${user.id}`)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false }),
+      .eq("shared_with_email", userEmail)
+      .eq("status", "pending"),
+    admin
+      .from("wing_shares")
+      .select("id, wing_id, owner_id, permission, status, invite_message, can_add, can_edit, can_delete, created_at")
+      .eq("shared_with_id", user.id)
+      .eq("status", "pending"),
   ]);
+
+  const roomShares = mergeById(roomByEmail, roomById);
+  const wingShares = mergeById(wingByEmail, wingById);
 
   // Collect all owner IDs for profile lookup
   const ownerIds = new Set<string>();
@@ -464,14 +502,28 @@ export async function getAcceptedShares() {
   const admin = createAdminClient();
   const userEmail = user.email?.toLowerCase();
 
-  // Fetch both room and wing accepted shares in parallel
-  const [{ data: roomShares }, { data: wingShares }] = await Promise.all([
+  // Fetch both room and wing accepted shares in parallel.
+  // room_shares can be matched by shared_with_id OR shared_with_email — run
+  // separate parameterized .eq() queries and merge in JS rather than
+  // interpolating the email into a .or() filter (injection under admin client).
+  const roomSelect = "id, room_id, owner_id, permission, status, accepted_at, can_add, can_edit, can_delete, placed_in_wing_id";
+  const [
+    { data: roomById },
+    { data: roomByEmail },
+    { data: wingShares },
+  ] = await Promise.all([
     admin
       .from("room_shares")
-      .select("id, room_id, owner_id, permission, status, accepted_at, can_add, can_edit, can_delete, placed_in_wing_id")
-      .or(`shared_with_id.eq.${user.id}${userEmail ? `,shared_with_email.eq."${userEmail}"` : ""}`)
-      .eq("status", "accepted")
-      .order("accepted_at", { ascending: false }),
+      .select(roomSelect)
+      .eq("shared_with_id", user.id)
+      .eq("status", "accepted"),
+    userEmail
+      ? admin
+          .from("room_shares")
+          .select(roomSelect)
+          .eq("shared_with_email", userEmail)
+          .eq("status", "accepted")
+      : Promise.resolve({ data: [] as { id: string }[] }),
     admin
       .from("wing_shares")
       .select("id, wing_id, owner_id, permission, status, accepted_at, can_add, can_edit, can_delete")
@@ -479,6 +531,8 @@ export async function getAcceptedShares() {
       .eq("status", "accepted")
       .order("accepted_at", { ascending: false }),
   ]);
+
+  const roomShares = mergeById(roomById, (roomByEmail ?? []) as typeof roomById, "accepted_at");
 
   // Collect all owner IDs
   const ownerIds = new Set<string>();

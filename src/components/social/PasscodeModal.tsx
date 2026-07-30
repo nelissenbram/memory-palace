@@ -618,7 +618,11 @@ export default function PasscodeModal({
                               letterSpacing: "0.125rem",
                             }}
                           >
-                            {s.passcode.toUpperCase()}
+                            {/* Passcodes are stored one-way hashed, so a listed
+                                (already-created) code has no recoverable
+                                cleartext — only the code shown at creation time
+                                does. Mask it here instead of rendering a blank. */}
+                            {s.passcode ? s.passcode.toUpperCase() : "••••••"}
                           </code>
                           <span
                             style={{

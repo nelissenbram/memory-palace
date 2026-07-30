@@ -47,6 +47,15 @@ export async function addComment(input: {
   const body = input.body.trim().slice(0, 2000);
   if (!body) return { ok: false, error: "Comment cannot be empty" };
 
+  // Only allow commenting on targets the viewer is permitted to see (owner,
+  // accepted collaborator, or a published target within its visibility scope).
+  {
+    const { canViewTarget } = await import("@/lib/auth/notification-actions");
+    if (!(await canViewTarget(input.targetType, input.targetId, user.id))) {
+      return { ok: false, error: "You do not have access to this content." };
+    }
+  }
+
   // Proactive objectionable-content filter for public UGC (Apple 1.1/1.2).
   const { moderateText } = await import("@/lib/social/moderate-text");
   if (!moderateText(body).ok) {
@@ -173,6 +182,16 @@ export async function getComments(
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Do not leak comment bodies on private/unpublished content. Only return
+  // comments when the viewer may see the target (owner, collaborator, or a
+  // published target within its visibility scope; anonymous → public only).
+  {
+    const { canViewTarget } = await import("@/lib/auth/notification-actions");
+    if (!(await canViewTarget(targetType, targetId, user?.id ?? null))) {
+      return [];
+    }
+  }
+
   const { data: rawRows } = await supabase
     .from("comments")
     .select("id, user_id, body, parent_id, created_at")
@@ -255,6 +274,14 @@ export async function toggleReaction(input: {
   // Validate emoji against allowlist
   if (!VALID_REACTION_EMOJIS.includes(input.emoji)) {
     return { reacted: false };
+  }
+
+  // Only allow reacting to targets the viewer is permitted to see.
+  {
+    const { canViewTarget } = await import("@/lib/auth/notification-actions");
+    if (!(await canViewTarget(input.targetType, input.targetId, user.id))) {
+      return { reacted: false };
+    }
   }
 
   // Check existing
@@ -341,6 +368,14 @@ export async function getReactions(
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Do not leak reactor identities on private/unpublished content.
+  {
+    const { canViewTarget } = await import("@/lib/auth/notification-actions");
+    if (!(await canViewTarget(targetType, targetId, user?.id ?? null))) {
+      return [];
+    }
+  }
 
   const { data: rows } = await supabase
     .from("reactions")

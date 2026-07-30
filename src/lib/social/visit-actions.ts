@@ -99,6 +99,12 @@ export async function getPublishedRooms(
     supabase.from("wings").select("slug, user_id, published_at").eq("id", wingId).single(),
   ]);
 
+  // AUTHORIZATION GATE: this action is independently POST-invokable ("use server").
+  // Only surface rooms when the parent wing is actually published — otherwise an
+  // attacker with a guessed/known wing UUID could read private rooms via the
+  // RLS-bypassing admin client.
+  if (!wing || !wing.published_at) return [];
+
   if (!rooms || rooms.length === 0) return [];
 
   const roomIds = rooms.map((r) => r.id);
@@ -181,6 +187,24 @@ export async function getPublishedMemories(
 ): Promise<PublishedMemory[]> {
   const supabase = createAdminClient();
 
+  // AUTHORIZATION GATE: this action is independently POST-invokable ("use server")
+  // and reads with the RLS-bypassing admin client. Resolve the room's parent wing
+  // and require it to be published; otherwise anyone with a room UUID could read
+  // titles/descriptions/file_urls of private (unpublished) memories.
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("wing_id")
+    .eq("id", roomId)
+    .single();
+  if (!room?.wing_id) return [];
+
+  const { data: parentWing } = await supabase
+    .from("wings")
+    .select("published_at")
+    .eq("id", room.wing_id)
+    .single();
+  if (!parentWing || !parentWing.published_at) return [];
+
   const { data: memories } = await supabase
     .from("memories")
     .select("id, title, description, type, file_url, thumbnail_url, hue, saturation, lightness")
@@ -221,6 +245,55 @@ export async function recordVisit(input: {
   if (!user || user.id === input.ownerId) return;
 
   try {
+    // OWNERSHIP + PUBLISH VERIFICATION: never trust caller-supplied ownerId/
+    // wingId/roomId. Verify the target exists, is owned by ownerId, and belongs
+    // to a published wing. Otherwise an attacker could inject palace_visits rows
+    // attributing visits to arbitrary owners and deliver spam notifications.
+    const admin = createAdminClient();
+
+    if (input.roomId) {
+      const { data: room } = await admin
+        .from("rooms")
+        .select("id, user_id, wing_id")
+        .eq("id", input.roomId)
+        .eq("user_id", input.ownerId)
+        .single();
+      if (!room) return;
+      // If a wingId was supplied it must match the room's real wing.
+      if (input.wingId && room.wing_id !== input.wingId) return;
+      const { data: roomWing } = await admin
+        .from("wings")
+        .select("published_at")
+        .eq("id", room.wing_id)
+        .eq("user_id", input.ownerId)
+        .single();
+      if (!roomWing?.published_at) return;
+    } else if (input.wingId) {
+      const { data: wing } = await admin
+        .from("wings")
+        .select("published_at")
+        .eq("id", input.wingId)
+        .eq("user_id", input.ownerId)
+        .not("published_at", "is", null)
+        .single();
+      if (!wing) return;
+    } else {
+      // Palace-level visit: require the owner to have at least one published wing.
+      const { count: publishedCount } = await admin
+        .from("wings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", input.ownerId)
+        .not("published_at", "is", null);
+      if (!publishedCount || publishedCount < 1) return;
+    }
+
+    // GLOBAL per-visitor rate limit on visit records/notifications (in addition
+    // to the per-target 5-minute dedup below) so an attacker cannot flood a
+    // target with notifications by cycling different targets/spacing.
+    const { rateLimit } = await import("@/lib/rate-limit");
+    const { success } = await rateLimit(`visit:${user.id}`, 30, 60 * 60_000);
+    if (!success) return;
+
     // Dedup: skip if same visitor visited same target in last 5 minutes
     const fiveMinAgo = new Date(Date.now() - 5 * 60_000).toISOString();
     let dedupQuery = supabase

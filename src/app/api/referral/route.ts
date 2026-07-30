@@ -103,16 +103,14 @@ export async function POST(req: NextRequest) {
 
     const admin = createAdminClient();
 
-    // Check if user has already been referred
+    // Read the caller's own referral_code so we can reject self-referral before
+    // taking the atomic gate. (referred_by is checked atomically below, not here,
+    // to avoid a read-then-write TOCTOU race.)
     const { data: currentProfile } = await admin
       .from("profiles")
-      .select("referred_by, referral_code")
+      .select("referral_code")
       .eq("id", user.id)
       .single();
-
-    if (currentProfile?.referred_by) {
-      return NextResponse.json({ error: "Already referred" }, { status: 400 });
-    }
 
     // Prevent self-referral
     if (currentProfile?.referral_code === code) {
@@ -122,7 +120,7 @@ export async function POST(req: NextRequest) {
     // Validate referral code exists
     const { data: referrer, error: referrerError } = await admin
       .from("profiles")
-      .select("id, referral_count")
+      .select("id")
       .eq("referral_code", code)
       .single();
 
@@ -130,60 +128,81 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid referral code" }, { status: 404 });
     }
 
-    // Apply referral: set referred_by on current user
-    const { error: updateError } = await admin
+    // Belt-and-suspenders self-referral guard by id (in case code lookup differs)
+    if (referrer.id === user.id) {
+      return NextResponse.json({ error: "Cannot refer yourself" }, { status: 400 });
+    }
+
+    // ── ATOMIC GATE ──
+    // The WRITE — not a prior read — is the gate. This conditional UPDATE only
+    // succeeds when referred_by is currently NULL. Two concurrent POSTs cannot
+    // both win: exactly one row is updated; the other returns zero rows and
+    // aborts BEFORE minting any Stripe coupon. Eliminates duplicate-coupon and
+    // lost-update races.
+    const { data: gated, error: gateError } = await admin
       .from("profiles")
       .update({ referred_by: code })
-      .eq("id", user.id);
+      .eq("id", user.id)
+      .is("referred_by", null)
+      .select("id");
 
-    if (updateError) {
-      console.error("[referral] Update referred_by error:", updateError);
+    if (gateError) {
+      console.error("[referral] Update referred_by error:", gateError);
       return NextResponse.json({ error: "Could not apply referral" }, { status: 500 });
     }
 
-    // Increment referrer's count
-    const { error: countError } = await admin
-      .from("profiles")
-      .update({ referral_count: (referrer.referral_count ?? 0) + 1 })
-      .eq("id", referrer.id);
+    // Zero rows → another request already set referred_by (or it was already set).
+    // Do NOT mint a reward.
+    if (!gated || gated.length === 0) {
+      return NextResponse.json({ error: "Already referred" }, { status: 400 });
+    }
+
+    // Atomically increment the referrer's count (server-side SQL, no stale read).
+    const { error: countError } = await admin.rpc("increment_referral_count", {
+      p_referrer_id: referrer.id,
+    });
 
     if (countError) {
       console.error("[referral] Increment count error:", countError);
     }
 
-    // Create Stripe coupon reward for the REFERRER: 1 free month of Guardian (EUR 24.99)
+    // Create Stripe coupon reward for the REFERRER: 1 free month of Guardian (EUR 24.99).
+    // Only reached AFTER the atomic gate above won, so it runs at most once per
+    // referred user. A deterministic idempotency key protects against client
+    // retries / at-least-once delivery re-creating the coupon in Stripe.
     try {
       const stripe = getStripe();
+      const idempotencyKey = `referral_${user.id}`;
 
-      const coupon = await stripe.coupons.create({
-        duration: "once",
-        amount_off: 2499, // EUR 24.99 in cents
-        currency: "eur",
-        name: "Referral Reward — 1 Free Month Guardian",
-        metadata: {
-          referrer_id: referrer.id,
-          referred_user_id: user.id,
-          type: "referral_reward",
+      const coupon = await stripe.coupons.create(
+        {
+          duration: "once",
+          amount_off: 2499, // EUR 24.99 in cents
+          currency: "eur",
+          name: "Referral Reward — 1 Free Month Guardian",
+          metadata: {
+            referrer_id: referrer.id,
+            referred_user_id: user.id,
+            type: "referral_reward",
+          },
         },
-      });
+        { idempotencyKey: `${idempotencyKey}_coupon` }
+      );
 
-      const promotionCode = await stripe.promotionCodes.create({
-        promotion: { type: "coupon", coupon: coupon.id },
-        max_redemptions: 1,
-        metadata: {
-          referrer_id: referrer.id,
-          type: "referral_reward",
+      const promotionCode = await stripe.promotionCodes.create(
+        {
+          promotion: { type: "coupon", coupon: coupon.id },
+          max_redemptions: 1,
+          metadata: {
+            referrer_id: referrer.id,
+            type: "referral_reward",
+          },
         },
-      });
+        { idempotencyKey: `${idempotencyKey}_promo` }
+      );
 
-      // Store the promotion code in the referrer's profile rewards array
-      const { data: referrerProfile } = await admin
-        .from("profiles")
-        .select("referral_rewards")
-        .eq("id", referrer.id)
-        .single();
-
-      const existingRewards = referrerProfile?.referral_rewards ?? [];
+      // Append the reward to the referrer's rewards array atomically (jsonb append
+      // in SQL — no read-modify-write lost-update race).
       const newReward = {
         promo_code: promotionCode.code,
         promo_id: promotionCode.id,
@@ -192,12 +211,14 @@ export async function POST(req: NextRequest) {
         redeemed: false,
       };
 
-      await admin
-        .from("profiles")
-        .update({
-          referral_rewards: [...existingRewards, newReward],
-        })
-        .eq("id", referrer.id);
+      const { error: appendError } = await admin.rpc("append_referral_reward", {
+        p_referrer_id: referrer.id,
+        p_reward: newReward,
+      });
+
+      if (appendError) {
+        console.error("[referral] Append reward error:", appendError);
+      }
 
       console.log(`[referral] Created promo code ${promotionCode.code} for referrer ${referrer.id}`);
     } catch (stripeErr) {

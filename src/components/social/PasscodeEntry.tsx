@@ -40,7 +40,15 @@ export default function PasscodeEntry() {
 
   const handleVisit = () => {
     if (!validatedShare) return;
-    // Navigate to the public share view
+    // Stash the signed passcode-access token so the gallery can present it to
+    // the API route. scope='passcode' shares are NOT served by slug alone — the
+    // token proves the passcode was entered. sessionStorage keeps it out of the
+    // URL / server logs.
+    try {
+      sessionStorage.setItem(`mp_passcode_token:${validatedShare.slug}`, validatedShare.accessToken);
+    } catch {
+      /* private mode / storage disabled — fall through; API returns 401 */
+    }
     const url = `/public/${validatedShare.slug}`;
     window.location.href = url;
   };

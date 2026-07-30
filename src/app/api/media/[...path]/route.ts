@@ -6,18 +6,35 @@ import { getClientIp } from "@/lib/ip";
 
 export const dynamic = "force-dynamic";
 
-/** Reject path segments that could cause traversal or injection. */
+/**
+ * Reject path segments that could cause traversal or injection.
+ *
+ * The allowlist `[A-Za-z0-9._/-]` (applied per-segment; `/` never appears
+ * inside a decoded segment but is allowed defensively) is deliberately strict:
+ * it rejects the SQL LIKE metacharacters `%` and `_`, which — combined with the
+ * legacy `.ilike('thumbnail_url', '%<filePath>%')` fallback below — would let a
+ * crafted path match an ARBITRARY memory row (a bare `%` matches every
+ * thumbnail_url), driving the authorization check off a row the caller does not
+ * own while bytes for the attacker-supplied path are streamed.
+ */
 function isPathSafe(segments: string[]): boolean {
+  const SAFE = /^[A-Za-z0-9._/-]+$/;
   for (const seg of segments) {
     if (
       seg === "" ||
       seg === "." ||
       seg === ".." ||
       seg.includes("\0") ||
-      seg.includes("\\")
+      seg.includes("\\") ||
+      !SAFE.test(seg)
     ) return false;
   }
   return true;
+}
+
+/** Escape SQL LIKE/ILIKE metacharacters so user input is matched literally. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }
 
 /**
@@ -108,10 +125,13 @@ export async function GET(
   if (!memory) {
     // Try matching by thumbnail_url. Use ilike with %filePath% to handle any URL format
     // (proxy path, full URL with token, signed URL, etc.) — the file path is unique enough.
+    // LIKE metacharacters in filePath are escaped so it is matched LITERALLY: a bare `%`
+    // or `_` must never widen the match to an unrelated row (defense-in-depth alongside
+    // isPathSafe, which already rejects those characters).
     const { data: thumbMatch } = await adminClient
       .from("memories")
       .select("id, user_id, storage_backend, room_id")
-      .ilike("thumbnail_url", `%${filePath}%`)
+      .ilike("thumbnail_url", `%${escapeLike(filePath)}%`)
       .limit(1)
       .maybeSingle();
     memory = thumbMatch;

@@ -161,8 +161,47 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (!row) {
-    // No linked user yet — verify-receipt hasn't run for this transaction. The app
-    // reconciles on next launch/purchase; nothing to update server-side yet.
+    // No linked user yet — verify-receipt hasn't run for this transaction (or the
+    // link row was lost). Apple treats any 2xx as delivered and will NOT retry, so
+    // silently acking would permanently drop terminating events (REVOKE / REFUND /
+    // EXPIRED) for churned users who never relaunch — leaving a refunded user
+    // entitled forever. Persist the verified outcome keyed by original_transaction_id
+    // so verify-receipt can reconcile it when it later links the user.
+    const isTerminating = TERMINATING.has(type);
+    const isActivating = ACTIVATING.has(type);
+    if (isTerminating || isActivating) {
+      const { error: pendErr } = await admin
+        .from("apple_pending_notifications")
+        .upsert(
+          {
+            apple_original_transaction_id: originalTransactionId,
+            product_id: productId,
+            plan,
+            // `terminated` is the authoritative flag verify-receipt reads: once a
+            // terminating event lands it stays true and a later link cannot resurrect
+            // the entitlement. Activating events only set it back to false.
+            terminated: isTerminating,
+            notification_type: type,
+            notification_subtype: subtype,
+            current_period_end: expiresAt,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "apple_original_transaction_id" }
+        );
+      if (pendErr) {
+        // If we cannot durably record this, return non-2xx so Apple retries later
+        // rather than dropping a terminating entitlement change.
+        console.error(
+          `[Apple Webhook] Failed to persist pending ${type} for ${originalTransactionId}:`,
+          pendErr.message
+        );
+        return NextResponse.json({ error: "DB error" }, { status: 500 });
+      }
+      console.log(
+        `[Apple Webhook] ${type}/${subtype} — no linked user for ${originalTransactionId} — queued for reconciliation (terminated=${isTerminating})`
+      );
+      return NextResponse.json({ ok: true });
+    }
     console.log(`[Apple Webhook] ${type}/${subtype} — no linked user for ${originalTransactionId} — ack`);
     return NextResponse.json({ ok: true });
   }

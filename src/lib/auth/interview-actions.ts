@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { serverError } from "@/lib/i18n/server-errors";
+import { checkInterviewQuota } from "@/lib/auth/plan-limits";
+import { getTemplate } from "@/lib/constants/interviews";
 
 const supabaseReady = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
@@ -10,6 +12,21 @@ export async function startInterview(templateId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
+
+  // Validate templateId against the known template set so the free-text
+  // interview_template_id column can't hold arbitrary attacker-supplied values.
+  if (!getTemplate(templateId)) { const t = await serverError(); return { error: t("sessionNotFound") }; }
+
+  // Enforce the paid-tier interview quota at the row-creation layer, mirroring
+  // the /api/ai-interview guard. Without this a free user (or a script) could
+  // create unlimited in_progress sessions and bypass the limit.
+  const quota = await checkInterviewQuota(user.id);
+  if (!quota.allowed) {
+    return {
+      error: "quotaReached",
+      quota: { used: quota.used, limit: quota.limit, nextRespawnDate: quota.nextRespawnDate },
+    };
+  }
 
   const { data: session, error } = await supabase
     .from("interview_sessions")

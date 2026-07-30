@@ -1111,14 +1111,20 @@ function PasscodeSection({ scale }: { scale: number }) {
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
-                      <code style={{
-                        fontFamily: "monospace", fontSize: `${1 * scale}rem`, fontWeight: 700,
-                        color: EMBER_GLYPH /* Atrium token: terracotta glyph */, letterSpacing: "0.1em",
-                        background: "rgba(154,79,42,0.11)", padding: "0.25rem 0.625rem",
-                        borderRadius: "0.375rem",
-                      }}>
-                        {code.passcode.toUpperCase()}
-                      </code>
+                      {/* Passcodes are stored one-way hashed, so a listed (already
+                          persisted) code has no recoverable cleartext — only the
+                          code just created carries one. Render the chip only when
+                          the cleartext is present. */}
+                      {code.passcode ? (
+                        <code style={{
+                          fontFamily: "monospace", fontSize: `${1 * scale}rem`, fontWeight: 700,
+                          color: EMBER_GLYPH /* Atrium token: terracotta glyph */, letterSpacing: "0.1em",
+                          background: "rgba(154,79,42,0.11)", padding: "0.25rem 0.625rem",
+                          borderRadius: "0.375rem",
+                        }}>
+                          {code.passcode.toUpperCase()}
+                        </code>
+                      ) : null}
                       <span style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: MUTED }}>
                         {wing?.name || "—"} · {formatExpiry(code.expiresAt)}
                       </span>

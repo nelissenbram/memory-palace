@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
+import { createAdminOrAnonClient } from "@/lib/supabase/server";
+import { verifyPasscodeToken } from "@/lib/social/passcode-crypto";
 
 // Public endpoint — no auth required
 export async function GET(
@@ -20,28 +21,48 @@ export async function GET(
     return NextResponse.json({ error: "Not configured" }, { status: 500 });
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return []; },
-        setAll() {},
-      },
-    }
-  );
+  // Reject malformed slugs before touching the DB.
+  const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+  if (!normalizedSlug || normalizedSlug.length > 200) {
+    return NextResponse.json({ error: "Share not found" }, { status: 404 });
+  }
 
-  // Find the public share by slug
+  // Use the service-role client (falls back to anon on Preview, where the key
+  // is absent). This lets us read only the non-secret columns we need AFTER the
+  // anon SELECT policy is dropped, and NEVER selects the `passcode` column, so a
+  // client can never receive it.
+  const supabase = createAdminOrAnonClient();
+
+  // Find the share by slug. `scope` decides whether the slug is sufficient
+  // (scope='view' → public) or a passcode token is required (scope='passcode').
   const { data: share, error: shareError } = await supabase
     .from("public_shares")
-    .select("id, room_id, wing_id, slug, created_by, is_active, expires_at")
-    .eq("slug", slug)
+    .select("id, room_id, wing_id, slug, created_by, is_active, expires_at, scope")
+    .eq("slug", normalizedSlug)
     .eq("is_active", true)
     .single();
 
   if (shareError || !share) {
     return NextResponse.json({ error: "Share not found or inactive" }, { status: 404 });
   }
+
+  // Passcode-scoped shares are NOT served by slug alone. Require a signed,
+  // share-scoped, short-lived token minted by validatePasscode. Without it,
+  // knowing the slug reveals nothing — the passcode gate is enforced here.
+  if (share.scope === "passcode") {
+    const token = request.headers.get("x-passcode-token");
+    if (!verifyPasscodeToken(token, share.id)) {
+      return NextResponse.json({ error: "Passcode required" }, { status: 401 });
+    }
+  }
+
+  // Never let a shared CDN cache a passcode-gated payload — it would serve the
+  // protected content to clients that never presented the token. Public
+  // (scope='view') shares keep the short shared-cache window.
+  const cacheControl =
+    share.scope === "passcode"
+      ? "private, no-store"
+      : "public, s-maxage=60, stale-while-revalidate=300";
 
   // Check expiry for time-limited shares
   if (share.expires_at) {
@@ -94,7 +115,7 @@ export async function GET(
       })),
       owner: { displayName: ownerResult.data?.display_name || "Someone" },
     }, {
-      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      headers: { "Cache-Control": cacheControl },
     });
   }
 
@@ -160,7 +181,7 @@ export async function GET(
     },
   }, {
     headers: {
-      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      "Cache-Control": cacheControl,
     },
   });
 }

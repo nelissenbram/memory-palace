@@ -66,9 +66,17 @@ export async function middleware(request: NextRequest) {
   }
 
   // Refresh the session and get auth state in a single getUser() call
-  const { response, user } = await updateSession(request);
+  const { response, user, mfaPending } = await updateSession(request);
 
   const isPublicRoute = isPublicPath(path);
+
+  // Server-side AAL2 enforcement: a session that has MFA enrolled but has only
+  // reached AAL1 (second factor not yet verified) is NOT fully authenticated.
+  // Treat it as such for protected routes so a scripted client that ignores the
+  // client-side mfaRequired prompt cannot reach protected pages/APIs with a bare
+  // AAL1 session. The user is still allowed onto public routes (notably /login,
+  // where the MFA challenge is completed) so they can finish stepping up.
+  const fullyAuthed = !!user && !mfaPending;
 
   // Authenticated user on public route or landing → redirect to atrium
   // Exception: invite pages and public share pages should be accessible to authenticated users
@@ -82,13 +90,17 @@ export async function middleware(request: NextRequest) {
   const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security") || path.startsWith("/help");
   const isBlogPage = path.startsWith("/blog");
   const isSocialPage = path.startsWith("/explore") || path.startsWith("/u/") || path.startsWith("/visit/");
-  if (user && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage) {
+  if (fullyAuthed && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage) {
     return redirectWith("/atrium", request, response);
   }
 
-  // Unauthenticated user on protected route → redirect to login
-  if (!user && !isPublicRoute && path !== "/") {
-    return redirectWith("/login", request, response);
+  // Unauthenticated user on protected route → redirect to login.
+  // A session that is authenticated but MFA-pending (AAL1 with AAL2 required) is
+  // NOT fully authenticated: send it to /login?mfa so the second factor is
+  // completed before any protected page or API renders.
+  if (!fullyAuthed && !isPublicRoute && path !== "/") {
+    const target = user && mfaPending ? "/login?mfa=1" : "/login";
+    return redirectWith(target, request, response);
   }
 
   return response;

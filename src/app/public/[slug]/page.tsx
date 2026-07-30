@@ -1,6 +1,6 @@
 import { Metadata } from "next";
-import { createServerClient } from "@supabase/ssr";
 import PublicGallery from "./PublicGallery";
+import { createAdminOrAnonClient } from "@/lib/supabase/server";
 import { serverT, getServerLocale } from "@/lib/i18n/server";
 
 interface PageProps {
@@ -20,20 +20,14 @@ async function getShareData(slug: string) {
     return null;
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() { return []; },
-        setAll() {},
-      },
-    }
-  );
+  // Service-role client (falls back to anon on Preview). Selects only non-secret
+  // columns and NEVER the `passcode` column, and works after the anon SELECT
+  // policy is dropped.
+  const supabase = createAdminOrAnonClient();
 
   const { data: share } = await supabase
     .from("public_shares")
-    .select("id, room_id, wing_id, slug, created_by, is_active, expires_at")
+    .select("id, room_id, wing_id, slug, created_by, is_active, expires_at, scope")
     .eq("slug", normalizedSlug)
     .eq("is_active", true)
     .single();
@@ -43,6 +37,14 @@ async function getShareData(slug: string) {
   // Check expiry
   if (share.expires_at && new Date(share.expires_at) < new Date()) {
     return null;
+  }
+
+  // Passcode-scoped shares must not leak owner/wing/room names via SSR metadata
+  // (this page renders for anyone with the slug, no passcode). Return a generic
+  // marker so generateMetadata shows a neutral title; the gated content is only
+  // fetched client-side once a valid passcode token exists.
+  if (share.scope === "passcode") {
+    return { passcodeGated: true } as const;
   }
 
   const { data: owner } = await supabase
@@ -105,6 +107,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: "Shared Memories — The Memory Palace",
       description: "This shared link is no longer available.",
+    };
+  }
+
+  // Passcode-gated share: never reveal owner/wing names in metadata to anyone
+  // holding only the slug.
+  if ("passcodeGated" in data) {
+    return {
+      title: "Passcode-Protected Memories — The Memory Palace",
+      description: "This shared link is protected by a passcode.",
+      robots: { index: false, follow: false },
     };
   }
 

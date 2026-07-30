@@ -54,15 +54,16 @@ async function handleUnsubscribe(request: Request) {
   let userId: string | undefined;
 
   if (uid) {
-    // Try to verify as HMAC-signed token first (new emails use signed tokens)
+    // Only accept HMAC-signed tokens. A bare/unsigned uid is NOT trusted:
+    // user UUIDs are not secret (shared profiles, OG images, invite links), so
+    // accepting a raw uid would allow an unauthenticated caller to unsubscribe
+    // any victim by UUID (IDOR mass-unsubscribe). All senders emit signed tokens.
     const verified = verifyUnsubscribeToken(uid);
     if (verified) {
       userId = verified;
-    } else {
-      // Legacy fallback: treat uid as a bare user ID for already-sent emails.
-      // TODO: Remove this legacy fallback by July 2026 — after all pre-HMAC emails have expired.
-      userId = uid;
     }
+    // else: invalid/unsigned token — leave userId undefined and fall through to
+    // the generic success page below without mutating anything.
   } else if (email) {
     // Legacy email-based lookup
     const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 });

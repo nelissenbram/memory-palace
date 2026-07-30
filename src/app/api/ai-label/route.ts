@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkAiConsent } from "@/lib/ai/check-consent";
 import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
 import { isR2Configured, r2Download } from "@/lib/storage/r2";
+import { authorizeMediaRead, isPathSafe } from "@/lib/storage/media-access";
 
 interface LabelRequest {
   imageUrl: string;
@@ -57,13 +58,32 @@ export async function POST(req: NextRequest) {
         });
       }
     } else if (imageUrl.startsWith("/api/media/")) {
-      // Read directly from storage — avoids self-fetch auth issues
-      const segments = imageUrl.replace(/^\/api\/media\//, "").split("/");
+      // Read directly from storage — avoids self-fetch auth issues. We MUST
+      // re-implement the /api/media authorization (ownership / accepted share /
+      // published wing) before downloading, because r2Download()/storage use
+      // full credentials with no per-user scoping. Without this, an authenticated
+      // user could request another user's private image path (IDOR).
+      const rawPath = imageUrl.split("?")[0].replace(/^\/api\/media\//, "");
+      const segments = rawPath.split("/");
       if (segments.length < 2) {
         return NextResponse.json({ error: "Invalid media URL" }, { status: 400 });
       }
-      const bucket = segments[0] as "memories" | "busts";
-      const filePath = segments.slice(1).join("/");
+      const bucketRaw = segments[0];
+      const pathSegments = segments.slice(1);
+      // Validate bucket is exactly 'memories' or 'busts' and reject unsafe path
+      // segments ('..', backslash, null) before touching storage.
+      if ((bucketRaw !== "memories" && bucketRaw !== "busts") || !isPathSafe(pathSegments)) {
+        return NextResponse.json({ error: "Invalid media URL" }, { status: 400 });
+      }
+      const bucket = bucketRaw as "memories" | "busts";
+      const filePath = pathSegments.join("/");
+
+      // Authorize BEFORE downloading — same checks as the /api/media route.
+      const auth = await authorizeMediaRead(bucket, pathSegments);
+      if (!auth.authorized) {
+        return NextResponse.json({ error: auth.error || "Forbidden" }, { status: auth.status });
+      }
+
       try {
         let buf: Buffer;
         let contentType: string;
@@ -111,28 +131,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Could not fetch image from storage" }, { status: 400 });
       }
     } else {
-      if (imageUrl.length > 2048) {
-        return NextResponse.json({ error: "Image URL too long" }, { status: 400 });
-      }
-      try {
-        const imgRes = await fetch(imageUrl);
-        if (!imgRes.ok) {
-          console.error("[ai-label] Image fetch failed:", imageUrl, imgRes.status);
-          return NextResponse.json({ error: "Could not fetch image" }, { status: 400 });
-        }
-        const contentType = imgRes.headers.get("content-type") || "image/jpeg";
-        const buf = await imgRes.arrayBuffer();
-        const b64 = Buffer.from(buf).toString("base64");
-        if (b64.length > 10_000_000) {
-          return NextResponse.json({ error: "Image too large (max ~7.5 MB)" }, { status: 400 });
-        }
-        userContent.push({
-          type: "image",
-          source: { type: "base64", media_type: contentType, data: b64 },
-        });
-      } catch {
-        return NextResponse.json({ error: "Could not fetch image from URL" }, { status: 400 });
-      }
+      // Only data: image URLs and our own /api/media/ paths are accepted.
+      // Arbitrary server-side fetch of a caller-supplied URL is an SSRF vector
+      // (metadata endpoints, localhost, RFC1918) and is not a real client flow.
+      return NextResponse.json({ error: "Unsupported image source" }, { status: 400 });
     }
 
     // Add the prompt

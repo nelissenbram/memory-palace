@@ -3,8 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * POST /api/push/register
- * Register a native push token for the authenticated user.
- * Body: { token: string, platform: string }
+ *
+ * NOTE: Native push (APNs/FCM) is NOT implemented. There is no send path that
+ * reads native `push_tokens` — real-time delivery uses web-push
+ * (`push_subscriptions`) only. Previously this route upserted native tokens into
+ * a write-only `push_tokens` table where they accumulated forever, never got
+ * delivered to, and were never pruned.
+ *
+ * Until a native APNs/FCM send path (with dead-token cleanup) is wired up, this
+ * endpoint is a no-op: it still authenticates and validates the request so the
+ * native client's best-effort fetch succeeds, but it does NOT persist orphaned
+ * tokens. See migration `20260730_drop_push_tokens.sql` to remove the table.
  */
 export async function POST(request: Request) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -17,31 +26,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { token, platform } = body;
+  const body = await request.json().catch(() => ({}));
+  const { token } = body ?? {};
 
   if (!token || typeof token !== "string") {
     return NextResponse.json({ error: "Invalid token" }, { status: 400 });
   }
 
-  const { error } = await supabase
-    .from("push_tokens")
-    .upsert(
-      {
-        user_id: user.id,
-        token,
-        platform: platform || "ios",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,token" }
-    );
-
-  if (error) {
-    console.error("[push/register] Upsert failed:", error);
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  // Intentionally do not persist: native push is not implemented, so storing the
+  // token would only re-create a write-only orphan. Acknowledge without writing.
+  return NextResponse.json(
+    { success: true, delivered: false },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }

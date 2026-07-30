@@ -123,6 +123,28 @@ async function lookupLink(
 }
 
 /**
+ * Resolve the Palace user_id that owns the verified whatsapp_link for this
+ * sender (phone_number_id + wa_sender_phone). Used to enforce ownership on
+ * interactive handlers, since the webhook runs with the service-role key and
+ * the reply-button ids are fully attacker-controlled.
+ */
+async function resolveSenderUserId(
+  supabase: SupabaseClient,
+  phoneNumberId: string,
+  senderPhone: string,
+): Promise<string | null> {
+  const { data: link } = await supabase
+    .from("whatsapp_links")
+    .select("user_id")
+    .eq("verified", true)
+    .eq("phone_number_id", phoneNumberId)
+    .eq("wa_sender_phone", senderPhone)
+    .single();
+
+  return (link?.user_id as string) || null;
+}
+
+/**
  * Normalize a phone number to digits-only.
  */
 function normalizePhone(phone: string): string {
@@ -1079,19 +1101,32 @@ async function handleInteractiveResponse(
 
   if (parts[0] === "delete" && parts[1]) {
     const captureId = parts[1];
+
+    // Resolve the sender's link to enforce ownership (webhook runs with service role → RLS bypassed)
+    const senderUserId = await resolveSenderUserId(supabase, phoneNumberId, message.from);
+    if (!senderUserId) return;
+
     const { data: capture } = await supabase
       .from("kep_captures")
-      .select("memory_id, kep_id")
+      .select("memory_id, kep_id, user_id")
       .eq("id", captureId)
       .single();
 
-    if (capture?.memory_id) {
-      await supabase.from("memories").delete().eq("id", capture.memory_id);
+    // Reject if the capture does not belong to the messaging user (IDOR guard)
+    if (!capture || capture.user_id !== senderUserId) return;
+
+    if (capture.memory_id) {
+      await supabase
+        .from("memories")
+        .delete()
+        .eq("id", capture.memory_id)
+        .eq("user_id", senderUserId);
     }
     await supabase
       .from("kep_captures")
       .update({ status: "rejected", rejection_reason: "user_deleted", memory_id: null })
-      .eq("id", captureId);
+      .eq("id", captureId)
+      .eq("user_id", senderUserId);
 
     await sendTextMessage(message.from, "Deleted");
     return;
@@ -1099,15 +1134,20 @@ async function handleInteractiveResponse(
 
   if (parts[0] === "move" && parts[1]) {
     const captureId = parts[1];
+
+    const senderUserId = await resolveSenderUserId(supabase, phoneNumberId, message.from);
+    if (!senderUserId) return;
+
     const { data: capture } = await supabase
       .from("kep_captures")
       .select("user_id")
       .eq("id", captureId)
       .single();
 
-    if (!capture) return;
+    // Reject if the capture does not belong to the messaging user (IDOR guard)
+    if (!capture || capture.user_id !== senderUserId) return;
 
-    const rooms = await fetchRoomsWithWings(supabase, capture.user_id as string);
+    const rooms = await fetchRoomsWithWings(supabase, senderUserId);
 
     if (rooms.length > 0) {
       await sendRoomPicker(message.from, rooms as any[], captureId);
@@ -1118,6 +1158,9 @@ async function handleInteractiveResponse(
   if (parts[0] === "route" && parts[1] && parts[2]) {
     const captureId = parts[1];
     const roomId = parts[2];
+
+    const senderUserId = await resolveSenderUserId(supabase, phoneNumberId, message.from);
+    if (!senderUserId) return;
 
     const { data: capture } = await supabase
       .from("kep_captures")
@@ -1131,15 +1174,31 @@ async function handleInteractiveResponse(
     const userId = (kep?.user_id || capture.user_id) as string;
     const kepId = (kep?.id || capture.kep_id) as string;
 
+    // Reject if the capture does not belong to the messaging user (IDOR guard)
+    if (userId !== senderUserId) return;
+
+    // Verify the target room belongs to the same user (mirror the setroom check;
+    // roomId comes straight from the attacker-controlled reply id)
+    const { data: routeRoomCheck } = await supabase
+      .from("rooms")
+      .select("id")
+      .eq("id", roomId)
+      .eq("user_id", senderUserId)
+      .single();
+
+    if (!routeRoomCheck) return;
+
     if (capture.memory_id) {
       await supabase
         .from("memories")
         .update({ room_id: roomId })
-        .eq("id", capture.memory_id);
+        .eq("id", capture.memory_id)
+        .eq("user_id", senderUserId);
       await supabase
         .from("kep_captures")
         .update({ status: "routed" })
-        .eq("id", captureId);
+        .eq("id", captureId)
+        .eq("user_id", senderUserId);
     } else {
       await autoRouteToRoom(
         supabase,

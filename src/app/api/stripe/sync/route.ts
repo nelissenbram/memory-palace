@@ -29,12 +29,20 @@ export async function POST() {
 
     const { data: sub } = await supabase
       .from("subscriptions")
-      .select("stripe_customer_id, plan, status")
+      .select("stripe_customer_id, plan, status, subscription_source")
       .eq("user_id", user.id)
       .single();
 
     if (!sub?.stripe_customer_id) {
       return NextResponse.json({ synced: false, reason: "no_customer" });
+    }
+
+    // If this row is now owned by an Apple IAP entitlement, a Stripe sync must not
+    // touch it — otherwise a user with a stale Stripe customer could downgrade their
+    // live Apple entitlement to free by triggering a sync. Only reconcile Stripe-owned
+    // (or legacy NULL-source) rows.
+    if (sub.subscription_source === "apple") {
+      return NextResponse.json({ synced: false, reason: "apple_owned" });
     }
 
     // Fetch active subscriptions from Stripe for this customer
@@ -84,9 +92,12 @@ export async function POST() {
           status,
           stripe_subscription_id: active.id,
           current_period_end: periodEnd,
+          // A verified active Stripe subscription claims this row for Stripe.
+          subscription_source: "stripe",
           updated_at: new Date().toISOString(),
         })
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .or("subscription_source.is.null,subscription_source.eq.stripe");
 
       return NextResponse.json({ synced: true, plan, status });
     } else {
@@ -101,7 +112,8 @@ export async function POST() {
             current_period_end: null,
             updated_at: new Date().toISOString(),
           })
-          .eq("user_id", user.id);
+          .eq("user_id", user.id)
+          .or("subscription_source.is.null,subscription_source.eq.stripe");
       }
 
       return NextResponse.json({ synced: true, plan: "free", status: "canceled" });

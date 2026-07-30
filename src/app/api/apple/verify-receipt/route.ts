@@ -120,17 +120,60 @@ export async function POST(req: NextRequest) {
     const isExpired = expiresAt && new Date(expiresAt) < new Date();
     const isTrial = activeReceipt.is_trial_period === "true";
 
-    // Update subscription in DB
     const admin = getAdminClient();
+    const otxid = activeReceipt.original_transaction_id;
+
+    // ── Ownership guard: one Apple transaction may only entitle ONE account. ──
+    // Reject if this original_transaction_id is already linked to a DIFFERENT
+    // user (family sharing / leaked-receipt entitlement theft). The service-role
+    // client bypasses RLS, so this check must be enforced here in code.
+    const { data: existingLink } = await admin
+      .from("subscriptions")
+      .select("user_id")
+      .eq("apple_original_transaction_id", otxid)
+      .neq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingLink) {
+      console.warn(
+        `[Apple] Rejecting receipt: transaction ${otxid} already linked to user ${existingLink.user_id}, requested by ${user.id}`
+      );
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "This purchase is already linked to another account.",
+        },
+        { status: 409 }
+      );
+    }
+
+    // ── Reconcile any terminating webhook notifications that arrived before the
+    // transaction was linked to this user (see /api/apple/webhook). If Apple has
+    // already revoked/refunded/expired this transaction, honor that now so the
+    // link cannot resurrect a dead entitlement. ──
+    const { data: pending } = await admin
+      .from("apple_pending_notifications")
+      .select("terminated")
+      .eq("apple_original_transaction_id", otxid)
+      .maybeSingle();
+    const revoked = pending?.terminated === true;
+
+    // Update subscription in DB
     await admin.from("subscriptions").upsert(
       {
         user_id: user.id,
-        plan: isExpired ? "free" : plan,
-        status: isExpired ? "canceled" : isTrial ? "trialing" : "active",
+        plan: isExpired || revoked ? "free" : plan,
+        status: isExpired
+          ? "canceled"
+          : revoked
+          ? "canceled"
+          : isTrial
+          ? "trialing"
+          : "active",
         current_period_end: expiresAt,
         subscription_source: "apple",
-        apple_original_transaction_id:
-          activeReceipt.original_transaction_id,
+        apple_original_transaction_id: otxid,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }

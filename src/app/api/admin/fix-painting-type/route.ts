@@ -9,8 +9,16 @@ export const dynamic = "force-dynamic";
  * Secured with CRON_SECRET.
  */
 export async function POST(request: NextRequest) {
+  // Verify cron secret — fail-closed if not configured.
+  // Security: if CRON_SECRET env var is missing, reject with 500 rather than
+  // letting the literal "Bearer undefined" authorize an attacker into this
+  // global service-role mutation of the memories table.
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
   const secret = request.headers.get("authorization");
-  if (secret !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (secret !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

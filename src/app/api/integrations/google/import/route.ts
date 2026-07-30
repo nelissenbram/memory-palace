@@ -128,6 +128,16 @@ export async function POST(request: NextRequest) {
         let filename: string;
 
         if (pickerItem) {
+          // SSRF / token-exfiltration guard: the client supplies baseUrl verbatim and
+          // we attach the user's live Google OAuth access token to the download request.
+          // Only ever fetch (and only ever send the Bearer token to) a genuine Google
+          // Photos host over HTTPS — otherwise a caller could point baseUrl at an internal
+          // metadata endpoint (SSRF) or an attacker host that harvests the access token.
+          if (!isAllowedGooglePhotosUrl(pickerItem.baseUrl)) {
+            results.push({ id: photoId, success: false, error: "Invalid media URL" });
+            continue;
+          }
+
           // Picker flow: download directly from baseUrl
           const isVideo = pickerItem.mimeType.startsWith("video/");
           const suffixedUrl = isVideo
@@ -354,6 +364,28 @@ async function downloadWithRetry(
     }
     throw err;
   }
+}
+
+/**
+ * Allowlist for Google Photos Picker/Library download URLs (baseUrl).
+ * Google serves media bytes from `*.googleusercontent.com` (e.g.
+ * lh3.googleusercontent.com, ci*.googleusercontent.com). We require HTTPS and
+ * an exact-suffix match on `.googleusercontent.com` so the user's OAuth access
+ * token is only ever sent to Google, never to an attacker-supplied or internal host.
+ */
+function isAllowedGooglePhotosUrl(rawUrl: string): boolean {
+  if (typeof rawUrl !== "string" || rawUrl.length === 0) return false;
+  let u: URL;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:") return false;
+  // Reject credentials in URL (e.g. https://google@evil.com) and non-default hosts.
+  if (u.username || u.password) return false;
+  const host = u.hostname.toLowerCase();
+  return host === "googleusercontent.com" || host.endsWith(".googleusercontent.com");
 }
 
 function cleanFilename(name: string): string {
