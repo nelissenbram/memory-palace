@@ -717,7 +717,15 @@ function PasscodeEntryInline() {
       const { validatePasscode } = await import("@/lib/social/passcode-actions");
       const result = await validatePasscode(code);
       if (!result.ok) {
-        setError(result.error || t("passcodeInvalid"));
+        // validatePasscode returns a stable error CODE; map it to localized copy
+        // so nl/de/es/fr users don't see raw English.
+        const errorKey: Record<string, string> = {
+          required: "passcodeRequired",
+          invalid: "passcodeInvalid",
+          expired: "passcodeExpired",
+          rateLimited: "passcodeRateLimited",
+        };
+        setError(t(errorKey[result.error ?? "invalid"] ?? "passcodeInvalid"));
         return;
       }
       // Redirect to the share page

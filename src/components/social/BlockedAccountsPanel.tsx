@@ -15,6 +15,7 @@ interface BlockedUser {
 export default function BlockedAccountsPanel() {
   const { t } = useTranslation("social");
   const [users, setUsers] = useState<BlockedUser[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -22,8 +23,16 @@ export default function BlockedAccountsPanel() {
   }, []);
 
   const handleUnblock = (id: string) => {
+    setError(null);
     startTransition(async () => {
-      await unblockUser(id);
+      const res = await unblockUser(id);
+      if (!res.ok) {
+        // Delete failed (RLS / session / network) — keep the row and reconcile
+        // with the DB so the UI never claims an unblock that didn't happen.
+        setError(t("unblockError"));
+        getBlockedUsers().then(setUsers).catch(() => {});
+        return;
+      }
       setUsers((prev) => (prev || []).filter((u) => u.id !== id));
     });
   };
@@ -66,6 +75,20 @@ export default function BlockedAccountsPanel() {
       >
         {t("blockedAccountsHint")}
       </p>
+      {error && (
+        <p
+          role="alert"
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.8125rem",
+            color: T.color.terracotta,
+            lineHeight: 1.5,
+            margin: "0 0 1rem",
+          }}
+        >
+          {error}
+        </p>
+      )}
       {users.length === 0 ? (
         <p
           style={{

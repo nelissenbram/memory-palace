@@ -363,6 +363,47 @@ export async function declineInvite(shareId: string) {
   return { success: true };
 }
 
+// ── Decline a WING invite (requires auth) ──
+export async function declineWingInvite(shareId: string) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    { const t = await serverError(); return { error: t("notConfigured") }; }
+  }
+  const supabase = await createClient();
+  const t = await serverError();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: t("notAuthenticated") };
+
+  const admin = createAdminClient();
+
+  // Verify the invite belongs to this user before declining
+  const userEmail = user.email?.toLowerCase();
+  const { data: share } = await admin
+    .from("wing_shares")
+    .select("id, shared_with_email, shared_with_id")
+    .eq("id", shareId)
+    .single();
+
+  if (!share) return { error: t("invitationNotFound") };
+
+  if (
+    share.shared_with_email?.toLowerCase() !== userEmail &&
+    share.shared_with_id !== user.id
+  ) {
+    return { error: t("notAuthorizedDecline") };
+  }
+
+  const { error } = await admin
+    .from("wing_shares")
+    .update({
+      status: "declined",
+      declined_at: new Date().toISOString(),
+    })
+    .eq("id", shareId);
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
 // ── Get pending invites for the current user (both wing and room) ──
 export async function getPendingInvites() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {

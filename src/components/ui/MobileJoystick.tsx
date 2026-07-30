@@ -65,6 +65,18 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
     onMove({ x: 0, y: 0 });
   }, [onMove]);
 
+  // When the joystick is hidden mid-hold (e.g. a menu/overlay opens while the
+  // user is still pressing the stick), the component returns null without
+  // unmounting — so the unmount cleanup never runs and held keys leak, causing
+  // the avatar to walk forever. Fire keyup for every held key, reset the knob,
+  // and clear touchIdRef so a later re-show is responsive again.
+  useEffect(() => {
+    if (!visible) {
+      touchIdRef.current = null;
+      releaseAll();
+    }
+  }, [visible, releaseAll]);
+
   // Release keys on unmount
   useEffect(() => {
     return () => {

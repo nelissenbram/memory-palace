@@ -984,6 +984,9 @@ export default function LandingV2Client({
               flexDirection: "column",
               gap: "0.25rem",
               fontSize: L.type.body,
+              maxHeight: "calc(100dvh - 4rem - env(safe-area-inset-top, 0px))",
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
             }}
           >
             {[

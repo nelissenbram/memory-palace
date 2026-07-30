@@ -261,6 +261,23 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
     // Phase 2: AI tagging (if AI mode + API key)
     const readyItems = useImportStore.getState().items.filter((i) => i.status === "extracting");
     if (store.mode === "ai") {
+      // Resolve a guaranteed-valid fallback room so no AI-tagged item can reach
+      // commit with an empty roomId: prefer the selected default room, else the
+      // first room of the selected default wing, else the first room anywhere.
+      const resolveFallbackWingRoom = (): { wingId: string; roomId: string } => {
+        if (targetWingId && targetRoomId) return { wingId: targetWingId, roomId: targetRoomId };
+        if (targetWingId) {
+          const rooms = getWingRooms(targetWingId);
+          if (rooms[0]) return { wingId: targetWingId, roomId: rooms[0].id };
+        }
+        for (const w of wings) {
+          const rooms = getWingRooms(w.id);
+          if (rooms[0]) return { wingId: w.id, roomId: rooms[0].id };
+        }
+        return { wingId: "", roomId: "" };
+      };
+      const fallback = resolveFallbackWingRoom();
+
       // Batch into groups of 10
       for (let i = 0; i < readyItems.length; i += 10) {
         const batch = readyItems.slice(i, i + 10);
@@ -291,6 +308,16 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             for (let j = 0; j < batch.length && j < suggestions.length; j++) {
               const s = suggestions[j];
               const needsReview = Math.random() < store.reviewSampleRate;
+              // Only trust the AI's roomId when it names a real room in the
+              // AI's suggested wing; otherwise fall back to the item's existing
+              // target, then to the resolved default. This keeps every item on
+              // a valid room even when the model omits or hallucinates one.
+              let wingId = s.wingId || batch[j].confirmed.wingId || fallback.wingId;
+              let roomId = s.roomId || batch[j].confirmed.roomId || fallback.roomId;
+              if (wingId && !getWingRooms(wingId).some((r) => r.id === roomId)) {
+                roomId = getWingRooms(wingId)[0]?.id || fallback.roomId;
+                if (!roomId) { wingId = fallback.wingId; roomId = fallback.roomId; }
+              }
               store.updateItem(batch[j].localId, {
                 aiSuggestions: s,
                 confirmed: {
@@ -298,8 +325,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                   title: s.title || batch[j].confirmed.title,
                   desc: s.desc || "",
                   type: (s.type === "painting" ? "photo" : s.type) || batch[j].confirmed.type,
-                  wingId: s.wingId || batch[j].confirmed.wingId,
-                  roomId: s.roomId || batch[j].confirmed.roomId,
+                  wingId,
+                  roomId,
                   locationName: s.locationName || "",
                 },
                 status: needsReview ? "ready" : "accepted",
@@ -307,14 +334,28 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               });
             }
           } else {
-            // AI failed — fall back to smart defaults
+            // AI failed — fall back to smart defaults (the resolved default room)
             for (const item of batch) {
-              store.updateItem(item.localId, { status: "ready", needsReview: true });
+              store.updateItem(item.localId, {
+                status: "ready", needsReview: true,
+                confirmed: {
+                  ...useImportStore.getState().items.find((it) => it.localId === item.localId)!.confirmed,
+                  wingId: item.confirmed.wingId || fallback.wingId,
+                  roomId: item.confirmed.roomId || fallback.roomId,
+                },
+              });
             }
           }
         } catch {
           for (const item of batch) {
-            store.updateItem(item.localId, { status: "ready", needsReview: true });
+            store.updateItem(item.localId, {
+              status: "ready", needsReview: true,
+              confirmed: {
+                ...useImportStore.getState().items.find((it) => it.localId === item.localId)!.confirmed,
+                wingId: item.confirmed.wingId || fallback.wingId,
+                roomId: item.confirmed.roomId || fallback.roomId,
+              },
+            });
           }
         }
       }
@@ -343,8 +384,19 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
     const accepted = useImportStore.getState().items.filter((i) => i.status === "accepted");
     store.setProgress({ total: accepted.length, committed: 0, errors: 0 });
 
+    // Build the set of real room IDs so we never commit a memory to an empty or
+    // unknown room key (which would orphan it under userMems[""] — never rendered
+    // on any wall). Any accepted item without a valid room is marked errored.
+    const validRoomIds = new Set<string>();
+    for (const w of wings) {
+      for (const r of getWingRooms(w.id)) validRoomIds.add(r.id);
+    }
+
     for (const item of accepted) {
       try {
+        if (!item.confirmed.roomId || !validRoomIds.has(item.confirmed.roomId)) {
+          throw new Error(t("noRoomAssigned"));
+        }
         const hue = Math.floor(Math.random() * 360);
         const mem: Mem = {
           id: Date.now().toString() + "_" + item.localId,

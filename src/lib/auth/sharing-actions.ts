@@ -559,12 +559,16 @@ export async function getSharedRoomMemories(
     if (share.room_id !== roomId) { const t = await serverError(); return { error: t("roomDoesNotMatchShare") }; }
   }
 
-  // Fetch memories for the room
+  // Fetch memories for the room. Select "*" so the mapped Mem carries the same
+  // rendering fields (hue/saturation/lightness/type/file_url/thumbnail_url) the
+  // owner's own room fetch uses — otherwise shared memories render as blank
+  // colourless objects.
   const { data: memories } = await admin
     .from("memories")
-    .select("id, title, content, image_url, position_index, tags, created_at, updated_at")
+    .select("*")
     .eq("room_id", roomId)
-    .order("position_index", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
   return { memories: memories || [] };
 }

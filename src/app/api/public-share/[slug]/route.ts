@@ -174,6 +174,7 @@ export async function GET(
       saturation: m.saturation,
       lightness: m.lightness,
       fileUrl: m.file_url,
+      thumbnailUrl: m.thumbnail_url,
       createdAt: m.created_at,
     })),
     owner: {

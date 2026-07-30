@@ -116,21 +116,23 @@ export async function blockUser(
 /** Unblock a previously blocked user. */
 export async function unblockUser(
   targetUserId: string
-): Promise<{ blocked: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { blocked: true };
+  if (!user) return { ok: false, error: "Not authenticated" };
 
-  await supabase
+  const { error } = await supabase
     .from("blocked_users")
     .delete()
     .eq("blocker_id", user.id)
     .eq("blocked_id", targetUserId);
 
+  if (error) return { ok: false, error: error.message };
+
   revalidatePath("/explore");
-  return { blocked: false };
+  return { ok: true };
 }
 
 /** Whether the current user has blocked the given user. */

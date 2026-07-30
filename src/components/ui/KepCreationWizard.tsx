@@ -48,7 +48,10 @@ export function KepCreationWizard() {
 
   const currentStep = WIZARD_STEPS[step];
   // Photos Kep with no linked Google Photos account can't proceed past configure.
-  const photosBlocked = data.source_type === "photos" && photosLinked === false;
+  // Treat the loading state (photosLinked === null) as blocking too: only a
+  // confirmed link (=== true) may pass, so a quick Next click can't slip past
+  // the gate while the accounts fetch is still in flight.
+  const photosBlocked = data.source_type === "photos" && photosLinked !== true;
   const canProceed = currentStep.isValid(data) && !(step === 1 && photosBlocked);
 
   const handleNext = () => {
@@ -235,10 +238,34 @@ function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial
 
 function StepConfigure({ data, update, t, photosLinked, router }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string; photosLinked: boolean | null; router: ReturnType<typeof useRouter> }) {
   const showConnectCta = data.source_type === "photos" && photosLinked === false;
+  // While the accounts fetch is still resolving for a photos Kep, tell the user
+  // we're checking the connection — Next stays disabled until the link is known.
+  const showCheckingHint = data.source_type === "photos" && photosLinked === null;
   return (
     <div>
       <h2 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", marginBottom: "0.25rem" }}>{t("wizardStep2")}</h2>
       <p style={{ fontFamily: T.font.body, color: "#716A5E", fontSize: "0.9375rem", lineHeight: 1.4, marginBottom: "1.25rem" }}>{t("wizardStep2Desc")}</p>
+
+      {/* Accounts fetch still in flight — surface a checking hint so the disabled
+          Next button reads as "verifying" rather than broken. */}
+      {showCheckingHint && (
+        <p
+          role="status"
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.8125rem",
+            lineHeight: 1.45,
+            color: "#716A5E",
+            background: "rgba(184,92,56,0.05)",
+            border: "0.0625rem solid #E3D6BC",
+            borderRadius: "0.75rem",
+            padding: "0.75rem 1rem",
+            margin: "0 0 1.25rem",
+          }}
+        >
+          {t("wizardPhotosChecking")}
+        </p>
+      )}
 
       {/* Google Photos not linked — a photos Kep has nothing to pull from, so
           block progress and route the user to connect the account first. */}

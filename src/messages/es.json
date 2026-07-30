@@ -315,7 +315,8 @@
     "stepOf": "Paso {current} de {total}",
     "paywallTerms": "Términos",
     "paywallPrivacy": "Privacidad",
-    "paywallAutoRenew": "Suscripción de renovación automática cargada a tu ID de Apple. Cancela cuando quieras en Ajustes."
+    "paywallAutoRenew": "Suscripción de renovación automática cargada a tu ID de Apple. Cancela cuando quieras en Ajustes.",
+    "paywallFinishError": "No pudimos terminar de configurar tu palacio. Inténtalo de nuevo."
   },
   "palace": {
     "uploadMemory": "Subir Recuerdo",
@@ -2390,7 +2391,8 @@
     "status_committed": "Guardado",
     "status_error": "Error",
     "readError": "Error de lectura",
-    "dateTaken": "Fecha de captura"
+    "dateTaken": "Fecha de captura",
+    "noRoomAssigned": "Sin sala asignada: elige un ala y una sala e inténtalo de nuevo."
   },
   "memoryDetail": {
     "panelTitle": "Detalles del recuerdo",
@@ -2552,7 +2554,10 @@
     "accessWingsDesc": "Acceso solo a alas específicas",
     "cancel": "Cancelar",
     "removeConfirmTitle": "¿Eliminar este contacto?",
-    "removeConfirmBody": "{name} ya no podrá recibir acceso a tu palacio. Puedes volver a añadirlo cuando quieras."
+    "removeConfirmBody": "{name} ya no podrá recibir acceso a tu palacio. Puedes volver a añadirlo cuando quieras.",
+    "saveFailed": "No se pudo guardar este contacto. Inténtalo de nuevo.",
+    "removeFailed": "No se pudo eliminar este contacto. Inténtalo de nuevo.",
+    "accessManagedElsewhere": "El acceso de este contacto se configuró en la página de ajustes de Legado y no se puede cambiar aquí. Aún puedes actualizar su nombre y correo. Para cambiar lo que puede ver, abre Ajustes → Legado."
   },
   "roomGallery": {
     "gallery": "Galería",
@@ -3031,7 +3036,8 @@
     "currentRoom": "Sala actual",
     "memoryMoved": "Recuerdo movido correctamente",
     "ariaOpenRoomMedia": "Abrir multimedia de la sala",
-    "importFailed": "La importación falló. Inténtalo de nuevo."
+    "importFailed": "La importación falló. Inténtalo de nuevo.",
+    "moveCount": "{n} recuerdos"
   },
   "memoryMap": {
     "title": "Mapa de recuerdos",
@@ -3817,7 +3823,8 @@
     "sectionPrivacyData": "Privacidad y tus datos",
     "sectionDangerZone": "Zona de peligro",
     "passwordResetSocialOnly": "Esta cuenta inicia sesión con un proveedor social, así que no hay contraseña que restablecer. La próxima vez, simplemente inicia sesión con ese proveedor.",
-    "passwordResetUnavailable": "El restablecimiento de contraseña no está disponible en este entorno."
+    "passwordResetUnavailable": "El restablecimiento de contraseña no está disponible en este entorno.",
+    "dataDeletion": "Eliminación de datos y cuenta"
   },
   "cookieSettings": {
     "pageTitle": "Preferencias de cookies",
@@ -3972,7 +3979,8 @@
     "linkSecurity": "Seguridad",
     "linkTerms": "Términos de servicio",
     "linkHome": "Volver al inicio",
-    "navBrand": "The Memory Palace"
+    "navBrand": "The Memory Palace",
+    "linkDataDeletion": "Eliminación de datos y cuenta"
   },
   "terms": {
     "legal": "Legal",
@@ -5203,7 +5211,8 @@
     "wizardStep3DescRouting": "Deja que la IA archive cada recuerdo en la sala correcta automáticamente.",
     "wizardPhotosNotLinkedTitle": "Conecta Google Fotos primero",
     "wizardPhotosNotLinkedDesc": "Un Kep de fotos necesita una cuenta de Google Fotos vinculada para obtener recuerdos. Conecta una y luego vuelve para terminar la configuración.",
-    "wizardPhotosConnectCta": "Conectar Google Fotos"
+    "wizardPhotosConnectCta": "Conectar Google Fotos",
+    "wizardPhotosChecking": "Comprobando tu conexión con Google Fotos…"
   },
   "kepLanding": {
     "title": "Conoce a Kep",
@@ -5532,7 +5541,12 @@
     "totalWingVisits": "Visitas de alas",
     "publishNoChanges": "No hay cambios que publicar: tu selección ya coincide con lo compartido.",
     "guestReactPrompt": "Inicia sesión para reaccionar",
-    "privateProfile": "Perfil privado"
+    "privateProfile": "Perfil privado",
+    "guestCommentPrompt": "Inicia sesión para comentar",
+    "passcodeExpired": "Este código de acceso ha caducado.",
+    "passcodeRequired": "Introduce un código de acceso.",
+    "passcodeRateLimited": "Demasiados intentos. Inténtalo de nuevo más tarde.",
+    "unblockError": "No se pudo desbloquear esta cuenta. Inténtalo de nuevo."
   },
   "help": {
     "title": "Centro de ayuda",

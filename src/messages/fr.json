@@ -315,7 +315,8 @@
     "stepOf": "Étape {current} sur {total}",
     "paywallTerms": "Conditions",
     "paywallPrivacy": "Confidentialité",
-    "paywallAutoRenew": "Abonnement à renouvellement automatique facturé sur votre identifiant Apple. Annulable à tout moment dans les Réglages."
+    "paywallAutoRenew": "Abonnement à renouvellement automatique facturé sur votre identifiant Apple. Annulable à tout moment dans les Réglages.",
+    "paywallFinishError": "Nous n'avons pas pu terminer la configuration de votre palais. Veuillez réessayer."
   },
   "palace": {
     "uploadMemory": "Ajouter un Souvenir",
@@ -2390,7 +2391,8 @@
     "status_committed": "Enregistré",
     "status_error": "Erreur",
     "readError": "Erreur de lecture",
-    "dateTaken": "Date de prise"
+    "dateTaken": "Date de prise",
+    "noRoomAssigned": "Aucune salle attribuée — choisissez une aile et une salle, puis réessayez."
   },
   "memoryDetail": {
     "panelTitle": "Détails du souvenir",
@@ -2552,7 +2554,10 @@
     "accessWingsDesc": "Accès uniquement à des ailes spécifiques",
     "cancel": "Annuler",
     "removeConfirmTitle": "Supprimer ce contact ?",
-    "removeConfirmBody": "{name} ne pourra plus recevoir d'accès à votre palais. Vous pourrez le rajouter à tout moment."
+    "removeConfirmBody": "{name} ne pourra plus recevoir d'accès à votre palais. Vous pourrez le rajouter à tout moment.",
+    "saveFailed": "Impossible d'enregistrer ce contact. Veuillez réessayer.",
+    "removeFailed": "Impossible de supprimer ce contact. Veuillez réessayer.",
+    "accessManagedElsewhere": "L'accès de ce contact a été défini sur la page des paramètres d'Héritage et ne peut pas être modifié ici. Vous pouvez toujours mettre à jour son nom et son e-mail. Pour changer ce qu'il peut voir, ouvrez Paramètres → Héritage."
   },
   "roomGallery": {
     "gallery": "Galerie",
@@ -3031,7 +3036,8 @@
     "currentRoom": "Salle actuelle",
     "memoryMoved": "Souvenir déplacé avec succès",
     "ariaOpenRoomMedia": "Ouvrir les médias de la salle",
-    "importFailed": "L'importation a échoué. Veuillez réessayer."
+    "importFailed": "L'importation a échoué. Veuillez réessayer.",
+    "moveCount": "{n} souvenirs"
   },
   "memoryMap": {
     "title": "Carte des souvenirs",
@@ -3817,7 +3823,8 @@
     "sectionPrivacyData": "Confidentialité et vos données",
     "sectionDangerZone": "Zone sensible",
     "passwordResetSocialOnly": "Ce compte se connecte via un fournisseur social ; il n'y a donc aucun mot de passe à réinitialiser. Connectez-vous simplement avec ce fournisseur la prochaine fois.",
-    "passwordResetUnavailable": "La réinitialisation du mot de passe n'est pas disponible dans cet environnement."
+    "passwordResetUnavailable": "La réinitialisation du mot de passe n'est pas disponible dans cet environnement.",
+    "dataDeletion": "Suppression des données et du compte"
   },
   "cookieSettings": {
     "pageTitle": "Préférences de cookies",
@@ -3972,7 +3979,8 @@
     "linkSecurity": "Sécurité",
     "linkTerms": "Conditions d'utilisation",
     "linkHome": "Retour à l'accueil",
-    "navBrand": "The Memory Palace"
+    "navBrand": "The Memory Palace",
+    "linkDataDeletion": "Suppression des données et du compte"
   },
   "terms": {
     "legal": "Légal",
@@ -5203,7 +5211,8 @@
     "wizardStep3DescRouting": "Laissez l'IA classer automatiquement chaque souvenir dans la bonne salle.",
     "wizardPhotosNotLinkedTitle": "Connectez d'abord Google Photos",
     "wizardPhotosNotLinkedDesc": "Un Kep photos a besoin d'un compte Google Photos lié pour récupérer les souvenirs. Connectez-en un, puis revenez pour terminer la configuration.",
-    "wizardPhotosConnectCta": "Connecter Google Photos"
+    "wizardPhotosConnectCta": "Connecter Google Photos",
+    "wizardPhotosChecking": "Vérification de votre connexion Google Photos…"
   },
   "kepLanding": {
     "title": "Découvrez Kep",
@@ -5532,7 +5541,12 @@
     "totalWingVisits": "Visites d'ailes",
     "publishNoChanges": "Aucune modification à publier — votre sélection correspond déjà à ce qui est partagé.",
     "guestReactPrompt": "Connectez-vous pour réagir",
-    "privateProfile": "Profil privé"
+    "privateProfile": "Profil privé",
+    "guestCommentPrompt": "Connectez-vous pour commenter",
+    "passcodeExpired": "Ce code d'accès a expiré.",
+    "passcodeRequired": "Veuillez saisir un code d'accès.",
+    "passcodeRateLimited": "Trop de tentatives. Veuillez réessayer plus tard.",
+    "unblockError": "Impossible de débloquer ce compte. Veuillez réessayer."
   },
   "help": {
     "title": "Centre d'aide",

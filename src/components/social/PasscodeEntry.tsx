@@ -27,7 +27,16 @@ export default function PasscodeEntry() {
       setError(null);
       const result = await validatePasscode(code);
       if (!result.ok) {
-        setError(result.error || t("passcodeInvalid"));
+        // validatePasscode returns a stable error CODE, not prose, so every
+        // locale renders localized copy (previously it always returned raw
+        // English, which won over the t() fallback for nl/de/es/fr users).
+        const errorKey: Record<string, string> = {
+          required: "passcodeRequired",
+          invalid: "passcodeInvalid",
+          expired: "passcodeExpired",
+          rateLimited: "passcodeRateLimited",
+        };
+        setError(t(errorKey[result.error ?? "invalid"] ?? "passcodeInvalid"));
         return;
       }
       setValidatedShare(result.share!);

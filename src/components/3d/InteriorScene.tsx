@@ -2207,7 +2207,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       else onMemoryClickRef.current(hovMem.current);
     }};
     const _cMap:Record<string,string>={"KeyW":"w","KeyA":"a","KeyS":"s","KeyD":"d","ShiftLeft":"shift","ShiftRight":"shift","ArrowUp":"arrowup","ArrowDown":"arrowdown","ArrowLeft":"arrowleft","ArrowRight":"arrowright"};
-    const onKD=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=true;if(k.startsWith("arrow"))e.preventDefault();};const onKU=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=false;};
+    const _isFormField=(e: KeyboardEvent)=>{const el2=e.target as HTMLElement|null;return !!(el2&&(el2.tagName==="INPUT"||el2.tagName==="TEXTAREA"||el2.isContentEditable));};
+    const onKD=(e: KeyboardEvent)=>{if(_isFormField(e))return;const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=true;if(k.startsWith("arrow"))e.preventDefault();};const onKU=(e: KeyboardEvent)=>{if(_isFormField(e))return;const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=false;};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);
     window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);
 

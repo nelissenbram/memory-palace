@@ -48,6 +48,23 @@ const contactWingsCount = (c: LegacyContact): number =>
 const contactPickerWings = (c: LegacyContact): string[] =>
   (c.accessible_wings || []).filter((w) => WINGS.some((wing) => wing.id === w));
 
+// True when the panel's slug-only picker can FAITHFULLY represent this contact's
+// access. If it can't — the grant lives in the page's UUID space (`wing_access`
+// UUIDs with no matching `accessible_wings` slugs) or is room-scoped
+// (`specific_rooms`, which this panel has no picker for) — then saving through the
+// panel must NOT touch the canonical wing_access/room_access columns, or an
+// innocuous name/email edit silently revokes/downgrades the grant. In that case
+// handleUpdate omits accessibleWings/accessibleRooms so track-actions leaves the
+// canonical columns untouched.
+const panelCanEditAccess = (c: LegacyContact): boolean => {
+  if (c.access_level === "specific_rooms") return false;
+  const hasUuidGrant = (c.wing_access || []).length > 0;
+  const hasMatchingSlugs = contactPickerWings(c).length > 0;
+  // A UUID-backed grant that yields no panel-representable slugs cannot be edited here.
+  if (hasUuidGrant && !hasMatchingSlugs) return false;
+  return true;
+};
+
 interface LegacyPanelProps {
   onClose: () => void;
 }
@@ -95,6 +112,11 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
   const [formAccessLevel, setFormAccessLevel] = useState("full");
   const [formWings, setFormWings] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  // When editing a contact whose access the panel cannot faithfully represent
+  // (page-owned UUID grant or room-scoped), we lock the access editor and omit
+  // accessibleWings/accessibleRooms on save so the canonical grant is preserved.
+  const [accessLocked, setAccessLocked] = useState(false);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   const confirmRemoveContact = contacts.find((c) => c.id === confirmRemoveId);
 
@@ -118,11 +140,14 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
     setFormWings([]);
     setShowAddForm(false);
     setEditingId(null);
+    setFormError(null);
+    setAccessLocked(false);
   };
 
   const handleAdd = async () => {
     if (!formName.trim() || !formEmail.trim()) return;
     setSaving(true);
+    setFormError(null);
     const result = await addLegacyContact({
       contactName: formName.trim(),
       contactEmail: formEmail.trim(),
@@ -130,29 +155,47 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
       accessLevel: formAccessLevel,
       accessibleWings: formAccessLevel === "wings_only" ? formWings : [],
     });
-    if (!result.error) {
-      await loadContacts();
-      resetForm();
-    }
     setSaving(false);
+    if (result.error) {
+      setFormError(result.error || t("saveFailed"));
+      return;
+    }
+    await loadContacts();
+    resetForm();
   };
 
   const handleUpdate = async (contactId: string) => {
     setSaving(true);
-    await updateLegacyContact(contactId, {
+    setFormError(null);
+    // If the panel can't faithfully represent this contact's access (accessLocked),
+    // omit accessibleWings/accessibleRooms entirely so track-actions never recomputes
+    // (and thereby wipes/downgrades) the canonical wing_access/room_access grant.
+    const result = await updateLegacyContact(contactId, {
       contactName: formName.trim(),
       contactEmail: formEmail.trim(),
       relationship: formRelationship,
-      accessLevel: formAccessLevel,
-      accessibleWings: formAccessLevel === "wings_only" ? formWings : [],
+      ...(accessLocked
+        ? {}
+        : {
+            accessLevel: formAccessLevel,
+            accessibleWings: formAccessLevel === "wings_only" ? formWings : [],
+          }),
     });
+    setSaving(false);
+    if (result.error) {
+      setFormError(result.error || t("saveFailed"));
+      return;
+    }
     await loadContacts();
     resetForm();
-    setSaving(false);
   };
 
   const handleRemove = async (contactId: string) => {
-    await removeLegacyContact(contactId);
+    const result = await removeLegacyContact(contactId);
+    if (result.error) {
+      setFormError(result.error || t("removeFailed"));
+      return;
+    }
     await loadContacts();
   };
 
@@ -162,6 +205,8 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
     setFormRelationship(contact.relationship || "spouse");
     setFormAccessLevel(normalizeAccessLevel(contact.access_level));
     setFormWings(contactPickerWings(contact));
+    setAccessLocked(!panelCanEditAccess(contact));
+    setFormError(null);
     setEditingId(contact.id);
     setShowAddForm(true);
   };
@@ -262,6 +307,15 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
               textAlign: "center", padding: "2.5rem",
             }}>{t("loading")}</div>
+          )}
+
+          {/* List-level error (e.g. a failed remove while no form is open) */}
+          {formError && !showAddForm && (
+            <div role="alert" style={{
+              padding: "0.75rem 0.875rem", borderRadius: "0.7rem",
+              background: "rgba(184,92,56,0.06)", border: "0.0625rem solid rgba(184,92,56,0.25)", // Atrium ember
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#B85C38", lineHeight: 1.4,
+            }}>{formError}</div>
           )}
 
           {/* Contact list */}
@@ -421,6 +475,20 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               <label id="legacy-panel-access-label" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("whatAccess")}
               </label>
+              {/* When the grant lives in the settings page's UUID space (or is
+                  room-scoped), the panel can't faithfully edit it — show a read-only
+                  note pointing to the settings page instead of a picker that would
+                  silently wipe the grant on save. */}
+              {accessLocked ? (
+                <div style={{
+                  marginTop: "0.375rem", marginBottom: "0.875rem",
+                  padding: "0.75rem 0.875rem", borderRadius: "0.7rem",
+                  background: "#FBF2EC", border: "0.0625rem solid #E3D6BC", // Atrium terracotta tint + hairline
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", lineHeight: 1.4,
+                }}>
+                  {t("accessManagedElsewhere")}
+                </div>
+              ) : (
               <div role="group" aria-labelledby="legacy-panel-access-label" style={{
                 display: "flex", flexDirection: "column", gap: "0.375rem",
                 marginTop: "0.375rem", marginBottom: "0.875rem",
@@ -442,9 +510,10 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                   </button>
                 ))}
               </div>
+              )}
 
               {/* Wing picker */}
-              {formAccessLevel === "wings_only" && (
+              {!accessLocked && formAccessLevel === "wings_only" && (
                 <div style={{ marginBottom: "0.875rem" }}>
                   <label id="legacy-panel-wings-label" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                     {t("selectWings")}
@@ -468,6 +537,15 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Save error */}
+              {formError && (
+                <div role="alert" style={{
+                  marginBottom: "0.75rem", padding: "0.75rem 0.875rem", borderRadius: "0.7rem",
+                  background: "rgba(184,92,56,0.06)", border: "0.0625rem solid rgba(184,92,56,0.25)", // Atrium ember
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#B85C38", lineHeight: 1.4,
+                }}>{formError}</div>
               )}
 
               {/* Actions */}

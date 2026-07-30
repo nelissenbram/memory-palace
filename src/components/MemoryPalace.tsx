@@ -21,6 +21,7 @@ import { getKepSocialStats, type KepSocialStats } from "@/lib/social/stats-actio
 import { useNavigation } from "@/lib/hooks/useNavigation";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomMemories } from "@/lib/hooks/useRoomMemories";
+import type { Mem } from "@/lib/constants/defaults";
 const OnboardingWizard = lazy(() => import("@/components/ui/OnboardingWizard"));
 const LandscapeNudge = lazy(() => import("@/components/ui/LandscapeNudge"));
 // TopBar removed — replaced by PalaceSubNav
@@ -279,7 +280,11 @@ export default function MemoryPalace(){
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [sharedWings, setSharedWings] = useState<SharedWingDoor[]>([]);
   // sharedContext removed — was never read
-  const [sharedWingData, setSharedWingData] = useState<{ wing: any; rooms: any[] } | null>(null);
+  const [sharedWingData, setSharedWingData] = useState<{ wing: any; rooms: any[]; permission?: string; canAdd?: boolean; canEdit?: boolean; canDelete?: boolean } | null>(null);
+  // Owner's memories for a room inside a shared wing. When set (shared context),
+  // these OVERRIDE the viewer's own roomMems so a visitor sees the owner's
+  // memories — not their own (or demo/empty). Keyed to activeRoomId below.
+  const [sharedRoomMems, setSharedRoomMems] = useState<Mem[] | null>(null);
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [showTools, setShowTools] = useState(false);
@@ -336,6 +341,50 @@ export default function MemoryPalace(){
   // Top media bar open state (drives InteriorScene video/audio bar)
   const roomMediaBarOpen = useRoomMediaBarStore(s => s.open);
   const setRoomMediaBarOpen = useRoomMediaBarStore(s => s.setOpen);
+
+  // ── Shared-wing room memories ──
+  // When a visitor enters a room inside a shared family wing, useRoomMemories
+  // (bound to activeRoomId) resolves the CURRENT viewer's own memoryStore, so
+  // without this the visitor would see their own memories / demo / empty. Here
+  // we fetch the OWNER's memories via getSharedRoomMemories and override.
+  const isSharedWing = !!activeWing && activeWing.startsWith("shared:");
+  const sharedShareId = isSharedWing ? (activeWing!.split(":")[2] || "") : "";
+  // Read-only shares must not allow add/update/delete (canEdit gates writes).
+  const sharedCanEdit = isSharedWing ? !!sharedWingData?.canEdit : true;
+  useEffect(() => {
+    if (!isSharedWing || view !== "room" || !activeRoomId || !sharedShareId) {
+      setSharedRoomMems(null);
+      return;
+    }
+    let cancelled = false;
+    setSharedRoomMems([]); // clear stale owner mems while the new room loads
+    getSharedRoomMemories(activeRoomId, "wing", sharedShareId)
+      .then((res) => {
+        const memories = (res as { memories?: any[] })?.memories;
+        if (cancelled || !memories) return;
+        const mapped: Mem[] = memories.map((m: any) => ({
+          id: m.id, title: m.title, hue: m.hue, s: m.saturation, l: m.lightness,
+          type: m.type, desc: m.description || "", dataUrl: m.file_url || null,
+          thumbnailUrl: m.thumbnail_url || null,
+          ...(m.location_name ? { locationName: m.location_name } : {}),
+          ...(m.lat != null ? { lat: m.lat } : {}),
+          ...(m.lng != null ? { lng: m.lng } : {}),
+          ...(m.created_at ? { createdAt: m.created_at } : {}),
+          ...(m.displayed != null ? { displayed: m.displayed } : {}),
+          ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
+        }));
+        setSharedRoomMems(mapped);
+      })
+      .catch(() => { if (!cancelled) setSharedRoomMems([]); });
+    return () => { cancelled = true; };
+  }, [isSharedWing, view, activeRoomId, sharedShareId]);
+  // Effective memories fed to InteriorScene: owner's mems in a shared wing,
+  // otherwise the viewer's own roomMems.
+  const effectiveRoomMems = isSharedWing && sharedRoomMems !== null ? sharedRoomMems : roomMems;
+  // In a read-only shared room, swallow InteriorScene memory edits.
+  const effectiveUpdateMemory = isSharedWing && !sharedCanEdit
+    ? (() => {})
+    : handleUpdateMemory;
 
   // Build wingRooms map for PalaceSubNav room dropdowns
   const wingRoomsMap = useMemo(() => {
@@ -613,14 +662,23 @@ export default function MemoryPalace(){
 
   // Auto-open room tutorial on first room visit
   useEffect(() => {
-    if (view !== "room") return;
+    if (view !== "room") {
+      // Left the room view: reset the store so a tour that auto-opened on a
+      // now-stale view (e.g. the 800ms delay fired after the user backed out)
+      // cannot leak into the next room visit.
+      setRoomTourOpen(false);
+      return;
+    }
     const key = "mp_room_tour_seen_v1";
     if (tourFired.current[key]) return;
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
         tourFired.current[key] = true;
         window.localStorage.setItem(key, "1");
-        setTimeout(() => setRoomTourOpen(true), 800);
+        // Store the timeout id + clear it on teardown so leaving the view
+        // mid-delay cannot flip the store open on a view that no longer renders.
+        const id = setTimeout(() => setRoomTourOpen(true), 800);
+        return () => clearTimeout(id);
       } else {
         tourFired.current[key] = true;
       }
@@ -628,14 +686,20 @@ export default function MemoryPalace(){
   }, [view, setRoomTourOpen]);
 
   useEffect(() => {
-    if (navMode !== "3d" || view !== "corridor") return;
+    if (navMode !== "3d" || view !== "corridor") {
+      setCorridorTourOpen(false);
+      return;
+    }
     const key = "mp_corridor_tour_seen_v1";
     if (tourFired.current[key]) return;
     try {
       if (!window.localStorage.getItem(key)) {
         tourFired.current[key] = true;
         window.localStorage.setItem(key, "1");
-        setCorridorTourOpen(true);
+        // No delay here, but a stored id keeps the pattern uniform and lets the
+        // cleanup cancel a pending open if the view tears down first.
+        const id = setTimeout(() => setCorridorTourOpen(true), 0);
+        return () => clearTimeout(id);
       } else {
         tourFired.current[key] = true;
       }
@@ -649,14 +713,18 @@ export default function MemoryPalace(){
   }, [setEntranceTourOpen]);
 
   useEffect(() => {
-    if (navMode !== "3d" || view !== "entrance") return;
+    if (navMode !== "3d" || view !== "entrance") {
+      setEntranceTourOpen(false);
+      return;
+    }
     const key = "mp_entrance_tour_seen_v1";
     if (tourFired.current[key]) return;
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
         tourFired.current[key] = true;
         window.localStorage.setItem(key, "1");
-        setTimeout(() => setEntranceTourOpen(true), 800);
+        const id = setTimeout(() => setEntranceTourOpen(true), 800);
+        return () => clearTimeout(id);
       } else {
         tourFired.current[key] = true;
       }
@@ -677,14 +745,18 @@ export default function MemoryPalace(){
 
   // Auto-open the tour on first visit to the palace exterior
   useEffect(() => {
-    if (navMode !== "3d" || view !== "exterior") return;
+    if (navMode !== "3d" || view !== "exterior") {
+      setPalaceTourOpen(false);
+      return;
+    }
     const key = "mp_palace_tour_seen_v1";
     if (tourFired.current[key]) return;
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
         tourFired.current[key] = true;
         window.localStorage.setItem(key, "1");
-        setTimeout(() => setPalaceTourOpen(true), 800);
+        const id = setTimeout(() => setPalaceTourOpen(true), 800);
+        return () => clearTimeout(id);
       } else {
         tourFired.current[key] = true;
       }
@@ -1219,7 +1291,7 @@ export default function MemoryPalace(){
         {warmHallScene}
         {!persistHall && view==="entrance" && hallSceneNode}
         {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} onReady={handleSceneReady} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+(styleEra||"roman")} wingId={activeWing} onReady={handleSceneReady} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
-        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} onReady={handleSceneReady} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} onMemoryUpdate={handleUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
+        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} onReady={handleSceneReady} layoutOverride={roomLayouts[activeRoomId]} memories={effectiveRoomMems} onMemoryClick={handleMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
       </div>
 
       {view==="exterior"&&<LandscapeNudge />}
@@ -1270,7 +1342,7 @@ export default function MemoryPalace(){
         onSwitchWing={(wingId) => { switchWing(wingId); }}
         onNavigateRoom={(wingId, roomId) => { enterCorridor(wingId); setTimeout(() => enterRoom(roomId), 300); }}
         onNavigateSharedWing={(shareId, wingSlug) => {
-          getSharedWingData(shareId).then(result => { if (result.wing && result.rooms) { setSharedWingData(result); enterCorridor(`shared:${wingSlug}:${shareId}`); } });
+          getSharedWingData(shareId).then(result => { if (result.wing && result.rooms) { setSharedWingData(result); setSharedRoomMems(null); enterCorridor(`shared:${wingSlug}:${shareId}`); } });
         }}
         onUpload={() => setShowUpload(true)}
         onGallery={() => setShowGallery(true)}

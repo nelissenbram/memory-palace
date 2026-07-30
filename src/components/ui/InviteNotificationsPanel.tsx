@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { getPendingInvites, acceptInvite, acceptWingInvite, declineInvite } from "@/lib/auth/invite-actions";
+import { getPendingInvites, acceptInvite, acceptWingInvite, declineInvite, declineWingInvite } from "@/lib/auth/invite-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -69,7 +69,10 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
   const handleDecline = async (inviteId: string) => {
     setProcessingId(inviteId);
     setError(null);
-    const result = await declineInvite(inviteId);
+    const invite = invites.find(i => i.id === inviteId);
+    const result = invite?.type === "wing"
+      ? await declineWingInvite(inviteId)
+      : await declineInvite(inviteId);
     if (result.error) {
       setError(result.error);
     } else {

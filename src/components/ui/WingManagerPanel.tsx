@@ -6,7 +6,44 @@ import { useIsMobile, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { WINGS } from "@/lib/constants/wings";
 import { WingIcon, WING_ICON_MAP } from "./WingRoomIcons";
+
+// Canonical emoji for each standard SVG-icon key (roots/nest/craft/...). Wing
+// icons are stored across the whole app as the raw emoji string ({wing.icon}),
+// so the "Standard" icon buttons must persist the matching emoji — never the
+// SVG-map key — or every other surface would render the literal text "roots".
+const WING_KEY_TO_EMOJI: Record<string, string> = Object.fromEntries(
+  Object.keys(WING_ICON_MAP)
+    .map(key => [key, WINGS.find(w => w.id === key)?.icon])
+    .filter((e): e is [string, string] => Boolean(e[1])),
+);
+
+// Reverse lookup: canonical emoji -> SVG-map key, so the standard glyph renders
+// even though wing.icon is stored as the emoji.
+const EMOJI_TO_WING_KEY: Record<string, string> = Object.fromEntries(
+  Object.entries(WING_KEY_TO_EMOJI).map(([key, emoji]) => [emoji, key]),
+);
+
+/**
+ * Renders a wing icon. If the stored value is a standard SVG-map key (or the
+ * emoji that maps back to one) it draws the crafted glyph; otherwise it renders
+ * the raw emoji character, so a user's custom emoji is shown faithfully.
+ */
+function WingGlyph({ icon, size, color }: { icon: string; size: number; color: string }) {
+  if (WING_ICON_MAP[icon]) {
+    return <WingIcon wingId={icon} size={size} color={color} />;
+  }
+  const svgKey = EMOJI_TO_WING_KEY[icon];
+  if (svgKey) {
+    return <WingIcon wingId={svgKey} size={size} color={color} />;
+  }
+  return (
+    <span aria-hidden style={{ fontSize: `${size / 16}rem`, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {icon}
+    </span>
+  );
+}
 
 const EMOJI_PRESETS = [
   // Home & Family
@@ -100,12 +137,20 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
       <div style={{ marginBottom: "0.625rem" }}>
         <span style={{ fontSize: "0.75rem", color: T.color.ink, fontWeight: 600, letterSpacing: "0.03em" }}>{t("standardIcons")}</span>
         <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.375rem", flexWrap: "wrap" }}>
-          {STANDARD_WING_IDS.map(id => (
-            <button key={id} onClick={() => onPick(id)} role="radio" aria-checked={currentIcon === id}
-              style={{ width: touch ? "3rem" : "2.5rem", height: touch ? "3rem" : "2.5rem", borderRadius: "0.5rem", border: currentIcon === id ? `2px solid ${T.color.ember}` : `1px solid ${T.color.hairline}`, background: currentIcon === id ? `${T.color.ember}15` : T.color.warmStone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>
-              <WingIcon wingId={id} size={touch ? 22 : 20} color={currentIcon === id ? T.color.ember : T.color.walnut} />
-            </button>
-          ))}
+          {STANDARD_WING_IDS.map(id => {
+            // Persist the canonical emoji (fall back to the key only if no emoji
+            // is mapped) so every other surface — which renders wing.icon as a
+            // raw string — shows the icon correctly. Selection matches either
+            // representation.
+            const emoji = WING_KEY_TO_EMOJI[id];
+            const selected = currentIcon === id || (emoji != null && currentIcon === emoji);
+            return (
+              <button key={id} onClick={() => onPick(emoji ?? id)} role="radio" aria-checked={selected}
+                style={{ width: touch ? "3rem" : "2.5rem", height: touch ? "3rem" : "2.5rem", borderRadius: "0.5rem", border: selected ? `2px solid ${T.color.ember}` : `1px solid ${T.color.hairline}`, background: selected ? `${T.color.ember}15` : T.color.warmStone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>
+                <WingIcon wingId={id} size={touch ? 22 : 20} color={selected ? T.color.ember : T.color.walnut} />
+              </button>
+            );
+          })}
         </div>
       </div>
       {/* Custom emoji icons — collapsed by default */}
@@ -170,7 +215,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                     fontSize: "1.375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s",
                   }}
                   title={t("changeIcon")}>
-                  <WingIcon wingId={wing.icon} size={24} color={wing.accent} />
+                  <WingGlyph icon={wing.icon} size={24} color={wing.accent} />
                 </button>
 
                 {/* Name */}

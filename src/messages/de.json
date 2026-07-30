@@ -315,7 +315,8 @@
     "stepOf": "Schritt {current} von {total}",
     "paywallTerms": "Bedingungen",
     "paywallPrivacy": "Datenschutz",
-    "paywallAutoRenew": "Automatisch verlängerndes Abo, abgerechnet über deine Apple-ID. Jederzeit in den Einstellungen kündbar."
+    "paywallAutoRenew": "Automatisch verlängerndes Abo, abgerechnet über deine Apple-ID. Jederzeit in den Einstellungen kündbar.",
+    "paywallFinishError": "Wir konnten die Einrichtung deines Palastes nicht abschließen. Bitte versuche es erneut."
   },
   "palace": {
     "uploadMemory": "Erinnerung hochladen",
@@ -2390,7 +2391,8 @@
     "status_committed": "Gespeichert",
     "status_error": "Fehler",
     "readError": "Lesefehler",
-    "dateTaken": "Aufnahmedatum"
+    "dateTaken": "Aufnahmedatum",
+    "noRoomAssigned": "Kein Raum zugewiesen — wähle einen Flügel und Raum und versuche es erneut."
   },
   "memoryDetail": {
     "panelTitle": "Erinnerungsdetails",
@@ -2552,7 +2554,10 @@
     "accessWingsDesc": "Zugang nur zu bestimmten Flügeln",
     "cancel": "Abbrechen",
     "removeConfirmTitle": "Diesen Kontakt entfernen?",
-    "removeConfirmBody": "{name} kann dann keinen Zugang mehr zu deinem Palast erhalten. Du kannst die Person jederzeit wieder hinzufügen."
+    "removeConfirmBody": "{name} kann dann keinen Zugang mehr zu deinem Palast erhalten. Du kannst die Person jederzeit wieder hinzufügen.",
+    "saveFailed": "Dieser Kontakt konnte nicht gespeichert werden. Bitte versuche es erneut.",
+    "removeFailed": "Dieser Kontakt konnte nicht entfernt werden. Bitte versuche es erneut.",
+    "accessManagedElsewhere": "Der Zugriff dieses Kontakts wurde auf der Seite mit den Nachlass-Einstellungen festgelegt und kann hier nicht geändert werden. Name und E-Mail kannst du weiterhin aktualisieren. Um zu ändern, was er sehen darf, öffne Einstellungen → Nachlass."
   },
   "roomGallery": {
     "gallery": "Galerie",
@@ -3031,7 +3036,8 @@
     "currentRoom": "Aktueller Raum",
     "memoryMoved": "Erinnerung erfolgreich verschoben",
     "ariaOpenRoomMedia": "Raummedien öffnen",
-    "importFailed": "Import fehlgeschlagen. Bitte versuche es erneut."
+    "importFailed": "Import fehlgeschlagen. Bitte versuche es erneut.",
+    "moveCount": "{n} Erinnerungen"
   },
   "memoryMap": {
     "title": "Erinnerungskarte",
@@ -3817,7 +3823,8 @@
     "sectionPrivacyData": "Datenschutz & deine Daten",
     "sectionDangerZone": "Gefahrenbereich",
     "passwordResetSocialOnly": "Dieses Konto meldet sich über einen sozialen Anbieter an, daher gibt es kein Passwort zum Zurücksetzen. Melde dich beim nächsten Mal einfach mit diesem Anbieter an.",
-    "passwordResetUnavailable": "Das Zurücksetzen des Passworts ist in dieser Umgebung nicht verfügbar."
+    "passwordResetUnavailable": "Das Zurücksetzen des Passworts ist in dieser Umgebung nicht verfügbar.",
+    "dataDeletion": "Daten- & Kontolöschung"
   },
   "cookieSettings": {
     "pageTitle": "Cookie-Einstellungen",
@@ -3972,7 +3979,8 @@
     "linkSecurity": "Sicherheit",
     "linkTerms": "Nutzungsbedingungen",
     "linkHome": "Zurück zur Startseite",
-    "navBrand": "The Memory Palace"
+    "navBrand": "The Memory Palace",
+    "linkDataDeletion": "Daten- & Kontolöschung"
   },
   "terms": {
     "legal": "Rechtliches",
@@ -5203,7 +5211,8 @@
     "wizardStep3DescRouting": "Lass die KI jede Erinnerung automatisch im richtigen Raum ablegen.",
     "wizardPhotosNotLinkedTitle": "Zuerst Google Fotos verbinden",
     "wizardPhotosNotLinkedDesc": "Ein Fotos-Kep benötigt ein verknüpftes Google-Fotos-Konto, um Erinnerungen abzurufen. Verbinde eines und kehre dann zurück, um die Einrichtung abzuschließen.",
-    "wizardPhotosConnectCta": "Google Fotos verbinden"
+    "wizardPhotosConnectCta": "Google Fotos verbinden",
+    "wizardPhotosChecking": "Deine Google Fotos-Verbindung wird geprüft…"
   },
   "kepLanding": {
     "title": "Lernen Sie Kep kennen",
@@ -5532,7 +5541,12 @@
     "totalWingVisits": "Flügelbesuche",
     "publishNoChanges": "Keine Änderungen zu veröffentlichen — deine Auswahl entspricht bereits dem Geteilten.",
     "guestReactPrompt": "Anmelden zum Reagieren",
-    "privateProfile": "Privates Profil"
+    "privateProfile": "Privates Profil",
+    "guestCommentPrompt": "Zum Kommentieren anmelden",
+    "passcodeExpired": "Dieser Zugangscode ist abgelaufen.",
+    "passcodeRequired": "Bitte gib einen Zugangscode ein.",
+    "passcodeRateLimited": "Zu viele Versuche. Bitte versuche es später erneut.",
+    "unblockError": "Dieses Konto konnte nicht entsperrt werden. Bitte versuche es erneut."
   },
   "help": {
     "title": "Hilfecenter",

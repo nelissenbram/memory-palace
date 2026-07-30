@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/privacy", priority: 0.3, changeFrequency: "yearly" as const },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" as const },
     { path: "/security", priority: 0.3, changeFrequency: "yearly" as const },
+    { path: "/data-deletion", priority: 0.3, changeFrequency: "yearly" as const },
     { path: "/blog", priority: 0.7, changeFrequency: "weekly" as const },
   ];
 

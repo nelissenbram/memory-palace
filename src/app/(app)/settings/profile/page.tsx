@@ -670,9 +670,15 @@ export default function ProfilePage() {
                   aria-disabled={isComingSoon || undefined}
                   onClick={async () => {
                     if (isComingSoon) return;
+                    const prevEra = styleEra;
                     setStyleEra(era);
-                    await updateProfile({ styleEra: era });
-                    showToast(t("palaceStyleUpdated"), "success");
+                    const result = await updateProfile({ styleEra: era });
+                    if (result.error) {
+                      setStyleEra(prevEra);
+                      showToast(result.error, "error");
+                    } else {
+                      showToast(t("palaceStyleUpdated"), "success");
+                    }
                   }}
                   style={{
                     padding: "0.875rem 1rem",
@@ -891,8 +897,13 @@ export default function ProfilePage() {
                 const newVal = !aiConsent;
                 setAiSaving(true);
                 setAiConsent(newVal);
-                await updateProfile({ aiConsent: newVal });
-                showToast(newVal ? t("aiConsentOn") : t("aiConsentOff"), "success");
+                const result = await updateProfile({ aiConsent: newVal });
+                if (result.error) {
+                  setAiConsent(!newVal);
+                  showToast(result.error, "error");
+                } else {
+                  showToast(newVal ? t("aiConsentOn") : t("aiConsentOff"), "success");
+                }
                 setAiSaving(false);
               }}
               style={{

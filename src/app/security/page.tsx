@@ -650,6 +650,9 @@ export default function SecurityPage() {
           <Link href="/terms" style={{ fontSize: "0.8125rem", color: T.land.inkMutedDark, textDecoration: "none" }}>
             {t("termsOfService")}
           </Link>
+          <Link href="/data-deletion" style={{ fontSize: "0.8125rem", color: T.land.inkMutedDark, textDecoration: "none" }}>
+            {t("dataDeletion")}
+          </Link>
         </div>
         <p style={{ fontSize: "0.75rem", color: T.land.inkMutedDark, margin: 0 }}>
           &copy; {new Date().getFullYear()} {t("footerCopyright")}

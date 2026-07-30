@@ -199,16 +199,13 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
   },
 
   nextQuestion: () => {
-    const { currentTemplate, currentQuestionIndex, isFollowUp } = get();
+    const { currentTemplate, currentQuestionIndex } = get();
     if (!currentTemplate) return;
 
-    if (isFollowUp) {
-      // Move from follow-up to the next template question
-      set({ isFollowUp: false, transcript: "" });
-    } else {
-      // Move to the next template question
-      set({ currentQuestionIndex: currentQuestionIndex + 1, isFollowUp: false, transcript: "" });
-    }
+    // The panel does not implement a separate follow-up turn, so always
+    // advance to the next template question. (isFollowUp is not read as a
+    // control anywhere; branching on it here stalled progression.)
+    set({ currentQuestionIndex: currentQuestionIndex + 1, isFollowUp: false, transcript: "" });
   },
 
   skipQuestion: () => {
@@ -237,7 +234,6 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     const updatedResponses = [...currentSession.responses, response];
     set({
       currentSession: { ...currentSession, responses: updatedResponses },
-      isFollowUp: !!aiData?.followUp,
     });
 
     // Persist to DB

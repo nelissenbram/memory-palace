@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
-import { navigateInApp, isIOS } from "@/lib/native/platform";
+import { isIOS } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -250,6 +250,42 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     track("onboarding_skipped", { phase });
     completeAndFinish();
   }, [completeAndFinish, phase]);
+
+  // ── Paywall trial CTA (change 2): completing onboarding and routing to /pricing
+  // must be ONE coherent flow — never fire setPhase('done') (which lands the user
+  // in the atrium via onFinish) alongside navigation, which races the route/tab.
+  // Instead: persist the wizard fields, AWAIT the atomic onboarding DB write, then
+  // hard-navigate the SAME document to /pricing (Apple IAP on iOS, Stripe on web).
+  // No detached tab, no atrium jump — purchase intent is preserved. ──
+  const trialNavigatingRef = useRef(false);
+  const handleTrialCta = useCallback(async () => {
+    if (trialNavigatingRef.current) return;
+    trialNavigatingRef.current = true;
+    track("paywall_trial_clicked", { source: "onboarding" });
+    // Persist the wizard fields exactly as the unified completion path does.
+    setUserName(trimmedName);
+    const savedGoal = (() => { try { return localStorage.getItem("mp_user_goal"); } catch { return null; } })();
+    setUserGoal(savedGoal || "preserve");
+    setStyleEra(selectedEra);
+    setFirstWing("roots");
+    useWalkthroughStore.getState().skip();
+    try {
+      // Atomic authoritative write — must confirm before we leave onboarding, so a
+      // fresh-device relogin never re-onboards after a purchase.
+      await useUserStore.getState().finishOnboarding();
+    } catch {
+      trialNavigatingRef.current = false;
+      try { window.dispatchEvent(new CustomEvent("mp:toast", { detail: { message: t("paywallFinishError") !== "paywallFinishError" ? t("paywallFinishError") : t("uploadFailed"), type: "error" } })); } catch {}
+      return;
+    }
+    try { localStorage.setItem(WALK_DONE_KEY, "true"); } catch {}
+    cleanupStorage();
+    track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current });
+    // Same-document navigation to /pricing (new tab would orphan purchase intent on
+    // web; a detached nav would race the WKWebView on iOS). window.location.href
+    // stays in the current tab on web AND inside the WKWebView on native.
+    window.location.href = "/pricing";
+  }, [trimmedName, selectedEra, setUserName, setUserGoal, setStyleEra, setFirstWing, t]);
 
   // ── Upload ──
   const handleMemoryAdded = useCallback(() => {
@@ -882,19 +918,22 @@ ${KEYFRAMES}
               };
               // Persist the first memory through the SAME store path the in-app
               // ImportHub uses (optimistic local add + server upload + DB create).
-              // addMemory rolls back its optimistic entry on failure, so verify the
-              // memory actually landed in room 'ro1' before advancing/celebrating.
+              // addMemory returns true ONLY when the write actually persisted
+              // (server id assigned, offline-queued, or supabase not configured).
+              // We must gate on that boolean — inferring persistence from store
+              // length is unreliable because the optimistic add seeds ro1 with the
+              // 5 demo memories (getDemoMems fallback), so a rolled-back failure
+              // still leaves length > 0 and would falsely celebrate an unsaved memory.
               setUploadError(null);
               const store = useMemoryStore.getState();
-              const before = (store.userMems["ro1"] || []).length;
+              let persisted = false;
               try {
-                await store.addMemory("ro1", mem as any);
+                persisted = await store.addMemory("ro1", mem as any);
               } catch {
                 setUploadError(t("uploadFailed"));
                 throw new Error("save-failed");
               }
-              const after = (useMemoryStore.getState().userMems["ro1"] || []).length;
-              if (after <= before) {
+              if (!persisted) {
                 // Optimistic add was rolled back — the write did NOT persist.
                 setUploadError(t("uploadFailed"));
                 throw new Error("save-rolled-back");
@@ -1083,14 +1122,12 @@ ${KEYFRAMES}
                 ))}
               </div>
 
-              {/* Trial CTA — /pricing drives Apple IAP on iOS, Stripe on web */}
+              {/* Trial CTA — completes onboarding atomically, THEN same-document
+                  nav to /pricing (Apple IAP on iOS, Stripe on web). One coherent
+                  flow: no detached tab, no setPhase('done')/atrium race. */}
               <button
                 className="onb-cta onb-focusable"
-                onClick={() => {
-                  track("paywall_trial_clicked", { source: "onboarding" });
-                  navigateInApp("/pricing");
-                  setPhase("done");
-                }}
+                onClick={handleTrialCta}
                 style={{ ...primaryCtaStyle, width: "100%" }}
               >
                 {t("paywallTrialCta")}

@@ -8,6 +8,8 @@ import {
   getAllMyShares,
   leaveWingShare,
   leaveRoomShare,
+  unshareWing,
+  removeRoomShare,
   updateSharePermissions,
 } from "@/lib/auth/sharing-actions";
 
@@ -406,10 +408,19 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
       setConfirmingRevoke(null);
 
       try {
-        if (type === "wing") {
-          await leaveWingShare(shareId);
-        } else {
-          await leaveRoomShare(shareId);
+        // OWNER-scoped removal: the Sent tab is the owner managing shares they
+        // created. unshareWing/removeRoomShare delete by owner_id (the current
+        // user), whereas leaveWing/leaveRoomShare delete by shared_with_id and
+        // would match no owner-sent row (0 rows deleted, access silently kept).
+        const res =
+          type === "wing"
+            ? await unshareWing(shareId)
+            : await removeRoomShare(shareId);
+        // A returned {error} means nothing was deleted — restore state so the
+        // card is not left removed while access still persists server-side.
+        if (res && "error" in res && res.error) {
+          setError(t("revokeError"));
+          getAllMyShares().then((result) => setData(result));
         }
       } catch {
         setError(t("revokeError"));

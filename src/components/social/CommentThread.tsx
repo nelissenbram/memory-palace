@@ -354,58 +354,93 @@ export default function CommentThread({
         ))
       )}
 
-      {/* New comment input */}
-      <div
-        style={{
-          display: "flex",
-          gap: "0.5rem",
-          marginTop: "1rem",
-          paddingTop: "1rem",
-          borderTop: `1px solid ${T.color.lineFaint}`,
-        }}
-      >
-        <input
-          value={newText}
-          onChange={(e) => setNewText(e.target.value)}
-          placeholder={t("writeComment")}
-          maxLength={2000}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handlePost();
-            }
-          }}
+      {/* Composer — posting a comment requires an authenticated session
+          (addComment returns { ok:false, error:'Not authenticated' } for
+          guests). Rather than show a dead input that silently discards the
+          text on submit, guests get a read-only sign-in nudge, mirroring the
+          guest reaction gating. */}
+      {currentUserId ? (
+        <div
           style={{
-            flex: 1,
-            fontFamily: T.font.body,
-            fontSize: "0.875rem",
-            padding: "0.625rem 1rem",
-            borderRadius: "0.625rem",
-            border: `1px solid ${T.color.sandstone}`,
-            background: T.color.cream,
-            color: T.color.charcoal,
-            outline: "none",
-          }}
-        />
-        <button
-          onClick={handlePost}
-          disabled={isPending || !newText.trim()}
-          style={{
-            fontFamily: T.font.body,
-            fontSize: "0.8125rem",
-            fontWeight: 600,
-            padding: "0.625rem 1rem",
-            borderRadius: "0.625rem",
-            border: "none",
-            background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
-            color: T.color.cream,
-            cursor: isPending ? "wait" : "pointer",
-            opacity: isPending || !newText.trim() ? 0.5 : 1,
+            display: "flex",
+            gap: "0.5rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: `1px solid ${T.color.lineFaint}`,
           }}
         >
-          {t("post")}
-        </button>
-      </div>
+          <input
+            value={newText}
+            onChange={(e) => setNewText(e.target.value)}
+            placeholder={t("writeComment")}
+            maxLength={2000}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handlePost();
+              }
+            }}
+            style={{
+              flex: 1,
+              fontFamily: T.font.body,
+              fontSize: "0.875rem",
+              padding: "0.625rem 1rem",
+              borderRadius: "0.625rem",
+              border: `1px solid ${T.color.sandstone}`,
+              background: T.color.cream,
+              color: T.color.charcoal,
+              outline: "none",
+            }}
+          />
+          <button
+            onClick={handlePost}
+            disabled={isPending || !newText.trim()}
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.8125rem",
+              fontWeight: 600,
+              padding: "0.625rem 1rem",
+              borderRadius: "0.625rem",
+              border: "none",
+              background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+              color: T.color.cream,
+              cursor: isPending ? "wait" : "pointer",
+              opacity: isPending || !newText.trim() ? 0.5 : 1,
+            }}
+          >
+            {t("post")}
+          </button>
+        </div>
+      ) : (
+        <div
+          style={{
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: `1px solid ${T.color.lineFaint}`,
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.375rem",
+          }}
+        >
+          <a
+            href="/login"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              minHeight: "2.75rem",
+              padding: "0.375rem 0.75rem",
+              fontFamily: T.font.body,
+              fontSize: "0.8125rem",
+              fontWeight: 600,
+              color: T.color.ember,
+              textDecoration: "none",
+            }}
+          >
+            {t("guestCommentPrompt")}
+          </a>
+        </div>
+      )}
     </div>
   );
 }

@@ -49,7 +49,11 @@ export async function GET(request: Request) {
           searchParams.get("type") === "recovery" ||
           user.user_metadata?.recovery === true;
         if (isRecovery) {
-          return NextResponse.redirect(`${origin}/reset-password`);
+          // Forward the recovery flag so the reset-password page's
+          // urlIsRecovery gate fires. Admin-generated recovery sessions do NOT
+          // reliably stamp an amr:'recovery' claim, so without this a valid link
+          // would fall through to the "expired or invalid" screen.
+          return NextResponse.redirect(`${origin}/reset-password?type=recovery`);
         }
 
         // Ensure a profile row exists (defense-in-depth for OAuth sign-ups)

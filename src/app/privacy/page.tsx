@@ -493,6 +493,12 @@ export default function PrivacyPolicyPage() {
           >
             {t("linkTerms")}
           </Link>
+          <Link
+            href="/data-deletion"
+            style={{ ...linkStyle, fontSize: "0.875rem", marginRight: "1.5rem" }}
+          >
+            {t("linkDataDeletion")}
+          </Link>
           <Link href="/" style={{ ...linkStyle, fontSize: "0.875rem" }}>
             {t("linkHome")}
           </Link>

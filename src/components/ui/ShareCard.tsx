@@ -195,6 +195,10 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
 
       if (mem.dataUrl) {
         const img = new Image();
+        // Set crossOrigin BEFORE src so the fetch is CORS-enabled and the drawn
+        // image does not taint the canvas — otherwise toDataURL()/toBlob() throw
+        // and Download/native Share silently fail. Matches InteriorScene's loader.
+        img.crossOrigin = "anonymous";
         img.onload = () => {
           // Draw image in left portion with rounded corners
           ctx.save();

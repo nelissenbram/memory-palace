@@ -315,7 +315,8 @@
     "stepOf": "Stap {current} van {total}",
     "paywallTerms": "Voorwaarden",
     "paywallPrivacy": "Privacy",
-    "paywallAutoRenew": "Automatisch verlengend abonnement, in rekening gebracht via je Apple ID. Op elk moment opzegbaar in Instellingen."
+    "paywallAutoRenew": "Automatisch verlengend abonnement, in rekening gebracht via je Apple ID. Op elk moment opzegbaar in Instellingen.",
+    "paywallFinishError": "We konden je paleis niet voltooien. Probeer het opnieuw."
   },
   "palace": {
     "uploadMemory": "Herinnering uploaden",
@@ -2391,7 +2392,8 @@
     "status_committed": "Opgeslagen",
     "status_error": "Fout",
     "readError": "Leesfout",
-    "dateTaken": "Datum genomen"
+    "dateTaken": "Datum genomen",
+    "noRoomAssigned": "Geen kamer toegewezen — kies een vleugel en kamer en probeer opnieuw."
   },
   "memoryDetail": {
     "panelTitle": "Herinneringsdetails",
@@ -2554,7 +2556,10 @@
     "accessWingsDesc": "Alleen toegang tot specifieke vleugels",
     "cancel": "Annuleren",
     "removeConfirmTitle": "Deze contactpersoon verwijderen?",
-    "removeConfirmBody": "{name} kan dan geen toegang meer tot je paleis ontvangen. Je kunt deze persoon later altijd opnieuw toevoegen."
+    "removeConfirmBody": "{name} kan dan geen toegang meer tot je paleis ontvangen. Je kunt deze persoon later altijd opnieuw toevoegen.",
+    "saveFailed": "Kon dit contact niet opslaan. Probeer het opnieuw.",
+    "removeFailed": "Kon dit contact niet verwijderen. Probeer het opnieuw.",
+    "accessManagedElsewhere": "De toegang van dit contact is ingesteld op de pagina Nalatenschap-instellingen en kan hier niet worden gewijzigd. Je kunt nog wel hun naam en e-mail bijwerken. Ga naar Instellingen → Nalatenschap om te wijzigen wat ze kunnen zien."
   },
   "roomGallery": {
     "gallery": "Galerij",
@@ -3033,7 +3038,8 @@
     "currentRoom": "Huidige kamer",
     "memoryMoved": "Herinnering verplaatst",
     "ariaOpenRoomMedia": "Kamermedia openen",
-    "importFailed": "Importeren mislukt. Probeer het opnieuw."
+    "importFailed": "Importeren mislukt. Probeer het opnieuw.",
+    "moveCount": "{n} herinneringen"
   },
   "memoryMap": {
     "title": "Herinneringenkaart",
@@ -3819,7 +3825,8 @@
     "sectionPrivacyData": "Privacy & je gegevens",
     "sectionDangerZone": "Gevarenzone",
     "passwordResetSocialOnly": "Dit account logt in via een sociale provider, dus er is geen wachtwoord om te resetten. Log de volgende keer gewoon in met die provider.",
-    "passwordResetUnavailable": "Wachtwoord resetten is niet beschikbaar in deze omgeving."
+    "passwordResetUnavailable": "Wachtwoord resetten is niet beschikbaar in deze omgeving.",
+    "dataDeletion": "Gegevens & account verwijderen"
   },
   "cookieSettings": {
     "pageTitle": "Cookie-voorkeuren",
@@ -3974,7 +3981,8 @@
     "linkSecurity": "Beveiliging",
     "linkTerms": "Algemene voorwaarden",
     "linkHome": "Terug naar home",
-    "navBrand": "The Memory Palace"
+    "navBrand": "The Memory Palace",
+    "linkDataDeletion": "Gegevens & account verwijderen"
   },
   "terms": {
     "legal": "Juridisch",
@@ -5205,7 +5213,8 @@
     "wizardStep3DescRouting": "Laat AI elke herinnering automatisch in de juiste kamer plaatsen.",
     "wizardPhotosNotLinkedTitle": "Verbind eerst Google Foto's",
     "wizardPhotosNotLinkedDesc": "Een foto-Kep heeft een gekoppeld Google Foto's-account nodig om herinneringen op te halen. Koppel er een en kom dan terug om de installatie te voltooien.",
-    "wizardPhotosConnectCta": "Google Foto's verbinden"
+    "wizardPhotosConnectCta": "Google Foto's verbinden",
+    "wizardPhotosChecking": "Je Google Foto's-verbinding wordt gecontroleerd…"
   },
   "kepLanding": {
     "title": "Maak kennis met Kep",
@@ -5534,7 +5543,12 @@
     "totalWingVisits": "Vleugelbezoeken",
     "publishNoChanges": "Niets om te publiceren — je selectie komt al overeen met wat gedeeld is.",
     "guestReactPrompt": "Log in om te reageren",
-    "privateProfile": "Privéprofiel"
+    "privateProfile": "Privéprofiel",
+    "guestCommentPrompt": "Log in om te reageren",
+    "passcodeExpired": "Deze toegangscode is verlopen.",
+    "passcodeRequired": "Voer een toegangscode in.",
+    "passcodeRateLimited": "Te veel pogingen. Probeer het later opnieuw.",
+    "unblockError": "Kon deze account niet deblokkeren. Probeer het opnieuw."
   },
   "help": {
     "title": "Helpcentrum",

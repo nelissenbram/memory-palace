@@ -290,14 +290,22 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
     const latest = withDates.length > 0 ? new Date(withDates[withDates.length - 1].createdAt!) : null;
     const totalWords = countWords(allMems);
 
-    // Time of day analysis
+    // How many memories carry a real timestamp. Memories can exist with no
+    // createdAt (offline IndexedDB cache drops it; legacy rows have null
+    // created_at). Without this guard, all-zero hourCounts would fabricate a
+    // "night owl / peak at 0:00" insight over an empty timeline.
+    const datedCount = allMems.filter((m) => m.createdAt).length;
+
+    // Time of day analysis — only meaningful when at least one memory is dated.
     const hourCounts = new Array(24).fill(0);
     for (const m of allMems) {
       if (!m.createdAt) continue;
       hourCounts[new Date(m.createdAt).getHours()]++;
     }
-    const peakHour = hourCounts.indexOf(Math.max(...hourCounts));
-    const timeOfDay = peakHour < 6 ? "nightOwl" : peakHour < 12 ? "earlyBird" : peakHour < 18 ? "afternoon" : "evening";
+    const peakHour = datedCount > 0 ? hourCounts.indexOf(Math.max(...hourCounts)) : -1;
+    const timeOfDay: string | null = datedCount === 0
+      ? null
+      : peakHour < 6 ? "nightOwl" : peakHour < 12 ? "earlyBird" : peakHour < 18 ? "afternoon" : "evening";
 
     // Location coverage
     const locatedMems = allMems.filter((m) => m.lat !== undefined && m.lng !== undefined);
@@ -344,6 +352,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
 
     return {
       totalMems: allMems.length,
+      datedCount,
       totalWings: wingsWithMems.size,
       totalRooms: roomsWithMems.size,
       avgPerRoom: roomsWithMems.size > 0 ? (allMems.length / roomsWithMems.size).toFixed(1) : "0",
@@ -482,7 +491,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             role="dialog"
             aria-modal="true"
             aria-label={t("weeklyDigestTitle")}
-            onKeyDown={(e) => { if (e.key === "Escape") setShowDigest(false); }}
+            onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setShowDigest(false); } }}
             style={{
               position: "fixed", inset: 0, zIndex: 1010, // above the shared Sheet scrim (z-index 1000)
               background: CREAM, overflowY: "auto",
@@ -544,7 +553,8 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                 </div>
               </div>
 
-              {/* Personality insight */}
+              {/* Personality insight — only with real timestamps */}
+              {stats.datedCount > 0 && stats.timeOfDay && (
               <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: "1rem" }}>
                 <div style={{
                   width: "3rem", height: "3rem", borderRadius: "0.75rem", flexShrink: 0,
@@ -561,6 +571,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Wing leaderboard */}
               {stats.wingDist.length > 0 && (
@@ -765,7 +776,9 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             </div>
           </div>
 
-          {/* 3. Your Memory Personality — hero card */}
+          {/* 3. Your Memory Personality — hero card (only with real timestamps;
+               a fabricated "night owl / peak 0:00" insight is worse than none) */}
+          {stats.datedCount > 0 && stats.timeOfDay && (
           <div style={{
             ...cardStyle,
             background: "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)" /* Atrium token: terracotta tile wash, opaque */,
@@ -813,6 +826,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
               </div>
             </div>
           </div>
+          )}
 
           {/* 4. Day-of-Week Heatmap */}
           <div style={cardStyle}>
@@ -857,8 +871,9 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             )}
           </div>
 
-          {/* 5. Monthly Activity — only months with data */}
-          {stats.monthBuckets.length > 0 && stats.totalMems > 0 && (
+          {/* 5. Monthly Activity — only months with data (and only with real
+               timestamps; without dated memories the buckets are all-zero) */}
+          {stats.monthBuckets.length > 0 && stats.datedCount > 0 && (
           <div style={cardStyle}>
             <h3 style={headingStyle}>{t("timelineTitle")}</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>

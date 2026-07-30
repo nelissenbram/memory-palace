@@ -366,37 +366,46 @@ export default function KepCard({
       </div>
 
       <style>{`
-        .lv2u-kep-photo {
+        /* Resting state is FULLY VISIBLE. The story keyframes all start HIDDEN
+           at 0% (photo/reply/chip fade in, tick2 cross-fades in, mat gilds), so
+           the shared perf gate (globals.css) — which pauses these loops at 0%
+           until an IntersectionObserver adds .usp-live — would otherwise leave
+           the whole vignette blank whenever .usp-live is never added (JS off,
+           no IntersectionObserver, or observer wiring failing). The inline
+           styles already encode each element's FINAL (visible) state, so we
+           only attach the hide→reveal loop once the card is actually live —
+           mirroring PalaceCard's resting contract. */
+        [data-usp-idx].usp-live .lv2u-kep-photo {
           animation: lv2u-kep-photo 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-mat {
+        [data-usp-idx].usp-live .lv2u-kep-mat {
           animation: lv2u-kep-mat 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-tick1 {
+        [data-usp-idx].usp-live .lv2u-kep-tick1 {
           animation: lv2u-kep-tick1 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-tick2 {
+        [data-usp-idx].usp-live .lv2u-kep-tick2 {
           animation: lv2u-kep-tick2 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-typing {
+        [data-usp-idx].usp-live .lv2u-kep-typing {
           animation: lv2u-kep-typing 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-dot1 {
+        [data-usp-idx].usp-live .lv2u-kep-dot1 {
           animation: lv2u-kep-dot1 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-dot2 {
+        [data-usp-idx].usp-live .lv2u-kep-dot2 {
           animation: lv2u-kep-dot2 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-dot3 {
+        [data-usp-idx].usp-live .lv2u-kep-dot3 {
           animation: lv2u-kep-dot3 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-reply {
+        [data-usp-idx].usp-live .lv2u-kep-reply {
           animation: lv2u-kep-reply 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-chip {
+        [data-usp-idx].usp-live .lv2u-kep-chip {
           animation: lv2u-kep-chip 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
-        .lv2u-kep-frameicon {
+        [data-usp-idx].usp-live .lv2u-kep-frameicon {
           animation: lv2u-kep-frameicon 10s cubic-bezier(0.22, 1, 0.36, 1) infinite;
         }
 

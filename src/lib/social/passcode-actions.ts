@@ -139,7 +139,7 @@ export async function createPasscode(input: {
  */
 export async function validatePasscode(
   code: string
-): Promise<{ ok: boolean; share?: ValidatedShare; error?: string }> {
+): Promise<{ ok: boolean; share?: ValidatedShare; error?: PasscodeErrorCode }> {
   // Service-role client: a passcode visitor is NOT the share owner, so the
   // owner-scoped RLS policy would hide the row. This action enforces the
   // passcode check itself and never returns the stored hash, so using the
@@ -147,7 +147,7 @@ export async function validatePasscode(
   const supabase = createAdminOrAnonClient();
   const normalizedCode = code.trim().toLowerCase();
 
-  if (!normalizedCode) return { ok: false, error: "Passcode is required" };
+  if (!normalizedCode) return { ok: false, error: "required" };
 
   // Brute-force throttle: this server action is the passcode-guessing entry
   // point and was previously unlimited. Rate-limit per-IP AND per-guessed-code
@@ -160,7 +160,7 @@ export async function validatePasscode(
     rateLimit(`passcode-validate:code:${attemptHash.slice(0, 16)}`, 10, 10 * 60_000),
   ]);
   if (!ipRl.success || !codeRl.success) {
-    return { ok: false, error: "Too many attempts. Please try again later." };
+    return { ok: false, error: "rateLimited" };
   }
 
   // Compare against the stored SHA-256 hash — the cleartext is never persisted.
@@ -181,7 +181,7 @@ export async function validatePasscode(
     .limit(1);
 
   const share = shares?.[0];
-  if (!share) return { ok: false, error: "Invalid passcode" };
+  if (!share) return { ok: false, error: "invalid" };
 
   // Check expiry
   if (share.expires_at && new Date(share.expires_at) < new Date()) {
@@ -190,7 +190,7 @@ export async function validatePasscode(
       .from("public_shares")
       .update({ is_active: false })
       .eq("id", share.id);
-    return { ok: false, error: "This passcode has expired" };
+    return { ok: false, error: "expired" };
   }
 
   // Fetch owner info
@@ -325,6 +325,17 @@ export async function deletePasscode(
 }
 
 /* ── Types ── */
+
+/**
+ * Stable error code returned by validatePasscode. The component maps each code
+ * to a localized string via t(); returning prose here would ship raw English to
+ * non-English users. 'rateLimited' reuses the existing shared throttle copy.
+ */
+export type PasscodeErrorCode =
+  | "required"
+  | "invalid"
+  | "expired"
+  | "rateLimited";
 
 export interface PasscodeShare {
   id: string;

@@ -35,12 +35,37 @@ export default async function RoomVisitPage({ params }: Props) {
     .single();
   if (!room) notFound();
 
-  const [profile, memories, comments, reactions] = await Promise.all([
+  const [profile, memories, comments, reactions, ownerProfileRow] = await Promise.all([
     getProfile(userId),
     getPublishedMemories(roomId),
     getComments("room", roomId),
     getReactions("room", roomId),
+    admin.from("profiles").select("local_settings").eq("id", userId).single(),
   ]);
+
+  // Resolve the room's display name + icon. rooms.name in the DB stores the
+  // LOCAL room id (e.g. "ro1"/"ne2"), not a human name — mirror getPublishedRooms:
+  // load owner custom rooms from profiles.local_settings.mp_custom_rooms, fall back
+  // to WING_ROOMS defaults, and map by id so the header reads e.g. "Me, Over Time".
+  const { WING_ROOMS } = await import("@/lib/constants/wings");
+  let ownerCustomRooms: Record<string, { id: string; name: string; icon: string }[]> = {};
+  try {
+    const ls = ownerProfileRow.data?.local_settings as Record<string, unknown> | null;
+    if (ls) {
+      const rawRooms = ls.mp_custom_rooms;
+      if (typeof rawRooms === "string") {
+        try { ownerCustomRooms = JSON.parse(rawRooms); } catch { /* ignore */ }
+      } else if (rawRooms && typeof rawRooms === "object") {
+        ownerCustomRooms = rawRooms as typeof ownerCustomRooms;
+      }
+    }
+  } catch { /* ignore */ }
+  const effectiveRooms = ownerCustomRooms[wing.slug] || WING_ROOMS[wing.slug] || [];
+  const roomNameMap = new Map<string, { name: string; icon: string }>();
+  for (const er of effectiveRooms) {
+    roomNameMap.set(er.id, { name: er.name, icon: er.icon });
+  }
+  const resolvedRoom = roomNameMap.get(room.name);
 
   const {
     data: { user: currentUser },
@@ -54,8 +79,8 @@ export default async function RoomVisitPage({ params }: Props) {
       userId={userId}
       room={{
         id: room.id,
-        name: room.name,
-        icon: room.icon,
+        name: resolvedRoom?.name || room.name,
+        icon: resolvedRoom?.icon || room.icon,
         coverHue: room.cover_hue,
       }}
       wing={{

@@ -473,7 +473,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lastConsumedMemId = useRef<string | null>(null);
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
-  const [movingMem, setMovingMem] = useState<Mem | null>(null);
+  const [movingMems, setMovingMems] = useState<Mem[]>([]);
   const [expandedMoveWing, setExpandedMoveWing] = useState<string | null>(null);
   const [movedToast, setMovedToast] = useState(false);
   const [importErrorToast, setImportErrorToast] = useState(false);
@@ -529,6 +529,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const handleImportFiles = useCallback(async (files: QueuedFile[]) => {
     const targetRoom = room?.id;
     if (!targetRoom) return;
+    let anyFailed = false;
     for (const item of files) {
       const isVideo = (item.type || "").startsWith("video/") || /\.(mp4|mov|webm|3gp)$/i.test(item.name);
       const isAudio = (item.type || "").startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(item.name);
@@ -601,6 +602,12 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
       } else if (item.previewUrl) {
         dataUrl = item.previewUrl;
       }
+      // Guard: a file was queued but every upload/read attempt failed — skip
+      // creating a permanent blank card and surface the error instead.
+      if (item.file && !dataUrl && !directFilePath) {
+        anyFailed = true;
+        continue;
+      }
       await addMemory(targetRoom, {
         id: `import-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         title: item.name,
@@ -613,6 +620,10 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
       } as Mem);
     }
     setShowImportHub(false);
+    if (anyFailed) {
+      setImportErrorToast(true);
+      setTimeout(() => setImportErrorToast(false), 3000);
+    }
   }, [room, addMemory, readFileWithTimeout]);
 
   // ─── Derived data ───────────────────────────────────────────────────────────
@@ -729,21 +740,32 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   }, [selectedIds, onDelete, t]);
 
   const handleMoveSelected = useCallback(() => {
-    const firstId = Array.from(selectedIds)[0];
-    const mem = mems.find(m => m.id === firstId);
-    if (mem) setMovingMem(mem);
-    setSelectedIds(new Set());
-    setSelectMode(false);
+    // Carry the FULL selection into the move flow (all selected memories move).
+    const selected = mems.filter(m => selectedIds.has(m.id));
+    if (selected.length > 0) setMovingMems(selected);
+    // Keep selection until the move dialog resolves, so cancelling doesn't discard it.
   }, [selectedIds, mems]);
 
-  const handleMoveToRoom = useCallback((targetRoomId: string) => {
-    if (!movingMem || !room) return;
-    moveMemory(room.id, targetRoomId, movingMem.id);
-    setMovingMem(null);
+  const handleMoveToRoom = useCallback(async (targetRoomId: string) => {
+    if (movingMems.length === 0 || !room) return;
+    const toMove = movingMems;
+    setMovingMems([]);
     setExpandedMoveWing(null);
-    setMovedToast(true);
-    setTimeout(() => setMovedToast(false), 2200);
-  }, [movingMem, room, moveMemory]);
+    const results = await Promise.all(
+      toMove.map(m => moveMemory(room.id, targetRoomId, m.id))
+    );
+    const allOk = results.every(Boolean);
+    // Clear selection + exit select mode only after the move resolves.
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    if (allOk) {
+      setMovedToast(true);
+      setTimeout(() => setMovedToast(false), 2200);
+    } else {
+      setImportErrorToast(true);
+      setTimeout(() => setImportErrorToast(false), 3000);
+    }
+  }, [movingMems, room, moveMemory]);
 
   // ─── Styles ────────────────────────────────────────────────────────────────
   const panelW = isMobile ? "100%" : "min(27.5rem, 92vw)";
@@ -1059,7 +1081,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     accent={accent}
                     onClick={() => selectMode ? toggleSelect(mem.id) : setMediaPlayerMemId(mem.id)}
                     animationIndex={i}
-                    onMove={() => setMovingMem(mem)}
+                    onMove={() => setMovingMems([mem])}
                     searchQuery={searchQuery}
                   />
                   <DisplayedPill
@@ -1515,9 +1537,9 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
       )}
 
       {/* ─── MOVE-TO-ROOM DIALOG ─── */}
-      {movingMem && (
+      {movingMems.length > 0 && (
         <div
-          onClick={() => { setMovingMem(null); setExpandedMoveWing(null); }}
+          onClick={() => { setMovingMems([]); setExpandedMoveWing(null); }}
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
             background: "rgba(64,59,54,.35)",
@@ -1547,7 +1569,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 {t("moveTo")}
               </h3>
               <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
-                <strong>{movingMem.title}</strong>
+                <strong>{movingMems.length === 1 ? movingMems[0].title : t("moveCount", { n: String(movingMems.length) })}</strong>
               </p>
             </div>
             <div style={{ flex: 1, overflow: "auto", padding: "0.75rem 0" }}>

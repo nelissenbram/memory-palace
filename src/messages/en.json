@@ -315,7 +315,8 @@
     "stepOf": "Step {current} of {total}",
     "paywallTerms": "Terms",
     "paywallPrivacy": "Privacy",
-    "paywallAutoRenew": "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings."
+    "paywallAutoRenew": "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings.",
+    "paywallFinishError": "We couldn't finish setting up your palace. Please try again."
   },
   "palace": {
     "uploadMemory": "Upload Memory",
@@ -2390,7 +2391,8 @@
     "status_committed": "Saved",
     "status_error": "Error",
     "readError": "Read error",
-    "dateTaken": "Date taken"
+    "dateTaken": "Date taken",
+    "noRoomAssigned": "No room assigned — pick a wing and room, then try again."
   },
   "memoryDetail": {
     "panelTitle": "Memory details",
@@ -2552,7 +2554,10 @@
     "accessWingsDesc": "Access only to specific wings",
     "cancel": "Cancel",
     "removeConfirmTitle": "Remove this contact?",
-    "removeConfirmBody": "{name} will no longer be able to receive access to your palace. You can add them again at any time."
+    "removeConfirmBody": "{name} will no longer be able to receive access to your palace. You can add them again at any time.",
+    "saveFailed": "Couldn't save this contact. Please try again.",
+    "removeFailed": "Couldn't remove this contact. Please try again.",
+    "accessManagedElsewhere": "This contact's access was set on the Legacy settings page and can't be changed here. You can still update their name and email. To change what they can see, open Settings → Legacy."
   },
   "roomGallery": {
     "gallery": "Gallery",
@@ -3031,7 +3036,8 @@
     "currentRoom": "Current room",
     "memoryMoved": "Memory moved successfully",
     "ariaOpenRoomMedia": "Open room media",
-    "importFailed": "Import failed. Please try again."
+    "importFailed": "Import failed. Please try again.",
+    "moveCount": "{n} memories"
   },
   "memoryMap": {
     "title": "Memory Map",
@@ -3817,7 +3823,8 @@
     "sectionPrivacyData": "Privacy & your data",
     "sectionDangerZone": "Danger zone",
     "passwordResetSocialOnly": "This account signs in with a social provider, so there's no password to reset. Just sign in with that provider next time.",
-    "passwordResetUnavailable": "Password reset isn't available in this environment."
+    "passwordResetUnavailable": "Password reset isn't available in this environment.",
+    "dataDeletion": "Data & Account Deletion"
   },
   "cookieSettings": {
     "pageTitle": "Cookie Preferences",
@@ -3972,7 +3979,8 @@
     "linkSecurity": "Security",
     "linkTerms": "Terms of Service",
     "linkHome": "Back to home",
-    "navBrand": "The Memory Palace"
+    "navBrand": "The Memory Palace",
+    "linkDataDeletion": "Data & Account Deletion"
   },
   "terms": {
     "legal": "Legal",
@@ -5203,7 +5211,8 @@
     "wizardStep3DescRouting": "Let AI file each memory into the right room automatically.",
     "wizardPhotosNotLinkedTitle": "Connect Google Photos first",
     "wizardPhotosNotLinkedDesc": "A photos Kep needs a linked Google Photos account to pull memories from. Connect one, then come back to finish setup.",
-    "wizardPhotosConnectCta": "Connect Google Photos"
+    "wizardPhotosConnectCta": "Connect Google Photos",
+    "wizardPhotosChecking": "Checking your Google Photos connection…"
   },
   "kepLanding": {
     "title": "Meet Kep",
@@ -5532,7 +5541,12 @@
     "totalWingVisits": "Wing Visits",
     "publishNoChanges": "No changes to publish — your selection already matches what's shared.",
     "guestReactPrompt": "Sign in to react",
-    "privateProfile": "Private profile"
+    "privateProfile": "Private profile",
+    "guestCommentPrompt": "Sign in to comment",
+    "passcodeExpired": "This passcode has expired.",
+    "passcodeRequired": "Please enter a passcode.",
+    "passcodeRateLimited": "Too many attempts. Please try again later.",
+    "unblockError": "Couldn't unblock this account. Please try again."
   },
   "help": {
     "title": "Help Center",
