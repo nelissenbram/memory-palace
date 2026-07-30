@@ -3362,7 +3362,9 @@
     "hoursAgo": "{count}h ago",
     "yesterday": "yesterday",
     "daysAgo": "{count}d ago",
-    "wingLabel": "wing"
+    "wingLabel": "wing",
+    "loadError": "Couldn’t load your invitations.",
+    "retry": "Try again"
   },
   "interviewLibrary": {
     "title": "Life Interviews",

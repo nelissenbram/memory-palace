@@ -3362,7 +3362,9 @@
     "hoursAgo": "il y a {count} h",
     "yesterday": "hier",
     "daysAgo": "il y a {count} j",
-    "wingLabel": "aile"
+    "wingLabel": "aile",
+    "loadError": "Impossible de charger vos invitations.",
+    "retry": "Réessayer"
   },
   "interviewLibrary": {
     "title": "Entretiens de vie",

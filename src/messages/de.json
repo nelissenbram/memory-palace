@@ -3362,7 +3362,9 @@
     "hoursAgo": "vor {count} Std.",
     "yesterday": "gestern",
     "daysAgo": "vor {count} Tagen",
-    "wingLabel": "Flügel"
+    "wingLabel": "Flügel",
+    "loadError": "Deine Einladungen konnten nicht geladen werden.",
+    "retry": "Erneut versuchen"
   },
   "interviewLibrary": {
     "title": "Lebens-Interviews",

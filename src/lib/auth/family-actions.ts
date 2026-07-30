@@ -834,6 +834,33 @@ export async function updateRoomPublicVisibility(localRoomId: string, showPublic
   return { success: true };
 }
 
+// Read a room's current privacy state so the sharing UI can SEED its toggles from
+// the server (allow-download + show-in-public-palace) instead of hardcoded defaults,
+// which otherwise mislead the owner and can flip the wrong baseline on toggle.
+export async function fetchRoomPrivacy(localRoomId: string): Promise<{ showPublic: boolean; allowDownload: boolean }> {
+  const fallback = { showPublic: false, allowDownload: true };
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return fallback;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return fallback;
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("id, show_public")
+    .eq("user_id", user.id)
+    .eq("name", localRoomId)
+    .single();
+  if (!room) return fallback;
+  const { data: roomShares } = await supabase
+    .from("room_shares")
+    .select("allow_download")
+    .eq("room_id", room.id)
+    .eq("owner_id", user.id);
+  const shares = roomShares || [];
+  // Download is allowed by default; a share explicitly set to false turns it off.
+  const allowDownload = shares.length === 0 ? true : shares.every((s) => (s as { allow_download?: boolean }).allow_download !== false);
+  return { showPublic: (room as { show_public?: boolean }).show_public === true, allowDownload };
+}
+
 // Privacy control: update a share's permission level
 export async function updateSharePermission(shareId: string, permission: "view" | "contribute" | "admin") {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {

@@ -28,7 +28,7 @@ interface PublicMemory {
 }
 
 interface PublicShareData {
-  room: { name: string; localId: string };
+  room: { name: string; localId: string } | null;
   wing: { slug: string; name: string } | null;
   memories: PublicMemory[];
   owner: { displayName: string };

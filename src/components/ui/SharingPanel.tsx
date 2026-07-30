@@ -8,7 +8,7 @@ import type { SharingInfo } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { fetchRoomShares, shareRoomWithEmail, removeRoomShare, toggleRoomSharing } from "@/lib/auth/sharing-actions";
 import { fetchPublicShare, togglePublicShare } from "@/lib/auth/public-share-actions";
-import { updateShareDownloadPermission, updateRoomPublicVisibility, updateSharePermission } from "@/lib/auth/family-actions";
+import { updateShareDownloadPermission, updateRoomPublicVisibility, updateSharePermission, fetchRoomPrivacy } from "@/lib/auth/family-actions";
 import { generateInviteLink } from "@/lib/sharing/generate-link";
 import { hapticLight } from "@/lib/native/haptics";
 import QRShareModal from "@/components/social/QRShareModal";
@@ -72,6 +72,15 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
     fetchPublicShare(roomId).then(result=>{
       if(result.publicShare) setPublicShare(result.publicShare);
     });
+  },[roomId]);
+
+  // Seed the privacy toggles from the server so they reflect the real saved state
+  // (allow-download + show-in-public) instead of hardcoded defaults.
+  useEffect(()=>{
+    fetchRoomPrivacy(roomId).then(p=>{
+      setAllowDownload(p.allowDownload);
+      setShowPublicPalace(p.showPublic);
+    }).catch(()=>{});
   },[roomId]);
 
   const handleTogglePublicShare=async()=>{

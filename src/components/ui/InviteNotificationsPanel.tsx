@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { getPendingInvites, acceptInvite, acceptWingInvite, declineInvite } from "@/lib/auth/invite-actions";
@@ -38,13 +38,18 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    getPendingInvites().then(result => {
-      setInvites(result.invites || []);
-      setLoading(false);
-    });
+  const loadInvites = useCallback(() => {
+    setLoading(true);
+    setLoadError(false);
+    getPendingInvites()
+      .then(result => setInvites(result.invites || []))
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { loadInvites(); }, [loadInvites]);
 
   const handleAccept = async (inviteId: string) => {
     setProcessingId(inviteId);
@@ -135,6 +140,24 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
         {loading ? (
           <div style={{ textAlign: "center", padding: "2.5rem", color: "#716A5E", fontFamily: T.font.body, fontSize: "0.8125rem" }}>
             {t("loading")}
+          </div>
+        ) : loadError ? (
+          <div style={{ textAlign: "center", padding: "2.5rem" }}>
+            <div style={{ fontSize: "2.25rem", marginBottom: "0.75rem" }}>&#x26A0;&#xFE0F;</div>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", margin: "0 0 1rem", lineHeight: 1.4 }}>
+              {t("loadError")}
+            </p>
+            <button
+              onClick={loadInvites}
+              style={{
+                padding: "0.625rem 1.25rem", borderRadius: "0.75rem", border: "none",
+                background: "#B85C38", color: T.color.white,
+                fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
+                minHeight: "2.75rem",
+              }}
+            >
+              {t("retry")}
+            </button>
           </div>
         ) : invites.length === 0 ? (
           <div style={{ textAlign: "center", padding: "2.5rem" }}>

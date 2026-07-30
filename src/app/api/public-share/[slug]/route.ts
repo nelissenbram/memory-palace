@@ -53,6 +53,50 @@ export async function GET(
     }
   }
 
+  // Wing-level share (no room_id): return every room's memories in the wing as
+  // one flattened gallery under the wing name, so a shared wing link works the
+  // same as a shared room link instead of dead-ending on a null room lookup.
+  if (!share.room_id) {
+    if (!share.wing_id) {
+      return NextResponse.json({ error: "Share not found" }, { status: 404 });
+    }
+    const [wingResult, roomsResult, ownerResult] = await Promise.all([
+      supabase.from("wings").select("id, slug, name").eq("id", share.wing_id).single(),
+      supabase.from("rooms").select("id").eq("wing_id", share.wing_id),
+      supabase.from("public_profiles").select("display_name").eq("id", share.created_by).single(),
+    ]);
+    const wing = wingResult.data;
+    if (!wing) {
+      return NextResponse.json({ error: "Wing not found" }, { status: 404 });
+    }
+    const roomIds = (roomsResult.data || []).map((r) => r.id);
+    const { data: wingMemories } = roomIds.length
+      ? await supabase
+          .from("memories")
+          .select("id, title, description, type, hue, saturation, lightness, file_url, created_at")
+          .in("room_id", roomIds)
+          .order("created_at", { ascending: true })
+      : { data: [] };
+    return NextResponse.json({
+      room: null,
+      wing: { slug: wing.slug, name: wing.name },
+      memories: (wingMemories || []).map((m) => ({
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        type: m.type,
+        hue: m.hue,
+        saturation: m.saturation,
+        lightness: m.lightness,
+        fileUrl: m.file_url,
+        createdAt: m.created_at,
+      })),
+      owner: { displayName: ownerResult.data?.display_name || "Someone" },
+    }, {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    });
+  }
+
   // Fetch room info
   const { data: room } = await supabase
     .from("rooms")

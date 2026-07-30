@@ -3364,7 +3364,9 @@
     "hoursAgo": "{count}u geleden",
     "yesterday": "gisteren",
     "daysAgo": "{count}d geleden",
-    "wingLabel": "vleugel"
+    "wingLabel": "vleugel",
+    "loadError": "Kon je uitnodigingen niet laden.",
+    "retry": "Opnieuw proberen"
   },
   "interviewLibrary": {
     "title": "Levensverhalen",
