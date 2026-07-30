@@ -160,19 +160,16 @@ async function resolveLegacyAccessUuids(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
   wingSlugs?: string[],
-  roomLocalIds?: string[],
+  roomUuids?: string[],
 ): Promise<{ wing_access: string[]; room_access: string[] }> {
+  // accessible_wings holds wing SLUGS -> resolve to wings.id (uuid). accessible_rooms is
+  // already a uuid[] (the panel has no room picker), so pass those straight through.
   let wing_access: string[] = [];
-  let room_access: string[] = [];
   if (wingSlugs && wingSlugs.length > 0) {
     const { data } = await supabase.from("wings").select("id").eq("user_id", userId).in("slug", wingSlugs);
     wing_access = (data || []).map((w: { id: string }) => w.id);
   }
-  if (roomLocalIds && roomLocalIds.length > 0) {
-    const { data } = await supabase.from("rooms").select("id").eq("user_id", userId).in("name", roomLocalIds);
-    room_access = (data || []).map((r: { id: string }) => r.id);
-  }
-  return { wing_access, room_access };
+  return { wing_access, room_access: roomUuids || [] };
 }
 
 export async function addLegacyContact(data: {
