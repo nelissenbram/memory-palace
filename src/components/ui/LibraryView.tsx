@@ -513,6 +513,8 @@ export default function LibraryView() {
   const [roomLoading, setRoomLoading] = useState(false);
   const [spotlightTarget, setSpotlightTarget] = useState<string | null>(null);
   const spotlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // "Pick a photo to restore" hint, shown when the Atrium restore tile navigates here.
+  const [restoreHint, setRestoreHint] = useState(false);
 
   // Deep-link from MemoryMap (or other sources) → navigate to wing/room/memory
   const libraryTarget = usePalaceStore((s) => s.libraryTarget);
@@ -561,7 +563,7 @@ export default function LibraryView() {
       localStorage.removeItem("mp_spotlight_target");
       // Map Atrium spotlight IDs to toolbar button keys
       const spotlightMap: Record<string, string> = {
-        "ai-enhance": "aiLabel",
+        "ai-enhance": "restorePhoto",
         "write-stories": "writeStory",
         "organize": "addLocation",
         "import-upload": "importUpload",
@@ -1143,7 +1145,7 @@ export default function LibraryView() {
   // auto-enter the fullest room so the Atrium CTA lands on a live control.
   useEffect(() => {
     if (!spotlightTarget || selectedRoom) return;
-    if (spotlightTarget === "aiLabel" || spotlightTarget === "writeStory" || spotlightTarget === "addLocation") {
+    if (spotlightTarget === "aiLabel" || spotlightTarget === "writeStory" || spotlightTarget === "addLocation" || spotlightTarget === "restorePhoto") {
       const best = pickFullestRoom();
       if (best) {
         if (roomWingMap[best]) setSelectedWing(roomWingMap[best]);
@@ -1151,6 +1153,14 @@ export default function LibraryView() {
       }
     }
   }, [spotlightTarget, selectedRoom, pickFullestRoom, roomWingMap]);
+
+  // Restore-photo spotlight has no toolbar pill — surface a "pick a photo" hint instead.
+  useEffect(() => {
+    if (spotlightTarget !== "restorePhoto") return;
+    setRestoreHint(true);
+    const timer = setTimeout(() => setRestoreHint(false), 6000);
+    return () => clearTimeout(timer);
+  }, [spotlightTarget]);
 
   const { setShowSharedWithMe } = useUIPanelStore();
   const globalShowImportHub = useUIPanelStore((s) => s.showImportHub);
@@ -2805,6 +2815,33 @@ export default function LibraryView() {
           onUpdate={(memId, updates) => { const rid = memRoomMap.get(memId)?.roomId || selectedRoom; if (rid) updateMemory(rid, memId, updates); }}
           storedIn={storedInOf}
         />
+      )}
+
+      {/* Restore-photo spotlight hint (from Atrium restore tile) */}
+      {restoreHint && !detailMem && (
+        <div
+          role="status"
+          onClick={() => setRestoreHint(false)}
+          style={{
+            position: "fixed", left: "50%", transform: "translateX(-50%)",
+            bottom: `max(1.25rem, ${T.safe.bottom})`, zIndex: 60, cursor: "pointer",
+            maxWidth: "min(28rem, calc(100vw - 2rem))",
+            background: T.color.inkDeep, color: T.color.cream,
+            fontFamily: T.font.body, fontSize: T.fontSize.base, lineHeight: 1.4,
+            padding: "0.75rem 1.125rem", borderRadius: T.radius.pill,
+            boxShadow: T.shadow[2], display: "flex", alignItems: "center", gap: "0.5rem",
+            animation: "libRestoreHintIn 0.28s cubic-bezier(0.22,1,0.36,1)",
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke={T.color.gold} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M3 10a7 7 0 1 1 2 5" /><polyline points="3 11 3 15 7 15" />
+          </svg>
+          <span>{t("restoreHint")}</span>
+          <style>{`
+            @keyframes libRestoreHintIn { from { opacity: 0; transform: translateX(-50%) translateY(0.5rem); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+            @media (prefers-reduced-motion: reduce) { [role="status"] { animation: none !important; } }
+          `}</style>
+        </div>
       )}
 
       {/* Memory detail overlay */}

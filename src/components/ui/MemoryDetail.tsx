@@ -10,6 +10,7 @@ import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 const ImageEditor = lazy(() => import("@/components/ui/ImageEditor"));
+const RestorePhotoModal = lazy(() => import("@/components/ui/RestorePhotoModal"));
 import ShareCard from "@/components/ui/ShareCard";
 import { geocodeLocationName, geocodeAutocomplete } from "@/lib/geocode";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -263,6 +264,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const [editingDesc, setEditingDesc] = useState(false);
   const [openAction, setOpenAction] = useState<string | null>(null);
   const [imageEditing, setImageEditing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   const [savedVisible, setSavedVisible] = useState(false);
@@ -1135,6 +1137,42 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   )}
                 </ActionCard>
 
+                {/* 4b. Restore Photo (photo-only) */}
+                {mem.type === "photo" && mem.dataUrl && (
+                  <ActionCard
+                    id="restore"
+                    icon={
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke={openAction === "restore" ? accent : "#9A4F2A"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M3 10a7 7 0 1 1 2 5" /><polyline points="3 11 3 15 7 15" /><path d="M10 6v4l3 2" />
+                      </svg>
+                    }
+                    title={t("restorePhotoTitle")}
+                    value={t("restorePhotoCta")}
+                    isOpen={openAction === "restore"}
+                    onToggle={() => toggleAction("restore")}
+                    accent={accent}
+                  >
+                    <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", lineHeight: 1.6, margin: "0 0 0.75rem" }}>
+                      {t("restorePhotoDesc")}
+                    </p>
+                    <button
+                      onClick={() => setRestoring(true)}
+                      style={{
+                        width: "100%", minHeight: "2.75rem", padding: "0.5rem 1rem", borderRadius: "0.75rem",
+                        background: `linear-gradient(135deg, ${accent}, ${T.color.walnut})`,
+                        color: "#fff", border: "none",
+                        fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 10a7 7 0 1 1 2 5" /><polyline points="3 11 3 15 7 15" />
+                      </svg>
+                      {t("restorePhotoButton")}
+                    </button>
+                  </ActionCard>
+                )}
+
                 {/* 5. Display Type */}
                 <ActionCard
                   id="displayType"
@@ -1555,6 +1593,17 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
           onSave={handleImageSave}
           onCancel={() => setImageEditing(false)}
         />
+        </Suspense>
+      )}
+
+      {/* ── Restore photo overlay ── */}
+      {restoring && room?.id && (
+        <Suspense fallback={null}>
+          <RestorePhotoModal
+            memory={mem}
+            roomId={room.id}
+            onClose={() => setRestoring(false)}
+          />
         </Suspense>
       )}
 
