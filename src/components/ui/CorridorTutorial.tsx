@@ -119,20 +119,25 @@ export default function CorridorTutorial({ open, onClose }: Props) {
   const vw = typeof window !== "undefined" ? window.innerWidth : 360;
   const vh = typeof window !== "undefined" ? window.innerHeight : 640;
   const tipWidth = remToPx(isMobile ? 16.25 : 17.5);
+  // Card height/margin allowances derived from rem so placement respects text
+  // scaling and short landscape viewports (was hard-coded 80/180/200/16 px).
+  const cardH = remToPx(11.25);       // ~180px at 16px root
+  const edge = remToPx(1);            // viewport edge margin
+  const gap = remToPx(1);
 
-  let tipTop = 80;
-  let tipLeft = 16;
+  let tipTop = remToPx(5);
+  let tipLeft = edge;
   if (!targetBox) {
-    tipTop = vh / 2 - 80;
+    tipTop = vh / 2 - cardH / 2;
     tipLeft = vw / 2 - tipWidth / 2;
   } else {
     const targetCenterY = t_ + h_ / 2;
     if (targetCenterY > vh / 2) {
-      tipTop = Math.max(16, t_ - 180);
+      tipTop = Math.max(edge, t_ - cardH - gap);
     } else {
-      tipTop = Math.min(vh - 200, t_ + h_ + 16);
+      tipTop = Math.min(vh - cardH - edge, t_ + h_ + gap);
     }
-    tipLeft = Math.max(16, Math.min(vw - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2));
+    tipLeft = Math.max(edge, Math.min(vw - tipWidth - edge, l_ + w_ / 2 - tipWidth / 2));
   }
 
   const advance = () => {
@@ -149,6 +154,9 @@ export default function CorridorTutorial({ open, onClose }: Props) {
     >
       <style>{`
         @keyframes mpCtTipIn { from { opacity:0; transform:translateY(0.375rem);} to { opacity:1; transform:translateY(0);} }
+        /* Pulse derives from canon GOLD #D4AF37 = rgba(212,175,55). Inline CSS
+           keyframes cannot reference the JS GOLD const, so the numeric literal
+           is the canonical focus color, not an ad-hoc gold. */
         @keyframes mpCtPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.4);} 50% { box-shadow:0 0 0 0.5rem rgba(212,175,55,0);} }
       `}</style>
 
@@ -164,7 +172,7 @@ export default function CorridorTutorial({ open, onClose }: Props) {
             <rect
               width="100%"
               height="100%"
-              fill="rgba(36,28,21,0.45)"
+              fill="rgba(64,59,54,0.45)"
               mask="url(#mp-corridor-cutout)"
               onClick={onClose}
             />
@@ -201,7 +209,7 @@ export default function CorridorTutorial({ open, onClose }: Props) {
         </>
       ) : (
         <div
-          style={{ position: "absolute", inset: 0, background: "rgba(36,28,21,0.45)", pointerEvents: "auto" }}
+          style={{ position: "absolute", inset: 0, background: "rgba(64,59,54,0.45)", pointerEvents: "auto" }}
           onClick={onClose}
         />
       )}

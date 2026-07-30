@@ -47,6 +47,9 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
   const [creationStep, setCreationStep] = useState("");
   const [doneBustGroup, setDoneBustGroup] = useState<THREE.Group | null>(null);
   const [saveWarning, setSaveWarning] = useState(false);
+  // When face cropping threw entirely, `croppedFace` is null. We must NOT silently
+  // sculpt from the raw, un-cropped photo — require one explicit confirmation first.
+  const [confirmRawPhoto, setConfirmRawPhoto] = useState(false);
   const [bustNameInput, setBustNameInput] = useState(pedestalData?.name || (pedestalIndex === 0 ? userName : "") || "");
   const [bustGender, setBustGender] = useState<BustGender>(
     pedestalData?.gender || "male"
@@ -79,6 +82,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
     setCroppedFace(null);
     setFaceDetected(false);
     setCalibrationMessage(null);
+    setConfirmRawPhoto(false);
     setStage("calibrating");
 
     try {
@@ -116,6 +120,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
   // ── Create bust ──
   const handleCreate = async () => {
     if (!croppedFace && !preview) return;
+    // Guard the silent-fallback path: if face cropping failed there is no
+    // `croppedFace`, so we'd be sculpting from the raw, un-cropped photo.
+    // Require one explicit confirmation before proceeding instead of doing it silently.
+    if (!croppedFace && !confirmRawPhoto) {
+      setConfirmRawPhoto(true);
+      return;
+    }
     setError(null);
     setSaveWarning(false);
     setStage("creating");
@@ -287,7 +298,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               {t("bustDescription", { style: bustStyleLabel, index: String(pedestalIndex + 1) })}
             </p>
             <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center", flexWrap: "wrap" }}>
-              <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); }} style={{
+              <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); setConfirmRawPhoto(false); }} style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                 padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "none",
                 background: T.land.ctaGrad,
@@ -614,9 +625,26 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               </div>
             </div>
 
+            {/* Un-cropped-photo confirmation: cropping failed, so we'd sculpt from
+                the raw photo. Ask for one explicit confirmation before proceeding. */}
+            {!croppedFace && confirmRawPhoto && (
+              <div role="alert" style={{
+                padding: "0.625rem 1rem", borderRadius: "0.625rem", marginBottom: "1rem",
+                background: STATUS_WARNING.bg, border: `1px solid ${STATUS_WARNING.border}`,
+                textAlign: "center",
+              }}>
+                <div style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: STATUS_WARNING.text,
+                  lineHeight: 1.4,
+                }}>
+                  {t("uncroppedWarning")}
+                </div>
+              </div>
+            )}
+
             {/* Action buttons */}
             <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center" }}>
-              <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); }} style={{
+              <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); setConfirmRawPhoto(false); }} style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
                 borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
                 background: "transparent", color: T.color.walnut, cursor: "pointer",
@@ -632,7 +660,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   color: "#FFF", cursor: "pointer",
                 }}
               >
-                {t("createBustBtn")}
+                {!croppedFace && confirmRawPhoto ? t("useAnyway") : t("createBustBtn")}
               </button>
             </div>
           </>
@@ -709,7 +737,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             }}>
               {error || t("tryAgain")}
             </p>
-            <button onClick={() => { setStage("upload"); setError(null); setPreview(null); setCroppedFace(null); }} style={{
+            <button onClick={() => { setStage("upload"); setError(null); setPreview(null); setCroppedFace(null); setConfirmRawPhoto(false); }} style={{
               fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.5rem",
               borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
               background: "transparent", color: T.color.walnut, cursor: "pointer",
@@ -752,6 +780,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 setStage("upload");
                 setPreview(null);
                 setCroppedFace(null);
+                setConfirmRawPhoto(false);
                 setDoneBustGroup(null);
               }} style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",

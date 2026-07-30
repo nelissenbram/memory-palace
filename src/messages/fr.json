@@ -414,7 +414,10 @@
     "ariaAvControls": "Commandes AV",
     "ariaEditCorridorPaintings": "Modifier les peintures du couloir",
     "upgradeNow": "Améliorer",
-    "onboardingFinishError": "Un problème est survenu lors de la finalisation de la configuration — veuillez réessayer."
+    "onboardingFinishError": "Un problème est survenu lors de la finalisation de la configuration — veuillez réessayer.",
+    "storage.usedFraction": "{used} Mo sur {limit} Mo utilisés",
+    "storage.usedFractionUrgent": "Presque plein — {used} Mo sur {limit} Mo utilisés",
+    "storage.usedFractionFull": "Stockage plein — {used} Mo sur {limit} Mo utilisés"
   },
   "settings": {
     "navDescProfile": "Votre nom, photo et page publique",
@@ -1146,7 +1149,9 @@
     "importItemSkipped": "{name} a ete ignore (deja importe).",
     "loadFailed": "Impossible de charger les fichiers. Veuillez reessayer.",
     "retry": "Reessayer",
-    "progress": "Progression"
+    "progress": "Progression",
+    "cancel": "Annuler",
+    "importTimeout": "Délai d’import dépassé. Veuillez réessayer."
   },
   "room": {
     "manageRooms": "Gerer les salles",
@@ -1950,7 +1955,9 @@
     "stepPrevPerson": "Personne précédente",
     "stepNextPerson": "Personne suivante",
     "stepOpenPerson": "Ouvrir",
-    "stepStart": "Parcourir"
+    "stepStart": "Parcourir",
+    "sharedTreeNotFoundTitle": "Arbre généalogique introuvable",
+    "sharedTreeNotFoundDesc": "Ce lien de partage a peut-être expiré ou été désactivé."
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1989,7 +1996,8 @@
     "trustGuarantee": "Forfait gratuit — aucune carte bancaire requise",
     "currency": "Devise",
     "subscriptionActivated": "Abonnement activé !",
-    "billingInterval": "Période de facturation"
+    "billingInterval": "Période de facturation",
+    "approxBilledEur": "Les prix dans cette devise sont approximatifs — vous serez facturé en EUR."
   },
   "cookieConsent": {
     "message": "Nous utilisons des cookies pour vous maintenir connecté(e) et mémoriser vos préférences.",
@@ -2191,7 +2199,8 @@
     "enablePublicLinkFirst": "Activez d'abord le lien public pour partager de cette façon.",
     "noCollaboratorsForDownload": "Invitez d'abord quelqu'un avant de définir les autorisations de téléchargement.",
     "downloadPermissionFailed": "Impossible de mettre à jour le paramètre de téléchargement. Veuillez réessayer.",
-    "shareViaQR": "Partager via un code QR"
+    "shareViaQR": "Partager via un code QR",
+    "qrLabel": "QR"
   },
   "bustBuilder": {
     "failedToProcess": "Échec du traitement de la photo. Veuillez essayer une autre image.",
@@ -2241,7 +2250,9 @@
     "faceDetected": "Visage détecté et calibré !",
     "imageTooSmall": "L'image est trop petite. Veuillez utiliser une photo de plus haute résolution.",
     "noFaceCenterCropped": "Impossible de détecter automatiquement le visage. La photo sera recadrée au centre. Pour de meilleurs résultats, utilisez une photo de portrait nette.",
-    "savedLocallyWillSync": "Enregistré localement — synchronisation dès le retour en ligne."
+    "savedLocallyWillSync": "Enregistré localement — synchronisation dès le retour en ligne.",
+    "uncroppedWarning": "Nous n'avons pas pu isoler de visage sur cette photo ; le buste sera donc sculpté à partir de l'image entière. Pour un meilleur résultat, utilisez un portrait net et de face.",
+    "useAnyway": "Utiliser quand même"
   },
   "uploadPanel": {
     "fileTooLarge": "Le fichier est trop volumineux ({size} Mo). La taille maximale autorisée pour {type} est {max}.",
@@ -3609,7 +3620,8 @@
     "skip": "Passer",
     "next": "Suivant",
     "done": "Compris",
-    "stepXofY": "Étape {current} sur {total}"
+    "stepXofY": "Étape {current} sur {total}",
+    "advanceHint": "Continuer la visite"
   },
   "palaceTour": {
     "step1Title": "Naviguez depuis le haut",
@@ -5475,7 +5487,8 @@
     "commentFailed": "Échec de la publication de votre message.",
     "totalWingVisits": "Visites d'ailes",
     "publishNoChanges": "Aucune modification à publier — votre sélection correspond déjà à ce qui est partagé.",
-    "guestReactPrompt": "Connectez-vous pour réagir"
+    "guestReactPrompt": "Connectez-vous pour réagir",
+    "privateProfile": "Profil privé"
   },
   "help": {
     "title": "Centre d'aide",
@@ -5787,5 +5800,10 @@
     "footerPre": "Consultez notre ",
     "footerPrivacyLink": "Politique de confidentialité",
     "footerPost": " complète pour en savoir plus sur la façon dont nous traitons vos données."
+  },
+  "relay": {
+    "relay.photosCountN": "{count} photos",
+    "relay.storiesCountN": "{count} récits",
+    "relay.embersScrollHint": "Faites défiler sur le côté pour voir plus de proches"
   }
 }

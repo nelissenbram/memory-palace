@@ -19,16 +19,51 @@ import type { Crumb } from "@/lib/hooks/useNavigation";
 import { locales, type Locale } from "@/i18n/config";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { translateWingName, translateRoomName, WINGS } from "@/lib/constants/wings";
+import { WingIcon } from "@/components/ui/WingRoomIcons";
+
+/* ─── Local stroke-SVG glyphs for the mobile menu ───
+ * Matches the crafted 24×24 stroke language of WingRoomIcons / MobileBottomBar
+ * (stroke=currentColor, 1.6 width) so the menu's action buttons stop relying on
+ * platform emoji fonts. Tinted MUTED/accent by the caller via `color`.
+ */
+type TopBarIconName = "directory" | "familyTree" | "settings" | "shared";
+function TopBarIcon({ name, size = 18, color = "currentColor" }: { name: TopBarIconName; size?: number; color?: string }) {
+  const p = {
+    width: size, height: size, viewBox: "0 0 24 24", fill: "none",
+    stroke: color, strokeWidth: 1.6, strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const, "aria-hidden": true,
+    style: { display: "block" } as React.CSSProperties,
+  };
+  switch (name) {
+    case "directory": // open folder
+      return (<svg {...p}><path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h3.6l1.7 2H19a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 19 18H5a1.5 1.5 0 0 1-1.5-1.5z" /></svg>);
+    case "familyTree": // tree of nodes
+      return (<svg {...p}><circle cx="12" cy="5" r="2.2" /><circle cx="6" cy="18.5" r="2.2" /><circle cx="18" cy="18.5" r="2.2" /><path d="M12 7.2v3.3M12 10.5H6v5.8M12 10.5h6v5.8" /></svg>);
+    case "settings": // gear
+      return (<svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19" /></svg>);
+    case "shared": // handshake / two people
+      return (<svg {...p}><circle cx="8" cy="9" r="2.6" /><path d="M3.5 19c0-2.7 2-4.6 4.5-4.6S12.5 16.3 12.5 19" /><circle cx="16.5" cy="7.5" r="2.1" /><path d="M14 13.4c2.3-.7 6 .2 6 4.6" /></svg>);
+    default:
+      return null;
+  }
+}
 
 /**
  * Resolve a shared wing's display name. Shares carry only a wingId slug; when
  * that slug matches a canonical wing (roots / nest / craft / …) we render its
  * localized name via translateWingName so shared wings read the same as your
  * own — never a raw lowercase slug. Custom-named wings (no canonical match)
- * fall back to a title-cased slug until a real name is threaded through the
- * shares fetch layer.
+ * fall back to a title-cased slug only when neither a real custom `name` nor a
+ * canonical match is available. Once the shares fetch layer threads the wing's
+ * real display name into SharedWingItem.name, it is used verbatim.
  */
-function resolveSharedWingName(wingId: string, tWings: (k: string) => string): string {
+function resolveSharedWingName(
+  wingId: string,
+  tWings: (k: string) => string,
+  name?: string,
+): string {
+  // A real, user-custom display name from the share always wins.
+  if (name && name.trim()) return name;
   const canon = WINGS.find((w) => w.id === wingId);
   if (canon) return translateWingName(canon, tWings);
   return wingId.charAt(0).toUpperCase() + wingId.slice(1);
@@ -53,6 +88,9 @@ interface SharedWingItem {
   ownerName: string;
   ownerId: string;
   permission: string;
+  /** Real custom display name of the shared wing, when the fetch layer
+   *  provides it. Falls back to canonical/slug resolution when absent. */
+  name?: string;
 }
 
 interface TopBarProps {
@@ -238,7 +276,9 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                     cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
                     textAlign: "left", minHeight: "2.75rem",
                   }}>
-                    <span style={{ fontSize: "1rem" }}>{w.icon}</span>{translateWingName(w, tWings)}
+                    <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                      <WingIcon wingId={w.id} size={18} color={activeWing === w.id ? w.accent : T.color.muted} />
+                    </span>{translateWingName(w, tWings)}
                   </button>
                 ))}
                 {/* Shared wings in mobile menu */}
@@ -250,7 +290,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                       </span>
                     </div>
                     {sharedWings.map(sw => {
-                      const wingName = resolveSharedWingName(sw.wingId, tWings);
+                      const wingName = resolveSharedWingName(sw.wingId, tWings, sw.name);
                       return (
                         <button key={sw.shareId} onClick={() => { onNavigateSharedWing?.(sw.shareId, sw.wingId); setMenuOpen(false); }} style={{
                           padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
@@ -259,7 +299,9 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                           color: T.color.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
                           textAlign: "left", minHeight: "2.75rem",
                         }}>
-                          <span style={{ fontSize: "1rem" }}>{"\u{1F91D}"}</span>
+                          <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                            <TopBarIcon name="shared" size={18} color={T.color.muted} />
+                          </span>
                           <span style={{ flex: 1 }}>{wingName}</span>
                           <span style={{ fontSize: "0.5625rem", color: T.color.sandstone }}>{sw.ownerName}</span>
                         </button>
@@ -279,7 +321,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                   fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                 }}>
-                  {"\u{1F4C2}"} {t("directory")}
+                  <TopBarIcon name="directory" size={16} color={T.color.walnut} /> {t("directory")}
                 </button>
                 <button onClick={() => { setMenuOpen(false); setShowFamilyTree(true); }} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
@@ -287,7 +329,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                   fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                 }}>
-                  {"\u{1F333}"} {t("familyTree")}
+                  <TopBarIcon name="familyTree" size={16} color={T.color.walnut} /> {t("familyTree")}
                 </button>
                 <a href="/settings" onClick={() => setMenuOpen(false)} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
@@ -296,7 +338,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                   textDecoration: "none",
                 }}>
-                  {"\u2699\uFE0F"} {t("settings")}
+                  <TopBarIcon name="settings" size={16} color={T.color.walnut} /> {t("settings")}
                 </a>
                 <button onClick={() => { handleSignOut(); setMenuOpen(false); }} disabled={signingOut} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
@@ -1078,7 +1120,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                       >
                         <span style={{ fontSize: "0.9375rem" }}>{"\u{1F91D}"}</span>
                         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {resolveSharedWingName(sw.wingId, tWings)}
+                          {resolveSharedWingName(sw.wingId, tWings, sw.name)}
                         </span>
                         <span style={{ fontSize: "0.5625rem", color: T.color.sandstone, fontWeight: 500 }}>
                           {sw.ownerName}

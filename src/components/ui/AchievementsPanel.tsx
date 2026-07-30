@@ -15,6 +15,29 @@ import { useAchievementStore, ACHIEVEMENTS, type Achievement } from "@/lib/store
 import { AchievementIcon } from "./AtriumWidgets";
 import { shareAchievement } from "@/lib/native/share";
 
+/**
+ * Discriminated share result. shareAchievement() only returns a boolean, so we
+ * derive which path it took here — in ONE place — instead of re-deriving the
+ * branch inline at every call site. `method` distinguishes a system share sheet
+ * (native Capacitor / Web Share) from the clipboard fallback, which is the only
+ * path that owes the user a "copied" toast (a shown-then-cancelled sheet must
+ * NOT claim "copied").
+ */
+type ShareResult =
+  | { ok: true; method: "sheet" | "clipboard" }
+  | { ok: false; method: null };
+
+async function shareAchievementWithMethod(name: string, text: string): Promise<ShareResult> {
+  const hasNativeShare = (await import("@capacitor/core")).Capacitor.isNativePlatform();
+  const hasWebShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  // Clipboard is the *only* path when no system sheet exists; otherwise the sheet
+  // is attempted first and clipboard is unreachable unless the sheet throws.
+  const clipboardIsOnlyPath = !hasNativeShare && !hasWebShare;
+  const ok = await shareAchievement(name, text);
+  if (!ok) return { ok: false, method: null };
+  return { ok: true, method: clipboardIsOnlyPath ? "clipboard" : "sheet" };
+}
+
 /** Roman laurel wreath trophy icon for the panel header */
 function TrophyIcon({ size = 28 }: { size?: number }) {
   const gold = "#8A6410"; // Atrium token: browned gold-lane glyph (true gilt reserved for the palace itself)
@@ -257,19 +280,13 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
   const handleShare = useCallback(async () => {
     const name = t(achievement.titleKey);
     const text = t("shareText", { name });
-    // Detect whether a system share sheet (native Capacitor or Web Share) is
-    // available. When it is, shareAchievement() presents the sheet and the
-    // clipboard path is only reached if the sheet itself fails — so we never
-    // claim "copied" while a sheet was shown (avoids the user-cancel misfire).
-    // When no sheet exists, clipboard is the guaranteed path and its toast is
-    // the only feedback the user gets.
-    const hasNativeShare = (await import("@capacitor/core")).Capacitor.isNativePlatform();
-    const hasWebShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
-    const clipboardIsOnlyPath = !hasNativeShare && !hasWebShare;
-    const ok = await shareAchievement(name, text);
-    if (!ok) {
+    // Branch decision lives in shareAchievementWithMethod(); the caller just
+    // reads the discriminated result. Only the clipboard path (no system sheet)
+    // owes a "copied" toast — a shown-then-cancelled sheet must stay silent.
+    const result = await shareAchievementWithMethod(name, text);
+    if (!result.ok) {
       onShareToast(t("shareFailed"));
-    } else if (clipboardIsOnlyPath) {
+    } else if (result.method === "clipboard") {
       onShareToast(t("copiedToClipboard"));
     }
   }, [achievement.titleKey, onShareToast, t]);

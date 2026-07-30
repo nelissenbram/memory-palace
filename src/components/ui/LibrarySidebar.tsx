@@ -116,6 +116,26 @@ export default function LibrarySidebar({
     onSelectWing(wingId);
   };
 
+  // Click-away: tapping/clicking anywhere that is NOT the colour picker (dot +
+  // swatch row) or the tooltip (glyph + panel) closes those transient overlays.
+  // Without this the picker/tooltip would linger open after a stray tap that
+  // doesn't switch wings. Elements that must stay open carry data-lsb-popover;
+  // any pointerdown outside them dismisses the open state. (Touch dismisses the
+  // tooltip too; on desktop the tooltip is hover-driven and already self-closes,
+  // so leaving it in the close set is harmless.)
+  const anyOverlayOpen = colorPickerWing !== null || tooltipOpen;
+  useEffect(() => {
+    if (!anyOverlayOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (target && target.closest("[data-lsb-popover]")) return;
+      setColorPickerWing(null);
+      setTooltipOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [anyOverlayOpen]);
+
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(raf);
@@ -429,7 +449,7 @@ export default function LibrarySidebar({
           {t("wingsLabel")}
         </span>
         {/* Info tooltip (?) */}
-        <div style={{ position: "relative", display: "inline-flex" }}>
+        <div data-lsb-popover style={{ position: "relative", display: "inline-flex" }}>
           <button
             onClick={isTouch ? () => setTooltipOpen(o => !o) : undefined}
             onMouseEnter={isTouch ? undefined : () => setTooltipOpen(true)}
@@ -690,6 +710,7 @@ export default function LibrarySidebar({
             {/* P2 #4: Wing color dot \u2014 absolutely positioned SIBLING of the row
                 button (visual dot 0.75rem inside a 1.5rem transparent hit box). */}
             <button
+              data-lsb-popover
               onClick={e => { e.stopPropagation(); setColorPickerWing(colorPickerWing === w.id ? null : w.id); }}
               onMouseEnter={() => setHoveredWing(w.id)}
               onMouseLeave={() => setHoveredWing(null)}
@@ -726,7 +747,7 @@ export default function LibrarySidebar({
             </div>
             {/* P2 #4: Color swatches row */}
             {colorPickerWing === w.id && (
-              <div style={{
+              <div data-lsb-popover style={{
                 display: "flex", gap: "0.25rem", padding: "0.25rem 1rem 0.375rem 3.5rem",
                 animation: mounted ? `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both` : "none",
               }}>

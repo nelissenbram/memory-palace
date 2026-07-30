@@ -153,7 +153,12 @@ export default function ProfilePageClient({
             animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.07s both`),
           }}>
             <button
-              onClick={() => router.push(`/visit/${profile.id}/${publishedWings[0].slug}`)}
+              onClick={() =>
+                // Route to the palace-level entry (an overview across ALL published
+                // wings) rather than assuming publishedWings[0] — which is merely the
+                // most-recently-published wing, not a curated/owner-chosen landing.
+                router.push(`/visit/${profile.id}`)
+              }
               style={{
                 display: "inline-flex", alignItems: "center", gap: "0.625rem",
                 fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,

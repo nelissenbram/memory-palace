@@ -134,19 +134,7 @@ export default function ForgotPasswordPage() {
       </div>
 
       {error && (
-        <div
-          id="forgot-password-error"
-          role="alert"
-          style={{
-            padding: "0.625rem 0.875rem",
-            borderRadius: "0.625rem",
-            background: "#FDF2F2",
-            border: "1px solid #FECACA",
-            color: T.color.error,
-            fontSize: "0.8125rem",
-            marginBottom: "1rem",
-          }}
-        >
+        <div id="forgot-password-error" role="alert" style={errorBannerStyle}>
           {error}
         </div>
       )}
@@ -238,3 +226,17 @@ export default function ForgotPasswordPage() {
     </form>
   );
 }
+
+// Shared warm-red-on-cream error banner — identical palette to the sibling
+// reset-password surface so both auth forms read as one product. (Kept as a
+// well-named local const per this pass's no-shared-token-file rule; the two
+// definitions are byte-identical.)
+const errorBannerStyle: React.CSSProperties = {
+  padding: "0.625rem 0.875rem",
+  borderRadius: "0.625rem",
+  background: "#FDF2F2",
+  border: "1px solid #FECACA",
+  color: T.color.error,
+  fontSize: "0.8125rem",
+  marginBottom: "1rem",
+};

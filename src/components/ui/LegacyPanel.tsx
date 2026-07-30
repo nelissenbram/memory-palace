@@ -28,11 +28,25 @@ interface LegacyContact {
   room_access?: string[];
 }
 
-// Wings for a contact, tolerant of both column vocabularies.
-const contactWings = (c: LegacyContact): string[] =>
-  (c.accessible_wings && c.accessible_wings.length > 0
+// The two surfaces store wings in incompatible ID spaces:
+//   • track-actions (this panel): `accessible_wings` holds WINGS slug IDs
+//     (roots/nest/craft…) — the vocabulary this panel's picker speaks.
+//   • settings/legacy page: `wing_access` holds `wings`-table row UUIDs.
+// For the DISPLAY count badge we tolerate both column vocabularies so a
+// contact created in either surface shows a truthful "N wings" label.
+const contactWingsCount = (c: LegacyContact): number =>
+  ((c.accessible_wings && c.accessible_wings.length > 0
     ? c.accessible_wings
-    : c.wing_access) || [];
+    : c.wing_access) || []).length;
+
+// For the wing PICKER we only accept this panel's native slug vocabulary
+// (`accessible_wings`). Feeding `wing_access` UUIDs into the slug-keyed picker
+// would (a) fail to pre-select anything and (b) on save write UUIDs back into
+// `accessible_wings`, corrupting the panel's own slug space. So on edit we
+// only pre-select slugs the panel understands; the page's UUID-scoped rooms
+// remain owned by the page until the two action modules are consolidated.
+const contactPickerWings = (c: LegacyContact): string[] =>
+  (c.accessible_wings || []).filter((w) => WINGS.some((wing) => wing.id === w));
 
 interface LegacyPanelProps {
   onClose: () => void;
@@ -147,7 +161,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
     setFormEmail(contact.contact_email);
     setFormRelationship(contact.relationship || "spouse");
     setFormAccessLevel(normalizeAccessLevel(contact.access_level));
-    setFormWings(contactWings(contact));
+    setFormWings(contactPickerWings(contact));
     setEditingId(contact.id);
     setShowAddForm(true);
   };
@@ -281,7 +295,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                       color: "#56683C", // Atrium sage
                     }}>
                       {normalizeAccessLevel(contact.access_level) === "full" ? t("fullAccess") :
-                       t("wingsAccess", { count: String(contactWings(contact).length) })}
+                       t("wingsAccess", { count: String(contactWingsCount(contact)) })}
                     </span>
                   </div>
                 </div>

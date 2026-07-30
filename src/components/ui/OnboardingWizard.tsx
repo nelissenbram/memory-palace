@@ -931,15 +931,71 @@ ${KEYFRAMES}
         <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} memories={uploadedMemory ? [uploadedMemory] : []} initialCameraZ={0} />
         </Suspense>
-        <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingCelebration
-            title={celebTitle}
-            subtitle={celebSubtitle}
-            buttonLabel={(isIOS() && !IAP_ENABLED) ? t("celebrationContinue") : t("celebrationAtrium")}
-            onContinue={() => setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall")}
-            transparent
-          />
-        </Suspense>
+        {/* Ceremonial threshold. On short landscape phones the bottom-anchored
+            fixed overlay inside OnboardingCelebration can push the CTA past the
+            viewport, so this file renders a top-aligned, scrollable in-place
+            threshold instead (mirroring the setup-card + paywall landscape
+            treatment) keeping the CTA reachable without touching the shared
+            celebration component. */}
+        {isLandscapePhone ? (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 10000,
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "flex-start",
+            overflowY: "auto", padding: "1.5rem 0",
+          }}>
+            <div style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              textAlign: "center", gap: "1.25rem",
+              padding: "2rem 1.5rem", maxWidth: "30rem", width: "92%",
+              background: "#FFFFFF",
+              border: `0.0625rem solid ${HAIRLINE}`,
+              borderRadius: "1.25rem",
+              boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
+              animation: "onb-fadeUp .6s ease",
+            }}>
+              <span aria-hidden style={{
+                display: "block", width: "3rem", height: "0.125rem",
+                background: GOLD, borderRadius: "0.0625rem", opacity: 0.7,
+              }} />
+              <h2 style={{
+                fontFamily: T.font.display, fontSize: "1.875rem", fontWeight: 600,
+                color: INK, lineHeight: 1.15, margin: 0, fontStyle: "italic",
+              }}>
+                {celebTitle}
+              </h2>
+              <p style={{
+                fontFamily: T.font.body, fontSize: "1.0625rem", fontWeight: 400,
+                color: MUTED, lineHeight: 1.55, margin: 0, maxWidth: "24rem",
+              }}>
+                {celebSubtitle}
+              </p>
+              <button
+                onClick={() => setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall")}
+                style={{
+                  fontFamily: T.font.body, fontSize: "1.0625rem", fontWeight: 600,
+                  padding: "0 2.75rem", minHeight: "3.25rem", borderRadius: "0.75rem",
+                  border: "none",
+                  background: "linear-gradient(135deg, #9A4F2A, #6B3318)",
+                  color: "#FFFFFF", cursor: "pointer",
+                  boxShadow: SHADOW[1], marginTop: "0.5rem",
+                }}
+              >
+                {(isIOS() && !IAP_ENABLED) ? t("celebrationContinue") : t("celebrationAtrium")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <Suspense fallback={sceneLoadingFallback}>
+            <OnboardingCelebration
+              title={celebTitle}
+              subtitle={celebSubtitle}
+              buttonLabel={(isIOS() && !IAP_ENABLED) ? t("celebrationContinue") : t("celebrationAtrium")}
+              onContinue={() => setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall")}
+              transparent
+            />
+          </Suspense>
+        )}
       </div>
     );
   }

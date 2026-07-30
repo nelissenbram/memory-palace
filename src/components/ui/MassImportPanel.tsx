@@ -23,14 +23,16 @@ interface Props {
 }
 
 // ═══ Display type options ═══
-const DISPLAY_TYPES: [string, string, string][] = [
-  ["photo", "\u{1F5BC}\uFE0F", "typeFrame"], ["painting", "\u{1F3A8}", "typePainting"],
-  ["video", "\u{1F3AC}", "typeScreen"], ["album", "\u{1F4D6}", "typeAlbum"],
-  ["orb", "\u{1F52E}", "typeOrb"], ["case", "\u{1F3FA}", "typeVitrine"],
-  ["audio", "\u{1F3B5}", "typeAudio"], ["document", "\u{1F4DC}", "typeDocument"],
+// [value, labelKey] — the glyph column was dropped: native <option> elements
+// cannot render SVG line-art, and OS color emoji broke the Tuscan glyph
+// language, so the type select reads as plain text. The type’s Tuscan
+// line-art icon is shown alongside via <TypeIcon> in the card row + thumbnail.
+const DISPLAY_TYPES: [string, string][] = [
+  ["photo", "typeFrame"], ["painting", "typePainting"],
+  ["video", "typeScreen"], ["album", "typeAlbum"],
+  ["orb", "typeOrb"], ["case", "typeVitrine"],
+  ["audio", "typeAudio"], ["document", "typeDocument"],
 ];
-
-const TYPE_ICONS: Record<string, string> = Object.fromEntries(DISPLAY_TYPES.map(([k, v]) => [k, v]));
 
 /* ═══ Tuscan line-art icons (terracotta glyph #9A4F2A) — matches ImportHub ═══ */
 // Atrium accent split: EMBER #B85C38 = interactive (buttons/active borders/CTAs),
@@ -100,6 +102,31 @@ const CloudGlyph = ({ size = 16, color = MI_GLYPH }: { size?: number; color?: st
 const CloseGlyph = ({ size = 18, color = "currentColor" }: { size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
     <path d="M5 5l10 10M15 5L5 15" />
+  </svg>
+);
+
+const EditGlyph = ({ size = 16, color = "currentColor" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
+  </svg>
+);
+const CalendarGlyph = ({ size = 13, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 9h18M8 3v4M16 3v4" />
+  </svg>
+);
+const PinGlyph = ({ size = 13, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 22s7-6.2 7-12a7 7 0 10-14 0c0 5.8 7 12 7 12z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </svg>
+);
+const CameraGlyph = ({ size = 13, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" />
+    <circle cx="12" cy="13" r="3.5" />
   </svg>
 );
 
@@ -402,21 +429,23 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
           {/* Source toggle: Local / Cloud */}
           {step === "drop" && (
-            <div role="tablist" style={{ display: "flex", gap: "0.25rem", marginBottom: "0.75rem", background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem" }}>
+            <div role="tablist" style={{ display: "flex", gap: "0.25rem", marginBottom: "0.75rem", background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
               <button role="tab" aria-selected={!showCloud} onClick={() => setShowCloud(false)} style={{
-                flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
+                flex: "1 0 auto", padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
                 background: !showCloud ? T.color.white : "transparent",
                 color: !showCloud ? "#403B36" : "#716A5E",
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: !showCloud ? 600 : 500, cursor: "pointer",
+                whiteSpace: "nowrap",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem",
               }}>
                 <FolderGlyph size={16} color={!showCloud ? "#403B36" : "#716A5E"} /> {t("localFiles")}
               </button>
               <button role="tab" aria-selected={showCloud} onClick={() => setShowCloud(true)} style={{
-                flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
+                flex: "1 0 auto", padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
                 background: showCloud ? T.color.white : "transparent",
                 color: showCloud ? "#403B36" : "#716A5E",
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: showCloud ? 600 : 500, cursor: "pointer",
+                whiteSpace: "nowrap",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem",
               }}>
                 <CloudGlyph size={16} color={showCloud ? "#403B36" : "#716A5E"} /> {t("importFromCloud")}
@@ -813,7 +842,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
           <button onClick={() => setExpanded(!expanded)} aria-label={t("editItem")} style={{
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", border: "0.0625rem solid #E3D6BC",
             background: T.color.warmStone, fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#716A5E",
-          }}>{"\u270F\uFE0F"}</button>
+          }}><EditGlyph size={16} color="#716A5E" /></button>
           {item.status !== "accepted" && <button onClick={() => store.acceptItem(item.localId)} aria-label={t("acceptItem")} style={{
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", border: "0.0625rem solid #DBDDD0", // Atrium: pre-mixed sage tint
             background: "#F2F1E9", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#56683C",
@@ -868,7 +897,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
               <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", color: "#716A5E", textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("type")}</label>
               <select value={item.confirmed.type} onChange={(e) => store.updateConfirmed(item.localId, { type: e.target.value })}
                 style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
-                {DISPLAY_TYPES.map(([v, icon, labelKey]) => <option key={v} value={v}>{icon} {t(labelKey)}</option>)}
+                {DISPLAY_TYPES.map(([v, labelKey]) => <option key={v} value={v}>{t(labelKey)}</option>)}
               </select>
             </div>
             <div>
@@ -894,9 +923,9 @@ function ReviewCard({ item, wings, getWingRooms }: {
           </div>
           {item.exif && (item.exif.dateTaken || item.exif.lat) && (
             <div style={{ marginTop: "0.5rem", fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", display: "flex", gap: "0.75rem" }}>
-              {item.exif.dateTaken && <span>{"\u{1F4C5}"} {new Date(item.exif.dateTaken).toLocaleDateString()}</span>}
-              {item.exif.lat && item.exif.lng && <span>{"\u{1F4CD}"} {item.exif.lat.toFixed(4)}, {item.exif.lng.toFixed(4)}</span>}
-              {item.exif.cameraMake && <span>{"\u{1F4F7}"} {item.exif.cameraMake} {item.exif.cameraModel || ""}</span>}
+              {item.exif.dateTaken && <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}><CalendarGlyph size={13} /> {new Date(item.exif.dateTaken).toLocaleDateString()}</span>}
+              {item.exif.lat && item.exif.lng && <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}><PinGlyph size={13} /> {item.exif.lat.toFixed(4)}, {item.exif.lng.toFixed(4)}</span>}
+              {item.exif.cameraMake && <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem" }}><CameraGlyph size={13} /> {item.exif.cameraMake} {item.exif.cameraModel || ""}</span>}
             </div>
           )}
         </div>

@@ -9,10 +9,48 @@ import { createClient } from "@/lib/supabase/client";
 import { useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 
+/**
+ * Decode the `amr` (authentication methods reference) claim from a Supabase
+ * access token WITHOUT any JWT library — we only read a public claim, we do NOT
+ * trust it for authorization (the server enforces that). A password-recovery
+ * session records a `recovery` method in `amr`; a normal email/OAuth login does
+ * not. This lets us tell "user followed a reset link" apart from "user is simply
+ * logged in and wandered onto /reset-password".
+ */
+function tokenHasRecoveryAmr(accessToken: string | undefined): boolean {
+  if (!accessToken) return false;
+  try {
+    const payload = accessToken.split(".")[1];
+    if (!payload) return false;
+    // base64url → base64
+    const b64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = JSON.parse(
+      decodeURIComponent(
+        atob(b64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      )
+    );
+    const amr = json?.amr;
+    if (!Array.isArray(amr)) return false;
+    return amr.some(
+      (entry: unknown) =>
+        (typeof entry === "string" && entry === "recovery") ||
+        (typeof entry === "object" &&
+          entry !== null &&
+          (entry as { method?: string }).method === "recovery")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export default function ResetPasswordPage() {
   const { t } = useTranslation("resetPassword");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Tri-state: null = still checking, false = not a recovery context, true = ok.
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const isCompact = useIsCompact();
   const isPortrait = useIsPortrait();
@@ -30,9 +68,49 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setHasSession(!!user);
+
+    // A normally-authenticated user must NOT be handed the password-reset form
+    // just because they have a session. Only a genuine recovery context counts:
+    //   1. the session's `amr` claim records a `recovery` method (set when the
+    //      reset link is exchanged), or
+    //   2. an explicit ?type=recovery flag is present on the URL (belt-and-braces
+    //      for callbacks that forward it), or
+    //   3. Supabase's own PASSWORD_RECOVERY auth event fires on this client.
+    let settled = false;
+    const settle = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      setHasSession(ok);
+    };
+
+    const urlIsRecovery =
+      typeof window !== "undefined" &&
+      (new URLSearchParams(window.location.search).get("type") === "recovery" ||
+        new URLSearchParams(
+          window.location.hash.replace(/^#/, "")
+        ).get("type") === "recovery");
+
+    // Supabase emits PASSWORD_RECOVERY when it establishes a recovery session
+    // client-side (e.g. from URL hash tokens).
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") settle(true);
     });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        settle(false);
+        return;
+      }
+      if (urlIsRecovery || tokenHasRecoveryAmr(session.access_token)) {
+        settle(true);
+      } else {
+        settle(false);
+      }
+    });
+
+    return () => {
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -65,6 +143,7 @@ export default function ResetPasswordPage() {
   if (hasSession === null) {
     return (
       <div className="mp-scroll" style={wrapperStyle}>
+        <AuthBlobs />
         <main style={cardStyleResponsive}>
           <div role="status" aria-live="polite" style={{ textAlign: "center", padding: "2rem 0" }}>
             <div style={spinnerStyle} aria-hidden="true" />
@@ -89,10 +168,11 @@ export default function ResetPasswordPage() {
     );
   }
 
-  // No session — link expired or invalid
+  // No recovery context — link expired, invalid, or a normal logged-in user.
   if (!hasSession) {
     return (
       <div className="mp-scroll" style={wrapperStyle}>
+        <AuthBlobs />
         <main style={cardStyleResponsive}>
           <div style={{ textAlign: "center" }}>
             <div style={iconContainerStyle}>
@@ -117,6 +197,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="mp-scroll" style={wrapperStyle}>
+      <AuthBlobs />
       <main style={cardStyleResponsive}>
         <form onSubmit={handleSubmit}>
           <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
@@ -134,18 +215,7 @@ export default function ResetPasswordPage() {
           </div>
 
           {error && (
-            <div
-              role="alert"
-              style={{
-                padding: "0.625rem 0.875rem",
-                borderRadius: "0.625rem",
-                background: "#FDF2F2",
-                border: "1px solid #FECACA",
-                color: T.color.error,
-                fontSize: "0.8125rem",
-                marginBottom: "1rem",
-              }}
-            >
+            <div role="alert" style={errorBannerStyle}>
               {error}
             </div>
           )}
@@ -201,12 +271,57 @@ export default function ResetPasswordPage() {
   );
 }
 
+/**
+ * Decorative background blobs — identical to the shared (auth) layout so
+ * /reset-password reads as a pixel-sibling of /login and /forgot-password even
+ * though it lives outside the (auth) route group. (Full extraction of one shared
+ * AuthShell is tracked separately; it needs the (auth)/layout + a new shared
+ * component, both outside this pass's editable-file allowlist.)
+ */
+function AuthBlobs() {
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          width: 400,
+          height: 400,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(198,107,61,0.08) 0%, transparent 70%)",
+          top: -100,
+          right: -100,
+          pointerEvents: "none",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          width: 300,
+          height: 300,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(74,103,65,0.06) 0%, transparent 70%)",
+          bottom: -80,
+          left: -80,
+          pointerEvents: "none",
+        }}
+      />
+    </>
+  );
+}
+
+// Chrome mirrors src/app/(auth)/layout.tsx exactly (canon CREAM→warmStone
+// gradient, HAIRLINE border, warm-ink shadow, rem sizing) so the two surfaces
+// stay pixel-identical.
 const wrapperStyle: React.CSSProperties = {
   minHeight: "100dvh",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
+  background: "linear-gradient(165deg, #FCFAF5 0%, #F2EDE4 50%, #E5DDD0 100%)",
   fontFamily: T.font.body,
   position: "relative",
   overflowX: "hidden",
@@ -217,16 +332,16 @@ const wrapperStyle: React.CSSProperties = {
 
 const cardStyle: React.CSSProperties = {
   width: "100%",
-  maxWidth: 440,
-  padding: "40px 36px",
-  background: "rgba(250,250,247,0.85)",
+  maxWidth: "27.5rem",
+  padding: "2.5rem 2.25rem",
+  background: "rgba(252,250,245,0.85)",
   backdropFilter: "blur(20px)",
-  borderRadius: 20,
-  border: "1px solid #EEEAE3",
-  boxShadow: "0 8px 32px rgba(44,44,42,0.12)",
+  borderRadius: "1.25rem",
+  border: `1px solid ${T.color.hairline}`,
+  boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
   position: "relative",
   zIndex: 1,
-  margin: "20px",
+  margin: "1.25rem",
 };
 
 const iconContainerStyle: React.CSSProperties = {
@@ -271,6 +386,17 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
   boxSizing: "border-box",
   transition: "border-color 0.2s",
+};
+
+// Shared warm-red-on-cream error banner — same palette on every auth surface.
+const errorBannerStyle: React.CSSProperties = {
+  padding: "0.625rem 0.875rem",
+  borderRadius: "0.625rem",
+  background: "#FDF2F2",
+  border: "1px solid #FECACA",
+  color: T.color.error,
+  fontSize: "0.8125rem",
+  marginBottom: "1rem",
 };
 
 const buttonStyle = (disabled: boolean): React.CSSProperties => ({

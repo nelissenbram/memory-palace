@@ -8,6 +8,7 @@ import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { T } from "@/lib/theme";
 import { EMBER, HAIRLINE, MUTED, INK, GOLD } from "@/lib/libraryTokens";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -33,6 +34,11 @@ function RegisterContent() {
   const { t } = useTranslation("register");
   const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
+  const isPortrait = useIsPortrait();
+  // A short/landscape phone (mobile but not portrait) has little vertical room;
+  // tighten the header + divider rhythm so the create-account CTA stays reachable
+  // without scrolling.
+  const isShort = isMobile && !isPortrait;
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -269,8 +275,8 @@ function RegisterContent() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ textAlign: "center", marginBottom: isMobile ? "1.25rem" : "1.75rem" }}>
-        <div style={{ marginBottom: "0.5rem" }}><PalaceLogo variant="mark" color="dark" size={isMobile ? "md" : "lg"} /></div>
+      <div style={{ textAlign: "center", marginBottom: isShort ? "0.75rem" : isMobile ? "1.25rem" : "1.75rem" }}>
+        <div style={{ marginBottom: isShort ? "0.25rem" : "0.5rem" }}><PalaceLogo variant="mark" color="dark" size={isMobile ? "md" : "lg"} /></div>
         <h1
           style={{
             fontFamily: T.font.display,
@@ -388,7 +394,7 @@ function RegisterContent() {
         {loading ? t("creating") : t("createAccount")}
       </button>
 
-      <div style={{ ...dividerStyle, margin: isMobile ? "1.25rem 0 1rem" : "1.5rem 0 1.25rem" }}>
+      <div style={{ ...dividerStyle, margin: isShort ? "0.875rem 0 0.75rem" : isMobile ? "1.25rem 0 1rem" : "1.5rem 0 1.25rem" }}>
         <span style={dividerLineStyle} />
         <span style={dividerTextStyle}>{t("orSignUpWith")}</span>
         <span style={dividerLineStyle} />
@@ -480,11 +486,11 @@ function RegisterContent() {
         }}
       >
         {t("agreeTerms")}{" "}
-        <Link href="/terms" style={{ color: EMBER, textDecoration: "none" }}>
+        <Link href="/terms" style={legalLinkStyle}>
           {tc("termsOfService")}
         </Link>{" "}
         {t("and")}{" "}
-        <Link href="/privacy" style={{ color: EMBER, textDecoration: "none" }}>
+        <Link href="/privacy" style={legalLinkStyle}>
           {tc("privacyPolicy")}
         </Link>
         .
@@ -492,6 +498,17 @@ function RegisterContent() {
     </form>
   );
 }
+
+// Terms/Privacy links live inline in a small centered paragraph. inline-block +
+// vertical padding grows the tap area toward the 2.75rem guideline without
+// breaking the sentence flow; negative vertical margin keeps line spacing tight.
+const legalLinkStyle: React.CSSProperties = {
+  color: EMBER,
+  textDecoration: "none",
+  display: "inline-block",
+  padding: "0.5rem 0.25rem",
+  margin: "-0.5rem 0",
+};
 
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,

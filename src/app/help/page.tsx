@@ -26,6 +26,12 @@ const C = {
   sage: "#56683C",      // success hue → canon SAGE
 };
 
+// Two canonical hairline steps so every border on /help reads uniformly with
+// its sibling settings pages: full HAIRLINE for active/emphasised edges, one
+// softened step for the resting state (replaces the old ad-hoc 40/60/80 alphas).
+const HAIRLINE = C.sandstone;              // active / emphasised (full #E3D6BC)
+const HAIRLINE_SOFT = `${C.sandstone}66`;  // resting borders (single soft step)
+
 export default function HelpPage() {
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("help");
@@ -98,13 +104,13 @@ export default function HelpPage() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 clamp(1.25rem, 5vw, 3.75rem)", height: "4rem",
         background: "rgba(250,250,247,0.92)", backdropFilter: "blur(0.75rem)",
-        borderBottom: `1px solid ${C.sandstone}40`,
+        borderBottom: `1px solid ${HAIRLINE_SOFT}`,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <button onClick={() => router.back()} aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "2rem", height: "2rem", borderRadius: "0.5rem",
-            border: `1px solid ${C.sandstone}60`, background: "none",
+            border: `1px solid ${HAIRLINE_SOFT}`, background: "none",
             color: C.walnut, cursor: "pointer",
           }}>
             <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -121,7 +127,7 @@ export default function HelpPage() {
           </Link>
         </div>
         <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
-          background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
+          background: "none", border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.375rem",
           padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
           fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
           textTransform: "uppercase", appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
@@ -152,7 +158,7 @@ export default function HelpPage() {
           <h2 style={{
             fontFamily: F.display, fontSize: "1.375rem", fontWeight: 500,
             color: C.charcoal, marginBottom: "1.25rem",
-            paddingBottom: "0.5rem", borderBottom: `1px solid ${C.sandstone}40`,
+            paddingBottom: "0.5rem", borderBottom: `1px solid ${HAIRLINE_SOFT}`,
           }}>
             {t("faqTitle")}
           </h2>
@@ -160,7 +166,7 @@ export default function HelpPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {faqs.map((faq, i) => (
               <div key={i} style={{
-                border: `1px solid ${openFaq === i ? C.sandstone : `${C.sandstone}40`}`,
+                border: `1px solid ${openFaq === i ? HAIRLINE : HAIRLINE_SOFT}`,
                 borderRadius: "0.75rem",
                 overflow: "hidden",
                 transition: "border-color 0.2s",
@@ -212,7 +218,7 @@ export default function HelpPage() {
           <h2 style={{
             fontFamily: F.display, fontSize: "1.375rem", fontWeight: 500,
             color: C.charcoal, marginBottom: "0.5rem",
-            paddingBottom: "0.5rem", borderBottom: `1px solid ${C.sandstone}40`,
+            paddingBottom: "0.5rem", borderBottom: `1px solid ${HAIRLINE_SOFT}`,
           }}>
             {t("contactTitle")}
           </h2>
@@ -263,7 +269,7 @@ export default function HelpPage() {
                   onChange={(e) => setCategory(e.target.value)}
                   style={{
                     width: "100%", padding: "0.625rem 0.875rem",
-                    border: `1px solid ${C.sandstone}60`, borderRadius: "0.5rem",
+                    border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.5rem",
                     background: C.white || "#FFF", fontFamily: F.body, fontSize: "0.875rem",
                     color: C.charcoal, appearance: "none", WebkitAppearance: "none",
                     backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
@@ -286,7 +292,7 @@ export default function HelpPage() {
                   rows={5}
                   style={{
                     width: "100%", padding: "0.625rem 0.875rem",
-                    border: `1px solid ${C.sandstone}60`, borderRadius: "0.5rem",
+                    border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.5rem",
                     background: C.white || "#FFF", fontFamily: F.body, fontSize: "0.875rem",
                     color: C.charcoal, resize: "vertical", lineHeight: 1.6,
                   }}
@@ -318,7 +324,7 @@ export default function HelpPage() {
                 <button
                   onClick={() => fileRef.current?.click()}
                   style={{
-                    padding: "0.5rem 1rem", border: `1px dashed ${C.sandstone}80`,
+                    padding: "0.5rem 1rem", border: `1px dashed ${HAIRLINE_SOFT}`,
                     borderRadius: "0.5rem", background: "transparent",
                     fontFamily: F.body, fontSize: "0.8125rem", color: C.walnut,
                     cursor: "pointer", transition: "border-color 0.2s",
@@ -365,7 +371,7 @@ export default function HelpPage() {
         <section style={{
           marginTop: "3rem", padding: "2rem", textAlign: "center",
           background: `${C.sandstone}12`, borderRadius: "1rem",
-          border: `1px solid ${C.sandstone}30`,
+          border: `1px solid ${HAIRLINE_SOFT}`,
         }}>
           <p style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal, marginBottom: "0.5rem" }}>
             {t("communityTitle")}
@@ -392,7 +398,7 @@ export default function HelpPage() {
 
       {/* Footer */}
       <footer style={{
-        borderTop: `1px solid ${C.sandstone}30`, padding: "1.5rem",
+        borderTop: `1px solid ${HAIRLINE_SOFT}`, padding: "1.5rem",
         textAlign: "center", fontSize: "0.75rem", color: C.muted,
       }}>
         <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", marginBottom: "0.5rem" }}>

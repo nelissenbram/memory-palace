@@ -414,7 +414,10 @@
     "ariaAvControls": "AV-Steuerung",
     "ariaEditCorridorPaintings": "Korridorgemälde bearbeiten",
     "upgradeNow": "Upgrade",
-    "onboardingFinishError": "Beim Abschließen der Einrichtung ist etwas schiefgelaufen — bitte versuche es erneut."
+    "onboardingFinishError": "Beim Abschließen der Einrichtung ist etwas schiefgelaufen — bitte versuche es erneut.",
+    "storage.usedFraction": "{used} MB von {limit} MB belegt",
+    "storage.usedFractionUrgent": "Fast voll — {used} MB von {limit} MB belegt",
+    "storage.usedFractionFull": "Speicher voll — {used} MB von {limit} MB belegt"
   },
   "settings": {
     "navDescProfile": "Ihr Name, Foto und öffentliche Seite",
@@ -1146,7 +1149,9 @@
     "importItemSkipped": "{name} wurde übersprungen (bereits importiert).",
     "loadFailed": "Dateien konnten nicht geladen werden. Bitte versuche es erneut.",
     "retry": "Erneut versuchen",
-    "progress": "Fortschritt"
+    "progress": "Fortschritt",
+    "cancel": "Abbrechen",
+    "importTimeout": "Import-Zeitüberschreitung. Bitte versuche es erneut."
   },
   "room": {
     "manageRooms": "Räume verwalten",
@@ -1950,7 +1955,9 @@
     "stepPrevPerson": "Vorherige Person",
     "stepNextPerson": "Nächste Person",
     "stepOpenPerson": "Öffnen",
-    "stepStart": "Blättern"
+    "stepStart": "Blättern",
+    "sharedTreeNotFoundTitle": "Stammbaum nicht gefunden",
+    "sharedTreeNotFoundDesc": "Dieser Freigabelink ist möglicherweise abgelaufen oder wurde deaktiviert."
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1989,7 +1996,8 @@
     "trustGuarantee": "Kostenloser Plan — keine Kreditkarte erforderlich",
     "currency": "Währung",
     "subscriptionActivated": "Abonnement aktiviert!",
-    "billingInterval": "Abrechnungszeitraum"
+    "billingInterval": "Abrechnungszeitraum",
+    "approxBilledEur": "Preise in dieser Währung sind Näherungswerte — die Abrechnung erfolgt in EUR."
   },
   "cookieConsent": {
     "message": "Wir verwenden Cookies, um dich angemeldet zu halten und deine Einstellungen zu speichern.",
@@ -2191,7 +2199,8 @@
     "enablePublicLinkFirst": "Aktiviere zuerst den öffentlichen Link, um so zu teilen.",
     "noCollaboratorsForDownload": "Lade zuerst jemanden ein, bevor du Download-Berechtigungen festlegst.",
     "downloadPermissionFailed": "Die Download-Einstellung konnte nicht aktualisiert werden. Bitte versuche es erneut.",
-    "shareViaQR": "Über QR-Code teilen"
+    "shareViaQR": "Über QR-Code teilen",
+    "qrLabel": "QR"
   },
   "bustBuilder": {
     "failedToProcess": "Foto konnte nicht verarbeitet werden. Bitte versuche ein anderes Bild.",
@@ -2241,7 +2250,9 @@
     "faceDetected": "Gesicht erkannt und kalibriert!",
     "imageTooSmall": "Bild ist zu klein. Bitte verwende ein Foto mit höherer Auflösung.",
     "noFaceCenterCropped": "Gesicht konnte nicht automatisch erkannt werden. Das Foto wird mittig zugeschnitten. Für beste Ergebnisse verwende ein klares Porträtfoto.",
-    "savedLocallyWillSync": "Lokal gespeichert — wird synchronisiert, sobald du wieder online bist."
+    "savedLocallyWillSync": "Lokal gespeichert — wird synchronisiert, sobald du wieder online bist.",
+    "uncroppedWarning": "Wir konnten in diesem Foto kein Gesicht erkennen, daher wird die Büste aus dem gesamten Bild geformt. Für das beste Ergebnis nimm ein klares Porträt von vorne.",
+    "useAnyway": "Trotzdem verwenden"
   },
   "uploadPanel": {
     "fileTooLarge": "Datei ist zu groß ({size} MB). Maximale erlaubte Größe für {type} ist {max}.",
@@ -3609,7 +3620,8 @@
     "skip": "Überspringen",
     "next": "Weiter",
     "done": "Verstanden",
-    "stepXofY": "Schritt {current} von {total}"
+    "stepXofY": "Schritt {current} von {total}",
+    "advanceHint": "Tour fortsetzen"
   },
   "palaceTour": {
     "step1Title": "Von oben navigieren",
@@ -5475,7 +5487,8 @@
     "commentFailed": "Deine Nachricht konnte nicht veröffentlicht werden.",
     "totalWingVisits": "Flügelbesuche",
     "publishNoChanges": "Keine Änderungen zu veröffentlichen — deine Auswahl entspricht bereits dem Geteilten.",
-    "guestReactPrompt": "Anmelden zum Reagieren"
+    "guestReactPrompt": "Anmelden zum Reagieren",
+    "privateProfile": "Privates Profil"
   },
   "help": {
     "title": "Hilfecenter",
@@ -5787,5 +5800,10 @@
     "footerPre": "Weitere Informationen dazu, wie wir mit Ihren Daten umgehen, finden Sie in unserer vollständigen ",
     "footerPrivacyLink": "Datenschutzerklärung",
     "footerPost": "."
+  },
+  "relay": {
+    "relay.photosCountN": "{count} Fotos",
+    "relay.storiesCountN": "{count} Geschichten",
+    "relay.embersScrollHint": "Zur Seite scrollen für mehr Familie"
   }
 }

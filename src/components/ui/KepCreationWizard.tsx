@@ -218,7 +218,7 @@ function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial
             >
               <TuscanCard animate={false}>
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                  <span aria-hidden="true" style={{ fontSize: "2rem" }}>{SOURCE_ICONS[s.type]}</span>
+                  <SourceGlyph source={s.type} size={32} />
                   <div>
                     <div style={{ fontFamily: T.font.body, fontWeight: 600, color: "#403B36" }}>{s.label}</div>
                     <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.25rem" }}>{s.desc}</div>
@@ -254,7 +254,7 @@ function StepConfigure({ data, update, t, photosLinked, router }: { data: Wizard
             marginBottom: "1.25rem",
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: "1.25rem", lineHeight: 1.2, marginTop: "0.0625rem" }}>{"📸"}</span>
+          <span style={{ marginTop: "0.0625rem", display: "inline-flex" }}><PhotosGlyph size={20} /></span>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: T.font.body, fontWeight: 600, fontSize: "0.9375rem", color: "#403B36", marginBottom: "0.1875rem" }}>{t("wizardPhotosNotLinkedTitle")}</div>
             <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", lineHeight: 1.45, color: "#716A5E", margin: "0 0 0.625rem" }}>{t("wizardPhotosNotLinkedDesc")}</p>
@@ -374,6 +374,33 @@ function CheckMark() {
   );
 }
 
+/* Canon source glyphs — replace the raw emoji in SOURCE_ICONS so the wizard's
+   iconography matches the KepCapturePanel WhatsApp SVG. WhatsApp keeps its brand
+   green; the Photos camera is drawn in canon EMBER (#B85C38, interactive). */
+function WhatsAppGlyph({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="#25D366" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
+function PhotosGlyph({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#B85C38" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <path d="M4 7h3l1.5-2h7L18 7h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="3.25" />
+    </svg>
+  );
+}
+
+/* Render the canon glyph for a Kep source type (falls back to the WhatsApp mark
+   for the default inbox source). */
+function SourceGlyph({ source, size = 28 }: { source: KepSourceType | null; size?: number }) {
+  if (source === "photos") return <PhotosGlyph size={size} />;
+  return <WhatsAppGlyph size={size} />;
+}
+
 function CrossMark() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#716A5E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -393,7 +420,7 @@ function StepReview({ data, t }: { data: WizardData; t: (key: string, params?: R
       <TuscanCard>
         <div style={{ padding: "1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
-            <span aria-hidden="true" style={{ fontSize: "2rem" }}>{data.icon}</span>
+            <SourceGlyph source={data.source_type} size={32} />
             <div>
               <div style={{ fontFamily: T.font.body, fontWeight: 600, fontSize: "1.0625rem", color: "#403B36" }}>{data.name}</div>
               {data.description && <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>{data.description}</div>}

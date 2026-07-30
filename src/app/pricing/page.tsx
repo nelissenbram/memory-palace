@@ -201,14 +201,14 @@ export default function PricingPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 clamp(20px, 5vw, 60px)",
+          padding: "0 clamp(1.25rem, 5vw, 3.75rem)",
           height: "4rem",
           background: `${C.linen}e8`,
           backdropFilter: "blur(12px)",
           borderBottom: `1px solid ${HAIRLINE_BORDER}`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <Link href="/" aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
@@ -225,7 +225,7 @@ export default function PricingPage() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: "0.625rem",
               textDecoration: "none",
             }}
           >
@@ -233,7 +233,7 @@ export default function PricingPage() {
             <span
               style={{
                 fontFamily: F.display,
-                fontSize: 20,
+                fontSize: "1.25rem",
                 fontWeight: 500,
                 color: C.charcoal,
                 letterSpacing: "-0.3px",
@@ -243,7 +243,7 @@ export default function PricingPage() {
             </span>
           </Link>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")}
             onFocus={(e) => { e.currentTarget.style.outline = focusRing.outline; e.currentTarget.style.outlineOffset = focusRing.outlineOffset; }}
             onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
@@ -263,7 +263,7 @@ export default function PricingPage() {
               href="/login"
               style={{
                 fontFamily: F.body,
-                fontSize: 14,
+                fontSize: "0.875rem",
                 color: C.walnut,
                 textDecoration: "none",
                 padding: "0.5rem 1rem",
@@ -276,12 +276,12 @@ export default function PricingPage() {
             href="/register"
             style={{
               fontFamily: F.body,
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               color: C.white,
               textDecoration: "none",
               padding: "0.5rem 1.25rem",
-              borderRadius: 10,
+              borderRadius: "0.625rem",
               background: `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
             }}
           >
@@ -302,12 +302,12 @@ export default function PricingPage() {
       >
         <p
           style={{
-            fontSize: 12,
+            fontSize: "0.75rem",
             letterSpacing: "2.5px",
             textTransform: "uppercase",
             color: EMBER_CTA,
             fontWeight: 600,
-            marginBottom: 16,
+            marginBottom: "1rem",
           }}
         >
           {t("headline")}
@@ -315,20 +315,20 @@ export default function PricingPage() {
         <h1
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(32px, 5vw, 52px)",
+            fontSize: "clamp(2rem, 5vw, 3.25rem)",
             fontWeight: 300,
             lineHeight: 1.15,
             color: C.charcoal,
-            marginBottom: 16,
+            marginBottom: "1rem",
           }}
         >
           {t("subheadline")}
         </h1>
         <p
           style={{
-            fontSize: "clamp(16px, 2vw, 19px)",
+            fontSize: "clamp(1rem, 2vw, 1.1875rem)",
             color: C.walnut,
-            maxWidth: 520,
+            maxWidth: "32.5rem",
             margin: "0 auto",
             lineHeight: 1.6,
           }}
@@ -343,9 +343,9 @@ export default function PricingPage() {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          gap: 12,
-          padding: isMobile ? "0 16px" : "0 40px",
-          marginTop: -8,
+          gap: "0.75rem",
+          padding: isMobile ? "0 1rem" : "0 2.5rem",
+          marginTop: "-0.5rem",
           flexWrap: "wrap",
         }}
       >
@@ -374,7 +374,7 @@ export default function PricingPage() {
                 : "transparent",
               color: interval === "monthly" ? C.white : C.walnut,
               fontFamily: F.body,
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               cursor: "pointer",
               transition: trans("all 0.2s"),
@@ -397,23 +397,23 @@ export default function PricingPage() {
                 : "transparent",
               color: interval === "annual" ? C.white : C.walnut,
               fontFamily: F.body,
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               cursor: "pointer",
               transition: trans("all 0.2s"),
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: "0.5rem",
             }}
           >
             {/* i18n: "annual" */}
             {t("annual") !== "annual" ? t("annual") : "Annual"}
             <span
               style={{
-                fontSize: 11,
+                fontSize: "0.6875rem",
                 fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: 8,
+                padding: "0.125rem 0.5rem",
+                borderRadius: "0.5rem",
                 background: interval === "annual"
                   ? "rgba(255,255,255,0.25)"
                   : `${EMBER_CTA}18`,
@@ -521,11 +521,11 @@ export default function PricingPage() {
       {/* IAP error banner for iOS */}
       {isApple && iapError && (
         <div style={{
-          maxWidth: 600, margin: "1.5rem auto 0", padding: "1rem 1.25rem",
+          maxWidth: "37.5rem", margin: "1.5rem auto 0", padding: "1rem 1.25rem",
           background: `${EMBER_CTA}10`, border: `1px solid ${EMBER_CTA}30`,
-          borderRadius: 12, textAlign: "center",
+          borderRadius: "0.75rem", textAlign: "center",
         }}>
-          <p style={{ fontSize: 14, color: C.charcoal, margin: 0, fontFamily: F.body }}>
+          <p style={{ fontSize: "0.875rem", color: C.charcoal, margin: 0, fontFamily: F.body }}>
             {iapError}
           </p>
           <button
@@ -538,9 +538,9 @@ export default function PricingPage() {
               if (!ready) setIapError(getIAPError() || "Subscriptions are taking longer than usual to load. Please try again.");
             }}
             style={{
-              marginTop: 8, padding: "0.5rem 1.25rem", borderRadius: 8,
+              marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "0.5rem",
               border: `1px solid ${EMBER_CTA}`, background: "transparent",
-              color: EMBER_CTA, fontFamily: F.body, fontSize: 13,
+              color: EMBER_CTA, fontFamily: F.body, fontSize: "0.8125rem",
               fontWeight: 600, cursor: "pointer",
             }}
           >
@@ -575,7 +575,7 @@ export default function PricingPage() {
             }}
             style={{
               background: "none", border: "none", color: EMBER_CTA,
-              fontFamily: F.body, fontSize: 14, fontWeight: 600, cursor: "pointer",
+              fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600, cursor: "pointer",
               textDecoration: "underline", textUnderlineOffset: 3, minHeight: "2.75rem",
             }}
           >
@@ -587,8 +587,8 @@ export default function PricingPage() {
       {/* Plan Cards */}
       <section
         style={{
-          padding: isMobile ? "40px 16px 80px" : "56px 40px 100px",
-          maxWidth: 1100,
+          padding: isMobile ? "2.5rem 1rem 5rem" : "3.5rem 2.5rem 6.25rem",
+          maxWidth: "68.75rem",
           margin: "0 auto",
         }}
       >
@@ -598,7 +598,7 @@ export default function PricingPage() {
             gridTemplateColumns: (isMobile || isCompact)
               ? "1fr"
               : "repeat(3, 1fr)",
-            gap: (isMobile || isCompact) ? 20 : 28,
+            gap: (isMobile || isCompact) ? "1.25rem" : "1.75rem",
             alignItems: "start",
           }}
         >
@@ -612,11 +612,11 @@ export default function PricingPage() {
                 key={planId}
                 style={{
                   background: C.white,
-                  borderRadius: 20,
+                  borderRadius: "1.25rem",
                   border: isHighlighted
                     ? `2px solid ${EMBER_CTA}`
                     : `1px solid ${HAIRLINE_BORDER}`,
-                  padding: isMobile ? "28px 24px" : "36px 32px",
+                  padding: isMobile ? "1.75rem 1.5rem" : "2.25rem 2rem",
                   position: "relative",
                   boxShadow: isHighlighted
                     ? "0 0.5rem 1.5rem rgba(64,59,54,0.14)"
@@ -629,16 +629,16 @@ export default function PricingPage() {
                   <div
                     style={{
                       position: "absolute",
-                      top: -14,
+                      top: "-0.875rem",
                       left: "50%",
                       transform: "translateX(-50%)",
                       background: `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
                       color: C.white,
                       fontFamily: F.body,
-                      fontSize: 12,
+                      fontSize: "0.75rem",
                       fontWeight: 600,
-                      padding: "6px 18px",
-                      borderRadius: 20,
+                      padding: "0.375rem 1.125rem",
+                      borderRadius: "1.25rem",
                       letterSpacing: "0.5px",
                       whiteSpace: "nowrap",
                     }}
@@ -651,20 +651,20 @@ export default function PricingPage() {
                 <h3
                   style={{
                     fontFamily: F.display,
-                    fontSize: 26,
+                    fontSize: "1.625rem",
                     fontWeight: 500,
                     color: C.charcoal,
-                    marginBottom: 4,
-                    marginTop: isHighlighted ? 8 : 0,
+                    marginBottom: "0.25rem",
+                    marginTop: isHighlighted ? "0.5rem" : 0,
                   }}
                 >
                   {tp(plan.nameKey)}
                 </h3>
                 <p
                   style={{
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     color: C.muted,
-                    marginBottom: 20,
+                    marginBottom: "1.25rem",
                     lineHeight: 1.5,
                   }}
                 >
@@ -676,8 +676,8 @@ export default function PricingPage() {
                   style={{
                     display: "flex",
                     alignItems: "baseline",
-                    gap: 4,
-                    marginBottom: 24,
+                    gap: "0.25rem",
+                    marginBottom: "1.5rem",
                   }}
                 >
                   {isFree ? (
@@ -715,7 +715,7 @@ export default function PricingPage() {
                         {showPerMonth && (
                           <span
                             style={{
-                              fontSize: 15,
+                              fontSize: "0.9375rem",
                               color: C.muted,
                             }}
                           >
@@ -727,8 +727,17 @@ export default function PricingPage() {
                   })()}
                 </div>
                 {!isFree && interval === "annual" && (
-                  <p style={{ fontSize: 12, color: C.muted, marginTop: -16, marginBottom: 8 }}>
+                  <p style={{ fontSize: "0.75rem", color: C.muted, marginTop: "-1rem", marginBottom: "0.5rem" }}>
                     {t("billedYearly")}
+                  </p>
+                )}
+                {/* Web checkout charges in the Stripe price's base currency (EUR).
+                    Non-EUR figures shown here are a client-side approximation, so we
+                    label them as such to avoid a mismatch at checkout. iOS shows the
+                    real StoreKit price (no conversion) and is excluded. */}
+                {!isFree && !isApple && currency !== "EUR" && (
+                  <p style={{ fontSize: "0.6875rem", color: C.muted, marginTop: "-0.25rem", marginBottom: "0.5rem", lineHeight: 1.5 }}>
+                    {t("approxBilledEur")}
                   </p>
                 )}
 
@@ -743,7 +752,7 @@ export default function PricingPage() {
                     width: "100%",
                     padding: "1rem 1.5rem",
                     minHeight: "2.75rem",
-                    borderRadius: 14,
+                    borderRadius: "0.875rem",
                     border: isFree
                       ? `1.5px solid ${HAIRLINE_BORDER}`
                       : "none",
@@ -752,12 +761,12 @@ export default function PricingPage() {
                       : `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
                     color: isFree ? C.charcoal : C.white,
                     fontFamily: F.body,
-                    fontSize: 16,
+                    fontSize: "1rem",
                     fontWeight: 600,
                     cursor: loading ? "wait" : (isApple && !isFree && !iapReady ? "default" : "pointer"),
                     transition: trans("all 0.2s"),
                     opacity: (loading && loading !== planId) || (isApple && !isFree && !iapReady) ? 0.6 : 1,
-                    marginBottom: 28,
+                    marginBottom: "1.75rem",
                   }}
                 >
                   {loading === planId
@@ -772,11 +781,11 @@ export default function PricingPage() {
                 </button>
                 {plan.trial && (
                   <p style={{
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     color: EMBER_CTA,
                     textAlign: "center" as const,
-                    marginTop: -16,
-                    marginBottom: 16,
+                    marginTop: "-1rem",
+                    marginBottom: "1rem",
                     fontWeight: 500,
                   }}>
                     {t("trialNote") !== "trialNote" ? t("trialNote") : `${plan.trial}-day free trial, cancel anytime`}
@@ -791,13 +800,13 @@ export default function PricingPage() {
                 )}
                 {/* Subscription disclosures (Apple Guideline 3.1.2) */}
                 {!isFree && (
-                  <div style={{ marginTop: -8, marginBottom: 20 }}>
+                  <div style={{ marginTop: "-0.5rem", marginBottom: "1.25rem" }}>
                     {isApple && (
-                      <p style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, textAlign: "center" as const, margin: "0 0 6px" }}>
+                      <p style={{ fontSize: "0.6875rem", color: C.muted, lineHeight: 1.6, textAlign: "center" as const, margin: "0 0 0.375rem" }}>
                         {ts("autoRenewNotice")}
                       </p>
                     )}
-                    <p style={{ fontSize: 11, color: C.muted, textAlign: "center" as const, margin: 0 }}>
+                    <p style={{ fontSize: "0.6875rem", color: C.muted, textAlign: "center" as const, margin: 0 }}>
                       <a href="/terms" style={{ color: EMBER_CTA, textDecoration: "none" }}>{ts("disclosureTerms")}</a>
                       {"  ·  "}
                       <a href="/privacy" style={{ color: EMBER_CTA, textDecoration: "none" }}>{ts("disclosurePrivacy")}</a>
@@ -810,7 +819,7 @@ export default function PricingPage() {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 12,
+                    gap: "0.75rem",
                   }}
                 >
                   {plan.featureKeys.map((featureKey) => (
@@ -819,24 +828,24 @@ export default function PricingPage() {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 10,
-                        fontSize: 14,
+                        gap: "0.625rem",
+                        fontSize: "0.875rem",
                         color: C.charcoal,
                         lineHeight: 1.4,
                       }}
                     >
                       <span
                         style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 10,
+                          width: "1.25rem",
+                          height: "1.25rem",
+                          borderRadius: "0.625rem",
                           background: isHighlighted
                             ? `${EMBER_CTA}18`
                             : `${C.sage}15`,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           color: isHighlighted ? EMBER_CTA : C.sage,
                           flexShrink: 0,
                         }}
@@ -856,7 +865,7 @@ export default function PricingPage() {
       {/* FAQ-like trust section */}
       <section
         style={{
-          padding: isMobile ? "48px 20px 64px" : "64px 40px 80px",
+          padding: isMobile ? "3rem 1.25rem 4rem" : "4rem 2.5rem 5rem",
           background: C.warmStone,
           textAlign: "center",
         }}
@@ -864,21 +873,21 @@ export default function PricingPage() {
         <h2
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(24px, 3vw, 36px)",
+            fontSize: "clamp(1.5rem, 3vw, 2.25rem)",
             fontWeight: 300,
             color: C.charcoal,
-            marginBottom: 12,
+            marginBottom: "0.75rem",
           }}
         >
           {t("faqTitle")}
         </h2>
         <div
           style={{
-            maxWidth: 680,
-            margin: "32px auto 0",
+            maxWidth: "42.5rem",
+            margin: "2rem auto 0",
             display: "flex",
             flexDirection: "column",
-            gap: 16,
+            gap: "1rem",
             textAlign: "left",
           }}
         >
@@ -887,25 +896,25 @@ export default function PricingPage() {
               key={item.q}
               style={{
                 background: C.white,
-                borderRadius: 14,
-                padding: isMobile ? "20px" : "22px 28px",
+                borderRadius: "0.875rem",
+                padding: isMobile ? "1.25rem" : "1.375rem 1.75rem",
                 border: `1px solid ${HAIRLINE_BORDER}`,
               }}
             >
               <h4
                 style={{
                   fontFamily: F.body,
-                  fontSize: 15,
+                  fontSize: "0.9375rem",
                   fontWeight: 600,
                   color: C.charcoal,
-                  marginBottom: 8,
+                  marginBottom: "0.5rem",
                 }}
               >
                 {item.q}
               </h4>
               <p
                 style={{
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   color: C.walnut,
                   lineHeight: 1.6,
                   margin: 0,
@@ -921,13 +930,13 @@ export default function PricingPage() {
       {/* Footer */}
       <footer
         style={{
-          padding: "32px clamp(20px, 5vw, 60px)",
+          padding: "2rem clamp(1.25rem, 5vw, 3.75rem)",
           borderTop: `1px solid ${HAIRLINE_BORDER}`,
           background: C.charcoal,
           textAlign: "center",
         }}
       >
-        <p style={{ fontSize: 12, color: C.muted }}>
+        <p style={{ fontSize: "0.75rem", color: C.muted }}>
           &copy; {new Date().getFullYear()} {t("copyright")}
         </p>
       </footer>

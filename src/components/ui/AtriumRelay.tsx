@@ -50,7 +50,7 @@ export type RelayScore = { points: number; badgesEarned: number; badgesTotal: nu
 export type RelayLedger = { text: string; warm: boolean };
 /** Family Embers — one loved one's recent presence on the palace. */
 export type EmberPerson = { key: string; name: string; unseen: number; latest?: string };
-export type RelayEmbers = { title: string; people: EmberPerson[]; onOpen: () => void };
+export type RelayEmbers = { title: string; people: EmberPerson[]; onOpen: () => void; scrollHint?: string };
 
 interface AtriumRelayProps {
   greeting: string;
@@ -343,7 +343,10 @@ export function EmbersRow({ embers }: { embers: RelayEmbers }) {
         <Overline color={LEDGER_OCHRE}>{embers.title}</Overline>
         <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: `linear-gradient(90deg, ${OCHRE_WASH}, transparent)` }} />
       </div>
-      <div style={{ display: "flex", gap: "0.85rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
+      {/* scroll hint: named for screen readers, softened at the edge for sight */}
+      <span id="relay-embers-scrollhint" style={{ position: "absolute", width: "0.0625rem", height: "0.0625rem", padding: 0, margin: "-0.0625rem", overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 }}>{embers.scrollHint ?? "Scroll sideways for more family"}</span>
+      <div style={{ position: "relative" }}>
+        <div aria-describedby={embers.people.length > 3 ? "relay-embers-scrollhint" : undefined} style={{ display: "flex", gap: "0.85rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
         {embers.people.map((p, i) => {
           const tint = EMBER_TINTS[i % EMBER_TINTS.length];
           const hasUnseen = p.unseen > 0;
@@ -373,6 +376,11 @@ export function EmbersRow({ embers }: { embers: RelayEmbers }) {
             </button>
           );
         })}
+        </div>
+        {/* right-edge fade: a visual cue that the strip scrolls (change 11) */}
+        {embers.people.length > 3 ? (
+          <span aria-hidden="true" style={{ position: "absolute", top: 0, right: 0, bottom: "0.25rem", width: "2rem", pointerEvents: "none", background: `linear-gradient(90deg, transparent, ${T.color.cream})` }} />
+        ) : null}
       </div>
     </section>
   );

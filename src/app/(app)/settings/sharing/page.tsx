@@ -9,6 +9,16 @@ import { EMBER, EMBER_GLYPH, HAIRLINE, CREAM, INK, MUTED, SAGE } from "@/lib/lib
 import type { PublishableWing } from "@/lib/social/share-actions";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
+/* Local, well-named accent constants (kept local this pass — shared token files
+ * are off-limits here to avoid parallel-edit races). These name the literal
+ * hexes that previously recurred inline so the accent surface reads as one
+ * vocabulary instead of scattered magic strings. */
+const EMBER_GRADIENT = "linear-gradient(135deg, #B85C38, #9A4F2A)"; // ember → terracotta CTA
+const TERRACOTTA_WASH = "#FBF2EC"; // pre-mixed selected-tile wash
+const CONTROL_BG = "#FFFFFF"; // pill / input surface
+const DISABLED_BG = "#EEE9DF"; // pre-mixed sandstone (disabled CTA)
+const DANGER = "#C05050"; // error toast / destructive accent
+
 /* Shared loading spinner — one ember-topped ring for every sharing section,
  * with a reduced-motion guard, so the three cards never diverge in treatment. */
 function SharingSpinner({ scale, label }: { scale: number; label: string }) {
@@ -207,7 +217,7 @@ export default function SharingPage() {
         <div className="sharing-toast" role={toast.type === "success" ? "status" : "alert"} aria-live={toast.type === "success" ? "polite" : "assertive"} style={{
           position: "fixed", top: "1rem", right: "1rem", zIndex: 9999,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? SAGE : "#C05050",
+          background: toast.type === "success" ? SAGE : DANGER,
           color: CREAM, fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
           fontWeight: 500, boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
           animation: "fadeIn .2s ease",
@@ -305,7 +315,7 @@ export default function SharingPage() {
                     border: `0.0625rem solid ${selectedWings.has(wing.id) ? EMBER : HAIRLINE}`,
                     borderRadius: "0.75rem",
                     overflow: "hidden",
-                    background: selectedWings.has(wing.id) ? "#FBF2EC" /* Atrium: premixed terracotta wash */ : CREAM,
+                    background: selectedWings.has(wing.id) ? TERRACOTTA_WASH : CREAM,
                     transition: "border-color 0.2s ease, background 0.2s ease",
                   }}
                 >
@@ -382,9 +392,7 @@ export default function SharingPage() {
                   fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, fontWeight: 600,
                   padding: "0.75rem 1.75rem", borderRadius: "0.75rem", border: "none",
                   minHeight: "2.75rem",
-                  background: hasChanges
-                    ? "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium: ember → terracotta */
-                    : "#EEE9DF" /* Atrium: disabled */,
+                  background: hasChanges ? EMBER_GRADIENT : DISABLED_BG,
                   color: hasChanges ? CREAM : MUTED,
                   cursor: isPending ? "wait" : hasChanges ? "pointer" : "not-allowed",
                   opacity: isPending ? 0.6 : 1,
@@ -524,11 +532,12 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
   }, [loadShares]);
 
   const wingLabel = (wingSlug: string) => {
-    // The stored wing_id may be either a slug or a DB uuid depending on when the
-    // share was written, so match on both. If neither resolves (e.g. a wing that
-    // was renamed/removed), show a human label rather than leaking a raw
-    // slug/uuid into the badge.
-    const wing = wingOptions.find((w) => w.slug === wingSlug || w.id === wingSlug);
+    // wing_shares.wing_id is the canonical wing SLUG end-to-end: shareWing()
+    // validates against VALID_WINGS slugs and getSharedWingData joins on
+    // wings.slug. So resolve the label by slug only. If it doesn't resolve
+    // (e.g. a wing that was renamed/removed), show a human label rather than
+    // leaking a raw identifier into the badge.
+    const wing = wingOptions.find((w) => w.slug === wingSlug);
     return wing ? wing.name : tf("unknownWing");
   };
 
@@ -587,7 +596,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
         <div className="sharing-toast" role={toast.type === "success" ? "status" : "alert"} style={{
           position: "fixed", top: "2.625rem", right: "1rem", zIndex: 9999,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? SAGE /* Atrium token: sage */ : "#C05050",
+          background: toast.type === "success" ? SAGE /* Atrium token: sage */ : DANGER,
           color: CREAM, fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
           fontWeight: 500, boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
         }}>
@@ -635,7 +644,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                       minHeight: "2.75rem",
                       borderRadius: "0.75rem",
                       border: `0.0625rem solid ${shareWingSlug === wing.slug ? EMBER /* Atrium ember */ : HAIRLINE}`,
-                      background: shareWingSlug === wing.slug ? "#FBF2EC" /* premixed terracotta wash */ : "#FFFFFF",
+                      background: shareWingSlug === wing.slug ? TERRACOTTA_WASH : CONTROL_BG,
                       cursor: "pointer",
                       fontFamily: T.font.body,
                       fontSize: "0.8125rem",
@@ -657,7 +666,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                 style={{
                   width: "100%", fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
                   padding: "0.75rem 1rem", borderRadius: "0.75rem",
-                  border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: "#FFFFFF",
+                  border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: CONTROL_BG,
                   color: INK, outline: "none",
                   marginBottom: "0.875rem",
                   minHeight: "2.75rem",
@@ -684,7 +693,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                       minHeight: "2.75rem",
                       borderRadius: "0.75rem",
                       border: `0.0625rem solid ${sharePermission === perm ? EMBER /* Atrium ember */ : HAIRLINE}`,
-                      background: sharePermission === perm ? "#FBF2EC" : "#FFFFFF",
+                      background: sharePermission === perm ? TERRACOTTA_WASH : CONTROL_BG,
                       cursor: "pointer",
                       fontFamily: T.font.body,
                       fontSize: "0.8125rem",
@@ -707,10 +716,8 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                   minHeight: "2.75rem",
                   borderRadius: "0.75rem",
                   border: "none",
-                  background: !shareMemberEmail || sharing
-                    ? "#EEE9DF" /* Atrium: disabled */
-                    : "linear-gradient(135deg, #B85C38, #9A4F2A)", /* Atrium: ember → terracotta */
-                  color: !shareMemberEmail || sharing ? MUTED : "#FFF",
+                  background: !shareMemberEmail || sharing ? DISABLED_BG : EMBER_GRADIENT,
+                  color: !shareMemberEmail || sharing ? MUTED : CREAM,
                   fontFamily: T.font.body,
                   fontSize: "0.9375rem",
                   fontWeight: 600,
@@ -800,7 +807,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                           style={{
                             padding: "0.375rem 0.75rem", borderRadius: "0.375rem",
                             minHeight: "2.75rem",
-                            border: "none", background: "#C05050", color: "#FFF",
+                            border: "none", background: DANGER, color: CREAM,
                             fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                             cursor: "pointer", transition: "all .2s ease",
                           }}
@@ -813,7 +820,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                           style={{
                             padding: "0.375rem 0.75rem", borderRadius: "0.375rem",
                             minHeight: "2.75rem",
-                            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */ background: "#FFFFFF",
+                            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */ background: CONTROL_BG,
                             color: MUTED, fontFamily: T.font.body, fontSize: "0.6875rem",
                             fontWeight: 500, cursor: "pointer", transition: "all .2s ease",
                           }}
@@ -880,7 +887,7 @@ function FamilyWingSharingSection({ scale }: { scale: number }) {
                     </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED,
-                      padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
+                      padding: "0.125rem 0.5rem", borderRadius: "2rem", // Atrium token: pill — match adjacent permission chips
                       background: "rgba(113,106,94,0.12)",
                       flexShrink: 0,
                     }}>
@@ -989,7 +996,7 @@ function PasscodeSection({ scale }: { scale: number }) {
         <div className="sharing-toast" role={toast.type === "success" ? "status" : "alert"} style={{
           position: "fixed", top: "4.25rem", right: "1rem", zIndex: 9999,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? SAGE : "#C05050",
+          background: toast.type === "success" ? SAGE : DANGER,
           color: CREAM, fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
           fontWeight: 500, boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
         }}>
@@ -1077,9 +1084,7 @@ function PasscodeSection({ scale }: { scale: number }) {
                 // Canonical settings-shell primary-button grammar: ember→terracotta
                 // gradient when actionable, pre-mixed sandstone + muted ink when not
                 // (matches the Save CTA above and the profile-page Save button).
-                background: creating || !selectedWingId
-                  ? "#EEE9DF" /* Atrium: disabled */
-                  : "linear-gradient(135deg, #B85C38, #9A4F2A)", // Atrium: ember → terracotta
+                background: creating || !selectedWingId ? DISABLED_BG : EMBER_GRADIENT,
                 color: creating || !selectedWingId ? MUTED : CREAM,
                 cursor: creating ? "wait" : !selectedWingId ? "not-allowed" : "pointer",
                 opacity: creating ? 0.6 : 1, whiteSpace: "nowrap",
@@ -1125,8 +1130,8 @@ function PasscodeSection({ scale }: { scale: number }) {
                         fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`,
                         padding: "0.25rem 0.625rem", borderRadius: "0.75rem", // Atrium: small-control radius
                         minHeight: "2.75rem",
-                        border: `0.0625rem solid #C0505030`, background: "transparent",
-                        color: "#C05050", cursor: "pointer",
+                        border: `0.0625rem solid ${DANGER}30`, background: "transparent",
+                        color: DANGER, cursor: "pointer",
                       }}
                     >
                       {ts("revoke") || "Revoke"}

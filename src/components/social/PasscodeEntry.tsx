@@ -2,7 +2,6 @@
 
 import React, { useState, useTransition, useRef, useEffect } from "react";
 import { T } from "@/lib/theme";
-import TuscanCard from "@/components/ui/TuscanCard";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { validatePasscode } from "@/lib/social/passcode-actions";
 import type { ValidatedShare } from "@/lib/social/passcode-actions";
@@ -47,21 +46,23 @@ export default function PasscodeEntry() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
-        padding: "1rem",
-      }}
-    >
-      <TuscanCard
-        variant="solid"
-        padding="2.5rem"
-        style={{ width: "min(26rem, 92vw)" }}
-      >
+    <div style={wrapperStyle}>
+      {/* Real CSS :focus-visible ring (gold) — keyboard users get a ring, mouse
+          users don't, without the old JS onFocus/onBlur border juggling. No
+          @media queries here, so this stays canon-compliant. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `.mp-passcode-input:focus-visible{border-color:${T.color.gold};outline:0.1875rem solid ${T.color.gold}55;outline-offset:0.125rem;}`,
+        }}
+      />
+
+      {/* Decorative blobs — identical to the shared (auth) layout so the passcode
+          gate reads as a sibling of /login and /reset-password. */}
+      <div aria-hidden="true" style={blobTopStyle} />
+      <div aria-hidden="true" style={blobBottomStyle} />
+
+      {/* Blurred cream auth card (matches src/app/(auth)/layout.tsx exactly). */}
+      <main style={cardStyle}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           {/* Lock icon */}
@@ -166,21 +167,7 @@ export default function PasscodeEntry() {
                 </p>
               )}
             </div>
-            <button
-              onClick={handleVisit}
-              style={{
-                width: "100%",
-                fontFamily: T.font.body,
-                fontSize: "1rem",
-                fontWeight: 600,
-                padding: "0.875rem",
-                borderRadius: "0.625rem",
-                border: "none",
-                background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
-                color: T.color.cream,
-                cursor: "pointer",
-              }}
-            >
+            <button onClick={handleVisit} style={ctaButtonStyle}>
               {t("passcodeEnterPalace")}
             </button>
           </div>
@@ -189,6 +176,7 @@ export default function PasscodeEntry() {
           <form onSubmit={handleSubmit}>
             <input
               ref={inputRef}
+              className="mp-passcode-input"
               type="text"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -203,25 +191,22 @@ export default function PasscodeEntry() {
               aria-describedby={error ? "passcode-error" : undefined}
               style={{
                 width: "100%",
-                fontFamily: "monospace",
-                fontSize: "1.5rem",
-                fontWeight: 700,
-                letterSpacing: "0.25rem",
-                padding: "1rem",
+                // Source Sans body family to match the auth shell; a modest
+                // tracking + centered caps still reads as a passcode field
+                // without the old monospace 1.5rem divergence.
+                fontFamily: T.font.body,
+                fontSize: "1.125rem",
+                fontWeight: 600,
+                letterSpacing: "0.2rem",
+                padding: "0.8125rem 1rem",
                 borderRadius: "0.625rem",
-                border: `2px solid ${error ? T.color.error : T.color.sandstone}`,
-                background: T.color.cream,
+                border: `1.5px solid ${error ? T.color.error : T.color.sandstone}`,
+                background: T.color.white,
                 color: T.color.ink,
                 textAlign: "center",
                 outline: "none",
                 boxSizing: "border-box",
                 transition: "border-color 0.2s ease",
-              }}
-              onFocus={(e) => {
-                if (!error) e.currentTarget.style.borderColor = T.color.gold;
-              }}
-              onBlur={(e) => {
-                if (!error) e.currentTarget.style.borderColor = T.color.sandstone;
               }}
             />
 
@@ -246,15 +231,7 @@ export default function PasscodeEntry() {
               type="submit"
               disabled={isPending || !code.trim()}
               style={{
-                width: "100%",
-                fontFamily: T.font.body,
-                fontSize: "1rem",
-                fontWeight: 600,
-                padding: "0.875rem",
-                borderRadius: "0.625rem",
-                border: "none",
-                background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
-                color: T.color.cream,
+                ...ctaButtonStyle,
                 cursor: isPending ? "wait" : "pointer",
                 opacity: isPending || !code.trim() ? 0.6 : 1,
                 marginTop: "1.25rem",
@@ -285,7 +262,74 @@ export default function PasscodeEntry() {
             {t("passcodeBackHome")}
           </a>
         </div>
-      </TuscanCard>
+      </main>
     </div>
   );
 }
+
+// Chrome mirrors src/app/(auth)/layout.tsx exactly (canon CREAM→warmStone
+// gradient, blurred cream card, HAIRLINE border, warm-ink shadow) so the
+// passcode gate is a pixel-sibling of the login / reset-password surfaces.
+const wrapperStyle: React.CSSProperties = {
+  minHeight: "100dvh",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "linear-gradient(165deg, #FCFAF5 0%, #F2EDE4 50%, #E5DDD0 100%)",
+  fontFamily: T.font.body,
+  position: "relative",
+  overflowX: "hidden",
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  padding: "1rem",
+  paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))",
+};
+
+const cardStyle: React.CSSProperties = {
+  width: "min(27.5rem, 92vw)",
+  padding: "2.5rem 2.25rem",
+  background: "rgba(252,250,245,0.85)",
+  backdropFilter: "blur(20px)",
+  borderRadius: "1.25rem",
+  border: `1px solid ${T.color.hairline}`,
+  boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+  position: "relative",
+  zIndex: 1,
+  margin: "1.25rem",
+};
+
+const blobTopStyle: React.CSSProperties = {
+  position: "absolute",
+  width: 400,
+  height: 400,
+  borderRadius: "50%",
+  background: "radial-gradient(circle, rgba(198,107,61,0.08) 0%, transparent 70%)",
+  top: -100,
+  right: -100,
+  pointerEvents: "none",
+};
+
+const blobBottomStyle: React.CSSProperties = {
+  position: "absolute",
+  width: 300,
+  height: 300,
+  borderRadius: "50%",
+  background: "radial-gradient(circle, rgba(74,103,65,0.06) 0%, transparent 70%)",
+  bottom: -80,
+  left: -80,
+  pointerEvents: "none",
+};
+
+// EMBER primary CTA — matches the auth-shell button grammar.
+const ctaButtonStyle: React.CSSProperties = {
+  width: "100%",
+  fontFamily: T.font.body,
+  fontSize: "1rem",
+  fontWeight: 600,
+  padding: "0.875rem",
+  borderRadius: "0.75rem",
+  border: "none",
+  background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
+  color: T.color.cream,
+  cursor: "pointer",
+};

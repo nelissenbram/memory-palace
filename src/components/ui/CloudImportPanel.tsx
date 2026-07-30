@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactElement } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -68,12 +68,94 @@ interface Props {
   embedded?: boolean;
 }
 
-// ── Provider metadata ──
-const PROVIDER_META: Record<string, { name: string; icon: string; accent: string }> = {
-  google_photos: { name: "Google Photos", icon: "\u{1F4F8}", accent: "#4285F4" },
-  dropbox: { name: "Dropbox", icon: "\u{1F4E6}", accent: "#0061FF" },
-  onedrive: { name: "OneDrive", icon: "\u2601\uFE0F", accent: "#0078D4" },
-  box: { name: "Box", icon: "\u{1F4C1}", accent: "#0061D5" },
+// ── Cloud provider brand marks (SVG, not OS emoji) — mirrors ImportHub's
+// vocabulary so the whole Import surface speaks one glyph language. Framed in a
+// hairline cream pill at the call site so the loud brand colors read as
+// intentional badges against the muted Tuscan palette. ──
+const GooglePhotosMark = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 7.5V1.5A4.5 4.5 0 007.5 6v1.5H12z" fill="#EA4335" />
+    <path d="M16.5 12H22.5A4.5 4.5 0 0018 7.5H16.5V12z" fill="#4285F4" />
+    <path d="M12 16.5V22.5A4.5 4.5 0 0016.5 18V16.5H12z" fill="#34A853" />
+    <path d="M7.5 12H1.5A4.5 4.5 0 006 16.5H7.5V12z" fill="#FBBC05" />
+  </svg>
+);
+const DropboxMark = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 2L6 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4z" fill="#0061FE" />
+    <path d="M6 6l6 4-6 4" fill="#0061FE" opacity="0.7" />
+    <path d="M18 6l-6 4 6 4" fill="#0061FE" opacity="0.7" />
+  </svg>
+);
+const OneDriveMark = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M9 17h10a4 4 0 000-8 5 5 0 00-9.5-1A4 4 0 005 12.5 3.5 3.5 0 005 19" stroke="#0078D4" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+  </svg>
+);
+const BoxMark = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5v-9z" stroke="#0061D5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M3 7.5L12 12l9-4.5M12 12v9" stroke="#0061D5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+// ── File-list line-art glyphs (terracotta, matches ImportHub / MassImport) ──
+const MI_GLYPH = "#9A4F2A"; // Atrium token: terracotta glyph (at-rest)
+const FolderMark = ({ size = 18, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+  </svg>
+);
+const ImageMark = ({ size = 18, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <path d="M21 15l-5-5L5 21" />
+  </svg>
+);
+const VideoMark = ({ size = 18, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="2" y="5" width="15" height="14" rx="2" />
+    <path d="M23 7l-6 5 6 5V7z" />
+  </svg>
+);
+const FileMark = ({ size = 18, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+    <path d="M14 2v6h6" />
+  </svg>
+);
+const CloudHeaderGlyph = ({ size = 22, color = "#FCFAF5" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7 18h10a4 4 0 000-8 5 5 0 00-9.5-1.2A3.5 3.5 0 007 18z" />
+    <path d="M12 10v6M9.5 13.5L12 16l2.5-2.5" />
+  </svg>
+);
+const CheckCircleMark = ({ size = 48, color = "#56683C" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="24" cy="24" r="19" />
+    <path d="M15 24l6 6 12-13" />
+  </svg>
+);
+const WarningMark = ({ size = 48, color = "#A63D3D" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M24 6L4 42h40L24 6z" />
+    <path d="M24 20v10M24 36h.01" />
+  </svg>
+);
+const LinkMark = ({ size = 40, color = MI_GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17 23a6 6 0 008.5.6l4-4a6 6 0 00-8.5-8.5l-2 2" />
+    <path d="M23 17a6 6 0 00-8.5-.6l-4 4a6 6 0 008.5 8.5l2-2" />
+  </svg>
+);
+
+// ── Provider metadata ── (Icon is a small SVG brand-mark component)
+const PROVIDER_META: Record<string, { name: string; Icon: (p: { size?: number }) => ReactElement; accent: string }> = {
+  google_photos: { name: "Google Photos", Icon: GooglePhotosMark, accent: "#4285F4" },
+  dropbox: { name: "Dropbox", Icon: DropboxMark, accent: "#0061FF" },
+  onedrive: { name: "OneDrive", Icon: OneDriveMark, accent: "#0078D4" },
+  box: { name: "Box", Icon: BoxMark, accent: "#0061D5" },
 };
 
 const BROWSE_ENDPOINTS: Record<string, string> = {
@@ -143,6 +225,15 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
 
   // Error state
   const [error, setError] = useState<string | null>(null);
+
+  // Abort controller + timeout for the (single-batch) cloud import POST so a
+  // stalled request is recoverable via a Cancel button rather than hanging the
+  // indeterminate bar forever.
+  const importAbortRef = useRef<AbortController | null>(null);
+  const importTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 3 minutes: generous for a batch download+import, still bounded so a truly
+  // stalled request eventually surfaces a recoverable error.
+  const IMPORT_TIMEOUT_MS = 3 * 60 * 1000;
 
   // Target room
   const [targetWingId, setTargetWingId] = useState<string>("");
@@ -278,6 +369,12 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
     setImporting(true);
     setImportProgress({ total: selected.size, succeeded: 0, failed: 0, results: [] });
 
+    // Fresh abort controller + timeout guard for this import run.
+    const controller = new AbortController();
+    importAbortRef.current = controller;
+    if (importTimeoutRef.current) clearTimeout(importTimeoutRef.current);
+    importTimeoutRef.current = setTimeout(() => controller.abort("timeout"), IMPORT_TIMEOUT_MS);
+
     try {
       const endpoint = IMPORT_ENDPOINTS[activeProvider];
       if (!endpoint) return;
@@ -304,6 +401,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
 
       if (res.ok) {
@@ -321,16 +419,54 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
           results: [{ id: "error", success: false, error: t("importFailed") }],
         } : null);
       }
-    } catch {
-      setImportProgress((prev) => prev ? {
-        ...prev,
-        failed: prev.total,
-        results: [{ id: "error", success: false, error: t("importFailed") }],
-      } : null);
+    } catch (err: unknown) {
+      // A user-triggered abort clears the run (Cancel path handles its own
+      // state) so we don't paint it as a failure; a timeout abort surfaces a
+      // distinct, recoverable message.
+      if (err instanceof DOMException && err.name === "AbortError") {
+        const timedOut = controller.signal.reason === "timeout";
+        if (timedOut) {
+          setImportProgress((prev) => prev ? {
+            ...prev,
+            failed: prev.total,
+            results: [{ id: "error", success: false, error: t("importTimeout") }],
+          } : null);
+        } else {
+          // Cancel: reset so the user is back to selection and can retry.
+          setImportProgress(null);
+        }
+      } else {
+        setImportProgress((prev) => prev ? {
+          ...prev,
+          failed: prev.total,
+          results: [{ id: "error", success: false, error: t("importFailed") }],
+        } : null);
+      }
+    } finally {
+      if (importTimeoutRef.current) { clearTimeout(importTimeoutRef.current); importTimeoutRef.current = null; }
+      importAbortRef.current = null;
     }
 
     setImporting(false);
   };
+
+  // Cancel a stalled/in-flight import: abort the request, clear progress and
+  // return the user to selection so the import is recoverable.
+  const cancelImport = () => {
+    if (importTimeoutRef.current) { clearTimeout(importTimeoutRef.current); importTimeoutRef.current = null; }
+    importAbortRef.current?.abort("cancel");
+    importAbortRef.current = null;
+    setImporting(false);
+    setImportProgress(null);
+  };
+
+  // Clean up any pending timeout / in-flight request on unmount.
+  useEffect(() => {
+    return () => {
+      if (importTimeoutRef.current) clearTimeout(importTimeoutRef.current);
+      importAbortRef.current?.abort("unmount");
+    };
+  }, []);
 
   const isFileProvider = activeProvider && activeProvider !== "google_photos";
   const selectedSize = items
@@ -347,7 +483,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
                 background: "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium ember */,
                 display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.375rem",
-              }}>{"\u2601\uFE0F"}</div>
+              }}><CloudHeaderGlyph size={22} /></div>
               <div>
                 <h3 style={{
                   fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
@@ -400,7 +536,12 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                     whiteSpace: "nowrap", transition: "all 0.2s ease", minHeight: "2.75rem",
                     opacity: isLocked ? 0.7 : 1,
                   }}>
-                    <span>{meta.icon}</span>
+                    <span aria-hidden="true" style={{
+                      flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+                      background: T.color.cream, border: "0.0625rem solid #E3D6BC" /* Atrium hairline pill */,
+                    }}><meta.Icon size={14} /></span>
                     {meta.name}
                     {isLocked && (
                       <span style={{
@@ -425,7 +566,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             <div style={{
               textAlign: "center", padding: "3rem 1.5rem",
             }}>
-              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>{"\u{1F517}"}</div>
+              <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "center" }}><LinkMark size={44} /></div>
               <h3 style={{
                 fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
                 color: "#403B36" /* Atrium ink */, margin: "0 0 0.5rem",
@@ -508,8 +649,8 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
           {/* Import complete view */}
           {importProgress && !importing && (
             <div aria-live="polite" style={{ textAlign: "center", padding: "2rem 0" }}>
-              <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>
-                {importProgress.failed === 0 ? "\u{1F389}" : "\u26A0\uFE0F"}
+              <div style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "center" }}>
+                {importProgress.failed === 0 ? <CheckCircleMark size={48} /> : <WarningMark size={48} />}
               </div>
               <h3 style={{
                 fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, /* Atrium titleL */
@@ -589,6 +730,16 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               }}>
                 {t("importWaitMessage")}
               </p>
+              {/* Cancel: aborts the request so a stalled cloud import is
+                  recoverable rather than hanging on the indeterminate bar. */}
+              <div style={{ display: "flex", justifyContent: "center", marginTop: "1rem" }}>
+                <button onClick={cancelImport} style={{
+                  padding: "0.625rem 1.5rem", borderRadius: "0.75rem",
+                  border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: T.color.white,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                  color: "#403B36" /* Atrium ink */, cursor: "pointer", minHeight: "2.75rem",
+                }}>{t("cancel")}</button>
+              </div>
               <style>{`@keyframes indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
 @media (prefers-reduced-motion: reduce) { .indeterminate-bar, [style*="animation"] { animation: none !important; } [style*="transition"] { transition: none !important; } }`}</style>
             </div>
@@ -600,7 +751,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             <div style={{
               textAlign: "center", padding: "2.5rem 1.5rem",
             }}>
-              <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>{PROVIDER_META[activeProvider]?.icon}</div>
+              <div style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "center" }}>{(() => { const I = PROVIDER_META[activeProvider!]?.Icon; return I ? <I size={40} /> : null; })()}</div>
               <h3 style={{
                 fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, /* Atrium titleM */
                 color: "#403B36" /* Atrium ink */, margin: "0 0 0.5rem",
@@ -911,7 +1062,7 @@ function PhotoGrid({ items, selected, onToggle }: {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "1.75rem", color: "#716A5E" /* Atrium muted */,
               }}>
-                {item.isVideo ? "\u{1F3AC}" : "\u{1F5BC}\uFE0F"}
+                {item.isVideo ? <VideoMark size={28} color="#716A5E" /> : <ImageMark size={28} color="#716A5E" />}
               </div>
             )}
 
@@ -989,12 +1140,12 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
         const isFolder = item.isFolder;
         const isSelected = selected.has(item.id);
         const icon = isFolder
-          ? "\u{1F4C1}"
+          ? <FolderMark size={20} />
           : item.isImage || item.isMedia
-          ? "\u{1F5BC}\uFE0F"
+          ? <ImageMark size={20} />
           : item.isVideo
-          ? "\u{1F3AC}"
-          : "\u{1F4C4}";
+          ? <VideoMark size={20} />
+          : <FileMark size={20} />;
 
         return (
           <div key={item.id} role="button" tabIndex={0} aria-label={isFolder ? `${tc("openFolder")} ${item.name}` : `${isSelected ? tc("deselect") : tc("select")} ${item.name}`} style={{

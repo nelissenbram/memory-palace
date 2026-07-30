@@ -692,9 +692,16 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                 {t("importCloudTitle")}
               </p>
               <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
+                // On small phones the three brand chips can overflow their
+                // grid tracks and truncate their labels; let the row scroll
+                // horizontally instead (matching CloudImportPanel's provider
+                // tabs). On wider viewports keep the tidy equal 3-up grid.
+                display: isMobile ? "flex" : "grid",
+                gridTemplateColumns: isMobile ? undefined : "1fr 1fr 1fr",
                 gap: isMobile ? "0.375rem" : "0.5rem",
+                overflowX: isMobile ? "auto" : undefined,
+                WebkitOverflowScrolling: isMobile ? "touch" : undefined,
+                paddingBottom: isMobile ? "0.125rem" : undefined,
               }}>
                 {CLOUD_PROVIDERS.map(({ key, labelKey, icon }) => {
                   const disabled = DISABLED_PROVIDERS.has(key);
@@ -715,6 +722,8 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                       fontWeight: 500, color: "#403B36", /* Atrium ink */
                       transition: "all 0.2s ease",
                       textAlign: "left",
+                      whiteSpace: "nowrap",
+                      flex: isMobile ? "0 0 auto" : undefined,
                       opacity: disabled ? 0.35 : 1,
                       pointerEvents: disabled ? "none" : "auto",
                     }}

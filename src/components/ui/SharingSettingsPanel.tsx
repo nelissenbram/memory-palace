@@ -1011,7 +1011,10 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         marginBottom: "0.625rem",
                       }}
                     >
-                      <PermissionBadge label={t("viewOnly")} enabled={share.status === "accepted"} />
+                      {/* "View only" is derived from the share record: it is
+                          true precisely when no write grant (add/edit/delete)
+                          is present, not from mere acceptance state. */}
+                      <PermissionBadge label={t("viewOnly")} enabled={!share.can_add && !share.can_edit && !share.can_delete} />
                       <PermissionBadge label={t("canAdd")} enabled={share.can_add} />
                       <PermissionBadge label={t("canEdit")} enabled={share.can_edit} />
                       <PermissionBadge label={t("canDelete")} enabled={share.can_delete} />
@@ -1120,7 +1123,9 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         marginBottom: "0.625rem",
                       }}
                     >
-                      <PermissionBadge label={t("viewOnly")} enabled={share.status === "accepted"} />
+                      {/* "View only" derived from the share record: true only
+                          when no write grant is present (not from acceptance). */}
+                      <PermissionBadge label={t("viewOnly")} enabled={!share.can_add && !share.can_edit && !share.can_delete} />
                       <PermissionBadge label={t("canAdd")} enabled={share.can_add} />
                       <PermissionBadge label={t("canEdit")} enabled={share.can_edit} />
                       <PermissionBadge label={t("canDelete")} enabled={share.can_delete} />

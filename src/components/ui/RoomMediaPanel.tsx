@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import { INK, EMBER, EMBER_GLYPH, CREAM, SHADOW } from "@/lib/libraryTokens";
 import { confirmDialog } from "@/lib/ui/confirm";
-import { useIsMobile, useIsTablet } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsTablet, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
@@ -133,6 +133,10 @@ function DisplayedPill({
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const isTablet = useIsTablet();
+  const isCompact = useIsCompact();
+  // Keep the display-unit pill a comfortable touch target on iPad / compact widths.
+  const touchDense = isTablet || isCompact;
 
   const nType = normalizeType(mem);
   const allUnits = DISPLAY_UNITS[nType] || [];
@@ -192,14 +196,15 @@ function DisplayedPill({
           aria-haspopup="menu"
           aria-expanded={dropdownOpen}
           style={{
-            padding: "0.1875rem 0.5rem",
+            padding: touchDense ? "0.4375rem 0.75rem" : "0.1875rem 0.5rem",
+            minHeight: touchDense ? "2.75rem" : undefined,
             borderRadius: "0.75rem",
             border: "none",
             background: isDisplayed ? accent : "rgba(64,59,54,0.55)",
             backdropFilter: "blur(0.5rem)",
             color: CREAM,
             fontFamily: T.font.body,
-            fontSize: "0.6875rem",
+            fontSize: touchDense ? "0.75rem" : "0.6875rem",
             fontWeight: 600,
             cursor: "pointer",
             transition: "all 0.15s ease",
@@ -217,6 +222,18 @@ function DisplayedPill({
           <div
             role="menu"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") { e.stopPropagation(); setDropdownOpen(false); return; }
+              if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+              e.preventDefault();
+              const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"], button'));
+              if (items.length === 0) return;
+              const idx = items.indexOf(document.activeElement as HTMLButtonElement);
+              const next = e.key === "ArrowDown"
+                ? (idx < 0 ? 0 : (idx + 1) % items.length)
+                : (idx < 0 ? items.length - 1 : (idx - 1 + items.length) % items.length);
+              items[next]?.focus();
+            }}
             style={{
               position: "absolute",
               top: "100%",
@@ -248,6 +265,7 @@ function DisplayedPill({
                     gap: "0.5rem",
                     width: "100%",
                     padding: "0.375rem 0.625rem",
+                    minHeight: touchDense ? "2.75rem" : undefined,
                     borderRadius: "0.5rem",
                     border: "none",
                     background: isActive ? `${accent}15` : "transparent",
@@ -289,6 +307,7 @@ function DisplayedPill({
                   gap: "0.5rem",
                   width: "100%",
                   padding: "0.375rem 0.625rem",
+                  minHeight: touchDense ? "2.75rem" : undefined,
                   borderRadius: "0.5rem",
                   border: "none",
                   background: "transparent",
@@ -322,7 +341,7 @@ function DisplayedPill({
             background: "rgba(64,59,54,0.85)",
             color: CREAM,
             fontFamily: T.font.body,
-            fontSize: "0.5rem",
+            fontSize: "0.6875rem",
             animation: "fadeIn .2s ease",
             whiteSpace: "nowrap",
           }}
@@ -437,6 +456,9 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const accent = wing?.accent || EMBER_GLYPH;
   const isTablet = useIsTablet();
+  const isCompact = useIsCompact();
+  // On iPad / compact widths keep interactive targets comfortably tappable.
+  const touchDense = isTablet || isCompact;
 
   const [activeTab, setActiveTab] = useState<"library" | "gallery">(initialTab);
   // Upload panel removed — Import Hub handles both import and upload
@@ -838,6 +860,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
           <button onClick={() => setShowImportHub(true)} style={{
             display: "inline-flex", alignItems: "center", gap: "0.375rem",
             padding: "0.375rem 0.875rem",
+            minHeight: touchDense ? "2.75rem" : undefined,
             borderRadius: "0.5rem",
             background: `linear-gradient(135deg, ${EMBER}, #9A4F2A 60%, #6B3318)`,
             border: "none",
@@ -861,6 +884,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
             style={{
               display: "inline-flex", alignItems: "center", gap: "0.25rem",
               padding: "0.375rem 0.625rem",
+              minHeight: touchDense ? "2.75rem" : undefined,
               borderRadius: "0.5rem",
               border: `1px solid ${selectMode ? accent : T.color.cream}`,
               background: selectMode ? `${accent}15` : T.color.warmStone,
@@ -884,6 +908,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               style={{
                 display: "inline-flex", alignItems: "center", gap: "0.25rem",
                 padding: "0.375rem 0.625rem",
+                minHeight: touchDense ? "2.75rem" : undefined,
                 borderRadius: "0.5rem",
                 border: `1px solid ${T.color.cream}`,
                 background: T.color.warmStone,
@@ -896,7 +921,18 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               {tLib(`sort${sortMode.charAt(0).toUpperCase() + sortMode.slice(1)}` as "sortNewest")}
             </button>
             {sortOpen && (
-              <div role="menu" style={{
+              <div role="menu" onKeyDown={(e) => {
+                if (e.key === "Escape") { e.stopPropagation(); setSortOpen(false); return; }
+                if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+                e.preventDefault();
+                const items = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]'));
+                if (items.length === 0) return;
+                const idx = items.indexOf(document.activeElement as HTMLButtonElement);
+                const next = e.key === "ArrowDown"
+                  ? (idx < 0 ? 0 : (idx + 1) % items.length)
+                  : (idx < 0 ? items.length - 1 : (idx - 1 + items.length) % items.length);
+                items[next]?.focus();
+              }} style={{
                 position: "absolute", top: "100%", right: 0, zIndex: 20,
                 marginTop: "0.25rem",
                 background: T.color.white, borderRadius: "0.75rem",
@@ -1204,7 +1240,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                         onClick={(e) => { e.stopPropagation(); onUpdate(firstMem.id, { displayed: false, displayUnit: undefined, displayOrder: undefined }); }}
                         style={{
                           position: "absolute", top: "0.3125rem", right: "0.3125rem",
-                          width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+                          width: touchDense ? "2.75rem" : "1.5rem", height: touchDense ? "2.75rem" : "1.5rem",
+                          borderRadius: "50%",
                           background: "rgba(64,59,54,0.75)", color: CREAM,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: "0.75rem", cursor: "pointer",
@@ -1293,7 +1330,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                       onClick={() => setPickingSlot(null)}
                       aria-label={t("close")}
                       style={{
-                        width: "2.25rem", height: "2.25rem", borderRadius: "50%",
+                        width: touchDense ? "2.75rem" : "2.25rem", height: touchDense ? "2.75rem" : "2.25rem",
+                        borderRadius: "50%",
                         border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone,
                         color: T.color.muted, cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
@@ -1376,7 +1414,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                               </div>
                               {isAssigned && (
                                 <div style={{
-                                  fontFamily: T.font.body, fontSize: "0.5rem",
+                                  fontFamily: T.font.body, fontSize: "0.6875rem",
                                   color: accent, fontWeight: 600, textTransform: "uppercase",
                                   letterSpacing: "0.05em",
                                 }}>

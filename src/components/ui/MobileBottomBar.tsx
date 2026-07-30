@@ -206,8 +206,8 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
           background: `${T.color.linen}e8`,
           backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
           borderRadius: "1rem",
-          border: `1px solid ${T.color.cream}`,
-          boxShadow: `0 -0.5rem 2.5rem rgba(44,44,42,.2), inset 0 1px 0 rgba(255,255,255,.5)`,
+          border: `0.0625rem solid ${T.color.cream}`,
+          boxShadow: `0 -0.5rem 2.5rem rgba(44,44,42,.2), inset 0 0.0625rem 0 rgba(255,255,255,.5)`,
           padding: "0.75rem",
           animation: "mobileMoreSlideUp .3s cubic-bezier(.22,1,.36,1)",
         }}>
@@ -234,7 +234,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
                 {section.items.map((item, ii) => (
                   <button key={ii} onClick={item.action} aria-label={item.label} style={{
                     padding: "0.75rem 0.375rem", borderRadius: "0.75rem",
-                    border: `1px solid ${T.color.cream}`,
+                    border: `0.0625rem solid ${T.color.cream}`,
                     background: `${T.color.white}cc`,
                     backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
                     cursor: "pointer", textAlign: "center",
@@ -267,8 +267,8 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
         background: `${T.color.linen}f4`,
         backdropFilter: "blur(24px) saturate(1.2)",
         WebkitBackdropFilter: "blur(24px) saturate(1.2)",
-        borderTop: `1px solid ${T.color.cream}`,
-        boxShadow: `0 -1px 0.5rem rgba(44,44,42,.06), inset 0 1px 0 rgba(255,255,255,.35)`,
+        borderTop: `0.0625rem solid ${T.color.cream}`,
+        boxShadow: `0 -0.0625rem 0.5rem rgba(44,44,42,.06), inset 0 0.0625rem 0 rgba(255,255,255,.35)`,
         display: "flex", alignItems: "center", justifyContent: "space-around",
         padding: "0 0.375rem",
         animation: "mobileBarSlideUp .4s cubic-bezier(.22,1,.36,1) .15s both",

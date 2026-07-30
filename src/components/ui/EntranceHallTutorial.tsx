@@ -8,8 +8,6 @@ import { CREAM, INK, MUTED, HAIRLINE, EMBER, GOLD, SHADOW, RT } from "@/lib/libr
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useTouchControls } from "@/lib/hooks/useIsMobile";
 
-const STORAGE_KEY = "mp_entrance_tour_seen_v1";
-
 interface EntranceTourState {
   open: boolean;
   setOpen: (v: boolean) => void;
@@ -138,6 +136,11 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
     tipLeft = Math.max(edge, Math.min(vw - tipWidth - edge, l_ + w_ / 2 - tipWidth / 2));
   }
 
+  const advance = () => {
+    if (step >= totalSteps - 1) onClose();
+    else setStep(step + 1);
+  };
+
   const overlay = (
     <div
       role="dialog"
@@ -147,6 +150,9 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
     >
       <style>{`
         @keyframes mpEhTipIn { from { opacity:0; transform:translateY(0.375rem);} to { opacity:1; transform:translateY(0);} }
+        /* Pulse derives from canon GOLD #D4AF37 = rgba(212,175,55). Inline CSS
+           keyframes cannot reference the JS GOLD const, so the numeric literal
+           is the canonical focus color, not an ad-hoc gold. */
         @keyframes mpEhPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.4);} 50% { box-shadow:0 0 0 0.5rem rgba(212,175,55,0);} }
       `}</style>
 
@@ -162,7 +168,7 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
             <rect
               width="100%"
               height="100%"
-              fill="rgba(36,28,21,0.45)"
+              fill="rgba(64,59,54,0.45)"
               mask="url(#mp-entrance-cutout)"
               onClick={onClose}
             />
@@ -178,10 +184,28 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
               boxSizing: "border-box",
             }}
           />
+          {/* Tapping the highlighted control advances the tour (feels interactive,
+              rather than dismissing). We don't punch pointer-events through to the
+              real control to avoid double-duty taps on the joystick mid-tour. */}
+          <button
+            type="button"
+            aria-label={t("advanceHint")}
+            onClick={(e) => { e.stopPropagation(); advance(); }}
+            style={{
+              position: "absolute",
+              top: t_, left: l_, width: w_, height: h_,
+              minWidth: T.touch, minHeight: T.touch,
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              borderRadius: `${rRem}rem`,
+            }}
+          />
         </>
       ) : (
         <div
-          style={{ position: "absolute", inset: 0, background: "rgba(36,28,21,0.45)", pointerEvents: "auto" }}
+          style={{ position: "absolute", inset: 0, background: "rgba(64,59,54,0.45)", pointerEvents: "auto" }}
           onClick={onClose}
         />
       )}
@@ -265,11 +289,7 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
               <button
                 ref={nextRef}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (step >= totalSteps - 1) onClose();
-                  else setStep(step + 1);
-                }}
+                onClick={(e) => { e.stopPropagation(); advance(); }}
                 style={{
                   fontFamily: T.font.body, fontSize: RT.overline, fontWeight: 600,
                   color: "#FFF",
@@ -292,26 +312,7 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
   return createPortal(overlay, document.body);
 }
 
-export function useEntranceHallTutorial(shouldShow: boolean): [boolean, (v: boolean) => void] {
-  const open = useEntranceTourStore((s) => s.open);
-  const setOpen = useEntranceTourStore((s) => s.setOpen);
-  useEffect(() => {
-    if (!shouldShow) return;
-    try {
-      if (typeof window === "undefined") return;
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("entranceTour") === "1") {
-        window.localStorage.removeItem(STORAGE_KEY);
-        setOpen(true);
-        window.localStorage.setItem(STORAGE_KEY, "1");
-        return;
-      }
-      const seen = window.localStorage.getItem(STORAGE_KEY);
-      if (!seen) {
-        setOpen(true);
-        window.localStorage.setItem(STORAGE_KEY, "1");
-      }
-    } catch {}
-  }, [shouldShow, setOpen]);
-  return [open, setOpen];
-}
+// NOTE: the former `useEntranceHallTutorial(shouldShow)` auto-open hook was
+// removed. It was dead code (never imported) and diverged from the live
+// auto-open path in MemoryPalace.tsx, which drives the entrance tour via
+// `useEntranceTourStore`. The store above remains the single source of truth.

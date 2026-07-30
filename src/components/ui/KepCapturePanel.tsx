@@ -10,6 +10,18 @@ import { ANIM, EASE } from "@/components/ui/TuscanStyles";
 const C = T.color;
 const F = T.font;
 
+/* ───── Canon neutral tokens ─────
+   Source the Kep surface's neutrals from the canon library palette (mirrors
+   src/lib/libraryTokens.ts CREAM/TRAY/HAIRLINE/SAGE) rather than theme.ts's
+   legacy linen/warmStone/sandstone, so this surface shares one source of truth
+   with its Library/Atrium siblings. Kept as well-named locals to avoid touching
+   the shared token files. */
+const CREAM = "#FCFAF5";   // canon page/surface base (libraryTokens CREAM)
+const TRAY = "#F2EDE4";    // canon lifted-tray neutral (libraryTokens TRAY)
+const HAIRLINE = "#E3D6BC"; // canon card border (libraryTokens HAIRLINE)
+const SAGE = "#56683C";    // canon sage (libraryTokens SAGE)
+const NEUTRAL_SOFT = "#EDE6D8"; // canon warm neutral for header gradient / secondary fills
+
 /* ───── Helpers ───── */
 
 function formatPhone(phone: string): string {
@@ -182,10 +194,10 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
           maxWidth: isMobile ? undefined : "52rem",
           height: isMobile ? "100%" : undefined,
           maxHeight: isMobile ? undefined : "90vh",
-          background: C.linen,
+          background: TRAY, // canon lifted-tray neutral (was C.linen)
           borderRadius: isMobile ? 0 : "1rem", // Atrium token: card radius
           boxShadow: isMobile ? "none" : T.shadow[2], // Atrium token: S2 warm-ink overlay shadow
-          border: isMobile ? "none" : `0.0625rem solid ${C.hairline}`, // Atrium token: hairline
+          border: isMobile ? "none" : `0.0625rem solid ${HAIRLINE}`, // canon hairline
           display: "flex", flexDirection: "column",
           overflow: "hidden",
           animation: "fadeUp .35s ease",
@@ -198,8 +210,8 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
           paddingTop: isMobile ? "max(1rem, env(safe-area-inset-top, 0px))" : undefined,
           paddingLeft: isMobile ? "max(1.25rem, env(safe-area-inset-left, 0px))" : undefined,
           paddingRight: isMobile ? "max(1.25rem, env(safe-area-inset-right, 0px))" : undefined,
-          borderBottom: `0.0625rem solid ${C.hairline}`, // Atrium token: hairline
-          background: `linear-gradient(180deg, ${C.warmStone} 0%, ${C.linen} 100%)`,
+          borderBottom: `0.0625rem solid ${HAIRLINE}`, // canon hairline
+          background: `linear-gradient(180deg, ${NEUTRAL_SOFT} 0%, ${TRAY} 100%)`, // canon warm neutrals (was warmStone→linen)
           flexShrink: 0,
         }}>
           <h2 style={{
@@ -213,8 +225,8 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
             aria-label={tc("close")}
             style={{
               width: "2.75rem", height: "2.75rem", minWidth: "2.75rem", minHeight: "2.75rem",
-              borderRadius: "0.75rem", border: `0.0625rem solid ${C.hairline}`, // Atrium token: small-control radius + hairline
-              background: C.white, cursor: "pointer", fontSize: "1rem", color: C.inkMuted,
+              borderRadius: "0.75rem", border: `0.0625rem solid ${HAIRLINE}`, // canon small-control radius + hairline
+              background: CREAM, cursor: "pointer", fontSize: "1rem", color: C.inkMuted,
               display: "flex", alignItems: "center", justifyContent: "center",
               transition: "opacity 0.2s ease", flexShrink: 0, padding: 0,
             }}
@@ -285,7 +297,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                   <p style={stepDesc}>{t("quickStep1Text")}</p>
                   <div style={{
                     display: "inline-flex", alignItems: "center",
-                    background: "rgba(154,79,42,0.11)", border: `0.0625rem solid ${C.hairline}`, // Atrium token: terracotta medallion tint + hairline (gold reserved for the palace itself)
+                    background: "rgba(154,79,42,0.11)", border: `0.0625rem solid ${HAIRLINE}`, // canon terracotta medallion tint + hairline (gold reserved for the palace itself)
                     borderRadius: "0.75rem", padding: "0.5rem 1rem",
                     marginBottom: "0.75rem",
                   }}>
@@ -307,9 +319,9 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                     </button>
                     <button onClick={handleCopy} style={{
                       ...btnSecondary,
-                      background: copied ? "#56683C" : C.warmStone, // Atrium token: canonical sage
+                      background: copied ? SAGE : NEUTRAL_SOFT, // canon sage on-copy, warm neutral at rest
                       color: copied ? C.cream : C.ink,
-                      borderColor: copied ? "#56683C" : C.hairline, // Atrium token: hairline
+                      borderColor: copied ? SAGE : HAIRLINE, // canon sage / hairline
                     }}>
                       {copied ? t("quickStep1Copied") : t("quickStep1Copy")}
                     </button>
@@ -366,9 +378,9 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                     {[`ROOM ${t("cmdExampleKitchen")}`, `NEW ${t("cmdExampleHolidays")}`, "ROOMS"].map((cmd) => (
                       <code key={cmd} style={{
                         fontFamily: "monospace", fontSize: "0.8125rem", fontWeight: 600, // Atrium token: meta
-                        color: C.ink, background: C.linen,
+                        color: C.ink, background: TRAY, // canon lifted-tray neutral (was C.linen)
                         padding: "0.25rem 0.5rem", borderRadius: "0.25rem",
-                        border: `0.0625rem solid ${C.hairline}`, // Atrium token: hairline
+                        border: `0.0625rem solid ${HAIRLINE}`, // canon hairline
                       }}>
                         {cmd}
                       </code>
@@ -456,7 +468,7 @@ const btnSecondary: React.CSSProperties = {
   borderRadius: "0.75rem", padding: "0.4375rem 0.75rem", // Atrium token: small-control radius
   fontSize: "0.8125rem", cursor: "pointer",
   fontWeight: 500, fontFamily: F.body,
-  background: C.warmStone, color: C.ink,
+  background: NEUTRAL_SOFT, color: C.ink, // canon warm neutral (was C.warmStone)
   transition: `all 0.2s ${EASE}`,
 };
 

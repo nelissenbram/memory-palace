@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { T } from "@/lib/theme";
 import { INK, MUTED, CREAM, HAIRLINE, EMBER, SAGE, SHADOW, RT } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -17,6 +17,12 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
   const { t } = useTranslation("touchControls");
   const [visible, setVisible] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  // Pause the auto-dismiss timer while the overlay (or a child, e.g. the
+  // "Got it" button) has focus, so keyboard / assistive-tech users aren't
+  // raced off the hint mid-read (cognitive pacing).
+  const [paused, setPaused] = useState(false);
+  // Accumulated non-paused time already spent showing the hint (ms).
+  const elapsedRef = useRef(0);
 
   // corridor + entrance share the "corridorHint" (drag-to-look) copy & LS key;
   // only the room view renders the move/look diagram.
@@ -33,12 +39,28 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
     if (view !== "corridor" && view !== "room" && view !== "entrance") return;
     if (localStorage.getItem(lsKey)) return;
     setVisible(true);
+    elapsedRef.current = 0;
+    setPaused(false);
+  }, [view, lsKey]);
+
+  useEffect(() => {
+    if (!visible) return;
+    // While focused, hold the timer: don't schedule an auto-hide.
+    if (paused) return;
     // Auto-hide, but only PERSIST on explicit dismissal. Under reduced-motion
-    // give more reading time (cognitive pacing).
-    const timeout = reducedMotion ? 12000 : 6000;
-    const timer = setTimeout(() => setVisible(false), timeout);
-    return () => clearTimeout(timer);
-  }, [view, lsKey, reducedMotion]);
+    // give more reading time (cognitive pacing). Time already spent (before a
+    // focus-pause) is carried over so blur/re-focus doesn't reset the clock.
+    const full = reducedMotion ? 12000 : 6000;
+    const remaining = Math.max(0, full - elapsedRef.current);
+    const startedAt = Date.now();
+    const timer = setTimeout(() => setVisible(false), remaining);
+    return () => {
+      clearTimeout(timer);
+      // Bank the time this run actually spent counting down (only meaningful
+      // when we were unpaused, i.e. this branch).
+      elapsedRef.current += Date.now() - startedAt;
+    };
+  }, [visible, paused, reducedMotion]);
 
   const dismiss = () => {
     setVisible(false);
@@ -51,6 +73,13 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
     <div
       role="status"
       aria-live="polite"
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(e) => {
+        // Only resume once focus leaves the overlay entirely.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPaused(false);
+      }}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
       style={{
         position: "absolute",
         bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))",
@@ -119,8 +148,6 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
             >
               <svg
                 aria-hidden="true"
-                width="20"
-                height="20"
                 viewBox="0 0 20 20"
                 fill="none"
                 style={{ width: "1.25rem", height: "1.25rem" }}
@@ -145,8 +172,6 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
             >
               <svg
                 aria-hidden="true"
-                width="20"
-                height="20"
                 viewBox="0 0 20 20"
                 fill="none"
                 style={{ width: "1.25rem", height: "1.25rem" }}

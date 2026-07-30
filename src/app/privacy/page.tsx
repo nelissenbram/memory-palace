@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { createContext, useContext } from "react";
 import { T } from "@/lib/theme";
+import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -9,17 +11,24 @@ import PalaceLogo from "@/components/landing/PalaceLogo";
 const F = T.font;
 const C = T.color;
 
+/** Shared responsive flag so the module-level P/Li helpers can bump body copy
+ *  to ~1rem on phones without threading a prop through every call site. */
+const MobileCtx = createContext(false);
+
 export default function PrivacyPolicyPage() {
+  const isMobile = useIsMobile();
+  const isSmall = useIsSmall();
   const { t, locale, setLocaleNoReload } = useTranslation("privacy");
   const { t: tc } = useTranslation("common");
 
   return (
+    <MobileCtx.Provider value={isMobile}>
     <div
       style={{
         minHeight: "100vh",
         background: C.cream,
         fontFamily: F.body,
-        color: C.inkSoft,
+        color: C.ink,
         paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
         paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
       }}
@@ -42,7 +51,7 @@ export default function PrivacyPolicyPage() {
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
             border: `1px solid ${C.sandstone}50`,
-            background: "none", color: C.walnut, textDecoration: "none",
+            background: "none", color: C.inkMuted, textDecoration: "none",
             transition: "border-color 0.2s",
           }}>
             <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -59,23 +68,25 @@ export default function PrivacyPolicyPage() {
             }}
           >
             <PalaceLogo variant="mark" color="dark" size="sm" />
-            <span
-              style={{
-                fontFamily: F.display,
-                fontSize: "1.25rem",
-                fontWeight: 500,
-                color: C.inkSoft,
-                letterSpacing: "-0.3px",
-              }}
-            >
-              The Memory Palace
-            </span>
+            {!isSmall && (
+              <span
+                style={{
+                  fontFamily: F.display,
+                  fontSize: "1.25rem",
+                  fontWeight: 500,
+                  color: C.ink,
+                  letterSpacing: "-0.3px",
+                }}
+              >
+                The Memory Palace
+              </span>
+            )}
           </Link>
         </div>
         <select value={locale} onChange={(e) => setLocaleNoReload(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
           background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
           padding: "0.25rem 0.5rem", fontSize: "1rem", fontFamily: F.body,
-          fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
+          fontWeight: 600, color: C.inkMuted, cursor: "pointer", letterSpacing: "0.5px",
           textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
           appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
           backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
@@ -96,10 +107,10 @@ export default function PrivacyPolicyPage() {
         <p
           style={{
             fontFamily: F.body,
-            fontSize: "0.75rem",
+            fontSize: "0.8125rem",
             letterSpacing: "0.125rem",
             textTransform: "uppercase",
-            color: C.terracotta,
+            color: C.ember,
             fontWeight: 600,
             marginBottom: "0.75rem",
           }}
@@ -112,13 +123,13 @@ export default function PrivacyPolicyPage() {
             fontSize: "clamp(2rem, 5vw, 3rem)",
             fontWeight: 300,
             lineHeight: 1.2,
-            color: C.inkSoft,
+            color: C.ink,
             marginBottom: "0.5rem",
           }}
         >
           {t("title")}
         </h1>
-        <p style={{ fontSize: "0.875rem", color: C.muted, marginBottom: "3rem" }}>
+        <p style={{ fontSize: "0.875rem", color: C.inkMuted, marginBottom: "3rem" }}>
           {t("lastUpdated")}
         </p>
 
@@ -176,7 +187,7 @@ export default function PrivacyPolicyPage() {
               fontFamily: F.display,
               fontSize: "1.125rem",
               fontWeight: 500,
-              color: C.inkSoft,
+              color: C.ink,
               marginBottom: "0.5rem",
               marginTop: "1.5rem",
               lineHeight: 1.3,
@@ -359,7 +370,7 @@ export default function PrivacyPolicyPage() {
               fontFamily: F.display,
               fontSize: "1.125rem",
               fontWeight: 500,
-              color: C.inkSoft,
+              color: C.ink,
               marginBottom: "0.5rem",
               marginTop: "1.5rem",
               lineHeight: 1.3,
@@ -375,7 +386,7 @@ export default function PrivacyPolicyPage() {
               fontFamily: F.display,
               fontSize: "1.125rem",
               fontWeight: 500,
-              color: C.inkSoft,
+              color: C.ink,
               marginBottom: "0.5rem",
               marginTop: "1.5rem",
               lineHeight: 1.3,
@@ -482,6 +493,7 @@ export default function PrivacyPolicyPage() {
         </div>
       </main>
     </div>
+    </MobileCtx.Provider>
   );
 }
 
@@ -495,7 +507,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           fontFamily: F.display,
           fontSize: "1.5rem",
           fontWeight: 500,
-          color: C.inkSoft,
+          color: C.ink,
           marginBottom: "0.875rem",
           lineHeight: 1.3,
         }}
@@ -508,12 +520,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function P({ children }: { children: React.ReactNode }) {
+  const isMobile = useContext(MobileCtx);
   return (
     <p
       style={{
-        fontSize: "0.9375rem",
+        fontSize: isMobile ? "1rem" : "0.9375rem",
         lineHeight: 1.75,
-        color: C.walnut,
+        color: C.ink,
         marginBottom: "0.75rem",
       }}
     >
@@ -523,10 +536,11 @@ function P({ children }: { children: React.ReactNode }) {
 }
 
 function Ul({ children }: { children: React.ReactNode }) {
+  const isMobile = useContext(MobileCtx);
   return (
     <ul
       style={{
-        paddingLeft: "1.25rem",
+        paddingLeft: isMobile ? "1rem" : "1.25rem",
         marginBottom: "0.75rem",
       }}
     >
@@ -536,12 +550,13 @@ function Ul({ children }: { children: React.ReactNode }) {
 }
 
 function Li({ children }: { children: React.ReactNode }) {
+  const isMobile = useContext(MobileCtx);
   return (
     <li
       style={{
-        fontSize: "0.9375rem",
+        fontSize: isMobile ? "1rem" : "0.9375rem",
         lineHeight: 1.75,
-        color: C.walnut,
+        color: C.ink,
         marginBottom: "0.375rem",
       }}
     >
@@ -551,7 +566,7 @@ function Li({ children }: { children: React.ReactNode }) {
 }
 
 const linkStyle: React.CSSProperties = {
-  color: C.terracotta,
+  color: C.ember,
   textDecoration: "none",
   fontWeight: 500,
 };

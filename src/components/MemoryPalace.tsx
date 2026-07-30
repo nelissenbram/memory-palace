@@ -1315,7 +1315,7 @@ export default function MemoryPalace(){
       {/* Visible mobile joystick — room, corridor & entrance views */}
       {touchControls && (view === "room" || view === "corridor" || view === "entrance") && (
         <MobileJoystick
-          visible={(roomTourOpen || entranceTourOpen || corridorTourOpen || !selMem) && !showUpload && !showSharing}
+          visible={(roomTourOpen || entranceTourOpen || corridorTourOpen || !selMem) && !showUpload && !showSharing && !showSharingSettings && !showPublishModal && !showPasscodeModal && !showDiscoveryMenu}
           onMove={() => {}}
         />
       )}

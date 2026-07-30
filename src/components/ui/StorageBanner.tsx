@@ -22,6 +22,13 @@ export const STORAGE_BANNER_THRESHOLD = 0.5;
 export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) {
   const { t } = useTranslation("palace");
   const isSmall = useIsSmall();
+  // Inline styles can't carry an @media reduced-motion gate (this component is
+  // pure-inline, no <style> block), so read the preference in JS and skip the
+  // transform transition / hover lift when the user asks for reduced motion.
+  const reducedMotion =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pct = limitMb > 0 ? (storageMb / limitMb) * 100 : 0;
   // Android has no in-app purchase path — hide the Upgrade CTA there. iOS shows
   // it only when IAP is live (IAP_ENABLED), leading to the IAP paywall (/pricing).
@@ -46,11 +53,15 @@ export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) 
   // info/warning are polite status; only genuine full/urgent escalation is assertive.
   const isUrgent = level === "urgent" || level === "full";
 
+  // New placeholder-bearing strings (flat dotted keys under `palace`) so the
+  // {used}/{limit}/{pct} params actually render and the sentence can never
+  // contradict the leading figure. The old storageWarning50/80/95 strings hard-
+  // coded the percentage and silently dropped every interpolation param.
   const messageKey: Record<string, string> = {
-    info: "storageWarning50",
-    warning: "storageWarning80",
-    urgent: "storageWarning95",
-    full: "storageFull",
+    info: "storage.usedFraction",
+    warning: "storage.usedFraction",
+    urgent: "storage.usedFractionUrgent",
+    full: "storage.usedFractionFull",
   };
 
   // Canon EMBER for the default/warning CTA; escalate to error red only at urgent/full.
@@ -115,9 +126,9 @@ export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) 
             whiteSpace: "nowrap",
             minWidth: "2.75rem",
             minHeight: "2.75rem",
-            transition: "transform .2s ease",
+            transition: reducedMotion ? "none" : "transform .2s ease",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-0.1875rem)"; }}
+          onMouseEnter={(e) => { if (!reducedMotion) e.currentTarget.style.transform = "translateY(-0.1875rem)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; }}
           onFocus={(e) => { e.currentTarget.style.outline = "0.1875rem solid #D4AF37"; e.currentTarget.style.outlineOffset = "0.1875rem"; }}
           onBlur={(e) => { e.currentTarget.style.outline = "none"; }}

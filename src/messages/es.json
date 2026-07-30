@@ -414,7 +414,10 @@
     "ariaAvControls": "Controles AV",
     "ariaEditCorridorPaintings": "Editar pinturas del corredor",
     "upgradeNow": "Mejorar",
-    "onboardingFinishError": "Algo salió mal al finalizar la configuración: inténtalo de nuevo."
+    "onboardingFinishError": "Algo salió mal al finalizar la configuración: inténtalo de nuevo.",
+    "storage.usedFraction": "{used} MB de {limit} MB usados",
+    "storage.usedFractionUrgent": "Casi lleno — {used} MB de {limit} MB usados",
+    "storage.usedFractionFull": "Almacenamiento lleno — {used} MB de {limit} MB usados"
   },
   "settings": {
     "navDescProfile": "Tu nombre, foto y página pública",
@@ -1146,7 +1149,9 @@
     "importItemSkipped": "{name} fue omitido (ya importado).",
     "loadFailed": "No se pudieron cargar los archivos. Por favor, inténtalo de nuevo.",
     "retry": "Reintentar",
-    "progress": "Progreso"
+    "progress": "Progreso",
+    "cancel": "Cancelar",
+    "importTimeout": "El import agotó el tiempo. Inténtalo de nuevo."
   },
   "room": {
     "manageRooms": "Gestionar salas",
@@ -1950,7 +1955,9 @@
     "stepPrevPerson": "Persona anterior",
     "stepNextPerson": "Persona siguiente",
     "stepOpenPerson": "Abrir",
-    "stepStart": "Explorar"
+    "stepStart": "Explorar",
+    "sharedTreeNotFoundTitle": "Árbol genealógico no encontrado",
+    "sharedTreeNotFoundDesc": "Este enlace para compartir puede haber expirado o sido desactivado."
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1989,7 +1996,8 @@
     "trustGuarantee": "Plan gratuito — sin tarjeta de crédito",
     "currency": "Moneda",
     "subscriptionActivated": "¡Suscripción activada!",
-    "billingInterval": "Intervalo de facturación"
+    "billingInterval": "Intervalo de facturación",
+    "approxBilledEur": "Los precios en esta moneda son aproximados: se te cobrará en EUR."
   },
   "cookieConsent": {
     "message": "Usamos cookies para mantenerte conectado y recordar tus preferencias.",
@@ -2191,7 +2199,8 @@
     "enablePublicLinkFirst": "Activa primero el enlace público para compartir de esta forma.",
     "noCollaboratorsForDownload": "Invita a alguien antes de configurar los permisos de descarga.",
     "downloadPermissionFailed": "No se pudo actualizar la configuración de descarga. Inténtalo de nuevo.",
-    "shareViaQR": "Compartir mediante código QR"
+    "shareViaQR": "Compartir mediante código QR",
+    "qrLabel": "QR"
   },
   "bustBuilder": {
     "failedToProcess": "Error al procesar la foto. Por favor, prueba con otra imagen.",
@@ -2241,7 +2250,9 @@
     "faceDetected": "¡Rostro detectado y calibrado!",
     "imageTooSmall": "La imagen es demasiado pequeña. Usa una foto de mayor resolución.",
     "noFaceCenterCropped": "No se pudo detectar el rostro automáticamente. La foto se recortará al centro. Para mejores resultados, usa una foto de retrato nítida.",
-    "savedLocallyWillSync": "Guardado localmente: se sincronizará cuando vuelvas a estar en línea."
+    "savedLocallyWillSync": "Guardado localmente: se sincronizará cuando vuelvas a estar en línea.",
+    "uncroppedWarning": "No pudimos aislar un rostro en esta foto, así que el busto se esculpirá a partir de la imagen completa. Para un mejor resultado, usa un retrato frontal y nítido.",
+    "useAnyway": "Usar de todos modos"
   },
   "uploadPanel": {
     "fileTooLarge": "El archivo es demasiado grande ({size} MB). El tamaño máximo permitido para {type} es {max}.",
@@ -3609,7 +3620,8 @@
     "skip": "Omitir",
     "next": "Siguiente",
     "done": "Entendido",
-    "stepXofY": "Paso {current} de {total}"
+    "stepXofY": "Paso {current} de {total}",
+    "advanceHint": "Continuar el recorrido"
   },
   "palaceTour": {
     "step1Title": "Navega desde arriba",
@@ -5475,7 +5487,8 @@
     "commentFailed": "No se pudo publicar tu mensaje.",
     "totalWingVisits": "Visitas de alas",
     "publishNoChanges": "No hay cambios que publicar: tu selección ya coincide con lo compartido.",
-    "guestReactPrompt": "Inicia sesión para reaccionar"
+    "guestReactPrompt": "Inicia sesión para reaccionar",
+    "privateProfile": "Perfil privado"
   },
   "help": {
     "title": "Centro de ayuda",
@@ -5787,5 +5800,10 @@
     "footerPre": "Consulta nuestra ",
     "footerPrivacyLink": "Política de Privacidad",
     "footerPost": " completa para conocer los detalles sobre cómo tratamos tus datos."
+  },
+  "relay": {
+    "relay.photosCountN": "{count} fotos",
+    "relay.storiesCountN": "{count} historias",
+    "relay.embersScrollHint": "Desliza de lado para ver más familia"
   }
 }

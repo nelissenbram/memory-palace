@@ -4,7 +4,7 @@ import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { CREAM, INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, SHADOW } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import type {
   FamilyTreePerson,
   FamilyTreeRelationship,
@@ -40,6 +40,8 @@ export function SharedTreeView({
 }) {
   const { t } = useTranslation("familyTree");
   const isMobile = useIsMobile();
+  // Compact = phones AND iPad portrait, so tablets also get the bottom sheet.
+  const isCompact = useIsCompact();
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -131,7 +133,9 @@ export function SharedTreeView({
     const th = maxY - minY;
     const cw = containerRef.current.clientWidth;
     const ch = containerRef.current.clientHeight;
-    const pad = 60;
+    // Scale the fit padding with viewport (~6% of the smaller edge), clamped so
+    // it never dwarfs a small phone canvas nor leaves huge gaps on a desktop.
+    const pad = Math.max(24, Math.min(80, Math.min(cw, ch) * 0.06));
     const z = Math.min((cw - pad * 2) / tw, (ch - pad * 2) / th, 1.2);
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
@@ -521,17 +525,17 @@ export function SharedTreeView({
           <div
             style={{
               position: "fixed",
-              top: isMobile ? "auto" : "50%",
-              bottom: isMobile ? 0 : "auto",
-              left: isMobile ? 0 : "50%",
-              right: isMobile ? 0 : "auto",
-              transform: isMobile ? undefined : "translate(-50%, -50%)",
+              top: isCompact ? "auto" : "50%",
+              bottom: isCompact ? 0 : "auto",
+              left: isCompact ? 0 : "50%",
+              right: isCompact ? 0 : "auto",
+              transform: isCompact ? undefined : "translate(-50%, -50%)",
               background: CREAM,
-              borderRadius: isMobile ? "1rem 1rem 0 0" : "1rem",
+              borderRadius: isCompact ? "1rem 1rem 0 0" : "1rem",
               padding: "1.5rem",
               zIndex: 51,
-              minWidth: isMobile ? undefined : "20rem",
-              maxWidth: isMobile ? undefined : "24rem",
+              minWidth: isCompact ? undefined : "20rem",
+              maxWidth: isCompact ? undefined : "24rem",
               boxShadow: SHADOW[2],
               fontFamily: T.font.body,
             }}

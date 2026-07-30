@@ -707,7 +707,7 @@ export default function HomeView() {
         ? { text: t("relay.keptWarmOne"), warm: true }
         : { text: t("relay.quietHearth"), warm: false };
   const relayEmbers = emberPeople.length > 0
-    ? { title: t("relay.familyEmbers"), people: emberPeople, onOpen: () => setNotificationsOpen(true) }
+    ? { title: t("relay.familyEmbers"), people: emberPeople, onOpen: () => setNotificationsOpen(true), scrollHint: t("relay.embersScrollHint") }
     : null;
   // Palace + Library stay ON TOP as anchors. The Palace card's counterpart to
   // the Library's photo fan: wing seals — the lived-in wings with their counts.
@@ -753,10 +753,10 @@ export default function HomeView() {
     {
       id: "capture", overline: t("relay.laneCapture"), accent: "terracotta" as const,
       tiles: [
-        { key: "photos", title: t("relay.tilePhotos"), desc: t("relay.tilePhotosDesc"), onClick: goUpload, datum: mtc.photo > 0 ? `${mtc.photo} ${t("relay.photosCount")}` : undefined },
+        { key: "photos", title: t("relay.tilePhotos"), desc: t("relay.tilePhotosDesc"), onClick: goUpload, datum: mtc.photo > 0 ? t("relay.photosCountN", { count: String(mtc.photo) }) : undefined },
         { key: "cloud", title: t("relay.tileCloud"), desc: t("relay.tileCloudDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
         { key: "restore", title: t("relay.tileRestore"), desc: t("relay.tileRestoreDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
-        { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? `${mtc.story} ${t("relay.storiesCount")}` : undefined },
+        { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? t("relay.storiesCountN", { count: String(mtc.story) }) : undefined },
         { key: "record", title: t("relay.tileInterviews"), desc: t("relay.tileInterviewsDesc"), onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? t("relay.recordedCount", { count: String(interviewSessions.length) }) : undefined },
         { key: "whatsapp", title: t("relay.tileWhatsapp"), desc: t("relay.tileWhatsappDesc"), onClick: () => setShowKepCapture(true) },
         { key: "capsule", title: t("relay.tileCapsule"), desc: t("relay.tileCapsuleDesc"), onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },

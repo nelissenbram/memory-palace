@@ -316,7 +316,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             </button>
             <button onClick={()=>{if(genericShareUrl){setShowQR(true);}else{setError(t("enablePublicLinkFirst"));}}} disabled={!genericShareUrl} aria-label={t("shareViaQR")} style={{padding:"0.75rem 1rem",borderRadius:"0.75rem",border:"0.0625rem solid #E3D6BC",background:T.color.warmStone,cursor:genericShareUrl?"pointer":"not-allowed",opacity:genericShareUrl?1:.5,display:"flex",alignItems:"center",gap:"0.375rem",transition:"all .2s",whiteSpace:"nowrap",minHeight:"2.75rem"}}>
               <span style={{fontSize:"0.9375rem"}}>{"\u{1F4F1}"}</span>
-              <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",fontWeight:500}}>QR</span>
+              <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",fontWeight:500}}>{t("qrLabel")}</span>
             </button>
           </div>
 

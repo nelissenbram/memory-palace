@@ -51,6 +51,34 @@ const M = T.motion;
 const FONT_DISPLAY = "var(--font-display, Georgia, serif)";
 const FONT_BODY = "var(--font-body, sans-serif)";
 
+/* ── Local landing scrim/shadow tokens ──────────────────────────
+   Well-named local consts so the remaining warm-umber washes, dark-band
+   toggle scrims and ceremonial-gold CTA glows stop being hand-typed rgba at
+   call sites. Kept local (not promoted into theme.ts) to avoid touching the
+   shared token file. Umber = warm-ink CTA feedback; scrim = translucent
+   warm-ink over dark bands; gold glows are ceremonial (final CTA / tour door). */
+const LSHADOW = {
+  // Warm-umber CTA hover / active feedback.
+  ctaHover: "0 6px 18px rgba(107,51,24,0.35)",
+  ctaActive: "0 2px 8px rgba(107,51,24,0.25)",
+} as const;
+const LSCRIM = {
+  // Translucent warm-ink chip background used by the video toggle buttons over
+  // the dark hero band; hairline is the matching cream border.
+  toggleBg: "rgba(36,28,21,0.55)",
+  toggleBorder: "1px solid rgba(252,250,245,0.5)",
+} as const;
+const LGLOW = {
+  // Ceremonial gold glow ramp for the final CTA (static + breathing keyframes)
+  // and the tour doorway ring.
+  ctaFinalRest: "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.35), 0 0 44px rgba(212,175,55,0.22)",
+  ctaBreathLow: "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.35), 0 0 34px rgba(212,175,55,0.16)",
+  ctaBreathHigh: "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.5), 0 0 54px rgba(212,175,55,0.3)",
+  tourHover: "0 0 0 0.75rem rgba(212,175,55,0.2), 0 16px 48px rgba(0,0,0,0.55)",
+  tourBreathLow: "0 0 0 0.5rem rgba(212,175,55,0.10), 0 16px 48px rgba(0,0,0,0.55)",
+  tourBreathHigh: "0 0 0 0.9rem rgba(212,175,55,0.22), 0 16px 48px rgba(0,0,0,0.55)",
+} as const;
+
 /* ───────────────────────── helpers ───────────────────────── */
 
 function prefersReducedMotion(): boolean {
@@ -322,8 +350,8 @@ function HeroMedia({
             minHeight: T.touch,
             padding: "0 1rem",
             borderRadius: "1.5rem",
-            border: "1px solid rgba(252,250,245,0.5)",
-            background: "rgba(36,28,21,0.55)",
+            border: LSCRIM.toggleBorder,
+            background: LSCRIM.toggleBg,
             color: T.color.cream,
             cursor: "pointer",
             display: "inline-flex",
@@ -354,8 +382,8 @@ function HeroMedia({
             width: T.touch,
             height: T.touch,
             borderRadius: "50%",
-            border: "1px solid rgba(252,250,245,0.5)",
-            background: "rgba(36,28,21,0.55)",
+            border: LSCRIM.toggleBorder,
+            background: LSCRIM.toggleBg,
             color: T.color.cream,
             cursor: "pointer",
             display: "flex",
@@ -776,8 +804,8 @@ export default function LandingV2Client({
         .lv2-pre { opacity: 0.001; transform: translateY(12px); transition: opacity ${M.reveal} ${M.ease}, transform ${M.reveal} ${M.ease}; }
         .lv2-pre.lv2-in { opacity: 1; transform: none; }
         .lv2-cta { transition: transform ${M.fast} ${M.ease}, box-shadow ${M.fast} ${M.ease}, filter ${M.fast} ${M.ease}; }
-        .lv2-cta:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: 0 6px 18px rgba(107,51,24,0.35); }
-        .lv2-cta:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(107,51,24,0.25); }
+        .lv2-cta:hover { transform: translateY(-1px); filter: brightness(1.06); box-shadow: ${LSHADOW.ctaHover}; }
+        .lv2-cta:active { transform: translateY(0); box-shadow: ${LSHADOW.ctaActive}; }
         .lv2-cta:focus-visible, .lv2-video-toggle:focus-visible, .lv2-faq-q:focus-visible, .lv2-navlink:focus-visible, .lv2-chip:focus-visible {
           outline: 2px solid ${T.color.gold}; outline-offset: 3px;
         }
@@ -797,17 +825,17 @@ export default function LandingV2Client({
         .lv2-strip:focus-visible { outline: 2px solid rgba(252,250,245,0.45); outline-offset: 4px; border-radius: 0.5rem; }
         /* Inviting tour doorway */
         .lv2-tour-ring { transition: transform ${M.base} ${M.ease}, box-shadow ${M.base} ${M.ease}; animation: lv2TourBreath 4.5s ease-in-out infinite; }
-        .lv2-tour-door:hover .lv2-tour-ring { transform: scale(1.06); box-shadow: 0 0 0 0.75rem rgba(212,175,55,0.2), 0 16px 48px rgba(0,0,0,0.55); }
+        .lv2-tour-door:hover .lv2-tour-ring { transform: scale(1.06); box-shadow: ${LGLOW.tourHover}; }
         @keyframes lv2TourBreath {
-          0%, 100% { box-shadow: 0 0 0 0.5rem rgba(212,175,55,0.10), 0 16px 48px rgba(0,0,0,0.55); }
-          50% { box-shadow: 0 0 0 0.9rem rgba(212,175,55,0.22), 0 16px 48px rgba(0,0,0,0.55); }
+          0%, 100% { box-shadow: ${LGLOW.tourBreathLow}; }
+          50% { box-shadow: ${LGLOW.tourBreathHigh}; }
         }
         @media (prefers-reduced-motion: reduce) { .lv2-tour-ring { animation: none !important; } }
         /* Final CTA glow breath */
         .lv2-cta-final { animation: lv2CtaBreath 5s ease-in-out infinite; }
         @keyframes lv2CtaBreath {
-          0%, 100% { box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.35), 0 0 34px rgba(212,175,55,0.16); }
-          50% { box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.5), 0 0 54px rgba(212,175,55,0.3); }
+          0%, 100% { box-shadow: ${LGLOW.ctaBreathLow}; }
+          50% { box-shadow: ${LGLOW.ctaBreathHigh}; }
         }
         @media (prefers-reduced-motion: reduce) {
           .lv2-cta-final { animation: none !important; }
@@ -1606,7 +1634,7 @@ export default function LandingV2Client({
                   fontWeight: 700,
                   fontSize: L.type.h4,
                   textDecoration: "none",
-                  boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.35), 0 0 44px rgba(212,175,55,0.22)",
+                  boxShadow: LGLOW.ctaFinalRest,
                 }}
               >
                 {v2.final.cta}

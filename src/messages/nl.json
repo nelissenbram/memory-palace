@@ -414,7 +414,10 @@
     "ariaAvControls": "AV-bediening",
     "ariaEditCorridorPaintings": "Gangschilderijen bewerken",
     "upgradeNow": "Upgraden",
-    "onboardingFinishError": "Er ging iets mis bij het afronden van de installatie — probeer het opnieuw."
+    "onboardingFinishError": "Er ging iets mis bij het afronden van de installatie — probeer het opnieuw.",
+    "storage.usedFraction": "{used} MB van {limit} MB gebruikt",
+    "storage.usedFractionUrgent": "Bijna vol — {used} MB van {limit} MB gebruikt",
+    "storage.usedFractionFull": "Opslag vol — {used} MB van {limit} MB gebruikt"
   },
   "settings": {
     "navDescProfile": "Je naam, foto en openbare pagina",
@@ -1146,7 +1149,9 @@
     "importItemSkipped": "{name} is overgeslagen (al geïmporteerd).",
     "loadFailed": "Kon bestanden niet laden. Probeer het opnieuw.",
     "retry": "Opnieuw proberen",
-    "progress": "Voortgang"
+    "progress": "Voortgang",
+    "cancel": "Annuleren",
+    "importTimeout": "Import verlopen. Probeer het opnieuw."
   },
   "room": {
     "manageRooms": "Kamers beheren",
@@ -1950,7 +1955,9 @@
     "stepPrevPerson": "Vorige persoon",
     "stepNextPerson": "Volgende persoon",
     "stepOpenPerson": "Openen",
-    "stepStart": "Bladeren"
+    "stepStart": "Bladeren",
+    "sharedTreeNotFoundTitle": "Stamboom niet gevonden",
+    "sharedTreeNotFoundDesc": "Deze deellink is mogelijk verlopen of gedeactiveerd."
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1989,7 +1996,8 @@
     "trustGuarantee": "Gratis abonnement — geen creditcard nodig",
     "currency": "Valuta",
     "subscriptionActivated": "Abonnement geactiveerd!",
-    "billingInterval": "Facturatieperiode"
+    "billingInterval": "Facturatieperiode",
+    "approxBilledEur": "Prijzen in deze valuta zijn bij benadering — je wordt in EUR afgeschreven."
   },
   "cookieConsent": {
     "message": "We gebruiken cookies om je ingelogd te houden en je voorkeuren te onthouden.",
@@ -2191,7 +2199,8 @@
     "enablePublicLinkFirst": "Schakel eerst de openbare link in om zo te delen.",
     "noCollaboratorsForDownload": "Nodig eerst iemand uit voordat je downloadrechten instelt.",
     "downloadPermissionFailed": "Kon de downloadinstelling niet bijwerken. Probeer het opnieuw.",
-    "shareViaQR": "Delen via QR-code"
+    "shareViaQR": "Delen via QR-code",
+    "qrLabel": "QR"
   },
   "bustBuilder": {
     "failedToProcess": "Foto verwerken mislukt. Probeer een andere afbeelding.",
@@ -2241,7 +2250,9 @@
     "faceDetected": "Gezicht gedetecteerd en gekalibreerd!",
     "imageTooSmall": "Afbeelding is te klein. Gebruik een foto met hogere resolutie.",
     "noFaceCenterCropped": "Gezicht kon niet automatisch worden herkend. De foto wordt in het midden bijgesneden. Gebruik voor het beste resultaat een duidelijke portretfoto.",
-    "savedLocallyWillSync": "Lokaal opgeslagen — wordt gesynchroniseerd zodra je weer online bent."
+    "savedLocallyWillSync": "Lokaal opgeslagen — wordt gesynchroniseerd zodra je weer online bent.",
+    "uncroppedWarning": "We konden geen gezicht in deze foto herkennen, dus de buste wordt uit de hele afbeelding gevormd. Gebruik voor het beste resultaat een duidelijk portret van voren.",
+    "useAnyway": "Toch gebruiken"
   },
   "uploadPanel": {
     "fileTooLarge": "Bestand is te groot ({size} MB). Maximale grootte voor {type} is {max}.",
@@ -3611,7 +3622,8 @@
     "skip": "Overslaan",
     "next": "Volgende",
     "done": "Begrepen",
-    "stepXofY": "Stap {current} van {total}"
+    "stepXofY": "Stap {current} van {total}",
+    "advanceHint": "Rondleiding vervolgen"
   },
   "palaceTour": {
     "step1Title": "Navigeer vanaf de top",
@@ -5477,7 +5489,8 @@
     "commentFailed": "Het plaatsen van je bericht is mislukt.",
     "totalWingVisits": "Vleugelbezoeken",
     "publishNoChanges": "Niets om te publiceren — je selectie komt al overeen met wat gedeeld is.",
-    "guestReactPrompt": "Log in om te reageren"
+    "guestReactPrompt": "Log in om te reageren",
+    "privateProfile": "Privéprofiel"
   },
   "help": {
     "title": "Helpcentrum",
@@ -5789,5 +5802,10 @@
     "footerPre": "Zie ons volledige ",
     "footerPrivacyLink": "privacybeleid",
     "footerPost": " voor meer informatie over hoe we met je gegevens omgaan."
+  },
+  "relay": {
+    "relay.photosCountN": "{count} foto's",
+    "relay.storiesCountN": "{count} verhalen",
+    "relay.embersScrollHint": "Scroll opzij voor meer familie"
   }
 }

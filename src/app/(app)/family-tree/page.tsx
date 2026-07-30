@@ -1381,7 +1381,9 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
       {/* Header — NavigationBar-style glass morphism toolbar */}
       {/* Atrium tokens: reduced-motion gate + gold focus-visible ring */}
       <style>{`@media (prefers-reduced-motion: reduce){.ft-root,.ft-root *{transition:none!important;animation:none!important}}
-.ft-root :is(button,input,a,[tabindex]):focus-visible{outline:0.1875rem solid #D4AF37!important;outline-offset:0.1875rem}`}</style>
+.ft-root :is(button,input,a,[tabindex]):focus-visible{outline:0.1875rem solid #D4AF37!important;outline-offset:0.1875rem}
+@keyframes ftBranchPulse{0%,100%{opacity:0.35;transform:scale(0.94)}50%{opacity:1;transform:scale(1)}}
+.ft-branch-pulse{animation:ftBranchPulse 1.6s ease-in-out infinite}`}</style>
       {(isMobile || isCompact) && <style>{`.ft-mob-scroll::-webkit-scrollbar{display:none}`}</style>}
       <div
         style={{
@@ -1845,7 +1847,24 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             </div>
 
             {shareLoading ? (
-              <p style={{ color: "#716A5E", fontSize: "0.9375rem" }}>{t("shareLoading")}</p>
+              <div
+                role="status"
+                aria-live="polite"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.625rem",
+                  padding: "0.75rem 0",
+                  color: "#716A5E",
+                  fontSize: "0.9375rem",
+                  fontFamily: T.font.body,
+                }}
+              >
+                <span className="ft-branch-pulse" style={{ display: "inline-flex" }}>
+                  <TreeBranchIcon size={22} color={T.color.walnut} />
+                </span>
+                {t("shareLoading")}
+              </div>
             ) : activeShare ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 <div style={{
@@ -2039,15 +2058,22 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
           <div
             style={{
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
               height: "100%",
               minHeight: "25rem",
+              gap: "0.875rem",
               fontFamily: T.font.body,
               fontSize: "0.9375rem",
               color: "#716A5E",
             }}
+            role="status"
+            aria-live="polite"
           >
+            <span className="ft-branch-pulse" style={{ display: "inline-flex" }}>
+              <TreeBranchIcon size={40} color={T.color.walnut} />
+            </span>
             {t("loadingTree")}
           </div>
         ) : persons.length === 0 ? (

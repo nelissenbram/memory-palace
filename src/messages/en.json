@@ -414,7 +414,10 @@
     "ariaAvControls": "AV controls",
     "ariaEditCorridorPaintings": "Edit corridor paintings",
     "upgradeNow": "Upgrade",
-    "onboardingFinishError": "Something went wrong finishing setup — please try again."
+    "onboardingFinishError": "Something went wrong finishing setup — please try again.",
+    "storage.usedFraction": "{used} MB of {limit} MB used",
+    "storage.usedFractionUrgent": "Almost full — {used} MB of {limit} MB used",
+    "storage.usedFractionFull": "Storage full — {used} MB of {limit} MB used"
   },
   "settings": {
     "navDescProfile": "Your name, photo and public page",
@@ -1146,7 +1149,9 @@
     "importItemSkipped": "{name} was skipped (already imported).",
     "loadFailed": "Could not load files. Please try again.",
     "retry": "Retry",
-    "progress": "Progress"
+    "progress": "Progress",
+    "cancel": "Cancel",
+    "importTimeout": "Import timed out. Please try again."
   },
   "room": {
     "manageRooms": "Manage Rooms",
@@ -1950,7 +1955,9 @@
     "stepPrevPerson": "Previous person",
     "stepNextPerson": "Next person",
     "stepOpenPerson": "Open",
-    "stepStart": "Browse"
+    "stepStart": "Browse",
+    "sharedTreeNotFoundTitle": "Family Tree Not Found",
+    "sharedTreeNotFoundDesc": "This share link may have expired or been deactivated."
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1989,7 +1996,8 @@
     "trustGuarantee": "Free plan — no credit card needed",
     "currency": "Currency",
     "subscriptionActivated": "Subscription activated!",
-    "billingInterval": "Billing interval"
+    "billingInterval": "Billing interval",
+    "approxBilledEur": "Prices in this currency are approximate — you'll be billed in EUR."
   },
   "cookieConsent": {
     "message": "We use cookies to keep you signed in and remember your preferences.",
@@ -2191,7 +2199,8 @@
     "enablePublicLinkFirst": "Turn on the public link first to share this way.",
     "noCollaboratorsForDownload": "Invite someone first before setting download permissions.",
     "downloadPermissionFailed": "Could not update the download setting. Please try again.",
-    "shareViaQR": "Share via QR code"
+    "shareViaQR": "Share via QR code",
+    "qrLabel": "QR"
   },
   "bustBuilder": {
     "failedToProcess": "Failed to process photo. Please try another image.",
@@ -2241,7 +2250,9 @@
     "faceDetected": "Face detected and calibrated!",
     "imageTooSmall": "Image is too small. Please use a higher resolution photo.",
     "noFaceCenterCropped": "Could not auto-detect face. The photo will be center-cropped. For best results, use a clear portrait photo.",
-    "savedLocallyWillSync": "Saved locally — will sync when back online."
+    "savedLocallyWillSync": "Saved locally — will sync when back online.",
+    "uncroppedWarning": "We couldn't isolate a face in this photo, so the bust will be sculpted from the whole image. For the best result, try a clear, front-facing portrait.",
+    "useAnyway": "Use anyway"
   },
   "uploadPanel": {
     "fileTooLarge": "File is too large ({size} MB). Maximum allowed size for {type} is {max}.",
@@ -3609,7 +3620,8 @@
     "skip": "Skip",
     "next": "Next",
     "done": "Got it",
-    "stepXofY": "Step {current} of {total}"
+    "stepXofY": "Step {current} of {total}",
+    "advanceHint": "Continue tour"
   },
   "palaceTour": {
     "step1Title": "Navigate from the top",
@@ -5475,7 +5487,8 @@
     "commentFailed": "Failed to post your message.",
     "totalWingVisits": "Wing Visits",
     "publishNoChanges": "No changes to publish — your selection already matches what's shared.",
-    "guestReactPrompt": "Sign in to react"
+    "guestReactPrompt": "Sign in to react",
+    "privateProfile": "Private profile"
   },
   "help": {
     "title": "Help Center",
@@ -5787,5 +5800,10 @@
     "footerPre": "See our full ",
     "footerPrivacyLink": "Privacy Policy",
     "footerPost": " for details on how we handle your data."
+  },
+  "relay": {
+    "relay.photosCountN": "{count} photos",
+    "relay.storiesCountN": "{count} stories",
+    "relay.embersScrollHint": "Scroll sideways for more family"
   }
 }

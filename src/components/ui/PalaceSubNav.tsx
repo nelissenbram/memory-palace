@@ -23,6 +23,9 @@ interface SharedWingItem {
   shareId: string;
   wingId: string;
   ownerName: string;
+  /** Real custom display name of the shared wing, when provided by the
+   *  shares fetch layer. Optional and non-breaking. */
+  name?: string;
 }
 
 interface RoomItem {
@@ -510,7 +513,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                 style={{
                   ...pillStyle(isActiveWing, w.accent),
                   cursor: "pointer",
-                  border: `1px solid ${isActiveWing ? w.accent : `${w.accent}55`}`,
+                  border: `0.0625rem solid ${isActiveWing ? w.accent : `${w.accent}55`}`,
                   fontWeight: isActiveWing ? 700 : 500,
                   background: isActiveWing ? `${w.accent}18` : `${T.color.cream}80`,
                   fontSize: compact ? "0.6875rem" : "0.875rem",
@@ -596,7 +599,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                       transition: "background 0.15s ease",
                       textAlign: "left" as const,
                       whiteSpace: "nowrap" as const,
-                      borderBottom: `1px solid ${T.color.cream}`,
+                      borderBottom: `0.0625rem solid ${T.color.cream}`,
                       marginBottom: "0.125rem",
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = `${w.accent}12`; }}
@@ -664,6 +667,15 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
   function renderRoomPill() {
     if (!roomName || view !== "room") return null;
     const accent = wingAccent || T.color.walnut;
+    // Resolve the room's nameKey from wingRooms (keyed by roomId) so the
+    // breadcrumb runs through translateRoomName like the dropdown entries do,
+    // instead of rendering the raw English `roomName` prop.
+    const roomItem = roomId
+      ? Object.values(wingRooms).flat().find((r) => r.id === roomId)
+      : undefined;
+    const displayRoomName = roomItem
+      ? translateRoomName(roomItem, tWings)
+      : roomName;
     return (
       <span
         aria-current="location"
@@ -679,7 +691,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
             <RoomIcon roomId={roomId} size={compact ? 14 : 16} color={accent} />
           </span>
         )}
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{roomName}</span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{displayRoomName}</span>
       </span>
     );
   }
@@ -838,7 +850,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                   gap: "0.3125rem",
                   padding: "0.375rem 0.75rem",
                   borderRadius: "0.625rem",
-                  border: `1px solid ${T.color.walnut}40`,
+                  border: `0.0625rem solid ${T.color.walnut}40`,
                   background: `${T.color.walnut}08`,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
@@ -875,7 +887,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                   gap: "0.3125rem",
                   padding: "0.375rem 0.75rem",
                   borderRadius: "0.625rem",
-                  border: `1px solid ${T.color.gold}55`,
+                  border: `0.0625rem solid ${T.color.gold}55`,
                   background: `${T.color.gold}10`,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
@@ -1199,7 +1211,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
           width: "2.75rem",
           height: "2.75rem",
           borderRadius: "50%",
-          border: `1px solid ${T.color.walnut}40`,
+          border: `0.0625rem solid ${T.color.walnut}40`,
           background: `${T.color.linen}ee`,
           backdropFilter: "blur(0.5rem)",
           WebkitBackdropFilter: "blur(0.5rem)",
@@ -1230,7 +1242,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
           width: "2.75rem",
           height: "2.75rem",
           borderRadius: "50%",
-          border: `1px solid ${T.color.gold}55`,
+          border: `0.0625rem solid ${T.color.gold}55`,
           background: `${T.color.linen}ee`,
           backdropFilter: "blur(0.5rem)",
           WebkitBackdropFilter: "blur(0.5rem)",

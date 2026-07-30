@@ -15,7 +15,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRouter } from "next/navigation";
 import { isIOS } from "@/lib/native/platform";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
-import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, TRAY, CREAM, SAGE } from "@/lib/libraryTokens";
+import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, TRAY, CREAM, SAGE, GOLD } from "@/lib/libraryTokens";
 
 interface ProfileData {
   display_name: string;
@@ -231,13 +231,13 @@ export default function ProfilePage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "3rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 */
         textAlign: "center",
         display: "flex", flexDirection: "column", alignItems: "center", gap: "0.875rem",
       }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9A4F2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }} aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={EMBER_GLYPH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }} aria-hidden="true">
           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
         </svg>
         <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED /* Atrium muted */ }}>
@@ -252,7 +252,7 @@ export default function ProfilePage() {
       <div role="alert" style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "3rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 */
         textAlign: "center",
@@ -271,7 +271,7 @@ export default function ProfilePage() {
             minHeight: "2.75rem",
             padding: "0.625rem 1.5rem",
             borderRadius: "0.75rem",
-            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+            border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
             background: "transparent",
             color: EMBER /* Atrium ember (actionable) */,
             fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
@@ -322,7 +322,7 @@ export default function ProfilePage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
@@ -338,7 +338,7 @@ export default function ProfilePage() {
               disabled={avatarUploading}
               style={{
                 width: "4.5rem", height: "4.5rem", borderRadius: "2.25rem",
-                background: "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium ember → glyph */,
+                background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})` /* Atrium ember → glyph */,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: "#FFF",
                 fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
@@ -502,7 +502,7 @@ export default function ProfilePage() {
                 padding: "0.625rem 1rem",
                 borderRadius: "0.75rem",
                 background: TRAY /* Atrium tray — recessed below the white card */,
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
               }}>
                 <span style={{
                   fontFamily: T.font.body, fontSize: "0.8125rem", color: INK /* Atrium ink */,
@@ -573,7 +573,7 @@ export default function ProfilePage() {
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
             background: TRAY /* Atrium tray — recessed below the white card */,
-            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+            border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
               <div style={{
@@ -618,7 +618,7 @@ export default function ProfilePage() {
                 height: "1.75rem",
                 borderRadius: "0.875rem",
                 border: "none",
-                background: isPublic ? "#B85C38" /* Atrium ember = active */ : "#E3D6BC" /* Atrium off track */,
+                background: isPublic ? EMBER /* Atrium ember = active */ : HAIRLINE /* Atrium off track */,
                 cursor: isPublicSaving ? "wait" : (!isPublic && !profile.username ? "not-allowed" : "pointer"),
                 position: "relative",
                 transition: "background .2s",
@@ -710,11 +710,11 @@ export default function ProfilePage() {
               gap: "0.75rem", minHeight: "2.75rem",
               padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
               background: TRAY /* Atrium tray — recessed below the white card */,
-              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
             }}>
               <span style={{
                 fontFamily: T.font.body, fontSize: "0.9375rem",
-                color: personaType ? "#403B36" /* Atrium ink */ : "#716A5E" /* Atrium muted */,
+                color: personaType ? INK /* Atrium ink */ : MUTED /* Atrium muted */,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
               }}>
                 {personaType ? tPersona(`${personaType}Label`) : t("noPersonaYet")}
@@ -751,8 +751,8 @@ export default function ProfilePage() {
               background:
                 !hasChanges || saving || usernameTooShort
                   ? "#EEE9DF" /* Atrium pre-mixed: sandstone 37% on cream */
-                  : "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium ember → glyph */,
-              color: !hasChanges || saving || usernameTooShort ? "#716A5E" /* Atrium muted */ : "#FFF",
+                  : `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})` /* Atrium ember → glyph */,
+              color: !hasChanges || saving || usernameTooShort ? MUTED /* Atrium muted */ : "#FFF",
               fontFamily: T.font.body,
               fontSize: "0.9375rem",
               fontWeight: 600,
@@ -775,7 +775,7 @@ export default function ProfilePage() {
                 padding: "0.875rem 1.5rem",
                 minHeight: "2.75rem",
                 borderRadius: "0.75rem",
-                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
                 background: "transparent",
                 color: MUTED /* Atrium muted */,
                 fontFamily: T.font.body,
@@ -799,7 +799,7 @@ export default function ProfilePage() {
         <div style={{
           background: T.color.white,
           borderRadius: "1rem",
-          border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+          border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
           padding: "1.125rem 1.5rem",
           boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
           display: "flex", alignItems: "center", gap: "1rem",
@@ -829,7 +829,7 @@ export default function ProfilePage() {
               {tf("connectionsRowDesc", "Manage connected photo and cloud services for importing memories")}
             </div>
           </div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#716A5E" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
             <path d="m9 18 6-6-6-6" />
           </svg>
         </div>
@@ -842,7 +842,7 @@ export default function ProfilePage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
@@ -866,7 +866,7 @@ export default function ProfilePage() {
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
             background: TRAY /* Atrium tray — recessed below the white card */,
-            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+            border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
               <div style={{
@@ -900,7 +900,7 @@ export default function ProfilePage() {
                 height: "1.75rem",
                 borderRadius: "0.875rem",
                 border: "none",
-                background: aiConsent ? "#B85C38" /* Atrium ember = active */ : "#E3D6BC" /* Atrium off track */,
+                background: aiConsent ? EMBER /* Atrium ember = active */ : HAIRLINE /* Atrium off track */,
                 cursor: aiSaving ? "wait" : "pointer",
                 position: "relative",
                 transition: "background .2s",
@@ -929,7 +929,7 @@ export default function ProfilePage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
@@ -979,7 +979,7 @@ export default function ProfilePage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
@@ -1025,8 +1025,8 @@ export default function ProfilePage() {
                   gap: "0.5rem",
                   padding: "1rem 0.75rem",
                   borderRadius: "0.75rem",
-                  border: isSelected ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", /* Atrium ember / hairline */
-                  background: isSelected ? "#F6EBE3" /* Atrium terracotta tray */ : "#FCFAF5" /* Atrium panel */,
+                  border: isSelected ? `0.125rem solid ${EMBER}` : `0.0625rem solid ${HAIRLINE}`, /* Atrium ember / hairline */
+                  background: isSelected ? TRAY /* Atrium terracotta tray */ : CREAM /* Atrium panel */,
                   cursor: "pointer",
                   transition: "all .2s",
                   position: "relative",
@@ -1045,13 +1045,13 @@ export default function ProfilePage() {
                 )}
                 <span style={{
                   fontFamily: T.font.display, fontSize: previewSize, fontWeight: 600,
-                  color: isSelected ? "#403B36" : "#716A5E", /* Atrium ink / muted */
+                  color: isSelected ? INK : MUTED, /* Atrium ink / muted */
                 }}>
                   Aa
                 </span>
                 <span style={{
                   fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  color: isSelected ? "#403B36" : "#716A5E", /* Atrium ink / muted */
+                  color: isSelected ? INK : MUTED, /* Atrium ink / muted */
                 }}>
                   {tA11y(level)}
                 </span>
@@ -1071,7 +1071,7 @@ export default function ProfilePage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
@@ -1086,7 +1086,7 @@ export default function ProfilePage() {
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
           background: TRAY /* Atrium tray — recessed below the white card */,
-          border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+          border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
           marginBottom: daylightEnabled ? "0.75rem" : 0,
         }}>
           <div>
@@ -1113,7 +1113,7 @@ export default function ProfilePage() {
               height: "1.75rem",
               borderRadius: "0.875rem",
               border: "none",
-              background: daylightEnabled ? "#B85C38" /* Atrium ember = active — matches other switches */ : "#E3D6BC" /* Atrium off track */,
+              background: daylightEnabled ? EMBER /* Atrium ember = active — matches other switches */ : HAIRLINE /* Atrium off track */,
               cursor: "pointer",
               position: "relative",
               transition: "background .2s",
@@ -1148,7 +1148,7 @@ export default function ProfilePage() {
                 }}>
                   <span style={{
                     fontWeight: 500,
-                    color: isAuto ? "#716A5E" /* Atrium muted */ : "#403B36" /* Atrium ink */,
+                    color: isAuto ? MUTED /* Atrium muted */ : INK /* Atrium ink */,
                   }}>
                     {formatDaylightHour(displayHour)} — {daylightPeriodLabel(displayHour, tc)}
                   </span>
@@ -1159,13 +1159,13 @@ export default function ProfilePage() {
                     style={{
                       padding: "0.25rem 0.75rem",
                       borderRadius: "0.5rem",
-                      border: `0.0625rem solid ${isAuto ? "rgba(154,79,42,0.35)" : "#E3D6BC"}`, /* Atrium terracotta / hairline */
-                      background: isAuto ? "#F6EBE3" : "#FCFAF5" /* Atrium panel */,
+                      border: `0.0625rem solid ${isAuto ? "rgba(154,79,42,0.35)" : HAIRLINE}`, /* Atrium terracotta / hairline */
+                      background: isAuto ? TRAY : CREAM /* Atrium panel */,
                       cursor: "pointer",
                       fontFamily: T.font.body,
                       fontSize: "0.8125rem",
                       fontWeight: isAuto ? 600 : 500,
-                      color: isAuto ? "#9A4F2A" : "#716A5E", /* Atrium glyph / muted */
+                      color: isAuto ? EMBER_GLYPH : MUTED, /* Atrium glyph / muted */
                       transition: "all .2s",
                     }}
                   >
@@ -1174,6 +1174,7 @@ export default function ProfilePage() {
                 </div>
                 <input
                   type="range"
+                  className="mp-daylight-range"
                   min={0}
                   max={24}
                   step={0.5}
@@ -1183,7 +1184,7 @@ export default function ProfilePage() {
                   style={{
                     width: "100%",
                     minHeight: "2.75rem", /* touch target >=2.75rem (canon) */
-                    accentColor: "#B85C38", /* Atrium ember */
+                    accentColor: EMBER, /* Atrium ember */
                     cursor: "pointer",
                   }}
                 />
@@ -1208,7 +1209,7 @@ export default function ProfilePage() {
         <div style={{
           background: T.color.white,
           borderRadius: "1rem",
-          border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+          border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
           padding: "1.125rem 1.5rem",
           boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
           display: "flex", alignItems: "center", gap: "1rem",
@@ -1237,7 +1238,7 @@ export default function ProfilePage() {
               {tf("securityRowDesc", "Password, two-factor authentication, data export and account deletion")}
             </div>
           </div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#716A5E" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
             <path d="m9 18 6-6-6-6" />
           </svg>
         </div>
@@ -1248,6 +1249,34 @@ export default function ProfilePage() {
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @media (prefers-reduced-motion: reduce) { [role="status"], [role="alert"], .mp-avatar-overlay svg { animation: none !important; } }
         button:hover .mp-avatar-overlay { opacity: 1 !important; }
+        /* Daylight range: enlarge the draggable thumb hit-area to canon touch size (2.75rem). */
+        .mp-daylight-range { -webkit-appearance: none; appearance: none; background: transparent; }
+        .mp-daylight-range:focus { outline: none; }
+        .mp-daylight-range::-webkit-slider-runnable-track {
+          height: 0.375rem; border-radius: 0.1875rem; background: ${HAIRLINE};
+        }
+        .mp-daylight-range::-moz-range-track {
+          height: 0.375rem; border-radius: 0.1875rem; background: ${HAIRLINE};
+        }
+        .mp-daylight-range::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 2.75rem; height: 2.75rem; border-radius: 1.375rem;
+          background: ${EMBER}; border: 0.25rem solid ${CREAM};
+          box-shadow: 0 0.0625rem 0.25rem rgba(64,59,54,0.14); /* Atrium warm ink */
+          cursor: pointer; margin-top: -1.1875rem; /* centre 2.75rem thumb on 0.375rem track */
+        }
+        .mp-daylight-range::-moz-range-thumb {
+          width: 2.75rem; height: 2.75rem; border-radius: 1.375rem;
+          background: ${EMBER}; border: 0.25rem solid ${CREAM};
+          box-shadow: 0 0.0625rem 0.25rem rgba(64,59,54,0.14); /* Atrium warm ink */
+          cursor: pointer;
+        }
+        .mp-daylight-range:focus-visible::-webkit-slider-thumb {
+          outline: 0.1875rem solid ${GOLD}; outline-offset: 0.125rem; /* Atrium gold focus ring */
+        }
+        .mp-daylight-range:focus-visible::-moz-range-thumb {
+          outline: 0.1875rem solid ${GOLD}; outline-offset: 0.125rem; /* Atrium gold focus ring */
+        }
         ${settingsFocusStyle}
       `}</style>
     </div>
@@ -1270,7 +1299,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.875rem 1.125rem",
   borderRadius: "0.75rem",
-  border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+  border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
   background: T.color.white,
   fontFamily: T.font.body,
   fontSize: "1rem", /* >=16px so iOS Safari never zooms-on-focus (canon: inputs >=1rem) */
@@ -1284,7 +1313,7 @@ const inputStyle: React.CSSProperties = {
 const settingsFocusStyle = `
   .mp-settings-input:focus-visible,
   .mp-settings-btn:focus-visible {
-    outline: 0.1875rem solid #D4AF37; /* Atrium gold focus ring */
+    outline: 0.1875rem solid ${GOLD}; /* Atrium gold focus ring */
     outline-offset: 0.1875rem;
   }
 `;

@@ -15,6 +15,11 @@ import { usePalaceStore } from "@/lib/stores/palaceStore";
 import SettingsTutorial, { useSettingsTutorial } from "@/components/ui/SettingsTutorial";
 import { CREAM, INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 
+// Warm-white surface for the raised desktop sidebar card. A hair brighter than
+// CREAM (#FCFAF5) so the card lifts off the CREAM page without going clinical
+// pure-white. Kept local (shared token files are off-limits this pass).
+const SIDEBAR_CARD = "#FEFDFB";
+
 function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   const s = {
     width: size,
@@ -288,7 +293,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             top: "5rem",
           }}>
             <div style={{
-              background: "#FFFFFF",
+              background: SIDEBAR_CARD,
               borderRadius: "1.25rem",
               border: `0.0625rem solid ${HAIRLINE}`,
               boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
@@ -410,9 +415,14 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       {/* Mobile-specific style overrides — tighter cards, full-width buttons, 16px inputs */}
       {isMobile && (
         <style>{`
-          .mp-settings-mobile-content > div > div[style*="border-radius:1rem"],
-          .mp-settings-mobile-content > div > div[style*="border-radius: 1rem"],
-          .mp-settings-mobile-content .mp-settings-card {
+          /* Preferred hook: cards tagged .mp-settings-card. The substring
+             selector is a transitional fallback for sub-page cards that still
+             render border-radius:1rem inline and don't yet carry the class.
+             React serializes inline styles with no space after the colon, so
+             only the no-space variant can ever match — the spaced variant was
+             dead and has been removed. */
+          .mp-settings-mobile-content .mp-settings-card,
+          .mp-settings-mobile-content > div > div[style*="border-radius:1rem"] {
             padding: 1.125rem 1rem !important;
             border-radius: 0.875rem !important;
             margin-bottom: 1rem !important;

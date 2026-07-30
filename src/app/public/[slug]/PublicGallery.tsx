@@ -20,6 +20,10 @@ interface PublicMemory {
   saturation: number;
   lightness: number;
   fileUrl: string | null;
+  /** Optional poster/thumbnail image (used for video cards so we never mount a
+      full <video> on the grid). Present once the /api/public-share select
+      surfaces memories.thumbnail_url; safe to be undefined until then. */
+  thumbnailUrl?: string | null;
   createdAt: string;
 }
 
@@ -421,9 +425,21 @@ function MemoryCard({
           justifyContent: "center",
           position: "relative",
         }}>
-          {/* Poster placeholder only — the <video> element is mounted in the
-              lightbox so cards don't each fetch a full video source. */}
+          {/* Real poster image when the memory has a thumbnail — an <Image>, never
+              a <video>, so cards don't each fetch a full video source. Falls back
+              to the HSL wash + play badge when no poster is available. */}
+          {mem.thumbnailUrl && (
+            <Image
+              src={mem.thumbnailUrl}
+              alt={mem.title}
+              fill sizes="(max-width: 768px) 50vw, 300px"
+              unoptimized
+              style={{ objectFit: "cover" }}
+            />
+          )}
+          {/* Play badge overlays the poster (or the wash when no poster). */}
           <div style={{
+            position: "relative",
             width: "3rem",
             height: "3rem",
             borderRadius: "50%",

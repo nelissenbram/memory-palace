@@ -12,6 +12,16 @@ import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, CREAM, TRAY, SAGE, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
+// EMBER_GLYPH (#9A4F2A) = rgb(154,79,42). The subscription surface tints this
+// at-rest terracotta for its "current plan" / soft-accent chrome, so route
+// those rgba() literals through named locals rather than re-typing the channel.
+const EMBER_GLYPH_RGB = "154,79,42";
+const EMBER_GLYPH_TINT = `rgba(${EMBER_GLYPH_RGB},0.07)`;   // soft fill (current-plan wash, near-limit prompt)
+const EMBER_GLYPH_TINT_12 = `rgba(${EMBER_GLYPH_RGB},0.12)`; // chip fill
+const EMBER_GLYPH_EDGE = `rgba(${EMBER_GLYPH_RGB},0.35)`;    // current-plan border
+// Shared warm-ink card elevation (SHADOW[1] + top highlight) — the recurring
+// two-part card boxShadow, named once so the strings never drift.
+const CARD_SHADOW = `${SHADOW[1]}, ${TOP_HIGHLIGHT}`;
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import CancelFlow from "@/components/ui/CancelFlow";
 import InviteFlow from "@/components/social/InviteFlow";
@@ -357,7 +367,7 @@ export default function SubscriptionPage() {
       borderRadius: "1rem",
       border: `0.0625rem solid ${HAIRLINE}`,
       padding: "1.75rem 2rem",
-      boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
+      boxShadow: CARD_SHADOW,
       marginBottom: "1.5rem",
     };
     const bar = (w: string, h: string): CSSProperties => ({
@@ -406,6 +416,13 @@ export default function SubscriptionPage() {
   };
 
   const currentStatus = statusLabel[sub?.status || "active"] || statusLabel.active;
+
+  // The 3-up plan-comparison grid needs real width to breathe. Collapse it to a
+  // single column not only on phones (isMobile) but also in any portrait
+  // viewport — this covers the iPad split-view / narrow-landscape edge where
+  // isMobile is false yet three columns still crush (canon: prefer portrait
+  // over a raw width breakpoint, no @media).
+  const stackComparison = isMobile || isPortrait;
 
   return (
     <div className="mp-sub-page">
@@ -479,7 +496,7 @@ export default function SubscriptionPage() {
         borderRadius: "1rem",
         border: `0.0625rem solid ${HAIRLINE}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+        boxShadow: CARD_SHADOW,
         marginBottom: "1.5rem",
       }}>
         <div style={{
@@ -779,7 +796,7 @@ export default function SubscriptionPage() {
         borderRadius: "1rem",
         border: `0.0625rem solid ${HAIRLINE}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+        boxShadow: CARD_SHADOW,
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
@@ -860,8 +877,8 @@ export default function SubscriptionPage() {
             marginTop: "1.25rem",
             padding: "1rem 1.25rem",
             borderRadius: "0.75rem",
-            background: "rgba(154,79,42,0.07)",
-            border: "0.0625rem solid rgba(154,79,42,0.12)",
+            background: EMBER_GLYPH_TINT,
+            border: `0.0625rem solid ${EMBER_GLYPH_TINT_12}`,
           }}>
             <p style={{
               fontFamily: F.body, fontSize: "0.875rem", color: INK,
@@ -894,7 +911,7 @@ export default function SubscriptionPage() {
         borderRadius: "1rem",
         border: `0.0625rem solid ${HAIRLINE}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+        boxShadow: CARD_SHADOW,
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
@@ -984,7 +1001,7 @@ export default function SubscriptionPage() {
                   borderRadius: "0.5rem",
                   background: interval === "annual"
                     ? "rgba(255,255,255,0.25)"
-                    : "rgba(154,79,42,0.12)",
+                    : EMBER_GLYPH_TINT_12,
                   color: interval === "annual" ? CREAM : EMBER,
                   whiteSpace: "nowrap",
                 }}
@@ -1040,8 +1057,8 @@ export default function SubscriptionPage() {
                   justifyContent: "space-between",
                   padding: "1rem 1.25rem",
                   borderRadius: "0.75rem",
-                  background: isCurrent ? "rgba(154,79,42,0.07)" : CREAM,
-                  border: isCurrent ? "0.09375rem solid rgba(154,79,42,0.35)" : `0.0625rem solid ${HAIRLINE}`,
+                  background: isCurrent ? EMBER_GLYPH_TINT : CREAM,
+                  border: isCurrent ? `0.09375rem solid ${EMBER_GLYPH_EDGE}` : `0.0625rem solid ${HAIRLINE}`,
                 }}
               >
                 <div>
@@ -1054,7 +1071,7 @@ export default function SubscriptionPage() {
                       <span style={{
                         fontSize: "0.6875rem", fontWeight: 600,
                         padding: "2px 0.5rem", borderRadius: "0.375rem",
-                        background: "rgba(154,79,42,0.12)", color: EMBER,
+                        background: EMBER_GLYPH_TINT_12, color: EMBER,
                       }}>
                         {t("current")}
                       </span>
@@ -1076,15 +1093,11 @@ export default function SubscriptionPage() {
                       disabled={!!upgradeLoading}
                       className="mp-sub-primary"
                       style={{
-                        minHeight: "2.75rem",
+                        ...emberCta(!!upgradeLoading),
+                        // Compact-row variant: tighter tap area than the base CTA.
                         padding: "0.5rem 1rem",
                         borderRadius: "0.5rem",
-                        border: "none",
-                        background: upgradeLoading ? EMBER_DISABLED_BG : EMBER_GRADIENT,
-                        fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 600,
-                        color: upgradeLoading ? MUTED : CREAM,
-                        cursor: upgradeLoading ? "wait" : "pointer",
-                        transition: "all .15s",
+                        fontSize: "0.8125rem",
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -1117,10 +1130,11 @@ export default function SubscriptionPage() {
               <div style={{
                 marginTop: "1.25rem",
                 display: "grid",
-                /* iPad portrait keeps the multi-column grid — collapse to one
-                   column only on true mobile (isMobile), not on compact/iPad. */
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-                gap: isMobile ? "1rem" : "1.25rem",
+                /* Single column on phones AND any portrait viewport (iPad
+                   split-view / narrow landscape); 3-up only when there is real
+                   landscape width to spread across. */
+                gridTemplateColumns: stackComparison ? "1fr" : "repeat(3, 1fr)",
+                gap: stackComparison ? "1rem" : "1.25rem",
                 alignItems: "start",
               }}>
                 {PLAN_ORDER.map((planId) => {
@@ -1140,14 +1154,14 @@ export default function SubscriptionPage() {
                         border: isHighlighted
                           ? `0.125rem solid ${EMBER}`
                           : isCurrent
-                            ? "0.09375rem solid rgba(154,79,42,0.35)"
+                            ? `0.09375rem solid ${EMBER_GLYPH_EDGE}`
                             : `0.0625rem solid ${HAIRLINE}`,
-                        padding: isMobile ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
+                        padding: stackComparison ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
                         position: "relative",
-                        boxShadow: isHighlighted
-                          ? "0 0.5rem 1.5rem rgba(64,59,54,0.14)"
-                          : "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
-                        transform: isHighlighted && !isMobile ? "scale(1.03)" : undefined,
+                        boxShadow: isHighlighted ? SHADOW[2] : CARD_SHADOW,
+                        // Only lift the highlighted card when it sits in the 3-up
+                        // row — a scaled card in a single stacked column overflows.
+                        transform: isHighlighted && !stackComparison ? "scale(1.03)" : undefined,
                       }}
                     >
                       {/* Most Popular badge */}
@@ -1234,8 +1248,8 @@ export default function SubscriptionPage() {
                           width: "100%",
                           padding: "0.6875rem 1rem",
                           borderRadius: "0.75rem",
-                          border: "0.09375rem solid rgba(154,79,42,0.35)",
-                          background: "rgba(154,79,42,0.07)",
+                          border: `0.09375rem solid ${EMBER_GLYPH_EDGE}`,
+                          background: EMBER_GLYPH_TINT,
                           textAlign: "center",
                           fontFamily: F.body,
                           fontSize: "0.875rem",
@@ -1251,18 +1265,10 @@ export default function SubscriptionPage() {
                           disabled={!!upgradeLoading}
                           className="mp-sub-primary"
                           style={{
+                            ...emberCta(!!upgradeLoading),
+                            // Full-comparison card variant: full-width block CTA.
                             width: "100%",
-                            minHeight: "2.75rem",
                             padding: "0.6875rem 1rem",
-                            borderRadius: "0.75rem",
-                            border: "none",
-                            background: upgradeLoading ? EMBER_DISABLED_BG : EMBER_GRADIENT,
-                            color: upgradeLoading ? MUTED : CREAM,
-                            fontFamily: F.body,
-                            fontSize: "0.875rem",
-                            fontWeight: 600,
-                            cursor: upgradeLoading ? "wait" : "pointer",
-                            transition: "all 0.2s",
                             marginBottom: "1.25rem",
                           }}
                         >
@@ -1295,7 +1301,7 @@ export default function SubscriptionPage() {
                               height: "1.125rem",
                               borderRadius: "50%",
                               background: isHighlighted
-                                ? "rgba(154,79,42,0.12)"
+                                ? EMBER_GLYPH_TINT_12
                                 : "rgba(86,104,60,0.1)",
                               display: "flex",
                               alignItems: "center",
@@ -1331,7 +1337,7 @@ export default function SubscriptionPage() {
           borderRadius: "1rem",
           border: `0.0625rem solid ${HAIRLINE}`,
           padding: "1.75rem 2rem",
-          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+          boxShadow: CARD_SHADOW,
           marginBottom: "1.5rem",
         }}>
           <h3 style={{
@@ -1425,15 +1431,7 @@ export default function SubscriptionPage() {
                   }).catch(() => {});
                 }}
                 style={{
-                  minHeight: "2.75rem",
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.75rem",
-                  border: "none",
-                  background: EMBER_GRADIENT,
-                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: CREAM,
-                  cursor: "pointer",
-                  transition: "all .15s",
+                  ...emberCta(false),
                   display: "flex", alignItems: "center", gap: "0.5rem",
                 }}
               >
@@ -1584,10 +1582,10 @@ export default function SubscriptionPage() {
       {/* Canon hover / focus / reduced-motion states (style-only) */}
       <style>{`
         @media (hover: hover) {
-          .mp-sub-secondary:hover { background: rgba(154,79,42,0.07) !important; }
+          .mp-sub-secondary:hover { background: ${EMBER_GLYPH_TINT} !important; }
           .mp-sub-primary:not(:disabled):hover { filter: brightness(1.06); }
         }
-        .mp-sub-secondary:active { background: rgba(154,79,42,0.12) !important; }
+        .mp-sub-secondary:active { background: ${EMBER_GLYPH_TINT_12} !important; }
         .mp-sub-primary:not(:disabled):active { filter: brightness(0.96); }
         .mp-sub-page a:focus-visible,
         .mp-sub-page button:focus-visible,
