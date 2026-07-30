@@ -4713,7 +4713,7 @@
     "firstMemoryPrompt": "Je paleis is klaar voor zijn eerste herinnering.",
     "relay.keptWarm": "Warm gehouden · {count} weken",
     "relay.quietHearth": "Een stille periode — één herinnering doet de haard weer branden",
-    "relay.familyEmbers": "Je familie",
+    "relay.familyEmbers": "Paleisbezoekers",
     "relay.keptWarmOne": "Warm gehouden · deze week",
     "relay.enterPalace": "Betreed je paleis",
     "relay.libraryPlate": "Je bibliotheek",
@@ -4837,7 +4837,10 @@
     "relay.photosCountNOne": "{count} foto",
     "relay.storiesCountNOne": "{count} verhaal",
     "relay.recordedCountOne": "{count} opgenomen",
-    "relay.sharedCountOne": "{count} gedeeld"
+    "relay.sharedCountOne": "{count} gedeeld",
+    "relay.photosCountN": "{count} foto's",
+    "relay.storiesCountN": "{count} verhalen",
+    "relay.embersScrollHint": "Scroll voor meer bezoekers"
   },
   "enhance": {
     "sectionTitle": "Verrijk je herinneringen",

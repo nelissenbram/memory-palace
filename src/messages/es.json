@@ -4711,7 +4711,7 @@
     "firstMemoryPrompt": "Tu palacio está listo para su primer recuerdo.",
     "relay.keptWarm": "Mantenido cálido · {count} semanas",
     "relay.quietHearth": "Una temporada tranquila — un recuerdo reaviva el hogar",
-    "relay.familyEmbers": "Tu familia",
+    "relay.familyEmbers": "Visitantes del palacio",
     "relay.keptWarmOne": "Mantenido cálido · esta semana",
     "relay.enterPalace": "Entra en tu palacio",
     "relay.libraryPlate": "Tu biblioteca",
@@ -4835,7 +4835,10 @@
     "relay.photosCountNOne": "{count} foto",
     "relay.storiesCountNOne": "{count} historia",
     "relay.recordedCountOne": "{count} grabado",
-    "relay.sharedCountOne": "{count} compartido"
+    "relay.sharedCountOne": "{count} compartido",
+    "relay.photosCountN": "{count} fotos",
+    "relay.storiesCountN": "{count} historias",
+    "relay.embersScrollHint": "Desplázate para ver más visitantes"
   },
   "enhance": {
     "sectionTitle": "Enriquece tus recuerdos",
