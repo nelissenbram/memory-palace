@@ -3944,7 +3944,8 @@
     "contactOutro": "U heeft ook het recht een klacht in te dienen bij de Gegevensbeschermingsautoriteit als u meent dat uw rechten zijn geschonden.",
     "linkSecurity": "Beveiliging",
     "linkTerms": "Algemene voorwaarden",
-    "linkHome": "Terug naar home"
+    "linkHome": "Terug naar home",
+    "navBrand": "The Memory Palace"
   },
   "terms": {
     "legal": "Juridisch",
@@ -4000,7 +4001,8 @@
     "section11Li2Company": "Bedrijf: The Memory Palace, België",
     "privacyPolicy": "Privacybeleid",
     "securityPolicy": "Beveiliging",
-    "backToHome": "Terug naar startpagina"
+    "backToHome": "Terug naar startpagina",
+    "navBrand": "The Memory Palace"
   },
   "hoverTooltip": {
     "wingLabel": "{name} Vleugel",
@@ -4828,7 +4830,14 @@
     "relay.sgStepsOf": "{done} van {total} stappen",
     "relay.sgRecordTitle": "Neem je verhaal op",
     "relay.sgRecordReason": "Een paar minuten, een leven bewaard",
-    "relay.stripSummary": "{photos} foto's · {videos} video's · {stories} verhalen · {wings} vleugels"
+    "relay.stripSummary": "{photos} foto's · {videos} video's · {stories} verhalen · {wings} vleugels",
+    "relay.wingsCountOne": "{count} vleugel",
+    "relay.roomsCountOne": "{count} kamer",
+    "relay.memoriesCountOne": "{count} herinnering",
+    "relay.photosCountNOne": "{count} foto",
+    "relay.storiesCountNOne": "{count} verhaal",
+    "relay.recordedCountOne": "{count} opgenomen",
+    "relay.sharedCountOne": "{count} gedeeld"
   },
   "enhance": {
     "sectionTitle": "Verrijk je herinneringen",
@@ -5803,7 +5812,8 @@
     "option3Post": " en we verwijderen je gegevens binnen 30 dagen.",
     "footerPre": "Zie ons volledige ",
     "footerPrivacyLink": "privacybeleid",
-    "footerPost": " voor meer informatie over hoe we met je gegevens omgaan."
+    "footerPost": " voor meer informatie over hoe we met je gegevens omgaan.",
+    "navBrand": "The Memory Palace"
   },
   "relay": {
     "relay.photosCountN": "{count} foto's",

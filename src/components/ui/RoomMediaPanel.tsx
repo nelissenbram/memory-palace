@@ -284,7 +284,7 @@ function DisplayedPill({
                   </span>
                   <span style={{
                     fontFamily: T.font.body,
-                    fontSize: "0.625rem",
+                    fontSize: "0.6875rem",
                     color: T.color.muted,
                     marginLeft: "auto",
                   }}>
@@ -410,7 +410,7 @@ function ShowingCounts({
               key={e.unitKey}
               style={{
                 fontFamily: T.font.body,
-                fontSize: "0.625rem",
+                fontSize: "0.6875rem",
                 color: e.slots === 0 ? T.color.cream : T.color.muted,
               }}
             >
@@ -422,7 +422,7 @@ function ShowingCounts({
               key={type}
               style={{
                 fontFamily: T.font.body,
-                fontSize: "0.625rem",
+                fontSize: "0.6875rem",
                 color: T.color.muted,
               }}
             >
@@ -1269,7 +1269,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                       {slotLabel}
                     </div>
                     <div style={{
-                      fontFamily: T.font.body, fontSize: "0.625rem",
+                      fontFamily: T.font.body, fontSize: "0.6875rem",
                       color: firstMem ? accent : T.color.muted,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
@@ -1406,7 +1406,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                                 }} />;
                               })()}
                               <div style={{
-                                fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 500,
+                                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
                                 color: isAssigned ? accent : INK,
                                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                               }}>

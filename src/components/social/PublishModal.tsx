@@ -112,31 +112,36 @@ export default function PublishModal({
     startTransition(async () => {
       setError(null);
       const { publishWing, unpublishWing, publishRoom, unpublishRoom } = await import("@/lib/social/share-actions");
-      const ops: Promise<{ ok: boolean; error?: string }>[] = [];
+      const wingOps: Promise<{ ok: boolean; error?: string }>[] = [];
+      const roomOps: (() => Promise<{ ok: boolean; error?: string }>)[] = [];
       for (const w of wings) {
         if (selectedWings.has(w.id) && !w.published) {
-          ops.push(publishWing({ wingId: w.id }));
+          wingOps.push(publishWing({ wingId: w.id }));
         } else if (!selectedWings.has(w.id) && w.published) {
-          ops.push(unpublishWing(w.id));
+          wingOps.push(unpublishWing(w.id));
         }
         for (const r of w.rooms) {
           if (selectedRooms.has(r.id) && !r.published) {
-            ops.push(publishRoom({ roomId: r.id, wingId: w.id }));
+            roomOps.push(() => publishRoom({ roomId: r.id, wingId: w.id }));
           } else if (!selectedRooms.has(r.id) && r.published) {
-            ops.push(unpublishRoom(r.id));
+            roomOps.push(() => unpublishRoom(r.id));
           }
         }
       }
       // The current selection already matches the server state — nothing to do.
       // Surface this instead of silently flashing "success" so the user isn't
       // left wondering whether their intended change was applied.
-      if (ops.length === 0) {
+      if (wingOps.length === 0 && roomOps.length === 0) {
         setError(t("publishNoChanges"));
         return;
       }
       try {
-        const results = await Promise.all(ops);
-        if (results.some((r) => r && r.ok === false)) {
+        // Publish/unpublish WINGS first so a never-published wing's DB row exists
+        // before its rooms try to attach to it (rooms.wing_id FK). Running them in
+        // one parallel batch raced and left rooms in never-published wings unattached.
+        const wingResults = await Promise.all(wingOps);
+        const roomResults = await Promise.all(roomOps.map((op) => op()));
+        if ([...wingResults, ...roomResults].some((r) => r && r.ok === false)) {
           setError(t("publishFailed"));
           return;
         }

@@ -61,6 +61,15 @@ const LSHADOW = {
   // Warm-umber CTA hover / active feedback.
   ctaHover: "0 6px 18px rgba(107,51,24,0.35)",
   ctaActive: "0 2px 8px rgba(107,51,24,0.25)",
+  // Warm-ink drop for the tilted phone screenshots on the dark band. Canon:
+  // never cold black — uses the warm-ink tone (rgba(64,59,54,…), same base as
+  // the T.shadow ramp) instead of the previous raw rgba(0,0,0,…).
+  phoneStrip: "0 22px 56px rgba(64,59,54,0.55)",
+  // Warm-umber text drops over the dark hero / final bands. Base is L.dark
+  // umber (#241C15 → rgba(36,28,21,…)), matched to the band behind the text so
+  // these stop being hand-typed rgba at the two call sites.
+  heroText: "0 2px 24px rgba(36,28,21,0.45)",
+  finalText: "0 2px 30px rgba(36,28,21,0.5)",
 } as const;
 const LSCRIM = {
   // Translucent warm-ink chip background used by the video toggle buttons over
@@ -1069,7 +1078,7 @@ export default function LandingV2Client({
                 color: T.color.cream,
                 margin: "0 0 1.25rem",
                 textWrap: "balance",
-                textShadow: "0 2px 24px rgba(36,28,21,0.45)",
+                textShadow: LSHADOW.heroText,
               }}
             >
               {v2.hero.h1}
@@ -1460,7 +1469,7 @@ export default function LandingV2Client({
                           width: "16rem",
                           height: "auto",
                           borderRadius: "0.875rem",
-                          boxShadow: "0 22px 56px rgba(0,0,0,0.55)",
+                          boxShadow: LSHADOW.phoneStrip,
                           display: "block",
                         }}
                       />
@@ -1612,7 +1621,7 @@ export default function LandingV2Client({
                 margin: "0 auto 2.5rem",
                 maxWidth: "16em",
                 textWrap: "balance",
-                textShadow: "0 2px 30px rgba(36,28,21,0.5)",
+                textShadow: LSHADOW.finalText,
               }}
             >
               {v2.final.h2}
@@ -1675,7 +1684,7 @@ export default function LandingV2Client({
           {/* Forever Promise — footer subsection */}
           <div
             style={{
-              borderTop: "1px solid rgba(181,173,163,0.25)",
+              borderTop: `1px solid ${L.inkMutedDark}40`,
               padding: "1.75rem 0",
               maxWidth: "44rem",
             }}
@@ -1689,7 +1698,7 @@ export default function LandingV2Client({
           </div>
           <div
             style={{
-              borderTop: "1px solid rgba(181,173,163,0.25)",
+              borderTop: `1px solid ${L.inkMutedDark}40`,
               paddingTop: "1.5rem",
               display: "flex",
               flexWrap: "wrap",

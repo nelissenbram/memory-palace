@@ -3942,7 +3942,8 @@
     "contactOutro": "Du hast auch das Recht, eine Beschwerde bei der belgischen Datenschutzbehörde (Gegevensbeschermingsautoriteit) einzureichen, wenn du glaubst, dass deine Rechte verletzt wurden.",
     "linkSecurity": "Sicherheit",
     "linkTerms": "Nutzungsbedingungen",
-    "linkHome": "Zurück zur Startseite"
+    "linkHome": "Zurück zur Startseite",
+    "navBrand": "The Memory Palace"
   },
   "terms": {
     "legal": "Rechtliches",
@@ -3998,7 +3999,8 @@
     "section11Li2Company": "Unternehmen: The Memory Palace, Belgien",
     "privacyPolicy": "Datenschutzerklärung",
     "securityPolicy": "Sicherheit",
-    "backToHome": "Zurück zur Startseite"
+    "backToHome": "Zurück zur Startseite",
+    "navBrand": "The Memory Palace"
   },
   "hoverTooltip": {
     "wingLabel": "Flügel {name}",
@@ -4826,7 +4828,14 @@
     "relay.sgStepsOf": "{done} von {total} Schritten",
     "relay.sgRecordTitle": "Nimm deine Geschichte auf",
     "relay.sgRecordReason": "Ein paar Minuten, ein Leben bewahrt",
-    "relay.stripSummary": "{photos} Fotos · {videos} Videos · {stories} Geschichten · {wings} Flügel"
+    "relay.stripSummary": "{photos} Fotos · {videos} Videos · {stories} Geschichten · {wings} Flügel",
+    "relay.wingsCountOne": "{count} Flügel",
+    "relay.roomsCountOne": "{count} Raum",
+    "relay.memoriesCountOne": "{count} Erinnerung",
+    "relay.photosCountNOne": "{count} Foto",
+    "relay.storiesCountNOne": "{count} Geschichte",
+    "relay.recordedCountOne": "{count} aufgenommen",
+    "relay.sharedCountOne": "{count} geteilt"
   },
   "enhance": {
     "sectionTitle": "Bereichere deine Erinnerungen",
@@ -5801,7 +5810,8 @@
     "option3Post": " und wir löschen Ihre Daten innerhalb von 30 Tagen.",
     "footerPre": "Weitere Informationen dazu, wie wir mit Ihren Daten umgehen, finden Sie in unserer vollständigen ",
     "footerPrivacyLink": "Datenschutzerklärung",
-    "footerPost": "."
+    "footerPost": ".",
+    "navBrand": "The Memory Palace"
   },
   "relay": {
     "relay.photosCountN": "{count} Fotos",

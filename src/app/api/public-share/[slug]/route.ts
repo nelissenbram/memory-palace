@@ -73,7 +73,7 @@ export async function GET(
     const { data: wingMemories } = roomIds.length
       ? await supabase
           .from("memories")
-          .select("id, title, description, type, hue, saturation, lightness, file_url, created_at")
+          .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, created_at")
           .in("room_id", roomIds)
           .order("created_at", { ascending: true })
       : { data: [] };
@@ -89,6 +89,7 @@ export async function GET(
         saturation: m.saturation,
         lightness: m.lightness,
         fileUrl: m.file_url,
+        thumbnailUrl: m.thumbnail_url,
         createdAt: m.created_at,
       })),
       owner: { displayName: ownerResult.data?.display_name || "Someone" },
@@ -119,7 +120,7 @@ export async function GET(
       : Promise.resolve({ data: null }),
     supabase
       .from("memories")
-      .select("id, title, description, type, hue, saturation, lightness, file_url, created_at")
+      .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, created_at")
       .eq("room_id", share.room_id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),

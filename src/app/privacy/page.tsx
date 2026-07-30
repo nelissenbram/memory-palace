@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { createContext, useContext } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 
 const F = T.font;
 const C = T.color;
+
+/** Shared page constants so the four legal pages read consistently. */
+const PROSE_MAX = "47.5rem";
 
 /** Shared responsive flag so the module-level P/Li helpers can bump body copy
  *  to ~1rem on phones without threading a prop through every call site. */
@@ -18,6 +21,7 @@ const MobileCtx = createContext(false);
 export default function PrivacyPolicyPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
+  const isCompact = useIsCompact();
   const { t, locale, setLocaleNoReload } = useTranslation("privacy");
   const { t: tc } = useTranslation("common");
 
@@ -39,18 +43,18 @@ export default function PrivacyPolicyPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 clamp(1.25rem, 5vw, 3.75rem)",
+          padding: isMobile ? "0 1.25rem" : "0 3.75rem",
           height: "4rem",
-          background: "rgba(250,250,247,0.92)",
+          background: "rgba(252,250,245,0.92)",
           backdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${C.sandstone}40`,
+          borderBottom: `1px solid ${C.hairline}`,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <Link href="/" aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
-            border: `1px solid ${C.sandstone}50`,
+            border: `1px solid ${C.hairline}`,
             background: "none", color: C.inkMuted, textDecoration: "none",
             transition: "border-color 0.2s",
           }}>
@@ -78,13 +82,13 @@ export default function PrivacyPolicyPage() {
                   letterSpacing: "-0.3px",
                 }}
               >
-                The Memory Palace
+                {t("navBrand")}
               </span>
             )}
           </Link>
         </div>
         <select value={locale} onChange={(e) => setLocaleNoReload(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
-          background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
+          background: "none", border: `1px solid ${C.hairline}`, borderRadius: "0.375rem",
           padding: "0.25rem 0.5rem", fontSize: "1rem", fontFamily: F.body,
           fontWeight: 600, color: C.inkMuted, cursor: "pointer", letterSpacing: "0.5px",
           textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
@@ -99,9 +103,11 @@ export default function PrivacyPolicyPage() {
       {/* Content */}
       <main
         style={{
-          maxWidth: "47.5rem",
+          maxWidth: PROSE_MAX,
           margin: "0 auto",
-          padding: "3.75rem clamp(1.25rem, 5vw, 2.5rem) 6.25rem",
+          padding: isMobile
+            ? "2.5rem 1.25rem 5rem"
+            : `3.75rem ${isCompact ? "2rem" : "2.5rem"} 6.25rem`,
         }}
       >
         <p
@@ -120,7 +126,7 @@ export default function PrivacyPolicyPage() {
         <h1
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(2rem, 5vw, 3rem)",
+            fontSize: isMobile ? "2rem" : "3rem",
             fontWeight: 300,
             lineHeight: 1.2,
             color: C.ink,
@@ -474,7 +480,7 @@ export default function PrivacyPolicyPage() {
           </P>
         </Section>
 
-        <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: `1px solid ${C.sandstone}40` }}>
+        <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: `1px solid ${C.hairline}` }}>
           <Link
             href="/security"
             style={{ ...linkStyle, fontSize: "0.875rem", marginRight: "1.5rem" }}

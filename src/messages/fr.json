@@ -3942,7 +3942,8 @@
     "contactOutro": "Vous avez également le droit d'introduire une plainte auprès de l'Autorité de protection des données belge (Gegevensbeschermingsautoriteit) si vous estimez que vos droits ont été violés.",
     "linkSecurity": "Sécurité",
     "linkTerms": "Conditions d'utilisation",
-    "linkHome": "Retour à l'accueil"
+    "linkHome": "Retour à l'accueil",
+    "navBrand": "The Memory Palace"
   },
   "terms": {
     "legal": "Légal",
@@ -3998,7 +3999,8 @@
     "section11Li2Company": "Société : The Memory Palace, Belgique",
     "privacyPolicy": "Politique de confidentialité",
     "securityPolicy": "Sécurité",
-    "backToHome": "Retour à l'accueil"
+    "backToHome": "Retour à l'accueil",
+    "navBrand": "The Memory Palace"
   },
   "hoverTooltip": {
     "wingLabel": "Aile {name}",
@@ -4826,7 +4828,14 @@
     "relay.sgStepsOf": "{done} sur {total} étapes",
     "relay.sgRecordTitle": "Enregistrez votre histoire",
     "relay.sgRecordReason": "Quelques minutes, une vie préservée",
-    "relay.stripSummary": "{photos} photos · {videos} vidéos · {stories} récits · {wings} ailes"
+    "relay.stripSummary": "{photos} photos · {videos} vidéos · {stories} récits · {wings} ailes",
+    "relay.wingsCountOne": "{count} aile",
+    "relay.roomsCountOne": "{count} pièce",
+    "relay.memoriesCountOne": "{count} souvenir",
+    "relay.photosCountNOne": "{count} photo",
+    "relay.storiesCountNOne": "{count} récit",
+    "relay.recordedCountOne": "{count} enregistré",
+    "relay.sharedCountOne": "{count} partagé"
   },
   "enhance": {
     "sectionTitle": "Enrichissez vos souvenirs",
@@ -5801,7 +5810,8 @@
     "option3Post": " et nous supprimerons vos données sous 30 jours.",
     "footerPre": "Consultez notre ",
     "footerPrivacyLink": "Politique de confidentialité",
-    "footerPost": " complète pour en savoir plus sur la façon dont nous traitons vos données."
+    "footerPost": " complète pour en savoir plus sur la façon dont nous traitons vos données.",
+    "navBrand": "The Memory Palace"
   },
   "relay": {
     "relay.photosCountN": "{count} photos",

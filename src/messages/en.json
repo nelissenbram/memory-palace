@@ -3942,7 +3942,8 @@
     "contactOutro": "You also have the right to lodge a complaint with the Belgian Data Protection Authority (Gegevensbeschermingsautoriteit) if you believe your rights have been violated.",
     "linkSecurity": "Security",
     "linkTerms": "Terms of Service",
-    "linkHome": "Back to home"
+    "linkHome": "Back to home",
+    "navBrand": "The Memory Palace"
   },
   "terms": {
     "legal": "Legal",
@@ -3998,7 +3999,8 @@
     "section11Li2Company": "Company: The Memory Palace, Belgium",
     "privacyPolicy": "Privacy Policy",
     "securityPolicy": "Security",
-    "backToHome": "Back to home"
+    "backToHome": "Back to home",
+    "navBrand": "The Memory Palace"
   },
   "hoverTooltip": {
     "wingLabel": "{name} Wing",
@@ -4826,7 +4828,14 @@
     "relay.sgStepsOf": "{done} of {total} steps",
     "relay.sgRecordTitle": "Record your story",
     "relay.sgRecordReason": "A few minutes, a lifetime kept",
-    "relay.stripSummary": "{photos} photos · {videos} videos · {stories} stories · {wings} wings"
+    "relay.stripSummary": "{photos} photos · {videos} videos · {stories} stories · {wings} wings",
+    "relay.wingsCountOne": "{count} wing",
+    "relay.roomsCountOne": "{count} room",
+    "relay.memoriesCountOne": "{count} memory",
+    "relay.photosCountNOne": "{count} photo",
+    "relay.storiesCountNOne": "{count} story",
+    "relay.recordedCountOne": "{count} recorded",
+    "relay.sharedCountOne": "{count} shared"
   },
   "enhance": {
     "sectionTitle": "Enrich Your Memories",
@@ -5801,7 +5810,8 @@
     "option3Post": " and we will delete your data within 30 days.",
     "footerPre": "See our full ",
     "footerPrivacyLink": "Privacy Policy",
-    "footerPost": " for details on how we handle your data."
+    "footerPost": " for details on how we handle your data.",
+    "navBrand": "The Memory Palace"
   },
   "relay": {
     "relay.photosCountN": "{count} photos",

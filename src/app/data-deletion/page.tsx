@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { T } from "@/lib/theme";
+import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -9,7 +10,13 @@ import PalaceLogo from "@/components/landing/PalaceLogo";
 const F = T.font;
 const C = T.color;
 
+/** Shared page constants so the four legal pages read consistently. */
+const PROSE_MAX = "47.5rem";
+
 export default function DataDeletionPage() {
+  const isMobile = useIsMobile();
+  const isSmall = useIsSmall();
+  const isCompact = useIsCompact();
   const { t, locale, setLocaleNoReload } = useTranslation("dataDeletion");
   const { t: tc } = useTranslation("common");
 
@@ -19,7 +26,7 @@ export default function DataDeletionPage() {
         minHeight: "100vh",
         background: C.cream,
         fontFamily: F.body,
-        color: C.inkSoft,
+        color: C.ink,
         paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
         paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
       }}
@@ -30,11 +37,11 @@ export default function DataDeletionPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 clamp(1.25rem, 5vw, 3.75rem)",
+          padding: isMobile ? "0 1.25rem" : "0 3.75rem",
           height: "4rem",
           background: "rgba(252,250,245,0.92)",
           backdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${C.sandstone}40`,
+          borderBottom: `1px solid ${C.hairline}`,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -48,9 +55,9 @@ export default function DataDeletionPage() {
               width: "2.75rem",
               height: "2.75rem",
               borderRadius: "0.5rem",
-              border: `1px solid ${C.sandstone}50`,
+              border: `1px solid ${C.hairline}`,
               background: "none",
-              color: C.walnut,
+              color: C.inkMuted,
               textDecoration: "none",
               transition: "border-color 0.2s",
             }}
@@ -69,17 +76,19 @@ export default function DataDeletionPage() {
             }}
           >
             <PalaceLogo variant="mark" color="dark" size="sm" />
-            <span
-              style={{
-                fontFamily: F.display,
-                fontSize: "1.25rem",
-                fontWeight: 500,
-                color: C.inkSoft,
-                letterSpacing: "-0.3px",
-              }}
-            >
-              The Memory Palace
-            </span>
+            {!isSmall && (
+              <span
+                style={{
+                  fontFamily: F.display,
+                  fontSize: "1.25rem",
+                  fontWeight: 500,
+                  color: C.ink,
+                  letterSpacing: "-0.3px",
+                }}
+              >
+                {t("navBrand")}
+              </span>
+            )}
           </Link>
         </div>
         <select
@@ -88,13 +97,13 @@ export default function DataDeletionPage() {
           aria-label={tc("a11ySwitchLanguage")}
           style={{
             background: "none",
-            border: `1px solid ${C.sandstone}60`,
+            border: `1px solid ${C.hairline}`,
             borderRadius: "0.375rem",
             padding: "0.25rem 0.5rem",
             fontSize: "1rem",
             fontFamily: F.body,
             fontWeight: 600,
-            color: C.walnut,
+            color: C.inkMuted,
             cursor: "pointer",
             letterSpacing: "0.5px",
             textTransform: "uppercase",
@@ -119,18 +128,20 @@ export default function DataDeletionPage() {
       {/* Content */}
       <main
         style={{
-          maxWidth: "47.5rem",
+          maxWidth: PROSE_MAX,
           margin: "0 auto",
-          padding: "3.75rem clamp(1.25rem, 5vw, 2.5rem) 6.25rem",
+          padding: isMobile
+            ? "2.5rem 1.25rem 5rem"
+            : `3.75rem ${isCompact ? "2rem" : "2.5rem"} 6.25rem`,
         }}
       >
         <p
           style={{
             fontFamily: F.body,
-            fontSize: "0.75rem",
-            letterSpacing: "2px",
+            fontSize: "0.8125rem",
+            letterSpacing: "0.125rem",
             textTransform: "uppercase",
-            color: C.terracotta,
+            color: C.ember,
             fontWeight: 600,
             marginBottom: "0.75rem",
           }}
@@ -140,17 +151,17 @@ export default function DataDeletionPage() {
         <h1
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(2rem, 5vw, 3rem)",
+            fontSize: isMobile ? "2rem" : "3rem",
             fontWeight: 300,
             lineHeight: 1.2,
-            color: C.inkSoft,
+            color: C.ink,
             marginBottom: "1.5rem",
           }}
         >
           {t("title")}
         </h1>
 
-        <p style={{ fontSize: "0.9375rem", lineHeight: 1.75, color: C.walnut, marginBottom: "1rem" }}>
+        <p style={{ fontSize: isMobile ? "1rem" : "0.9375rem", lineHeight: 1.75, color: C.ink, marginBottom: "1rem" }}>
           {t("introPre")}
           <strong>{t("appName")}</strong>
           {t("introPost")}
@@ -161,7 +172,7 @@ export default function DataDeletionPage() {
             fontFamily: F.display,
             fontSize: "1.5rem",
             fontWeight: 500,
-            color: C.inkSoft,
+            color: C.ink,
             marginTop: "2rem",
             marginBottom: "0.875rem",
             lineHeight: 1.3,
@@ -169,7 +180,7 @@ export default function DataDeletionPage() {
         >
           {t("option1Title")}
         </h2>
-        <ol style={{ lineHeight: 1.8, paddingLeft: "1.5rem", marginBottom: "1rem", color: C.walnut, fontSize: "0.9375rem" }}>
+        <ol style={{ lineHeight: 1.8, paddingLeft: isMobile ? "1.25rem" : "1.5rem", marginBottom: "1rem", color: C.ink, fontSize: isMobile ? "1rem" : "0.9375rem" }}>
           <li>
             {t("option1Step1Pre")}
             <a href="https://thememorypalace.ai/login" style={linkStyle}>
@@ -186,7 +197,7 @@ export default function DataDeletionPage() {
             fontFamily: F.display,
             fontSize: "1.5rem",
             fontWeight: 500,
-            color: C.inkSoft,
+            color: C.ink,
             marginTop: "2rem",
             marginBottom: "0.875rem",
             lineHeight: 1.3,
@@ -194,7 +205,7 @@ export default function DataDeletionPage() {
         >
           {t("option2Title")}
         </h2>
-        <ol style={{ lineHeight: 1.8, paddingLeft: "1.5rem", marginBottom: "1rem", color: C.walnut, fontSize: "0.9375rem" }}>
+        <ol style={{ lineHeight: 1.8, paddingLeft: isMobile ? "1.25rem" : "1.5rem", marginBottom: "1rem", color: C.ink, fontSize: isMobile ? "1rem" : "0.9375rem" }}>
           <li>
             {t("option2Step1Pre")}
             <strong>{t("option2Step1Command")}</strong>
@@ -209,7 +220,7 @@ export default function DataDeletionPage() {
             fontFamily: F.display,
             fontSize: "1.5rem",
             fontWeight: 500,
-            color: C.inkSoft,
+            color: C.ink,
             marginTop: "2rem",
             marginBottom: "0.875rem",
             lineHeight: 1.3,
@@ -217,7 +228,7 @@ export default function DataDeletionPage() {
         >
           {t("option3Title")}
         </h2>
-        <p style={{ fontSize: "0.9375rem", lineHeight: 1.75, color: C.walnut, marginBottom: "2rem" }}>
+        <p style={{ fontSize: isMobile ? "1rem" : "0.9375rem", lineHeight: 1.75, color: C.ink, marginBottom: "2rem" }}>
           {t("option3Pre")}
           <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
             privacy@thememorypalace.ai
@@ -225,9 +236,9 @@ export default function DataDeletionPage() {
           {t("option3Post")}
         </p>
 
-        <hr style={{ border: "none", borderTop: `1px solid ${C.sandstone}40`, margin: "2rem 0" }} />
+        <hr style={{ border: "none", borderTop: `1px solid ${C.hairline}`, margin: "2rem 0" }} />
 
-        <p style={{ fontSize: "0.875rem", color: C.muted, lineHeight: 1.75 }}>
+        <p style={{ fontSize: "0.875rem", color: C.inkMuted, lineHeight: 1.75 }}>
           {t("footerPre")}
           <Link href="/privacy" style={linkStyle}>
             {t("footerPrivacyLink")}
@@ -240,7 +251,7 @@ export default function DataDeletionPage() {
 }
 
 const linkStyle: React.CSSProperties = {
-  color: C.terracotta,
+  color: C.ember,
   textDecoration: "none",
   fontWeight: 500,
 };

@@ -570,7 +570,7 @@ export default function HomeView() {
   const _greetKey = _hr < 12 ? "goodMorning" : _hr < 18 ? "goodAfternoon" : "goodEvening";
   const relayGreeting = t(_greetKey);
   const relayDatum = totalMemories > 0
-    ? `${t("relay.wingsCount", { count: String(totalWings) })} · ${t("relay.roomsCount", { count: String(totalRooms) })} · ${t("relay.memoriesCount", { count: String(totalMemories) })}`
+    ? `${totalWings === 1 ? t("relay.wingsCountOne", { count: String(totalWings) }) : t("relay.wingsCount", { count: String(totalWings) })} · ${totalRooms === 1 ? t("relay.roomsCountOne", { count: String(totalRooms) }) : t("relay.roomsCount", { count: String(totalRooms) })} · ${totalMemories === 1 ? t("relay.memoriesCountOne", { count: String(totalMemories) }) : t("relay.memoriesCount", { count: String(totalMemories) })}`
     : t("firstMemoryPrompt");
   const goUpload = () => { localStorage.setItem("mp_spotlight_target", "import-upload"); handleNavigateLibrary(); };
   const yrs = allMemories.map((m) => (m.mem.createdAt ? new Date(m.mem.createdAt).getFullYear() : 0)).filter(Boolean);
@@ -715,8 +715,8 @@ export default function HomeView() {
   // wings rest as quiet empty frames — the fan doubles as a coverage map.
   const wingChips = wingsData.slice(0, 6).map((w) => ({ id: w.id, label: String(w.memoryCount), empty: w.memoryCount === 0 }));
   const relayAnchors = [
-    { key: "palace", title: t("relay.enterPalaceTitle"), desc: t("relay.enterPalaceDesc"), onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${t("relay.wingsCount", { count: String(totalWings) })} · ${t("relay.roomsCount", { count: String(totalRooms) })}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, chips: wingChips },
-    { key: "library", title: t("relay.enterLibraryTitle"), desc: t("relay.enterLibraryDesc"), onClick: handleNavigateLibrary, datum: totalMemories > 0 ? t("relay.memoriesCount", { count: String(totalMemories) }) : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },
+    { key: "palace", title: t("relay.enterPalaceTitle"), desc: t("relay.enterPalaceDesc"), onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings === 1 ? t("relay.wingsCountOne", { count: String(totalWings) }) : t("relay.wingsCount", { count: String(totalWings) })} · ${totalRooms === 1 ? t("relay.roomsCountOne", { count: String(totalRooms) }) : t("relay.roomsCount", { count: String(totalRooms) })}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, chips: wingChips },
+    { key: "library", title: t("relay.enterLibraryTitle"), desc: t("relay.enterLibraryDesc"), onClick: handleNavigateLibrary, datum: totalMemories > 0 ? (totalMemories === 1 ? t("relay.memoriesCountOne", { count: String(totalMemories) }) : t("relay.memoriesCount", { count: String(totalMemories) })) : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },
   ];
   // score & badge total, for those who like keeping count.
   const relayScore = { points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) };
@@ -753,11 +753,11 @@ export default function HomeView() {
     {
       id: "capture", overline: t("relay.laneCapture"), accent: "terracotta" as const,
       tiles: [
-        { key: "photos", title: t("relay.tilePhotos"), desc: t("relay.tilePhotosDesc"), onClick: goUpload, datum: mtc.photo > 0 ? t("relay.photosCountN", { count: String(mtc.photo) }) : undefined },
+        { key: "photos", title: t("relay.tilePhotos"), desc: t("relay.tilePhotosDesc"), onClick: goUpload, datum: mtc.photo > 0 ? (mtc.photo === 1 ? t("relay.photosCountNOne", { count: String(mtc.photo) }) : t("relay.photosCountN", { count: String(mtc.photo) })) : undefined },
         { key: "cloud", title: t("relay.tileCloud"), desc: t("relay.tileCloudDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
         { key: "restore", title: t("relay.tileRestore"), desc: t("relay.tileRestoreDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
-        { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? t("relay.storiesCountN", { count: String(mtc.story) }) : undefined },
-        { key: "record", title: t("relay.tileInterviews"), desc: t("relay.tileInterviewsDesc"), onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? t("relay.recordedCount", { count: String(interviewSessions.length) }) : undefined },
+        { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? (mtc.story === 1 ? t("relay.storiesCountNOne", { count: String(mtc.story) }) : t("relay.storiesCountN", { count: String(mtc.story) })) : undefined },
+        { key: "record", title: t("relay.tileInterviews"), desc: t("relay.tileInterviewsDesc"), onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? (interviewSessions.length === 1 ? t("relay.recordedCountOne", { count: String(interviewSessions.length) }) : t("relay.recordedCount", { count: String(interviewSessions.length) })) : undefined },
         { key: "whatsapp", title: t("relay.tileWhatsapp"), desc: t("relay.tileWhatsappDesc"), onClick: () => setShowKepCapture(true) },
         { key: "capsule", title: t("relay.tileCapsule"), desc: t("relay.tileCapsuleDesc"), onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
       ],
@@ -782,7 +782,7 @@ export default function HomeView() {
         { key: "cocreate", title: t("relay.tileCocreate"), desc: t("relay.tileCocreateDesc"), onClick: () => router.push("/settings/family") },
         { key: "invite", title: t("relay.tileInvite"), desc: t("relay.tileInviteDesc"), onClick: () => router.push("/settings/family") },
         { key: "publish", title: t("relay.tilePublish"), desc: t("relay.tilePublishDesc"), onClick: () => router.push("/explore") },
-        { key: "shared", title: t("relay.tileShared"), desc: t("relay.tileSharedDesc"), onClick: () => setShowSharedWithMe(true), datum: sharedWithMe.length > 0 ? t("relay.sharedCount", { count: String(sharedWithMe.length) }) : undefined, hidden: !(sharedLoading || sharedWithMe.length > 0) },
+        { key: "shared", title: t("relay.tileShared"), desc: t("relay.tileSharedDesc"), onClick: () => setShowSharedWithMe(true), datum: sharedWithMe.length > 0 ? (sharedWithMe.length === 1 ? t("relay.sharedCountOne", { count: String(sharedWithMe.length) }) : t("relay.sharedCount", { count: String(sharedWithMe.length) })) : undefined, hidden: !(sharedLoading || sharedWithMe.length > 0) },
         { key: "legacy", title: t("relay.tileLegacy"), desc: t("relay.tileLegacyDesc"), onClick: () => router.push("/settings/legacy") },
       ],
     },

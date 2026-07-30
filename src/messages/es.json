@@ -3942,7 +3942,8 @@
     "contactOutro": "También tienes derecho a presentar una reclamación ante la Autoridad de Protección de Datos belga (Gegevensbeschermingsautoriteit) si crees que se han vulnerado tus derechos.",
     "linkSecurity": "Seguridad",
     "linkTerms": "Términos de servicio",
-    "linkHome": "Volver al inicio"
+    "linkHome": "Volver al inicio",
+    "navBrand": "The Memory Palace"
   },
   "terms": {
     "legal": "Legal",
@@ -3998,7 +3999,8 @@
     "section11Li2Company": "Empresa: The Memory Palace, Bélgica",
     "privacyPolicy": "Política de privacidad",
     "securityPolicy": "Seguridad",
-    "backToHome": "Volver al inicio"
+    "backToHome": "Volver al inicio",
+    "navBrand": "The Memory Palace"
   },
   "hoverTooltip": {
     "wingLabel": "Ala {name}",
@@ -4826,7 +4828,14 @@
     "relay.sgStepsOf": "{done} de {total} pasos",
     "relay.sgRecordTitle": "Graba tu historia",
     "relay.sgRecordReason": "Unos minutos, toda una vida guardada",
-    "relay.stripSummary": "{photos} fotos · {videos} vídeos · {stories} historias · {wings} alas"
+    "relay.stripSummary": "{photos} fotos · {videos} vídeos · {stories} historias · {wings} alas",
+    "relay.wingsCountOne": "{count} ala",
+    "relay.roomsCountOne": "{count} habitación",
+    "relay.memoriesCountOne": "{count} recuerdo",
+    "relay.photosCountNOne": "{count} foto",
+    "relay.storiesCountNOne": "{count} historia",
+    "relay.recordedCountOne": "{count} grabado",
+    "relay.sharedCountOne": "{count} compartido"
   },
   "enhance": {
     "sectionTitle": "Enriquece tus recuerdos",
@@ -5801,7 +5810,8 @@
     "option3Post": " y eliminaremos tus datos en un plazo de 30 días.",
     "footerPre": "Consulta nuestra ",
     "footerPrivacyLink": "Política de Privacidad",
-    "footerPost": " completa para conocer los detalles sobre cómo tratamos tus datos."
+    "footerPost": " completa para conocer los detalles sobre cómo tratamos tus datos.",
+    "navBrand": "The Memory Palace"
   },
   "relay": {
     "relay.photosCountN": "{count} fotos",
