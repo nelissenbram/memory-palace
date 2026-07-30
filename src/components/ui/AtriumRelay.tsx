@@ -230,7 +230,7 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", padding: "0.85rem 1rem 1rem" }}>
           <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleL, lineHeight: RT.lhDisplay, color: a.titleColor }}>{tile.title}</span>
-          <span style={{ fontFamily: T.font.body, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.desc}</span>
+          <span style={{ fontFamily: T.font.body, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, overflowWrap: "break-word" }}>{tile.desc}</span>
           {tile.thumbs && tile.thumbs.length > 0 ? <span style={{ marginTop: "0.5rem" }}><ThumbFan thumbs={tile.thumbs} /></span> : tile.chips && tile.chips.length > 0 ? <span style={{ marginTop: "0.5rem" }}><WingFan chips={tile.chips} /></span> : null}
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, marginTop: "0.35rem", fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
@@ -275,9 +275,9 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
         <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <Medallion k={tile.key} accent={accent} index={index} big animated={animated} />
-            <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleM, lineHeight: RT.lhDisplay, color: a.titleColor, minWidth: 0, overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.title}</span>
+            <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleM, lineHeight: RT.lhDisplay, color: a.titleColor, minWidth: 0, overflowWrap: "break-word" }}>{tile.title}</span>
           </div>
-          <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, maxWidth: "62%", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.desc}</span>
+          <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, maxWidth: "80%", overflowWrap: "break-word" }}>{tile.desc}</span>
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
         <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
@@ -285,44 +285,27 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
     );
   }
 
-  // SECONDARY (change 5): compact single-row long-tail — medallion + title.
-  // Hover turns the card over (back-card): the zone-tinted reverse slides up
-  // with the full description, live datum and a gilt open-arrow — every
-  // function INVITES instead of merely sitting there.
+  // SECONDARY (redesign): compact card that ALWAYS shows the full description
+  // inline (no hover-flip back-card that structurally clamped the text). The card
+  // grows to fit its title + full desc + datum, so copy never truncates — in any
+  // language, on mobile included. A soft scene whisper rests behind on the right.
   return (
-    <button type="button" onClick={tile.onClick} className="relay-tile relay-tile-sec" style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.65rem", textAlign: "left", borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${a.border}`, background: a.tileBg, cursor: "pointer", minHeight: "3.5rem", padding: "0.75rem 1rem", boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}` }}>
-      {/* front-side whisper of the scene: the vignette rests on the right at
-          low volume — the invitation is visible before any hover */}
+    <button type="button" onClick={tile.onClick} className="relay-tile relay-tile-sec" style={{ position: "relative", display: "flex", alignItems: "flex-start", gap: "0.65rem", textAlign: "left", borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${a.border}`, background: a.tileBg, cursor: "pointer", minHeight: "3.5rem", padding: "0.8rem 2.4rem 0.8rem 1rem", boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}` }}>
+      {/* Soft scene whisper on the right — kept low-opacity so the always-on inline
+          description stays legible over its faded edge. */}
       {Vignette ? (
-        <span aria-hidden="true" className="relay-sec-vig" style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "52%", opacity: 0.5, pointerEvents: "none", maskImage: "linear-gradient(90deg, transparent, black 55%)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 55%)" }}>
+        <span aria-hidden="true" className="relay-sec-vig" style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "42%", opacity: 0.28, pointerEvents: "none", maskImage: "linear-gradient(90deg, transparent, black 70%)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 70%)" }}>
           <Vignette c={vigPalette} />
         </span>
       ) : null}
       <Medallion k={tile.key} accent={accent} index={index} animated={animated} />
-      <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "68%" }}>
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.title}</span>
-        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
-        {/* Touch/coarse-pointer devices have no hover, so the back-card description
-            is invisible — show it inline on the front there (hidden on hover devices). */}
-        {tile.desc ? <span className="relay-sec-desc" style={{ fontFamily: T.font.body, fontSize: RT.overline, color: a.datumColor, lineHeight: 1.25, marginTop: "0.15rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.desc}</span> : null}
+      <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "100%", gap: "0.15rem" }}>
+        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word" }}>{tile.title}</span>
+        {tile.desc ? <span style={{ fontFamily: T.font.body, fontSize: RT.overline, color: a.descColor, lineHeight: 1.3, overflowWrap: "break-word" }}>{tile.desc}</span> : null}
+        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums", marginTop: "0.05rem" }}>{tile.datum}</span> : null}
       </span>
-      {/* Always-on open affordance (item 6): a persistent low-opacity gilt arrow
-          so touch devices — which never see the hover back-card — still read the
-          tile as "openable". On hover devices it fades as the back-card rises. */}
-      <span aria-hidden="true" className="relay-sec-openarrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop, opacity: 0.4, pointerEvents: "none" }}>→</span>
-      {/* back-card: the tile turns over to the full USP-style scene — no
-          title repeat (the front already said it); description + datum +
-          gilt open-arrow, clamped so nothing ever overflows */}
-      <span aria-hidden="true" className="relay-backcard" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.2rem", padding: "0.5rem 2.4rem 0.5rem 1rem", background: `linear-gradient(160deg, ${TRAY[accent]} 0%, #FCFAF5 115%)`, borderTop: `0.1875rem solid ${a.tileTop}`, overflow: "hidden" }}>
-        {Vignette ? (
-          <span style={{ position: "absolute", inset: 0, opacity: 0.95, maskImage: "linear-gradient(90deg, transparent 8%, black 48%)", WebkitMaskImage: "linear-gradient(90deg, transparent 8%, black 48%)" }}>
-            <Vignette c={vigPalette} />
-          </span>
-        ) : null}
-        <span style={{ position: "relative", fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: "58%", textShadow: "0 0 0.5rem rgba(252,250,245,0.95), 0 0 1rem rgba(252,250,245,0.8)" }}>{tile.desc}</span>
-        {tile.datum ? <span style={{ position: "relative", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: a.datumColor, fontVariantNumeric: "tabular-nums", maxWidth: "58%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.datum}</span> : null}
-        <span className="relay-backcard-arrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
-      </span>
+      {/* Persistent open affordance (nudges on hover; never disappears). */}
+      <span aria-hidden="true" className="relay-sec-openarrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop, opacity: 0.5, pointerEvents: "none" }}>→</span>
     </button>
   );
 }
@@ -547,23 +530,12 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
         .relay-tile:active { transform: translateY(0); }
         .relay-tile-wash { transition: opacity 0.28s ease; }
         .relay-tile:hover .relay-tile-wash { opacity: 1; }
-        /* back-card + invite arrows: hover-capable devices only — every
-           function turns over to show what awaits */
-        .relay-backcard { opacity: 0; transform: translateY(100%); pointer-events: none; }
+        /* Anchor/hero invite arrow — hidden until hover on hover-capable devices. */
         .relay-invite-arrow { opacity: 0; transform: translateX(-0.3rem); }
-        /* Front-side description: only where hover can't reveal the back-card. */
-        .relay-sec-desc { display: none; }
-        .relay-sec-openarrow { transition: opacity 0.24s ease, transform 0.24s ease; }
-        @media (hover: none) { .relay-sec-desc { display: block; } }
+        /* Secondary open-arrow is always visible; it just nudges on hover. */
+        .relay-sec-openarrow { transition: transform 0.2s ease; }
         @media (hover: hover) {
-          /* the persistent arrow yields to the back-card's own arrow on hover */
-          .relay-tile-sec:hover .relay-sec-openarrow, .relay-tile-sec:focus-visible .relay-sec-openarrow { opacity: 0; transform: translateY(-50%) translateX(0.3rem); }
-          .relay-backcard { transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease; }
-          .relay-tile-sec:hover .relay-backcard, .relay-tile-sec:focus-visible .relay-backcard { opacity: 1; transform: translateY(0); }
-          .relay-sec-vig { transition: opacity 0.2s ease; }
-          .relay-tile-sec:hover .relay-sec-vig { opacity: 0; }
-          .relay-backcard-arrow { transition: transform 0.25s ease 0.1s; transform: translateY(-50%) translateX(-0.3rem); }
-          .relay-tile-sec:hover .relay-backcard-arrow { transform: translateY(-50%) translateX(0); }
+          .relay-tile-sec:hover .relay-sec-openarrow, .relay-tile-sec:focus-visible .relay-sec-openarrow { transform: translateY(-50%) translateX(0.15rem); }
           .relay-invite-arrow { transition: opacity 0.25s ease, transform 0.25s ease; }
           .relay-tile:hover .relay-invite-arrow { opacity: 1; transform: translateX(0); }
         }
