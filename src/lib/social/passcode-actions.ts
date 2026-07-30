@@ -38,25 +38,35 @@ export async function createPasscode(input: {
     return { ok: false, error: "Must specify a wing or room to share" };
   }
 
-  // Verify ownership of the wing/room
+  // Callers pass LOCAL identifiers (wing slug e.g. "roots"; room local id stored in
+  // rooms.name), but public_shares.wing_id/room_id (and every reader) use the DB uuid.
+  // Resolve the local id -> uuid here so a slug no longer fails as "not found" and the
+  // stored value stays a real uuid. Try the local column first, then the uuid column
+  // only when the value actually looks like a uuid (avoids an invalid-uuid cast error).
+  const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+  let wingUuid: string | null = null;
   if (input.wingId) {
-    const { data: wing } = await supabase
-      .from("wings")
-      .select("id")
-      .eq("id", input.wingId)
-      .eq("user_id", user.id)
-      .single();
+    const bySlug = await supabase
+      .from("wings").select("id").eq("slug", input.wingId).eq("user_id", user.id).maybeSingle();
+    const wing = bySlug.data
+      ?? (isUuid(input.wingId)
+        ? (await supabase.from("wings").select("id").eq("id", input.wingId).eq("user_id", user.id).maybeSingle()).data
+        : null);
     if (!wing) return { ok: false, error: "Wing not found or not owned by you" };
+    wingUuid = wing.id;
   }
 
+  let roomUuid: string | null = null;
   if (input.roomId) {
-    const { data: room } = await supabase
-      .from("rooms")
-      .select("id, wing_id")
-      .eq("id", input.roomId)
-      .eq("user_id", user.id)
-      .single();
+    const byName = await supabase
+      .from("rooms").select("id").eq("name", input.roomId).eq("user_id", user.id).maybeSingle();
+    const room = byName.data
+      ?? (isUuid(input.roomId)
+        ? (await supabase.from("rooms").select("id").eq("id", input.roomId).eq("user_id", user.id).maybeSingle()).data
+        : null);
     if (!room) return { ok: false, error: "Room not found or not owned by you" };
+    roomUuid = room.id;
   }
 
   const passcode = (input.passcode?.trim() || generatePasscode()).toLowerCase();
@@ -72,8 +82,8 @@ export async function createPasscode(input: {
   const { data: share, error } = await supabase
     .from("public_shares")
     .insert({
-      wing_id: input.wingId || null,
-      room_id: input.roomId || null,
+      wing_id: wingUuid,
+      room_id: roomUuid,
       slug,
       created_by: user.id,
       is_active: true,
