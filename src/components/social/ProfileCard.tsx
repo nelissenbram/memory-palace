@@ -217,7 +217,7 @@ export default function ProfileCard({
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>
             <span
               style={{
                 fontFamily: T.font.display,
@@ -227,6 +227,11 @@ export default function ProfileCard({
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
+                // minWidth:0 + flex:0 1 auto let the name shrink below its
+                // intrinsic width so the ellipsis engages before the pair
+                // overruns the card edge on narrow/portrait screens.
+                minWidth: 0,
+                flex: "0 1 auto",
               }}
             >
               {profile.display_name || t("anonymous")}
@@ -237,6 +242,12 @@ export default function ProfileCard({
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
                   color: T.color.muted,
+                  // Keep the handle intact and let the name truncate first.
+                  flexShrink: 0,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: "45%",
                 }}
               >
                 @{profile.username}

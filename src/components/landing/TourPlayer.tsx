@@ -68,6 +68,12 @@ export default function TourPlayer({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hideTimer = useRef<number | null>(null);
+  // The idle doorway trigger — focus is restored here when the player closes.
+  const doorwayRef = useRef<HTMLButtonElement>(null);
+  // The full-bleed player overlay (a de-facto dialog): focus is moved in on open
+  // and Tab is trapped inside it while playing.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const pauseBtnRef = useRef<HTMLButtonElement>(null);
   const [mode, setMode] = useState<"idle" | "static" | "playing">("idle");
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -96,6 +102,9 @@ export default function TourPlayer({
     v.playbackRate = 0.55;
     v.currentTime = 0;
     v.play().catch(() => {});
+    // Move focus into the dialog (the pause control) so screen-reader / keyboard
+    // users land inside the player rather than on document.body.
+    requestAnimationFrame(() => pauseBtnRef.current?.focus());
   }, [mode]);
 
   const close = useCallback(() => {
@@ -105,6 +114,9 @@ export default function TourPlayer({
     setEnded(false);
     setActive(0);
     setProgress(0);
+    // Restore focus to the doorway trigger that opened the player. rAF waits for
+    // the idle doorway button to remount before focusing it.
+    requestAnimationFrame(() => doorwayRef.current?.focus());
   }, []);
 
   const togglePause = useCallback(() => {
@@ -143,8 +155,30 @@ export default function TourPlayer({
   useEffect(() => {
     if (mode !== "playing") return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); close(); }
-      else if (e.key === " " || e.code === "Space") { e.preventDefault(); togglePause(); }
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      if (e.key === " " || e.code === "Space") { e.preventDefault(); togglePause(); return; }
+      if (e.key === "Tab") {
+        // Trap Tab/Shift+Tab within the dialog so focus can't fall into the
+        // (still-rendered) page behind the full-bleed video.
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        const items = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        const activeEl = document.activeElement;
+        if (e.shiftKey && (activeEl === first || !dialog.contains(activeEl))) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (activeEl === last || !dialog.contains(activeEl))) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     bumpControls();
@@ -182,7 +216,13 @@ export default function TourPlayer({
 
       {/* ── PLAYING: full-bleed video + reading-lane + captions + controls ── */}
       {mode === "playing" ? (
-        <>
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={labels.dialog}
+          style={{ position: "absolute", inset: 0 }}
+        >
           <video
             key="tour"
             ref={videoRef}
@@ -264,7 +304,7 @@ export default function TourPlayer({
               pointerEvents: controlsVisible ? "auto" : "none",
             }}
           >
-            <button type="button" onClick={togglePause} aria-label={paused ? labels.play : labels.pause} style={ctlBtn}>
+            <button ref={pauseBtnRef} type="button" onClick={togglePause} aria-label={paused ? labels.play : labels.pause} style={ctlBtn}>
               {paused ? (
                 <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6V2z" fill="currentColor" /></svg>
               ) : (
@@ -278,13 +318,14 @@ export default function TourPlayer({
               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
             </button>
           </div>
-        </>
+        </div>
       ) : null}
 
       {/* ── IDLE: the inviting doorway ── */}
       {mode === "idle" ? (
         <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "center", padding: "clamp(3rem, 8vw, 5rem) 1.5rem" }}>
           <button
+            ref={doorwayRef}
             type="button"
             onClick={start}
             className="lv2-cta lv2-tour-door"

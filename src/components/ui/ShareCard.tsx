@@ -323,16 +323,16 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
 
   const btnBase: React.CSSProperties = {
     padding: "0.625rem 1rem", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-    borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, cursor: "pointer",
+    borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, cursor: "pointer",
     display: "flex", alignItems: "center", gap: "0.375rem", transition: "all .15s", minHeight: "2.75rem",
   };
 
   return (
-    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, animation: "fadeIn .2s ease" }}>
-      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("share")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: "1.25rem", border: `1px solid ${T.color.cream}`, boxShadow: "0 16px 70px rgba(64,59,54,.2)", maxWidth: "35rem", width: "92%", overflow: "hidden", animation: "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: "90vh", overflowY: "auto" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(0.25rem)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, animation: "fadeIn .2s ease" }}>
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("share")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: "1.25rem", border: `0.0625rem solid ${T.color.cream}`, boxShadow: "0 1rem 4.375rem rgba(64,59,54,.2)", maxWidth: "35rem", width: "92%", overflow: "hidden", animation: "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: "90vh", overflowY: "auto" }}>
         {/* Canvas preview */}
         <div style={{ padding: "1.25rem 1.25rem 0" }}>
-          <canvas ref={canvasRef} role="img" aria-label={mem ? t("shareTextMemory", { title: mem.title }) : roomName ? t("shareTextRoom", { icon: roomIcon || "", name: roomName, count: String(memCount ?? 0) }) : t("shareTextDefault")} style={{ width: "100%", height: "auto", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}` }} />
+          <canvas ref={canvasRef} role="img" aria-label={mem ? t("shareTextMemory", { title: mem.title }) : roomName ? t("shareTextRoom", { icon: roomIcon || "", name: roomName, count: String(memCount ?? 0) }) : t("shareTextDefault")} style={{ width: "100%", height: "auto", borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.cream}` }} />
         </div>
 
         <div style={{ padding: "1rem 1.25rem 1.25rem" }}>
@@ -365,7 +365,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
           </div>
 
           {/* Close */}
-          <button onClick={onClose} style={{ width: "100%", padding: "0.75rem", minHeight: "2.75rem", fontFamily: T.font.body, fontSize: "0.8125rem", background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: "0.625rem", cursor: "pointer", color: T.color.muted }}>
+          <button onClick={onClose} style={{ width: "100%", padding: "0.75rem", minHeight: "2.75rem", fontFamily: T.font.body, fontSize: "0.8125rem", background: "transparent", border: `0.0625rem solid ${T.color.cream}`, borderRadius: "0.625rem", cursor: "pointer", color: T.color.muted }}>
             {t("close")}
           </button>
         </div>

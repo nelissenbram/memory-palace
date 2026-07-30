@@ -756,6 +756,9 @@ export const PersonCard = memo(function PersonCard({
       {onQuickAdd && (
         <g
           style={{ cursor: "pointer" }}
+          role="button"
+          tabIndex={0}
+          aria-label={t("quickAddFor", { name: person.first_name || "" })}
           onClick={(e) => {
             e.stopPropagation();
             const svg = (e.target as SVGElement).closest("svg");
@@ -766,7 +769,27 @@ export const PersonCard = memo(function PersonCard({
               onQuickAdd(person, 0, 0);
             }
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              const g = e.currentTarget as SVGGElement;
+              const r = g.getBoundingClientRect();
+              if (r) {
+                onQuickAdd(person, r.left + r.width / 2, r.top + r.height / 2);
+              } else {
+                onQuickAdd(person, 0, 0);
+              }
+            }
+          }}
         >
+          {/* Transparent 44px (2.75rem) touch target overlay */}
+          <circle
+            cx={nodeWPx - 12}
+            cy={nodeHPx - 12}
+            r={22}
+            fill="transparent"
+          />
           <circle
             cx={nodeWPx - 12}
             cy={nodeHPx - 12}

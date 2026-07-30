@@ -285,7 +285,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     background: `${track.color}15`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     flexShrink: 0,
-                  }}><TrackIcon trackId={track.id} size="1.25rem" /></div>
+                  }}><TrackIcon trackId={track.id} size="1.25rem" primaryColor={textInk(track.color)} secondaryColor={track.color} /></div>
 
                   <div style={{
                     fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,

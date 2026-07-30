@@ -5,6 +5,7 @@ import { T } from "@/lib/theme";
 import { WINGS } from "@/lib/constants/wings";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import ReportButton from "@/components/social/ReportButton";
 import Image from "next/image";
 
@@ -229,7 +230,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
         }}>
           {t("sharedBy", { name: data.owner.displayName })}
           {memories.length > 0 && (
-            <span style={{ margin: "0 0.375rem", color: T.color.sandstone }}>{"·"}</span>
+            <span style={{ margin: "0 0.375rem", color: T.color.muted }}>{"·"}</span>
           )}
           {memories.length > 0 && (memories.length === 1
             ? t("memorySingular", { count: String(memories.length) })
@@ -530,7 +531,7 @@ function MemoryCard({
           <span style={{
             fontFamily: T.font.body,
             fontSize: "0.6875rem",
-            color: T.color.sandstone,
+            color: T.color.muted,
             textTransform: "capitalize",
             letterSpacing: "0.03em",
           }}>
@@ -538,11 +539,11 @@ function MemoryCard({
           </span>
           {mem.createdAt && (
             <>
-              <span style={{ color: T.color.sandstone, fontSize: "0.625rem" }}>{"·"}</span>
+              <span style={{ color: T.color.muted, fontSize: "0.625rem" }}>{"·"}</span>
               <span style={{
                 fontFamily: T.font.body,
                 fontSize: "0.6875rem",
-                color: T.color.sandstone,
+                color: T.color.muted,
               }}>
                 {formatDate(mem.createdAt, locale)}
               </span>
@@ -574,6 +575,10 @@ function MemoryLightbox({
   const hasVideo = mem.fileUrl && mem.type === "video";
   const hslAccent = `hsl(${mem.hue}, ${mem.saturation}%, ${mem.lightness}%)`;
 
+  // Dialog a11y: trap Tab within the dialog, move focus in on open, and restore
+  // focus to the triggering card on close (mirrors ReportButton's dialog).
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
+
   // Close on Escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -600,7 +605,12 @@ function MemoryLightbox({
       }}
     >
       <div
+        ref={containerRef}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-label={mem.title}
         style={{
           background: T.color.cream,
           borderRadius: "1.25rem",
@@ -715,18 +725,18 @@ function MemoryLightbox({
             <span style={{
               fontFamily: T.font.body,
               fontSize: "0.75rem",
-              color: T.color.sandstone,
+              color: T.color.muted,
               textTransform: "capitalize",
             }}>
               {typeLabel(mem.type)}
             </span>
             {mem.createdAt && (
               <>
-                <span style={{ color: T.color.sandstone }}>{"·"}</span>
+                <span style={{ color: T.color.muted }}>{"·"}</span>
                 <span style={{
                   fontFamily: T.font.body,
                   fontSize: "0.75rem",
-                  color: T.color.sandstone,
+                  color: T.color.muted,
                 }}>
                   {formatDate(mem.createdAt, locale)}
                 </span>

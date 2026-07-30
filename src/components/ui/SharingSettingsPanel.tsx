@@ -103,6 +103,11 @@ function Toggle({
   label: string;
 }) {
   return (
+    // The button is the accessible hit-area: >=2.75rem tall/wide so touch and
+    // motor-impaired users can reliably toggle. The visual pill track stays
+    // 36x20 inside, centred; padding + minWidth/minHeight expand the tap region
+    // without altering the visual switch. (The settings layout's touch-target
+    // rule excludes [role='switch'], so we size the target here.)
     <button
       role="switch"
       aria-checked={checked}
@@ -110,31 +115,46 @@ function Toggle({
       disabled={disabled}
       onClick={() => onChange(!checked)}
       style={{
-        width: "2.25rem",
-        height: "1.25rem",
-        borderRadius: "2rem", // Atrium token: pill
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: "2.75rem",
+        minHeight: "2.75rem",
+        padding: "0.75rem 0.25rem",
         border: "none",
-        background: checked ? "#B85C38" /* Atrium token: ember active */ : "#E3D6BC" /* Atrium token: hairline */,
+        background: "transparent",
         cursor: disabled ? "default" : "pointer",
-        position: "relative",
-        transition: "background .2s",
         flexShrink: 0,
         opacity: disabled ? 0.5 : 1,
       }}
     >
-      <div
+      <span
+        aria-hidden="true"
         style={{
-          width: "0.875rem",
-          height: "0.875rem",
-          borderRadius: "50%",
-          background: T.color.white,
-          position: "absolute",
-          top: "0.1875rem",
-          left: checked ? "1.1875rem" : "0.1875rem",
-          transition: "left .2s",
-          boxShadow: "0 0.0625rem 0.1875rem rgba(64,59,54,0.2)", // Atrium token: warm ink shadow
+          display: "block",
+          width: "2.25rem",
+          height: "1.25rem",
+          borderRadius: "2rem", // Atrium token: pill
+          background: checked ? "#B85C38" /* Atrium token: ember active */ : "#E3D6BC" /* Atrium token: hairline */,
+          position: "relative",
+          transition: "background .2s",
         }}
-      />
+      >
+        <span
+          style={{
+            display: "block",
+            width: "0.875rem",
+            height: "0.875rem",
+            borderRadius: "50%",
+            background: T.color.white,
+            position: "absolute",
+            top: "0.1875rem",
+            left: checked ? "1.1875rem" : "0.1875rem",
+            transition: "left .2s",
+            boxShadow: "0 0.0625rem 0.1875rem rgba(64,59,54,0.2)", // Atrium token: warm ink shadow
+          }}
+        />
+      </span>
     </button>
   );
 }

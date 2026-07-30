@@ -90,7 +90,12 @@
     "mfaDigit": "Chiffre {n} sur {total}",
     "restoreLoading": "Connexion à l’App Store… veuillez réessayer dans un instant.",
     "expand": "Développer",
-    "collapse": "Réduire"
+    "collapse": "Réduire",
+    "signingOut": "Déconnexion…",
+    "restorePurchases": "Restaurer les achats",
+    "restoreDone": "Achats restaurés.",
+    "restoreNone": "Aucun achat précédent à restaurer n’a été trouvé.",
+    "retry": "Réessayer"
   },
   "settingsTour": {
     "help": "Aide",
@@ -1958,7 +1963,8 @@
     "stepOpenPerson": "Ouvrir",
     "stepStart": "Parcourir",
     "sharedTreeNotFoundTitle": "Arbre généalogique introuvable",
-    "sharedTreeNotFoundDesc": "Ce lien de partage a peut-être expiré ou été désactivé."
+    "sharedTreeNotFoundDesc": "Ce lien de partage a peut-être expiré ou été désactivé.",
+    "quickAddFor": "Ajouter un parent pour {name}"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1998,7 +2004,8 @@
     "currency": "Devise",
     "subscriptionActivated": "Abonnement activé !",
     "billingInterval": "Période de facturation",
-    "approxBilledEur": "Les prix dans cette devise sont approximatifs — vous serez facturé en EUR."
+    "approxBilledEur": "Les prix dans cette devise sont approximatifs — vous serez facturé en EUR.",
+    "preparingStore": "Préparation de la boutique…"
   },
   "cookieConsent": {
     "message": "Nous utilisons des cookies pour vous maintenir connecté(e) et mémoriser vos préférences.",
@@ -2253,7 +2260,10 @@
     "noFaceCenterCropped": "Impossible de détecter automatiquement le visage. La photo sera recadrée au centre. Pour de meilleurs résultats, utilisez une photo de portrait nette.",
     "savedLocallyWillSync": "Enregistré localement — synchronisation dès le retour en ligne.",
     "uncroppedWarning": "Nous n'avons pas pu isoler de visage sur cette photo ; le buste sera donc sculpté à partir de l'image entière. Pour un meilleur résultat, utilisez un portrait net et de face.",
-    "useAnyway": "Utiliser quand même"
+    "useAnyway": "Utiliser quand même",
+    "title": "Créateur de buste",
+    "styleMarble": "en marbre",
+    "styleBronze": "en bronze"
   },
   "uploadPanel": {
     "fileTooLarge": "Le fichier est trop volumineux ({size} Mo). La taille maximale autorisée pour {type} est {max}.",
@@ -3331,7 +3341,8 @@
     "shareText": "Je viens de gagner le badge {name} dans The Memory Palace !",
     "copiedToClipboard": "Copié !",
     "close": "Fermer",
-    "shareFailed": "Le partage a échoué. Veuillez réessayer."
+    "shareFailed": "Le partage a échoué. Veuillez réessayer.",
+    "newlyUnlocked": "Nouvellement débloqué"
   },
   "directoryPanel": {
     "title": "Annuaire",
@@ -5212,7 +5223,15 @@
     "wizardPhotosNotLinkedTitle": "Connectez d'abord Google Photos",
     "wizardPhotosNotLinkedDesc": "Un Kep photos a besoin d'un compte Google Photos lié pour récupérer les souvenirs. Connectez-en un, puis revenez pour terminer la configuration.",
     "wizardPhotosConnectCta": "Connecter Google Photos",
-    "wizardPhotosChecking": "Vérification de votre connexion Google Photos…"
+    "wizardPhotosChecking": "Vérification de votre connexion Google Photos…",
+    "capturePreviewFallback": "{type} de {sender}",
+    "unknownSender": "expéditeur inconnu",
+    "mediaType_image": "Image",
+    "mediaType_video": "Vidéo",
+    "mediaType_audio": "Audio",
+    "mediaType_text": "Texte",
+    "mediaType_document": "Document",
+    "mediaType_attachment": "Pièce jointe"
   },
   "kepLanding": {
     "title": "Découvrez Kep",
@@ -5546,7 +5565,10 @@
     "passcodeExpired": "Ce code d'accès a expiré.",
     "passcodeRequired": "Veuillez saisir un code d'accès.",
     "passcodeRateLimited": "Trop de tentatives. Veuillez réessayer plus tard.",
-    "unblockError": "Impossible de débloquer ce compte. Veuillez réessayer."
+    "unblockError": "Impossible de débloquer ce compte. Veuillez réessayer.",
+    "visitCount_one": "{count} visite",
+    "visitCount_other": "{count} visites",
+    "loadingContent": "Chargement de vos ailes et salles…"
   },
   "help": {
     "title": "Centre d'aide",

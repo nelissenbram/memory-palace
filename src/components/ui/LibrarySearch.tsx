@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useTouchControls } from "@/lib/hooks/useIsMobile";
 import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
 
 /* ── Animations (injected once) ── */
@@ -53,6 +54,7 @@ export function LibrarySearch({
   query, onQueryChange, accent, resultCount, totalCount, isMobile,
 }: LibrarySearchProps) {
   const { t } = useTranslation("library");
+  const isTouch = useTouchControls();
   const inputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
   const [localQuery, setLocalQuery] = useState(query);
@@ -168,12 +170,12 @@ export function LibrarySearch({
         aria-label={t("searchPlaceholder")}
         style={{
           width: "100%",
-          height: isMobile ? "2.5rem" : "2.75rem",
+          height: (isMobile || isTouch) ? "2.75rem" : "2.75rem", // touch floor >=2.75rem
           padding: `0 ${hasQuery || showResultBadge ? "5.5rem" : "2.5rem"} 0 2.5rem`,
           border: `1px solid ${focused ? accent : T.color.cream}`,
           borderRadius: "1.5rem",
           fontFamily: T.font.body,
-          fontSize: isMobile ? "1rem" : "0.875rem",
+          fontSize: (isMobile || isTouch) ? "1rem" : "0.875rem",
           fontStyle: query ? "normal" : "italic",
           color: "#403B36",
           background: T.color.linen,

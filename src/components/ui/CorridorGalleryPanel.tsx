@@ -55,8 +55,6 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   const { t } = useTranslation("corridorGallery");
   const { t: tWings } = useTranslation("wings");
   const { t: tDemos } = useTranslation("demos");
-  const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const { containerRef: pickerRef, handleKeyDown: pickerHandleKeyDown } = useFocusTrap(true);
   const accent = wing.accent;
   const userMems = useMemoryStore((s) => s.userMems);
   // Select the static action non-reactively (actions are stable → never re-renders),
@@ -68,6 +66,12 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   const [paintings, setPaintings] = useState<CorridorPaintings>(currentPaintings);
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<"all" | "wing" | "upload">("all");
+
+  // Drive each trap by its dialog's open state so focus moves in on open and
+  // restores on close. The panel trap yields while the picker is open so the two
+  // don't fight over Tab; the picker trap activates only once its dialog mounts.
+  const { containerRef, handleKeyDown } = useFocusTrap(!pickingSlot);
+  const { containerRef: pickerRef, handleKeyDown: pickerHandleKeyDown } = useFocusTrap(!!pickingSlot);
 
   // Sync external prop changes into the open panel (memory deleted/moved, reset elsewhere).
   useEffect(() => { setPaintings(currentPaintings); }, [currentPaintings]);

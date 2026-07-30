@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, memo } from "react";
 import Link from "next/link";
 import { T } from "@/lib/theme";
-import { INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, GOLD_SOFT, CREAM, TRAY, CARD_BORDER, RT } from "@/lib/libraryTokens";
+import { INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, CREAM, TRAY, CARD_BORDER, RT } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { SettingsPageHeader } from "../_SettingsChrome";
@@ -94,7 +94,7 @@ interface PendingInviteEntry {
    both the page header and the memoized GroupCard. */
 const roleColor = (role: string) => {
   if (role === "owner") return EMBER_GLYPH; /* terracotta glyph */
-  if (role === "admin") return GOLD_SOFT; /* canon soft gold */
+  if (role === "admin") return MUTED; /* warm walnut neutral — NOT gold (gold is ceremonial-only) */
   return T.color.sage; /* canon sage */
 };
 
@@ -342,9 +342,21 @@ const GroupCard = memo(function GroupCard({
         </div>
       )}
 
-      {/* Clickable group header */}
-      <button
+      {/* Clickable group header — a non-interactive row so the edit/delete buttons
+          can be REAL siblings (never nest interactive controls inside a button). */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={isExpanded}
+        aria-controls={`fam-group-panel-${grp.id}`}
         onClick={() => onToggleExpand(isExpanded ? "" : grp.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggleExpand(isExpanded ? "" : grp.id);
+          }
+        }}
+        className="mp-fam-header"
         style={{
           width: "100%",
           padding: isMobile ? "1.25rem 1rem" : isTablet ? "1.375rem 1.75rem" : "1.25rem 1.5rem",
@@ -459,11 +471,11 @@ const GroupCard = memo(function GroupCard({
         >
           <path d="m9 18 6-6-6-6" />
         </svg>
-      </button>
+      </div>
 
       {/* Expanded content */}
       {isExpanded && (
-        <div style={{ padding: isMobile ? "0 1rem 1.25rem" : "0 1.5rem 1.5rem" }}>
+        <div id={`fam-group-panel-${grp.id}`} style={{ padding: isMobile ? "0 1rem 1.25rem" : "0 1.5rem 1.5rem" }}>
           {/* Invite first member CTA */}
           {hasOnlyOwner && canManage && (
             <div style={{
@@ -1514,6 +1526,11 @@ export default function FamilyPage() {
         .mp-fam-quiet:focus-visible {
           outline: 0.1875rem solid #D4AF37; /* Atrium token: gold focus ring */
           outline-offset: 0.1875rem;
+        }
+        .mp-fam-header:focus-visible {
+          outline: 0.1875rem solid #D4AF37; /* Atrium token: gold focus ring */
+          outline-offset: -0.1875rem; /* inset so the ring stays within the card radius */
+          border-radius: 1rem;
         }
         ${settingsFocusStyle}
       `}</style>

@@ -190,29 +190,35 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
   const vh = typeof window !== "undefined" ? window.innerHeight : 640;
   const remToPx = (rem: number) => rem * rootPxRef.current;
   const tipWidth = remToPx(isMobile ? 16.25 : 17.5);
+  // Card height/margin allowances derived from rem so placement respects text
+  // scaling (a11y, iOS Dynamic Type, large-font locales) and short landscape
+  // viewports — was hard-coded 80/200/220/12/16/60 px.
+  const cardH = remToPx(11.25);       // ~180px at 16px root
+  const edge = remToPx(1);            // viewport edge margin
+  const gap = remToPx(0.75);
 
-  let tipTop = 80;
-  let tipLeft = 16;
+  let tipTop = remToPx(5);
+  let tipLeft = edge;
   if (!targetBox) {
     // Centered card (desktop step 0 — no target)
-    tipTop = vh / 2 - 80;
+    tipTop = vh / 2 - cardH / 2;
     tipLeft = vw / 2 - tipWidth / 2;
   } else {
     if (isMobile) {
       if (step === 0) {
-        tipTop = Math.min(vh - 200, t_ + h_ + 12);
-        tipLeft = Math.max(16, Math.min(vw - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2));
+        tipTop = Math.min(vh - cardH - edge, t_ + h_ + gap);
+        tipLeft = Math.max(edge, Math.min(vw - tipWidth - edge, l_ + w_ / 2 - tipWidth / 2));
       } else if (step === 1) {
-        tipTop = Math.min(vh - 200, t_ + h_ / 2 - 60);
-        tipLeft = Math.max(16, l_ - tipWidth - 12);
+        tipTop = Math.min(vh - cardH - edge, t_ + h_ / 2 - cardH / 2);
+        tipLeft = Math.max(edge, l_ - tipWidth - gap);
       } else {
-        tipTop = Math.min(vh - 220, t_ + h_ / 2 - 80);
-        tipLeft = Math.max(16, Math.min(vw - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2));
+        tipTop = Math.min(vh - cardH - edge, t_ + h_ / 2 - cardH / 2);
+        tipLeft = Math.max(edge, Math.min(vw - tipWidth - edge, l_ + w_ / 2 - tipWidth / 2));
       }
     } else {
       // Desktop: place below highlighted element
-      tipTop = Math.min(vh - 200, t_ + h_ + 12);
-      tipLeft = Math.max(16, Math.min(vw - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2));
+      tipTop = Math.min(vh - cardH - edge, t_ + h_ + gap);
+      tipLeft = Math.max(edge, Math.min(vw - tipWidth - edge, l_ + w_ / 2 - tipWidth / 2));
     }
   }
 
@@ -225,7 +231,11 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
     >
       <style>{`
         @keyframes mpPtTipIn { from { opacity:0; transform:translateY(0.375rem);} to { opacity:1; transform:translateY(0);} }
+        /* Pulse derives from canon GOLD #D4AF37 = rgba(212,175,55). Inline CSS
+           keyframes cannot reference the JS GOLD const, so the numeric literal
+           is the canonical focus color, not an ad-hoc gold. */
         @keyframes mpPtPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.4);} 50% { box-shadow:0 0 0 0.5rem rgba(212,175,55,0);} }
+        @media (prefers-reduced-motion: reduce){ [role="dialog"] *{animation:none!important} }
       `}</style>
 
       {targetBox ? (

@@ -86,7 +86,11 @@ export function KepCreationWizard() {
   );
 
   return (
-    <div style={{ minHeight: "100%", background: "#FCFAF5", padding: "1.5rem 1rem", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <div className="kep-wizard" style={{ minHeight: "100%", background: "#FCFAF5", padding: "1.5rem 1rem", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      {/* Restore a visible keyboard focus ring on the configure-step fields: the
+          inline outline was removed from inputStyle, but a scoped !important rule
+          guarantees the canon EMBER (interactive) ring wins over any inline reset. */}
+      <style>{`.kep-wizard :is(input,textarea):focus-visible{outline:0.1875rem solid #B85C38!important;outline-offset:0.125rem!important}`}</style>
       <div style={{
         maxWidth: "36rem",
         margin: "0 auto",
@@ -488,6 +492,5 @@ const inputStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "1rem", // keep >=16px so iOS Safari doesn't zoom on focus
   color: "#403B36",
-  outline: "none",
   boxSizing: "border-box",
 };

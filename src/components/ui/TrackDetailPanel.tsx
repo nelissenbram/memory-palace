@@ -30,6 +30,22 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
   const pct = progress.percentage;
   const isComplete = !!progress.completedAt;
 
+  /* Darken a track hue for use as an icon stroke / small-graphic ink so the
+   * glyph matches its own tile instead of painting in ceremonial gold, and
+   * keeps enough contrast against the pale `${track.color}18` wash. Falls back
+   * to EMBER_GLYPH (#9A4F2A, the canon at-rest accent ink) for non-hex values.
+   * Mirrors the helper in TracksPanel. */
+  const textInk = (hex: string): string => {
+    const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) return "#9A4F2A";
+    const n = parseInt(m[1], 16);
+    const dark = (c: number) => Math.round(c * 0.68);
+    const r = dark((n >> 16) & 0xff);
+    const g = dark((n >> 8) & 0xff);
+    const b = dark(n & 0xff);
+    return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+  };
+
   const handleStepAction = (navigateTo?: string) => {
     if (!navigateTo) return;
     // Single source of truth: when the parent supplies onNavigate it already
@@ -80,7 +96,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                 background: `${track.color}18`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "1.5rem",
-              }}><TrackIcon trackId={track.id} size="1.5rem" /></div>
+              }}><TrackIcon trackId={track.id} size="1.5rem" primaryColor={textInk(track.color)} secondaryColor={track.color} /></div>
               <div>
                 <h2 style={{
                   fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,

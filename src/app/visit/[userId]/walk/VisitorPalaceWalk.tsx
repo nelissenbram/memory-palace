@@ -4,6 +4,7 @@ import React, { useState, useCallback, useMemo, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useTouchControls } from "@/lib/hooks/useIsMobile";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { ANIM } from "@/components/ui/TuscanStyles";
 import PalaceLoadingScreen from "@/components/ui/PalaceLoadingScreen";
 import MobileJoystick from "@/components/ui/MobileJoystick";
@@ -528,12 +529,22 @@ function MemoryViewer({ memory, onClose, isMobile }: {
   isMobile: boolean;
 }) {
   const { t } = useTranslation("social");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const media = memory.dataUrl || memory.thumbnailUrl || null;
   const isImage = media && (memory.type === "photo" || memory.type === "image");
   const isVideo = media && memory.type === "video";
 
+  // Escape-to-close for keyboard / screen-reader users.
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   return (
     <div
+      ref={containerRef}
+      onKeyDown={handleKeyDown}
       style={{
         position: "fixed",
         inset: 0,
@@ -691,6 +702,7 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
   isMobile: boolean;
 }) {
   const { t } = useTranslation("social");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -716,6 +728,13 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
       setLoaded(true);
     })();
   }, [target.type, target.id]);
+
+  // Escape-to-close for keyboard / screen-reader users.
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   const handleSend = async () => {
     if (!body.trim() || sending) return;
@@ -761,6 +780,8 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
 
   return (
     <div
+      ref={containerRef}
+      onKeyDown={handleKeyDown}
       style={{
         position: "fixed",
         inset: 0,
@@ -783,6 +804,9 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
 
       {/* Panel */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         style={{
           position: "relative",
           width: isMobile ? "100%" : "28rem",
@@ -934,7 +958,7 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
               border: `1px solid ${T.color.cream}`,
               background: T.color.white,
               fontFamily: T.font.body,
-              fontSize: "0.8125rem",
+              fontSize: "1rem", // >=1rem so iOS Safari doesn't auto-zoom on focus
               color: T.color.ink,
               resize: "none",
               outline: "none",

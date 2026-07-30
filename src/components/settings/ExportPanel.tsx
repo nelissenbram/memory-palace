@@ -687,33 +687,41 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                 return (
                   <div key={wing.slug}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <input
-                        ref={el => { wingCheckRefs.current[wing.slug] = el; }}
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={() => toggleWing(wing)}
-                        style={{ accentColor: EMBER, width: "1rem", height: "1rem", flexShrink: 0 }}
-                      />
                       <button
                         onClick={() => toggleExpanded(wing.slug)}
                         aria-label={isExpanded ? tc("collapse") : tc("expand")}
                         style={{
                           background: "none", border: "none", cursor: "pointer", padding: 0,
-                          display: "inline-flex", alignItems: "center",
+                          display: "inline-flex", alignItems: "center", flexShrink: 0,
+                          minHeight: isMobile ? "2.75rem" : undefined,
+                          minWidth: isMobile ? "2.75rem" : undefined,
+                          justifyContent: "center",
                         }}>
                         <Chevron open={isExpanded} reduceMotion={reduceMotion} />
                       </button>
-                      <span style={{ fontSize: "1rem", display: "inline-flex", alignItems: "center" }}>
-                        {WING_ICON_MAP[wing.slug]
-                          ? <WingIcon wingId={wing.slug} size={14} color={T.color.walnut} />
-                          : wing.icon}
-                      </span>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: INK, flex: 1 }}>
-                        {(() => { const tr = tWings(wing.slug); return tr && tr !== wing.slug ? tr : wing.name; })()}
-                      </span>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>
-                        {totalMems} {t("exportMemLabel")}{totalPhotos > 0 ? ` · ${totalPhotos} ${t("exportPhotoLabel")}` : ""}
-                      </span>
+                      <label style={{
+                        display: "flex", alignItems: "center", gap: "0.5rem", flex: 1,
+                        cursor: "pointer", minHeight: isMobile ? "2.75rem" : undefined,
+                      }}>
+                        <input
+                          ref={el => { wingCheckRefs.current[wing.slug] = el; }}
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={() => toggleWing(wing)}
+                          style={{ accentColor: EMBER, width: "1rem", height: "1rem", flexShrink: 0 }}
+                        />
+                        <span style={{ fontSize: "1rem", display: "inline-flex", alignItems: "center" }} aria-hidden="true">
+                          {WING_ICON_MAP[wing.slug]
+                            ? <WingIcon wingId={wing.slug} size={14} color={T.color.walnut} />
+                            : wing.icon}
+                        </span>
+                        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: INK, flex: 1 }}>
+                          {(() => { const tr = tWings(wing.slug); return tr && tr !== wing.slug ? tr : wing.name; })()}
+                        </span>
+                        <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>
+                          {totalMems} {t("exportMemLabel")}{totalPhotos > 0 ? ` · ${totalPhotos} ${t("exportPhotoLabel")}` : ""}
+                        </span>
+                      </label>
                     </div>
 
                     {isExpanded && (
@@ -766,35 +774,43 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                     return (
                       <div key={sw.shareId}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <input
-                            type="checkbox"
-                            checked={allSelected}
-                            onChange={() => toggleSharedWing(sw)}
-                            style={{ accentColor: EMBER, width: "1rem", height: "1rem", flexShrink: 0 }}
-                          />
                           <button
                             onClick={() => toggleExpanded(`shared:${sw.shareId}`)}
                             aria-label={isExpanded ? tc("collapse") : tc("expand")}
                             style={{
                               background: "none", border: "none", cursor: "pointer", padding: 0,
-                              display: "inline-flex", alignItems: "center",
+                              display: "inline-flex", alignItems: "center", flexShrink: 0,
+                              minHeight: isMobile ? "2.75rem" : undefined,
+                              minWidth: isMobile ? "2.75rem" : undefined,
+                              justifyContent: "center",
                             }}>
                             <Chevron open={isExpanded} reduceMotion={reduceMotion} />
                           </button>
-                          <span style={{ fontSize: "1rem", display: "inline-flex", alignItems: "center" }}>
-                            {WING_ICON_MAP[sw.wingSlug]
-                              ? <WingIcon wingId={sw.wingSlug} size={14} color={T.color.walnut} />
-                              : sw.wingIcon}
-                          </span>
-                          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: INK, flex: 1 }}>
-                            {sw.wingName}
-                          </span>
-                          <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500, color: MUTED }}>
-                            {sw.ownerName}
-                          </span>
-                          <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>
-                            {totalMems} {t("exportMemLabel")}{totalPhotos > 0 ? ` · ${totalPhotos} ${t("exportPhotoLabel")}` : ""}
-                          </span>
+                          <label style={{
+                            display: "flex", alignItems: "center", gap: "0.5rem", flex: 1,
+                            cursor: "pointer", minHeight: isMobile ? "2.75rem" : undefined,
+                          }}>
+                            <input
+                              type="checkbox"
+                              checked={allSelected}
+                              onChange={() => toggleSharedWing(sw)}
+                              style={{ accentColor: EMBER, width: "1rem", height: "1rem", flexShrink: 0 }}
+                            />
+                            <span style={{ fontSize: "1rem", display: "inline-flex", alignItems: "center" }} aria-hidden="true">
+                              {WING_ICON_MAP[sw.wingSlug]
+                                ? <WingIcon wingId={sw.wingSlug} size={14} color={T.color.walnut} />
+                                : sw.wingIcon}
+                            </span>
+                            <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: INK, flex: 1 }}>
+                              {sw.wingName}
+                            </span>
+                            <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500, color: MUTED }}>
+                              {sw.ownerName}
+                            </span>
+                            <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>
+                              {totalMems} {t("exportMemLabel")}{totalPhotos > 0 ? ` · ${totalPhotos} ${t("exportPhotoLabel")}` : ""}
+                            </span>
+                          </label>
                         </div>
 
                         {isExpanded && (

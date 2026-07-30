@@ -758,21 +758,50 @@ export default function LandingV2Client({
     void applyLocale(next);
   }, [applyLocale]);
 
-  /* Mobile menu: lock body scroll while open, focus the first item, and close on
-     Escape. Link/anchor items already call setMenuOpen(false) on activation. */
+  /* Mobile menu: a true modal dialog. Lock body scroll while open, move focus in,
+     trap Tab/Shift+Tab within the menu, close on Escape, and restore focus to the
+     burger button on close. The page <main> is marked inert while open so the
+     still-present hero CTAs / body links underneath are unreachable by keyboard and
+     hidden from the accessibility tree. Link/anchor items already call
+     setMenuOpen(false) on activation. */
   const menuRef = useRef<HTMLDivElement>(null);
+  const burgerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!menuOpen) return;
+    const menu = menuRef.current;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    menuRef.current?.querySelector<HTMLElement>("a, button, [href]")?.focus();
+    menu?.querySelector<HTMLElement>("a, button, [href]")?.focus();
+    const focusables = () =>
+      Array.from(
+        menu?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), select, [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prevOverflow;
       document.removeEventListener("keydown", onKey);
+      // Restore focus to the trigger when the menu closes.
+      burgerRef.current?.focus();
     };
   }, [menuOpen]);
 
@@ -1099,6 +1128,7 @@ export default function LandingV2Client({
           </div>
           {/* Mobile burger */}
           <button
+            ref={burgerRef}
             type="button"
             aria-label={menuOpen ? v2.a11y.close : a11yMenu}
             aria-expanded={menuOpen}
@@ -1129,6 +1159,9 @@ export default function LandingV2Client({
           <div
             id="lv2-mobile-menu"
             ref={menuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={a11yMenu}
             style={{
               background: L.canvas,
               borderBottom: `1px solid ${L.hairline}`,
@@ -1205,7 +1238,10 @@ export default function LandingV2Client({
         ) : null}
       </header>
 
-      <main>
+      {/* When the mobile menu (a modal dialog) is open, the page body underneath is
+          made inert so keyboard/AT users cannot reach the hero CTAs, chips, and body
+          links rendered behind it. */}
+      <main inert={menuOpen ? true : undefined}>
         {/* ── 1. Hero ── */}
         <section
           aria-labelledby="lv2-h1"

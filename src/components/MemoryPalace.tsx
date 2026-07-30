@@ -20,6 +20,7 @@ import { useTrackStore } from "@/lib/stores/trackStore";
 import { getKepSocialStats, type KepSocialStats } from "@/lib/social/stats-actions";
 import { useNavigation } from "@/lib/hooks/useNavigation";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useRoomMemories } from "@/lib/hooks/useRoomMemories";
 import type { Mem } from "@/lib/constants/defaults";
 const OnboardingWizard = lazy(() => import("@/components/ui/OnboardingWizard"));
@@ -266,6 +267,13 @@ export default function MemoryPalace(){
   const setShowEraPicker = useUIPanelStore((s) => s.setShowEraPicker);
   const showUpgradePrompt = useUIPanelStore((s) => s.showUpgradePrompt);
   const setShowUpgradePrompt = useUIPanelStore((s) => s.setShowUpgradePrompt);
+  // Focus traps for the inline dialogs rendered further down (era picker,
+  // storage-full upgrade prompt, track-completion celebration). Each moves
+  // focus into the dialog on open, cycles Tab within it, and restores focus
+  // on close so keyboard/SR users can operate and Escape out of them.
+  const eraPickerTrap = useFocusTrap(showEraPicker);
+  const upgradePromptTrap = useFocusTrap(showUpgradePrompt);
+  const celebrationTrap = useFocusTrap(!!trackCelebration);
   const showRoomManager = useUIPanelStore((s) => s.showRoomManager);
   const setShowRoomManager = useUIPanelStore((s) => s.setShowRoomManager);
   const showRoomShare = useUIPanelStore((s) => s.showRoomShare);
@@ -1076,6 +1084,15 @@ export default function MemoryPalace(){
     return () => clearTimeout(t);
   }, [trackCelebration, dismissCelebration]);
 
+  // The celebration dialog has no focusable children, so useFocusTrap can't
+  // land focus on it. Focus the dialog node itself so its Escape handler works
+  // and SR focus moves into the announcement.
+  useEffect(() => {
+    if (!trackCelebration) return;
+    const id = requestAnimationFrame(() => { celebrationTrap.containerRef.current?.focus(); });
+    return () => cancelAnimationFrame(id);
+  }, [trackCelebration, celebrationTrap.containerRef]);
+
   // SearchBar auto-hide logic removed (SearchBar deleted from room view)
 
   // Show feature spotlight for returning users who haven't seen all cards yet
@@ -1596,8 +1613,8 @@ export default function MemoryPalace(){
       />}
 
       {/* Era picker modal — for existing users who haven't chosen a style */}
-      {showEraPicker && <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.6)",backdropFilter:"blur(0.375rem)"}} onClick={()=>setShowEraPicker(false)}>
-        <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowEraPicker(false);}} onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:"1.25rem",padding:isMobile?"1.75rem 1.25rem":"2.25rem 2.5rem",maxWidth:"30rem",width:"90%",textAlign:"center",boxShadow:SHADOW[2]}}>
+      {showEraPicker && <div style={{position:"absolute",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.6)",backdropFilter:"blur(0.375rem)"}} onClick={()=>setShowEraPicker(false)}>
+        <div ref={eraPickerTrap.containerRef} role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{eraPickerTrap.handleKeyDown(e);if(e.key==="Escape")setShowEraPicker(false);}} onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:"1.25rem",padding:isMobile?"1.75rem 1.25rem":"2.25rem 2.5rem",maxWidth:"30rem",width:"90%",textAlign:"center",boxShadow:SHADOW[2]}}>
           <h2 style={{fontFamily:T.font.display,fontSize:isMobile?"1.375rem":"1.625rem",fontWeight:500,color:T.color.ink,marginBottom:"0.5rem"}}>{tPalace("eraPickerTitle")}</h2>
           <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,marginBottom:"1.25rem"}}>{tPalace("eraPickerSubtitle")}</p>
           <div role="radiogroup" aria-label={tPalace("eraPickerTitle")} style={{display:"flex",gap:"0.75rem",marginBottom:"1.25rem"}}>
@@ -1622,10 +1639,10 @@ export default function MemoryPalace(){
       </div>}
 
       {/* Storage full prompt overlay — triggered when storage quota is exceeded */}
-      {showUpgradePrompt && <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.55)",backdropFilter:"blur(0.25rem)"}}
+      {showUpgradePrompt && <div style={{position:"absolute",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.55)",backdropFilter:"blur(0.25rem)"}}
         onClick={()=>setShowUpgradePrompt(false)}>
         <TuscanCard variant="elevated" padding="2rem 2.25rem" style={{maxWidth:"23.75rem",textAlign:"center",borderRadius:"1.125rem"}} animate>
-          <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowUpgradePrompt(false);}} onClick={e=>e.stopPropagation()}>
+          <div ref={upgradePromptTrap.containerRef} role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{upgradePromptTrap.handleKeyDown(e);if(e.key==="Escape")setShowUpgradePrompt(false);}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:"2.5rem",marginBottom:"0.75rem"}}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" stroke={T.color.ember} strokeWidth="1.5"/><path d="M7 11V7a5 5 0 1 1 10 0v4" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="16.5" r="1.5" fill={T.color.ember}/></svg></div>
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.ink,marginBottom:"0.5rem"}}>{tPalace("storageFull")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{(isNative() && !(isIOS() && IAP_ENABLED)) ? tPalace("storageFullDescNative") : tPalace("storageFullDesc")}</p>
@@ -1696,8 +1713,8 @@ export default function MemoryPalace(){
       </div>}
 
       {/* Track completion celebration */}
-      {trackCelebration&&<div onClick={dismissCelebration} onKeyDown={e=>{if(e.key==="Escape")dismissCelebration();}} style={{position:"fixed",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.55)",backdropFilter:"blur(0.25rem)",animation:reduceMotion?undefined:"fadeIn .3s ease",cursor:"pointer"}}>
-        <div role="dialog" aria-modal="true" tabIndex={-1} style={{background:T.color.linen,borderRadius:"1.5rem",padding:"2.5rem 3rem",textAlign:"center",maxWidth:"23.75rem",boxShadow:SHADOW[2],animation:reduceMotion?undefined:"fadeUp .5s ease",border:`0.125rem solid ${T.color.gold}44`}}>
+      {trackCelebration&&<div onClick={dismissCelebration} style={{position:"fixed",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.55)",backdropFilter:"blur(0.25rem)",animation:reduceMotion?undefined:"fadeIn .3s ease",cursor:"pointer"}}>
+        <div ref={celebrationTrap.containerRef} role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{celebrationTrap.handleKeyDown(e);if(e.key==="Escape")dismissCelebration();}} style={{background:T.color.linen,borderRadius:"1.5rem",padding:"2.5rem 3rem",textAlign:"center",maxWidth:"23.75rem",boxShadow:SHADOW[2],animation:reduceMotion?undefined:"fadeUp .5s ease",border:`0.125rem solid ${T.color.gold}44`}}>
           <div style={{fontSize:"3rem",marginBottom:"1rem"}}>{"\u2728"}</div>
           <div style={{fontFamily:T.font.display,fontSize:"1.75rem",fontWeight:600,color:T.color.ink,marginBottom:"0.5rem"}}>{tTrack("trackComplete")}</div>
           <div style={{fontFamily:T.font.display,fontSize:"1.125rem",fontWeight:500,color:T.color.walnut,marginBottom:"0.75rem",fontStyle:"italic"}}>{tTrack(trackCelebration.trackNameKey)}</div>

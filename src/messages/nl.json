@@ -90,7 +90,12 @@
     "mfaDigit": "Cijfer {n} van {total}",
     "restoreLoading": "Verbinden met de App Store… probeer het zo opnieuw.",
     "expand": "Uitklappen",
-    "collapse": "Inklappen"
+    "collapse": "Inklappen",
+    "signingOut": "Bezig met afmelden…",
+    "restorePurchases": "Aankopen herstellen",
+    "restoreDone": "Aankopen hersteld.",
+    "restoreNone": "Geen eerdere aankopen gevonden om te herstellen.",
+    "retry": "Opnieuw proberen"
   },
   "settingsTour": {
     "help": "Hulp",
@@ -1958,7 +1963,8 @@
     "stepOpenPerson": "Openen",
     "stepStart": "Bladeren",
     "sharedTreeNotFoundTitle": "Stamboom niet gevonden",
-    "sharedTreeNotFoundDesc": "Deze deellink is mogelijk verlopen of gedeactiveerd."
+    "sharedTreeNotFoundDesc": "Deze deellink is mogelijk verlopen of gedeactiveerd.",
+    "quickAddFor": "Voeg een familielid toe voor {name}"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1998,7 +2004,8 @@
     "currency": "Valuta",
     "subscriptionActivated": "Abonnement geactiveerd!",
     "billingInterval": "Facturatieperiode",
-    "approxBilledEur": "Prijzen in deze valuta zijn bij benadering — je wordt in EUR afgeschreven."
+    "approxBilledEur": "Prijzen in deze valuta zijn bij benadering — je wordt in EUR afgeschreven.",
+    "preparingStore": "Winkel voorbereiden…"
   },
   "cookieConsent": {
     "message": "We gebruiken cookies om je ingelogd te houden en je voorkeuren te onthouden.",
@@ -2253,7 +2260,10 @@
     "noFaceCenterCropped": "Gezicht kon niet automatisch worden herkend. De foto wordt in het midden bijgesneden. Gebruik voor het beste resultaat een duidelijke portretfoto.",
     "savedLocallyWillSync": "Lokaal opgeslagen — wordt gesynchroniseerd zodra je weer online bent.",
     "uncroppedWarning": "We konden geen gezicht in deze foto herkennen, dus de buste wordt uit de hele afbeelding gevormd. Gebruik voor het beste resultaat een duidelijk portret van voren.",
-    "useAnyway": "Toch gebruiken"
+    "useAnyway": "Toch gebruiken",
+    "title": "Bustebouwer",
+    "styleMarble": "marmeren",
+    "styleBronze": "bronzen"
   },
   "uploadPanel": {
     "fileTooLarge": "Bestand is te groot ({size} MB). Maximale grootte voor {type} is {max}.",
@@ -3333,7 +3343,8 @@
     "shareText": "Ik heb zojuist de {name} badge verdiend in The Memory Palace!",
     "copiedToClipboard": "Gekopieerd!",
     "close": "Sluiten",
-    "shareFailed": "Delen is mislukt. Probeer het opnieuw."
+    "shareFailed": "Delen is mislukt. Probeer het opnieuw.",
+    "newlyUnlocked": "Zojuist ontgrendeld"
   },
   "directoryPanel": {
     "title": "Overzicht",
@@ -5214,7 +5225,15 @@
     "wizardPhotosNotLinkedTitle": "Verbind eerst Google Foto's",
     "wizardPhotosNotLinkedDesc": "Een foto-Kep heeft een gekoppeld Google Foto's-account nodig om herinneringen op te halen. Koppel er een en kom dan terug om de installatie te voltooien.",
     "wizardPhotosConnectCta": "Google Foto's verbinden",
-    "wizardPhotosChecking": "Je Google Foto's-verbinding wordt gecontroleerd…"
+    "wizardPhotosChecking": "Je Google Foto's-verbinding wordt gecontroleerd…",
+    "capturePreviewFallback": "{type} van {sender}",
+    "unknownSender": "onbekende afzender",
+    "mediaType_image": "Afbeelding",
+    "mediaType_video": "Video",
+    "mediaType_audio": "Audio",
+    "mediaType_text": "Tekst",
+    "mediaType_document": "Document",
+    "mediaType_attachment": "Bijlage"
   },
   "kepLanding": {
     "title": "Maak kennis met Kep",
@@ -5548,7 +5567,10 @@
     "passcodeExpired": "Deze toegangscode is verlopen.",
     "passcodeRequired": "Voer een toegangscode in.",
     "passcodeRateLimited": "Te veel pogingen. Probeer het later opnieuw.",
-    "unblockError": "Kon deze account niet deblokkeren. Probeer het opnieuw."
+    "unblockError": "Kon deze account niet deblokkeren. Probeer het opnieuw.",
+    "visitCount_one": "{count} bezoek",
+    "visitCount_other": "{count} bezoeken",
+    "loadingContent": "Je vleugels & kamers laden…"
   },
   "help": {
     "title": "Helpcentrum",

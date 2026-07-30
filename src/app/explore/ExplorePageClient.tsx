@@ -712,7 +712,11 @@ const PalaceCard = React.memo(function PalaceCard({
     wings > 0
       ? t(wings === 1 ? "wingCount_one" : "wingCount_other", { count: String(wings) })
       : null,
-    visits > 0 ? `${visits} ${t("visits")}` : null,
+    visits > 0
+      ? t(visits === 1 ? "visitCount_one" : "visitCount_other", {
+          count: new Intl.NumberFormat(locale).format(visits),
+        })
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");

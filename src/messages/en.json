@@ -90,7 +90,12 @@
     "mfaDigit": "Digit {n} of {total}",
     "restoreLoading": "Connecting to the App Store… please try again in a moment.",
     "expand": "Expand",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "signingOut": "Signing out…",
+    "restorePurchases": "Restore Purchases",
+    "restoreDone": "Purchases restored.",
+    "restoreNone": "No previous purchases found to restore.",
+    "retry": "Try Again"
   },
   "settingsTour": {
     "help": "Help",
@@ -1958,7 +1963,8 @@
     "stepOpenPerson": "Open",
     "stepStart": "Browse",
     "sharedTreeNotFoundTitle": "Family Tree Not Found",
-    "sharedTreeNotFoundDesc": "This share link may have expired or been deactivated."
+    "sharedTreeNotFoundDesc": "This share link may have expired or been deactivated.",
+    "quickAddFor": "Add a relative for {name}"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1998,7 +2004,8 @@
     "currency": "Currency",
     "subscriptionActivated": "Subscription activated!",
     "billingInterval": "Billing interval",
-    "approxBilledEur": "Prices in this currency are approximate — you'll be billed in EUR."
+    "approxBilledEur": "Prices in this currency are approximate — you'll be billed in EUR.",
+    "preparingStore": "Preparing store…"
   },
   "cookieConsent": {
     "message": "We use cookies to keep you signed in and remember your preferences.",
@@ -2253,7 +2260,10 @@
     "noFaceCenterCropped": "Could not auto-detect face. The photo will be center-cropped. For best results, use a clear portrait photo.",
     "savedLocallyWillSync": "Saved locally — will sync when back online.",
     "uncroppedWarning": "We couldn't isolate a face in this photo, so the bust will be sculpted from the whole image. For the best result, try a clear, front-facing portrait.",
-    "useAnyway": "Use anyway"
+    "useAnyway": "Use anyway",
+    "title": "Bust Builder",
+    "styleMarble": "marble",
+    "styleBronze": "bronze"
   },
   "uploadPanel": {
     "fileTooLarge": "File is too large ({size} MB). Maximum allowed size for {type} is {max}.",
@@ -3331,7 +3341,8 @@
     "shareText": "I just earned the {name} badge in The Memory Palace!",
     "copiedToClipboard": "Copied to clipboard!",
     "close": "Close",
-    "shareFailed": "Couldn't share. Please try again."
+    "shareFailed": "Couldn't share. Please try again.",
+    "newlyUnlocked": "Newly unlocked"
   },
   "directoryPanel": {
     "title": "Directory",
@@ -5212,7 +5223,15 @@
     "wizardPhotosNotLinkedTitle": "Connect Google Photos first",
     "wizardPhotosNotLinkedDesc": "A photos Kep needs a linked Google Photos account to pull memories from. Connect one, then come back to finish setup.",
     "wizardPhotosConnectCta": "Connect Google Photos",
-    "wizardPhotosChecking": "Checking your Google Photos connection…"
+    "wizardPhotosChecking": "Checking your Google Photos connection…",
+    "capturePreviewFallback": "{type} from {sender}",
+    "unknownSender": "unknown sender",
+    "mediaType_image": "Image",
+    "mediaType_video": "Video",
+    "mediaType_audio": "Audio",
+    "mediaType_text": "Text",
+    "mediaType_document": "Document",
+    "mediaType_attachment": "Attachment"
   },
   "kepLanding": {
     "title": "Meet Kep",
@@ -5546,7 +5565,10 @@
     "passcodeExpired": "This passcode has expired.",
     "passcodeRequired": "Please enter a passcode.",
     "passcodeRateLimited": "Too many attempts. Please try again later.",
-    "unblockError": "Couldn't unblock this account. Please try again."
+    "unblockError": "Couldn't unblock this account. Please try again.",
+    "visitCount_one": "{count} visit",
+    "visitCount_other": "{count} visits",
+    "loadingContent": "Loading your wings & rooms…"
   },
   "help": {
     "title": "Help Center",

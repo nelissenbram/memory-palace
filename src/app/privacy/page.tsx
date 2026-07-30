@@ -89,7 +89,7 @@ export default function PrivacyPolicyPage() {
         </div>
         <select value={locale} onChange={(e) => setLocaleNoReload(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
           background: "none", border: `1px solid ${C.hairline}`, borderRadius: "0.375rem",
-          padding: "0.25rem 0.5rem", fontSize: "1rem", fontFamily: F.body,
+          padding: "0.5rem 0.5rem", minHeight: "2.75rem", fontSize: "1rem", fontFamily: F.body,
           fontWeight: 600, color: C.inkMuted, cursor: "pointer", letterSpacing: "0.5px",
           textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
           appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",

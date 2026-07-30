@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useKepStore } from "@/lib/stores/kepStore";
 import TuscanCard from "@/components/ui/TuscanCard";
+import NavigationBar from "@/components/ui/NavigationBar";
 import { T } from "@/lib/theme";
-import { formatConfidence } from "@/lib/kep/route-helpers";
 import type { PendingCaptureWithSuggestion } from "@/types/kep";
 
 /* Canon media-type iconography — replaces emoji glyphs (route-helpers.getMediaTypeIcon)
@@ -88,10 +89,37 @@ function KepTagIcon({ size = 12 }: { size?: number }) {
 
 export default function PendingCapturesPage() {
   const { t } = useTranslation("kep");
+  const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const router = useRouter();
   const { pendingCaptures, isLoading, error, fetchPendingCaptures, routeCaptures, rejectCaptures, clearError } = useKepStore();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [routeRoomId, setRouteRoomId] = useState("");
+
+  const handleModeChange = (mode: string) => {
+    if (mode === "atrium") router.push("/atrium");
+    else if (mode === "3d") router.push("/palace");
+    else if (mode === "library") router.push("/library");
+  };
+
+  // Localized noun for a capture's media type, reusing the MediaTypeIcon vocabulary.
+  const mediaLabel = (mediaType: string | null): string => {
+    const key = mediaType && ["image", "video", "audio", "text", "document"].includes(mediaType)
+      ? `mediaType_${mediaType}`
+      : "mediaType_attachment";
+    return t(key);
+  };
+
+  // Preview label for a capture: real text/transcription, else a localized fallback.
+  const capturePreview = (capture: PendingCaptureWithSuggestion): string => {
+    const text = (capture.payload_preview as Record<string, unknown>)?.text as string | undefined;
+    if (text) return text;
+    if (capture.transcription) return capture.transcription.slice(0, 60);
+    return t("capturePreviewFallback", {
+      type: mediaLabel(capture.media_type),
+      sender: capture.source_sender || t("unknownSender"),
+    });
+  };
 
   useEffect(() => {
     fetchPendingCaptures();
@@ -130,14 +158,23 @@ export default function PendingCapturesPage() {
   };
 
   return (
-    <div style={{ padding: "1.5rem", paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))", maxWidth: "64rem", margin: "0 auto", background: T.color.cream, minHeight: "100dvh" }}>
+    <div style={{
+      padding: isCompact ? "1rem" : "1.5rem",
+      paddingBottom: isMobile
+        ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))"
+        : "calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+      maxWidth: isMobile ? "36rem" : "64rem",
+      margin: "0 auto",
+      background: T.color.cream,
+      minHeight: "100dvh",
+    }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
         <button onClick={() => router.push("/palace/keps")} aria-label={t("back") !== "back" ? t("back") : "Back"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", minHeight: "2.75rem", minWidth: "2.75rem", color: T.color.inkSoft, fontFamily: T.font.body }}>
           {"\u2190"}
         </button>
         <div>
-          <h1 style={{ margin: 0, fontSize: "1.5rem", fontFamily: T.font.display, color: T.color.inkSoft }}>{t("pendingCaptures")}</h1>
+          <h1 style={{ margin: 0, fontSize: isMobile ? "1.25rem" : "1.5rem", fontFamily: T.font.display, color: T.color.inkSoft }}>{t("pendingCaptures")}</h1>
           <p style={{ margin: "0.25rem 0 0", color: T.color.muted, fontSize: "0.875rem", fontFamily: T.font.body }}>{t("pendingDesc")}</p>
         </div>
       </div>
@@ -166,7 +203,7 @@ export default function PendingCapturesPage() {
               padding: "0.5rem 0.875rem",
               minHeight: "2.75rem",
               borderRadius: "0.5rem",
-              background: T.color.terracotta,
+              background: T.color.ember,
               color: T.color.cream,
               border: "none",
               cursor: "pointer",
@@ -209,11 +246,12 @@ export default function PendingCapturesPage() {
               <span style={{ fontSize: "0.875rem", fontWeight: 500, fontFamily: T.font.body, color: T.color.inkSoft }}>{t("selectedCount", { count: String(selected.size) })}</span>
               <input
                 placeholder={t("routeRoomPlaceholder")}
+                aria-label={t("routeRoomPlaceholder")}
                 value={routeRoomId}
                 onChange={(e) => setRouteRoomId(e.target.value)}
                 style={{ flex: 1, minWidth: "12rem", padding: "0.5rem 0.625rem", minHeight: "2.75rem", borderRadius: "0.5rem", border: `1px solid ${T.color.sandstone}`, fontSize: "1rem", fontFamily: T.font.body, color: T.color.inkSoft, background: T.color.cream }}
               />
-              <button onClick={handleRoute} disabled={!routeRoomId} style={{ padding: "0.5rem 0.875rem", minHeight: "2.75rem", borderRadius: "0.5rem", background: T.color.terracotta, color: T.color.cream, border: "none", cursor: routeRoomId ? "pointer" : "not-allowed", opacity: routeRoomId ? 1 : 0.55, fontSize: "0.8125rem", fontWeight: 600, fontFamily: T.font.body }}>
+              <button onClick={handleRoute} disabled={!routeRoomId} style={{ padding: "0.5rem 0.875rem", minHeight: "2.75rem", borderRadius: "0.5rem", background: T.color.ember, color: T.color.cream, border: "none", cursor: routeRoomId ? "pointer" : "not-allowed", opacity: routeRoomId ? 1 : 0.55, fontSize: "0.8125rem", fontWeight: 600, fontFamily: T.font.body }}>
                 {t("routeTo")}
               </button>
               <button onClick={handleReject} style={{ padding: "0.5rem 0.875rem", minHeight: "2.75rem", borderRadius: "0.5rem", background: T.color.error, color: T.color.cream, border: "none", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 600, fontFamily: T.font.body }}>
@@ -247,7 +285,7 @@ export default function PendingCapturesPage() {
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                       <span style={{ fontWeight: 500, fontSize: "0.875rem", fontFamily: T.font.body, color: T.color.inkSoft }}>
-                        {(capture.payload_preview as Record<string, unknown>)?.text as string || capture.transcription?.slice(0, 60) || `${capture.media_type} from ${capture.source_sender || "unknown"}`}
+                        {capturePreview(capture)}
                       </span>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.6875rem", color: T.color.muted, background: T.color.warmStone, padding: "0.125rem 0.375rem", borderRadius: "0.25rem" }}>
                         <KepTagIcon size={11} />
@@ -281,11 +319,11 @@ export default function PendingCapturesPage() {
                         </svg>
                         <span style={{ flex: 1 }}>
                           {t("aiSuggestion", { room: capture.ai_suggestion.room_name })}
-                          {" "}({t("confidence", { pct: formatConfidence(capture.ai_suggestion) })})
+                          {" "}({t("confidence", { pct: String(Math.round(capture.ai_suggestion.confidence * 100)) })})
                         </span>
                         <button
                           onClick={() => handleAcceptSuggestion(capture)}
-                          style={{ padding: "0.375rem 0.75rem", minHeight: "2.75rem", borderRadius: "0.5rem", background: T.color.terracotta, color: T.color.cream, border: "none", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600, fontFamily: T.font.body }}
+                          style={{ padding: "0.375rem 0.75rem", minHeight: "2.75rem", borderRadius: "0.5rem", background: T.color.ember, color: T.color.cream, border: "none", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600, fontFamily: T.font.body }}
                         >
                           {t("acceptSuggestion")}
                         </button>
@@ -297,6 +335,17 @@ export default function PendingCapturesPage() {
             ))}
           </div>
         </>
+      )}
+
+      {/* Mobile NavigationBar — parity with keps/page.tsx */}
+      {isMobile && (
+        <NavigationBar
+          currentMode="atrium"
+          onModeChange={handleModeChange}
+          onNotifications={() => router.push("/palace?notifications=1")}
+          isMobile={true}
+          activeTab={null}
+        />
       )}
     </div>
   );

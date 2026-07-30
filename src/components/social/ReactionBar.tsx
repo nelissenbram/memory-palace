@@ -50,6 +50,36 @@ export default function ReactionBar({
   const [showPicker, setShowPicker] = useState(false);
   const [isPending, startTransition] = useTransition();
   const pickerRef = useRef<HTMLDivElement>(null);
+  const menuItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  // Roving-focus arrow-key navigation for the role=menu picker (ARIA menu contract).
+  const focusMenuItem = (index: number) => {
+    const items = menuItemRefs.current.filter(Boolean) as HTMLButtonElement[];
+    if (items.length === 0) return;
+    const next = (index + items.length) % items.length;
+    items[next]?.focus();
+  };
+  const handleMenuKeyDown = (e: React.KeyboardEvent, index: number) => {
+    switch (e.key) {
+      case "ArrowRight":
+      case "ArrowDown":
+        e.preventDefault();
+        focusMenuItem(index + 1);
+        break;
+      case "ArrowLeft":
+      case "ArrowUp":
+        e.preventDefault();
+        focusMenuItem(index - 1);
+        break;
+      case "Home":
+        e.preventDefault();
+        focusMenuItem(0);
+        break;
+      case "End":
+        e.preventDefault();
+        focusMenuItem(REACTION_EMOJIS.length - 1);
+        break;
+    }
+  };
   // Monotonic token guarding against out-of-order toggle responses: only the
   // most recently started toggle may commit the authoritative server summary.
   const toggleSeqRef = useRef(0);
@@ -67,7 +97,10 @@ export default function ReactionBar({
     };
     document.addEventListener("pointerdown", handler);
     document.addEventListener("keydown", keyHandler);
+    // Move focus into the menu (first menuitem) on open, per the ARIA menu contract.
+    const raf = requestAnimationFrame(() => menuItemRefs.current[0]?.focus());
     return () => {
+      cancelAnimationFrame(raf);
       document.removeEventListener("pointerdown", handler);
       document.removeEventListener("keydown", keyHandler);
     };
@@ -133,8 +166,10 @@ export default function ReactionBar({
           style={{
             display: "inline-flex",
             alignItems: "center",
+            justifyContent: "center",
             gap: "0.25rem",
-            padding: "0.375rem 0.625rem",
+            minHeight: "2.75rem",
+            padding: "0.5rem 0.75rem",
             borderRadius: "1rem",
             border: `0.0625rem solid ${r.reacted ? EMBER : HAIRLINE}`,
             background: r.reacted ? `${EMBER}15` : "transparent",
@@ -235,17 +270,22 @@ export default function ReactionBar({
                   }
             }
           >
-            {REACTION_EMOJIS.map((r) => (
+            {REACTION_EMOJIS.map((r, i) => (
               <button
                 key={r.emoji}
+                ref={(el) => {
+                  menuItemRefs.current[i] = el;
+                }}
                 onClick={() => handleToggle(r.emoji)}
+                onKeyDown={(e) => handleMenuKeyDown(e, i)}
                 disabled={isPending}
                 role="menuitem"
+                tabIndex={i === 0 ? 0 : -1}
                 aria-label={t(`reaction_${r.emoji}`)}
                 title={t(`reaction_${r.emoji}`)}
                 style={{
-                  width: "2rem",
-                  height: "2rem",
+                  width: "2.75rem",
+                  height: "2.75rem",
                   borderRadius: "0.375rem",
                   border: "none",
                   background: "transparent",

@@ -90,7 +90,12 @@
     "mfaDigit": "Dígito {n} de {total}",
     "restoreLoading": "Conectando con la App Store… inténtalo de nuevo en un momento.",
     "expand": "Expandir",
-    "collapse": "Contraer"
+    "collapse": "Contraer",
+    "signingOut": "Cerrando sesión…",
+    "restorePurchases": "Restaurar compras",
+    "restoreDone": "Compras restauradas.",
+    "restoreNone": "No se encontraron compras anteriores para restaurar.",
+    "retry": "Intentar de nuevo"
   },
   "settingsTour": {
     "help": "Ayuda",
@@ -1958,7 +1963,8 @@
     "stepOpenPerson": "Abrir",
     "stepStart": "Explorar",
     "sharedTreeNotFoundTitle": "Árbol genealógico no encontrado",
-    "sharedTreeNotFoundDesc": "Este enlace para compartir puede haber expirado o sido desactivado."
+    "sharedTreeNotFoundDesc": "Este enlace para compartir puede haber expirado o sido desactivado.",
+    "quickAddFor": "Añadir un familiar para {name}"
   },
   "pricing": {
     "title": "The Memory Palace",
@@ -1998,7 +2004,8 @@
     "currency": "Moneda",
     "subscriptionActivated": "¡Suscripción activada!",
     "billingInterval": "Intervalo de facturación",
-    "approxBilledEur": "Los precios en esta moneda son aproximados: se te cobrará en EUR."
+    "approxBilledEur": "Los precios en esta moneda son aproximados: se te cobrará en EUR.",
+    "preparingStore": "Preparando la tienda…"
   },
   "cookieConsent": {
     "message": "Usamos cookies para mantenerte conectado y recordar tus preferencias.",
@@ -2253,7 +2260,10 @@
     "noFaceCenterCropped": "No se pudo detectar el rostro automáticamente. La foto se recortará al centro. Para mejores resultados, usa una foto de retrato nítida.",
     "savedLocallyWillSync": "Guardado localmente: se sincronizará cuando vuelvas a estar en línea.",
     "uncroppedWarning": "No pudimos aislar un rostro en esta foto, así que el busto se esculpirá a partir de la imagen completa. Para un mejor resultado, usa un retrato frontal y nítido.",
-    "useAnyway": "Usar de todos modos"
+    "useAnyway": "Usar de todos modos",
+    "title": "Creador de bustos",
+    "styleMarble": "de mármol",
+    "styleBronze": "de bronce"
   },
   "uploadPanel": {
     "fileTooLarge": "El archivo es demasiado grande ({size} MB). El tamaño máximo permitido para {type} es {max}.",
@@ -3331,7 +3341,8 @@
     "shareText": "¡Acabo de ganar la insignia {name} en The Memory Palace!",
     "copiedToClipboard": "¡Copiado!",
     "close": "Cerrar",
-    "shareFailed": "No se pudo compartir. Inténtalo de nuevo."
+    "shareFailed": "No se pudo compartir. Inténtalo de nuevo.",
+    "newlyUnlocked": "Recién desbloqueado"
   },
   "directoryPanel": {
     "title": "Directorio",
@@ -5212,7 +5223,15 @@
     "wizardPhotosNotLinkedTitle": "Conecta Google Fotos primero",
     "wizardPhotosNotLinkedDesc": "Un Kep de fotos necesita una cuenta de Google Fotos vinculada para obtener recuerdos. Conecta una y luego vuelve para terminar la configuración.",
     "wizardPhotosConnectCta": "Conectar Google Fotos",
-    "wizardPhotosChecking": "Comprobando tu conexión con Google Fotos…"
+    "wizardPhotosChecking": "Comprobando tu conexión con Google Fotos…",
+    "capturePreviewFallback": "{type} de {sender}",
+    "unknownSender": "remitente desconocido",
+    "mediaType_image": "Imagen",
+    "mediaType_video": "Vídeo",
+    "mediaType_audio": "Audio",
+    "mediaType_text": "Texto",
+    "mediaType_document": "Documento",
+    "mediaType_attachment": "Adjunto"
   },
   "kepLanding": {
     "title": "Conoce a Kep",
@@ -5546,7 +5565,10 @@
     "passcodeExpired": "Este código de acceso ha caducado.",
     "passcodeRequired": "Introduce un código de acceso.",
     "passcodeRateLimited": "Demasiados intentos. Inténtalo de nuevo más tarde.",
-    "unblockError": "No se pudo desbloquear esta cuenta. Inténtalo de nuevo."
+    "unblockError": "No se pudo desbloquear esta cuenta. Inténtalo de nuevo.",
+    "visitCount_one": "{count} visita",
+    "visitCount_other": "{count} visitas",
+    "loadingContent": "Cargando tus alas y salas…"
   },
   "help": {
     "title": "Centro de ayuda",

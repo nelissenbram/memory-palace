@@ -1204,9 +1204,17 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               const limit = isExhibition ? 1 : (activeSlotCounts[slot.slotType] || 1);
               const assigned = isExhibition ? (firstMem ? [firstMem] : []) : allAssigned;
               return (
-                <button
+                <div
                   key={slot.key}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setPickingSlot(slot.key)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setPickingSlot(slot.key);
+                    }
+                  }}
                   aria-label={firstMem ? `${slotLabel}: ${firstMem.title}` : `${slotLabel} — ${t("tapToChoose")}`}
                   style={{
                     background: "rgba(255,255,255,0.72)",
@@ -1264,19 +1272,21 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                       </span>
                     )}
                     {firstMem && (
-                      <span
-                        role="button"
+                      <button
+                        type="button"
                         aria-label={t("clearSlot")}
                         onClick={(e) => { e.stopPropagation(); onUpdate(firstMem.id, { displayed: false, displayUnit: undefined, displayOrder: undefined }); }}
+                        onKeyDown={(e) => { e.stopPropagation(); }}
                         style={{
                           position: "absolute", top: "0.3125rem", right: "0.3125rem",
                           width: touchDense ? "2.75rem" : "1.5rem", height: touchDense ? "2.75rem" : "1.5rem",
                           borderRadius: "50%",
+                          border: "none", padding: 0,
                           background: "rgba(64,59,54,0.75)", color: CREAM,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: "0.75rem", cursor: "pointer",
                         }}
-                      >{"\u2715"}</span>
+                      >{"\u2715"}</button>
                     )}
                     {/* Count badge */}
                     <span style={{
@@ -1306,7 +1316,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                       {firstMem?.title || t("tapToChoose")}
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

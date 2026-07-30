@@ -70,7 +70,9 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
   }, []);
 
   const bustStyle: BustStyle = styleEra === "renaissance" ? "renaissance" : "roman";
-  const bustStyleLabel = bustStyle === "renaissance" ? "bronze" : "marble";
+  // Localized style word so the {style} interpolation reads naturally in every locale
+  // (never injects a raw English "bronze"/"marble" mid-sentence).
+  const bustStyleLabel = bustStyle === "renaissance" ? t("styleBronze") : t("styleMarble");
 
   const handleFile = useCallback(async (f: File) => {
     // Revoke the previous object URL before replacing it (prevents blob leak).
@@ -302,21 +304,21 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                 padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "none",
                 background: T.land.ctaGrad,
-                color: "#FFF", cursor: "pointer",
+                color: "#FFF", cursor: "pointer", minHeight: T.touch,
               }}>
                 {t("changePhoto")}
               </button>
               <button onClick={handleRemove} style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
                 borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
-                background: "transparent", color: T.color.muted, cursor: "pointer",
+                background: "transparent", color: T.color.muted, cursor: "pointer", minHeight: T.touch,
               }}>
                 {t("removeBust")}
               </button>
               <button onClick={onClose} style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
                 borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`,
-                background: "transparent", color: T.color.walnut, cursor: "pointer",
+                background: "transparent", color: T.color.walnut, cursor: "pointer", minHeight: T.touch,
               }}>
                 {t("close")}
               </button>
@@ -378,6 +380,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                     onClick={() => setBustGender(g)}
                     style={{
                       flex: 1, padding: "0.5rem 0", borderRadius: "0.5rem", cursor: "pointer",
+                      minHeight: T.touch,
                       fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: bustGender === g ? 600 : 500,
                       border: bustGender === g
                         ? `2px solid ${T.color.terracotta}`
@@ -432,7 +435,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 <button onClick={() => setStage("manage")} style={{
                   fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
                   borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
-                  background: "transparent", color: T.color.walnut, cursor: "pointer",
+                  background: "transparent", color: T.color.walnut, cursor: "pointer", minHeight: T.touch,
                 }}>
                   {t("back")}
                 </button>
@@ -610,6 +613,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                       onClick={() => setBustGender(g)}
                       style={{
                         flex: 1, padding: "0.4375rem 0", borderRadius: "0.375rem", cursor: "pointer",
+                        minHeight: T.touch,
                         fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: bustGender === g ? 600 : 500,
                         border: bustGender === g
                           ? `2px solid ${T.color.terracotta}`
@@ -647,7 +651,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); setConfirmRawPhoto(false); }} style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
                 borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
-                background: "transparent", color: T.color.walnut, cursor: "pointer",
+                background: "transparent", color: T.color.walnut, cursor: "pointer", minHeight: T.touch,
               }}>
                 {t("changePhoto")}
               </button>
@@ -657,7 +661,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                   padding: "0.75rem 2rem", borderRadius: "0.625rem", border: "none",
                   background: T.land.ctaGrad,
-                  color: "#FFF", cursor: "pointer",
+                  color: "#FFF", cursor: "pointer", minHeight: T.touch,
                 }}
               >
                 {!croppedFace && confirmRawPhoto ? t("useAnyway") : t("createBustBtn")}
@@ -740,7 +744,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             <button onClick={() => { setStage("upload"); setError(null); setPreview(null); setCroppedFace(null); setConfirmRawPhoto(false); }} style={{
               fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.5rem",
               borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
-              background: "transparent", color: T.color.walnut, cursor: "pointer",
+              background: "transparent", color: T.color.walnut, cursor: "pointer", minHeight: T.touch,
             }}>
               {t("tryAgainBtn")}
             </button>
@@ -785,7 +789,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               }} style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
                 borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
-                background: "transparent", color: T.color.walnut, cursor: "pointer",
+                background: "transparent", color: T.color.walnut, cursor: "pointer", minHeight: T.touch,
               }}>
                 {t("changePhoto")}
               </button>
@@ -793,7 +797,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                 padding: "0.75rem 2rem", borderRadius: "0.625rem", border: "none",
                 background: T.land.ctaGrad,
-                color: "#FFF", cursor: "pointer",
+                color: "#FFF", cursor: "pointer", minHeight: T.touch,
               }}>
                 {t("doneBtn")}
               </button>

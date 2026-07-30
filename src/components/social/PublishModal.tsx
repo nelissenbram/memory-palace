@@ -197,7 +197,7 @@ export default function PublishModal({
               animation: "spin 0.8s linear infinite",
             }} />
             <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, margin: 0 }}>
-              {t("loadingContent") || "Loading your wings & rooms..."}
+              {t("loadingContent")}
             </p>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { .mp-scroll [style*="animation"] { animation: none !important; } }`}</style>
           </div>

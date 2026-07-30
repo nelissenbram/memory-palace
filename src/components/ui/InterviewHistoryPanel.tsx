@@ -43,6 +43,7 @@ function fmtDuration(sec: number, mAbbr: string, sAbbr: string): string {
 export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanelProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("interviewHistory");
+  const { t: tc } = useTranslation("common");
   const { t: tTpl } = useTranslation("interviewLibrary");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { sessions, sessionsLoaded, loadHistory, resumeSession, setShowHistory } = useInterviewStore();
@@ -93,7 +94,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
               {completedSessions.length} {t("completed")} {completedSessions.length === 1 ? t("completedInterview") : t("completedInterviews")}
             </p>
           </div>
-          <button onClick={onClose} aria-label={t("close") || "Close"} style={{
+          <button onClick={onClose} aria-label={tc("close")} style={{
             width: isMobile ? "2.75rem" : "2.25rem", height: isMobile ? "2.75rem" : "2.25rem",
             borderRadius: isMobile ? "1.375rem" : "1.125rem",
             border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: T.color.warmStone,

@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import { T } from "@/lib/theme";
+import { INK, MUTED, EMBER, CREAM, HAIRLINE } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
 /* ═══ Action icon set ═══
@@ -101,7 +102,7 @@ export interface MobileBottomBarProps {
 export default function MobileBottomBar(props: MobileBottomBarProps) {
   const { view, activeWing, activeRoomId, allRoomMems, showUpload, showSharing, selMem, wingData, moreMenuOpen } = props;
   const { t: tAction } = useTranslation("actionMenu");
-  const accent = wingData?.accent || T.color.terracotta;
+  const accent = wingData?.accent || EMBER;
 
   // Close more menu on Escape
   useEffect(() => {
@@ -203,10 +204,10 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
         <div role="dialog" aria-modal="true" data-mp-more-menu onClick={e => e.stopPropagation()} style={{
           position: "absolute", bottom: "4.5rem", left: "0.75rem", right: "0.75rem",
           maxHeight: "70vh", overflowY: "auto",
-          background: `${T.color.linen}e8`,
+          background: `${CREAM}e8`,
           backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
           borderRadius: "1rem",
-          border: `0.0625rem solid ${T.color.cream}`,
+          border: `0.0625rem solid ${HAIRLINE}`,
           boxShadow: `0 -0.5rem 2.5rem rgba(44,44,42,.2), inset 0 0.0625rem 0 rgba(255,255,255,.5)`,
           padding: "0.75rem",
           animation: "mobileMoreSlideUp .3s cubic-bezier(.22,1,.36,1)",
@@ -227,15 +228,15 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
             <div key={si} style={{ marginBottom: si < moreSections.length - 1 ? "0.625rem" : 0 }}>
               <div style={{
                 fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700,
-                color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.06rem",
+                color: MUTED, textTransform: "uppercase", letterSpacing: "0.06rem",
                 padding: "0.25rem 0.375rem 0.375rem",
               }}>{section.title}</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
                 {section.items.map((item, ii) => (
                   <button key={ii} onClick={item.action} aria-label={item.label} style={{
                     padding: "0.75rem 0.375rem", borderRadius: "0.75rem",
-                    border: `0.0625rem solid ${T.color.cream}`,
-                    background: `${T.color.white}cc`,
+                    border: `0.0625rem solid ${HAIRLINE}`,
+                    background: `${CREAM}cc`,
                     backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
                     cursor: "pointer", textAlign: "center",
                     display: "flex", flexDirection: "column", alignItems: "center", gap: "0.375rem",
@@ -245,12 +246,12 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
                   onTouchStart={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.95)"; }}
                   onTouchEnd={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
                   >
-                    <span aria-hidden="true" style={{ display: "flex", color: T.color.walnut }}>
-                      <ActionIcon name={item.icon} size={22} color={T.color.walnut} />
+                    <span aria-hidden="true" style={{ display: "flex", color: INK }}>
+                      <ActionIcon name={item.icon} size={22} color={INK} />
                     </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem",
-                      color: T.color.walnut, fontWeight: 500, lineHeight: 1.2,
+                      color: INK, fontWeight: 500, lineHeight: 1.2,
                     }}>{item.label}</span>
                   </button>
                 ))}
@@ -264,10 +265,10 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
       <div data-mp-bottom-bar style={{
         position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 49,
         minHeight: "3.75rem", paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        background: `${T.color.linen}f4`,
+        background: `${CREAM}f4`,
         backdropFilter: "blur(24px) saturate(1.2)",
         WebkitBackdropFilter: "blur(24px) saturate(1.2)",
-        borderTop: `0.0625rem solid ${T.color.cream}`,
+        borderTop: `0.0625rem solid ${HAIRLINE}`,
         boxShadow: `0 -0.0625rem 0.5rem rgba(44,44,42,.06), inset 0 0.0625rem 0 rgba(255,255,255,.35)`,
         display: "flex", alignItems: "center", justifyContent: "space-around",
         padding: "0 0.375rem",
@@ -299,28 +300,28 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
             {act.accent ? (
               <div style={{
                 width: "2.375rem", height: "2.375rem", borderRadius: "1.1875rem",
-                background: `linear-gradient(135deg, ${accent}, ${T.color.walnut})`,
+                background: `linear-gradient(135deg, ${accent}, ${INK})`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: T.color.white,
+                color: CREAM,
                 boxShadow: `0 0.25rem 0.75rem ${accent}40`,
-              }}><ActionIcon name={act.icon} size={act.icon === "add" ? 24 : 20} color={T.color.white} /></div>
+              }}><ActionIcon name={act.icon} size={act.icon === "add" ? 24 : 20} color={CREAM} /></div>
             ) : act.isBack ? (
               <div style={{
                 width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem",
-                background: `${T.color.warmStone}dd`,
-                border: `1px solid ${T.color.cream}`,
+                background: `${CREAM}dd`,
+                border: `1px solid ${HAIRLINE}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: T.color.walnut,
-              }}><ActionIcon name={act.icon} size={19} color={T.color.walnut} /></div>
+                color: INK,
+              }}><ActionIcon name={act.icon} size={19} color={INK} /></div>
             ) : (
-              <span aria-hidden="true" style={{ display: "flex", color: T.color.muted }}>
-                <ActionIcon name={act.icon} size={21} color={T.color.muted} />
+              <span aria-hidden="true" style={{ display: "flex", color: MUTED }}>
+                <ActionIcon name={act.icon} size={21} color={MUTED} />
               </span>
             )}
             <span style={{
               fontFamily: T.font.body,
               fontSize: "calc(0.6875rem * var(--a11y-scale, 1))",
-              color: act.accent ? accent : act.isBack ? T.color.walnut : T.color.muted,
+              color: act.accent ? accent : act.isBack ? INK : MUTED,
               fontWeight: act.accent ? 600 : act.isBack ? 500 : 500,
             }}>{act.label}</span>
           </button>
@@ -339,16 +340,16 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
             display: "flex",
             transform: moreMenuOpen ? "rotate(90deg)" : "none",
             transition: "transform .25s cubic-bezier(.22,1,.36,1)",
-            color: moreMenuOpen ? accent : T.color.walnut,
+            color: moreMenuOpen ? accent : INK,
           }}>
             {moreMenuOpen
               ? <ActionIcon name="add" size={21} color={accent} />
-              : <ActionIcon name="more" size={21} color={T.color.walnut} />}
+              : <ActionIcon name="more" size={21} color={INK} />}
           </span>
           <span style={{
             fontFamily: T.font.body,
             fontSize: "calc(0.6875rem * var(--a11y-scale, 1))",
-            color: moreMenuOpen ? accent : T.color.muted,
+            color: moreMenuOpen ? accent : MUTED,
             fontWeight: moreMenuOpen ? 600 : 500,
           }}>{tAction("more")}</span>
         </button>

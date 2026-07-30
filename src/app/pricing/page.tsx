@@ -25,7 +25,13 @@ const C = T.color;
 // the rest of the palace.
 const EMBER_CTA = EMBER;        // #B85C38 interactive / active
 const HAIRLINE_BORDER = HAIRLINE; // #E3D6BC canon 1px border
-// Secondary text already resolves to canon MUTED (#716A5E) via C.muted (theme.ts).
+// Canon body/heading ink is INK #403B36 (theme.ts C.ink), not the cold legacy
+// near-black C.charcoal (#1F1B1A). Paint all body/heading text with INK_TEXT so
+// /pricing matches the warmer ink used across the landing siblings.
+const INK_TEXT = C.ink;         // #403B36 canon body/heading ink
+// Canon secondary text is MUTED #716A5E (C.muted). walnut (#8B7355) is a
+// non-text ink; keep it only for the CTA gradient stop, never for copy.
+const MUTED_TEXT = C.muted;     // #716A5E canon secondary text
 
 export default function PricingPage() {
   const isMobile = useIsMobile();
@@ -190,7 +196,7 @@ export default function PricingPage() {
         minHeight: "100vh",
         background: C.linen,
         fontFamily: F.body,
-        color: C.charcoal,
+        color: INK_TEXT,
         paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
         paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
       }}
@@ -213,7 +219,7 @@ export default function PricingPage() {
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
             border: `1px solid ${HAIRLINE_BORDER}`,
-            background: "none", color: C.walnut, textDecoration: "none",
+            background: "none", color: MUTED_TEXT, textDecoration: "none",
             transition: trans("border-color 0.2s"),
           }}>
             <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -235,7 +241,7 @@ export default function PricingPage() {
                 fontFamily: F.display,
                 fontSize: "1.25rem",
                 fontWeight: 500,
-                color: C.charcoal,
+                color: INK_TEXT,
                 letterSpacing: "-0.3px",
               }}
             >
@@ -250,7 +256,7 @@ export default function PricingPage() {
             style={{
             background: "none", border: `1px solid ${HAIRLINE_BORDER}`, borderRadius: "0.375rem",
             padding: "0.5rem 0.625rem", minHeight: "2.75rem", fontSize: "1rem", fontFamily: F.body,
-            fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
+            fontWeight: 600, color: MUTED_TEXT, cursor: "pointer", letterSpacing: "0.5px",
             textTransform: "uppercase", transition: trans("border-color 0.2s, color 0.2s"),
             appearance: "none", WebkitAppearance: "none", paddingRight: "1.5rem",
             backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
@@ -264,7 +270,7 @@ export default function PricingPage() {
               style={{
                 fontFamily: F.body,
                 fontSize: "0.875rem",
-                color: C.walnut,
+                color: MUTED_TEXT,
                 textDecoration: "none",
                 padding: "0.5rem 1rem",
               }}
@@ -318,7 +324,7 @@ export default function PricingPage() {
             fontSize: "clamp(2rem, 5vw, 3.25rem)",
             fontWeight: 300,
             lineHeight: 1.15,
-            color: C.charcoal,
+            color: INK_TEXT,
             marginBottom: "1rem",
           }}
         >
@@ -327,7 +333,7 @@ export default function PricingPage() {
         <p
           style={{
             fontSize: "clamp(1rem, 2vw, 1.1875rem)",
-            color: C.walnut,
+            color: MUTED_TEXT,
             maxWidth: "32.5rem",
             margin: "0 auto",
             lineHeight: 1.6,
@@ -372,7 +378,7 @@ export default function PricingPage() {
               background: interval === "monthly"
                 ? `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`
                 : "transparent",
-              color: interval === "monthly" ? C.white : C.walnut,
+              color: interval === "monthly" ? C.white : MUTED_TEXT,
               fontFamily: F.body,
               fontSize: "0.875rem",
               fontWeight: 600,
@@ -395,7 +401,7 @@ export default function PricingPage() {
               background: interval === "annual"
                 ? `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`
                 : "transparent",
-              color: interval === "annual" ? C.white : C.walnut,
+              color: interval === "annual" ? C.white : MUTED_TEXT,
               fontFamily: F.body,
               fontSize: "0.875rem",
               fontWeight: 600,
@@ -440,7 +446,7 @@ export default function PricingPage() {
             fontSize: "1rem",
             fontFamily: F.body,
             fontWeight: 600,
-            color: C.walnut,
+            color: MUTED_TEXT,
             cursor: "pointer",
             letterSpacing: "0.5px",
             transition: trans("border-color 0.2s, color 0.2s"),
@@ -505,7 +511,7 @@ export default function PricingPage() {
               alignItems: "center",
               gap: "0.375rem",
               fontSize: "0.8125rem",
-              color: C.walnut,
+              color: MUTED_TEXT,
               fontFamily: F.body,
               fontWeight: 500,
             }}
@@ -525,7 +531,7 @@ export default function PricingPage() {
           background: `${EMBER_CTA}10`, border: `1px solid ${EMBER_CTA}30`,
           borderRadius: "0.75rem", textAlign: "center",
         }}>
-          <p style={{ fontSize: "0.875rem", color: C.charcoal, margin: 0, fontFamily: F.body }}>
+          <p style={{ fontSize: "0.875rem", color: INK_TEXT, margin: 0, fontFamily: F.body }}>
             {iapError}
           </p>
           <button
@@ -653,7 +659,7 @@ export default function PricingPage() {
                     fontFamily: F.display,
                     fontSize: "1.625rem",
                     fontWeight: 500,
-                    color: C.charcoal,
+                    color: INK_TEXT,
                     marginBottom: "0.25rem",
                     marginTop: isHighlighted ? "0.5rem" : 0,
                   }}
@@ -686,7 +692,7 @@ export default function PricingPage() {
                         fontFamily: F.display,
                         fontSize: "2.625rem",
                         fontWeight: 500,
-                        color: C.charcoal,
+                        color: INK_TEXT,
                       }}
                     >
                       {t("free")}
@@ -707,7 +713,7 @@ export default function PricingPage() {
                             fontFamily: F.display,
                             fontSize: "2.625rem",
                             fontWeight: 500,
-                            color: C.charcoal,
+                            color: INK_TEXT,
                           }}
                         >
                           {priceLabel}
@@ -759,7 +765,7 @@ export default function PricingPage() {
                     background: isFree
                       ? "transparent"
                       : `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
-                    color: isFree ? C.charcoal : C.white,
+                    color: isFree ? INK_TEXT : C.white,
                     fontFamily: F.body,
                     fontSize: "1rem",
                     fontWeight: 600,
@@ -830,7 +836,7 @@ export default function PricingPage() {
                         alignItems: "center",
                         gap: "0.625rem",
                         fontSize: "0.875rem",
-                        color: C.charcoal,
+                        color: INK_TEXT,
                         lineHeight: 1.4,
                       }}
                     >
@@ -875,7 +881,7 @@ export default function PricingPage() {
             fontFamily: F.display,
             fontSize: "clamp(1.5rem, 3vw, 2.25rem)",
             fontWeight: 300,
-            color: C.charcoal,
+            color: INK_TEXT,
             marginBottom: "0.75rem",
           }}
         >
@@ -906,7 +912,7 @@ export default function PricingPage() {
                   fontFamily: F.body,
                   fontSize: "0.9375rem",
                   fontWeight: 600,
-                  color: C.charcoal,
+                  color: INK_TEXT,
                   marginBottom: "0.5rem",
                 }}
               >
@@ -915,7 +921,7 @@ export default function PricingPage() {
               <p
                 style={{
                   fontSize: "0.875rem",
-                  color: C.walnut,
+                  color: MUTED_TEXT,
                   lineHeight: 1.6,
                   margin: 0,
                 }}

@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import { isNative } from "@/lib/native/platform";
@@ -139,6 +140,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const roomStore = useRoomStore();
   const allWings = roomStore.getWings();
 
@@ -444,7 +446,9 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
         }}
       >
         <div
+          ref={containerRef}
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={handleKeyDown}
           className="mp-scroll imp-hub-anim"
           style={{
             pointerEvents: "auto",
@@ -633,7 +637,11 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
             }}>
               {/* B. Choose from Device */}
               <div
-                className="imp-hub-anim"
+                role="button"
+                tabIndex={0}
+                aria-label={t("importFromComputer")}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
+                className="imp-hub-anim imp-hub-focus"
                 style={cardStyle}
                 onClick={() => fileInputRef.current?.click()}
                 onMouseEnter={e => cardHover(e, true)}
@@ -656,7 +664,11 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               {/* E. From Clipboard */}
               {clipboardAvailable && (
                 <div
-                  className="imp-hub-anim"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t("importClipboard")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClipboardPaste(); } }}
+                  className="imp-hub-anim imp-hub-focus"
                   style={cardStyle}
                   onClick={handleClipboardPaste}
                   onMouseEnter={e => cardHover(e, true)}

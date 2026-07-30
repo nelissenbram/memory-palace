@@ -320,7 +320,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           {/* Copy generic link + QR */}
           <div style={{display:"flex",gap:"0.5rem",marginBottom:"1.25rem"}}>
             <button onClick={copyGenericLink} style={{flex:1,padding:"0.75rem 1rem",borderRadius:"0.75rem",border:"0.0625rem solid #E3D6BC",background:T.color.warmStone,cursor:"pointer",display:"flex",alignItems:"center",gap:"0.5rem",transition:"all .2s"}}>
-              <span style={{fontSize:"0.9375rem"}}>{copied?"&#x2705;":"&#x1F517;"}</span>
+              <span style={{fontSize:"0.9375rem"}}>{copied?"✅":"\u{1F517}"}</span>
               <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:copied?"#56683C":"#716A5E",fontWeight:500}}>{copied?t("linkCopied"):t("copyShareLink")}</span>
             </button>
             <button onClick={()=>{if(genericShareUrl){setShowQR(true);}else{setError(t("enablePublicLinkFirst"));}}} disabled={!genericShareUrl} aria-label={t("shareViaQR")} style={{padding:"0.75rem 1rem",borderRadius:"0.75rem",border:"0.0625rem solid #E3D6BC",background:T.color.warmStone,cursor:genericShareUrl?"pointer":"not-allowed",opacity:genericShareUrl?1:.5,display:"flex",alignItems:"center",gap:"0.375rem",transition:"all .2s",whiteSpace:"nowrap",minHeight:"2.75rem"}}>
@@ -367,7 +367,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                         display:"flex",alignItems:"center",justifyContent:"center",gap:"0.25rem",
                         minHeight:"2.75rem",
                       }}>
-                        {sendingEmailFor===share.id?t("sending"):share.email_sent?`&#x1F504; ${t("resendEmail")}`:`&#x2709;&#xFE0F; ${t("sendEmail")}`}
+                        {sendingEmailFor===share.id?t("sending"):share.email_sent?`\u{1F504} ${t("resendEmail")}`:`✉️ ${t("sendEmail")}`}
                       </button>
                     )}
                   </div>

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, memo } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useReducedMotion } from "@/lib/hooks/useIsMobile";
 import { navigateInApp, isIOS } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useAudioRecorder } from "@/lib/hooks/useAudioRecorder";
@@ -80,11 +80,15 @@ function fmtTime(sec: number): string {
 const RecordingWaveform = memo(function RecordingWaveform({
   isMobile, isListening, audioLevel,
 }: { isMobile: boolean; isListening: boolean; audioLevel: number }) {
+  const reducedMotion = useReducedMotion();
   const [waveTick, setWaveTick] = useState(0);
   useEffect(() => {
+    // Reduced-motion users get static equal-height bars — skip the 60ms tick so
+    // no JS-computed height oscillates (a CSS guard cannot stop an inline height).
+    if (reducedMotion) return;
     const id = setInterval(() => setWaveTick(Date.now()), 60);
     return () => clearInterval(id);
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", gap: "0.1875rem", marginBottom: "1.5rem", height: "3.75rem", alignItems: "center" }}>
@@ -93,13 +97,16 @@ const RecordingWaveform = memo(function RecordingWaveform({
         const level = isMobile
           ? (isListening ? 0.3 + 0.15 * Math.sin((waveTick / 400 + i) * 0.6) : 0)
           : audioLevel;
-        const height = 8 + level * 52 * (0.4 + 0.6 * Math.sin((waveTick / 200 + i) * 0.8));
+        // Under reduced motion, render a static mid-height bar (no Math.sin drift).
+        const height = reducedMotion
+          ? 8 + level * 26
+          : 8 + level * 52 * (0.4 + 0.6 * Math.sin((waveTick / 200 + i) * 0.8));
         return (
           <div key={i} style={{
             width: "0.25rem", borderRadius: "0.125rem",
             height: Math.max(8, height),
             background: `linear-gradient(180deg, ${EMBER}, ${EMBER_GLYPH})`,
-            transition: "height 0.1s ease",
+            transition: reducedMotion ? "none" : "height 0.1s ease",
             opacity: 0.6 + level * 0.4,
           }} />
         );
@@ -545,7 +552,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 unavailable (e.g. iOS WKWebView has no Web Speech API) */}
             <div style={{ marginTop: "2rem", display: "flex", gap: "0.5rem", justifyContent: "center" }}>
               {(["voice", "text"] as const).filter((mode) => mode === "text" || speech.isSupported).map((mode) => (
-                <button key={mode} onClick={() => setInputMode(mode)} style={{
+                <button key={mode} onClick={() => setInputMode(mode)} aria-pressed={inputMode === mode} style={{
                   padding: "0.625rem 1.25rem", borderRadius: "2rem", minHeight: "2.75rem",
                   border: inputMode === mode ? `0.0625rem solid ${EMBER}` : `0.0625rem solid ${HAIRLINE}`,
                   background: inputMode === mode ? "rgba(184,92,56,0.12)" : "transparent",
@@ -569,7 +576,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   { id: "balanced" as const, icon: <ScaleIcon />, label: t("styleBalanced"), desc: t("styleBalancedDesc") },
                   { id: "factual" as const, icon: <ClipboardIcon />, label: t("styleFactual"), desc: t("styleFactualDesc") },
                 ]).map((s) => (
-                  <button key={s.id} onClick={() => setWritingStyle(s.id)} title={s.desc} style={{
+                  <button key={s.id} onClick={() => setWritingStyle(s.id)} title={s.desc} aria-pressed={writingStyle === s.id} style={{
                     padding: "0.5rem 1rem", borderRadius: "2rem", minHeight: "2.75rem",
                     border: writingStyle === s.id ? `0.0625rem solid ${SAGE}` : `0.0625rem solid ${HAIRLINE}`,
                     background: writingStyle === s.id ? "rgba(86,104,60,0.12)" : "transparent",

@@ -128,7 +128,7 @@ export default function HelpPage() {
         </div>
         <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
           background: "none", border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.375rem",
-          padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
+          padding: "0.25rem 0.5rem", fontSize: "1rem", fontFamily: F.body,
           fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
           textTransform: "uppercase", appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
           backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
@@ -261,16 +261,17 @@ export default function HelpPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {/* Category */}
               <div>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
+                <label htmlFor="help-category" style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
                   {t("contactCategory")}
                 </label>
                 <select
+                  id="help-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   style={{
                     width: "100%", padding: "0.625rem 0.875rem",
                     border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.5rem",
-                    background: C.white || "#FFF", fontFamily: F.body, fontSize: "0.875rem",
+                    background: C.white || "#FFF", fontFamily: F.body, fontSize: "1rem",
                     color: C.charcoal, appearance: "none", WebkitAppearance: "none",
                     backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
                     backgroundRepeat: "no-repeat", backgroundPosition: "right 0.75rem center",
@@ -282,10 +283,11 @@ export default function HelpPage() {
 
               {/* Message */}
               <div>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
+                <label htmlFor="help-message" style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
                   {t("contactMessage")}
                 </label>
                 <textarea
+                  id="help-message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={t("contactPlaceholder")}
@@ -293,7 +295,7 @@ export default function HelpPage() {
                   style={{
                     width: "100%", padding: "0.625rem 0.875rem",
                     border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.5rem",
-                    background: C.white || "#FFF", fontFamily: F.body, fontSize: "0.875rem",
+                    background: C.white || "#FFF", fontFamily: F.body, fontSize: "1rem",
                     color: C.charcoal, resize: "vertical", lineHeight: 1.6,
                   }}
                 />
@@ -301,10 +303,11 @@ export default function HelpPage() {
 
               {/* Attachment */}
               <div>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
+                <label htmlFor="help-attachment" style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
                   {t("contactAttachment")}
                 </label>
                 <input
+                  id="help-attachment"
                   ref={fileRef}
                   type="file"
                   accept="image/*,.pdf,.txt"
@@ -323,6 +326,7 @@ export default function HelpPage() {
                 />
                 <button
                   onClick={() => fileRef.current?.click()}
+                  aria-label={t("contactAttachment")}
                   style={{
                     padding: "0.5rem 1rem", border: `1px dashed ${HAIRLINE_SOFT}`,
                     borderRadius: "0.5rem", background: "transparent",
@@ -353,11 +357,11 @@ export default function HelpPage() {
                 onClick={handleSubmit}
                 disabled={sending || !message.trim()}
                 style={{
-                  padding: "0.75rem 2rem", background: sending ? C.sandstone : C.terracotta,
+                  padding: "0.75rem 2rem", background: C.terracotta,
                   color: "#FFF", border: "none", borderRadius: "0.5rem",
                   fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 600,
                   cursor: sending ? "wait" : "pointer", alignSelf: "flex-start",
-                  opacity: !message.trim() ? 0.5 : 1,
+                  opacity: sending ? 0.6 : (!message.trim() ? 0.5 : 1),
                   transition: "background 0.2s, opacity 0.2s",
                 }}
               >

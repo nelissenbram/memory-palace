@@ -159,7 +159,10 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div>
             <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.ink, margin: 0 }}>{t("manageRooms")}</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{t("wingLabel", { name: wing.name })}</p>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.inkMuted, margin: "0.25rem 0 0", display: "flex", alignItems: "center", gap: "0.375rem" }}>
+              <span aria-hidden style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: accent, flexShrink: 0 }} />
+              {t("wingLabel", { name: wing.name })}
+            </p>
           </div>
           <button onClick={onClose} aria-label={tc("close")} style={{ width: touch ? "2.75rem" : "2rem", height: touch ? "2.75rem" : "2rem", borderRadius: touch ? "1.375rem" : "1rem", border: `1px solid ${T.color.hairline}`, background: T.color.warmStone, color: T.color.inkMuted, fontSize: touch ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
         </div>

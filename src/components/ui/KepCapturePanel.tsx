@@ -379,28 +379,32 @@ const stepDesc: React.CSSProperties = {
 };
 
 const btnPrimary: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: "0.375rem",
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
   background: C.ember, color: C.cream, // Atrium token: ember (active/button register)
   border: "none", borderRadius: "0.75rem", // Atrium token: small-control radius
   padding: "0.4375rem 0.875rem", fontSize: "0.8125rem",
   fontWeight: 600, cursor: "pointer", fontFamily: F.body,
+  minHeight: "2.75rem", // canon touch target
 };
 
 const btnSecondary: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
   border: "0.0625rem solid",
   borderRadius: "0.75rem", padding: "0.4375rem 0.75rem", // Atrium token: small-control radius
   fontSize: "0.8125rem", cursor: "pointer",
   fontWeight: 500, fontFamily: F.body,
   background: NEUTRAL_SOFT, color: C.ink, // canon warm neutral (was C.warmStone)
   transition: `all 0.2s ${EASE}`,
+  minHeight: "2.75rem", // canon touch target
 };
 
 const btnWhatsApp: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: "0.5rem",
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
   background: "#25D366", color: "#fff",
   padding: "0.4375rem 1rem", borderRadius: "0.75rem", // Atrium token: small-control radius
   fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none",
   fontFamily: F.body,
+  minHeight: "2.75rem", // canon touch target
 };
 
 function StepBadge({ n }: { n: number }) {

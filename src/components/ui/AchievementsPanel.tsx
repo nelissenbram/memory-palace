@@ -278,18 +278,36 @@ const AchievementCard = memo(function AchievementCard({ achievement, earned, ear
   useEffect(() => {
     if (highlighted && cardRef.current) {
       const el = cardRef.current;
-      const scroll = () => el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+      const scroll = () => {
+        el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+        // Move keyboard/SR focus onto the freshly-unlocked card so it is announced
+        // (its aria-label carries the "Newly unlocked" prefix). The card is normally
+        // not focusable; tabIndex={-1} makes it programmatically focusable only.
+        el.focus({ preventScroll: true });
+      };
       // Defer so lazy content/layout is settled before scrolling.
       const raf = requestAnimationFrame(scroll);
       return () => cancelAnimationFrame(raf);
     }
   }, [highlighted, reduceMotion]);
 
+  // Compose a full accessible label: aria-label overrides descendant text, so it
+  // must carry the title, the how-to-earn description, and (earned) the unlock
+  // date — otherwise SR users hear only a bare title. Highlighted cards are
+  // prefixed with the "Newly unlocked" cue (a non-visual counterpart to the gold
+  // frame) so keyboard/SR/colour-blind users know which achievement was earned.
+  const title = t(achievement.titleKey);
+  const namePart = earned ? title : t("lockedAchievement", { name: title });
+  const datePart = earned && earnedDate ? `. ${t("unlockedDate", { date: formattedDate })}` : "";
+  const highlightPart = highlighted ? `${t("newlyUnlocked")}. ` : "";
+  const cardLabel = `${highlightPart}${namePart}. ${t(achievement.descKey)}${datePart}`;
+
   return (
     <div
       ref={cardRef}
       role="listitem"
-      aria-label={earned ? t(achievement.titleKey) : t("lockedAchievement", { name: t(achievement.titleKey) })}
+      tabIndex={highlighted ? -1 : undefined}
+      aria-label={cardLabel}
       style={{
         display: "flex",
         flexDirection: "row",
@@ -334,13 +352,37 @@ const AchievementCard = memo(function AchievementCard({ achievement, earned, ear
         gap: "0.0625rem",
       }}>
         <div style={{
+          display: "flex", alignItems: "center", gap: "0.375rem", flexWrap: "wrap",
           fontFamily: T.font.display,
           fontSize: "0.9375rem",
           fontWeight: 600,
           color: earned ? "#403B36" : "#716A5E", // Atrium tokens: ink / muted
           lineHeight: 1.15,
         }}>
-          {t(achievement.titleKey)}
+          <span>{title}</span>
+          {/* Non-colour cue for the newly-unlocked card: a labelled "New" pill so
+              the celebration does not rely on the gold frame alone (colour-blind /
+              SR users). aria-hidden — the state is already in the card's aria-label. */}
+          {highlighted && (
+            <span
+              aria-hidden="true"
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.625rem",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "#8A6410", // Atrium token: gold-lane datum
+                background: "rgba(169,116,27,0.16)",
+                border: "0.0625rem solid #E9DCBE",
+                borderRadius: "0.5rem",
+                padding: "0.0625rem 0.375rem",
+                lineHeight: 1.4,
+              }}
+            >
+              {t("newlyUnlocked")}
+            </span>
+          )}
         </div>
         <div style={{
           fontFamily: T.font.body,

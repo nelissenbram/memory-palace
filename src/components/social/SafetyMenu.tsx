@@ -310,7 +310,8 @@ export default function SafetyMenu({
                   style={{
                     width: "100%",
                     fontFamily: T.font.body,
-                    fontSize: "0.875rem",
+                    // 1rem (16px) prevents iOS Safari/WKWebView zoom-on-focus.
+                    fontSize: "1rem",
                     padding: "0.625rem",
                     borderRadius: "0.5rem",
                     border: `1px solid ${T.color.sandstone}`,

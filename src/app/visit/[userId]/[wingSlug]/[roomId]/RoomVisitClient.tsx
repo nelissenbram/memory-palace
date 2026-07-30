@@ -233,7 +233,7 @@ function MemoryCard({
             fontFamily: T.font.display,
             fontSize: "0.9375rem",
             fontWeight: 600,
-            color: T.color.charcoal,
+            color: T.color.ink,
             margin: 0,
             lineHeight: 1.3,
           }}
@@ -245,7 +245,7 @@ function MemoryCard({
             style={{
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
-              color: T.color.walnut,
+              color: T.color.inkMuted,
               margin: "0.375rem 0 0",
               lineHeight: 1.5,
               display: "-webkit-box",
@@ -466,7 +466,7 @@ export default function RoomVisitClient({
                 fontFamily: T.font.display,
                 fontSize: isMobile ? "1.375rem" : "1.75rem",
                 fontWeight: 600,
-                color: T.color.charcoal,
+                color: T.color.ink,
                 margin: 0,
               }}
             >

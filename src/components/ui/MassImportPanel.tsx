@@ -13,6 +13,7 @@ import { geocodeLocationName } from "@/lib/geocode";
 import Image from "next/image";
 import type { Mem } from "@/lib/constants/defaults";
 import { TypeIcon } from "@/lib/constants/type-icons";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 
 const CloudImportPanel = lazy(() => import("./CloudImportPanel"));
 
@@ -174,6 +175,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
   const isMobile = useIsMobile();
   const { t } = useTranslation("massImport");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   // Subscribe to individual state slices (selectors) instead of the whole store,
   // so unrelated store mutations (e.g. per-keystroke item edits inside a
@@ -605,7 +607,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <select value={targetWingId || ""} onChange={(e) => setTarget(e.target.value || null, null)}
                   style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
                   <option value="">{t("selectWing")}</option>
-                  {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
+                  {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {translateWingName(w, tWings)}</option>)}
                 </select>
               </div>
               <div>
@@ -616,7 +618,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                   disabled={!targetWingId}
                   style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "0.0625rem solid #E3D6BC", background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: !targetWingId ? "#716A5E" : "#403B36", cursor: targetWingId ? "pointer" : "not-allowed" }}>
                   <option value="">{t("selectRoom")}</option>
-                  {targetWingId && getWingRooms(targetWingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
+                  {targetWingId && getWingRooms(targetWingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {translateRoomName(r, tWings)}</option>)}
                 </select>
               </div>
             </div>
@@ -873,8 +875,8 @@ function StatusBadge({ status }: { status: string }) {
 
 const ReviewCard = memo(function ReviewCard({ item, wings, getWingRooms }: {
   item: ImportItem;
-  wings: Array<{ id: string; name: string; icon: string; accent: string }>;
-  getWingRooms: (wingId: string) => Array<{ id: string; name: string; icon: string }>;
+  wings: Array<{ id: string; name: string; nameKey?: string; icon: string; accent: string }>;
+  getWingRooms: (wingId: string) => Array<{ id: string; name: string; nameKey?: string; icon: string }>;
 }) {
   // Subscribe to only the actions this card uses. Zustand action refs are stable,
   // so the card no longer re-renders when unrelated items change in the store —
@@ -886,6 +888,7 @@ const ReviewCard = memo(function ReviewCard({ item, wings, getWingRooms }: {
   const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const { t } = useTranslation("massImport");
+  const { t: tWings } = useTranslation("wings");
 
   const accent = wings.find((w) => w.id === item.confirmed.wingId)?.accent || T.color.terracotta;
 
@@ -915,7 +918,10 @@ const ReviewCard = memo(function ReviewCard({ item, wings, getWingRooms }: {
           </div>
           <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", display: "flex", gap: "0.5rem" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: "0.1875rem" }}><TypeIcon type={item.confirmed.type} size={12} color={"#716A5E"} /> {item.confirmed.type}</span>
-            {item.confirmed.wingId && <span>{"\u2192"} {wings.find((w) => w.id === item.confirmed.wingId)?.icon} {getWingRooms(item.confirmed.wingId).find((r) => r.id === item.confirmed.roomId)?.name || "?"}</span>}
+            {item.confirmed.wingId && (() => {
+              const room = getWingRooms(item.confirmed.wingId).find((r) => r.id === item.confirmed.roomId);
+              return <span>{"\u2192"} {wings.find((w) => w.id === item.confirmed.wingId)?.icon} {room ? translateRoomName(room, tWings) : "?"}</span>;
+            })()}
             {item.aiSuggestions && <span style={{ color: "#9A4F2A" }}>{Math.round(item.aiSuggestions.confidence * 100)}% AI</span>}
           </div>
         </div>
@@ -991,7 +997,7 @@ const ReviewCard = memo(function ReviewCard({ item, wings, getWingRooms }: {
               }}
                 style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: "#403B36", cursor: "pointer" }}>
                 <option value="">—</option>
-                {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
+                {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {translateWingName(w, tWings)}</option>)}
               </select>
             </div>
             <div>
@@ -1000,7 +1006,7 @@ const ReviewCard = memo(function ReviewCard({ item, wings, getWingRooms }: {
                 disabled={!item.confirmed.wingId}
                 style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: "0.0625rem solid #E3D6BC", background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.8125rem", color: !item.confirmed.wingId ? "#716A5E" : "#403B36", cursor: item.confirmed.wingId ? "pointer" : "not-allowed" }}>
                 <option value="">—</option>
-                {item.confirmed.wingId && getWingRooms(item.confirmed.wingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
+                {item.confirmed.wingId && getWingRooms(item.confirmed.wingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {translateRoomName(r, tWings)}</option>)}
               </select>
             </div>
           </div>

@@ -417,10 +417,13 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               </div>
 
               {/* Name */}
-              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
+              <label htmlFor="legacy-panel-name" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("fullName")}
               </label>
               <input
+                id="legacy-panel-name"
+                aria-required="true"
+                className="legacy-panel-focus-ring"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder={t("fullNamePlaceholder")}
@@ -434,10 +437,13 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               />
 
               {/* Email */}
-              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
+              <label htmlFor="legacy-panel-email" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("emailAddress")}
               </label>
               <input
+                id="legacy-panel-email"
+                aria-required="true"
+                className="legacy-panel-focus-ring"
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
                 placeholder={t("emailPlaceholder")}

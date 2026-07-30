@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsCompact, useIsTablet } from "@/lib/hooks/useIsMobile";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { Sheet } from "@/components/ui/Sheet";
@@ -186,7 +187,16 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   const customRooms = useRoomStore((s) => s.customRooms);
   const [showDigest, setShowDigest] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const digestBackRef = useRef<HTMLButtonElement>(null);
+  // Independent focus trap for the Weekly-Digest overlay: because it renders
+  // inside the Sheet's own trapped container, the outer trap alone would let
+  // Tab/Shift-Tab walk into the covered-but-live stats behind the fixed overlay
+  // (WCAG 2.4.3 / 4.1.2). Its own trap keeps focus inside the overlay, moves
+  // focus in on open, and restores it to the trigger on close. The underlying
+  // content is also made inert+aria-hidden while the digest is open.
+  const {
+    containerRef: digestRef,
+    handleKeyDown: digestTrapKeyDown,
+  } = useFocusTrap(showDigest);
 
   /* ── aggregate all memories ── */
   const stats = useMemo(() => {
@@ -412,11 +422,8 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
     return DAY_KEYS.map((_, i) => fmt.format(new Date(Date.UTC(2023, 0, 1 + i))));
   }, [locale]);
 
-  /* ── move focus into the digest overlay when it opens, so keyboard/SR users
-   *    don't stay trapped behind it in the underlying stats dialog. ── */
-  useEffect(() => {
-    if (showDigest) digestBackRef.current?.focus();
-  }, [showDigest]);
+  /* ── focus-move-in on open and focus-restore on close are handled by the
+   *    digest's own useFocusTrap above. ── */
 
   /* ── shared styles ── */
   const cardStyle: React.CSSProperties = {
@@ -492,10 +499,14 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
         {/* ── Weekly Digest Overlay ── */}
         {showDigest && (
           <div
+            ref={digestRef}
             role="dialog"
             aria-modal="true"
             aria-label={t("weeklyDigestTitle")}
-            onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setShowDigest(false); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") { e.stopPropagation(); setShowDigest(false); return; }
+              digestTrapKeyDown(e); // trap Tab/Shift-Tab inside the overlay
+            }}
             style={{
               position: "fixed", inset: 0, zIndex: 1010, // above the shared Sheet scrim (z-index 1000)
               background: CREAM, overflowY: "auto",
@@ -510,7 +521,6 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
               borderBottom: "0.0625rem solid #E3D6BC", // Atrium token: hairline
             }}>
               <button
-                ref={digestBackRef}
                 onClick={() => setShowDigest(false)}
                 style={{
                   fontFamily: T.font.body, fontSize: "0.8125rem", color: EMBER_GLYPH /* Atrium token: terracotta glyph */,
@@ -614,7 +624,16 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
           </div>
         )}
 
-        {/* ── Content ── */}
+        {/* ── Content ──
+            While the Weekly-Digest overlay is open, the underlying stats are
+            covered by a position:fixed sheet. Mark them inert + aria-hidden so
+            keyboard/SR users cannot Tab into or read the controls they cannot
+            see (WCAG 2.4.3 / 4.1.2). display:contents keeps the layout intact. */}
+        <div
+          inert={showDigest ? true : undefined}
+          aria-hidden={showDigest ? true : undefined}
+          style={{ display: "contents" }}
+        >
         {stats.totalMems === 0 ? (
           /* ── Empty state — a zero-memory user sees an invitation, not fabricated
              "night owl / peak at 0:00" insights over hollow charts. ── */
@@ -1054,6 +1073,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
           </div>
         </div>
         )}
+        </div>
       </div>
     </Sheet>
   );

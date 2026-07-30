@@ -1,7 +1,9 @@
 "use client";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 export default function SignOutOverlay() {
+  const { t } = useTranslation("common");
   return (
     <div role="alert" aria-live="assertive" style={{
       position: "fixed", inset: 0, zIndex: 99999,
@@ -13,9 +15,13 @@ export default function SignOutOverlay() {
       <style>{`
         @keyframes mp-signout-spin { to { transform: rotate(360deg) } }
         @keyframes mp-signout-bar { 0% { width: 0% } 100% { width: 100% } }
+        @media (prefers-reduced-motion: reduce) {
+          .mp-signout-spinner { animation: none !important; }
+          .mp-signout-progress { animation: none !important; width: 100% !important; }
+        }
       `}</style>
       {/* Spinner */}
-      <div style={{
+      <div className="mp-signout-spinner" style={{
         width: "2.5rem", height: "2.5rem",
         border: `3px solid rgba(255,255,255,0.1)`,
         borderTopColor: T.color.terracotta,
@@ -26,14 +32,14 @@ export default function SignOutOverlay() {
         fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
         color: "#F2EDE7", letterSpacing: "0.04em", margin: 0,
       }}>
-        Signing out&hellip;
+        {t("signingOut")}
       </p>
       {/* Progress bar */}
       <div style={{
         width: "12rem", height: "3px", borderRadius: "2px",
         background: "rgba(255,255,255,0.08)", overflow: "hidden",
       }}>
-        <div style={{
+        <div className="mp-signout-progress" style={{
           height: "100%", borderRadius: "2px",
           background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
           animation: "mp-signout-bar 2.5s ease-out forwards",

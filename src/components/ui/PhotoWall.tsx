@@ -249,6 +249,10 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
     }
     return best;
   };
+  // Honour prefers-reduced-motion for JS-driven jump scrolls (CSS scroll-behavior
+  // can't override scrollIntoView), mirroring the tile-transition guard below.
+  const scrollBehavior = (): ScrollBehavior =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
   const onRailPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = railColRef.current;
     if (!el) return;
@@ -271,7 +275,7 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
     if (!dragState.current.active) return;
     dragState.current.active = false;
     const t = nearestTick(e.clientY);
-    if (t) sectionEls.current.get(t.target)?.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (t) sectionEls.current.get(t.target)?.scrollIntoView({ block: "start", behavior: scrollBehavior() });
     scrubClearT.current = window.setTimeout(() => setScrubHover(null), 600);
   };
   const onRailPointerCancel = () => {
@@ -302,12 +306,15 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                 data-tick-key={tick.key}
                 data-tick-target={tick.target}
                 aria-label={t("jumpTo", { label: tick.label })}
-                onClick={() => sectionEls.current.get(tick.target)?.scrollIntoView({ block: "start", behavior: "smooth" })}
+                onClick={() => sectionEls.current.get(tick.target)?.scrollIntoView({ block: "start", behavior: scrollBehavior() })}
                 onFocus={() => setScrubHover(tick.key)}
                 onBlur={() => { if (!dragState.current.active) setScrubHover((h) => (h === tick.key ? null : h)); }}
                 onMouseEnter={() => setScrubHover(tick.key)}
                 onMouseLeave={() => { if (!dragState.current.active) setScrubHover((h) => (h === tick.key ? null : h)); }}
-                style={{ display: "flex", alignItems: "center", gap: "0.4rem", justifyContent: "flex-end", background: "none", border: "none", padding: "0.15rem 0.2rem", cursor: "pointer" }}
+                // On coarse/mobile pointers the invisible hit box is expanded to a
+                // real touch target (minHeight + generous vertical padding) while the
+                // dot glyph stays visually small and centered.
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem", justifyContent: "flex-end", background: "none", border: "none", padding: isMobile ? "0.6rem 0.4rem 0.6rem 0.9rem" : "0.15rem 0.2rem", minHeight: isMobile ? "2.75rem" : undefined, minWidth: isMobile ? "2.75rem" : undefined, cursor: "pointer" }}
               >
                 {scrubHover === tick.key && (
                   <span aria-hidden="true" style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: INK, background: CREAM, border: `0.0625rem solid ${HAIRLINE}`, borderRadius: "0.4rem", padding: "0.1rem 0.4rem", whiteSpace: "nowrap", boxShadow: SHADOW[2] }}>{tick.label}</span>

@@ -79,7 +79,7 @@ export default function PasscodeEntry() {
       <div aria-hidden="true" style={blobBottomStyle} />
 
       {/* Blurred cream auth card (matches src/app/(auth)/layout.tsx exactly). */}
-      <main style={cardStyle}>
+      <main id="main-content" style={cardStyle}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           {/* Lock icon */}

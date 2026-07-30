@@ -22,6 +22,7 @@ import {
 } from "../../tree-layout";
 import type { TreeNode } from "../../tree-layout";
 import { CoupleNode, TreeBranchIcon, CloseIcon } from "../../PersonCard";
+import { relTypeLabel } from "../../PersonPanelShared";
 import ReportButton from "@/components/social/ReportButton";
 
 const MIN_ZOOM = 0.15;
@@ -468,6 +469,8 @@ export function SharedTreeView({
           overflow: "hidden",
           position: "relative",
           cursor: "grab",
+          touchAction: "none",
+          overscrollBehavior: "none",
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -557,6 +560,8 @@ export function SharedTreeView({
               zIndex: 51,
               minWidth: isCompact ? undefined : "20rem",
               maxWidth: isCompact ? undefined : "24rem",
+              maxHeight: isCompact ? "80dvh" : "85vh",
+              overflowY: "auto",
               boxShadow: SHADOW[2],
               fontFamily: T.font.body,
             }}
@@ -689,7 +694,7 @@ export function SharedTreeView({
                             fontSize: "0.75rem",
                           }}
                         >
-                          ({r.relationship_type})
+                          ({relTypeLabel(r.relationship_type, t)})
                         </span>
                       </div>
                     );

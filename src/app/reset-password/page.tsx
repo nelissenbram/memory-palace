@@ -144,9 +144,14 @@ export default function ResetPasswordPage() {
     return (
       <div className="mp-scroll" style={wrapperStyle}>
         <AuthBlobs />
-        <main style={cardStyleResponsive}>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.mp-reset-spin{animation:none}}`,
+          }}
+        />
+        <main id="main-content" style={cardStyleResponsive}>
           <div role="status" aria-live="polite" style={{ textAlign: "center", padding: "2rem 0" }}>
-            <div style={spinnerStyle} aria-hidden="true" />
+            <div className="mp-reset-spin" style={spinnerStyle} aria-hidden="true" />
             <span
               style={{
                 position: "absolute",
@@ -173,7 +178,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="mp-scroll" style={wrapperStyle}>
         <AuthBlobs />
-        <main style={cardStyleResponsive}>
+        <main id="main-content" style={cardStyleResponsive}>
           <div style={{ textAlign: "center" }}>
             <div style={iconContainerStyle}>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -198,7 +203,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="mp-scroll" style={wrapperStyle}>
       <AuthBlobs />
-      <main style={cardStyleResponsive}>
+      <main id="main-content" style={cardStyleResponsive}>
         <form onSubmit={handleSubmit}>
           <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
             <div style={iconContainerStyle}>

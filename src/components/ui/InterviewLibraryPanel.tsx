@@ -8,16 +8,7 @@ import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { INTERVIEW_TEMPLATES, WING_ID_TO_LABEL_KEY, getTemplatesByWing } from "@/lib/constants/interviews";
 import type { InterviewTemplate } from "@/lib/constants/interviews";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-
-// ─── Wing accent colors for icon strokes ───
-const WING_ACCENT: Record<string, string> = {
-  roots: "#9A4F2A", // Atrium token: terracotta glyph
-  nest: "#B8926A",
-  craft: "#8B7355",
-  travel: "#56683C", // Atrium token: sage canonical
-  passions: "#9B6B8E",
-  general: "#8A6410", // Atrium token: ochre glyph (gold reserved for the palace itself)
-};
+import { wingAccent } from "@/lib/libraryTokens";
 
 // ─── SVG icon paths keyed by template id (20x20 viewBox, stroke-based) ───
 const ICON_PATHS: Record<string, React.ReactNode> = {
@@ -160,7 +151,7 @@ const ICON_PATHS: Record<string, React.ReactNode> = {
 
 /** Renders an SVG icon for interview templates, matching the warm Tuscan line-art style. */
 export function InterviewIcon({ templateId, wingId, size = 20 }: { templateId: string; wingId: string; size?: number }) {
-  const color = WING_ACCENT[wingId] || WING_ACCENT.general;
+  const color = wingAccent(wingId);
   const paths = ICON_PATHS[templateId];
   if (!paths) {
     // Fallback: generic star
