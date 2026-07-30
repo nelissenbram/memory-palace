@@ -31,11 +31,11 @@ export default function ForgotPasswordPage() {
       <div role="status" aria-live="polite" style={{ textAlign: "center" }}>
         <div style={{
           width: "4rem", height: "4rem", borderRadius: "2rem",
-          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          background: `linear-gradient(135deg, ${T.color.ember}20, ${T.color.walnut}20)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 1rem",
         }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2"/>
             <path d="M22 4L12 13 2 4"/>
             <path d="M15 12l5 5M9 12l-5 5" opacity="0.4"/>
@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
             fontFamily: T.font.display,
             fontSize: "1.5rem",
             fontWeight: 500,
-            color: T.color.charcoal,
+            color: T.color.ink,
             margin: "0 0 0.75rem",
           }}
         >
@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
               minHeight: T.touch,
               padding: "0.5rem 0.75rem",
               marginTop: "0.25rem",
-              color: T.color.terracotta,
+              color: T.color.ember,
               textDecoration: "none",
               fontWeight: 600,
               fontSize: "0.875rem",
@@ -105,11 +105,11 @@ export default function ForgotPasswordPage() {
       <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
         <div style={{
           width: "3.5rem", height: "3.5rem", borderRadius: "1.75rem",
-          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          background: `linear-gradient(135deg, ${T.color.ember}20, ${T.color.walnut}20)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 0.5rem",
         }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="8" cy="15" r="5"/>
             <path d="M12.5 10.5L21 2"/>
             <path d="M17 2h4v4"/>
@@ -121,7 +121,7 @@ export default function ForgotPasswordPage() {
             fontFamily: T.font.display,
             fontSize: "1.75rem",
             fontWeight: 300,
-            color: T.color.charcoal,
+            color: T.color.ink,
             margin: 0,
             lineHeight: 1.3,
           }}
@@ -181,7 +181,7 @@ export default function ForgotPasswordPage() {
           background: T.color.white,
           fontFamily: T.font.body,
           fontSize: "1rem",
-          color: T.color.charcoal,
+          color: T.color.ink,
           outline: "none",
           boxSizing: "border-box",
         }}
@@ -197,7 +197,7 @@ export default function ForgotPasswordPage() {
           border: "none",
           background: loading
             ? `${T.color.sandstone}40`
-            : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+            : `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
           color: loading ? T.color.muted : "#FFFFFF",
           fontFamily: T.font.body,
           fontSize: "0.9375rem",
@@ -227,7 +227,7 @@ export default function ForgotPasswordPage() {
             justifyContent: "center",
             minHeight: T.touch,
             padding: "0.5rem 0.75rem",
-            color: T.color.terracotta,
+            color: T.color.ember,
             textDecoration: "none",
             fontWeight: 600,
           }}

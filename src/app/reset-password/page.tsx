@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
         <main style={cardStyleResponsive}>
           <div style={{ textAlign: "center" }}>
             <div style={iconContainerStyle}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="15" y1="9" x2="9" y2="15"/>
                 <line x1="9" y1="9" x2="15" y2="15"/>
@@ -121,7 +121,7 @@ export default function ResetPasswordPage() {
         <form onSubmit={handleSubmit}>
           <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
             <div style={iconContainerStyle}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 <circle cx="12" cy="16" r="1"/>
@@ -187,7 +187,7 @@ export default function ResetPasswordPage() {
                 justifyContent: "center",
                 minHeight: T.touch,
                 padding: "0.5rem 0.75rem",
-                color: T.color.terracotta,
+                color: T.color.ember,
                 textDecoration: "none",
                 fontWeight: 600,
               }}
@@ -233,7 +233,7 @@ const iconContainerStyle: React.CSSProperties = {
   width: "3.5rem",
   height: "3.5rem",
   borderRadius: "1.75rem",
-  background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+  background: `linear-gradient(135deg, ${T.color.ember}20, ${T.color.walnut}20)`,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -244,7 +244,7 @@ const titleStyle: React.CSSProperties = {
   fontFamily: T.font.display,
   fontSize: "1.75rem",
   fontWeight: 300,
-  color: T.color.charcoal,
+  color: T.color.ink,
   margin: 0,
   lineHeight: 1.3,
 };
@@ -267,7 +267,7 @@ const inputStyle: React.CSSProperties = {
   background: T.color.white,
   fontFamily: T.font.body,
   fontSize: "1rem",
-  color: T.color.charcoal,
+  color: T.color.ink,
   outline: "none",
   boxSizing: "border-box",
   transition: "border-color 0.2s",
@@ -280,7 +280,7 @@ const buttonStyle = (disabled: boolean): React.CSSProperties => ({
   border: "none",
   background: disabled
     ? `${T.color.sandstone}40`
-    : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+    : `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
   color: disabled ? T.color.muted : T.color.white,
   fontFamily: T.font.body,
   fontSize: "0.9375rem",
@@ -295,7 +295,7 @@ const primaryLinkStyle: React.CSSProperties = {
   marginTop: "1.25rem",
   padding: "0.875rem 2rem",
   borderRadius: "0.75rem",
-  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+  background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
   color: T.color.white,
   textDecoration: "none",
   fontWeight: 600,
@@ -307,7 +307,7 @@ const spinnerStyle: React.CSSProperties = {
   width: "2rem",
   height: "2rem",
   border: `3px solid ${T.color.sandstone}`,
-  borderTop: `3px solid ${T.color.terracotta}`,
+  borderTop: `3px solid ${T.color.ember}`,
   borderRadius: "50%",
   animation: "spin 1s linear infinite",
   margin: "0 auto",

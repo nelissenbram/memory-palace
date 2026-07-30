@@ -8,13 +8,11 @@ import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile, useIsCompact, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { isIOS } from "@/lib/native/platform";
-import { INK, MUTED, HAIRLINE, TRAY, SAGE, CREAM, EMBER } from "@/lib/libraryTokens";
+import { INK, MUTED, HAIRLINE, TRAY, SAGE, CREAM, EMBER, DANGER } from "@/lib/libraryTokens";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 // ── Local semantic tokens ──
-// DANGER is not (yet) in libraryTokens; the audit asked to promote it there, but
-// libraryTokens.ts is out of scope for this surface, so it is named locally.
-const DANGER = "#A63D3D";
+// DANGER is the canon warm destructive token (libraryTokens); SUCCESS reuses canon sage.
 const SUCCESS = SAGE; // success uses the canon sage
 
 // ── Provider definitions ──
@@ -536,7 +534,7 @@ function ConnectionsContent() {
         @media (hover: hover) {
           .conn-primary:hover { box-shadow: 0 0.25rem 1rem rgba(64,59,54,0.14); }
           .conn-secondary:hover { background: rgba(154,79,42,0.07) !important; }
-          .conn-danger:hover:not(:disabled) { background: rgba(166,61,61,0.12) !important; }
+          .conn-danger:hover:not(:disabled) { background: rgba(166,67,46,0.12) !important; }
         }
         .conn-secondary:active { background: rgba(154,79,42,0.12) !important; }
         .conn-page a:focus-visible, .conn-page button:focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; }

@@ -33,6 +33,9 @@ export const T = {
     inkMuted: "#716A5E",   // canon secondary text (libraryTokens MUTED) — 5.1:1 on cream, AA ✓
     ember: "#B85C38",      // canon interactive / CTA (libraryTokens EMBER) — 4.35:1 on
                            // cream: use as a fill / large text / icon, NOT as small body ink.
+    danger: "#A6432E",     // canon warm destructive (libraryTokens DANGER) — delete/disconnect/error
+    dangerSoft: "#EFD3D3", // canon danger soft edge/hairline tint (libraryTokens DANGER_SOFT)
+    inkDeep: "#2E2A26",    // canon deepest warm ink (libraryTokens INK_DEEP) — keystone/emphasis panels
   },
   /** Warm-ink shadow ramp (libraryTokens SHADOW) — never cold black. */
   shadow: {

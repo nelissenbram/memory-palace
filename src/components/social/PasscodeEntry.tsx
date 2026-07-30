@@ -84,7 +84,7 @@ export default function PasscodeEntry() {
               fontFamily: T.font.display,
               fontSize: "1.75rem",
               fontWeight: 600,
-              color: T.color.charcoal,
+              color: T.color.ink,
               margin: "0 0 0.5rem",
             }}
           >
@@ -131,7 +131,7 @@ export default function PasscodeEntry() {
                   fontFamily: T.font.display,
                   fontSize: "1.25rem",
                   fontWeight: 600,
-                  color: T.color.charcoal,
+                  color: T.color.ink,
                   margin: "0 0 0.25rem",
                 }}
               >
@@ -176,7 +176,7 @@ export default function PasscodeEntry() {
                 padding: "0.875rem",
                 borderRadius: "0.625rem",
                 border: "none",
-                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
                 color: T.color.cream,
                 cursor: "pointer",
               }}
@@ -211,7 +211,7 @@ export default function PasscodeEntry() {
                 borderRadius: "0.625rem",
                 border: `2px solid ${error ? T.color.error : T.color.sandstone}`,
                 background: T.color.cream,
-                color: T.color.charcoal,
+                color: T.color.ink,
                 textAlign: "center",
                 outline: "none",
                 boxSizing: "border-box",
@@ -253,7 +253,7 @@ export default function PasscodeEntry() {
                 padding: "0.875rem",
                 borderRadius: "0.625rem",
                 border: "none",
-                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
                 color: T.color.cream,
                 cursor: isPending ? "wait" : "pointer",
                 opacity: isPending || !code.trim() ? 0.6 : 1,

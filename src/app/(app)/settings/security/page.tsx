@@ -14,7 +14,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { hasAnalyticsConsent, initAnalytics, optOutAnalytics } from "@/lib/analytics";
-import { INK, MUTED, EMBER_GLYPH, EMBER, SAGE, HAIRLINE, CREAM } from "@/lib/libraryTokens";
+import { INK, INK_DEEP, MUTED, EMBER_GLYPH, EMBER, SAGE, HAIRLINE, CREAM, DANGER, DANGER_SOFT } from "@/lib/libraryTokens";
 import BlockedAccountsPanel from "@/components/social/BlockedAccountsPanel";
 import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
@@ -27,13 +27,12 @@ const F = T.font;
    EMBER_GLYPH is the terracotta at-rest glyph accent (was locally named TERRA). */
 const TERRA = EMBER_GLYPH; // terracotta glyph / at-rest accent (canon EMBER_GLYPH)
 
-/* Danger register — a small warm-red ramp local to this destructive surface.
-   Not a generic accent (GDPR Art.17 delete only); kept here because libraryTokens
-   is out of scope for this fix. */
-const DANGER = "#C05050";        // danger base (dot, headings, error toast)
-const DANGER_STRONG = "#A83A3A"; // danger strong (confirm text, active delete)
-const DANGER_DEEP = "#8C3434";   // danger deep (description)
-const INK_DEEP = "#2E2A26";      // keystone second ink (gradient end)
+/* Danger register — the canon warm destructive token (libraryTokens DANGER),
+   scoped to this destructive surface (GDPR Art.17 delete + error toast). The
+   former undocumented 3-step off-canon ramp collapses to the single canon DANGER;
+   STRONG/DEEP alias it so existing hierarchy call sites keep compiling. */
+const DANGER_STRONG = DANGER; // confirm text / active delete
+const DANGER_DEEP = DANGER;   // danger description
 
 /* ─── Category icons (compact versions for settings context) ─── */
 
@@ -668,7 +667,7 @@ export default function SecuritySettingsPage() {
                 {t("commitmentBody")}{" "}
                 <a
                   href="mailto:privacy@thememorypalace.ai"
-                  style={{ color: "#B85C38" /* Atrium token: ember */, textDecoration: "none" }}
+                  style={{ color: EMBER, textDecoration: "none" }}
                 >
                   privacy@thememorypalace.ai
                 </a>
@@ -693,13 +692,13 @@ export default function SecuritySettingsPage() {
         }}>
           {tf("sectionDangerZone", "Danger zone")}
         </span>
-        <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, #EFD3D3, transparent)" }} />
+        <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: `linear-gradient(90deg, ${DANGER_SOFT}, transparent)` }} />
       </div>
 
       <div style={{
         background: "#FFFFFF",
         borderRadius: "1rem",
-        border: "0.0625rem solid #EFD3D3", /* Atrium pre-mixed: danger 25% on white */
+        border: `0.0625rem solid ${DANGER_SOFT}`, /* canon danger soft tint */
         padding: isCompact ? "1.5rem 1rem" : "1.75rem 2rem",
         boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
       }}>
