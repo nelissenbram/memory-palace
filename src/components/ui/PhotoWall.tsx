@@ -294,14 +294,60 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
   //    threshold), then a fixed-position ghost clone follows the finger and
   //    move/end coordinates stream to the parent for drop-tray hit-testing.
   //    Page scroll is suppressed only WHILE a drag is active (a second finger
-  //    may still scroll inside the parent's [data-drop-tray]). ──
+  //    may still scroll inside the parent's [data-drop-tray]).
+  //
+  //    WHY the document-level touch listeners attach at POINTERDOWN, not at
+  //    lift (the "drag dies instantly on mobile" fix — test-reasoned through
+  //    both engines):
+  //
+  //    iOS Safari:
+  //      1. finger down → pointerdown fires; we attach a NON-PASSIVE document
+  //         touchmove handler NOW and arm the 450ms timer. WebKit latches its
+  //         scroll-vs-app decision (touch-action / cancelable touchmove) at
+  //         gesture START — a listener added mid-gesture (the old code added
+  //         it inside the timer) is ignored for the current touch sequence,
+  //         so the first post-lift touchmove started a native scroll and
+  //         WebKit fired pointercancel, killing the drag a frame after the
+  //         tray appeared. With the handler pre-registered, the handler is
+  //         consulted; pre-lift it returns without preventDefault (normal
+  //         scrolling stays native), post-lift it preventDefaults → no
+  //         scroll takeover → no pointercancel.
+  //      2. hold still 450ms → lift: ghost clone mounts, setPointerCapture,
+  //         parent shows the drop tray. The tile carries permanent inline
+  //         userSelect/WebkitTouchCallout "none", so the ~500ms iOS text
+  //         callout/magnifier never arms.
+  //      3. finger moves → cancelable touchmove hits our handler → it
+  //         preventDefaults, drives the ghost, and streams coords to the
+  //         parent (rAF-throttled hit-test). Pointer events stay alive.
+  //      4. finger up → pointerup (fires before touchend) finishes the drop
+  //         and clears state; the document touchend then sees no drag and
+  //         no-ops. A click may follow — suppressClickRef swallows it.
+  //
+  //    Android Chrome:
+  //      1-2. same arming; Chrome would show the long-press context menu at
+  //         ~500ms, but our 450ms lift wins and the tile's onContextMenu
+  //         preventDefaults while a drag is armed/live, so the menu (which
+  //         would cancel the pointer stream) never opens.
+  //      3. Chrome respects preventDefault from the pre-registered handler
+  //         the same way; additionally, if the engine still emits a stray
+  //         pointercancel while the drag is LIVE, we do NOT end the drag
+  //         from it (see onPointerCancel) — the document touchmove keeps
+  //         driving the ghost and document touchend/touchcancel finish it.
+  //
+  //    The parent's drop tray mounts on its own touchDragMemId state, set at
+  //    lift and cleared only by onTouchDragEnd — so with pointercancel no
+  //    longer ending live drags the tray stays mounted for the whole drag. ──
   const touchDrag = useRef<{
     id: string; startX: number; startY: number;
+    lastX: number; lastY: number;
     timer: ReturnType<typeof setTimeout> | null;
     active: boolean; clone: HTMLDivElement | null;
     ox: number; oy: number; scale: boolean;
+    pointerLost: boolean;
   } | null>(null);
-  const blockScrollRef = useRef<((ev: TouchEvent) => void) | null>(null);
+  // Removes the document-level touchmove/touchend/touchcancel trio attached
+  // at pointerdown; always torn down via clearTouchDrag.
+  const docCleanupRef = useRef<(() => void) | null>(null);
   // A completed long-press drag must not double as a tap (click fires after pointerup)
   const suppressClickRef = useRef(false);
   const [touchDraggingId, setTouchDraggingId] = useState<string | null>(null);
@@ -309,7 +355,7 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
     const st = touchDrag.current;
     if (st?.timer) clearTimeout(st.timer);
     if (st?.clone) st.clone.remove();
-    if (blockScrollRef.current) { window.removeEventListener("touchmove", blockScrollRef.current); blockScrollRef.current = null; }
+    if (docCleanupRef.current) { docCleanupRef.current(); docCleanupRef.current = null; }
     touchDrag.current = null;
     setTouchDraggingId(null);
   }, []);
@@ -409,23 +455,69 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                       clearTouchDrag();
                       const st = {
                         id: item.id, startX: e.clientX, startY: e.clientY,
+                        lastX: e.clientX, lastY: e.clientY,
                         timer: null as ReturnType<typeof setTimeout> | null,
                         active: false, clone: null as HTMLDivElement | null,
                         ox: e.clientX - rect.left, oy: e.clientY - rect.top,
-                        scale: true,
+                        scale: true, pointerLost: false,
+                      };
+                      // NON-PASSIVE touchmove attached at gesture start (iOS latches
+                      // the scroll decision then; adding it at lift is too late).
+                      // Guarded: it only preventDefaults once the drag is LIVE, so
+                      // pre-lift scrolling stays native. It also drives the ghost
+                      // from the raw touch stream, so a stray pointercancel cannot
+                      // strand a live drag.
+                      const onDocTouchMove = (ev: TouchEvent) => {
+                        const cur = touchDrag.current;
+                        if (!cur || cur.id !== st.id || !cur.active) return;
+                        const tgt = ev.target as HTMLElement | null;
+                        if (tgt?.closest?.("[data-drop-tray]")) return; // tray stays scrollable
+                        ev.preventDefault();
+                        const touch = ev.touches[0];
+                        if (touch) {
+                          cur.lastX = touch.clientX; cur.lastY = touch.clientY;
+                          if (cur.clone) cur.clone.style.transform = `translate(${touch.clientX - cur.ox}px, ${touch.clientY - cur.oy}px)${cur.scale ? " scale(1.05)" : ""}`;
+                          onTouchDragMove?.(touch.clientX, touch.clientY);
+                        }
+                      };
+                      // Fallback finishers: on the normal path pointerup (which fires
+                      // BEFORE touchend) already cleared state, so these no-op. They
+                      // only complete drags whose pointer stream died (pointercancel).
+                      const onDocTouchEnd = (ev: TouchEvent) => {
+                        const cur = touchDrag.current;
+                        if (!cur || cur.id !== st.id) return;
+                        const wasActive = cur.active;
+                        const touch = ev.changedTouches[0];
+                        const x = touch ? touch.clientX : cur.lastX;
+                        const y = touch ? touch.clientY : cur.lastY;
+                        clearTouchDrag();
+                        if (wasActive) {
+                          suppressClickRef.current = true;
+                          window.setTimeout(() => { suppressClickRef.current = false; }, 350);
+                          onTouchDragEnd?.(x, y);
+                        }
+                      };
+                      const onDocTouchCancel = () => {
+                        const cur = touchDrag.current;
+                        if (!cur || cur.id !== st.id) return;
+                        const wasActive = cur.active;
+                        clearTouchDrag();
+                        // off-screen coords: the parent's hit-test misses and just clears state
+                        if (wasActive) onTouchDragEnd?.(-9999, -9999);
+                      };
+                      window.addEventListener("touchmove", onDocTouchMove, { passive: false });
+                      window.addEventListener("touchend", onDocTouchEnd);
+                      window.addEventListener("touchcancel", onDocTouchCancel);
+                      docCleanupRef.current = () => {
+                        window.removeEventListener("touchmove", onDocTouchMove);
+                        window.removeEventListener("touchend", onDocTouchEnd);
+                        window.removeEventListener("touchcancel", onDocTouchCancel);
                       };
                       st.timer = setTimeout(() => {
                         st.timer = null;
                         st.active = true;
                         // reduced motion: no scale lift, drag stays functional
                         st.scale = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-                        const block = (ev: TouchEvent) => {
-                          const tgt = ev.target as HTMLElement | null;
-                          if (tgt?.closest?.("[data-drop-tray]")) return; // tray stays scrollable
-                          ev.preventDefault();
-                        };
-                        blockScrollRef.current = block;
-                        window.addEventListener("touchmove", block, { passive: false });
                         const clone = document.createElement("div");
                         clone.style.cssText = `position:fixed;left:0;top:0;width:${rect.width}px;height:${rect.height}px;z-index:10060;pointer-events:none;opacity:0.85;overflow:hidden;box-shadow:0 0.75rem 2rem rgba(36,28,21,0.35);`;
                         const ghost = el.cloneNode(true) as HTMLElement;
@@ -442,14 +534,11 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                     } : undefined}
                     onPointerMove={touchMovable ? (e) => {
                       const st = touchDrag.current;
-                      if (!st || st.id !== item.id) return;
-                      if (!st.active) {
-                        // >8px before the threshold = a scroll/pan, not a lift
-                        if (Math.hypot(e.clientX - st.startX, e.clientY - st.startY) > 8) clearTouchDrag();
-                        return;
-                      }
-                      if (st.clone) st.clone.style.transform = `translate(${e.clientX - st.ox}px, ${e.clientY - st.oy}px)${st.scale ? " scale(1.05)" : ""}`;
-                      onTouchDragMove?.(e.clientX, e.clientY);
+                      // active drags are driven by the document touchmove stream
+                      // (survives pointercancel); here we only watch the pre-lift
+                      // window: >8px before the threshold = a scroll/pan, not a lift
+                      if (!st || st.id !== item.id || st.active) return;
+                      if (Math.hypot(e.clientX - st.startX, e.clientY - st.startY) > 8) clearTouchDrag();
                     } : undefined}
                     onPointerUp={touchMovable ? (e) => {
                       const st = touchDrag.current;
@@ -466,10 +555,16 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                     } : undefined}
                     onPointerCancel={touchMovable ? () => {
                       const st = touchDrag.current;
-                      const wasActive = !!st?.active;
-                      clearTouchDrag();
-                      // off-screen coords: the parent's hit-test misses and just clears state
-                      if (wasActive) onTouchDragEnd?.(-9999, -9999);
+                      if (!st || st.id !== item.id) return;
+                      // Pre-lift: a pointercancel IS the browser taking the gesture
+                      // for scrolling — just disarm the timer.
+                      if (!st.active) { clearTouchDrag(); return; }
+                      // LIVE drag: do NOT end it from pointercancel alone — with the
+                      // pre-registered non-passive touchmove blocker this should not
+                      // happen, but if an engine still emits one, the document
+                      // touchmove keeps driving the ghost and the document
+                      // touchend/touchcancel finish the drop (final cleanup).
+                      st.pointerLost = true;
                     } : undefined}
                     draggable={movable}
                     onDragStart={movable ? (e) => {

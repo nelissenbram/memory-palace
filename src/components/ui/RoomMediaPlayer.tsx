@@ -7,6 +7,7 @@ import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
 import type { Mem } from "@/lib/constants/defaults";
 import Image from "next/image";
 import { MediaThumb } from "./MediaThumb";
+import { CalendarIcon, MapPinIcon, PeopleIcon, EyeIcon, DoorIcon, ShareIcon, RestoreIcon, TrashIcon } from "./MemoryDetail";
 
 interface RoomMediaPlayerProps {
   memories: Mem[];
@@ -16,6 +17,10 @@ interface RoomMediaPlayerProps {
   onUpdate?: (memId: string, updates: Partial<Mem>) => void;
   /** where this memory lives in the palace — shown as "Wing › Room" provenance */
   storedIn?: (memId: string) => { wing: string; room: string; accent: string } | null;
+  /** Quick-actions chip row (same actions as MemoryDetail's bar): tapping a
+   *  chip hands the current memory + action id back to the parent, which opens
+   *  MemoryDetail with that ActionCard pre-expanded (initialAction). */
+  onQuickAction?: (mem: Mem, actionId: string) => void;
 }
 
 /* ─── Styles injected once ─── */
@@ -30,10 +35,13 @@ const PLAYER_STYLES = `
 .rmp-ctrl-btn:hover { background: rgba(255,255,255,0.18) !important; }
 `;
 
-export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdit, onUpdate, storedIn }: RoomMediaPlayerProps) {
+export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdit, onUpdate, storedIn, onQuickAction }: RoomMediaPlayerProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
+  // Chip labels reuse MemoryDetail's namespace so viewer chips and the
+  // ActionCards they open always carry identical wording.
+  const { t: tmd } = useTranslation("memoryDetail");
 
   const [index, setIndex] = useState(Math.max(0, Math.min(initialIndex, memories.length - 1)));
   const [autoPlay, setAutoPlay] = useState(false);
@@ -706,6 +714,66 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
               })}
             </span>
           )}
+        </div>
+      )}
+
+      {/* ─── Quick-actions chip row (same actions as MemoryDetail's bar) ───
+          Always inside the viewer's initial viewport (fixed flex column), so
+          the actions are visible the moment a media item is opened; each chip
+          deep-links into MemoryDetail with that ActionCard pre-opened. */}
+      {onQuickAction && mem && (
+        <div
+          className="rmp-thumb"
+          role="toolbar"
+          aria-label={tmd("quickActions")}
+          style={{
+            flexShrink: 0,
+            display: "flex", gap: "0.375rem",
+            overflowX: "auto", overflowY: "hidden",
+            padding: `0.5rem max(${isMobile ? "0.75rem" : "1.25rem"}, env(safe-area-inset-left, 0px)) 0.375rem`,
+            background: "rgba(36,28,21,0.72)",
+            borderTop: "0.0625rem solid rgba(255,255,255,0.06)",
+          }}
+        >
+          {([
+            { id: "date", label: tmd("dateLabel"), icon: (c: string) => <CalendarIcon color={c} /> },
+            { id: "location", label: tmd("locationLabel"), icon: (c: string) => <MapPinIcon color={c} /> },
+            { id: "people", label: tmd("tagPeople"), icon: (c: string) => <PeopleIcon color={c} /> },
+            { id: "visibility", label: tmd("visibility"), icon: (c: string) => <EyeIcon color={c} /> },
+            { id: "moveRoom", label: tmd("moveToRoom"), icon: (c: string) => <DoorIcon color={c} /> },
+            { id: "share", label: tmd("shareBtn"), icon: (c: string) => <ShareIcon color={c} /> },
+            ...(mem.type === "photo" && mem.dataUrl
+              ? [{ id: "restore", label: tmd("restorePhotoTitle"), icon: (c: string) => <RestoreIcon color={c} /> }]
+              : []),
+            { id: "delete", label: tmd("deleteBtn"), icon: (c: string) => <TrashIcon color={c} /> },
+          ] as { id: string; label: string; icon: (c: string) => React.ReactNode }[]).map((qa) => {
+            const danger = qa.id === "delete";
+            const glyph = danger ? "rgba(224,122,95,0.9)" : "rgba(255,255,255,0.75)";
+            return (
+              <button
+                key={qa.id}
+                type="button"
+                onClick={() => onQuickAction(mem, qa.id)}
+                style={{
+                  flexShrink: 0,
+                  display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                  minHeight: isMobile ? "2.75rem" : "2.25rem",
+                  padding: "0.25rem 0.75rem",
+                  borderRadius: "2rem",
+                  border: `0.0625rem solid ${danger ? "rgba(224,122,95,0.4)" : "rgba(255,255,255,0.15)"}`,
+                  background: "rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                  color: danger ? "rgba(224,122,95,0.9)" : "rgba(255,255,255,0.85)",
+                  whiteSpace: "nowrap",
+                  transition: "background 0.2s ease",
+                }}
+              >
+                {qa.icon(glyph)}
+                <span>{qa.label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 

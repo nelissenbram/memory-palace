@@ -95,6 +95,20 @@ export const MediaThumb = React.memo(function MediaThumb({
   }, [isTextNote, mem.desc, mem.title]);
   const showNoteText = isTextNote && !tinyNote && noteExcerpt.length > 0;
 
+  /* Warm per-memory tint for the paper note: the memory's own hue as a soft
+     wash over the cream, a deeper tone for the fold flap + quill, and faint
+     ruled lines. Falls back to EMBER/TRAY tones when no hue is set. */
+  const hasHue = typeof mem.hue === "number" && Number.isFinite(mem.hue);
+  const noteHue = hasHue ? ((mem.hue % 360) + 360) % 360 : 0;
+  const paperWash = hasHue
+    ? `linear-gradient(150deg, hsl(${noteHue},40%,93%) 0%, ${CREAM} 75%)`
+    : CREAM;
+  const noteDeep = hasHue ? `hsl(${noteHue},45%,45%)` : EMBER_GLYPH;
+  const flapFold = hasHue
+    ? `linear-gradient(225deg, rgba(64,59,54,0.10) 0%, rgba(64,59,54,0.10) 50%, hsl(${noteHue},45%,52%) 50%, hsl(${noteHue},42%,45%) 100%)`
+    : `linear-gradient(225deg, rgba(64,59,54,0.10) 0%, rgba(64,59,54,0.10) 50%, ${TRAY} 50%, ${TRAY} 100%)`;
+  const noteRule = hasHue ? `hsl(${noteHue},30%,85%)` : "rgba(227,214,188,0.7)";
+
   return (
     <div
       style={{
@@ -104,7 +118,7 @@ export const MediaThumb = React.memo(function MediaThumb({
         flexShrink: 0,
         overflow: "hidden",
         position: "relative",
-        background: isTextNote ? CREAM : gradient,
+        background: isTextNote ? paperWash : gradient,
         // Hairline edge so the cream paper reads as a card, never a blank hole
         boxShadow: isTextNote ? "inset 0 0 0 0.0625rem rgba(227,214,188,0.8)" : undefined,
         display: "flex",
@@ -140,16 +154,32 @@ export const MediaThumb = React.memo(function MediaThumb({
               height: tinyNote ? "28%" : "1.125rem",
               maxWidth: "1.25rem",
               maxHeight: "1.25rem",
-              background: `linear-gradient(225deg, rgba(64,59,54,0.10) 0%, rgba(64,59,54,0.10) 50%, ${TRAY} 50%, ${TRAY} 100%)`,
+              background: flapFold,
               borderBottomLeftRadius: "0.125rem",
               boxShadow: "-0.0625rem 0.0625rem 0.125rem rgba(64,59,54,0.08)",
             }}
           />
           {showNoteText ? (
             <>
+              {/* Faint ruled lines under the text — handwritten-note feel.
+                  One rule per text line (0.9625rem = 0.6875rem × 1.4), capped
+                  at 3 via the no-repeat background height. */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  left: "0.5625rem",
+                  right: "0.625rem",
+                  top: "1.5625rem",
+                  bottom: "0.25rem",
+                  backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent calc(0.9625rem - 0.0625rem), ${noteRule} calc(0.9625rem - 0.0625rem), ${noteRule} 0.9625rem)`,
+                  backgroundSize: "100% 2.8875rem",
+                  backgroundRepeat: "no-repeat",
+                }}
+              />
               {/* Quill top-left */}
-              <span style={{ position: "absolute", top: "0.4375rem", left: "0.5rem", color: EMBER_GLYPH, lineHeight: 0 }}>
-                <QuillGlyph size="0.875rem" color={EMBER_GLYPH} opacity={0.8} />
+              <span style={{ position: "absolute", top: "0.4375rem", left: "0.5rem", color: noteDeep, lineHeight: 0 }}>
+                <QuillGlyph size="0.875rem" color={noteDeep} opacity={0.8} />
               </span>
               {/* First words, like a handwritten card */}
               <p
@@ -185,10 +215,10 @@ export const MediaThumb = React.memo(function MediaThumb({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: EMBER_GLYPH,
+                color: noteDeep,
               }}
             >
-              <QuillGlyph size={tinyNote ? "45%" : "38%"} color={EMBER_GLYPH} opacity={0.7} />
+              <QuillGlyph size={tinyNote ? "45%" : "38%"} color={noteDeep} opacity={0.7} />
             </span>
           )}
         </div>

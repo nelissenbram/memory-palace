@@ -16,6 +16,7 @@ import { TypeIcon } from "@/lib/constants/type-icons";
 import { hapticSuccess } from "@/lib/native/haptics";
 import { captureOrPick } from "@/lib/native/camera";
 import { isNative } from "@/lib/native/platform";
+import { RoomIcon, GenericRoomIcon, resolveRoomIconId } from "./WingRoomIcons";
 
 /* ═══ Tuscan line-art icons (terracotta glyph #9A4F2A) — matches ImportHub ═══ */
 const GLYPH = "#9A4F2A"; // Atrium token: terracotta glyph
@@ -224,7 +225,16 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem"}}>
           <div>
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:600,color:"#403B36",margin:0}}>{t("addMemory")}</h3>
-            <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:accent,margin:"0.25rem 0 0"}}>{room?.icon} {room ? translateRoomName(room, tWings) : ""}</p>
+            <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:accent,margin:"0.25rem 0 0",display:"flex",alignItems:"center",gap:"0.3125rem"}}>
+              {room&&(()=>{
+                /* Crafted line-art room glyph, never the raw emoji stored in room.icon */
+                const resolved=resolveRoomIconId(room.id,room.icon);
+                return <span aria-hidden style={{display:"flex",alignItems:"center",flexShrink:0,lineHeight:0}}>
+                  {resolved?<RoomIcon roomId={resolved} wingId={wing?.id} size={14} color={accent}/>:<GenericRoomIcon size={14} color={accent}/>}
+                </span>;
+              })()}
+              {room ? translateRoomName(room, tWings) : ""}
+            </p>
           </div>
           <button onClick={onClose} aria-label={tc("close")} style={{width:isMobile?"2.5rem":"2rem",height:isMobile?"2.5rem":"2rem",borderRadius:isMobile?"1.25rem":"1rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,color:"#716A5E",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}><CloseGlyph size={16}/></button>
         </div>

@@ -7,7 +7,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Wing } from "@/lib/constants/wings";
 import { translateWingName } from "@/lib/constants/wings";
-import { RoomIcon, WingIcon, ROOM_ICON_MAP } from "./WingRoomIcons";
+import { RoomIcon, WingIcon, GenericRoomIcon, resolveRoomIconId, ROOM_ICON_MAP } from "./WingRoomIcons";
 
 interface RoomManagerPanelProps {
   wing: Wing;
@@ -20,21 +20,18 @@ interface RoomManagerPanelProps {
 }
 
 /**
- * Renders a room's icon. Standard SVG room ids (keys of ROOM_ICON_MAP) resolve
- * to their crafted SVG glyph via RoomIcon; anything else (a legacy custom emoji
- * picked before the picker went SVG-only — grandfathered) is rendered as the
- * emoji character itself, so it never collapses into RoomIcon's generic-circle
- * fallback.
+ * Renders a room's icon — always a crafted line-art SVG, never an emoji.
+ * `icon` (the SVG picker stores standard room ids) resolves first, then the
+ * room's own id (default rooms carry an emoji in `icon` but a standard id);
+ * anything unresolved (custom rooms, legacy emoji picks) renders the
+ * GenericRoomIcon door-frame fallback.
  */
-function RoomGlyph({ icon, wingId, size, color }: { icon: string; wingId: string; size: number; color: string }) {
-  if (ROOM_ICON_MAP[icon]) {
-    return <RoomIcon roomId={icon} wingId={wingId} size={size} color={color} />;
+function RoomGlyph({ roomId, icon, wingId, size, color }: { roomId: string; icon?: string; wingId: string; size: number; color: string }) {
+  const resolved = resolveRoomIconId(roomId, icon);
+  if (resolved) {
+    return <RoomIcon roomId={resolved} wingId={wingId} size={size} color={color} />;
   }
-  return (
-    <span aria-hidden style={{ fontSize: `${size / 16}rem`, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      {icon}
-    </span>
-  );
+  return <GenericRoomIcon size={size} color={color} />;
 }
 
 export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: RoomManagerPanelProps) {
@@ -154,8 +151,8 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
 
   const iconPicker = (currentIcon: string, onPick: (icon: string) => void) => (
     <div role="radiogroup" aria-label={t("changeIcon")} style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.hairline}`, padding: touch ? "0.5rem" : "0.625rem", marginTop: "0.375rem" }}>
-      {/* Standard SVG room icons — the full (and only) set; custom emoji picking
-          was removed, existing emoji rooms stay grandfathered via RoomGlyph */}
+      {/* Standard SVG room icons — the full (and only) set; unresolved icons
+          (custom rooms, legacy emoji picks) render the GenericRoomIcon door frame */}
       <div>
         <span style={{ fontSize: "0.75rem", color: T.color.ink, fontWeight: 600, letterSpacing: "0.03em" }}>{t("standardIcons")}</span>
         <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.375rem", flexWrap: "wrap" }}>
@@ -224,7 +221,7 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
                   aria-label={t("changeIcon")}
                   style={{ width: touch ? "2.75rem" : "2.375rem", height: touch ? "2.75rem" : "2.375rem", borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`, background: pickingIconId === room.id ? `${accent}12` : T.color.warmStone, fontSize: "1.25rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s" }}
                   title={t("changeIcon")}>
-                  <RoomGlyph icon={room.icon} wingId={activeWing.id} size={22} color={accent} />
+                  <RoomGlyph roomId={room.id} icon={room.icon} wingId={activeWing.id} size={22} color={accent} />
                 </button>
 
                 {/* Name */}
@@ -301,7 +298,8 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
               <button onClick={() => setShowNewIconPicker(!showNewIconPicker)}
                 style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`, background: T.color.warmStone, fontSize: "1.375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                 title={t("chooseIcon")}>
-                <RoomGlyph icon={newIcon} wingId={activeWing.id} size={24} color={accent} />
+                {/* newIcon is always a standard id from the SVG picker ("ro1" default) */}
+                <RoomGlyph roomId={newIcon} icon={newIcon} wingId={activeWing.id} size={24} color={accent} />
               </button>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("roomNamePlaceholder")} autoFocus
                 onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}

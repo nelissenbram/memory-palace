@@ -34,7 +34,7 @@ import TuscanStyles from "./TuscanStyles";
 import TuscanCard from "./TuscanCard";
 import WingManagerPanel from "@/components/ui/WingManagerPanel";
 import RoomManagerPanel from "@/components/ui/RoomManagerPanel";
-import { WingIcon, RoomIcon, ROOM_ICON_MAP, AllMemoriesIcon } from "./WingRoomIcons";
+import { WingIcon, RoomIcon, GenericRoomIcon, resolveRoomIconId, AllMemoriesIcon } from "./WingRoomIcons";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
@@ -409,6 +409,17 @@ const normalizeDisplayType = (type: string) => {
 // A memory's date, wherever it lives — every date path must use the same fallback.
 const memDate = (m: Mem) => m.createdAt || (m as { date?: string }).date || "";
 
+// Room glyph, resolver-first: `room.icon` holds an EMOJI for default rooms (the
+// ROOM_ICON_MAP is keyed by room ids), so every room glyph goes through
+// resolveRoomIconId(id, icon) → crafted RoomIcon, else the generic door-frame.
+// No emoji fallback anywhere.
+const RoomGlyph = ({ room, wingId, size, color }: { room: { id: string; icon?: string }; wingId?: string; size: number; color: string }) => {
+  const iconId = resolveRoomIconId(room.id, room.icon);
+  return iconId
+    ? <RoomIcon roomId={iconId} wingId={wingId} size={size} color={color} />
+    : <GenericRoomIcon size={size} color={color} />;
+};
+
 // Touch drag & drop: resolve the drop-tray chip (or a descendant) under a
 // viewport point. Negative coords (cancelled drags) always miss.
 const dropRoomIdAt = (x: number, y: number): string | null => {
@@ -502,11 +513,7 @@ function RoomPicker({ wings, getWingRooms, onClose, onPick, t, tc, tWings, title
               </button>
               {rooms.map(r => (
                 <button key={r.id} type="button" onClick={() => onPick(wing.id, r.id)} style={rowStyle}>
-                  {ROOM_ICON_MAP[r.icon] ? (
-                    <RoomIcon roomId={r.icon} wingId={wing.id} size={18} color={wing.accent} />
-                  ) : (
-                    <span aria-hidden style={{ fontSize: "1rem", lineHeight: 1 }}>{r.icon}</span>
-                  )}
+                  <RoomGlyph room={r} wingId={wing.id} size={18} color={wing.accent} />
                   <span style={{ flex: 1 }}>{translateRoomName(r, tWings)}</span>
                   <span aria-hidden="true" style={{ color: "#716A5E", fontSize: "0.75rem" }}>{"›"}</span>
                 </button>
@@ -622,7 +629,7 @@ export default function LibraryView() {
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [facet, setFacet] = useState<null | "place" | "described" | "onthisday">(null);
-  const [detailMem, setDetailMem] = useState<{ mem: Mem; wingId: string; roomId: string } | null>(null);
+  const [detailMem, setDetailMem] = useState<{ mem: Mem; wingId: string; roomId: string; initialAction?: string } | null>(null);
   const [showUploadFor, setShowUploadFor] = useState<{ wingId: string; roomId: string } | null>(null);
   const [movingMem, setMovingMem] = useState<{ mem: Mem; fromRoom: string } | null>(null);
   const [bulkMoving, setBulkMoving] = useState(false);
@@ -1857,7 +1864,7 @@ export default function LibraryView() {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    <RoomIcon roomId={room.id} size={14} color={isActive ? currentWing.accent : "#716A5E"} />
+                    <RoomGlyph room={room} size={14} color={isActive ? currentWing.accent : "#716A5E"} />
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: isActive ? 700 : 500,
                       color: isActive ? currentWing.accent : "#403B36",
@@ -2008,9 +2015,11 @@ export default function LibraryView() {
                 // the dedicated All-Memories mark. LibraryHeaderProps types wingIcon
                 // as string but renders it as a node (`wingId ? <WingIcon/> : wingIcon`),
                 // so the element is slotted via a cast without touching LibraryAnimations.
+                // Real wings pass a WingIcon element too (never the emoji stored in
+                // currentWing.icon) so no path can ever paint the raw emoji.
                 wingIcon={selectedWing === "__all__"
                   ? ((<AllMemoriesIcon size={24} color={headerAccent} />) as unknown as string)
-                  : currentWing.icon}
+                  : ((<WingIcon wingId={currentWing.id} size={24} color={headerAccent} />) as unknown as string)}
                 wingId={selectedWing === "__all__" ? undefined : currentWing.id}
                 wingName={selectedWing === "__all__" ? (t("allMemories") !== "allMemories" ? t("allMemories") : "All Memories") : translateWingName(currentWing, tWings)}
                 wingDesc={selectedWing === "__all__" ? (t("allMemoriesDesc") !== "allMemoriesDesc" ? t("allMemoriesDesc") : "Your whole life, newest first") : (currentWing.descKey ? tWings(currentWing.descKey) : currentWing.desc)}
@@ -2276,7 +2285,7 @@ export default function LibraryView() {
                   }}>
                     <LibraryMemoryCard
                       mem={mem}
-                      subtitle={`${wing.icon} ${translateWingName(wing, tWings)} / ${room.icon} ${translateRoomName(room, tWings)}`}
+                      subtitle={`${translateWingName(wing, tWings)} / ${translateRoomName(room, tWings)}`}
                       accent={wing.accent}
                       searchQuery={query || undefined}
                       animationIndex={i}
@@ -3114,6 +3123,12 @@ export default function LibraryView() {
           }}
           onUpdate={(memId, updates) => { const rid = memRoomMap.get(memId)?.roomId || selectedRoom; if (rid) updateMemory(rid, memId, updates); }}
           storedIn={storedInOf}
+          onQuickAction={(mem, actionId) => {
+            // Viewer chip → MemoryDetail with that ActionCard pre-opened
+            setMediaPlayerIndex(null);
+            const loc = memRoomMap.get(mem.id);
+            setDetailMem({ mem, wingId: loc?.wingId || selectedWing, roomId: loc?.roomId || selectedRoom || "", initialAction: actionId });
+          }}
         />
       )}
 
@@ -3153,6 +3168,7 @@ export default function LibraryView() {
           onClose={() => setDetailMem(null)}
           onDelete={handleDeleteMemory}
           onUpdate={handleUpdateMemory}
+          initialAction={detailMem.initialAction}
         />
       )}
 
@@ -3990,7 +4006,7 @@ export default function LibraryView() {
                           onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = `${wing.accent}12`; }}
                           onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = isCurrent ? `${wing.accent}08` : "transparent"; }}
                         >
-                          <RoomIcon roomId={room.id} size={15} color={wing.accent} />
+                          <RoomGlyph room={room} size={15} color={wing.accent} />
                           <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(room, tWings)}</span>
                           {isCurrent && (
                             <span style={{
@@ -4137,7 +4153,7 @@ export default function LibraryView() {
                           onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = `${wing.accent}12`; }}
                           onMouseLeave={e => { e.currentTarget.style.background = isCurrent ? `${wing.accent}08` : "transparent"; }}
                         >
-                          <RoomIcon roomId={room.id} size={15} color={wing.accent} />
+                          <RoomGlyph room={room} size={15} color={wing.accent} />
                           <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(room, tWings)}</span>
                           {isCurrent && (
                             <span style={{
@@ -4227,7 +4243,7 @@ export default function LibraryView() {
                             color: "#403B36", whiteSpace: "nowrap",
                           }}
                         >
-                          <RoomIcon roomId={r.id} wingId={w.id} size={16} color={w.accent} />
+                          <RoomGlyph room={r} wingId={w.id} size={16} color={w.accent} />
                           {translateRoomName(r, tWings)}
                         </div>
                       );

@@ -16,7 +16,7 @@ import { geocodeAutocomplete } from "@/lib/geocode";
 import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
-import { WingIcon, RoomIcon } from "@/components/ui/WingRoomIcons";
+import { WingIcon, RoomIcon, GenericRoomIcon, resolveRoomIconId } from "@/components/ui/WingRoomIcons";
 import type { GeocodeSuggestion } from "@/lib/geocode";
 
 /* ═══════════════════════════════════════════════════════════
@@ -107,6 +107,10 @@ const ChevronIcon = ({ color, down }: { color?: string; down?: boolean }) => (
     <polyline points="5 3 9 7 5 11"/>
   </svg>
 );
+
+// Reused by the media viewer's quick-actions chip row (RoomMediaPlayer) so the
+// chips carry the exact same glyphs as the ActionCards they deep-link to.
+export { CalendarIcon, MapPinIcon, PeopleIcon, EyeIcon, DoorIcon, ShareIcon, RestoreIcon, TrashIcon };
 
 /* ═══════════════════════════════════════════════════════════
    DISPLAY TYPE SVG ICONS (replacing emoji)
@@ -251,9 +255,12 @@ interface MemoryDetailProps {
   onClose: () => void;
   onDelete: (memId: string) => void;
   onUpdate: (memId: string, updates: Partial<Mem>) => void;
+  /** Deep-link from the media viewer's quick-actions chips: opens with this
+   *  ActionCard pre-expanded and scrolled into view (e.g. "date", "moveRoom"). */
+  initialAction?: string;
 }
 
-export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpdate }: MemoryDetailProps) {
+export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpdate, initialAction }: MemoryDetailProps) {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
   const { t, locale } = useTranslation("memoryDetail");
@@ -268,7 +275,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const [editingTitle, setEditingTitle] = useState(false);
   const [desc, setDesc] = useState(mem.desc || "");
   const [editingDesc, setEditingDesc] = useState(false);
-  const [openAction, setOpenAction] = useState<string | null>(null);
+  const [openAction, setOpenAction] = useState<string | null>(initialAction ?? null);
   const [imageEditing, setImageEditing] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -472,6 +479,22 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
       card?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
     }, 60);
   }, [containerRef]);
+
+  // ── Seeded quick action (viewer chip → detail): the card mounts already
+  //    open (openAction initial state); once the sheet has painted, scroll it
+  //    into the viewport so the pre-opened card is what the user lands on. ──
+  useEffect(() => {
+    if (!initialAction) return;
+    const reduced = typeof window !== "undefined"
+      && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const timer = setTimeout(() => {
+      const card = containerRef.current?.querySelector(`#action-${initialAction}`)?.parentElement;
+      card?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    }, 80);
+    return () => clearTimeout(timer);
+    // mount-only: initialAction is a one-shot seed from the opener
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Effective visibility label (truth-telling) ──
   // Explicit user choice wins; otherwise a memory in a published/shared room
@@ -1480,7 +1503,15 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                                   color: isCurrent ? "#716A5E" : T.color.walnut,
                                 }}
                               >
-                                <RoomIcon roomId={r.id} size={14} color={w.accent} />
+                                {/* resolver-first: `r.icon` is an emoji for default
+                                    rooms — never render it; unresolved custom rooms
+                                    get the generic door-frame glyph */}
+                                {(() => {
+                                  const iconId = resolveRoomIconId(r.id, r.icon);
+                                  return iconId
+                                    ? <RoomIcon roomId={iconId} size={14} color={w.accent} />
+                                    : <GenericRoomIcon size={14} color={w.accent} />;
+                                })()}
                                 <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(r, tWings)}</span>
                                 {isCurrent && <span style={{ fontSize: "0.6875rem", fontWeight: 500, color: w.accent, textTransform: "uppercase" as const }}>{t("currentRoom")}</span>}
                               </button>

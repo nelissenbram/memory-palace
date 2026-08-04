@@ -6,7 +6,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import type { PublishableWing } from "@/lib/social/share-actions";
-import { RoomIcon, ROOM_ICON_MAP } from "@/components/ui/WingRoomIcons";
+import { RoomIcon, GenericRoomIcon, resolveRoomIconId } from "@/components/ui/WingRoomIcons";
 import { wingAccent } from "@/lib/libraryTokens";
 
 interface PublishModalProps {
@@ -295,15 +295,21 @@ export default function PublishModal({
                             onChange={() => toggleRoom(room.id, wing.id)}
                             style={{ accentColor: T.color.ember, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
                           />
-                          {ROOM_ICON_MAP[room.icon] ? (
-                            /* Standard room ids resolve to their crafted SVG glyph */
-                            <span aria-hidden style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-                              <RoomIcon roomId={room.icon} wingId={wing.slug} size={16} color={wingAccent(wing.slug)} />
-                            </span>
-                          ) : (
-                            /* Grandfathered custom emoji keeps rendering as-is */
-                            <span aria-hidden style={{ fontSize: "1rem", lineHeight: 1 }}>{room.icon}</span>
-                          )}
+                          {/* room.icon holds a standard id when picked via the SVG
+                              picker; room.id is the local room id for never-DB-backed
+                              rooms (a uuid once published). Whatever resolves wins;
+                              anything else (custom rooms, legacy emoji) renders the
+                              GenericRoomIcon door frame — never an emoji. */}
+                          <span aria-hidden style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                            {(() => {
+                              const resolved = resolveRoomIconId(room.id, room.icon);
+                              return resolved ? (
+                                <RoomIcon roomId={resolved} wingId={wing.slug} size={16} color={wingAccent(wing.slug)} />
+                              ) : (
+                                <GenericRoomIcon size={16} color={wingAccent(wing.slug)} />
+                              );
+                            })()}
+                          </span>
                           <span style={{
                             fontFamily: T.font.body, fontSize: "0.8125rem",
                             color: T.color.inkSoft,
