@@ -371,33 +371,6 @@ export default function HelpPage() {
           )}
         </section>
 
-        {/* Community link */}
-        <section style={{
-          marginTop: "3rem", padding: "2rem", textAlign: "center",
-          background: `${C.sandstone}12`, borderRadius: "1rem",
-          border: `1px solid ${HAIRLINE_SOFT}`,
-        }}>
-          <p style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal, marginBottom: "0.5rem" }}>
-            {t("communityTitle")}
-          </p>
-          <p style={{ fontSize: "0.875rem", color: C.walnut, lineHeight: 1.6, marginBottom: "1rem" }}>
-            {t("communityDesc")}
-          </p>
-          <a
-            href="https://www.reddit.com/r/TheMemoryPalace/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: "0.5rem",
-              padding: "0.625rem 1.5rem", background: C.terracotta,
-              color: "#FCFAF5", borderRadius: "0.5rem", textDecoration: "none",
-              fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-              transition: "opacity 0.2s",
-            }}
-          >
-            {t("communityBtn")}
-          </a>
-        </section>
       </main>
 
       {/* Footer */}
