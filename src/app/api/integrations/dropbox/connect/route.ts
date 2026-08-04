@@ -24,6 +24,8 @@ export async function GET() {
       redirect_uri: redirectUri,
       response_type: "code",
       token_access_type: "offline",
+      // Dropbox has no select_account; force re-authentication so an existing browser session (wrong account) isn't silently reused and linked.
+      force_reauthentication: "true",
       state,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",

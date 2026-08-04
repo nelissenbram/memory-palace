@@ -6,6 +6,7 @@ import { getPendingInvites, acceptInvite, acceptWingInvite, declineInvite, decli
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { WingIcon } from "@/components/ui/WingRoomIcons";
 
 interface PendingInvite {
   id: string;
@@ -22,6 +23,16 @@ interface PendingInvite {
   canAdd?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+}
+
+/** Inline crafted SVG wing glyph (replaces the legacy emoji wingIcon). */
+function InlineWingGlyph({ wingId }: { wingId?: string }) {
+  if (!wingId) return null;
+  return (
+    <span aria-hidden="true" style={{ display: "inline-flex", verticalAlign: "-0.1875rem", margin: "0 0.125rem" }}>
+      <WingIcon wingId={wingId} size={14} color="#716A5E" />
+    </span>
+  );
 }
 
 interface InviteNotificationsPanelProps {
@@ -201,8 +212,8 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.125rem" }}>
                         {invite.type === "wing"
-                          ? <>{t("shared")} {invite.wingIcon} <strong>{invite.wingName}</strong> {t("wingLabel")}</>
-                          : <>{t("shared")} <strong>{invite.roomName}</strong>{invite.wingName && <span> {t("in")} {invite.wingIcon} {invite.wingName}</span>}</>
+                          ? <>{t("shared")} <InlineWingGlyph wingId={invite.wingId} /> <strong>{invite.wingName}</strong> {t("wingLabel")}</>
+                          : <>{t("shared")} <strong>{invite.roomName}</strong>{invite.wingName && <span> {t("in")} <InlineWingGlyph wingId={invite.wingId} /> {invite.wingName}</span>}</>
                         }
                       </div>
                       <div style={{ display: "flex", gap: "0.375rem", marginTop: "0.375rem" }}>

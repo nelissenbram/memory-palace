@@ -24,7 +24,7 @@ const EMBER_GLYPH_EDGE = `rgba(${EMBER_GLYPH_RGB},0.35)`;    // current-plan bor
 const CARD_SHADOW = `${SHADOW[1]}, ${TOP_HIGHLIGHT}`;
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import CancelFlow from "@/components/ui/CancelFlow";
-import InviteFlow from "@/components/social/InviteFlow";
+import ReferralSection from "@/components/ui/ReferralSection";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 const F = T.font;
@@ -85,10 +85,6 @@ export default function SubscriptionPage() {
   // avoids a visible EUR→local price flip on mount.
   const [currency, setCurrency] = useState<SupportedCurrency>(() => detectCurrency());
   const [loadError, setLoadError] = useState(false);
-  const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [referralCount, setReferralCount] = useState(0);
-  const [referralRewards, setReferralRewards] = useState<{ promo_code: string; created_at: string; redeemed: boolean }[]>([]);
-  const [showInviteFlow, setShowInviteFlow] = useState(false);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -181,18 +177,7 @@ export default function SubscriptionPage() {
           // non-critical — still show the usage card (at 0) rather than hiding it
           setUsage({ storageMb: 0 });
         }
-        // Fetch referral info
-        try {
-          const refRes = await fetch("/api/referral");
-          if (refRes.ok) {
-            const refData = await refRes.json();
-            setReferralCode(refData.referralCode);
-            setReferralCount(refData.referralCount ?? 0);
-            setReferralRewards(refData.rewards ?? []);
-          }
-        } catch {
-          // non-critical
-        }
+        // Referral info is fetched by the shared <ReferralSection /> itself.
       } catch {
         setLoadError(true);
       } finally {
@@ -1328,257 +1313,9 @@ export default function SubscriptionPage() {
       </>
       )}
 
-      {/* Refer a Friend — hidden on iOS: rewards are web/Stripe promo codes that
-          can't apply to Apple IAP, so surfacing them on iOS steers off-platform (3.1.1) */}
-      {referralCode && !isApple && (
-        <>
-        <SectionOverline label={tf("sectionReferFriend", "Refer a friend")} />
-        <div style={{
-          background: CREAM,
-          borderRadius: "1rem",
-          border: `0.0625rem solid ${HAIRLINE}`,
-          padding: "1.75rem 2rem",
-          boxShadow: CARD_SHADOW,
-          marginBottom: "1.5rem",
-        }}>
-          <h3 style={{
-            fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-            color: INK, margin: "0 0 0.375rem",
-          }}>
-            {t("referralTitle")}
-          </h3>
-          <p style={{
-            fontFamily: F.body, fontSize: "0.875rem", color: MUTED,
-            margin: "0 0 1.25rem", lineHeight: 1.5,
-          }}>
-            {t("referralDesc")}
-          </p>
-
-          {/* Referral code display */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: "0.75rem",
-            flexWrap: "wrap", marginBottom: "1rem",
-          }}>
-            <div>
-              <div style={{
-                fontFamily: F.body, fontSize: "0.6875rem", fontWeight: 700,
-                color: MUTED, textTransform: "uppercase", letterSpacing: "0.12em",
-                marginBottom: "0.25rem",
-              }}>
-                {t("referralCode")}
-              </div>
-              <div style={{
-                fontFamily: "monospace", fontSize: "1.25rem", fontWeight: 700,
-                color: INK, letterSpacing: "0.125rem",
-                padding: "0.5rem 1rem",
-                background: CREAM,
-                borderRadius: "0.5rem",
-                border: `0.0625rem solid ${HAIRLINE}`,
-                userSelect: "all",
-              }}>
-                {referralCode}
-              </div>
-            </div>
-
-            <div style={{
-              fontFamily: F.body, fontSize: "0.875rem", color: MUTED,
-              padding: "0.5rem 0.75rem",
-              background: "rgba(86,104,60,0.08)",
-              borderRadius: "0.5rem",
-            }}>
-              {t("referralCount", { count: String(referralCount) })}
-            </div>
-          </div>
-
-          {/* Share actions */}
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-            <button
-              onClick={() => {
-                const link = `https://thememorypalace.ai/register?ref=${referralCode}`;
-                navigator.clipboard.writeText(link).then(() => {
-                  showToast(t("referralCopied"), "success");
-                });
-              }}
-              className="mp-sub-secondary"
-              style={{
-                minHeight: "2.75rem",
-                padding: "0.75rem 1.5rem",
-                borderRadius: "0.75rem",
-                border: `0.0625rem solid ${HAIRLINE}`,
-                background: "transparent",
-                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                color: MUTED,
-                cursor: "pointer",
-                transition: "all .15s",
-                display: "flex", alignItems: "center", gap: "0.5rem",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="9" y="9" width="13" height="13" rx="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-              {t("copyLink")}
-            </button>
-
-            {typeof navigator !== "undefined" && "share" in navigator && (
-              <button
-                className="mp-sub-primary"
-                onClick={() => {
-                  const link = `https://thememorypalace.ai/register?ref=${referralCode}`;
-                  navigator.share({
-                    title: "The Memory Palace",
-                    text: t("referralDesc"),
-                    url: link,
-                  }).catch(() => {});
-                }}
-                style={{
-                  ...emberCta(false),
-                  display: "flex", alignItems: "center", gap: "0.5rem",
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="18" cy="5" r="3"/>
-                  <circle cx="6" cy="12" r="3"/>
-                  <circle cx="18" cy="19" r="3"/>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                </svg>
-                {t("referralShare")}
-              </button>
-            )}
-
-            <button
-              onClick={() => setShowInviteFlow(true)}
-              className="mp-sub-secondary"
-              style={{
-                minHeight: "2.75rem",
-                padding: "0.75rem 1.5rem",
-                borderRadius: "0.75rem",
-                border: `0.0625rem solid ${HAIRLINE}`,
-                background: "transparent",
-                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                color: MUTED,
-                cursor: "pointer",
-                transition: "all .15s",
-                display: "flex", alignItems: "center", gap: "0.5rem",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <line x1="19" y1="8" x2="19" y2="14"/>
-                <line x1="22" y1="11" x2="16" y2="11"/>
-              </svg>
-              {t("inviteFriends")}
-            </button>
-          </div>
-
-          {showInviteFlow && referralCode && (
-            <InviteFlow
-              referralCode={referralCode}
-              targetUrl="https://thememorypalace.ai/register"
-              onClose={() => setShowInviteFlow(false)}
-            />
-          )}
-
-          {/* Earned Rewards */}
-          {referralRewards.length > 0 && (
-            <div style={{ marginTop: "1.5rem" }}>
-              <h4 style={{
-                fontFamily: F.display, fontSize: "1rem", fontWeight: 500,
-                color: INK, margin: "0 0 0.75rem",
-              }}>
-                {t("referralRewardsTitle")}
-              </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {referralRewards.map((reward) => (
-                  <div
-                    key={reward.promo_code}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "0.75rem 1rem",
-                      borderRadius: "0.625rem",
-                      background: reward.redeemed ? TRAY : "rgba(86,104,60,0.07)",
-                      border: `0.0625rem solid ${reward.redeemed ? "rgba(227,214,188,0.7)" : "rgba(86,104,60,0.25)"}`,
-                      flexWrap: "wrap",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <div>
-                      <div style={{
-                        fontFamily: "monospace",
-                        fontSize: "0.9375rem",
-                        fontWeight: 700,
-                        color: reward.redeemed ? MUTED : INK,
-                        letterSpacing: "0.0625rem",
-                        textDecoration: reward.redeemed ? "line-through" : "none",
-                      }}>
-                        {reward.promo_code}
-                      </div>
-                      <div style={{
-                        fontFamily: F.body,
-                        fontSize: isMobile ? "0.8125rem" : "0.75rem",
-                        color: MUTED,
-                        marginTop: "0.125rem",
-                      }}>
-                        {t("referralRewardHint")}
-                      </div>
-                    </div>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}>
-                      <span style={{
-                        fontFamily: F.body,
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        padding: "0.25rem 0.5rem",
-                        borderRadius: "0.375rem",
-                        background: reward.redeemed ? "rgba(113,106,94,0.12)" : "rgba(86,104,60,0.12)",
-                        color: reward.redeemed ? MUTED : SAGE,
-                      }}>
-                        {reward.redeemed ? t("referralRewardRedeemed") : t("referralRewardStatus")}
-                      </span>
-                      {!reward.redeemed && (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(reward.promo_code).then(() => {
-                              showToast(t("referralCopied"), "success");
-                            });
-                          }}
-                          className="mp-sub-secondary"
-                          style={{
-                            minHeight: "2.75rem",
-                            padding: "0.375rem 0.75rem",
-                            borderRadius: "0.375rem",
-                            border: `0.0625rem solid ${HAIRLINE}`,
-                            background: "transparent",
-                            fontFamily: F.body,
-                            fontSize: "0.75rem",
-                            fontWeight: 500,
-                            color: MUTED,
-                            cursor: "pointer",
-                          }}
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "0.25rem" }}>
-                            <rect x="9" y="9" width="13" height="13" rx="2"/>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                          </svg>
-                          {t("copy")}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        </>
-      )}
+      {/* Refer a Friend — shared card (also rendered on settings/sharing).
+          Carries its own overline, data fetch and iOS 3.1.1 gate. */}
+      <ReferralSection />
 
       {/* Canon hover / focus / reduced-motion states (style-only) */}
       <style>{`

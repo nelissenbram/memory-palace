@@ -4,10 +4,13 @@ import { T } from "@/lib/theme";
 import { getAcceptedShares } from "@/lib/auth/invite-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Sheet } from "@/components/ui/Sheet";
+import { WingIcon, RoomIcon, GenericRoomIcon, resolveRoomIconId } from "@/components/ui/WingRoomIcons";
 
 interface WingSubRoom {
   id: string;
   name: string;
+  /** Raw local room id ("ro1") — only used to resolve the crafted SVG icon. */
+  localId?: string;
   icon: string;
   memoryCount: number;
 }
@@ -22,6 +25,8 @@ interface AcceptedShare {
   ownerName: string;
   ownerAvatar: string | null;
   roomName?: string;
+  roomLocalId?: string;
+  roomIcon?: string;
   wingName: string;
   wingIcon: string;
   memoryCount?: number;
@@ -30,6 +35,29 @@ interface AcceptedShare {
   canDelete?: boolean;
   placedInWingId?: string;
   rooms?: WingSubRoom[];
+}
+
+/** Inline crafted SVG wing glyph (replaces the legacy emoji wingIcon). */
+function InlineWingGlyph({ wingId, size = 15 }: { wingId?: string; size?: number }) {
+  if (!wingId) return null;
+  return (
+    <span aria-hidden="true" style={{ display: "inline-flex", verticalAlign: "-0.1875rem", marginRight: "0.25rem" }}>
+      <WingIcon wingId={wingId} size={size} color="#716A5E" />
+    </span>
+  );
+}
+
+/** Inline crafted SVG room glyph — resolved from the room's local id / stored
+ *  icon, generic door-arch fallback. Never emoji. */
+function InlineRoomGlyph({ localId, icon, wingId, size = 15 }: { localId?: string; icon?: string; wingId?: string; size?: number }) {
+  const iconId = resolveRoomIconId(localId || "", icon);
+  return (
+    <span aria-hidden="true" style={{ display: "inline-flex", verticalAlign: "-0.1875rem", marginRight: "0.25rem" }}>
+      {iconId
+        ? <RoomIcon roomId={iconId} wingId={wingId} size={size} color="#716A5E" />
+        : <GenericRoomIcon size={size} color="#716A5E" />}
+    </span>
+  );
 }
 
 interface SharedWithMePanelProps {
@@ -158,7 +186,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
                         {/* Wing header */}
                         <div style={{ display: "flex", gap: "0.5rem", marginBottom: (share.rooms && share.rooms.length > 0) ? "0.625rem" : 0, alignItems: "center" }}>
                           <div style={{ fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: "#403B36" /* Atrium token: ink */ }}>
-                            {share.wingIcon} {share.wingName}
+                            <InlineWingGlyph wingId={share.wingId} /> {share.wingName}
                           </div>
                           <span style={{
                             padding: "0.0625rem 0.375rem", borderRadius: "2rem",
@@ -184,7 +212,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
                                 }}
                               >
                                 <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36" /* Atrium token: ink */ }}>
-                                  {room.icon} {room.name}
+                                  <InlineRoomGlyph localId={room.localId} icon={room.icon} wingId={share.wingId} /> {room.name}
                                 </span>
                                 <span style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
                                   <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */ }}>
@@ -215,12 +243,12 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
                       >
                         <div>
                           <div style={{ fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: "#403B36" /* Atrium token: ink */ }}>
-                            {share.roomName}
+                            <InlineRoomGlyph localId={share.roomLocalId} icon={share.roomIcon} wingId={share.wingId} /> {share.roomName}
                           </div>
                           <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem", alignItems: "center" }}>
                             {share.wingName && (
                               <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */ }}>
-                                {share.wingIcon} {share.wingName}
+                                <InlineWingGlyph wingId={share.wingId} size={13} /> {share.wingName}
                               </span>
                             )}
                             <span style={{

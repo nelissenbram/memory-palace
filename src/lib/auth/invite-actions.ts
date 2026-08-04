@@ -1,9 +1,17 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import { serverT, getServerLocale } from "@/lib/i18n/server";
 import { serverError } from "@/lib/i18n/server-errors";
+import {
+  loadOwnerNameMaps,
+  loadOwnerNameMapsBulk,
+  resolveRoomDisplay,
+  resolveWingDisplayName,
+  type OwnerNameMaps,
+} from "@/lib/auth/share-display-names";
+
+const EMPTY_MAPS: OwnerNameMaps = { customRooms: {}, customWings: {}, extraWings: [] };
 
 // ── Helper: merge two share result sets by id (dedupe) and sort newest-first ──
 // Used to replace injectable .or(shared_with_email/shared_with_id) filters with
@@ -23,39 +31,26 @@ function mergeById<T extends { id: string }>(
   });
 }
 
-// ── Helper: resolve local room ID to display name ──
-function roomDisplayName(dbName: string): string {
-  for (const rooms of Object.values(WING_ROOMS)) {
-    const match = rooms.find((r: { id: string; name: string }) => r.id === dbName);
-    if (match) return match.name;
-  }
-  return dbName;
+// ── Helper: resolve wing name/icon through the OWNER's tailored maps ──
+// (mp_custom_wings/mp_extra_wings in the owner's local_settings, then WINGS
+// defaults — see share-display-names.ts.)
+function resolveWingDisplay(slug: string, customName?: string | null, maps: OwnerNameMaps = EMPTY_MAPS) {
+  return resolveWingDisplayName(maps, slug, customName);
 }
 
-// ── Helper: resolve wing name/icon from a wing row ──
-function resolveWingDisplay(slug: string, customName?: string | null) {
-  const wingDef = WINGS.find(w => w.id === slug);
-  if (wingDef) {
-    return { name: wingDef.name, icon: wingDef.icon };
-  }
-  return {
-    name: customName || slug.charAt(0).toUpperCase() + slug.slice(1),
-    icon: "",
-  };
-}
-
-// ── Helper: get wing name/icon from a room's wing_id ──
+// ── Helper: get wing slug + tailored name/icon from a room's wing_id ──
 async function getWingDisplayForRoom(
   client: ReturnType<typeof createAdminClient>,
-  wingId: string
+  wingId: string,
+  maps: OwnerNameMaps = EMPTY_MAPS
 ) {
   const { data: wing } = await client
     .from("wings")
     .select("slug, custom_name")
     .eq("id", wingId)
     .single();
-  if (!wing) return { name: "", icon: "" };
-  return resolveWingDisplay(wing.slug, wing.custom_name);
+  if (!wing) return { name: "", icon: "", slug: "" };
+  return { ...resolveWingDisplayName(maps, wing.slug, wing.custom_name), slug: wing.slug };
 }
 
 // ── Public: get invite details for a ROOM share landing page (no auth required) ──
@@ -78,27 +73,33 @@ export async function getInviteDetails(shareId: string) {
   if (share.status === "declined") return { error: t("invitationDeclined") };
   if (share.status === "expired") return { error: t("invitationExpired") };
 
-  // Get inviter profile
-  const { data: inviter } = await admin
-    .from("profiles")
-    .select("id, display_name, avatar_url")
-    .eq("id", share.owner_id)
-    .single();
-
-  // Get room details
-  const { data: room } = await admin
-    .from("rooms")
-    .select("id, name, wing_id")
-    .eq("id", share.room_id)
-    .single();
+  // Get inviter profile, room details, and the OWNER's tailored-name maps
+  // (rooms.name in the DB is the local room id like "ro1"; the tailored name
+  // lives in the owner's profiles.local_settings — admin client is required
+  // because the visitor can't read another user's profiles row under RLS).
+  const [{ data: inviter }, { data: room }, ownerMaps] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .eq("id", share.owner_id)
+      .single(),
+    admin
+      .from("rooms")
+      .select("id, name, icon, wing_id")
+      .eq("id", share.room_id)
+      .single(),
+    loadOwnerNameMaps(admin, share.owner_id),
+  ]);
 
   // Get wing info
   let wingName = "";
   let wingIcon = "";
+  let wingSlug = "";
   if (room?.wing_id) {
-    const wingDisplay = await getWingDisplayForRoom(admin, room.wing_id);
+    const wingDisplay = await getWingDisplayForRoom(admin, room.wing_id, ownerMaps);
     wingName = wingDisplay.name;
     wingIcon = wingDisplay.icon;
+    wingSlug = wingDisplay.slug;
   }
 
   // Get memory count in the room
@@ -108,6 +109,7 @@ export async function getInviteDetails(shareId: string) {
     .eq("room_id", share.room_id);
 
   const locale = await getServerLocale();
+  const roomDisplay = room ? resolveRoomDisplay(ownerMaps, room.name, wingSlug) : { name: null, icon: "" };
   return {
     invite: {
       id: share.id,
@@ -122,9 +124,14 @@ export async function getInviteDetails(shareId: string) {
       avatarUrl: inviter?.avatar_url || null,
     },
     room: {
-      name: room?.name || serverT("aMemoryRoom", locale),
+      // Tailored (owner-renamed) name; never the raw local id ("ro1").
+      name: roomDisplay.name || serverT("aMemoryRoom", locale),
+      // Raw local id ("ro1") — lets the client resolve the crafted SVG icon.
+      localId: room?.name || "",
+      icon: roomDisplay.icon || room?.icon || "",
     },
     wing: {
+      slug: wingSlug,
       name: wingName,
       icon: wingIcon,
     },
@@ -151,22 +158,24 @@ export async function getWingInviteDetails(shareId: string) {
   if (share.status === "declined") return { error: t("invitationDeclined") };
   if (share.status === "expired") return { error: t("invitationExpired") };
 
-  // Get inviter profile
-  const { data: inviter } = await admin
-    .from("profiles")
-    .select("id, display_name, avatar_url")
-    .eq("id", share.owner_id)
-    .single();
+  // Get inviter profile, wing row (join via slug + owner_id), and the OWNER's
+  // tailored-name maps (wing renames live in the owner's local_settings).
+  const [{ data: inviter }, { data: wing }, ownerMaps] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .eq("id", share.owner_id)
+      .single(),
+    admin
+      .from("wings")
+      .select("id, slug, custom_name, accent_color")
+      .eq("slug", share.wing_id)
+      .eq("user_id", share.owner_id)
+      .single(),
+    loadOwnerNameMaps(admin, share.owner_id),
+  ]);
 
-  // Get wing info (join via slug + owner_id)
-  const { data: wing } = await admin
-    .from("wings")
-    .select("id, slug, custom_name, accent_color")
-    .eq("slug", share.wing_id)
-    .eq("user_id", share.owner_id)
-    .single();
-
-  const wingDisplay = resolveWingDisplay(share.wing_id, wing?.custom_name);
+  const wingDisplay = resolveWingDisplay(share.wing_id, wing?.custom_name, ownerMaps);
 
   // Get room count for this wing
   let roomCount = 0;
@@ -214,6 +223,7 @@ export async function getWingInviteDetails(shareId: string) {
       avatarUrl: inviter?.avatar_url || null,
     },
     wing: {
+      slug: share.wing_id,
       name: wingDisplay.name,
       icon: wingDisplay.icon,
       accentColor: wing?.accent_color || null,
@@ -459,6 +469,9 @@ export async function getPendingInvites() {
 
   const loc = await getServerLocale();
   const nameMap: Record<string, { name: string; avatar: string | null }> = {};
+  // Each OWNER's tailored wing/room names (their local_settings, admin read).
+  const ownerMapsById = await loadOwnerNameMapsBulk(admin, Array.from(ownerIds));
+  const mapsFor = (ownerId: string) => ownerMapsById[ownerId] || EMPTY_MAPS;
   if (ownerIds.size > 0) {
     const { data: profiles } = await admin
       .from("profiles")
@@ -477,19 +490,23 @@ export async function getPendingInvites() {
     (roomShares || []).map(async (share) => {
       const { data: room } = await admin
         .from("rooms")
-        .select("name, wing_id")
+        .select("name, icon, wing_id")
         .eq("id", share.room_id)
         .single();
 
       let wingName = "";
       let wingIcon = "";
+      let wingSlug = "";
       if (room?.wing_id) {
-        const wingDisplay = await getWingDisplayForRoom(admin, room.wing_id);
+        const wingDisplay = await getWingDisplayForRoom(admin, room.wing_id, mapsFor(share.owner_id));
         wingName = wingDisplay.name;
         wingIcon = wingDisplay.icon;
+        wingSlug = wingDisplay.slug;
       }
 
       const inviter = nameMap[share.owner_id] || { name: serverT("someone", loc), avatar: null };
+      // Tailored room name — rooms.name holds the local id ("ro1"); never show it raw.
+      const rd = room ? resolveRoomDisplay(mapsFor(share.owner_id), room.name, wingSlug) : { name: null, icon: "" };
 
       return {
         id: share.id,
@@ -499,7 +516,10 @@ export async function getPendingInvites() {
         createdAt: share.created_at,
         inviterName: inviter.name,
         inviterAvatar: inviter.avatar,
-        roomName: room?.name || serverT("aRoom", loc),
+        roomName: rd.name || serverT("aRoom", loc),
+        roomLocalId: room?.name || "",
+        roomIcon: rd.icon || room?.icon || "",
+        wingId: wingSlug,
         wingName,
         wingIcon,
       };
@@ -508,7 +528,7 @@ export async function getPendingInvites() {
 
   // Enrich wing invites
   const enrichedWings = (wingShares || []).map((share) => {
-    const wingDisplay = resolveWingDisplay(share.wing_id);
+    const wingDisplay = resolveWingDisplay(share.wing_id, null, mapsFor(share.owner_id));
     const inviter = nameMap[share.owner_id] || { name: serverT("someone", loc), avatar: null };
 
     return {
@@ -582,6 +602,9 @@ export async function getAcceptedShares() {
 
   const loc2 = await getServerLocale();
   const nameMap: Record<string, { name: string; avatar: string | null }> = {};
+  // Each OWNER's tailored wing/room names (their local_settings, admin read).
+  const ownerMapsById = await loadOwnerNameMapsBulk(admin, Array.from(ownerIds));
+  const mapsFor = (ownerId: string) => ownerMapsById[ownerId] || EMPTY_MAPS;
   if (ownerIds.size > 0) {
     const { data: profiles } = await admin
       .from("profiles")
@@ -600,16 +623,18 @@ export async function getAcceptedShares() {
     (roomShares || []).map(async (share) => {
       const { data: room } = await admin
         .from("rooms")
-        .select("name, wing_id")
+        .select("name, icon, wing_id")
         .eq("id", share.room_id)
         .single();
 
       let wingName = "";
       let wingIcon = "";
+      let wingSlug = "";
       if (room?.wing_id) {
-        const wingDisplay = await getWingDisplayForRoom(admin, room.wing_id);
+        const wingDisplay = await getWingDisplayForRoom(admin, room.wing_id, mapsFor(share.owner_id));
         wingName = wingDisplay.name;
         wingIcon = wingDisplay.icon;
+        wingSlug = wingDisplay.slug;
       }
 
       const { count } = await admin
@@ -618,6 +643,8 @@ export async function getAcceptedShares() {
         .eq("room_id", share.room_id);
 
       const owner = nameMap[share.owner_id] || { name: serverT("someone", loc2), avatar: null };
+      // Tailored room name — rooms.name holds the local id ("ro1"); never show it raw.
+      const rd = room ? resolveRoomDisplay(mapsFor(share.owner_id), room.name, wingSlug) : { name: null, icon: "" };
 
       return {
         id: share.id,
@@ -627,7 +654,10 @@ export async function getAcceptedShares() {
         acceptedAt: share.accepted_at,
         ownerName: owner.name,
         ownerAvatar: owner.avatar,
-        roomName: room ? roomDisplayName(room.name) : serverT("aRoom", loc2),
+        roomName: rd.name || serverT("aRoom", loc2),
+        roomLocalId: room?.name || "",
+        roomIcon: rd.icon || room?.icon || "",
+        wingId: wingSlug,
         wingName,
         wingIcon,
         memoryCount: count || 0,
@@ -642,7 +672,7 @@ export async function getAcceptedShares() {
   // Enrich wing shares (fetch rooms for each shared wing)
   const enrichedWings = await Promise.all(
     (wingShares || []).map(async (share) => {
-      const wingDisplay = resolveWingDisplay(share.wing_id);
+      const wingDisplay = resolveWingDisplay(share.wing_id, null, mapsFor(share.owner_id));
       const owner = nameMap[share.owner_id] || { name: serverT("someone", loc2), avatar: null };
 
       // Fetch the owner's wing UUID from slug + owner_id
@@ -654,7 +684,7 @@ export async function getAcceptedShares() {
         .single();
 
       // Fetch rooms in the wing
-      let rooms: { id: string; name: string; icon: string; memoryCount: number }[] = [];
+      let rooms: { id: string; name: string; localId: string; icon: string; memoryCount: number }[] = [];
       if (wing) {
         const { data: wingRooms } = await admin
           .from("rooms")
@@ -676,12 +706,17 @@ export async function getAcceptedShares() {
             countMap[m.room_id] = (countMap[m.room_id] || 0) + 1;
           });
 
-          rooms = wingRooms.map((r: { id: string; name: string; icon: string }) => ({
-            id: r.id,
-            name: r.name,
-            icon: r.icon || "",
-            memoryCount: countMap[r.id] || 0,
-          }));
+          rooms = wingRooms.map((r: { id: string; name: string; icon: string }) => {
+            // Tailored room name via the owner's maps — r.name is the local id.
+            const rd = resolveRoomDisplay(mapsFor(share.owner_id), r.name, share.wing_id);
+            return {
+              id: r.id,
+              name: rd.name || serverT("aRoom", loc2),
+              localId: r.name,
+              icon: rd.icon || r.icon || "",
+              memoryCount: countMap[r.id] || 0,
+            };
+          });
         }
       }
 

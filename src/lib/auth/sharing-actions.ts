@@ -1,9 +1,14 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import { serverError } from "@/lib/i18n/server-errors";
 import { serverT, getServerLocale } from "@/lib/i18n/server";
+import {
+  loadOwnerNameMaps,
+  loadOwnerNameMapsBulk,
+  resolveRoomDisplay,
+  resolveWingDisplayName,
+} from "@/lib/auth/share-display-names";
 
 // Map local room ID prefix to wing slug
 function wingSlugFromRoomId(localRoomId: string): string {
@@ -327,10 +332,19 @@ export async function getWingsSharedWithMe() {
 
   if (!shares || shares.length === 0) return { shares: [] };
 
-  // Resolve owner display names from profiles
+  // Resolve owner display names from profiles + each owner's tailored wing
+  // names (mp_custom_wings in the OWNER's local_settings — recipient context,
+  // so this goes through the admin client; see share-display-names.ts).
   const loc2 = await getServerLocale();
   const ownerIds = [...new Set(shares.map((s) => s.owner_id))];
   const nameMap: Record<string, string> = {};
+  const [ownerMaps, { data: wingRows }] = await Promise.all([
+    loadOwnerNameMapsBulk(admin, ownerIds),
+    admin
+      .from("wings")
+      .select("user_id, slug, custom_name")
+      .in("user_id", ownerIds),
+  ]);
   if (ownerIds.length > 0) {
     const { data: profiles } = await admin
       .from("profiles")
@@ -340,11 +354,23 @@ export async function getWingsSharedWithMe() {
       nameMap[p.id] = p.display_name || serverT("someone", loc2);
     });
   }
+  const dbCustomName: Record<string, string | null> = {};
+  (wingRows || []).forEach((w: { user_id: string; slug: string; custom_name: string | null }) => {
+    dbCustomName[`${w.user_id}:${w.slug}`] = w.custom_name;
+  });
 
-  const enrichedShares = shares.map((s) => ({
-    ...s,
-    owner_name: nameMap[s.owner_id] || serverT("someone", loc2),
-  }));
+  const enrichedShares = shares.map((s) => {
+    const wd = resolveWingDisplayName(
+      ownerMaps[s.owner_id] || { customRooms: {}, customWings: {}, extraWings: [] },
+      s.wing_id,
+      dbCustomName[`${s.owner_id}:${s.wing_id}`]
+    );
+    return {
+      ...s,
+      owner_name: nameMap[s.owner_id] || serverT("someone", loc2),
+      wing_name: wd.name,
+    };
+  });
 
   return { shares: enrichedShares };
 }
@@ -479,21 +505,41 @@ export async function getSharedWingData(shareId: string) {
 
   if (!wing) { const t = await serverError(); return { error: t("wingNotFound") }; }
 
-  // Fetch rooms for this wing
-  const { data: rooms } = await admin
-    .from("rooms")
-    .select("id, name, icon, sort_order, is_shared, created_at")
-    .eq("wing_id", wing.id)
-    .eq("user_id", share.owner_id)
-    .order("sort_order", { ascending: true });
+  // Fetch rooms for this wing + the OWNER's tailored names (recipient context:
+  // rooms.name holds the local room id like "ro1"; renames live in the owner's
+  // profiles.local_settings — admin client, see share-display-names.ts).
+  const [{ data: rooms }, ownerMaps] = await Promise.all([
+    admin
+      .from("rooms")
+      .select("id, name, icon, sort_order, is_shared, created_at")
+      .eq("wing_id", wing.id)
+      .eq("user_id", share.owner_id)
+      .order("sort_order", { ascending: true }),
+    loadOwnerNameMaps(admin, share.owner_id),
+  ]);
+
+  const loc = await getServerLocale();
+  const wingDisplay = resolveWingDisplayName(ownerMaps, wing.slug, wing.custom_name);
 
   return {
     wing: {
       slug: wing.slug,
-      customName: wing.custom_name,
+      name: wingDisplay.name,
+      // customName is display-only downstream — surface the resolved tailored
+      // name so consumers that render customName||slug never show a raw slug.
+      customName: wing.custom_name || wingDisplay.name,
       accentColor: wing.accent_color,
     },
-    rooms: rooms || [],
+    rooms: (rooms || []).map((r) => {
+      const rd = resolveRoomDisplay(ownerMaps, r.name, wing.slug);
+      return {
+        ...r,
+        // Raw local id preserved for icon resolution (resolveRoomIconId).
+        localId: r.name,
+        name: rd.name || serverT("aRoom", loc),
+        icon: rd.icon || r.icon || "",
+      };
+    }),
     permission: share.permission,
     canAdd: share.can_add,
     canEdit: share.can_edit,
@@ -660,6 +706,16 @@ export async function getAllMyShares() {
     });
   }
 
+  // Tailored-name maps: the caller's own (for "sent" rows) plus every share
+  // owner's (for "received" rows). rooms.name in the DB holds the local room id
+  // ("ro1"); renames live in each owner's profiles.local_settings.
+  const nameMapOwnerIds = new Set<string>([user.id]);
+  (receivedWings || []).forEach((s) => nameMapOwnerIds.add(s.owner_id));
+  (receivedRooms || []).forEach((s) => nameMapOwnerIds.add(s.owner_id));
+  const ownerNameMaps = await loadOwnerNameMapsBulk(admin, Array.from(nameMapOwnerIds));
+  const emptyMaps = { customRooms: {}, customWings: {}, extraWings: [] };
+  const mapsFor = (ownerId: string) => ownerNameMaps[ownerId] || emptyMaps;
+
   // Collect room IDs for room name/icon resolution
   const allRoomIds = new Set<string>();
   (sentRooms || []).forEach((s) => allRoomIds.add(s.room_id));
@@ -676,31 +732,25 @@ export async function getAllMyShares() {
     });
   }
 
-  // Resolve room display name: check WING_ROOMS constants first, fall back to DB name
-  function roomDisplayName(dbName: string): string {
-    for (const rooms of Object.values(WING_ROOMS)) {
-      const match = rooms.find((r: { id: string; name: string }) => r.id === dbName);
-      if (match) return match.name;
-    }
-    return dbName;
+  // Resolve room display name/icon through the relevant user's tailored maps
+  // (NEVER surface the raw local id like "ro1").
+  function roomDisplayName(ownerId: string, dbName: string, wingSlug?: string): string {
+    const rd = resolveRoomDisplay(mapsFor(ownerId), dbName, wingSlug);
+    return rd.name || serverT("unknownRoom", loc3);
   }
-  function roomDisplayIcon(dbName: string, dbIcon: string): string {
-    if (dbIcon) return dbIcon;
-    for (const rooms of Object.values(WING_ROOMS)) {
-      const match = rooms.find((r: { id: string; icon: string }) => r.id === dbName);
-      if (match) return match.icon;
-    }
-    return "";
+  function roomDisplayIcon(ownerId: string, dbName: string, dbIcon: string, wingSlug?: string): string {
+    const rd = resolveRoomDisplay(mapsFor(ownerId), dbName, wingSlug);
+    return rd.icon || dbIcon || "";
   }
 
-  // Resolve wing display (slug → name + icon)
-  function wingDisplay(slug: string): { name: string; icon: string } {
-    const def = WINGS.find(w => w.id === slug);
-    return def ? { name: def.name, icon: def.icon } : { name: slug.charAt(0).toUpperCase() + slug.slice(1), icon: "" };
+  // Resolve wing display (slug → tailored name + icon)
+  function wingDisplay(ownerId: string, slug: string, dbCustomName?: string | null): { name: string; icon: string } {
+    return resolveWingDisplayName(mapsFor(ownerId), slug, dbCustomName);
   }
 
-  // Resolve wing name for a room's wing_id (UUID → slug lookup)
+  // Resolve wing slug/custom_name for a room's wing_id (UUID → slug lookup)
   const wingIdToSlug: Record<string, string> = {};
+  const wingIdToCustomName: Record<string, string | null> = {};
   const wingUuids = new Set<string>();
   Object.values(roomInfoMap).forEach((r) => wingUuids.add(r.wing_id));
   if (wingUuids.size > 0) {
@@ -710,13 +760,14 @@ export async function getAllMyShares() {
       .in("id", Array.from(wingUuids));
     (wingRows || []).forEach((w: { id: string; slug: string; custom_name: string | null }) => {
       wingIdToSlug[w.id] = w.slug;
+      wingIdToCustomName[w.id] = w.custom_name;
     });
   }
 
   return {
     sent: {
       wings: (sentWings || []).map((s) => {
-        const wd = wingDisplay(s.wing_id);
+        const wd = wingDisplay(user.id, s.wing_id);
         return {
           ...s,
           type: "wing" as const,
@@ -728,20 +779,20 @@ export async function getAllMyShares() {
       rooms: (sentRooms || []).map((s) => {
         const ri = roomInfoMap[s.room_id];
         const wingSlug = ri ? wingIdToSlug[ri.wing_id] || "" : "";
-        const wd = wingSlug ? wingDisplay(wingSlug) : { name: "", icon: "" };
+        const wd = wingSlug ? wingDisplay(user.id, wingSlug, wingIdToCustomName[ri!.wing_id]) : { name: "", icon: "" };
         return {
           ...s,
           type: "room" as const,
           recipientName: s.shared_with_id ? (nameMap[s.shared_with_id] || s.shared_with_email || serverT("unknown", loc3)) : (s.shared_with_email || serverT("unknown", loc3)),
-          roomName: ri ? roomDisplayName(ri.name) : serverT("unknownRoom", loc3),
-          roomIcon: ri ? roomDisplayIcon(ri.name, ri.icon) : "",
+          roomName: ri ? roomDisplayName(user.id, ri.name, wingSlug) : serverT("unknownRoom", loc3),
+          roomIcon: ri ? roomDisplayIcon(user.id, ri.name, ri.icon, wingSlug) : "",
           wingName: wd.name,
         };
       }),
     },
     received: {
       wings: (receivedWings || []).map((s) => {
-        const wd = wingDisplay(s.wing_id);
+        const wd = wingDisplay(s.owner_id, s.wing_id);
         return {
           ...s,
           type: "wing" as const,
@@ -753,13 +804,13 @@ export async function getAllMyShares() {
       rooms: (receivedRooms || []).map((s) => {
         const ri = roomInfoMap[s.room_id];
         const wingSlug = ri ? wingIdToSlug[ri.wing_id] || "" : "";
-        const wd = wingSlug ? wingDisplay(wingSlug) : { name: "", icon: "" };
+        const wd = wingSlug ? wingDisplay(s.owner_id, wingSlug, wingIdToCustomName[ri!.wing_id]) : { name: "", icon: "" };
         return {
           ...s,
           type: "room" as const,
           ownerName: nameMap[s.owner_id] || serverT("someone", loc3),
-          roomName: ri ? roomDisplayName(ri.name) : serverT("unknownRoom", loc3),
-          roomIcon: ri ? roomDisplayIcon(ri.name, ri.icon) : "",
+          roomName: ri ? roomDisplayName(s.owner_id, ri.name, wingSlug) : serverT("unknownRoom", loc3),
+          roomIcon: ri ? roomDisplayIcon(s.owner_id, ri.name, ri.icon, wingSlug) : "",
           placedInWingName: wd.name,
         };
       }),
@@ -787,13 +838,19 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * surface in the in-app invites panel, which is also how wing shares (which
  * have no email template today) have always been delivered.
  */
-export async function grantAccessByEmail(input: {
-  email: string;
-  /** Fully selected wings; roomIds is the per-room fallback for non-standard wings. */
-  wholeWings: { slug: string; roomIds: string[] }[];
-  /** Individually selected rooms (DB uuid, or local room id for never-persisted rooms). */
-  roomIds: string[];
-}): Promise<{ error?: string; granted?: number; skipped?: number; failed?: number }> {
+export async function grantAccessByEmail(
+  input: {
+    email: string;
+    /** Fully selected wings; roomIds is the per-room fallback for non-standard wings. */
+    wholeWings: { slug: string; roomIds: string[] }[];
+    /** Individually selected rooms (DB uuid, or local room id for never-persisted rooms). */
+    roomIds: string[];
+    /** Tailored display names keyed by the same wing slugs / room ids passed above. */
+    names?: { wings?: Record<string, string>; rooms?: Record<string, string> };
+  },
+  /** Same contract as input.names — accepted positionally too for caller convenience. */
+  namesArg?: { wings?: Record<string, string>; rooms?: Record<string, string> }
+): Promise<{ error?: string; granted?: number; skipped?: number; failed?: number }> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
@@ -918,28 +975,39 @@ export async function grantAccessByEmail(input: {
   // ── One invite email, best-effort (never fails the grant) ──
   if (firstCreatedShare) {
     try {
+      const names = namesArg || input.names;
       const { sendInviteEmail } = await import("@/lib/email/send-invite");
-      const [{ data: profile }, { data: room }] = await Promise.all([
+      const [{ data: profile }, { data: room }, ownerMaps] = await Promise.all([
         supabase.from("profiles").select("display_name").eq("id", user.id).single(),
         supabase.from("rooms").select("name, wing_id").eq("id", firstCreatedShare.room_id).single(),
+        // Fallback source for tailored names when the caller didn't pass them:
+        // the OWNER's (= current user's) synced local_settings.
+        loadOwnerNameMaps(admin, user.id),
       ]);
-      let wingName = "";
+      let wingSlug = "";
+      let wingCustomName: string | null = null;
       if (room?.wing_id) {
         const { data: wing } = await supabase
           .from("wings")
-          .select("slug")
+          .select("slug, custom_name")
           .eq("id", room.wing_id)
           .single();
-        const def = wing ? WINGS.find((w) => w.id === wing.slug) : undefined;
-        if (def) wingName = def.name;
+        wingSlug = wing?.slug || "";
+        wingCustomName = wing?.custom_name || null;
       }
-      // rooms.name stores the local room id for standard rooms — resolve the
-      // human display name from WING_ROOMS, else use the stored name as-is.
-      let roomName = room?.name || "";
-      for (const rooms of Object.values(WING_ROOMS)) {
-        const match = rooms.find((r: { id: string; name: string }) => r.id === roomName);
-        if (match) { roomName = match.name; break; }
-      }
+      // Tailored wing name: caller-provided map first (keyed by slug), then
+      // the owner's mp_custom_wings/mp_extra_wings, then WINGS defaults.
+      const wingName = (wingSlug && names?.wings?.[wingSlug])
+        || (wingSlug ? resolveWingDisplayName(ownerMaps, wingSlug, wingCustomName).name : "");
+      // Tailored room name: rooms.name stores the LOCAL room id ("ro1") —
+      // caller map is keyed by the ids passed to this action (DB uuid or local
+      // id), then the owner's mp_custom_rooms, then WING_ROOMS defaults.
+      // NEVER put the raw local id in the email.
+      const roomName =
+        names?.rooms?.[firstCreatedShare.room_id]
+        || (room?.name ? names?.rooms?.[room.name] : undefined)
+        || (room?.name ? resolveRoomDisplay(ownerMaps, room.name, wingSlug).name : null)
+        || "";
       const result = await sendInviteEmail({
         inviterName: profile?.display_name || user.email?.split("@")[0] || "Someone",
         recipientEmail: email,

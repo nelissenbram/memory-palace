@@ -8,6 +8,7 @@ import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { EMBER, EMBER_GLYPH, HAIRLINE, CREAM, INK, MUTED, SAGE, wingAccent } from "@/lib/libraryTokens";
 import { WingIcon, RoomIcon, GenericRoomIcon, resolveRoomIconId } from "@/components/ui/WingRoomIcons";
 import type { PublishableWing } from "@/lib/social/share-actions";
+import ReferralSection from "@/components/ui/ReferralSection";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 /* Local, well-named accent constants (kept local this pass — shared token files
@@ -568,6 +569,11 @@ export default function SharingPage() {
       <SectionOverline label={tf("sectionFamilyAccess", "Family access")} style={{ marginTop: "1.75rem" }} />
       <FamilyWingSharingSection scale={scale} wings={wings} wingsLoading={loading} />
 
+      {/* Refer a friend — same shared card as settings/subscription (people look
+          for it under both). It carries its own SectionOverline heading, data
+          fetch and iOS 3.1.1 gate, and renders nothing on iOS / without a code. */}
+      <ReferralSection overlineStyle={{ marginTop: "1.75rem" }} />
+
       {/* Canon hover / pressed / focus states (Me-page grammar) */}
       <style>{`
         @media (hover: hover) {
@@ -739,17 +745,24 @@ function FamilyWingSharingSection({ scale, wings, wingsLoading }: {
     }
     // Partition the selection: fully selected wings go as whole-wing grants
     // (wing_shares when the slug supports it, per-room fallback server-side);
-    // partially selected wings contribute their rooms individually.
+    // partially selected wings contribute their rooms individually. Alongside,
+    // collect the display names this UI already renders (custom names resolved
+    // by getMyPublishableContent) keyed by the same wing slugs / room ids, so
+    // the server can label grants/invites with what the sender actually saw.
     const wholeWings: { slug: string; roomIds: string[] }[] = [];
     const roomIds: string[] = [];
+    const names: { wings: Record<string, string>; rooms: Record<string, string> } = { wings: {}, rooms: {} };
     for (const w of wings) {
       if (w.rooms.length === 0) continue;
       const sel = w.rooms.filter((r) => selectedRooms.has(r.id));
       if (sel.length === 0) continue;
       if (sel.length === w.rooms.length) {
         wholeWings.push({ slug: w.slug, roomIds: w.rooms.map((r) => r.id) });
+        names.wings[w.slug] = w.name;
+        for (const r of w.rooms) names.rooms[r.id] = r.name;
       } else {
         roomIds.push(...sel.map((r) => r.id));
+        for (const r of sel) names.rooms[r.id] = r.name;
       }
     }
     if (wholeWings.length === 0 && roomIds.length === 0) {
@@ -759,7 +772,7 @@ function FamilyWingSharingSection({ scale, wings, wingsLoading }: {
     setSending(true);
     try {
       const { grantAccessByEmail } = await import("@/lib/auth/sharing-actions");
-      const result = await grantAccessByEmail({ email, wholeWings, roomIds });
+      const result = await grantAccessByEmail({ email, wholeWings, roomIds, names });
       if (result.error) {
         showToast(result.error, "error");
       } else if ((result.failed || 0) > 0) {
