@@ -284,6 +284,7 @@ export default function HomeView() {
 
   const [personaType, setPersonaType] = useState<string | null>(null);
   const [personaExpanded, setPersonaExpanded] = useState(false);
+  const personaSectionRef = useRef<HTMLDivElement>(null);
   const [legacyExpanded, setLegacyExpanded] = useState(false);
 
   /* P2-3: Last visited room */
@@ -305,6 +306,22 @@ export default function HomeView() {
       const stored = localStorage.getItem("mp_last_visited_room");
       if (stored) setLastVisitedRoom(JSON.parse(stored));
     } catch { /* ignore parse errors */ }
+
+    // Deep-link from the Settings "Retake / Take quiz" CTA (/atrium?persona=1):
+    // expand the persona selector and scroll it into view, then strip the param
+    // so a refresh doesn't re-trigger it.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("persona") === "1") {
+        setPersonaExpanded(true);
+        setTimeout(() => {
+          personaSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 350);
+        params.delete("persona");
+        const q = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (q ? `?${q}` : ""));
+      }
+    } catch { /* SSR / malformed URL — ignore */ }
   }, []);
 
   // Prefetch every room's memories on mount with ONE batched query
@@ -1119,7 +1136,7 @@ export default function HomeView() {
           </div>
 
           {/* ── 2b. PERSONA SELECTOR (collapsible after taken) ── */}
-          <div style={{ marginTop: "2.5rem", ...sectionStyle(2) }}>
+          <div ref={personaSectionRef} style={{ marginTop: "2.5rem", ...sectionStyle(2) }}>
             {personaType && !personaExpanded ? (
               /* Compact summary when persona already selected */
               <div

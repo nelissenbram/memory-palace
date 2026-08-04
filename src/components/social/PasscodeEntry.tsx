@@ -14,18 +14,14 @@ export default function PasscodeEntry() {
   const [code, setCode] = useState("");
   const [validatedShare, setValidatedShare] = useState<ValidatedShare | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const autoRan = useRef(false);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!code.trim()) return;
-
+  const runValidate = (rawCode: string) => {
+    const value = rawCode.trim();
+    if (!value) return;
     startTransition(async () => {
       setError(null);
-      const result = await validatePasscode(code);
+      const result = await validatePasscode(value);
       if (!result.ok) {
         // validatePasscode returns a stable error CODE, not prose, so every
         // locale renders localized copy (previously it always returned raw
@@ -45,6 +41,30 @@ export default function PasscodeEntry() {
         hasRoom: !!result.share?.roomId,
       });
     });
+  };
+
+  useEffect(() => {
+    // Pre-fill + auto-validate from a shared link (/passcode?code=ABC123) so a
+    // recipient who clicks "copy share link" lands on a working gate instead of
+    // an empty field. Guarded to run once so we don't re-hit the rate limiter.
+    if (autoRan.current) return;
+    let urlCode: string | null = null;
+    try {
+      urlCode = new URLSearchParams(window.location.search).get("code");
+    } catch { /* SSR / malformed URL — fall through to manual entry */ }
+    if (urlCode) {
+      autoRan.current = true;
+      const normalized = urlCode.toUpperCase().trim();
+      setCode(normalized);
+      runValidate(normalized);
+    } else {
+      inputRef.current?.focus();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    runValidate(code);
   };
 
   const handleVisit = () => {

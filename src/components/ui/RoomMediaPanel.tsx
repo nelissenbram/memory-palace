@@ -1635,7 +1635,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                         >
                           <RoomIcon roomId={r.id} size={15} color={w.accent} />
                           <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(r, tWings)}</span>
-                          {isCurrent && <span style={{ fontSize: "0.625rem", fontWeight: 500, color: w.accent, textTransform: "uppercase" as const }}>{t("currentRoom")}</span>}
+                          {isCurrent && <span style={{ fontSize: "0.6875rem", fontWeight: 500, color: w.accent, textTransform: "uppercase" as const }}>{t("currentRoom")}</span>}
                         </button>
                       );
                     })}

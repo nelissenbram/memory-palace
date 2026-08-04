@@ -17,7 +17,7 @@ const F = T.font;
    legacy linen/warmStone/sandstone, so this surface shares one source of truth
    with its Library/Atrium siblings. Kept as well-named locals to avoid touching
    the shared token files. */
-const TRAY = "#F2EDE4";    // canon lifted-tray neutral (libraryTokens TRAY)
+const TRAY = "#F6EBE3";    // canon lifted-tray neutral (libraryTokens TRAY)
 const HAIRLINE = "#E3D6BC"; // canon card border (libraryTokens HAIRLINE)
 const SAGE = "#56683C";    // canon sage (libraryTokens SAGE)
 const NEUTRAL_SOFT = "#EDE6D8"; // canon warm neutral for header gradient / secondary fills

@@ -14,6 +14,7 @@ import { useDaylight } from "@/components/providers/DaylightProvider";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRouter } from "next/navigation";
 import { isIOS } from "@/lib/native/platform";
+import { syncSettingsFromServer } from "@/lib/stores/settingsSync";
 import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, TRAY, CREAM, SAGE, GOLD } from "@/lib/libraryTokens";
 
@@ -77,9 +78,18 @@ export default function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
 
-  // Load persona from localStorage
+  // Load persona from localStorage, and re-hydrate when a cross-device settings
+  // sync lands (settingsSync fires "mp-settings-synced" after pulling
+  // profiles.local_settings) so the label doesn't stay stale after retaking the
+  // quiz on another device. We also kick off a sync on mount because this
+  // surface can be opened on a fresh device without ever loading the 3D palace
+  // (the only other place that pulls settings from the server).
   useEffect(() => {
-    setPersonaType(localStorage.getItem("mp_persona_type"));
+    const readPersona = () => setPersonaType(localStorage.getItem("mp_persona_type"));
+    readPersona();
+    window.addEventListener("mp-settings-synced", readPersona);
+    syncSettingsFromServer();
+    return () => window.removeEventListener("mp-settings-synced", readPersona);
   }, []);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
