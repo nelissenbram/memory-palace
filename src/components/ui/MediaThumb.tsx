@@ -1,12 +1,49 @@
 "use client";
 import React from "react";
 import { TypeIcon } from "@/lib/constants/type-icons";
+import { T } from "@/lib/theme";
+import { CREAM, INK, TRAY, EMBER_GLYPH } from "@/lib/libraryTokens";
 import type { Mem } from "@/lib/constants/defaults";
+
+/** Small quill line-glyph for the paper-note tile (Tuscan line-art voice). */
+function QuillGlyph({ size, color, opacity = 1 }: { size: string; color: string; opacity?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ opacity, display: "block" }}
+    >
+      <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
+      <line x1="16" y1="8" x2="2" y2="22" />
+      <line x1="17.5" y1="15" x2="9" y2="15" />
+    </svg>
+  );
+}
+
+/** Best-effort rem value from the size prop (number = rem). Null = unknown
+ *  (e.g. "100%"), which we treat as large enough for the note excerpt. */
+function toRem(size: string | number): number | null {
+  if (typeof size === "number") return size;
+  const rem = /^([\d.]+)rem$/.exec(size.trim());
+  if (rem) return parseFloat(rem[1]);
+  const px = /^([\d.]+)px$/.exec(size.trim());
+  if (px) return parseFloat(px[1]) / 16;
+  return null;
+}
 
 /**
  * Lightweight thumbnail for any memory type.
  * - Photos/paintings: shows dataUrl directly via <img>
  * - Video/audio with stored thumbnailUrl: shows it
+ * - Text/note/story: deliberate "paper note" (cream paper, corner fold, quill,
+ *   first words of the memory in the display serif) — content, not a placeholder
  * - Everything else: gradient + type icon (NO video preloading)
  */
 export const MediaThumb = React.memo(function MediaThumb({
@@ -26,6 +63,7 @@ export const MediaThumb = React.memo(function MediaThumb({
   const isInterview = mem.type === "interview" || mem.type === "voice";
   const isAudio = !isInterview && (mem.type === "audio" || !!mem.voiceBlob);
   const isImage = mem.type === "photo" || mem.type === "painting" || mem.type === "album";
+  const isTextNote = mem.type === "text" || mem.type === "note" || mem.type === "story";
 
   // For images, use dataUrl directly
   const imageUrl = isImage && mem.dataUrl ? mem.dataUrl : null;
@@ -44,6 +82,19 @@ export const MediaThumb = React.memo(function MediaThumb({
 
   const sizeStyle = typeof size === "number" ? `${size}rem` : size;
 
+  /* ── Paper-note (text/note/story) ── */
+  const remSize = toRem(size);
+  const tinyNote = remSize !== null && remSize < 3; // too small for words: paper + quill only
+  const noteExcerpt = React.useMemo(() => {
+    if (!isTextNote) return "";
+    const raw = (mem.desc || mem.title || "").trim();
+    if (!raw) return "";
+    const words = raw.split(/\s+/);
+    const slice = words.slice(0, 10).join(" ");
+    return words.length > 10 ? `${slice}…` : slice;
+  }, [isTextNote, mem.desc, mem.title]);
+  const showNoteText = isTextNote && !tinyNote && noteExcerpt.length > 0;
+
   return (
     <div
       style={{
@@ -53,7 +104,9 @@ export const MediaThumb = React.memo(function MediaThumb({
         flexShrink: 0,
         overflow: "hidden",
         position: "relative",
-        background: gradient,
+        background: isTextNote ? CREAM : gradient,
+        // Hairline edge so the cream paper reads as a card, never a blank hole
+        boxShadow: isTextNote ? "inset 0 0 0 0.0625rem rgba(227,214,188,0.8)" : undefined,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -73,6 +126,72 @@ export const MediaThumb = React.memo(function MediaThumb({
             display: "block",
           }}
         />
+      ) : isTextNote ? (
+        /* ── Paper note: warm cream card, corner fold, quill, first words ── */
+        <div style={{ position: "absolute", inset: 0 }}>
+          {/* Corner fold — top right: cut-away shadow + folded TRAY flap */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              width: tinyNote ? "28%" : "1.125rem",
+              height: tinyNote ? "28%" : "1.125rem",
+              maxWidth: "1.25rem",
+              maxHeight: "1.25rem",
+              background: `linear-gradient(225deg, rgba(64,59,54,0.10) 0%, rgba(64,59,54,0.10) 50%, ${TRAY} 50%, ${TRAY} 100%)`,
+              borderBottomLeftRadius: "0.125rem",
+              boxShadow: "-0.0625rem 0.0625rem 0.125rem rgba(64,59,54,0.08)",
+            }}
+          />
+          {showNoteText ? (
+            <>
+              {/* Quill top-left */}
+              <span style={{ position: "absolute", top: "0.4375rem", left: "0.5rem", color: EMBER_GLYPH, lineHeight: 0 }}>
+                <QuillGlyph size="0.875rem" color={EMBER_GLYPH} opacity={0.8} />
+              </span>
+              {/* First words, like a handwritten card */}
+              <p
+                style={{
+                  position: "absolute",
+                  left: "0.5625rem",
+                  right: "0.625rem",
+                  top: "1.5625rem",
+                  bottom: "0.25rem",
+                  margin: 0,
+                  fontFamily: T.font.display,
+                  fontStyle: "italic",
+                  fontWeight: 500,
+                  fontSize: "0.6875rem",
+                  lineHeight: 1.4,
+                  color: INK,
+                  overflow: "hidden",
+                  display: "-webkit-box",
+                  WebkitLineClamp: remSize !== null && remSize < 6 ? 2 : 3,
+                  WebkitBoxOrient: "vertical" as const,
+                  wordBreak: "break-word",
+                }}
+              >
+                {noteExcerpt}
+              </p>
+            </>
+          ) : (
+            /* No text (or tile too small): centered larger quill on the paper */
+            <span
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: EMBER_GLYPH,
+              }}
+            >
+              <QuillGlyph size={tinyNote ? "45%" : "38%"} color={EMBER_GLYPH} opacity={0.7} />
+            </span>
+          )}
+        </div>
       ) : (
         <TypeIcon type={isInterview ? "interview" : mem.type} size={iconSize} color={iconColor} />
       )}

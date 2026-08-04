@@ -109,11 +109,16 @@ interface PhotoWallProps {
   draggableTiles?: boolean;
   onTileDragStart?: (memId: string) => void;
   onTileDragEnd?: () => void;
+  /** Touch path: long-press lifts the tile, a fixed ghost follows the finger;
+   *  the parent renders a drop tray and hit-tests the end coordinates. */
+  onTouchDragStart?: (memId: string) => void;
+  onTouchDragMove?: (x: number, y: number) => void;
+  onTouchDragEnd?: (x: number, y: number) => void;
 }
 
 type Section = { key: string; label: string; items: (Mem & { ar: number; _i: number })[]; band?: boolean };
 
-function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent, groupBy = "month", sortMode = "newest", roomLabelOf, draggableTiles, onTileDragStart, onTileDragEnd }: PhotoWallProps) {
+function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent, groupBy = "month", sortMode = "newest", roomLabelOf, draggableTiles, onTileDragStart, onTileDragEnd, onTouchDragStart, onTouchDragMove, onTouchDragEnd }: PhotoWallProps) {
   const { t } = useTranslation("library");
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
@@ -284,6 +289,32 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
     scrubClearT.current = window.setTimeout(() => setScrubHover(null), 300);
   };
 
+  // ── Mobile long-press drag: ~450ms hold lifts the tile (cancelled by >8px
+  //    movement or a browser scroll takeover / pointercancel before the
+  //    threshold), then a fixed-position ghost clone follows the finger and
+  //    move/end coordinates stream to the parent for drop-tray hit-testing.
+  //    Page scroll is suppressed only WHILE a drag is active (a second finger
+  //    may still scroll inside the parent's [data-drop-tray]). ──
+  const touchDrag = useRef<{
+    id: string; startX: number; startY: number;
+    timer: ReturnType<typeof setTimeout> | null;
+    active: boolean; clone: HTMLDivElement | null;
+    ox: number; oy: number; scale: boolean;
+  } | null>(null);
+  const blockScrollRef = useRef<((ev: TouchEvent) => void) | null>(null);
+  // A completed long-press drag must not double as a tap (click fires after pointerup)
+  const suppressClickRef = useRef(false);
+  const [touchDraggingId, setTouchDraggingId] = useState<string | null>(null);
+  const clearTouchDrag = React.useCallback(() => {
+    const st = touchDrag.current;
+    if (st?.timer) clearTimeout(st.timer);
+    if (st?.clone) st.clone.remove();
+    if (blockScrollRef.current) { window.removeEventListener("touchmove", blockScrollRef.current); blockScrollRef.current = null; }
+    touchDrag.current = null;
+    setTouchDraggingId(null);
+  }, []);
+  useEffect(() => () => clearTouchDrag(), [clearTouchDrag]);
+
   return (
     <div ref={containerRef} className="il-muro" style={{ position: "relative", width: "100%", paddingRight: isMobile && showRail ? "0.9rem" : undefined }}>
       {/* right-edge jump-to-date rail (thumb-natural zone); hidden with <2 ticks.
@@ -351,6 +382,9 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                 // roledescription so a screen reader hears that the tile is movable
                 // and that select mode carries the pointer-free move path.
                 const movable = !!draggableTiles && !selectMode;
+                // Touch move path (long-press): enabled by the parent's callback,
+                // gated per-event on pointerType === "touch" below.
+                const touchMovable = !!onTouchDragStart && !selectMode;
                 return (
                   <button
                     key={item.id}
@@ -358,8 +392,85 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                     aria-label={ariaName}
                     aria-roledescription={movable ? t("tileMovable") : undefined}
                     aria-pressed={selectMode ? selected : undefined}
-                    onClick={() => (selectMode ? onToggleSelect(item.id) : onOpen(item._i))}
-                    onContextMenu={selectMode ? (e) => { e.preventDefault(); onToggleSelect(item.id); } : undefined}
+                    onClick={() => {
+                      if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+                      if (selectMode) onToggleSelect(item.id); else onOpen(item._i);
+                    }}
+                    onContextMenu={selectMode
+                      ? (e) => { e.preventDefault(); onToggleSelect(item.id); }
+                      : touchMovable
+                        ? (e) => { if (touchDrag.current) e.preventDefault(); }
+                        : undefined}
+                    onPointerDown={touchMovable ? (e) => {
+                      if (e.pointerType !== "touch") return;
+                      const el = e.currentTarget;
+                      const pointerId = e.pointerId;
+                      const rect = el.getBoundingClientRect();
+                      clearTouchDrag();
+                      const st = {
+                        id: item.id, startX: e.clientX, startY: e.clientY,
+                        timer: null as ReturnType<typeof setTimeout> | null,
+                        active: false, clone: null as HTMLDivElement | null,
+                        ox: e.clientX - rect.left, oy: e.clientY - rect.top,
+                        scale: true,
+                      };
+                      st.timer = setTimeout(() => {
+                        st.timer = null;
+                        st.active = true;
+                        // reduced motion: no scale lift, drag stays functional
+                        st.scale = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                        const block = (ev: TouchEvent) => {
+                          const tgt = ev.target as HTMLElement | null;
+                          if (tgt?.closest?.("[data-drop-tray]")) return; // tray stays scrollable
+                          ev.preventDefault();
+                        };
+                        blockScrollRef.current = block;
+                        window.addEventListener("touchmove", block, { passive: false });
+                        const clone = document.createElement("div");
+                        clone.style.cssText = `position:fixed;left:0;top:0;width:${rect.width}px;height:${rect.height}px;z-index:10060;pointer-events:none;opacity:0.85;overflow:hidden;box-shadow:0 0.75rem 2rem rgba(36,28,21,0.35);`;
+                        const ghost = el.cloneNode(true) as HTMLElement;
+                        ghost.style.width = "100%"; ghost.style.height = "100%";
+                        clone.appendChild(ghost);
+                        clone.style.transform = `translate(${st.startX - st.ox}px, ${st.startY - st.oy}px)${st.scale ? " scale(1.05)" : ""}`;
+                        document.body.appendChild(clone);
+                        st.clone = clone;
+                        try { el.setPointerCapture(pointerId); } catch { /* older browsers */ }
+                        setTouchDraggingId(item.id);
+                        onTouchDragStart?.(item.id);
+                      }, 450);
+                      touchDrag.current = st;
+                    } : undefined}
+                    onPointerMove={touchMovable ? (e) => {
+                      const st = touchDrag.current;
+                      if (!st || st.id !== item.id) return;
+                      if (!st.active) {
+                        // >8px before the threshold = a scroll/pan, not a lift
+                        if (Math.hypot(e.clientX - st.startX, e.clientY - st.startY) > 8) clearTouchDrag();
+                        return;
+                      }
+                      if (st.clone) st.clone.style.transform = `translate(${e.clientX - st.ox}px, ${e.clientY - st.oy}px)${st.scale ? " scale(1.05)" : ""}`;
+                      onTouchDragMove?.(e.clientX, e.clientY);
+                    } : undefined}
+                    onPointerUp={touchMovable ? (e) => {
+                      const st = touchDrag.current;
+                      if (!st || st.id !== item.id) return;
+                      const wasActive = st.active;
+                      const x = e.clientX, y = e.clientY;
+                      clearTouchDrag();
+                      if (wasActive) {
+                        suppressClickRef.current = true;
+                        // safety: if no click follows this pointerup, don't swallow the NEXT tap
+                        window.setTimeout(() => { suppressClickRef.current = false; }, 350);
+                        onTouchDragEnd?.(x, y);
+                      }
+                    } : undefined}
+                    onPointerCancel={touchMovable ? () => {
+                      const st = touchDrag.current;
+                      const wasActive = !!st?.active;
+                      clearTouchDrag();
+                      // off-screen coords: the parent's hit-test misses and just clears state
+                      if (wasActive) onTouchDragEnd?.(-9999, -9999);
+                    } : undefined}
                     draggable={movable}
                     onDragStart={movable ? (e) => {
                       e.dataTransfer.setData("application/x-mp-memory", item.id);
@@ -379,11 +490,23 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
                       background: `linear-gradient(135deg, hsl(${item.hue ?? 32},${item.s ?? 30}%,${item.l ?? 78}%), hsl(${((item.hue ?? 32) + 20) % 360},${Math.max((item.s ?? 30) - 5, 15)}%,${Math.max((item.l ?? 78) - 10, 40)}%))`,
                       cursor: "pointer",
                       boxShadow: selected ? `inset 0 0 0 0.1875rem ${EMBER}` : "none",
+                      // dim the source tile while its ghost rides the finger
+                      opacity: touchDraggingId === item.id ? 0.4 : 1,
+                      // long-press must lift, not select text / show the iOS callout
+                      WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none",
                     }}
                   >
                     <span style={{ display: "block", width: "100%", height: "100%", opacity: selected ? 0.82 : 1, transition: "opacity 0.15s ease" }}>
                       <TileMedia mem={item as Mem} iconSize={h > 130 ? 22 : 16} iconColor={EMBER_GLYPH} onMeasured={onMeasured} />
                     </span>
+                    {/* bottom title scrim — hover/focus reveal on hover-capable
+                        devices, always-on (slightly dimmer) on touch; never
+                        covers more than the bottom band of the tile */}
+                    {item.title ? (
+                      <span aria-hidden="true" className="il-muro-title" style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "1.1rem 0.375rem 0.2rem", background: "linear-gradient(180deg, transparent, rgba(36,28,21,0.72))", pointerEvents: "none" }}>
+                        <span style={{ display: "block", fontFamily: T.font.display, fontSize: h > 130 ? "0.8125rem" : "0.6875rem", fontWeight: 600, lineHeight: 1.25, color: CREAM, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</span>
+                      </span>
+                    ) : null}
                     {!selected && tileAccent && tileAccent(item.id) ? (
                       <span aria-hidden="true" style={{ position: "absolute", left: "0.3rem", bottom: "0.3rem", width: "0.4rem", height: "0.4rem", borderRadius: "50%", background: tileAccent(item.id) as string, boxShadow: "0 0 0 0.09375rem rgba(252,250,245,0.85)" }} />
                     ) : null}
@@ -407,6 +530,12 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
       ))}
       <style>{`
         .il-muro-tile { transition: filter 0.15s ease; }
+        /* title scrim: touch (hover:none) default = always visible, compact & dimmer */
+        .il-muro-title { opacity: 0.8; transition: opacity 0.15s ease; }
+        @media (hover: hover) {
+          .il-muro-title { opacity: 0; }
+          .il-muro-tile:hover .il-muro-title, .il-muro-tile:focus-visible .il-muro-title { opacity: 1; }
+        }
         @media (hover: hover) { .il-muro-tile:hover { filter: brightness(1.06); } }
         .il-muro-tile:focus-visible {
           outline: 0.1875rem solid ${GOLD};
@@ -414,7 +543,7 @@ function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect,
           /* second inset contrast ring so the gold focus reads on light AND dark tiles */
           box-shadow: inset 0 0 0 0.0625rem rgba(64,59,54,0.55);
         }
-        @media (prefers-reduced-motion: reduce) { .il-muro-tile { transition: none; } }
+        @media (prefers-reduced-motion: reduce) { .il-muro-tile { transition: none; } .il-muro-title { transition: none; } }
       `}</style>
     </div>
   );

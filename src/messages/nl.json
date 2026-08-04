@@ -1160,6 +1160,7 @@
     "importTimeout": "Import verlopen. Probeer het opnieuw."
   },
   "room": {
+    "published": "Gepubliceerd",
     "manageRooms": "Kamers beheren",
     "wingLabel": "Vleugel {name}",
     "roomCount": "{current} van {max} kamers",
@@ -2406,6 +2407,8 @@
     "noRoomAssigned": "Geen kamer toegewezen — kies een vleugel en kamer en probeer opnieuw."
   },
   "memoryDetail": {
+    "visPublicViaRoom": "Openbaar — deze kamer is gepubliceerd",
+    "quickActions": "Acties",
     "panelTitle": "Herinneringsdetails",
     "description": "Beschrijving",
     "descriptionPlaceholder": "Wat maakt dit moment bijzonder...",
@@ -4269,6 +4272,13 @@
     "dialogLabel": "Kies vleugel voor kamerplaatsing"
   },
   "library": {
+    "roomPickTitle": "Waar moet dit gebeuren?",
+    "roomPickHint": "Kies eerst de vleugel en de kamer.",
+    "appliesToCount": "Geldt voor {count} herinneringen",
+    "locationSearchPlaceholder": "Zoek een plek…",
+    "locationMustPick": "Kies een plek uit de suggesties",
+    "dragHintMobile": "Houd vast en sleep naar een kamer",
+    "dropTrayTitle": "Verplaatsen naar…",
     "capsulePickTitle": "Waar hoort deze capsule thuis?",
     "capsulePickHint": "Kies de vleugel en kamer waar je tijdcapsule komt te wonen. Upload daarna een nieuwe foto of kies er een die je al hebt.",
     "wingLabel": "Vleugel",

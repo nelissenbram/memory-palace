@@ -1160,6 +1160,7 @@
     "importTimeout": "Import timed out. Please try again."
   },
   "room": {
+    "published": "Published",
     "manageRooms": "Manage Rooms",
     "wingLabel": "{name} Wing",
     "roomCount": "{current} of {max} rooms",
@@ -2405,6 +2406,8 @@
     "noRoomAssigned": "No room assigned — pick a wing and room, then try again."
   },
   "memoryDetail": {
+    "visPublicViaRoom": "Public — this room is published",
+    "quickActions": "Actions",
     "panelTitle": "Memory details",
     "description": "Description",
     "descriptionPlaceholder": "What makes this moment special...",
@@ -4267,6 +4270,13 @@
     "dialogLabel": "Choose wing for room placement"
   },
   "library": {
+    "roomPickTitle": "Where should this happen?",
+    "roomPickHint": "Choose the wing and room first.",
+    "appliesToCount": "Applies to {count} memories",
+    "locationSearchPlaceholder": "Search for a place…",
+    "locationMustPick": "Choose a place from the suggestions",
+    "dragHintMobile": "Hold, then drag onto a room",
+    "dropTrayTitle": "Move to…",
     "capsulePickTitle": "Where does this capsule belong?",
     "capsulePickHint": "Choose the wing and room where your time capsule will live. Then upload a new photo or pick one you already have.",
     "wingLabel": "Wing",

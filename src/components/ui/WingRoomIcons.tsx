@@ -134,6 +134,23 @@ const AtticIcon: React.FC<IconProps> = ({ size = DEFAULT_SIZE, color = DEFAULT_C
   </svg>
 );
 
+/** Stack of overlapping picture frames — All Memories / whole archive.
+ *  Exported: consumed by LibraryView's header and the Library sidebar for the
+ *  "__all__" (All Memories) scope — deliberately distinct from the 6 wing icons. */
+export const AllMemoriesIcon: React.FC<IconProps> = ({ size = DEFAULT_SIZE, color = DEFAULT_COLOR }) => (
+  <svg {...svgProps(size, color)}>
+    {/* Back frame — offset up-right */}
+    <rect x="8" y="3" width="13" height="10" rx="1" fill={color} fillOpacity={0.04} />
+    {/* Middle frame */}
+    <rect x="5.5" y="6.5" width="13" height="10" rx="1" fill={color} fillOpacity={0.05} />
+    {/* Front frame */}
+    <rect x="3" y="10" width="13" height="10" rx="1" fill={color} fillOpacity={0.06} />
+    {/* Photo inside front frame — sun + hills */}
+    <circle cx="6.5" cy="13.5" r="1" fill={color} fillOpacity={0.15} />
+    <path d="M4.5,18.5 L8,15 L10.5,17.5 L12,16 L14.5,18.5" fill="none" />
+  </svg>
+);
+
 // ===========================================================================
 // ROOM ICONS — Roots wing
 // ===========================================================================

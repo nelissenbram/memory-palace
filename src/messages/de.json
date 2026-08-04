@@ -1160,6 +1160,7 @@
     "importTimeout": "Import-Zeitüberschreitung. Bitte versuche es erneut."
   },
   "room": {
+    "published": "Veröffentlicht",
     "manageRooms": "Räume verwalten",
     "wingLabel": "Flügel {name}",
     "roomCount": "{current} von {max} Räumen",
@@ -2405,6 +2406,8 @@
     "noRoomAssigned": "Kein Raum zugewiesen — wähle einen Flügel und Raum und versuche es erneut."
   },
   "memoryDetail": {
+    "visPublicViaRoom": "Öffentlich — dieser Raum ist veröffentlicht",
+    "quickActions": "Aktionen",
     "panelTitle": "Erinnerungsdetails",
     "description": "Beschreibung",
     "descriptionPlaceholder": "Was macht diesen Moment besonders...",
@@ -4267,6 +4270,13 @@
     "dialogLabel": "Flügel für die Raumplatzierung wählen"
   },
   "library": {
+    "roomPickTitle": "Wo soll das passieren?",
+    "roomPickHint": "Wähle zuerst den Flügel und den Raum.",
+    "appliesToCount": "Gilt für {count} Erinnerungen",
+    "locationSearchPlaceholder": "Nach einem Ort suchen…",
+    "locationMustPick": "Wähle einen Ort aus den Vorschlägen",
+    "dragHintMobile": "Halten und dann auf einen Raum ziehen",
+    "dropTrayTitle": "Verschieben nach…",
     "capsulePickTitle": "Wohin gehört diese Kapsel?",
     "capsulePickHint": "Wähle den Flügel und den Raum, in dem deine Zeitkapsel wohnen soll. Lade dann ein neues Foto hoch oder wähle eines, das du schon hast.",
     "wingLabel": "Flügel",

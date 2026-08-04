@@ -1160,6 +1160,7 @@
     "importTimeout": "El import agotó el tiempo. Inténtalo de nuevo."
   },
   "room": {
+    "published": "Publicada",
     "manageRooms": "Gestionar salas",
     "wingLabel": "Ala {name}",
     "roomCount": "{current} de {max} salas",
@@ -2405,6 +2406,8 @@
     "noRoomAssigned": "Sin sala asignada: elige un ala y una sala e inténtalo de nuevo."
   },
   "memoryDetail": {
+    "visPublicViaRoom": "Público — esta sala está publicada",
+    "quickActions": "Acciones",
     "panelTitle": "Detalles del recuerdo",
     "description": "Descripción",
     "descriptionPlaceholder": "Lo que hace especial este momento...",
@@ -4267,6 +4270,13 @@
     "dialogLabel": "Elige un ala para colocar la sala"
   },
   "library": {
+    "roomPickTitle": "¿Dónde debería ocurrir esto?",
+    "roomPickHint": "Elige primero el ala y la sala.",
+    "appliesToCount": "Se aplica a {count} recuerdos",
+    "locationSearchPlaceholder": "Busca un lugar…",
+    "locationMustPick": "Elige un lugar de las sugerencias",
+    "dragHintMobile": "Mantén pulsado y arrastra a una sala",
+    "dropTrayTitle": "Mover a…",
     "capsulePickTitle": "¿Dónde pertenece esta cápsula?",
     "capsulePickHint": "Elige el ala y la sala donde vivirá tu cápsula del tiempo. Después, sube una foto nueva o elige una que ya tengas.",
     "wingLabel": "Ala",

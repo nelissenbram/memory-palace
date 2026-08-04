@@ -27,14 +27,14 @@ import NotificationBell from "@/components/ui/NotificationBell";
 import Image from "next/image";
 import { LibraryRoomCard, LibraryMemoryCard } from "@/components/ui/LibraryCards";
 import LibrarySidebar from "@/components/ui/LibrarySidebar";
-import { geocodeLocationName } from "@/lib/geocode";
+import { geocodeAutocomplete, type GeocodeSuggestion } from "@/lib/geocode";
 import { LibrarySearch } from "@/components/ui/LibrarySearch";
 import { LibraryStyles, LibraryHeader, LibraryEmptyState } from "@/components/ui/LibraryAnimations";
 import TuscanStyles from "./TuscanStyles";
 import TuscanCard from "./TuscanCard";
 import WingManagerPanel from "@/components/ui/WingManagerPanel";
 import RoomManagerPanel from "@/components/ui/RoomManagerPanel";
-import { WingIcon, RoomIcon, ROOM_ICON_MAP } from "./WingRoomIcons";
+import { WingIcon, RoomIcon, ROOM_ICON_MAP, AllMemoriesIcon } from "./WingRoomIcons";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
@@ -409,12 +409,22 @@ const normalizeDisplayType = (type: string) => {
 // A memory's date, wherever it lives — every date path must use the same fallback.
 const memDate = (m: Mem) => m.createdAt || (m as { date?: string }).date || "";
 
+// Touch drag & drop: resolve the drop-tray chip (or a descendant) under a
+// viewport point. Negative coords (cancelled drags) always miss.
+const dropRoomIdAt = (x: number, y: number): string | null => {
+  if (x < 0 || y < 0 || typeof document === "undefined") return null;
+  const el = document.elementFromPoint(x, y) as HTMLElement | null;
+  const chip = el?.closest?.("[data-drop-room-id]") as HTMLElement | null;
+  return chip?.dataset.dropRoomId || null;
+};
+
 /**
- * Time Capsule destination chooser — the capsule pill no longer auto-enters
- * the fullest room ("it opened a random photo"); the user explicitly picks
- * wing → room, then UploadPanel opens there (upload new OR pick "from room").
+ * Explicit wing → room destination chooser. Born as the Time-Capsule picker
+ * ("it opened a random photo" — no more fullest-room auto-entry); now reusable
+ * for any room-scoped tool. `title`/`hint` default to the capsule texts so the
+ * Time-Capsule call site is unchanged.
  */
-function CapsulePicker({ wings, getWingRooms, onClose, onPick, t, tc, tWings }: {
+function RoomPicker({ wings, getWingRooms, onClose, onPick, t, tc, tWings, title, hint }: {
   wings: Wing[];
   getWingRooms: (wingId: string) => WingRoom[];
   onClose: () => void;
@@ -422,9 +432,13 @@ function CapsulePicker({ wings, getWingRooms, onClose, onPick, t, tc, tWings }: 
   t: (key: string, params?: Record<string, string>) => string;
   tc: (key: string) => string;
   tWings: (key: string) => string;
+  title?: string;
+  hint?: string;
 }) {
   const [wingId, setWingId] = useState<string | null>(null);
   const { containerRef, handleKeyDown } = useFocusTrap(true);
+  const heading = title ?? t("capsulePickTitle");
+  const hintText = hint ?? t("capsulePickHint");
   const wing = wingId ? wings.find(w => w.id === wingId) || null : null;
   const rooms = wing ? getWingRooms(wing.id) : [];
   const rowStyle: CSSProperties = {
@@ -443,7 +457,7 @@ function CapsulePicker({ wings, getWingRooms, onClose, onPick, t, tc, tWings }: 
     }}>
       <div
         ref={containerRef}
-        role="dialog" aria-modal="true" aria-label={t("capsulePickTitle")}
+        role="dialog" aria-modal="true" aria-label={heading}
         onClick={e => e.stopPropagation()}
         onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } handleKeyDown(e); }}
         style={{
@@ -460,10 +474,10 @@ function CapsulePicker({ wings, getWingRooms, onClose, onPick, t, tc, tWings }: 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
             <div>
               <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: "#403B36", margin: 0 }}>
-                {t("capsulePickTitle")}
+                {heading}
               </h3>
               <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", margin: "0.25rem 0 0", lineHeight: 1.45 }}>
-                {t("capsulePickHint")}
+                {hintText}
               </p>
             </div>
             <button onClick={onClose} aria-label={tc("close")} style={{ minWidth: "2.75rem", minHeight: "2.75rem", borderRadius: "1.375rem", border: `0.0625rem solid ${HAIRLINE}`, background: T.color.warmStone, color: "#716A5E", fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"✕"}</button>
@@ -625,6 +639,9 @@ export default function LibraryView() {
   const [showRoomManager, setShowRoomManager] = useState(false);
   // Time Capsule wing→room chooser (explicit destination pick, no auto-room)
   const [capsulePickerOpen, setCapsulePickerOpen] = useState(false);
+  // Room chooser for the room-scoped tool pills (Write Story / AI Label /
+  // Add Location) pressed with no room open — replaces fullest-room auto-entry
+  const [toolRoomPicker, setToolRoomPicker] = useState<"writeStory" | "aiLabel" | "addLocation" | null>(null);
   // List view is retired (redundant beside wall + timeline) — validate the
   // persisted value so a stale 'list' can never strand the user viewless.
   const [viewMode, setViewMode] = useState<"grid" | "timeline">(() => {
@@ -660,9 +677,15 @@ export default function LibraryView() {
   const [aiLabelEditText, setAiLabelEditText] = useState("");
   const [aiLabelError, setAiLabelError] = useState<string | null>(null);
   const [aiLabelDone, setAiLabelDone] = useState(false);
-  const [locationName, setLocationName] = useState("");
-  const [locationLat, setLocationLat] = useState("");
-  const [locationLng, setLocationLng] = useState("");
+  // Add-Location panel: autocomplete-only combobox (the user MUST pick a
+  // geocoded suggestion) + per-memory selection within the open room.
+  const [locQuery, setLocQuery] = useState("");
+  const [locSuggestions, setLocSuggestions] = useState<GeocodeSuggestion[]>([]);
+  const [locPicked, setLocPicked] = useState<GeocodeSuggestion | null>(null);
+  const [locActiveIdx, setLocActiveIdx] = useState(-1);
+  // Ids the user UNticked; selection = room memories minus this set, so
+  // memories that finish fetching after the panel opens arrive pre-selected.
+  const [locDeselected, setLocDeselected] = useState<Set<string>>(new Set());
   const [showAiSortBanner, setShowAiSortBanner] = useState(false);
   const [showManualSortBanner, setShowManualSortBanner] = useState(false);
   // Hide not-yet-shipped "coming soon" features on iOS (Apple Guideline 2.3.1).
@@ -1388,7 +1411,34 @@ export default function LibraryView() {
     setAiLabelError(null);
     setAiLabelDone(false);
     setAiLabelEditing(null);
+    // Add-Location state resets with the panel (any close path)
+    setLocQuery("");
+    setLocSuggestions([]);
+    setLocPicked(null);
+    setLocActiveIdx(-1);
+    setLocDeselected(new Set());
   }, []);
+
+  // Add-Location autocomplete: debounce ~350ms against the geocode proxy. A
+  // picked suggestion whose label still matches the input needs no re-query.
+  useEffect(() => {
+    if (activeToolPanel !== "addLocation") return;
+    const q = locQuery.trim();
+    if (q.length < 2 || (locPicked && q === locPicked.label)) {
+      setLocSuggestions([]);
+      setLocActiveIdx(-1);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const results = await geocodeAutocomplete(q);
+      if (!cancelled) {
+        setLocSuggestions(results.slice(0, 5));
+        setLocActiveIdx(-1);
+      }
+    }, 350);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [locQuery, locPicked, activeToolPanel]);
 
   const handleBackToRooms = useCallback(() => {
     setSelectedRoom(null);
@@ -1405,7 +1455,8 @@ export default function LibraryView() {
       // Text fields cancel their own edit on Escape — never hijack it
       const el = e.target as HTMLElement | null;
       if (el && (el.closest?.("input, textarea, select") || el.isContentEditable)) return;
-      if (capsulePickerOpen) setCapsulePickerOpen(false);
+      if (toolRoomPicker) setToolRoomPicker(null);
+      else if (capsulePickerOpen) setCapsulePickerOpen(false);
       else if (showImportHub) setShowImportHub(false);
       else if (cloudBrowserProvider) setCloudBrowserProvider(null);
       else if (pickerStatus !== "idle") { setPickerStatus("idle"); if (pickerPollRef.current) { clearInterval(pickerPollRef.current); pickerPollRef.current = null; } }
@@ -1423,7 +1474,7 @@ export default function LibraryView() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [capsulePickerOpen, showImportHub, cloudBrowserProvider, pickerStatus, showPublishModal, activeToolPanel, closeToolPanel, bulkMoving, mediaPlayerIndex, detailPanelMem, movingMem, detailMem, showUploadFor, mobileSortOpen, selectMode, selectedRoom, handleBackToRooms]);
+  }, [toolRoomPicker, capsulePickerOpen, showImportHub, cloudBrowserProvider, pickerStatus, showPublishModal, activeToolPanel, closeToolPanel, bulkMoving, mediaPlayerIndex, detailPanelMem, movingMem, detailMem, showUploadFor, mobileSortOpen, selectMode, selectedRoom, handleBackToRooms]);
 
   const handleAddMemory = useCallback((mem: Mem) => {
     if (showUploadFor) {
@@ -1466,6 +1517,47 @@ export default function LibraryView() {
     moveMemory(from, roomId, memId);
     showMovedToast();
   }, [memRoomMap, moveMemory]);
+
+  // ── Touch drag & drop: PhotoWall long-press lifts a tile and streams
+  //    coordinates here; a fixed bottom DROP TRAY of room chips renders for
+  //    the duration, hit-tested via elementFromPoint (rAF-throttled on move).
+  const [touchDragMemId, setTouchDragMemId] = useState<string | null>(null);
+  const [touchHoverRoomId, setTouchHoverRoomId] = useState<string | null>(null);
+  const [dragHintVisible, setDragHintVisible] = useState(false);
+  const dragHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (dragHintTimerRef.current) clearTimeout(dragHintTimerRef.current); }, []);
+  const touchHitRafRef = useRef(0);
+  useEffect(() => () => { if (touchHitRafRef.current) cancelAnimationFrame(touchHitRafRef.current); }, []);
+
+  const handleTouchDragStart = useCallback((memId: string) => {
+    setTouchDragMemId(memId);
+    // First long-press of the session: transient "drop it on a room" hint
+    try {
+      if (!sessionStorage.getItem("mp_drag_hint_shown")) {
+        sessionStorage.setItem("mp_drag_hint_shown", "1");
+        setDragHintVisible(true);
+        if (dragHintTimerRef.current) clearTimeout(dragHintTimerRef.current);
+        dragHintTimerRef.current = setTimeout(() => setDragHintVisible(false), 3200);
+      }
+    } catch { /* private mode */ }
+  }, []);
+
+  const handleTouchDragMove = useCallback((x: number, y: number) => {
+    if (touchHitRafRef.current) return; // rAF-throttled chip highlight
+    touchHitRafRef.current = requestAnimationFrame(() => {
+      touchHitRafRef.current = 0;
+      setTouchHoverRoomId(dropRoomIdAt(x, y));
+    });
+  }, []);
+
+  const handleTouchDragEnd = useCallback((x: number, y: number) => {
+    if (touchHitRafRef.current) { cancelAnimationFrame(touchHitRafRef.current); touchHitRafRef.current = 0; }
+    const roomId = dropRoomIdAt(x, y);
+    if (roomId && touchDragMemId) handleDropMemory(roomId, touchDragMemId);
+    // ALWAYS clear drag state, hit or miss or cancel
+    setTouchDragMemId(null);
+    setTouchHoverRoomId(null);
+  }, [touchDragMemId, handleDropMemory]);
 
   const handleBulkMoveToRoom = useCallback((targetRoomId: string) => {
     if (selectedMemIds.size === 0) return;
@@ -1912,8 +2004,14 @@ export default function LibraryView() {
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <LibraryHeader
-                wingIcon={currentWing.icon}
-                wingId={currentWing.id}
+                // "__all__" is not a wing: skip the wings[0] fallback icon and show
+                // the dedicated All-Memories mark. LibraryHeaderProps types wingIcon
+                // as string but renders it as a node (`wingId ? <WingIcon/> : wingIcon`),
+                // so the element is slotted via a cast without touching LibraryAnimations.
+                wingIcon={selectedWing === "__all__"
+                  ? ((<AllMemoriesIcon size={24} color={headerAccent} />) as unknown as string)
+                  : currentWing.icon}
+                wingId={selectedWing === "__all__" ? undefined : currentWing.id}
                 wingName={selectedWing === "__all__" ? (t("allMemories") !== "allMemories" ? t("allMemories") : "All Memories") : translateWingName(currentWing, tWings)}
                 wingDesc={selectedWing === "__all__" ? (t("allMemoriesDesc") !== "allMemoriesDesc" ? t("allMemoriesDesc") : "Your whole life, newest first") : (currentWing.descKey ? tWings(currentWing.descKey) : currentWing.desc)}
                 roomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
@@ -2026,6 +2124,12 @@ export default function LibraryView() {
               {showDemos && (
                 <button type="button" onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("demoBannerClear")}</button>
               )}
+              {/* Import/Upload keystone — FIRST action in the pill row: getting
+                  memories in is the primary act, everything else follows */}
+              <button type="button" data-spotlight-id="importUpload" data-nudge="library_import" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", animation: spotlightTarget === "importUpload" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
+                {t("importButton")}
+              </button>
               {/* Mobile add-memory pill — the UploadPanel opener otherwise
                   lives only in the desktop header */}
               {isMobile && selectedRoom && (
@@ -2034,17 +2138,16 @@ export default function LibraryView() {
                   {t("addMemory")}
                 </button>
               )}
-              {/* Tool pills are always visible — from the All wall they
-                  auto-enter the fullest room (the panels are room-scoped) */}
+              {/* Tool pills are always visible — pressed with no room open they
+                  ask WHICH room via the RoomPicker (the panels are room-scoped;
+                  no more silent fullest-room auto-entry) */}
               {roomTools.map(a => (
                 <button key={a.key} type="button" data-spotlight-id={a.key} onClick={() => {
                   if (!selectedRoom) {
-                    const r = pickFullestRoom();
-                    if (!r) return;
-                    if (roomWingMap[r]) setSelectedWing(roomWingMap[r]);
-                    setSelectedRoom(r);
+                    setToolRoomPicker(a.key);
+                  } else {
+                    setActiveToolPanel(a.key);
                   }
-                  setActiveToolPanel(a.key);
                   if (spotlightTarget === a.key) setSpotlightTarget(null);
                 }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === a.key ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>{a.label}</button>
               ))}
@@ -2069,10 +2172,6 @@ export default function LibraryView() {
                 {t("actionCreateGallery")}
               </button>
               <button type="button" onClick={() => setShowPublishModal(true)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("publish")}</button>
-              <button type="button" data-spotlight-id="importUpload" data-nudge="library_import" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", animation: spotlightTarget === "importUpload" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
-                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
-                {t("importButton")}
-              </button>
             </div>
             </div>
           );
@@ -2677,6 +2776,9 @@ export default function LibraryView() {
                     draggableTiles={!isMobile}
                     onTileDragStart={handleTileDragStart}
                     onTileDragEnd={handleTileDragEnd}
+                    onTouchDragStart={handleTouchDragStart}
+                    onTouchDragMove={handleTouchDragMove}
+                    onTouchDragEnd={handleTouchDragEnd}
                   />
                 ) : effectiveView === "timeline" ? (
                 /* P2 #3: Timeline view */
@@ -3068,7 +3170,7 @@ export default function LibraryView() {
 
       {/* Time Capsule destination chooser (wing → room, then UploadPanel) */}
       {capsulePickerOpen && (
-        <CapsulePicker
+        <RoomPicker
           wings={wings}
           getWingRooms={getWingRooms}
           t={t}
@@ -3082,6 +3184,29 @@ export default function LibraryView() {
             setSelectedRoom(roomId);
             fetchRoomMemories(roomId);
             setShowUploadFor({ wingId, roomId });
+          }}
+        />
+      )}
+
+      {/* Room chooser for a room-scoped tool pill pressed with no room open:
+          pick a room, enter it, then the tool panel opens there */}
+      {toolRoomPicker && (
+        <RoomPicker
+          wings={wings}
+          getWingRooms={getWingRooms}
+          t={t}
+          tc={tc}
+          tWings={tWings}
+          title={t("roomPickTitle")}
+          hint={t("roomPickHint")}
+          onClose={() => setToolRoomPicker(null)}
+          onPick={(wingId, roomId) => {
+            const tool = toolRoomPicker;
+            setToolRoomPicker(null);
+            setSelectedWing(wingId);
+            setSelectedRoom(roomId);
+            fetchRoomMemories(roomId);
+            if (tool) setActiveToolPanel(tool);
           }}
         />
       )}
@@ -3558,9 +3683,41 @@ export default function LibraryView() {
       })()}
 
       {/* ═══ ADD LOCATION PANEL ═══ */}
-      {activeToolPanel === "addLocation" && selectedRoom && (
+      {activeToolPanel === "addLocation" && selectedRoom && (() => {
+        const roomLocMems = getMemsForRoom(selectedRoom);
+        const locSelectedCount = roomLocMems.reduce((n, m) => n + (locDeselected.has(m.id) ? 0 : 1), 0);
+        const toggleLocMem = (id: string) => setLocDeselected(prev => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id); else next.add(id);
+          return next;
+        });
+        const pickSuggestion = (s: GeocodeSuggestion) => {
+          setLocPicked(s);
+          setLocQuery(s.label);
+          setLocSuggestions([]);
+          setLocActiveIdx(-1);
+        };
+        const canSaveLoc = !!locPicked && locSelectedCount > 0;
+        const handleSaveLoc = () => {
+          if (!locPicked || locSelectedCount === 0) return;
+          const ids = roomLocMems.filter(m => !locDeselected.has(m.id)).map(m => m.id);
+          // Room-level persistence only when the place applies to the WHOLE room
+          if (locDeselected.size === 0) {
+            try {
+              const locations = JSON.parse(localStorage.getItem("mp_room_locations") || "{}");
+              locations[selectedRoom] = { name: locPicked.label, lat: locPicked.lat, lng: locPicked.lng };
+              localStorage.setItem("mp_room_locations", JSON.stringify(locations));
+            } catch { /* full */ }
+          }
+          // Same save path as before, but ONLY for the selected memory ids
+          for (const id of ids) {
+            updateMemory(selectedRoom, id, { locationName: locPicked.label, lat: locPicked.lat, lng: locPicked.lng });
+          }
+          closeToolPanel();
+        };
+        return (
         <div
-          onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }}
+          onClick={closeToolPanel}
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
             background: "rgba(64,59,54,.35)",
@@ -3577,7 +3734,8 @@ export default function LibraryView() {
               borderRadius: "1.25rem",
               boxShadow: "0 1.5rem 3rem rgba(64,59,54,0.18), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
               border: `0.0625rem solid ${HAIRLINE}`,
-              width: "min(26rem, 90vw)",
+              width: "min(28rem, 92vw)",
+              maxHeight: "min(38rem, 88vh)",
               display: "flex", flexDirection: "column",
               overflow: "hidden",
               animation: "libSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
@@ -3588,73 +3746,119 @@ export default function LibraryView() {
                 <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: "#403B36", margin: 0 }}>{t("addLocationTitle")}</h3>
                 <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#716A5E", margin: "0.25rem 0 0" }}>{t("addLocationDesc")}</p>
               </div>
-              <button onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: "#716A5E", fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+              <button onClick={closeToolPanel} aria-label={tc("close")} style={{ minWidth: "2.75rem", minHeight: "2.75rem", borderRadius: "1.375rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: "#716A5E", fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
             </div>
-            <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+            <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.875rem", overflow: "auto" }}>
+              {/* (a) Selection clarity: which memories the place applies to \u2014
+                  all pre-selected, tap to toggle, live count below */}
+              {roomLocMems.length > 0 && (
+                <div>
+                  <div role="group" aria-label={t("appliesToCount", { count: String(locSelectedCount) })} style={{ display: "flex", gap: "0.4rem", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "0.2rem" }}>
+                    {roomLocMems.map(m => {
+                      const sel = !locDeselected.has(m.id);
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          role="checkbox"
+                          aria-checked={sel}
+                          aria-label={m.title}
+                          onClick={() => toggleLocMem(m.id)}
+                          style={{ position: "relative", flexShrink: 0, width: "2.75rem", height: "2.75rem", minWidth: "2.75rem", minHeight: "2.75rem", padding: 0, border: "none", borderRadius: "0.5rem", overflow: "hidden", cursor: "pointer", background: T.color.warmStone, outline: sel ? `0.125rem solid ${EMBER}` : `0.0625rem solid ${HAIRLINE}`, outlineOffset: "-0.125rem", opacity: sel ? 1 : 0.45, transition: "opacity 0.15s ease" }}
+                        >
+                          <MediaThumb mem={m} size="2.75rem" borderRadius="0" iconSize={14} />
+                          <span aria-hidden="true" style={{ position: "absolute", top: "0.15rem", left: "0.15rem", width: "0.9375rem", height: "0.9375rem", borderRadius: "0.25rem", background: sel ? EMBER : "rgba(255,255,255,0.85)", border: sel ? "none" : "0.0625rem solid #716A5E", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.5625rem", fontWeight: 700, color: "#FFF" }}>{sel ? "\u2713" : ""}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p aria-live="polite" style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", margin: "0.375rem 0 0" }}>
+                    {t("appliesToCount", { count: String(locSelectedCount) })}
+                  </p>
+                </div>
+              )}
+              {/* (b) Forced geocode: autocomplete-only combobox \u2014 the user MUST
+                  pick a suggestion; typing alone keeps Save disabled */}
               <div>
-                <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("locationNameLabel")}</label>
-                <input value={locationName} onChange={e => setLocationName(e.target.value)} placeholder={t("locationNamePlaceholder")} autoFocus
-                  style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${HAIRLINE}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: "#403B36", outline: "none" }} />
+                <label htmlFor="lib-loc-search" style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("locationNameLabel")}</label>
+                <input
+                  id="lib-loc-search"
+                  role="combobox"
+                  aria-expanded={locSuggestions.length > 0}
+                  aria-controls="lib-loc-listbox"
+                  aria-autocomplete="list"
+                  aria-activedescendant={locActiveIdx >= 0 ? `lib-loc-opt-${locActiveIdx}` : undefined}
+                  value={locQuery}
+                  onChange={e => { setLocQuery(e.target.value); setLocPicked(null); }}
+                  onKeyDown={e => {
+                    if (e.key === "ArrowDown" && locSuggestions.length > 0) {
+                      e.preventDefault();
+                      setLocActiveIdx(i => (i + 1) % locSuggestions.length);
+                    } else if (e.key === "ArrowUp" && locSuggestions.length > 0) {
+                      e.preventDefault();
+                      setLocActiveIdx(i => (i <= 0 ? locSuggestions.length - 1 : i - 1));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const s = locActiveIdx >= 0 ? locSuggestions[locActiveIdx] : locSuggestions[0];
+                      if (s) pickSuggestion(s);
+                    } else if (e.key === "Escape" && locSuggestions.length > 0) {
+                      e.stopPropagation();
+                      setLocSuggestions([]);
+                      setLocActiveIdx(-1);
+                    }
+                  }}
+                  placeholder={t("locationSearchPlaceholder")}
+                  autoFocus
+                  autoComplete="off"
+                  style={{ width: "100%", minHeight: "2.75rem", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${locPicked ? EMBER : HAIRLINE}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "1rem", color: "#403B36", outline: "none" }}
+                />
+                {locSuggestions.length > 0 && (
+                  <ul id="lib-loc-listbox" role="listbox" aria-label={t("locationNameLabel")} style={{ listStyle: "none", margin: "0.25rem 0 0", padding: "0.25rem", background: "#FFF", border: `0.0625rem solid ${HAIRLINE}`, borderRadius: "0.625rem", boxShadow: SHADOW[1], maxHeight: "13rem", overflowY: "auto" }}>
+                    {locSuggestions.map((s, i) => (
+                      <li key={`${s.lat},${s.lng},${i}`} id={`lib-loc-opt-${i}`} role="option" aria-selected={i === locActiveIdx} style={{ margin: 0, padding: 0 }}>
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => pickSuggestion(s)}
+                          onMouseEnter={() => setLocActiveIdx(i)}
+                          style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", minHeight: "2.75rem", padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none", background: i === locActiveIdx ? "rgba(184,92,56,0.10)" : "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.875rem", color: "#403B36", textAlign: "left" }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9A4F2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {locPicked ? (
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#2e7d32", margin: "0.375rem 0 0", lineHeight: 1.4 }}>
+                    {"\u2713"} {locPicked.label} {"\u00b7"} {locPicked.lat.toFixed(4)}, {locPicked.lng.toFixed(4)}
+                  </p>
+                ) : locQuery.trim().length > 0 ? (
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#9A4F2A", margin: "0.375rem 0 0", lineHeight: 1.4 }}>
+                    {t("locationMustPick")}
+                  </p>
+                ) : null}
               </div>
-              <div style={{ display: "flex", gap: "0.75rem" }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("latLabel")}</label>
-                  <input value={locationLat} onChange={e => setLocationLat(e.target.value)} placeholder="52.3676"
-                    style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${HAIRLINE}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: "#403B36", outline: "none" }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("lngLabel")}</label>
-                  <input value={locationLng} onChange={e => setLocationLng(e.target.value)} placeholder="4.9041"
-                    style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${HAIRLINE}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: "#403B36", outline: "none" }} />
-                </div>
-              </div>
-              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: "#716A5E", margin: 0, lineHeight: 1.4 }}>{t("locationOptionalHint")}</p>
             </div>
             <div style={{ padding: "0.75rem 1.5rem", borderTop: `0.0625rem solid ${HAIRLINE}`, display: "flex", justifyContent: "flex-end", gap: "0.625rem", flexShrink: 0 }}>
-              <button onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }}
+              <button onClick={closeToolPanel}
                 style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(64,59,54,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#716A5E" }}>{tc("cancel")}</button>
               <button
-                onClick={async () => {
-                  if (locationName.trim() && selectedRoom) {
-                    const locName = locationName.trim();
-                    let lat = locationLat ? parseFloat(locationLat) : undefined;
-                    let lng = locationLng ? parseFloat(locationLng) : undefined;
-                    // Geocode if no lat/lng provided
-                    if (lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) {
-                      const coords = await geocodeLocationName(locName);
-                      if (coords) { lat = coords.lat; lng = coords.lng; }
-                    }
-                    // Save to localStorage for room-level persistence
-                    const locations = JSON.parse(localStorage.getItem("mp_room_locations") || "{}");
-                    locations[selectedRoom] = { name: locName, lat: lat ?? null, lng: lng ?? null };
-                    localStorage.setItem("mp_room_locations", JSON.stringify(locations));
-                    // Update all memories in this room with location data
-                    const roomMems = getMemsForRoom(selectedRoom);
-                    for (const m of roomMems) {
-                      updateMemory(selectedRoom, m.id, {
-                        locationName: locName,
-                        ...(lat !== undefined && !isNaN(lat) ? { lat } : {}),
-                        ...(lng !== undefined && !isNaN(lng) ? { lng } : {}),
-                      });
-                    }
-                    setLocationName("");
-                    setLocationLat("");
-                    setLocationLng("");
-                    setActiveToolPanel(null);
-                  }
-                }}
-                disabled={!locationName.trim()}
+                onClick={handleSaveLoc}
+                disabled={!canSaveLoc}
                 style={{
                   padding: "0.5rem 1.25rem", borderRadius: "0.5rem",
-                  background: locationName.trim() ? currentWing.accent : `${T.color.sandstone}40`,
-                  color: locationName.trim() ? "#FFF" : "#716A5E",
-                  border: "none", cursor: locationName.trim() ? "pointer" : "default",
+                  background: canSaveLoc ? currentWing.accent : `${T.color.sandstone}40`,
+                  color: canSaveLoc ? "#FFF" : "#716A5E",
+                  border: "none", cursor: canSaveLoc ? "pointer" : "default",
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                 }}>{t("saveLocation")}</button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ═══ MOVE TO ROOM MODAL ═══ */}
       {movingMem && (
@@ -3979,6 +4183,77 @@ export default function LibraryView() {
             onClose={() => setShowPublishModal(false)}
           />
         </Suspense>
+      )}
+
+      {/* ═══ TOUCH DRAG: DROP TRAY ═══ */}
+      {/* Fixed bottom tray during a long-press tile drag — room chips grouped
+          per wing; the chip under the finger highlights (rAF hit-test); drop
+          resolves via elementFromPoint against data-drop-room-id. */}
+      {touchDragMemId && (
+        <div data-drop-tray="" style={{
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 10050,
+          background: CREAM,
+          borderTop: `0.0625rem solid ${HAIRLINE}`,
+          boxShadow: "0 -0.5rem 2rem rgba(64,59,54,0.18)",
+          padding: "0.6rem 0.75rem calc(0.6rem + env(safe-area-inset-bottom, 0px))",
+        }}>
+          <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#716A5E", margin: "0 0 0.4rem" }}>
+            {t("dropTrayTitle")}
+          </p>
+          <div style={{ display: "flex", gap: "1rem", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "0.15rem" }}>
+            {wings.map(w => {
+              const wRooms = getWingRooms(w.id);
+              if (wRooms.length === 0) return null;
+              return (
+                <div key={w.id} style={{ flexShrink: 0 }}>
+                  {/* wing overline */}
+                  <span style={{ display: "block", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: w.accent, marginBottom: "0.25rem" }}>
+                    {w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings)}
+                  </span>
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    {wRooms.map(r => {
+                      const hover = touchHoverRoomId === r.id;
+                      return (
+                        <div
+                          key={r.id}
+                          data-drop-room-id={r.id}
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: "0.35rem",
+                            minHeight: "2.75rem", padding: "0 0.75rem", borderRadius: "0.75rem",
+                            border: `0.0625rem solid ${hover ? w.accent : HAIRLINE}`,
+                            background: hover ? `${w.accent}22` : "#FFF",
+                            boxShadow: hover ? `0 0 0 0.125rem ${w.accent}55` : "none",
+                            fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                            color: "#403B36", whiteSpace: "nowrap",
+                          }}
+                        >
+                          <RoomIcon roomId={r.id} wingId={w.id} size={16} color={w.accent} />
+                          {translateRoomName(r, tWings)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ TOUCH DRAG: FIRST-USE HINT (once per session) ═══ */}
+      {dragHintVisible && (
+        <div role="status" style={{
+          position: "fixed", left: "50%", transform: "translateX(-50%)",
+          bottom: "calc(6.75rem + env(safe-area-inset-bottom, 0px))", zIndex: 10058,
+          background: "rgba(64,59,54,.9)", color: "#FCFAF5",
+          fontFamily: T.font.body, fontSize: "0.8125rem", lineHeight: 1.4,
+          padding: "0.5rem 1rem", borderRadius: "2rem",
+          boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,.25)",
+          maxWidth: "min(20rem, calc(100vw - 2rem))", textAlign: "center",
+          pointerEvents: "none",
+        }}>
+          {t("dragHintMobile")}
+        </div>
       )}
 
       {movedToast && (

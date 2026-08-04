@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { useRoomStore, MAX_ROOMS_PER_WING } from "@/lib/stores/roomStore";
@@ -8,25 +8,6 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Wing } from "@/lib/constants/wings";
 import { translateWingName } from "@/lib/constants/wings";
 import { RoomIcon, WingIcon, ROOM_ICON_MAP } from "./WingRoomIcons";
-
-const EMOJI_PRESETS = [
-  // Home & Family
-  "\u{1F3E0}","\u{1F384}","\u{1F382}","\u{1F476}","\u{1F46A}","\u2764\uFE0F","\u{1F370}","\u{1F37D}\uFE0F",
-  // Travel
-  "\u2708\uFE0F","\u{1F1EE}\u{1F1F9}","\u{1F1EF}\u{1F1F5}","\u{1F1EB}\u{1F1F7}","\u26F0\uFE0F","\u{1F3D6}\uFE0F","\u{1F30D}","\u{1F697}",
-  // Nature & Seasons
-  "\u{1F33B}","\u{1F338}","\u{1F340}","\u{1F30A}","\u2744\uFE0F","\u{1F308}","\u2B50","\u{1F319}",
-  // Arts & Creation
-  "\u{1F3A8}","\u{1F3B8}","\u{1F4F7}","\u{1F3AC}","\u{1F3B5}","\u270F\uFE0F","\u{1F4DA}","\u{1F3AD}",
-  // Career & Education
-  "\u{1F4D0}","\u{1F680}","\u{1F3A4}","\u{1F393}","\u{1F4BC}","\u{1F3C6}","\u{1F4A1}","\u2699\uFE0F",
-  // Activities
-  "\u{1F6E0}\uFE0F","\u{1F3EB}","\u{1F3C0}","\u26BD","\u{1F3BF}","\u{1F3CA}","\u{1F6B2}","\u{1F3AE}",
-  // Food & Drink
-  "\u{1F377}","\u2615","\u{1F355}","\u{1F370}","\u{1F37B}","\u{1F375}","\u{1F36B}","\u{1F952}",
-  // Misc
-  "\u{1F48E}","\u{1F52E}","\u{1F56F}\uFE0F","\u{1F3F0}","\u{1F30C}","\u{1F3DD}\uFE0F","\u{1F9ED}","\u{1F5FA}\uFE0F",
-];
 
 interface RoomManagerPanelProps {
   wing: Wing;
@@ -40,9 +21,10 @@ interface RoomManagerPanelProps {
 
 /**
  * Renders a room's icon. Standard SVG room ids (keys of ROOM_ICON_MAP) resolve
- * to their crafted SVG glyph via RoomIcon; anything else (a custom emoji chosen
- * from EMOJI_PRESETS) is rendered as the emoji character itself, so a user's
- * picked emoji never collapses into RoomIcon's generic-circle fallback.
+ * to their crafted SVG glyph via RoomIcon; anything else (a legacy custom emoji
+ * picked before the picker went SVG-only — grandfathered) is rendered as the
+ * emoji character itself, so it never collapses into RoomIcon's generic-circle
+ * fallback.
  */
 function RoomGlyph({ icon, wingId, size, color }: { icon: string; wingId: string; size: number; color: string }) {
   if (ROOM_ICON_MAP[icon]) {
@@ -125,7 +107,36 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
 
   const STANDARD_ROOM_IDS = Object.keys(ROOM_ICON_MAP);
 
-  const [showEmoji, setShowEmoji] = useState(false);
+  // roomId / "wingSlug:roomName" → published, fetched once on mount from the
+  // same server action the Publish modal uses. On fetch failure the map stays
+  // empty and the badge gracefully falls back to shared/private.
+  const [publishedMap, setPublishedMap] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getMyPublishableContent } = await import("@/lib/social/share-actions");
+        const content = await getMyPublishableContent();
+        if (cancelled) return;
+        const map: Record<string, boolean> = {};
+        for (const w of content) {
+          for (const r of w.rooms) {
+            if (r.published) {
+              // Key by the returned id (local room id when never DB-backed) AND
+              // by wing-scoped name (covers DB-backed rooms whose id is a uuid).
+              map[r.id] = true;
+              map[`${w.slug}:${r.name}`] = true;
+            }
+          }
+        }
+        setPublishedMap(map);
+      } catch { /* keep empty map — badge falls back to shared/private */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const isRoomPublished = (room: { id: string; name: string }) =>
+    !!(publishedMap[room.id] || publishedMap[`${activeWing.id}:${room.name}`]);
 
   // Switching wings drops all transient edit state so nothing (rename field,
   // icon picker, delete confirm, half-typed new room) leaks across wings.
@@ -139,13 +150,13 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
     setNewIcon("ro1");
     setShowNewIconPicker(false);
     setConfirmDelete(null);
-    setShowEmoji(false);
   };
 
   const iconPicker = (currentIcon: string, onPick: (icon: string) => void) => (
     <div role="radiogroup" aria-label={t("changeIcon")} style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.hairline}`, padding: touch ? "0.5rem" : "0.625rem", marginTop: "0.375rem" }}>
-      {/* Standard SVG room icons — prominent */}
-      <div style={{ marginBottom: "0.625rem" }}>
+      {/* Standard SVG room icons — the full (and only) set; custom emoji picking
+          was removed, existing emoji rooms stay grandfathered via RoomGlyph */}
+      <div>
         <span style={{ fontSize: "0.75rem", color: T.color.ink, fontWeight: 600, letterSpacing: "0.03em" }}>{t("standardIcons")}</span>
         <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.375rem", flexWrap: "wrap" }}>
           {STANDARD_ROOM_IDS.map(id => (
@@ -155,23 +166,6 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
             </button>
           ))}
         </div>
-      </div>
-      {/* Custom emoji icons — collapsed by default */}
-      <div>
-        <button onClick={() => setShowEmoji(!showEmoji)} aria-expanded={showEmoji} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span style={{ fontSize: "0.625rem", color: T.color.inkMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("customEmoji")}</span>
-          <span style={{ fontSize: "0.5rem", color: T.color.inkMuted, transform: showEmoji ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .15s", display: "inline-block" }}>{"\u25BC"}</span>
-        </button>
-        {showEmoji && (
-          <div style={{ display: "grid", gridTemplateColumns: touch ? "repeat(5,1fr)" : "repeat(8,1fr)", gap: touch ? "0.375rem" : "0.25rem", maxHeight: touch ? "9rem" : "5rem", overflowY: "auto", marginTop: "0.25rem" }}>
-            {EMOJI_PRESETS.map((e, i) => (
-              <button key={i} onClick={() => onPick(e)} role="radio" aria-checked={e === currentIcon}
-                style={{ width: touch ? "2.75rem" : "1.75rem", height: touch ? "2.75rem" : "1.75rem", borderRadius: "0.375rem", border: e === currentIcon ? `2px solid ${accent}` : "1px solid transparent", background: e === currentIcon ? `${accent}15` : "transparent", fontSize: touch ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {e}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -226,7 +220,7 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
             <div key={room.id} style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.hairline}`, padding: "0.75rem 0.875rem", transition: "all .15s" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 {/* Icon button */}
-                <button onClick={() => { setShowEmoji(false); setPickingIconId(pickingIconId === room.id ? null : room.id); setEditingId(null); setAdding(false); }}
+                <button onClick={() => { setPickingIconId(pickingIconId === room.id ? null : room.id); setEditingId(null); setAdding(false); }}
                   aria-label={t("changeIcon")}
                   style={{ width: touch ? "2.75rem" : "2.375rem", height: touch ? "2.75rem" : "2.375rem", borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`, background: pickingIconId === room.id ? `${accent}12` : T.color.warmStone, fontSize: "1.25rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s" }}
                   title={t("changeIcon")}>
@@ -249,9 +243,8 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
                       {room.name}
                     </div>
                   )}
-                  <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.inkMuted, marginTop: "0.0625rem" }}>
-                    {room.shared ? t("shared", { count: String(room.sharedWith.length) }) : t("private")}
-                    {" \u00B7 "}{room.id}
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: isRoomPublished(room) ? T.color.goldDark : T.color.inkMuted, fontWeight: isRoomPublished(room) ? 600 : 400, marginTop: "0.0625rem" }}>
+                    {isRoomPublished(room) ? t("published") : room.shared ? t("shared", { count: String(room.sharedWith.length) }) : t("private")}
                   </div>
                 </div>
 
@@ -275,7 +268,7 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
                   <button onClick={() => setConfirmDelete(confirmDelete === room.id ? null : room.id)}
                     aria-label={t("deleteRoom")}
                     style={{ width: touch ? "2.75rem" : "1.875rem", height: touch ? "2.75rem" : "1.875rem", borderRadius: "0.5rem", border: confirmDelete === room.id ? `1px solid ${T.color.error}80` : `1px solid ${T.color.hairline}`, background: confirmDelete === room.id ? `${T.color.error}10` : "transparent", color: confirmDelete === room.id ? T.color.error : T.color.inkMuted, fontSize: touch ? "0.875rem" : "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}
-                    title={t("deleteRoom")}>{"\u{1F5D1}"}</button>
+                    title={t("deleteRoom")}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 7 H20" /><path d="M9 7 V5 a1 1 0 0 1 1-1 h4 a1 1 0 0 1 1 1 V7" /><path d="M6 7 L7 19 a2 2 0 0 0 2 2 h6 a2 2 0 0 0 2-2 L18 7" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></svg></button>
                 )}
               </div>
 
@@ -305,7 +298,7 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
             <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.inkMuted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: "0.625rem" }}>{t("newRoom")}</div>
 
             <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem" }}>
-              <button onClick={() => { setShowEmoji(false); setShowNewIconPicker(!showNewIconPicker); }}
+              <button onClick={() => setShowNewIconPicker(!showNewIconPicker)}
                 style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`, background: T.color.warmStone, fontSize: "1.375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                 title={t("chooseIcon")}>
                 <RoomGlyph icon={newIcon} wingId={activeWing.id} size={24} color={accent} />
@@ -325,7 +318,7 @@ export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: 
             </div>
           </div>
         ) : canAdd ? (
-          <button onClick={() => { setShowEmoji(false); setAdding(true); setEditingId(null); setPickingIconId(null); setConfirmDelete(null); }}
+          <button onClick={() => { setAdding(true); setEditingId(null); setPickingIconId(null); setConfirmDelete(null); }}
             style={{ width: "100%", padding: "0.875rem", borderRadius: "0.75rem", border: `1.5px dashed ${accent}50`, background: `${accent}06`, color: accent, fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", transition: "all .15s", minHeight: "2.75rem" }}>
             {t("addRoom")}
           </button>

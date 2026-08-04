@@ -1160,6 +1160,7 @@
     "importTimeout": "Délai d’import dépassé. Veuillez réessayer."
   },
   "room": {
+    "published": "Publiée",
     "manageRooms": "Gerer les salles",
     "wingLabel": "Aile {name}",
     "roomCount": "{current} sur {max} salles",
@@ -2405,6 +2406,8 @@
     "noRoomAssigned": "Aucune salle attribuée — choisissez une aile et une salle, puis réessayez."
   },
   "memoryDetail": {
+    "visPublicViaRoom": "Public — cette salle est publiée",
+    "quickActions": "Actions",
     "panelTitle": "Détails du souvenir",
     "description": "Description",
     "descriptionPlaceholder": "Ce qui rend ce moment spécial...",
@@ -4267,6 +4270,13 @@
     "dialogLabel": "Choisir une aile pour placer la salle"
   },
   "library": {
+    "roomPickTitle": "Où cela doit-il se passer ?",
+    "roomPickHint": "Choisissez d'abord l'aile et la salle.",
+    "appliesToCount": "S'applique à {count} souvenirs",
+    "locationSearchPlaceholder": "Rechercher un lieu…",
+    "locationMustPick": "Choisissez un lieu parmi les suggestions",
+    "dragHintMobile": "Maintenez, puis faites glisser sur une salle",
+    "dropTrayTitle": "Déplacer vers…",
     "capsulePickTitle": "Où cette capsule a-t-elle sa place ?",
     "capsulePickHint": "Choisissez l'aile et la salle où vivra votre capsule temporelle. Ensuite, ajoutez une nouvelle photo ou choisissez-en une que vous avez déjà.",
     "wingLabel": "Aile",

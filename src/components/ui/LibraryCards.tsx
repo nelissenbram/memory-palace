@@ -73,6 +73,19 @@ function KeyframesStyle() {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-0.625rem); }
       }
+      /* Card title scrim: hover-capable devices fade it in on hover/focus;
+         touch devices keep it always visible, slightly quieter. */
+      .lc-title-scrim { opacity: 0; transition: opacity 0.25s ease; }
+      @media (hover: hover) {
+        .lc-card:hover .lc-title-scrim,
+        .lc-card:focus-visible .lc-title-scrim { opacity: 1; }
+      }
+      @media (hover: none) {
+        .lc-title-scrim { opacity: 0.82; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .lc-title-scrim { transition: none; }
+      }
     `}</style>
   );
 }
@@ -414,6 +427,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
       <KeyframesStyle />
       <div
         ref={cardRef}
+        className="lc-card"
         role={locked ? undefined : "button"}
         aria-label={mem.title}
         tabIndex={locked ? undefined : 0}
@@ -676,27 +690,42 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             </div>
           )}
 
-          {/* Video play overlay (when image present) */}
-          {isVideo && hasImage && (
-            <div style={{
-              position: "absolute", inset: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(0,0,0,.12)",
-              pointerEvents: "none",
-            }}>
-              <div style={{
-                width: "2.75rem", height: "2.75rem", borderRadius: "50%",
-                background: "rgba(255,255,255,.22)",
-                backdropFilter: "blur(0.75rem)",
-                WebkitBackdropFilter: "blur(0.75rem)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 0.25rem 1rem rgba(0,0,0,.2), inset 0 0.0625rem 0 rgba(255,255,255,.25)",
-                border: "0.0625rem solid rgba(255,255,255,.2)",
+          {/* (Removed dead "video play overlay when image present" branch:
+              hasImage requires !isVideo, so it could never render. Play badges
+              live exclusively in the (isVideo || isAudio) branches above.) */}
+
+          {/* Title overlay — bottom scrim on the media itself (hover-in on
+              hover-capable devices, always-on compact for touch via CSS) */}
+          {!locked && mem.title && (
+            <div
+              className="lc-title-scrim"
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 1,
+                padding: "1.375rem 0.625rem 0.4375rem 2.375rem",
+                background: "linear-gradient(to top, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.42) 55%, transparent 100%)",
+                pointerEvents: "none",
+              }}
+            >
+              <p style={{
+                margin: 0,
+                fontFamily: T.font.display,
+                fontWeight: 600,
+                fontSize: "0.8125rem",
+                lineHeight: 1.3,
+                letterSpacing: "0.01em",
+                color: CREAM,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.35)",
               }}>
-                <svg width="13" height="15" viewBox="0 0 12 14" fill="rgba(255,255,255,.95)">
-                  <path d="M1 1.5v11l10-5.5L1 1.5z"/>
-                </svg>
-              </div>
+                {mem.title}
+              </p>
             </div>
           )}
 

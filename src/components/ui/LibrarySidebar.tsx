@@ -71,15 +71,13 @@ export default function LibrarySidebar({
   onDropMemory,
 }: LibrarySidebarProps) {
   const { t } = useTranslation("library");
-  const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
   const getWingRooms = useRoomStore(s => s.getWingRooms);
   // The desktop sidebar also renders on iPad portrait (768–1024px), where
   // useIsMobile() reports desktop but the device is touch-only. Enlarge the
-  // small mouse-first hit boxes (search input font, room rows, ? tooltip,
-  // colour dot/swatches) to the 2.75rem touch minimum whenever the user drives
-  // by touch, so nothing on iPad falls below the touch floor or triggers the
-  // sub-16px iOS zoom-on-focus.
+  // small mouse-first hit boxes (room rows, colour dot/swatches) to the
+  // 2.75rem touch minimum whenever the user drives by touch, so nothing on
+  // iPad falls below the touch floor.
   const isTouch = useTouchControls();
 
   const [hoveredWing, setHoveredWing] = useState<string | null>(null);
@@ -88,8 +86,6 @@ export default function LibrarySidebar({
   const [addWingHovered, setAddWingHovered] = useState(false);
   const [addRoomHovered, setAddRoomHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-  const [sidebarQuery, setSidebarQuery] = useState("");
   const [colorPickerWing, setColorPickerWing] = useState<string | null>(null);
   const [sharedExpanded, setSharedExpanded] = useState(false);
   const [dragWing, setDragWing] = useState<string | null>(null);
@@ -108,29 +104,25 @@ export default function LibrarySidebar({
   // real accent when no override is set.
   const effectiveAccent = (w: Wing) => wingColors[w.id] || w.accent;
 
-  // Switching wings closes any transient open-state (colour picker / tooltip)
-  // so they never linger over a different wing after selection.
+  // Switching wings closes any transient open-state (colour picker)
+  // so it never lingers over a different wing after selection.
   const handleSelectWing = (wingId: string) => {
     setColorPickerWing(null);
-    setTooltipOpen(false);
     onSelectWing(wingId);
   };
 
   // Click-away: tapping/clicking anywhere that is NOT the colour picker (dot +
-  // swatch row) or the tooltip (glyph + panel) closes those transient overlays.
-  // Without this the picker/tooltip would linger open after a stray tap that
-  // doesn't switch wings. Elements that must stay open carry data-lsb-popover;
-  // any pointerdown outside them dismisses the open state. (Touch dismisses the
-  // tooltip too; on desktop the tooltip is hover-driven and already self-closes,
-  // so leaving it in the close set is harmless.)
-  const anyOverlayOpen = colorPickerWing !== null || tooltipOpen;
+  // swatch row) closes that transient overlay. Without this the picker would
+  // linger open after a stray tap that doesn't switch wings. Elements that must
+  // stay open carry data-lsb-popover; any pointerdown outside them dismisses
+  // the open state.
+  const anyOverlayOpen = colorPickerWing !== null;
   useEffect(() => {
     if (!anyOverlayOpen) return;
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target as Element | null;
       if (target && target.closest("[data-lsb-popover]")) return;
       setColorPickerWing(null);
-      setTooltipOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown, true);
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
@@ -150,20 +142,12 @@ export default function LibrarySidebar({
     [wings, wingMemCount],
   );
 
-  // Show all wings, but keep attic at the bottom; filter by sidebar search
+  // Show all wings, but keep attic at the bottom
   const visibleWings = useMemo(() => {
     const regular = wings.filter((w) => w.id !== "attic");
     const attic = wings.filter((w) => w.id === "attic");
-    const all = [...regular, ...attic];
-    if (!sidebarQuery) return all;
-    const sq = sidebarQuery.toLowerCase();
-    return all.filter(w => {
-      if (w.name.toLowerCase().includes(sq)) return true;
-      if (translateWingName(w, tWings).toLowerCase().includes(sq)) return true;
-      // Also match room names within the wing
-      return getWingRooms(w.id).some(r => r.name.toLowerCase().includes(sq) || translateRoomName(r, tWings).toLowerCase().includes(sq));
-    });
-  }, [wings, sidebarQuery, getWingRooms, tWings]);
+    return [...regular, ...attic];
+  }, [wings]);
 
   const totalRooms = useMemo(
     () => wings.reduce((sum, w) => sum + getWingRooms(w.id).length, 0),
@@ -384,49 +368,49 @@ export default function LibrarySidebar({
         </div>
       </div>
 
-      {/* P2 #11: Sidebar search */}
+      {/* Enter Palace button \u2014 charcoal gradient with golden shimmer border
+          (item 9: promoted from the sidebar bottom to the top slot) */}
       <div style={{ padding: "0 1rem 0.375rem" }}>
-        <div style={{ position: "relative" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: "0.5rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", opacity: 0.6 }}>
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input
-            type="text"
-            value={sidebarQuery}
-            onChange={e => setSidebarQuery(e.target.value)}
-            placeholder={t("sidebarSearchPlaceholder")}
-            aria-label={t("sidebarSearchPlaceholder")}
-            style={{
-              width: "100%", padding: isTouch ? "0.6875rem 0.5rem 0.6875rem 1.75rem" : "0.375rem 0.5rem 0.375rem 1.75rem",
-              borderRadius: "0.5rem",
-              border: `0.0625rem solid ${T.color.cream}`,
-              background: "rgba(255,255,255,0.5)",
-              // 1rem on touch prevents iOS zoom-on-focus (canon input floor);
-              // iPad renders this desktop sidebar so it must obey the floor too.
-              fontFamily: T.font.body, fontSize: isTouch ? "1rem" : "0.75rem",
-              color: "#403B36", outline: "none",
-              boxSizing: "border-box" as const,
-              transition: `border-color 0.2s ${EASE_OUT_EXPO}`,
-            }}
-            onFocus={e => { e.currentTarget.style.borderColor = "#B85C38"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = T.color.cream; }}
-          />
-          {sidebarQuery && (
-            <button
-              onClick={() => setSidebarQuery("")}
-              aria-label={tc("clearSearch")}
-              style={{
-                position: "absolute", right: "0.375rem", top: "50%", transform: "translateY(-50%)",
-                width: "1rem", height: "1rem", borderRadius: "50%",
-                background: T.color.cream, border: "none", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "0.5625rem", color: "#716A5E", lineHeight: 1,
-              }}
-            >
-              {"\u00D7"}
-            </button>
-          )}
-        </div>
+        <button
+          data-nudge="nav_3d_btn"
+          onClick={onEnter3D}
+          onMouseEnter={() => setEnterHovered(true)}
+          onMouseLeave={() => setEnterHovered(false)}
+          style={{
+            width: "100%",
+            padding: "0.8125rem 1rem",
+            borderRadius: "0.625rem",
+            background: `linear-gradient(135deg, ${"#403B36"}, #3a3a38)`,
+            color: T.color.linen,
+            border: "0.0625rem solid transparent",
+            borderImage: `linear-gradient(135deg, ${T.color.gold}88, ${T.color.goldLight}44, ${T.color.gold}88) 1`,
+            cursor: "pointer",
+            fontFamily: T.font.display,
+            fontSize: "0.9375rem",
+            fontWeight: 500,
+            letterSpacing: "0.05em",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem",
+            transition: `all 0.3s ${EASE_OUT_EXPO}`,
+            transform: enterHovered ? "scale(1.02)" : "scale(1)",
+            boxShadow: enterHovered
+              ? `0 0.375rem 1.25rem rgba(64,59,54,0.22), 0 0 0.75rem ${T.color.gold}18`
+              : "0 0.125rem 0.625rem rgba(64,59,54,0.12)",
+            outline: enterHovered
+              ? `0.0625rem solid rgba(184,92,56,0.27)`
+              : "none",
+            outlineOffset: "0.0625rem",
+          }}
+        >
+          <PalaceLogo variant="mark" color="light" size="sm" style={{ width: "1rem", height: "1rem" }} />
+          {selectedRoomName
+            ? t("enter3DRoom", { room: selectedRoomName })
+            : selectedWingName && selectedWing !== "__all__"
+              ? t("enter3DWing", { wing: selectedWingName })
+              : t("enterPalace")}
+        </button>
       </div>
 
       {/* ── Wings section label ── */}
@@ -448,44 +432,6 @@ export default function LibrarySidebar({
         }}>
           {t("wingsLabel")}
         </span>
-        {/* Info tooltip (?) */}
-        <div data-lsb-popover style={{ position: "relative", display: "inline-flex" }}>
-          <button
-            onClick={isTouch ? () => setTooltipOpen(o => !o) : undefined}
-            onMouseEnter={isTouch ? undefined : () => setTooltipOpen(true)}
-            onMouseLeave={isTouch ? undefined : () => setTooltipOpen(false)}
-            aria-label={t("wingsTooltip")}
-            aria-expanded={tooltipOpen}
-            style={{
-              // 2.75rem transparent hit box on touch around the 0.875rem glyph pill.
-              width: isTouch ? "2.75rem" : "0.875rem", height: isTouch ? "2.75rem" : "0.875rem",
-              borderRadius: "50%",
-              background: isTouch ? "transparent" : tooltipOpen ? `rgba(184,92,56,0.19)` : `${"#716A5E"}15`,
-              border: isTouch ? "none" : `0.0625rem solid rgba(184,92,56,0.27)`,
-              cursor: "pointer", padding: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: T.font.body, fontSize: isTouch ? "0.75rem" : "0.5625rem", fontWeight: 600,
-              color: tooltipOpen ? "#B85C38" : "#716A5E",
-              transition: `all 0.2s ${EASE_OUT_EXPO}`,
-            }}
-          >
-            ?
-          </button>
-          {tooltipOpen && (
-            <div style={{
-              position: "absolute", left: "1.25rem", top: "-0.25rem", zIndex: 50,
-              width: "12.5rem", padding: "0.625rem 0.75rem",
-              background: "#403B36", color: T.color.linen,
-              borderRadius: "0.5rem",
-              fontFamily: T.font.body, fontSize: "0.75rem", lineHeight: 1.5,
-              fontWeight: 500, letterSpacing: "0.01em",
-              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.25)",
-              animation: `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both`,
-            }}>
-              {t("wingsTooltip")}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Drop hint while a memory is being dragged */}
@@ -1189,48 +1135,6 @@ export default function LibrarySidebar({
             {t("atrium")}
           </button>
         )}
-
-        {/* Enter Palace button — charcoal gradient with golden shimmer border */}
-        <button
-          data-nudge="nav_3d_btn"
-          onClick={onEnter3D}
-          onMouseEnter={() => setEnterHovered(true)}
-          onMouseLeave={() => setEnterHovered(false)}
-          style={{
-            width: "100%",
-            padding: "0.8125rem 1rem",
-            borderRadius: "0.625rem",
-            background: `linear-gradient(135deg, ${"#403B36"}, #3a3a38)`,
-            color: T.color.linen,
-            border: "0.0625rem solid transparent",
-            borderImage: `linear-gradient(135deg, ${T.color.gold}88, ${T.color.goldLight}44, ${T.color.gold}88) 1`,
-            cursor: "pointer",
-            fontFamily: T.font.display,
-            fontSize: "0.9375rem",
-            fontWeight: 500,
-            letterSpacing: "0.05em",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "0.5rem",
-            transition: `all 0.3s ${EASE_OUT_EXPO}`,
-            transform: enterHovered ? "scale(1.02)" : "scale(1)",
-            boxShadow: enterHovered
-              ? `0 0.375rem 1.25rem rgba(64,59,54,0.22), 0 0 0.75rem ${T.color.gold}18`
-              : "0 0.125rem 0.625rem rgba(64,59,54,0.12)",
-            outline: enterHovered
-              ? `0.0625rem solid rgba(184,92,56,0.27)`
-              : "none",
-            outlineOffset: "0.0625rem",
-          }}
-        >
-          <PalaceLogo variant="mark" color="light" size="sm" style={{ width: "1rem", height: "1rem" }} />
-          {selectedRoomName
-            ? t("enter3DRoom", { room: selectedRoomName })
-            : selectedWingName && selectedWing !== "__all__"
-              ? t("enter3DWing", { wing: selectedWingName })
-              : t("enterPalace")}
-        </button>
       </div>
     </nav>
   );

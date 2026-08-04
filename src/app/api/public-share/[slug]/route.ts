@@ -91,6 +91,12 @@ export async function GET(
       return NextResponse.json({ error: "Wing not found" }, { status: 404 });
     }
     const roomIds = (roomsResult.data || []).map((r) => r.id);
+    // NOTE on memories.visibility: the column (20260514_social_foundation.sql)
+    // was added with DEFAULT 'private' and is never written by the app —
+    // createMemory/updateMemoryAction omit it, so EVERY row reads 'private'.
+    // Filtering out visibility='private' here would therefore empty every
+    // shared gallery, so no per-memory visibility filter is applied until the
+    // write path persists explicit choices (see MemoryDetail visibility card).
     const { data: wingMemories } = roomIds.length
       ? await supabase
           .from("memories")
@@ -139,6 +145,9 @@ export async function GET(
           .eq("id", room.wing_id)
           .single()
       : Promise.resolve({ data: null }),
+    // No visibility filter — memories.visibility has DEFAULT 'private' and the
+    // app never writes it (all rows read 'private'); filtering would blank
+    // every shared gallery. See the wing branch above for the full note.
     supabase
       .from("memories")
       .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, created_at")

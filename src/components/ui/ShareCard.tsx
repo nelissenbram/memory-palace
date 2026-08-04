@@ -314,11 +314,59 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   const encodedText = encodeURIComponent(shareText);
   const title = mem ? mem.title : roomName || t("brandName");
 
+  // Simple monochrome line glyphs for the share platforms (same stroke style
+  // as the native-share SVG button below).
+  const platformGlyph: React.SVGProps<SVGSVGElement> = {
+    xmlns: "http://www.w3.org/2000/svg", width: 16, height: 16, viewBox: "0 0 24 24",
+    fill: "none", stroke: "currentColor", strokeWidth: 1.5,
+    strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true,
+  };
   const socialLinks = [
-    { name: "WhatsApp", icon: "\uD83D\uDCAC", url: `https://wa.me/?text=${encodedText}%20${encodedUrl}` },
-    { name: "X / Twitter", icon: "\uD83D\uDC26", url: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}` },
-    { name: t("email"), icon: "\u2709\uFE0F", url: `mailto:?subject=${encodeURIComponent(title)}&body=${encodedText}%0A%0A${encodedUrl}` },
-    { name: "Facebook", icon: "\uD83D\uDC4D", url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}` },
+    {
+      name: "WhatsApp",
+      // Speech bubble with a phone hint inside
+      icon: (
+        <svg {...platformGlyph}>
+          <path d="M12 4 a8 8 0 1 1 -4.4 14.7 L4 20 l1.3 -3.6 A8 8 0 0 1 12 4 Z" />
+          <path d="M9.2 9.3 l1.1 1.9 -0.7 1 a5.6 5.6 0 0 0 2.2 2.2 l1 -0.7 1.9 1.1" />
+        </svg>
+      ),
+      url: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+    },
+    {
+      name: "X / Twitter",
+      // Stylized X
+      icon: (
+        <svg {...platformGlyph}>
+          <path d="M4.5 4.5 L19.5 19.5" />
+          <path d="M19.5 4.5 L4.5 19.5" />
+        </svg>
+      ),
+      url: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+    },
+    {
+      name: t("email"),
+      // Envelope
+      icon: (
+        <svg {...platformGlyph}>
+          <rect x="3" y="5.5" width="18" height="13" rx="2" />
+          <polyline points="4,7.5 12,13.5 20,7.5" />
+        </svg>
+      ),
+      url: `mailto:?subject=${encodeURIComponent(title)}&body=${encodedText}%0A%0A${encodedUrl}`,
+    },
+    {
+      name: "Facebook",
+      // Lowercase-f square outline
+      icon: (
+        <svg {...platformGlyph}>
+          <rect x="4" y="4" width="16" height="16" rx="3" />
+          <path d="M14.8 8.2 h-1.6 a2 2 0 0 0 -2 2 V20" />
+          <line x1="9.5" y1="12.5" x2="14.5" y2="12.5" />
+        </svg>
+      ),
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    },
   ];
 
   const btnBase: React.CSSProperties = {
@@ -339,10 +387,10 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
           {/* Action buttons */}
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
             <button onClick={handleCopyLink} style={{ ...btnBase, flex: 1, background: copied ? `${accent}15` : T.color.white, color: copied ? accent : T.color.inkSoft }}>
-              {copied ? `\u2713 ${t("copied")}` : `\uD83D\uDD17 ${t("copyLink")}`}
+              {copied ? `\u2713 ${t("copied")}` : (<><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:"0.25rem"}} aria-hidden><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>{t("copyLink")}</>)}
             </button>
             <button onClick={handleDownload} disabled={!cardReady} style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.inkSoft, cursor: cardReady ? "pointer" : "not-allowed", opacity: cardReady ? 1 : 0.5 }}>
-              {`\u2B07\uFE0F ${t("download")}`}
+              {<><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:"0.25rem"}} aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>{t("download")}</>}
             </button>
             {canShare && (
               <button onClick={handleShare} disabled={!cardReady} style={{ ...btnBase, flex: 1, background: accent, color: T.color.white, border: "none", cursor: cardReady ? "pointer" : "not-allowed", opacity: cardReady ? 1 : 0.5 }}>
@@ -358,7 +406,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
               <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer"
                 aria-label={t("shareVia", { platform: s.name })}
                 style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.inkSoft, textDecoration: "none", justifyContent: "center", fontSize: "0.75rem", padding: "0.625rem 0.5rem" }}>
-                <span style={{ fontSize: "1rem" }}>{s.icon}</span>
+                <span aria-hidden style={{ display: "flex", alignItems: "center" }}>{s.icon}</span>
                 <span>{s.name}</span>
               </a>
             ))}

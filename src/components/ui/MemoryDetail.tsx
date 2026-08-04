@@ -12,7 +12,8 @@ import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 const ImageEditor = lazy(() => import("@/components/ui/ImageEditor"));
 const RestorePhotoModal = lazy(() => import("@/components/ui/RestorePhotoModal"));
 import ShareCard from "@/components/ui/ShareCard";
-import { geocodeLocationName, geocodeAutocomplete } from "@/lib/geocode";
+import { geocodeAutocomplete } from "@/lib/geocode";
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { WingIcon, RoomIcon } from "@/components/ui/WingRoomIcons";
@@ -77,6 +78,10 @@ const ShareIcon = ({ color }: { color?: string }) => (
 
 const TrashIcon = ({ color }: { color?: string }) => (
   <Icon color={color || T.color.error}><path d="M4 5h12"/><path d="M8 5V3.5a1 1 0 011-1h2a1 1 0 011 1V5"/><path d="M5.5 5l.8 11.5a1.5 1.5 0 001.5 1.5h4.4a1.5 1.5 0 001.5-1.5L14.5 5"/></Icon>
+);
+
+const RestoreIcon = ({ color }: { color?: string }) => (
+  <Icon color={color}><path d="M3 10a7 7 0 1 1 2 5" /><polyline points="3 11 3 15 7 15" /><path d="M10 6v4l3 2" /></Icon>
 );
 
 const CloseIcon = ({ color }: { color?: string }) => (
@@ -254,6 +259,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const { t, locale } = useTranslation("memoryDetail");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
+  const { t: tLib } = useTranslation("library");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const accent = wing?.accent || T.color.terracotta;
 
@@ -278,15 +284,21 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const [locationName, setLocationName] = useState(mem.locationName || "");
   const [locationLat, setLocationLat] = useState(mem.lat?.toString() || "");
   const [locationLng, setLocationLng] = useState(mem.lng?.toString() || "");
-  const [geocoding, setGeocoding] = useState(false);
-  const [geocodeError, setGeocodeError] = useState("");
   const [geocodeSuggestions, setGeocodeSuggestions] = useState<GeocodeSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [geocodeSuccess, setGeocodeSuccess] = useState(false);
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const locationWrapperRef = useRef<HTMLDivElement>(null);
+  // Last location label actually saved via a suggestion pick (or initial value).
+  // Free typing without picking a suggestion is never saved (real-place rule).
+  const lastSavedLocation = useRef(mem.locationName || "");
   const [displayType, setDisplayType] = useState(mem.type);
   const [visibility, setVisibility] = useState<"private" | "shared" | "family" | "public">(mem.visibility || "private");
+  // Whether the user EXPLICITLY chose a visibility (prop, or a tap this session).
+  // Unset memories in a published room are effectively public via the room's
+  // share/publish state, so the label must not claim "Private" for them.
+  const [visExplicit, setVisExplicit] = useState<boolean>(!!mem.visibility);
+  const [roomPublished, setRoomPublished] = useState(false);
   const [peopleTags, setPeopleTags] = useState<string[]>((mem as any).people || []);
   const [aiLabelLoading, setAiLabelLoading] = useState(false);
   const [aiLabelError, setAiLabelError] = useState<string | null>(null);
@@ -339,7 +351,6 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   // ── Location autocomplete ──
   const handleLocationInput = useCallback((value: string) => {
     setLocationName(value);
-    setGeocodeError("");
     setGeocodeSuccess(false);
     if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current);
     if (value.trim().length < 2) {
@@ -362,6 +373,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
     setShowSuggestions(false);
     setGeocodeSuccess(true);
     setTimeout(() => setGeocodeSuccess(false), 3000);
+    lastSavedLocation.current = s.label;
     autoSave({ locationName: s.label, lat: s.lat, lng: s.lng });
   }, [autoSave]);
 
@@ -375,6 +387,43 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // ── Effective visibility: is this memory's room publicly reachable? ──
+  // The DB `memories.visibility` column defaults to 'private' and is never
+  // written by the app, so a memory with no explicit choice inherits the
+  // room's publish/share state. Lazily look up rooms.published_at plus any
+  // active public share for the room so the label can tell the truth.
+  useEffect(() => {
+    if (visExplicit || !room?.id) return;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        // rooms.name stores the local room id (e.g. "ro1"); scope to the owner
+        // since names are not globally unique.
+        const { data: dbRoom } = await supabase
+          .from("rooms")
+          .select("id, published_at")
+          .eq("user_id", user.id)
+          .eq("name", room.id)
+          .maybeSingle();
+        if (cancelled || !dbRoom) return;
+        if (dbRoom.published_at) { setRoomPublished(true); return; }
+        const { data: shares } = await supabase
+          .from("public_shares")
+          .select("id")
+          .eq("created_by", user.id)
+          .eq("room_id", dbRoom.id)
+          .eq("is_active", true)
+          .limit(1);
+        if (!cancelled && shares && shares.length > 0) setRoomPublished(true);
+      } catch { /* fall back to the explicit/default label */ }
+    })();
+    return () => { cancelled = true; };
+  }, [visExplicit, room?.id]);
 
   // ── Historical context ──
   const fetchHistoricalContext = useCallback(async () => {
@@ -410,6 +459,27 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const toggleAction = (id: string) => {
     setOpenAction(prev => prev === id ? null : id);
   };
+
+  // ── Quick-actions bar: open an ActionCard and scroll it into view ──
+  const openQuickAction = useCallback((id: string) => {
+    setOpenAction(id);
+    if (id === "delete") setConfirmDelete(false);
+    const reduced = typeof window !== "undefined"
+      && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    // Wait a tick so the card exists/opens before scrolling to it.
+    setTimeout(() => {
+      const card = containerRef.current?.querySelector(`#action-${id}`)?.parentElement;
+      card?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    }, 60);
+  }, [containerRef]);
+
+  // ── Effective visibility label (truth-telling) ──
+  // Explicit user choice wins; otherwise a memory in a published/shared room
+  // is publicly reachable, so say so instead of a false "Private".
+  const visChoiceLabel = t(`vis${visibility.charAt(0).toUpperCase() + visibility.slice(1)}` as any);
+  const effectiveVisLabel = visExplicit
+    ? visChoiceLabel
+    : roomPublished ? t("visPublicViaRoom") : visChoiceLabel;
 
   // ── Breadcrumb ──
   const breadcrumb = [wing?.name, room?.name, mem.title].filter(Boolean).join("  /  ");
@@ -694,6 +764,55 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
               )
             )}
 
+            {/* ── A2. Quick-actions bar — visible actions without scrolling ── */}
+            {!isLocked && (
+              <div style={{ margin: "0.25rem 0 1rem" }}>
+                <span style={labelStyle}>{t("quickActions")}</span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
+                  {([
+                    { id: "date", label: t("dateLabel"), icon: (c: string) => <CalendarIcon color={c} /> },
+                    { id: "location", label: t("locationLabel"), icon: (c: string) => <MapPinIcon color={c} /> },
+                    { id: "people", label: t("tagPeople"), icon: (c: string) => <PeopleIcon color={c} /> },
+                    { id: "visibility", label: t("visibility"), icon: (c: string) => <EyeIcon color={c} /> },
+                    { id: "moveRoom", label: t("moveToRoom"), icon: (c: string) => <DoorIcon color={c} /> },
+                    { id: "share", label: t("shareBtn"), icon: (c: string) => <ShareIcon color={c} /> },
+                    ...(mem.type === "photo" && mem.dataUrl
+                      ? [{ id: "restore", label: t("restorePhotoTitle"), icon: (c: string) => <RestoreIcon color={c} /> }]
+                      : []),
+                    { id: "delete", label: t("deleteBtn"), icon: (c: string) => <TrashIcon color={c} /> },
+                  ] as { id: string; label: string; icon: (c: string) => React.ReactNode }[]).map((qa) => {
+                    const chipAccent = qa.id === "delete" ? T.color.error : accent;
+                    const active = openAction === qa.id;
+                    const iconColor = active
+                      ? chipAccent
+                      : qa.id === "delete" ? T.color.error : "#9A4F2A"; /* Atrium token: terracotta glyph */
+                    return (
+                      <button
+                        key={qa.id}
+                        onClick={() => openQuickAction(qa.id)}
+                        aria-expanded={active}
+                        aria-controls={`action-${qa.id}`}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                          minHeight: "2.75rem", padding: "0.375rem 0.875rem",
+                          borderRadius: "2rem", /* Atrium pill */
+                          border: active ? `0.09375rem solid ${chipAccent}` : "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                          background: active ? `${chipAccent}12` : T.color.white,
+                          cursor: "pointer", transition: "all .2s ease",
+                          fontFamily: T.font.body, fontSize: "0.8125rem",
+                          fontWeight: active ? 600 : 500,
+                          color: active ? chipAccent : "#403B36",
+                        }}
+                      >
+                        {qa.icon(iconColor)}
+                        <span>{qa.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* ── B. Description/Story — always visible ── */}
             {!isLocked && (
               editingDesc ? (
@@ -932,26 +1051,14 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         onKeyDown={e => {
                           if (e.key === "Escape") setShowSuggestions(false);
                         }}
-                        onBlur={async () => {
-                          // Delay to allow suggestion click to register
-                          setTimeout(async () => {
-                            if (locationName !== (mem.locationName || "") && !showSuggestions) {
-                              autoSave({ locationName });
-                              if (locationName.trim()) {
-                                setGeocoding(true);
-                                setGeocodeError("");
-                                const coords = await geocodeLocationName(locationName);
-                                setGeocoding(false);
-                                if (coords) {
-                                  setLocationLat(coords.lat.toFixed(6));
-                                  setLocationLng(coords.lng.toFixed(6));
-                                  setGeocodeSuccess(true);
-                                  setTimeout(() => setGeocodeSuccess(false), 3000);
-                                  autoSave({ locationName, lat: coords.lat, lng: coords.lng });
-                                } else {
-                                  setGeocodeError(t("geocodeFailed"));
-                                }
-                              }
+                        onBlur={() => {
+                          // Delay to allow suggestion click to register. Free text is
+                          // NEVER saved — only a suggestion pick (real place with real
+                          // coordinates) applies. Clearing the field removes the label.
+                          setTimeout(() => {
+                            if (!locationName.trim() && lastSavedLocation.current) {
+                              lastSavedLocation.current = "";
+                              autoSave({ locationName: "" });
                             }
                           }, 200);
                         }}
@@ -988,14 +1095,11 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         </div>
                       )}
                     </div>
-                    {geocoding && (
-                      <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: accent, margin: 0, fontStyle: "italic" }}>
-                        {t("geocoding")}
-                      </p>
-                    )}
-                    {geocodeError && (
+                    {/* Real-place rule: typed text that wasn't picked from the
+                        suggestions is not saved — nudge the user to pick one. */}
+                    {locationName.trim() !== "" && locationName !== lastSavedLocation.current && (
                       <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.terracotta, margin: 0 }}>
-                        {geocodeError}
+                        {tLib("locationMustPick")}
                       </p>
                     )}
                     {geocodeSuccess && (
@@ -1007,30 +1111,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         <CheckIcon color={T.color.success} /> {t("coordinatesSaved")}
                       </p>
                     )}
-                    <div style={{ display: "flex", gap: "0.375rem" }}>
-                      <input
-                        value={locationLat}
-                        onChange={e => setLocationLat(e.target.value)}
-                        onBlur={() => {
-                          const lat = parseFloat(locationLat);
-                          const lng = parseFloat(locationLng);
-                          if (!isNaN(lat) && !isNaN(lng)) autoSave({ lat, lng });
-                        }}
-                        placeholder={t("latPlaceholder")}
-                        style={{ ...inputStyle, flex: 1 }}
-                      />
-                      <input
-                        value={locationLng}
-                        onChange={e => setLocationLng(e.target.value)}
-                        onBlur={() => {
-                          const lat = parseFloat(locationLat);
-                          const lng = parseFloat(locationLng);
-                          if (!isNaN(lat) && !isNaN(lng)) autoSave({ lat, lng });
-                        }}
-                        placeholder={t("lngPlaceholder")}
-                        style={{ ...inputStyle, flex: 1 }}
-                      />
-                    </div>
+                    {/* Manual lat/lng entry removed — coordinates only come from a
+                        suggestion pick or the GPS button (real places only). */}
                     {/* GPS uses CoreLocation on iOS with no NSLocation purpose string shipped — web only (5.1.5). */}
                     {!isNative() && <button
                       onClick={() => {
@@ -1308,7 +1390,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   id="visibility"
                   icon={<EyeIcon color={openAction === "visibility" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("visibility")}
-                  value={t(`vis${visibility.charAt(0).toUpperCase() + visibility.slice(1)}` as any)}
+                  value={effectiveVisLabel}
                   isOpen={openAction === "visibility"}
                   onToggle={() => toggleAction("visibility")}
                   accent={accent}
@@ -1319,6 +1401,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         key={val}
                         onClick={() => {
                           setVisibility(val);
+                          setVisExplicit(true);
                           autoSave({ visibility: val });
                         }}
                         style={{

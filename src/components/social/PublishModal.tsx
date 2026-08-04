@@ -6,6 +6,8 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import type { PublishableWing } from "@/lib/social/share-actions";
+import { RoomIcon, ROOM_ICON_MAP } from "@/components/ui/WingRoomIcons";
+import { wingAccent } from "@/lib/libraryTokens";
 
 interface PublishModalProps {
   onClose: () => void;
@@ -182,7 +184,12 @@ export default function PublishModal({
 
         {done ? (
           <div style={{ textAlign: "center", padding: "2rem 0" }}>
-            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>&#10003;</div>
+            <div aria-hidden style={{ display: "flex", justifyContent: "center", marginBottom: "0.5rem", color: T.color.ember }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="8,12.5 11,15.5 16.5,9" />
+              </svg>
+            </div>
             <p style={{ fontFamily: T.font.body, fontSize: "1rem", color: T.color.inkSoft }}>
               {t("publishSuccess")}
             </p>
@@ -191,8 +198,8 @@ export default function PublishModal({
           <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
             <div style={{
               width: "2.5rem", height: "2.5rem", margin: "0 auto 1rem",
-              border: `3px solid ${T.color.sandstone}40`,
-              borderTopColor: T.color.gold,
+              border: `0.1875rem solid ${T.color.hairline}`,
+              borderTopColor: T.color.ember,
               borderRadius: "50%",
               animation: "spin 0.8s linear infinite",
             }} />
@@ -210,7 +217,7 @@ export default function PublishModal({
                 style={{
                   fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
                   padding: "0.375rem 0.75rem", borderRadius: "1rem",
-                  border: `1px solid ${T.color.sandstone}`, background: "transparent",
+                  border: `1px solid ${T.color.hairline}`, background: "transparent",
                   color: T.color.walnut, cursor: "pointer",
                 }}
               >
@@ -221,7 +228,7 @@ export default function PublishModal({
                 style={{
                   fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
                   padding: "0.375rem 0.75rem", borderRadius: "1rem",
-                  border: `1px solid ${T.color.sandstone}`, background: "transparent",
+                  border: `1px solid ${T.color.hairline}`, background: "transparent",
                   color: T.color.walnut, cursor: "pointer",
                 }}
               >
@@ -235,7 +242,7 @@ export default function PublishModal({
                 <div
                   key={wing.id}
                   style={{
-                    border: `1px solid ${selectedWings.has(wing.id) ? T.color.ember : T.color.sandstone}`,
+                    border: `1px solid ${selectedWings.has(wing.id) ? T.color.ember : T.color.hairline}`,
                     borderRadius: "0.75rem",
                     overflow: "hidden",
                     background: selectedWings.has(wing.id) ? `${T.color.ember}0D` : "transparent",
@@ -288,7 +295,15 @@ export default function PublishModal({
                             onChange={() => toggleRoom(room.id, wing.id)}
                             style={{ accentColor: T.color.ember, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
                           />
-                          <span style={{ fontSize: "1rem" }}>{room.icon}</span>
+                          {ROOM_ICON_MAP[room.icon] ? (
+                            /* Standard room ids resolve to their crafted SVG glyph */
+                            <span aria-hidden style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+                              <RoomIcon roomId={room.icon} wingId={wing.slug} size={16} color={wingAccent(wing.slug)} />
+                            </span>
+                          ) : (
+                            /* Grandfathered custom emoji keeps rendering as-is */
+                            <span aria-hidden style={{ fontSize: "1rem", lineHeight: 1 }}>{room.icon}</span>
+                          )}
                           <span style={{
                             fontFamily: T.font.body, fontSize: "0.8125rem",
                             color: T.color.inkSoft,
@@ -310,7 +325,7 @@ export default function PublishModal({
                 onClick={onClose} disabled={isPending}
                 style={{
                   fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
-                  borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
+                  borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`,
                   background: "transparent", color: T.color.walnut, cursor: "pointer", minHeight: T.touch,
                 }}
               >
