@@ -42,6 +42,7 @@ import ModeTransition, {
 import EnhanceMemories from "./EnhanceMemories";
 import FeatureDiscovery from "./FeatureDiscovery";
 import PersonaSelector from "./PersonaSelector";
+import LifeStoryPanel from "./LifeStoryPanel";
 
 import TuscanCard from "./TuscanCard";
 import TuscanStyles from "./TuscanStyles";
@@ -289,6 +290,9 @@ export default function HomeView() {
 
   /* P2-3: Last visited room */
   const [lastVisitedRoom, setLastVisitedRoom] = useState<{ id: string; name: string } | null>(null);
+
+  /* Life Story panel (change 11): opened from the lifestory relay tile */
+  const [showLifeStory, setShowLifeStory] = useState(false);
 
   /* P2-6: Confetti on achievement unlock */
   const [showConfetti, setShowConfetti] = useState(false);
@@ -688,7 +692,7 @@ export default function HomeView() {
 
   const relaySuggestion = useMemo(() => eveningFind
     ? { key: "lantern", title: t("relay.eveningFind"), reason: `${eveningFind.mem.title || t("relay.aMemory")} · ${translateWingName(eveningFind.wing, tWings)}${eveningFind.mem.createdAt ? `, ${new Date(eveningFind.mem.createdAt).getFullYear()}` : ""}`, onClick: () => handleMemoryClick(eveningFind.mem) }
-    : sharedWithMe.length > 0
+    : (!sharedLoading && sharedWithMe.length > 0)
     ? { key: "shared", title: t("relay.sgFamilySharedTitle"), reason: t("relay.sgFamilySharedReason"), onClick: () => setShowSharedWithMe(true) }
     : dailyQuestion
     ? { key: "letter", title: dailyQuestion, reason: t("relay.sixtySeconds"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); } }
@@ -701,13 +705,17 @@ export default function HomeView() {
           : lastVisitedRoom
             ? { key: "continue", title: t("continueWhereLeft"), reason: lastVisitedRoom.name, onClick: handleContinueLastRoom }
             : { key: "record", title: t("relay.sgRecordTitle"), reason: t("relay.sgRecordReason"), onClick: () => setShowInterviewLibrary(true) },
-  [eveningFind, sharedWithMe, dailyQuestion, onThisDayMemories, totalMemories, activeTrack, lastVisitedRoom, t, tWings, handleMemoryClick, setShowSharedWithMe, handleNavigateLibrary, goUpload, setSelectedTrackId, setShowTracksPanel, handleContinueLastRoom, setShowInterviewLibrary]);
+  [eveningFind, sharedWithMe, sharedLoading, dailyQuestion, onThisDayMemories, totalMemories, activeTrack, lastVisitedRoom, t, tWings, handleMemoryClick, setShowSharedWithMe, handleNavigateLibrary, goUpload, setSelectedTrackId, setShowTracksPanel, handleContinueLastRoom, setShowInterviewLibrary]);
   // Personalization returns: compact "tuned for you" summary, or the full
   // selector when no persona is set yet.
   // Style quiz: label (subtle chip) when taken; the full selector otherwise.
   const personaLabel = (personaType && !personaExpanded) ? tPersona(`${personaType}Label`) : null;
   const personaQuiz = (
-    <PersonaSelector onPersonaSelected={(p) => { localStorage.setItem("mp_persona_type", p); setPersonaType(p); setPersonaExpanded(false); }} currentPersona={personaType} isMobile={isMobile} />
+    // personaSectionRef rides on the quiz wherever it renders (the relay's
+    // steward slot), so "change style" can scroll it into view (change 9).
+    <div ref={personaSectionRef}>
+      <PersonaSelector onPersonaSelected={(p) => { localStorage.setItem("mp_persona_type", p); setPersonaType(p); setPersonaExpanded(false); }} currentPersona={personaType} isMobile={isMobile} />
+    </div>
   );
 
   // "Your memories" strip — brings back Recent Memories + On This Day + a
@@ -785,7 +793,26 @@ export default function HomeView() {
   // Stable identities for the board's remaining scalar props so the React.memo
   // wrapper on AtriumRelay can actually skip reconciliation on unrelated ticks.
   const relayWeekHistory = useMemo(() => computeWeekHistory(creationDates), [creationDates]);
-  const relayLabels = useMemo(() => ({ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), otherJourneys: t("relay.otherJourneys"), weeksWarm: t("relay.weeksWarm"), quietKept: t("relay.quietKept") }), [t]);
+  const relayLabels = useMemo(() => ({ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), weeksWarm: t("relay.weeksWarm"), quietKept: t("relay.quietKept"), laneJourneysPill: t("relay.laneJourneysPill") }), [t]);
+  // Per-lane journey pills (change 4): every track mapped to one of the three
+  // verb lanes by its nature — collect/record new material → capture; making
+  // existing content vivid → bring to life; social/legacy → share.
+  const laneJourneys = useMemo(() => {
+    const LANE_TRACKS: Record<"capture" | "bring" | "share", string[]> = {
+      capture: ["preserve", "capture", "resolutions"],
+      bring: ["visualize", "enhance"],
+      share: ["cocreate", "connect", "legacy"],
+    };
+    const openJourneys = () => setShowTracksPanel(true);
+    const mk = (ids: string[]) => {
+      let done = 0, total = 0;
+      for (const td of trackData) {
+        if (ids.includes(td.id)) { done += td.progress; total += td.total; }
+      }
+      return { done, total, onClick: openJourneys, ofLabel: t("relay.laneJourneysOf", { done: String(done), total: String(total) }) };
+    };
+    return { capture: mk(LANE_TRACKS.capture), bring: mk(LANE_TRACKS.bring), share: mk(LANE_TRACKS.share) };
+  }, [trackData, setShowTracksPanel, t]);
   // Palace + Library stay ON TOP as anchors. The Palace card's counterpart to
   // the Library's photo fan: wing seals — the lived-in wings with their counts.
   // The complete set: every wing gets its seal (canonical order); untouched
@@ -828,7 +855,7 @@ export default function HomeView() {
     // Only lead the share lane with "shared" when the tile is genuinely
     // present (loaded AND non-empty) — tileKeys already excludes hidden tiles.
     const shareLead = sharedWithMe.length > 0 && tileKeys.includes("shared") ? "shared" : "familyGroup";
-    return pick(shareLead, "familyGroup", "cocreate", "publish");
+    return pick(shareLead, "familyGroup", "publish");
   };
   const markHero = <Tl extends { key: string; hidden?: boolean; soon?: boolean }>(laneId: string, tiles: Tl[]): (Tl & { hero?: boolean })[] => {
     const hk = heroFor(laneId, tiles.filter((tl) => !tl.hidden && !tl.soon).map((tl) => tl.key));
@@ -839,12 +866,12 @@ export default function HomeView() {
       id: "capture", overline: t("relay.laneCapture"), accent: "terracotta" as const,
       tiles: [
         { key: "photos", title: t("relay.tilePhotos"), desc: t("relay.tilePhotosDesc"), onClick: goUpload, datum: mtc.photo > 0 ? (mtc.photo === 1 ? t("relay.photosCountNOne", { count: String(mtc.photo) }) : t("relay.photosCountN", { count: String(mtc.photo) })) : undefined },
-        { key: "cloud", title: t("relay.tileCloud"), desc: t("relay.tileCloudDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
-        { key: "restore", title: t("relay.tileRestore"), desc: t("relay.tileRestoreDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
-        { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? (mtc.story === 1 ? t("relay.storiesCountNOne", { count: String(mtc.story) }) : t("relay.storiesCountN", { count: String(mtc.story) })) : undefined },
+        { key: "cloud", title: t("relay.tileCloud"), desc: t("relay.tileCloudDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
+        { key: "restore", title: t("relay.tileRestore"), desc: t("relay.tileRestoreDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
+        { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? (mtc.story === 1 ? t("relay.storiesCountNOne", { count: String(mtc.story) }) : t("relay.storiesCountN", { count: String(mtc.story) })) : undefined },
         { key: "record", title: t("relay.tileInterviews"), desc: t("relay.tileInterviewsDesc"), onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? (interviewSessions.length === 1 ? t("relay.recordedCountOne", { count: String(interviewSessions.length) }) : t("relay.recordedCount", { count: String(interviewSessions.length) })) : undefined },
         { key: "whatsapp", title: t("relay.tileWhatsapp"), desc: t("relay.tileWhatsappDesc"), onClick: () => setShowKepCapture(true) },
-        { key: "capsule", title: t("relay.tileCapsule"), desc: t("relay.tileCapsuleDesc"), onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
+        { key: "capsule", title: t("relay.tileCapsule"), desc: t("relay.tileCapsuleDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "time-capsule"); localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
       ],
     },
     {
@@ -854,30 +881,28 @@ export default function HomeView() {
         { key: "timeline", title: t("relay.tileTimeline"), desc: t("relay.tileTimelineDesc"), onClick: () => setShowTimeline(true), datum: yearRange },
         { key: "insights", title: t("relay.tileHighlights"), desc: t("relay.tileHighlightsDesc"), onClick: () => setShowStatistics(true) },
         { key: "family", title: t("relay.tileFamilyTree"), desc: t("relay.tileFamilyTreeDesc"), onClick: () => setShowFamilyTree(true) },
-        { key: "gallery", title: t("relay.tileGallery"), desc: t("relay.tileGalleryDesc"), onClick: () => handleNavigateLibrary() },
-        { key: "organize", title: t("relay.tileOrganize"), desc: t("relay.tileOrganizeDesc"), onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
-        { key: "explore", title: t("relay.tileExplore"), desc: t("relay.tileExploreDesc"), onClick: () => router.push("/explore") },
-        { key: "lifestory", title: t("relay.tileLifeStory"), desc: t("relay.tileLifeStoryDesc"), onClick: () => {}, soon: true },
+        { key: "gallery", title: t("relay.tileGallery"), desc: t("relay.tileGalleryDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "create-gallery"); handleNavigateLibrary(); } },
+        { key: "organize", title: t("relay.tileOrganize"), desc: t("relay.tileOrganizeDesc"), dest: t("relay.destPalace"), onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
+        { key: "explore", title: t("relay.tileExplore"), desc: t("relay.tileExploreDesc"), dest: t("relay.destExplore"), onClick: () => router.push("/explore") },
+        { key: "lifestory", title: t("relay.tileLifeStory"), desc: t("relay.tileLifeStoryDesc"), onClick: () => setShowLifeStory(true) },
       ],
     },
     {
       id: "share", overline: t("relay.laneShare"), accent: "sage" as const,
       tiles: [
-        { key: "familyGroup", title: t("relay.tileFamilyGroup"), desc: t("relay.tileFamilyGroupDesc"), onClick: () => router.push("/settings/family") },
-        { key: "cocreate", title: t("relay.tileCocreate"), desc: t("relay.tileCocreateDesc"), onClick: () => router.push("/settings/family") },
-        { key: "invite", title: t("relay.tileInvite"), desc: t("relay.tileInviteDesc"), onClick: () => router.push("/settings/family") },
-        { key: "publish", title: t("relay.tilePublish"), desc: t("relay.tilePublishDesc"), onClick: () => router.push("/explore") },
+        { key: "familyGroup", title: t("relay.tileFamilyGroup"), desc: t("relay.tileFamilyGroupDesc"), dest: t("relay.destMe"), onClick: () => router.push("/settings/family") },
+        { key: "invite", title: t("relay.tileInvite"), desc: t("relay.tileInviteDesc"), dest: t("relay.destMe"), onClick: () => router.push("/settings/sharing") },
+        { key: "publish", title: t("relay.tilePublish"), desc: t("relay.tilePublishDesc"), dest: t("relay.destExplore"), onClick: () => router.push("/explore") },
         { key: "shared", title: t("relay.tileShared"), desc: t("relay.tileSharedDesc"), onClick: () => setShowSharedWithMe(true), datum: sharedWithMe.length > 0 ? (sharedWithMe.length === 1 ? t("relay.sharedCountOne", { count: String(sharedWithMe.length) }) : t("relay.sharedCount", { count: String(sharedWithMe.length) })) : undefined, hidden: !(sharedLoading || sharedWithMe.length > 0) },
-        { key: "legacy", title: t("relay.tileLegacy"), desc: t("relay.tileLegacyDesc"), onClick: () => router.push("/settings/legacy") },
+        { key: "legacy", title: t("relay.tileLegacy"), desc: t("relay.tileLegacyDesc"), dest: t("relay.destMe"), onClick: () => router.push("/settings/legacy") },
       ],
     },
   ].map((lane) => ({ ...lane, tiles: markHero(lane.id, lane.tiles) }));
-  }, [t, goUpload, mtc, handleNavigateLibrary, setShowInterviewLibrary, interviewSessions, setShowKepCapture, setShowMemoryMap, setShowTimeline, yearRange, setShowStatistics, setShowFamilyTree, startTransition, setNavMode, enterEntrance, router, setShowSharedWithMe, sharedWithMe, sharedLoading, relaySuggestion.key, totalMemories]);
+  }, [t, goUpload, mtc, handleNavigateLibrary, setShowInterviewLibrary, interviewSessions, setShowKepCapture, setShowMemoryMap, setShowTimeline, yearRange, setShowStatistics, setShowFamilyTree, startTransition, setNavMode, enterEntrance, router, setShowSharedWithMe, sharedWithMe, sharedLoading, relaySuggestion.key, totalMemories, setShowLifeStory]);
   const relayYou = useMemo(() => [
     { key: "journeys", label: t("relay.youJourneys"), onClick: () => setShowTracksPanel(true) },
     { key: "milestones", label: t("relay.youMilestones"), onClick: () => setShowAchievementPanel(true) },
     { key: "profile", label: t("relay.youProfile"), onClick: () => router.push("/settings/profile") },
-    { key: "settings", label: t("relay.youSettings"), onClick: () => router.push("/settings") },
     { key: "help", label: t("relay.youHelp"), onClick: () => router.push("/help") },
   ], [t, setShowTracksPanel, setShowAchievementPanel, router]);
 
@@ -972,12 +997,20 @@ export default function HomeView() {
             warmth={warmthLevel}
             weekHistory={relayWeekHistory}
             labels={relayLabels}
+            laneJourneys={laneJourneys}
             score={relayScore}
             suggestion={relaySuggestion}
             personaLabel={personaLabel}
             personaQuiz={personaQuiz}
-            onChangeStyle={() => setPersonaExpanded(true)}
-            onChooseJourney={() => setShowTracksPanel(true)}
+            onChangeStyle={() => {
+              // The quiz replaces the steward card at the TOP of the board;
+              // the persona chip lives at the bottom — scroll the quiz into
+              // view so the tap visibly does something (change 9).
+              setPersonaExpanded(true);
+              setTimeout(() => {
+                personaSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }, 350);
+            }}
             onAddName={() => router.push("/settings/profile")}
             memoriesStrip={memoriesStrip}
             anchors={relayAnchors}
@@ -1729,6 +1762,9 @@ export default function HomeView() {
           )}
         </div>
       </div>
+
+      {/* ── LIFE STORY PANEL (change 11) ── */}
+      {showLifeStory && <LifeStoryPanel onClose={() => setShowLifeStory(false)} />}
 
       {/* ── MODE TRANSITION OVERLAY ── */}
       <ModeTransition {...transitionProps} />

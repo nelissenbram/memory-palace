@@ -139,10 +139,11 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           }}><TrophyIcon size={28} /></div>
 
           <div>
-            <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#403B36", lineHeight: 1.15 }}>
+            {/* Canonical Sheet title tokens (matches Sheet.tsx built-in title) */}
+            <div style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, fontWeight: 400, color: T.color.charcoal }}>
               {t("title")}
             </div>
-            <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.125rem" }}>
               {t("unlocked", { earned: String(earned), total: String(total) })}
             </div>
           </div>

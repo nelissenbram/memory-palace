@@ -568,6 +568,8 @@ export default function LibraryView() {
         "organize": "addLocation",
         "import-upload": "importUpload",
         "import-cloud": "importUpload",
+        "time-capsule": "timeCapsule",
+        "create-gallery": "createGallery",
       };
       const mapped = spotlightMap[target] || target;
       // Small delay to let the Library UI render first
@@ -1870,6 +1872,35 @@ export default function LibraryView() {
                   if (spotlightTarget === a.key) setSpotlightTarget(null);
                 }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === a.key ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>{a.label}</button>
               ))}
+              {/* Time Capsule — opens the same UploadPanel flow with the
+                  sealed-memory preset flag; Atrium spotlight target */}
+              <button type="button" data-spotlight-id="timeCapsule" title={t("actionTimeCapsuleHint")} aria-label={`${t("actionTimeCapsule")} — ${t("actionTimeCapsuleHint")}`} onClick={() => {
+                let roomId = selectedRoom, wingId = selectedWing;
+                if (!roomId) {
+                  roomId = pickFullestRoom();
+                  if (!roomId) return;
+                  wingId = roomWingMap[roomId] || wingId;
+                  setSelectedWing(wingId);
+                  setSelectedRoom(roomId);
+                  fetchRoomMemories(roomId);
+                }
+                try { localStorage.setItem("mp_upload_time_capsule", "true"); } catch { /* full */ }
+                setShowUploadFor({ wingId, roomId });
+                if (spotlightTarget === "timeCapsule") setSpotlightTarget(null);
+              }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: isMobile ? "2.75rem" : "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === "timeCapsule" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12M6 21h12" /><path d="M8 3v3c0 2.5 4 3.5 4 6s-4 3.5-4 6v3" /><path d="M16 3v3c0 2.5-4 3.5-4 6s4 3.5 4 6v3" /></svg>
+                {t("actionTimeCapsule")}
+              </button>
+              {/* Create a Gallery — opens the same Add-Room flow as the
+                  "+ Add Room" card (no dedicated gallery room type exists);
+                  Atrium spotlight target */}
+              <button type="button" data-spotlight-id="createGallery" title={t("actionCreateGalleryHint")} aria-label={`${t("actionCreateGallery")} — ${t("actionCreateGalleryHint")}`} onClick={() => {
+                setShowRoomManager(true);
+                if (spotlightTarget === "createGallery") setSpotlightTarget(null);
+              }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: isMobile ? "2.75rem" : "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === "createGallery" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" /></svg>
+                {t("actionCreateGallery")}
+              </button>
               <button type="button" onClick={() => setShowPublishModal(true)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("publish")}</button>
               <button type="button" data-spotlight-id="importUpload" data-nudge="library_import" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", animation: spotlightTarget === "importUpload" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>

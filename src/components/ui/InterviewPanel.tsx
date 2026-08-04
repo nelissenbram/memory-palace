@@ -233,6 +233,25 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
     }
   };
 
+  // Switch input mode mid-interview (question phase). Stops any stray
+  // recording/recognition cleanly and carries already-transcribed words into
+  // the textarea so nothing the user said is lost.
+  const handleModeSwitch = async (mode: "voice" | "text") => {
+    if (mode === inputMode) return;
+    let captured = "";
+    if (speech.isListening) {
+      captured = ((await speech.stopListening()) || speech.transcript || "").trim();
+    } else {
+      captured = (speech.transcript || "").trim();
+    }
+    if (recorder.isRecording) await recorder.stopRecording();
+    if (mode === "text" && captured) {
+      setTextInput((prev) => (prev.trim() ? `${prev.trim()} ${captured}` : captured));
+      speech.resetTranscript();
+    }
+    setInputMode(mode);
+  };
+
   // Stop recording — grab the speech transcript directly (no API call needed)
   const handleStopRecording = async () => {
     const spokenText = await speech.stopListening();
@@ -638,6 +657,24 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 {apiError}
               </div>
             )}
+
+            {/* Compact input-mode toggle — mirrors the intro toggle so users can
+                switch to typing (or back to voice) mid-interview, e.g. when
+                speech fails on desktop. Voice hidden when speech is unsupported. */}
+            <div style={{ display: "flex", gap: "0.375rem", justifyContent: "center", marginBottom: "1.5rem" }}>
+              {(["voice", "text"] as const).filter((mode) => mode === "text" || speech.isSupported).map((mode) => (
+                <button key={mode} onClick={() => handleModeSwitch(mode)} aria-pressed={inputMode === mode} style={{
+                  padding: "0.375rem 1rem", borderRadius: "2rem", minHeight: "2.75rem",
+                  border: inputMode === mode ? `0.0625rem solid ${EMBER}` : `0.0625rem solid ${HAIRLINE}`,
+                  background: inputMode === mode ? "rgba(184,92,56,0.12)" : "transparent",
+                  color: inputMode === mode ? EMBER : MUTED,
+                  fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
+                  transition: "all 0.2s",
+                }}>
+                  {mode === "voice" ? <><MicIcon size={14} />{t("speakAnswers")}</> : <><KeyboardIcon size={14} />{t("typeAnswers")}</>}
+                </button>
+              ))}
+            </div>
 
             {inputMode === "voice" ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>

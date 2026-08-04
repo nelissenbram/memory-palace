@@ -470,16 +470,17 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
         <div className="sp-stats-root">
           <h2
             style={{
+              // Canonical Sheet title tokens (matches Sheet.tsx built-in title)
               fontFamily: T.font.display,
-              fontSize: "1.375rem",
-              fontWeight: 600,
-              color: "#403B36" /* Atrium token: ink */,
+              fontSize: T.fontSize.lg,
+              fontWeight: 400,
+              color: T.color.charcoal,
               margin: 0,
             }}
           >
             {t("title")}
           </h2>
-          <p style={{ ...mutedStyle, margin: "0.25rem 0 0" }}>
+          <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, margin: "0.125rem 0 0" }}>
             {t("subtitle")}
           </p>
         </div>

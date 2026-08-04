@@ -97,11 +97,12 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
       title={
         <div className="tracksPanelHead" style={{ minWidth: 0 }}>
           <h2 style={{
-            fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, // Atrium titleL
-            color: "#403B36", margin: 0, // Atrium ink
+            // Canonical Sheet title tokens (matches Sheet.tsx built-in title)
+            fontFamily: T.font.display, fontSize: T.fontSize.lg, fontWeight: 400,
+            color: T.color.charcoal, margin: 0,
           }}>{t("title")}</h2>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.25rem",
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, margin: "0.125rem 0 0",
           }}>
             {t("description")}
           </p>

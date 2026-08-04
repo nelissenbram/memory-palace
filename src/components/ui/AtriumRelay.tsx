@@ -15,7 +15,7 @@
  * Warmth model: src/lib/warmth.ts — one state, many surfaces.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { T } from "@/lib/theme";
 import { RT, SHADOW, HOVER_SHADOW, TOP_HIGHLIGHT, HAIRLINE } from "@/lib/libraryTokens";
@@ -40,6 +40,10 @@ export type RelayTile = {
   hero?: boolean;
   /** Anchor extra: wing seals for the Palace card — one per wing, engraved SVG. */
   chips?: { id: string; label: string; empty?: boolean }[];
+  /** Destination indicator: where this tile navigates to (e.g. "Library").
+      Set only on tiles whose onClick leaves the Atrium; drives the front
+      gold arrow + the backcard destination chip. */
+  dest?: string;
 };
 export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor";
 export type RelayLane = { id: string; overline: string; accent: RelayAccent; tiles: RelayTile[] };
@@ -51,6 +55,9 @@ export type RelayLedger = { text: string; warm: boolean };
 /** Family Embers — one loved one's recent presence on the palace. */
 export type EmberPerson = { key: string; name: string; unseen: number; latest?: string };
 export type RelayEmbers = { title: string; people: EmberPerson[]; onOpen: () => void; scrollHint?: string };
+/** Per-lane journey summary: completed units over all tracks mapped to the
+    lane. `ofLabel` is the preformatted "{done} of {total}" i18n string. */
+export type LaneJ = { done: number; total: number; onClick: () => void; ofLabel?: string };
 
 interface AtriumRelayProps {
   greeting: string;
@@ -67,7 +74,6 @@ interface AtriumRelayProps {
   personaLabel?: string | null;
   personaQuiz?: React.ReactNode;
   onChangeStyle?: () => void;
-  onChooseJourney?: () => void;
   onAddName?: () => void;
   memoriesStrip?: React.ReactNode;
   anchors: RelayTile[];
@@ -76,8 +82,10 @@ interface AtriumRelayProps {
   isMobile: boolean;
   /** Last 12 weeks warm/quiet (lib/warmth computeWeekHistory) — ledger tap opens the strip. */
   weekHistory?: boolean[];
+  /** Per-lane journey pills rendered in each lane's header row. */
+  laneJourneys?: { capture?: LaneJ; bring?: LaneJ; share?: LaneJ };
   /** i18n labels for the board's own strings. */
-  labels?: { suggested?: string; addYourName?: string; soon?: string; otherJourneys?: string; weeksWarm?: string; quietKept?: string; open?: string };
+  labels?: { suggested?: string; addYourName?: string; soon?: string; weeksWarm?: string; quietKept?: string; open?: string; laneJourneysPill?: string };
 }
 
 /* ── Type ramp, elevation grammar and hairline now live in libraryTokens
@@ -192,18 +200,26 @@ function WingFan({ chips }: { chips: { id: string; label: string; empty?: boolea
 }
 
 function ThumbFan({ thumbs }: { thumbs: string[] }) {
+  // Sources can 404/expire after passing the caller's validity guard — track
+  // per-thumb load failures so broken thumbs drop out instead of blank squares.
+  const [errored, setErrored] = useState<Set<number>>(() => new Set());
+  const markErrored = useCallback((i: number) => {
+    setErrored((prev) => { const next = new Set(prev); next.add(i); return next; });
+  }, []);
+  const visible = thumbs.slice(0, 3).map((src, i) => ({ src, i })).filter(({ i }) => !errored.has(i));
+  if (visible.length === 0) return null;
   return (
     <span style={{ display: "inline-flex", alignItems: "center" }} aria-hidden="true">
-      {thumbs.slice(0, 3).map((src, i) => (
-        <span key={i} style={{ position: "relative", width: "2.25rem", height: "2.25rem", borderRadius: "0.5rem", overflow: "hidden", border: `0.125rem solid ${T.color.cream}`, boxShadow: "0 0.125rem 0.375rem rgba(64,59,54,0.18)", marginLeft: i === 0 ? 0 : "-0.75rem", transform: `rotate(${(i - 1) * 4}deg)` }}>
-          <Image src={src} alt="" fill sizes="36px" style={{ objectFit: "cover" }} />
+      {visible.map(({ src, i }, j) => (
+        <span key={i} style={{ position: "relative", width: "2.25rem", height: "2.25rem", borderRadius: "0.5rem", overflow: "hidden", border: `0.125rem solid ${T.color.cream}`, boxShadow: "0 0.125rem 0.375rem rgba(64,59,54,0.18)", marginLeft: j === 0 ? 0 : "-0.75rem", transform: `rotate(${(j - 1) * 4}deg)` }}>
+          <Image src={src} alt="" fill sizes="36px" style={{ objectFit: "cover" }} onError={() => markErrored(i)} />
         </span>
       ))}
     </span>
   );
 }
 
-const Tile = React.memo(function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel }: { tile: RelayTile; accent: RelayAccent; index: number; isMobile: boolean; suggestionKey?: string; warmth: WarmthLevel; soonLabel: string }) {
+const Tile = React.memo(function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel, flipped = false, hoverCapable = false, onFlip }: { tile: RelayTile; accent: RelayAccent; index: number; isMobile: boolean; suggestionKey?: string; warmth: WarmthLevel; soonLabel: string; flipped?: boolean; hoverCapable?: boolean; onFlip?: (key: string) => void }) {
   if (tile.hidden) return null;
   const a = ACCENT[accent];
 
@@ -280,32 +296,65 @@ const Tile = React.memo(function Tile({ tile, accent, index, isMobile, suggestio
           <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, maxWidth: "80%", overflowWrap: "break-word" }}>{tile.desc}</span>
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
-        <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
+        {tile.dest ? (
+          <span aria-hidden="true" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: GOLD_GRAPHIC, opacity: 0.85 }}>→</span>
+        ) : (
+          <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
+        )}
       </button>
     );
   }
 
-  // SECONDARY (redesign): compact card that ALWAYS shows the full description
-  // inline (no hover-flip back-card that structurally clamped the text). The card
-  // grows to fit its title + full desc + datum, so copy never truncates — in any
-  // language, on mobile included. A soft scene whisper rests behind on the right.
+  // SECONDARY (backcard restored): compact front card — title + datum only —
+  // that turns over to the zone-tinted reverse with the full description, the
+  // destination chip and a gilt open-arrow. Hover/focus flips on hover-capable
+  // devices; on touch the FIRST tap flips, the SECOND runs the action (the
+  // parent auto-unflips after ~6s). The description stays available to screen
+  // readers via the button's aria-label.
+  const handleSecClick = () => {
+    if (hoverCapable || flipped || !onFlip) { tile.onClick(); return; }
+    onFlip(tile.key);
+  };
   return (
-    <button type="button" onClick={tile.onClick} className="relay-tile relay-tile-sec" style={{ position: "relative", display: "flex", alignItems: "flex-start", gap: "0.65rem", textAlign: "left", borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${a.border}`, background: a.tileBg, cursor: "pointer", minHeight: "3.5rem", padding: "0.8rem 2.4rem 0.8rem 1rem", boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}` }}>
-      {/* Soft scene whisper on the right — kept low-opacity so the always-on inline
-          description stays legible over its faded edge. */}
+    <button
+      type="button"
+      onClick={handleSecClick}
+      aria-label={`${tile.title}. ${tile.desc}${tile.dest ? ` — ${tile.dest}` : ""}`}
+      className={`relay-tile relay-tile-sec${flipped ? " relay-flipped" : ""}`}
+      style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.65rem", textAlign: "left", borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${a.border}`, background: a.tileBg, cursor: "pointer", minHeight: "3.5rem", padding: "0.75rem 2.4rem 0.75rem 1rem", boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}` }}
+    >
+      {/* front-side whisper of the scene: the vignette rests on the right at
+          low volume — the invitation is visible before any flip */}
       {Vignette ? (
-        <span aria-hidden="true" className="relay-sec-vig" style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "42%", opacity: 0.28, pointerEvents: "none", maskImage: "linear-gradient(90deg, transparent, black 70%)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 70%)" }}>
+        <span aria-hidden="true" className="relay-sec-vig" style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "52%", opacity: 0.5, pointerEvents: "none", maskImage: "linear-gradient(90deg, transparent, black 55%)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 55%)" }}>
           <Vignette c={vigPalette} />
         </span>
       ) : null}
       <Medallion k={tile.key} accent={accent} index={index} animated={animated} />
-      <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "100%", gap: "0.15rem" }}>
+      <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "100%", gap: "0.1rem" }}>
         <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word" }}>{tile.title}</span>
-        {tile.desc ? <span style={{ fontFamily: T.font.body, fontSize: RT.overline, color: a.descColor, lineHeight: 1.3, overflowWrap: "break-word" }}>{tile.desc}</span> : null}
-        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums", marginTop: "0.05rem" }}>{tile.datum}</span> : null}
+        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
       </span>
-      {/* Persistent open affordance (nudges on hover; never disappears). */}
-      <span aria-hidden="true" className="relay-sec-openarrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop, opacity: 0.5, pointerEvents: "none" }}>→</span>
+      {/* Destination affordance (change 2a): always-visible small GOLD arrow,
+          bottom-right, only on tiles that navigate away. */}
+      {tile.dest ? (
+        <span aria-hidden="true" className="relay-sec-openarrow" style={{ position: "absolute", right: "0.85rem", bottom: "0.6rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: GOLD_GRAPHIC, opacity: 0.85, pointerEvents: "none" }}>→</span>
+      ) : null}
+      {/* BACKCARD (restored, eeff195~1 design): the tile turns over to the
+          zone-tinted reverse — vignette wash, full description, destination
+          chip and the gilt open-arrow. */}
+      <span aria-hidden="true" className="relay-backcard" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.25rem", padding: "0.5rem 2.4rem 0.5rem 1rem", background: `linear-gradient(160deg, ${TRAY[accent] === "transparent" ? "#FCFAF5" : TRAY[accent]} 0%, #FCFAF5 115%)`, borderTop: `0.1875rem solid ${a.tileTop}`, overflow: "hidden" }}>
+        {Vignette ? (
+          <span style={{ position: "absolute", inset: 0, opacity: 0.95, maskImage: "linear-gradient(90deg, transparent 8%, black 48%)", WebkitMaskImage: "linear-gradient(90deg, transparent 8%, black 48%)" }}>
+            <Vignette c={vigPalette} />
+          </span>
+        ) : null}
+        <span style={{ position: "relative", fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: "58%", textShadow: "0 0 0.5rem rgba(252,250,245,0.95), 0 0 1rem rgba(252,250,245,0.8)" }}>{tile.desc}</span>
+        {tile.dest ? (
+          <span style={{ position: "relative", alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.1rem 0.5rem", borderRadius: "1rem", background: `rgba(${OCHRE_RGB},0.14)`, fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: LEDGER_OCHRE, maxWidth: "58%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.dest} →</span>
+        ) : null}
+        <span className="relay-backcard-arrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
+      </span>
     </button>
   );
 });
@@ -369,10 +418,24 @@ export function EmbersRow({ embers }: { embers: RelayEmbers }) {
   );
 }
 
-function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, warmth = 1, score, suggestion, personaLabel, personaQuiz, onChangeStyle, onChooseJourney, onAddName, memoriesStrip, anchors, lanes, you, isMobile, weekHistory, labels }: AtriumRelayProps) {
+function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, warmth = 1, score, suggestion, personaLabel, personaQuiz, onChangeStyle, onAddName, memoriesStrip, anchors, lanes, you, isMobile, weekHistory, laneJourneys, labels }: AtriumRelayProps) {
   const [mounted, setMounted] = useState(false);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   useEffect(() => { const id = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(id); }, []);
+  // Card-flip plumbing (touch devices): which secondary tile is showing its
+  // backcard. Hover-capable devices flip via CSS :hover/:focus-visible instead.
+  const [flippedKey, setFlippedKey] = useState<string | null>(null);
+  const [hoverCapable, setHoverCapable] = useState(false);
+  useEffect(() => {
+    try { setHoverCapable(window.matchMedia("(hover: hover)").matches); } catch { /* no matchMedia */ }
+  }, []);
+  // Auto-unflip after ~6s so an opened backcard never lingers.
+  useEffect(() => {
+    if (!flippedKey) return;
+    const id = setTimeout(() => setFlippedKey(null), 6000);
+    return () => clearTimeout(id);
+  }, [flippedKey]);
+  const handleFlip = useCallback((k: string) => setFlippedKey(k), []);
   const SugIco = RelayIcons[suggestion.key] ?? RelayIcons.palace;
   const suggestedLabel = labels?.suggested ?? "Suggested for you";
   const soonLabel = labels?.soon ?? "Soon";
@@ -452,13 +515,15 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
           <span style={{ display: "flex", flexDirection: "column", gap: "0.05rem", minWidth: 0 }}>
             <Overline color="#9A4F2A">{suggestedLabel}</Overline>
             <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleM, lineHeight: RT.lhDisplay, color: "#403B36", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{suggestion.title}</span>
-            <span style={{ fontFamily: T.font.body, fontSize: RT.body, lineHeight: RT.lhBody, color: "#716A5E", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{suggestion.reason}</span>
+            <span className="relay-suggest-reason" style={{ fontFamily: T.font.body, fontWeight: 500, fontSize: RT.body, lineHeight: RT.lhBody, color: "#9A4F2A", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{suggestion.reason}</span>
             {suggestion.progress ? (
               <span aria-hidden="true" style={{ display: "block", marginTop: "0.4rem", height: "0.3rem", borderRadius: "1rem", background: "rgba(154,79,42,0.14)", overflow: "hidden", maxWidth: "16rem" }}>
                 <span style={{ display: "block", height: "100%", width: `${Math.round((100 * suggestion.progress.done) / Math.max(1, suggestion.progress.total))}%`, background: "#B85C38", borderRadius: "1rem" }} />
               </span>
             ) : null}
           </span>
+          {/* Action chip (change 3): the card reads as a doorway, not a notice. */}
+          <span aria-hidden="true" className="relay-suggest-arrow" style={{ marginLeft: "auto", flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2rem", height: "2rem", borderRadius: "50%", background: "rgba(212,175,55,0.16)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: LEDGER_OCHRE }}>→</span>
         </button>
       )}
 
@@ -478,15 +543,37 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
         if (visible.length === 0) return null;
         const a = ACCENT[lane.accent];
         const ordered = [...visible.filter((tl) => tl.hero), ...visible.filter((tl) => !tl.hero)];
+        // Per-lane journey pill (change 4): lane id → its LaneJ summary.
+        const lj = laneJourneys
+          ? (lane.id === "capture" ? laneJourneys.capture : lane.id === "share" ? laneJourneys.share : laneJourneys.bring)
+          : undefined;
         return (
           <section key={lane.id} aria-label={lane.overline} style={{ background: TRAY[lane.accent], borderRadius: "1.25rem", borderLeft: `0.1875rem solid ${a.tileTop}`, boxShadow: "inset 0 0.0625rem 0.1875rem rgba(64,59,54,0.06)", padding: "1rem 1.1rem 1.35rem", margin: "0 0 1.1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "0 0 0.9rem" }}>
               <span style={{ width: "0.6rem", height: "0.6rem", borderRadius: "50%", background: a.tileTop, display: "inline-block", flexShrink: 0 }} aria-hidden="true" />
               <Overline color={a.glyph}>{lane.overline}</Overline>
               <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: `linear-gradient(90deg, ${a.rule}, transparent)` }} />
+              {lj && lj.total > 0 ? (
+                <button
+                  type="button"
+                  onClick={lj.onClick}
+                  className="relay-pill"
+                  aria-label={`${labels?.laneJourneysPill ?? "Journeys"} · ${lj.ofLabel ?? `${lj.done}/${lj.total}`}`}
+                  style={{ display: "inline-flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: "0.25rem", minHeight: "2.75rem", padding: "0.35rem 0.8rem", borderRadius: "1.375rem", border: `0.0625rem solid ${a.border}`, background: "rgba(252,250,245,0.65)", cursor: "pointer", flexShrink: 0 }}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontFamily: T.font.body, fontSize: RT.overline, fontWeight: 700, color: a.glyph, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                    <span aria-hidden="true" style={{ width: "0.9rem", height: "0.9rem", display: "inline-flex" }}><RelayIcons.journeys /></span>
+                    {labels?.laneJourneysPill ?? "Journeys"}
+                    <span style={{ fontWeight: 600 }}>{lj.ofLabel ?? `${lj.done}/${lj.total}`}</span>
+                  </span>
+                  <span aria-hidden="true" style={{ display: "block", height: "0.1875rem", borderRadius: "1rem", background: a.medallion, overflow: "hidden" }}>
+                    <span style={{ display: "block", height: "100%", width: `${Math.round((100 * lj.done) / Math.max(1, lj.total))}%`, background: a.tileTop, borderRadius: "1rem" }} />
+                  </span>
+                </button>
+              ) : null}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? "8.5rem" : "11rem"}, 1fr))`, gap: "0.75rem" }}>
-              {ordered.map((tl, i) => <Tile key={tl.key} tile={tl} accent={lane.accent} index={i} isMobile={isMobile} suggestionKey={suggestion.key} warmth={warmth} soonLabel={soonLabel} />)}
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(11rem, 1fr))", gap: "0.75rem" }}>
+              {ordered.map((tl, i) => <Tile key={tl.key} tile={tl} accent={lane.accent} index={i} isMobile={isMobile} suggestionKey={suggestion.key} warmth={warmth} soonLabel={soonLabel} flipped={flippedKey === tl.key} hoverCapable={hoverCapable} onFlip={handleFlip} />)}
             </div>
           </section>
         );
@@ -517,11 +604,6 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
             <span aria-hidden="true" style={{ width: "1.125rem", height: "1.125rem", display: "inline-flex" }}><RelayIcons.settings /></span>{personaLabel}
           </button>
         ) : null}
-        {onChooseJourney ? (
-          <button type="button" onClick={onChooseJourney} className="relay-pill" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", minHeight: "2.75rem", padding: "0 1rem", borderRadius: "2rem", border: `0.0625rem solid ${T.color.warmStone}`, background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, color: "#716A5E" }}>
-            <span aria-hidden="true" style={{ width: "1.125rem", height: "1.125rem", display: "inline-flex" }}><RelayIcons.journeys /></span>{labels?.otherJourneys ?? "Other journeys"}
-          </button>
-        ) : null}
       </div>
 
       <style>{`
@@ -532,10 +614,22 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
         .relay-tile:hover .relay-tile-wash { opacity: 1; }
         /* Anchor/hero invite arrow — hidden until hover on hover-capable devices. */
         .relay-invite-arrow { opacity: 0; transform: translateX(-0.3rem); }
-        /* Secondary open-arrow is always visible; it just nudges on hover. */
-        .relay-sec-openarrow { transition: transform 0.2s ease; }
+        /* BACKCARD (restored): hidden at rest; slides/fades in on hover/focus on
+           hover-capable devices, or when the tile carries .relay-flipped (touch
+           first-tap). Reduced motion kills the transition → instant toggle. */
+        .relay-backcard { opacity: 0; transform: translateY(100%); pointer-events: none; transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease; }
+        .relay-sec-vig { transition: opacity 0.2s ease; }
+        .relay-sec-openarrow { transition: opacity 0.24s ease; }
+        .relay-backcard-arrow { transition: transform 0.25s ease 0.1s; transform: translateY(-50%) translateX(-0.3rem); }
+        .relay-tile-sec.relay-flipped .relay-backcard { opacity: 1; transform: translateY(0); }
+        .relay-tile-sec.relay-flipped .relay-sec-vig { opacity: 0; }
+        .relay-tile-sec.relay-flipped .relay-sec-openarrow { opacity: 0; }
+        .relay-tile-sec.relay-flipped .relay-backcard-arrow { transform: translateY(-50%) translateX(0); }
         @media (hover: hover) {
-          .relay-tile-sec:hover .relay-sec-openarrow, .relay-tile-sec:focus-visible .relay-sec-openarrow { transform: translateY(-50%) translateX(0.15rem); }
+          .relay-tile-sec:hover .relay-backcard, .relay-tile-sec:focus-visible .relay-backcard { opacity: 1; transform: translateY(0); }
+          .relay-tile-sec:hover .relay-sec-vig, .relay-tile-sec:focus-visible .relay-sec-vig { opacity: 0; }
+          .relay-tile-sec:hover .relay-sec-openarrow, .relay-tile-sec:focus-visible .relay-sec-openarrow { opacity: 0; }
+          .relay-tile-sec:hover .relay-backcard-arrow, .relay-tile-sec:focus-visible .relay-backcard-arrow { transform: translateY(-50%) translateX(0); }
           .relay-invite-arrow { transition: opacity 0.25s ease, transform 0.25s ease; }
           .relay-tile:hover .relay-invite-arrow { opacity: 1; transform: translateX(0); }
         }
@@ -547,6 +641,11 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
         .relay-pill:hover { background: ${T.color.warmStone}55; border-color: ${T.color.terracotta}; }
         .relay-suggest { transition: transform 0.2s ease, box-shadow 0.2s ease; }
         .relay-suggest:hover { transform: translateY(-0.1875rem); box-shadow: ${HOVER_SHADOW}; }
+        /* Steward card reads as an action (change 3): reason deepens, arrow nudges. */
+        .relay-suggest-reason { transition: color 0.2s ease; }
+        .relay-suggest-arrow { transition: transform 0.2s ease, background 0.2s ease; }
+        .relay-suggest:hover .relay-suggest-reason, .relay-suggest:focus-visible .relay-suggest-reason { color: #B85C38; }
+        .relay-suggest:hover .relay-suggest-arrow, .relay-suggest:focus-visible .relay-suggest-arrow { transform: translateX(0.2rem); background: rgba(212,175,55,0.28); }
         /* one-shot sheen on mount — an invitation, not a beacon */
         .relay-suggest-sheen { position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; background: linear-gradient(105deg, transparent, rgba(255,240,200,0.4), transparent); transform: skewX(-18deg); }
         /* animated icon SUB-PARTS — only the steward-suggested tile's glyph lives */
@@ -587,7 +686,7 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
         @keyframes ri-wave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
         @keyframes ri-bob { 0%,100% { transform: translateY(0.04rem); } 50% { transform: translateY(-0.09rem); } }
         @media (prefers-reduced-motion: reduce) {
-          .relay-tile, .relay-pill, .relay-suggest, .relay-suggest-sheen, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob, .relay-name, .relay-sug-blink, .relay-ember-breathe, .relay-ember-flicker, .relay-anchor-glow, .relay-backcard, .relay-backcard-arrow, .relay-invite-arrow, .relay-sec-openarrow { animation: none !important; transition: none !important; }
+          .relay-tile, .relay-pill, .relay-suggest, .relay-suggest-sheen, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob, .relay-name, .relay-sug-blink, .relay-ember-breathe, .relay-ember-flicker, .relay-anchor-glow, .relay-backcard, .relay-backcard-arrow, .relay-invite-arrow, .relay-sec-openarrow, .relay-sec-vig, .relay-suggest-reason, .relay-suggest-arrow { animation: none !important; transition: none !important; }
           .relay-tile:hover, .relay-suggest:hover { transform: none !important; }
           .relay-suggest-sheen { display: none; }
         }

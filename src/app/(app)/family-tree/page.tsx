@@ -1513,6 +1513,10 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
           position: "sticky",
           top: 0,
           zIndex: 50,
+          // Keep header content clear of the device status bar / notch under
+          // viewport-fit=cover (resolves to 0 on desktop → no-op). Inner rows
+          // keep their own cosmetic padding — no double-offset.
+          paddingTop: "env(safe-area-inset-top, 0px)",
           borderBottom: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
           background: `${T.color.linen}C7`,
           backdropFilter: "blur(1.5rem) saturate(180%)",
