@@ -22,6 +22,7 @@ import {
   CREAM,
   GOLD,
   SAGE,
+  SAGE_SOFT,
   TRAY,
   SHADOW,
   HOVER_SHADOW,
@@ -56,17 +57,26 @@ const MOBILE_CARD_CAP = 8;
 
 /* ── Atrium tray grammar (AtriumRelay canon): recessed tinted panels the
    sections sit in, so Explore reads as an Atrium sibling board. TRAY_GOLD is
-   the Atrium gold-lane tray hex — reserved for the curated/featured zone. ── */
+   the Atrium gold-lane tray hex — reserved for the curated/featured zone.
+   TRAY_SAGE is the Atrium share-lane sage tray — the directory grid's home,
+   so the page reads: neutral search → gold featured → sage directory. ── */
 const TRAY_GOLD = "#FAF3E0";
+const TRAY_SAGE = "#EFF2E8";
+const SAGE_HAIRLINE = "#DFE3D2";
 const TRAY_INSET = "inset 0 0.0625rem 0.1875rem rgba(64,59,54,0.06)";
-function trayPanel(tint: string = TRAY): React.CSSProperties {
+function trayPanel(tint: string = TRAY, edge: string = HAIRLINE): React.CSSProperties {
   return {
     background: tint,
     borderRadius: "1rem",
-    border: `0.0625rem solid ${HAIRLINE}`,
+    border: `0.0625rem solid ${edge}`,
     boxShadow: TRAY_INSET,
   };
 }
+/* Dark gilt keystone (Library Import / sidebar Enter-3D / Atrium dark-anchor
+   voice): ink gradient + gold border + cream/gold text — reserved for the
+   page's single most important action. */
+const KEYSTONE_BG = "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)";
+const KEYSTONE_GOLD_BORDER = "rgba(212,175,55,0.55)";
 /* Cream tile surface that lifts from the recessed tray (Atrium tile grammar,
    rebased on cream/white so cards read a step above the tray tint). */
 const CARD_ON_TRAY = `linear-gradient(160deg, #FFFFFF 0%, ${CREAM} 78%)`;
@@ -480,8 +490,9 @@ export default function ExplorePageClient({
               : ""}
           </span>
 
-          {/* ── Quiet utility door: publishing lives on /settings/sharing.
-                 Once the palace is live, the door becomes a modest chip. ── */}
+          {/* ── Publish door: the page's one dark-gilt keystone (Library
+                 Import / Enter-3D voice). Once the palace is live, it becomes
+                 a modest cream chip — one keystone max, never both. ── */}
           {isAuthenticated && searchResults === null && (
             isPublished === true ? (
               <PalaceLiveChip t={t} />
@@ -490,17 +501,19 @@ export default function ExplorePageClient({
                 <button
                   onClick={() => router.push("/settings/sharing")}
                   data-nudge="explore_publish"
-                  className="explore-quiet"
+                  className="explore-keystone"
                   style={{
                     display: "inline-flex", alignItems: "center", gap: "0.5rem",
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                    minHeight: "2.75rem", padding: "0 1.25rem", borderRadius: "2rem",
-                    border: `0.0625rem solid ${HAIRLINE}`,
-                    background: "transparent",
-                    color: MUTED, cursor: "pointer",
+                    minHeight: "2.75rem", padding: "0 1.5rem", borderRadius: "2rem",
+                    border: `0.0625rem solid ${KEYSTONE_GOLD_BORDER}`,
+                    background: KEYSTONE_BG,
+                    color: CREAM, cursor: "pointer",
+                    boxShadow: "0 0.25rem 1rem rgba(46,42,38,0.22)",
                   }}
                 >
-                  {t("publishYourPalace")} {"→"}
+                  {t("publishYourPalace")}
+                  <span aria-hidden="true" style={{ color: GOLD }}>{"→"}</span>
                 </button>
               </div>
             )
@@ -588,20 +601,20 @@ export default function ExplorePageClient({
               </section>
             )}
 
-            {/* ── The one grid ───────────────────────────── */}
+            {/* ── The one grid: sage share-lane tray (Atrium canon) ── */}
             <section
               data-nudge="explore_cards"
               style={{
-                ...trayPanel(),
+                ...trayPanel(TRAY_SAGE, SAGE_HAIRLINE),
                 padding: isMobile ? "1rem 0.875rem 1.25rem" : "1.25rem 1.5rem 1.5rem",
                 marginBottom: "2.5rem",
               }}
             >
-              <LaneHeader>{gridLabel}</LaneHeader>
+              <LaneHeader accent={SAGE}>{gridLabel}</LaneHeader>
 
               {visiblePalaces.length > 0 ? (
                 <>
-                  <PalaceGrid palaces={visiblePalaces} i18n={cardI18n} featured={rail === "featured"} />
+                  <PalaceGrid palaces={visiblePalaces} i18n={cardI18n} featured={rail === "featured"} accent="sage" />
                   {capped && (
                     <div style={{ textAlign: "center", marginTop: "1.25rem" }}>
                       <button
@@ -675,13 +688,15 @@ export default function ExplorePageClient({
         .explore-card:active { transform: none; }
         .explore-quiet, .explore-pill, .explore-icon-btn, .explore-keystone, .explore-cta { transition: border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease; }
         .explore-quiet:active, .explore-pill:active, .explore-cta:active, .explore-keystone:active { opacity: 0.8; }
+        .explore-card-sage { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
         @media (hover: hover) {
           .explore-card:hover { transform: translateY(-0.1875rem); box-shadow: ${HOVER_SHADOW}, ${TOP_HIGHLIGHT}; }
+          .explore-card-sage:hover { border-color: ${SAGE_SOFT}; border-top-color: ${SAGE}; }
           .explore-quiet:hover { border-color: ${EMBER}; color: ${EMBER}; }
           .explore-pill:hover { border-color: ${EMBER}; color: ${EMBER}; }
           .explore-icon-btn:hover { color: ${INK}; }
           .explore-cta:hover { box-shadow: ${HOVER_SHADOW}; }
-          .explore-keystone:hover { opacity: 0.92; }
+          .explore-keystone:hover { opacity: 0.92; box-shadow: 0 0.375rem 1.25rem rgba(212,175,55,0.18); }
         }
         .explore-card:focus-visible, .explore-pill:focus-visible, .explore-quiet:focus-visible,
         .explore-icon-btn:focus-visible, .explore-keystone:focus-visible, .explore-link:focus-visible,
@@ -746,19 +761,24 @@ function PalaceLiveChip({ t }: { t: (key: string, params?: Record<string, string
   );
 }
 
-/* ── Lane header (Atrium canon): dot + overline + fading rule ── */
+/* ── Lane header (Atrium canon): dot + overline + fading rule.
+   `accent` recolors dot + overline per lane register (default ember). ── */
 
-function LaneHeader({ children, badge }: { children: React.ReactNode; badge?: React.ReactNode }) {
+function LaneHeader({ children, badge, accent = EMBER_GLYPH }: {
+  children: React.ReactNode;
+  badge?: React.ReactNode;
+  accent?: string;
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
       <span aria-hidden="true" style={{
         width: "0.6rem", height: "0.6rem", borderRadius: "50%",
-        background: EMBER_GLYPH, flexShrink: 0,
+        background: accent, flexShrink: 0,
       }} />
       <span style={{
         fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
         letterSpacing: "0.12em", textTransform: "uppercase",
-        color: EMBER_GLYPH, whiteSpace: "nowrap",
+        color: accent, whiteSpace: "nowrap",
       }}>
         {children}
       </span>
@@ -782,14 +802,19 @@ type CardI18n = {
   locale: string;
 };
 
+/** Per-lane card register: ember (default) or the directory's sage lane. */
+type CardAccent = "ember" | "sage";
+
 const PalaceGrid = React.memo(function PalaceGrid({
   palaces,
   i18n,
   featured = false,
+  accent = "ember",
 }: {
   palaces: CardPalace[];
   i18n: CardI18n;
   featured?: boolean;
+  accent?: CardAccent;
 }) {
   return (
     <div
@@ -800,7 +825,7 @@ const PalaceGrid = React.memo(function PalaceGrid({
       }}
     >
       {palaces.map((p) => (
-        <PalaceCard key={p.user_id} palace={p} i18n={i18n} featured={featured} />
+        <PalaceCard key={p.user_id} palace={p} i18n={i18n} featured={featured} accent={accent} />
       ))}
     </div>
   );
@@ -812,13 +837,16 @@ const PalaceCard = React.memo(function PalaceCard({
   palace,
   i18n,
   featured = false,
+  accent = "ember",
 }: {
   palace: CardPalace;
   i18n: CardI18n;
   featured?: boolean;
+  accent?: CardAccent;
 }) {
   const { t, locale } = i18n;
   const [imgFailed, setImgFailed] = useState(false);
+  const sage = accent === "sage";
 
   // One destination per card: the public profile (SafetyMenu / follow live there).
   const href = palace.username ? `/u/${palace.username}` : `/visit/${palace.user_id}`;
@@ -852,15 +880,16 @@ const PalaceCard = React.memo(function PalaceCard({
   return (
     <Link
       href={href}
-      className="explore-card"
+      className={sage ? "explore-card explore-card-sage" : "explore-card"}
       style={{
         display: "block",
         position: "relative",
         // Cream tile on the recessed tray — a step lighter than CARD_BG so the
-        // card lifts from the tray tint (Atrium tile-on-tray grammar).
+        // card lifts from the tray tint (Atrium tile-on-tray grammar). Cards in
+        // the sage lane stay cream; only the top rule + hover edge go sage.
         background: CARD_ON_TRAY,
         border: `0.0625rem solid ${CARD_BORDER}`,
-        borderTop: `0.1875rem solid ${EMBER}`,
+        borderTop: `0.1875rem solid ${sage ? SAGE_SOFT : EMBER}`,
         borderRadius: "1rem",
         boxShadow: `${featured ? SHADOW[2] : SHADOW[1]}, ${TOP_HIGHLIGHT}`,
         padding: "1rem 1.25rem 1.125rem",

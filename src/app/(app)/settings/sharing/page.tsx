@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useTransition } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, useTransition } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
@@ -57,6 +57,12 @@ export default function SharingPage() {
   const [selectedRooms, setSelectedRooms] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  // Palace description (profiles.bio) — editable here so this page's publish
+  // flow and the explore/profile cards stay in sync (mirrors PublishModal).
+  const [bio, setBio] = useState("");
+  const [bioSavedFlash, setBioSavedFlash] = useState(false);
+  const lastSavedBio = useRef<string>("");
+  const bioFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -68,6 +74,67 @@ export default function SharingPage() {
       return () => clearTimeout(timer);
     }
   }, [toast]);
+
+  // Prefill description with the user's current bio on page load.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data } = await supabase
+          .from("profiles")
+          .select("bio")
+          .eq("id", user.id)
+          .single();
+        if (!cancelled && data?.bio) {
+          setBio((data.bio as string).slice(0, 150));
+          lastSavedBio.current = (data.bio as string).slice(0, 150);
+        }
+      } catch {
+        // Non-fatal — description simply starts empty
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => () => {
+    if (bioFlashTimer.current) clearTimeout(bioFlashTimer.current);
+  }, []);
+
+  /** Persist bio (RLS-scoped to own profile row). Returns true on success/no-op. */
+  const saveBio = async (): Promise<boolean> => {
+    const value = bio.slice(0, 150).trim();
+    if (value === lastSavedBio.current) return true;
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({ bio: value || null })
+        .eq("id", user.id);
+      if (dbError) return false;
+      lastSavedBio.current = value;
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  /** Save-on-blur so the description persists even without republishing. */
+  const handleBioBlur = async () => {
+    if (bio.slice(0, 150).trim() === lastSavedBio.current) return;
+    const ok = await saveBio();
+    if (ok) {
+      setBioSavedFlash(true);
+      if (bioFlashTimer.current) clearTimeout(bioFlashTimer.current);
+      bioFlashTimer.current = setTimeout(() => setBioSavedFlash(false), 2000);
+    }
+  };
 
   // Load content on mount (flush settings first so room names are fresh)
   useEffect(() => {
@@ -148,6 +215,17 @@ export default function SharingPage() {
 
   const handleSave = () => {
     startTransition(async () => {
+      // Persist the palace description alongside publishing (blur usually
+      // already saved it; this covers Enter-key saves and races) — mirrors
+      // PublishModal.handlePublish.
+      const bioChanged = bio.slice(0, 150).trim() !== lastSavedBio.current;
+      if (bioChanged) {
+        const bioOk = await saveBio();
+        if (!bioOk) {
+          showToast(t("publishFailed"), "error");
+          return;
+        }
+      }
       const { publishWing, unpublishWing, publishRoom, unpublishRoom } = await import("@/lib/social/share-actions");
       // Track each op with its target so we only mark what actually succeeded.
       type OpResult = { ok?: boolean; error?: string } | unknown;
@@ -272,6 +350,55 @@ export default function SharingPage() {
           }}>
             {t("publishManageHint")}
           </p>
+        </div>
+
+        {/* Palace description — shown on explore directory cards + public profile
+            (mirrors PublishModal; sits above the wings/rooms selection) */}
+        <div style={{ marginBottom: "1.25rem" }}>
+          <label
+            htmlFor="mp-sharing-palace-desc"
+            style={{
+              fontFamily: T.font.body,
+              fontSize: `${0.6875 * scale}rem`, /* Atrium overline: the one small-caps voice */
+              fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase",
+              color: MUTED, display: "block", marginBottom: "0.375rem",
+            }}
+          >
+            {t("palaceDescLabel")}
+          </label>
+          <textarea
+            id="mp-sharing-palace-desc"
+            value={bio}
+            maxLength={150}
+            rows={2}
+            placeholder={t("palaceDescPlaceholder")}
+            onChange={(e) => setBio(e.target.value.slice(0, 150))}
+            onBlur={handleBioBlur}
+            style={{
+              width: "100%", boxSizing: "border-box", resize: "vertical",
+              minHeight: "3.5rem",
+              fontFamily: T.font.body, fontSize: `${Math.max(1, 1 * scale)}rem`, lineHeight: 1.4,
+              color: INK,
+              background: CREAM,
+              border: `0.0625rem solid ${HAIRLINE}`,
+              borderRadius: "0.625rem",
+              padding: "0.625rem 0.75rem",
+            }}
+          />
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            gap: "0.5rem", marginTop: "0.25rem",
+          }}>
+            <span aria-live="polite" style={{
+              fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem`, color: T.color.goldDark,
+              opacity: bioSavedFlash ? 1 : 0, transition: "opacity 0.2s ease",
+            }}>
+              {t("palaceDescSaved")}
+            </span>
+            <span style={{ fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem`, color: MUTED }}>
+              {t("palaceDescCounter", { count: String(bio.length) })}
+            </span>
+          </div>
         </div>
 
         {loading ? (
