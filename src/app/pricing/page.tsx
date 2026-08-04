@@ -8,7 +8,7 @@ import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
-import { isAndroid, isIOS } from "@/lib/native/platform";
+import { isAndroid, isIOS, isNative, openInExternalBrowser } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases, isIAPReady, waitForProducts, IAP_ENABLED } from "@/lib/native/iap";
 import { EMBER, HAIRLINE, focusRing } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -70,17 +70,18 @@ export default function PricingPage() {
   const { t: tp } = useTranslation("plans");
   const { t: tc } = useTranslation("common");
 
-  // Redirect away from the pricing page inside native apps. Android forbids
-  // external payment flows; on iOS, StoreKit is not yet active, so we keep the
-  // app cleanly free (Apple Guideline 3.1.1) by routing native users into the
-  // app instead of showing dead/"Preparing store" purchase buttons.
-  // TODO: when Apple IAP products are Approved, allow iOS here and drive
+  // Native-app gating for the pricing page. Android now uses web (Stripe)
+  // checkout opened in an external browser, so the Android app can view this
+  // page. On iOS with IAP disabled we keep the app cleanly free (Apple
+  // Guideline 3.1.1) by routing native users into the app instead of showing
+  // dead/"Preparing store" purchase buttons; with IAP enabled, iOS drives
   // purchases exclusively through initIAP()/purchase() below.
   useEffect(() => {
-    // Android has no in-app purchase path → route to the app. iOS shows the IAP
-    // paywall when IAP is enabled; while disabled it stays free-tier (route away).
+    // Android uses web (Stripe) checkout opened in an external browser, so the
+    // native Android app may view this page. iOS shows the IAP paywall when IAP
+    // is enabled; while disabled it stays free-tier (route away).
     // Purchases on iOS go exclusively through initIAP()/purchase() below — never Stripe.
-    if (isAndroid() || (isIOS() && !IAP_ENABLED)) {
+    if (isIOS() && !IAP_ENABLED) {
       router.replace("/atrium");
     }
   }, [router]);
@@ -166,10 +167,15 @@ export default function PricingPage() {
       }
 
       if (data.url) {
-        // WEB ONLY. Native apps are routed away from this page and never reach
-        // here. We deliberately do NOT open Stripe in an external browser on iOS
-        // — steering users to an outside purchase is an Apple 3.1.1/3.1.3 reject.
-        window.location.href = data.url;
+        // Web navigates to Stripe checkout directly; the native Android app
+        // opens it in an external browser instead of the in-app webview.
+        // iOS never reaches this branch — it uses IAP exclusively (opening
+        // Stripe externally on iOS is an Apple 3.1.1/3.1.3 reject).
+        if (isNative()) {
+          await openInExternalBrowser(data.url);
+        } else {
+          window.location.href = data.url;
+        }
       } else {
         setToast({ message: data.error || t("somethingWentWrong"), type: "error" });
       }

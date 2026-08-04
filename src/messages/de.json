@@ -4149,6 +4149,9 @@
     "featFamilyTree25": "Stammbaum (25 Personen)",
     "featUnlimitedFamilyTree": "Unbegrenzter Stammbaum",
     "featFullExport": "Vollständiger Datenexport",
+    "featPhotoRestore10": "10 Foto-Restaurierungen (lebenslang)",
+    "featPhotoRestore50": "50 Foto-Restaurierungen / Monat",
+    "featPhotoRestore200": "200 Foto-Restaurierungen / Monat",
     "featAllMedia": "Alle Medientypen",
     "featLegacy": "Vermächtnisplanung",
     "featTimeCapsules": "Zeitkapseln",
@@ -5779,7 +5782,9 @@
       "u12t": "Einen Raum teilen — oder ein ganzes Kapitel",
       "u12b": "Zeigen Sie Freunden nur den Reiseflügel, oder der Familie den ganzen Palast — Sie bestimmen, wer was sieht.",
       "u13t": "Wählen Sie, wer die Schlüssel bekommt",
-      "u13b": "Schreiben Sie die Briefe, die Sie immer schreiben wollten, und bestimmen Sie genau, wann sie ankommen. Ihr Palast ist bereit, weitergegeben zu werden."
+      "u13b": "Schreiben Sie die Briefe, die Sie immer schreiben wollten, und bestimmen Sie genau, wann sie ankommen. Ihr Palast ist bereit, weitergegeben zu werden.",
+      "u14t": "Erwecken Sie verblasste Fotos zu neuem Leben",
+      "u14b": "Rissige, verblasste oder unscharfe alte Abzüge — unsere KI stellt sie in Sekunden behutsam als klare, warme Erinnerungsstücke wieder her. Ihr Original bleibt stets sicher bewahrt, unangetastet."
     },
     "mock": {
       "ai": "KI-gestützt",
@@ -5818,6 +5823,10 @@
       "shareFriends": "Freunde",
       "sharePrivate": "Nur ich",
       "legacyName": "Ihr Vermächtnis",
+      "restoreName": "Foto-Restaurierung",
+      "restoreRole": "KI-Restaurierung",
+      "restoreBefore": "Vorher",
+      "restoreAfter": "Nachher",
       "keysTitle": "Wer bekommt die Schlüssel",
       "keyWhen": "Wenn die Zeit gekommen ist",
       "uploadsName": "Erinnerungen hinzufügen",

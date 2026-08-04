@@ -4149,6 +4149,9 @@
     "featFamilyTree25": "Family tree (25 people)",
     "featUnlimitedFamilyTree": "Unlimited family tree",
     "featFullExport": "Full data export",
+    "featPhotoRestore10": "10 photo restorations (lifetime)",
+    "featPhotoRestore50": "50 photo restorations / month",
+    "featPhotoRestore200": "200 photo restorations / month",
     "featAllMedia": "All media types",
     "featLegacy": "Legacy planning",
     "featTimeCapsules": "Time capsules",
@@ -5779,7 +5782,9 @@
       "u12t": "Share a room, or a whole chapter",
       "u12b": "Show just the Travel wing to your friends, or your whole palace to the family — you decide who sees what.",
       "u13t": "Choose who gets the keys",
-      "u13b": "Write the letters you keep meaning to write, and decide exactly when they arrive. Your palace is ready to hand down."
+      "u13b": "Write the letters you keep meaning to write, and decide exactly when they arrive. Your palace is ready to hand down.",
+      "u14t": "Bring faded photos back to life",
+      "u14b": "Cracked, faded, or blurry old prints — our AI gently restores them to clear, warm keepsakes in seconds. Your original is always kept safe, untouched."
     },
     "mock": {
       "ai": "AI-powered",
@@ -5818,6 +5823,10 @@
       "shareFriends": "Friends",
       "sharePrivate": "Just me",
       "legacyName": "Your Legacy",
+      "restoreName": "Photo Restore",
+      "restoreRole": "AI restoration",
+      "restoreBefore": "Before",
+      "restoreAfter": "After",
       "keysTitle": "Who gets the keys",
       "keyWhen": "When the time comes",
       "uploadsName": "Add Memories",

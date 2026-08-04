@@ -4149,6 +4149,9 @@
     "featFamilyTree25": "Arbre généalogique (25 personnes)",
     "featUnlimitedFamilyTree": "Arbre généalogique illimité",
     "featFullExport": "Export complet des données",
+    "featPhotoRestore10": "10 restaurations de photos (à vie)",
+    "featPhotoRestore50": "50 restaurations de photos / mois",
+    "featPhotoRestore200": "200 restaurations de photos / mois",
     "featAllMedia": "Tous les types de médias",
     "featLegacy": "Planification d'héritage",
     "featTimeCapsules": "Capsules temporelles",
@@ -5779,7 +5782,9 @@
       "u12t": "Partagez une pièce, ou un chapitre entier",
       "u12b": "Montrez seulement l'aile des voyages à vos amis, ou tout le palais à la famille — vous décidez qui voit quoi.",
       "u13t": "Choisissez qui reçoit les clés",
-      "u13b": "Écrivez les lettres que vous remettez toujours à plus tard, et décidez exactement quand elles arrivent. Votre palais est prêt à être transmis."
+      "u13b": "Écrivez les lettres que vous remettez toujours à plus tard, et décidez exactement quand elles arrivent. Votre palais est prêt à être transmis.",
+      "u14t": "Redonnez vie à vos photos délavées",
+      "u14b": "Tirages anciens craquelés, délavés ou flous — notre IA les restaure en douceur en quelques secondes, pour en faire des souvenirs nets et chaleureux. Votre original reste toujours en sécurité, intact."
     },
     "mock": {
       "ai": "Avec IA",
@@ -5818,6 +5823,10 @@
       "shareFriends": "Amis",
       "sharePrivate": "Moi seul",
       "legacyName": "Votre héritage",
+      "restoreName": "Restauration de photos",
+      "restoreRole": "Restauration par IA",
+      "restoreBefore": "Avant",
+      "restoreAfter": "Après",
       "keysTitle": "Qui reçoit les clés",
       "keyWhen": "Le moment venu",
       "uploadsName": "Ajouter des souvenirs",

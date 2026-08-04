@@ -311,7 +311,10 @@ export default function SecurityPage() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: isMobile ? "0 1.25rem" : "0 3.75rem",
-          height: "4rem",
+          // Keep the nav content clear of the status bar / notch under
+          // viewport-fit=cover (resolves to 0 on desktop → no-op).
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          height: "calc(4rem + env(safe-area-inset-top, 0px))",
           background: "rgba(252,250,245,0.92)",
           backdropFilter: "blur(12px)",
           borderBottom: `1px solid ${C.hairline}`,

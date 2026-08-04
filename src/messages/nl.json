@@ -4151,6 +4151,9 @@
     "featFamilyTree25": "Stamboom (25 personen)",
     "featUnlimitedFamilyTree": "Onbeperkte stamboom",
     "featFullExport": "Volledige data-export",
+    "featPhotoRestore10": "10 fotorestauraties (levenslang)",
+    "featPhotoRestore50": "50 fotorestauraties / maand",
+    "featPhotoRestore200": "200 fotorestauraties / maand",
     "featAllMedia": "Alle mediatypes",
     "featLegacy": "Nalatenschapsplanning",
     "featTimeCapsules": "Tijdcapsules",
@@ -5781,7 +5784,9 @@
       "u12t": "Deel een kamer, of een heel hoofdstuk",
       "u12b": "Laat alleen de reisvleugel aan je vrienden zien, of je hele paleis aan de familie — jij bepaalt wie wat ziet.",
       "u13t": "Kies wie de sleutels krijgt",
-      "u13b": "Schrijf de brieven die je steeds wilt schrijven, en bepaal precies wanneer ze aankomen. Je paleis is klaar om door te geven."
+      "u13b": "Schrijf de brieven die je steeds wilt schrijven, en bepaal precies wanneer ze aankomen. Je paleis is klaar om door te geven.",
+      "u14t": "Breng vervaagde foto's weer tot leven",
+      "u14b": "Gescheurde, vervaagde of wazige oude afdrukken — onze AI herstelt ze in enkele seconden voorzichtig tot heldere, warme aandenkens. Je origineel blijft altijd veilig bewaard, onaangetast."
     },
     "mock": {
       "ai": "Met AI",
@@ -5820,6 +5825,10 @@
       "shareFriends": "Vrienden",
       "sharePrivate": "Alleen ik",
       "legacyName": "Jouw nalatenschap",
+      "restoreName": "Fotoherstel",
+      "restoreRole": "AI-restauratie",
+      "restoreBefore": "Voor",
+      "restoreAfter": "Na",
       "keysTitle": "Wie krijgt de sleutels",
       "keyWhen": "Als het moment daar is",
       "uploadsName": "Herinneringen toevoegen",

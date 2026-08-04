@@ -40,6 +40,7 @@ import CapsuleCard from "@/components/landing/usp/CapsuleCard";
 import CocreateCard from "@/components/landing/usp/CocreateCard";
 import SharingCard from "@/components/landing/usp/SharingCard";
 import LegacyCard from "@/components/landing/usp/LegacyCard";
+import RestoreCard from "@/components/landing/usp/RestoreCard";
 
 type V2 = EnMessages["landingV2"];
 type FaqSlice = EnMessages["landing"]["faq"];
@@ -67,6 +68,7 @@ const MCapsuleCard = React.memo(CapsuleCard);
 const MCocreateCard = React.memo(CocreateCard);
 const MSharingCard = React.memo(SharingCard);
 const MLegacyCard = React.memo(LegacyCard);
+const MRestoreCard = React.memo(RestoreCard);
 
 const L = T.land;
 const M = T.motion;
@@ -633,7 +635,7 @@ function UspChapters({
               {group.items.map((item, ii) => {
                 const flatIdx = uspIdxByGroup[gi][ii];
                 return (
-                  <div key={item.t} ref={(el) => setUspRef(flatIdx, el)} data-usp-idx={flatIdx} style={{ scrollMarginTop: "6rem" }}>
+                  <div key={item.t} ref={(el) => setUspRef(flatIdx, el)} data-usp-idx={flatIdx} className="lv2-usp-block" style={{ scrollMarginTop: "6rem" }}>
                     <Reveal>
                       <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.625rem" }}>
                         {String(flatIdx + 1).padStart(2, "0")} · {group.label}
@@ -893,6 +895,7 @@ export default function LandingV2Client({
       {
         label: v2.usps.groupEnrich,
         items: [
+          { name: v2.mock.restoreName, t: v2.usps.u14t, b: v2.usps.u14b, media: <MRestoreCard m={MOCK} aiLabel={v2.mock.ai} /> },
           { name: v2.mock.palaceName, t: v2.usps.u5t, b: v2.usps.u5b, media: <MPalaceCard m={MOCK} /> },
           { name: v2.mock.interviewName, t: v2.usps.u6t, b: v2.usps.u6b, media: <MInterviewsCard m={MOCK} aiLabel={v2.mock.ai} /> },
           { name: v2.mock.mapName, t: v2.usps.u7t, b: v2.usps.u7b, media: <MMapCard m={MOCK} /> },
@@ -994,6 +997,13 @@ export default function LandingV2Client({
       <style>{`
         html { scroll-behavior: smooth; }
         @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+        @media (max-width: 60rem) {
+          html { scroll-snap-type: y proximity; }
+          .lv2-usp-block { scroll-snap-align: start; scroll-snap-stop: always; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          html { scroll-snap-type: none; }
+        }
         .lv2-reveal { will-change: auto; }
         .lv2-pre { opacity: 0.001; transform: translateY(12px); transition: opacity ${M.reveal} ${M.ease}, transform ${M.reveal} ${M.ease}; }
         .lv2-pre.lv2-in { opacity: 1; transform: none; }
@@ -1037,6 +1047,12 @@ export default function LandingV2Client({
       `}</style>
 
       {/* ── Nav ── */}
+      {/* Once the nav turns cream, the OS status-bar text over the safe-area
+          would sit on a light blur — cover exactly the top inset with a dark
+          strip so it stays readable. At the hero the dark video does this job. */}
+      {navSolid && (
+        <div aria-hidden="true" style={{ position: "fixed", top: 0, left: 0, right: 0, height: "env(safe-area-inset-top, 0px)", background: L.dark, zIndex: 51, pointerEvents: "none" }} />
+      )}
       <header
         style={{
           position: "fixed",
@@ -1252,7 +1268,7 @@ export default function LandingV2Client({
             alignItems: "center",
             justifyContent: "center",
             background: L.dark,
-            padding: "6rem 0 4rem",
+            padding: isMobile ? "4.5rem 0 3rem" : "6rem 0 4rem",
           }}
         >
           <HeroMedia
@@ -1271,7 +1287,7 @@ export default function LandingV2Client({
                 fontSize: L.type.h1,
                 lineHeight: 1.08,
                 color: T.color.cream,
-                margin: "0 0 1.25rem",
+                margin: isMobile ? "0 0 0.875rem" : "0 0 1.25rem",
                 textWrap: "balance",
                 textShadow: LSHADOW.heroText,
               }}
@@ -1284,7 +1300,7 @@ export default function LandingV2Client({
                 fontSize: L.type.lead,
                 lineHeight: 1.5,
                 color: "rgba(252,250,245,0.92)",
-                margin: "0 auto 2rem",
+                margin: isMobile ? "0 auto 1.5rem" : "0 auto 2rem",
                 maxWidth: "34em",
                 textWrap: "pretty",
               }}
@@ -1326,7 +1342,7 @@ export default function LandingV2Client({
               <span style={{ fontFamily: FONT_BODY, fontSize: "0.875rem", color: "rgba(252,250,245,0.75)" }}>
                 {heroMicro}
               </span>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "1.25rem", justifyContent: "center", marginTop: "1.25rem" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "0.5rem" : "1.25rem", justifyContent: "center", marginTop: isMobile ? "0.625rem" : "1.25rem" }}>
                 {[v2.hero.chipGdpr, v2.hero.chipEncrypted, v2.hero.chipEu].map((chip) => (
                   <Link
                     key={chip}
@@ -1338,11 +1354,11 @@ export default function LandingV2Client({
                       gap: "0.375rem",
                       minHeight: T.touch,
                       color: "rgba(252,250,245,0.85)",
-                      fontSize: "0.875rem",
-                      padding: "0.25rem 0.5rem",
+                      fontSize: isMobile ? "0.75rem" : "0.875rem",
+                      padding: isMobile ? "0.125rem 0.375rem" : "0.25rem 0.5rem",
                     }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
+                    <svg width={isMobile ? 11 : 13} height={isMobile ? 11 : 13} viewBox="0 0 13 13" aria-hidden="true">
                       <path d="M6.5 1l4.5 2v3c0 2.8-1.9 5-4.5 6C3.9 11 2 8.8 2 6V3l4.5-2z" fill="none" stroke="currentColor" strokeWidth="1.2" />
                     </svg>
                     {chip}
@@ -1660,6 +1676,7 @@ export default function LandingV2Client({
                   </thead>
                   <tbody>
                     {[
+                      [v2.compare.r5l, v2.compare.r5a, v2.compare.r5b, true],
                       [compare8.row1Label, compare8.row1Left, compare8.row1Right, false],
                       [compare8.row2Label, compare8.row2Left, compare8.row2Right, false],
                       [compare8.row3Label, compare8.row3Left, compare8.row3Right, false],
@@ -1668,7 +1685,6 @@ export default function LandingV2Client({
                       [compare8.row6Label, compare8.row6Left, compare8.row6Right, false],
                       [compare8.row7Label, compare8.row7Left, compare8.row7Right, false],
                       [compare8.row8Label, compare8.row8Left, compare8.row8Right, false],
-                      [v2.compare.r5l, v2.compare.r5a, v2.compare.r5b, true],
                     ].map(([label, left, right, concession]) => (
                       <tr key={label as string}>
                         <th scope="row" style={{ padding: "0.875rem 0.75rem", textAlign: "left", color: T.color.charcoal, fontWeight: 600, borderBottom: `1px solid ${L.hairline}`, verticalAlign: "top" }}>
