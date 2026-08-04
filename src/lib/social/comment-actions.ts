@@ -257,7 +257,10 @@ export async function getComments(
   return topLevel;
 }
 
-const VALID_REACTION_EMOJIS = ["candle", "key", "scroll", "heart", "star", "amphora"];
+// Reactions are limited to the single "heart" (love) reaction. Legacy emojis
+// (candle/key/scroll/star/amphora) remain in existing DB rows but can no
+// longer be created.
+const VALID_REACTION_EMOJIS = ["heart"];
 
 /**
  * Read + group the reactions for a target into per-emoji summaries.

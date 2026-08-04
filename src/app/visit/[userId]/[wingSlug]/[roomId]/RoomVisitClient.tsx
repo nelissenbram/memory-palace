@@ -262,19 +262,12 @@ function MemoryCard({
   );
 }
 
-// Palace-themed reaction glyphs, mirrored from ReactionBar so the read-only
-// guest view stays visually consistent with the interactive signed-in bar.
+// Reactions are heart-only now (ReactionBar was reduced to a single love
+// toggle); the guest view mirrors that — legacy candle/key/scroll/star/amphora
+// rows still exist in the DB but render nowhere.
 const GUEST_REACTION_SVG: Record<string, string> = {
-  candle:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2c0 0-2 3-2 5s1 3 2 3 2-1 2-3-2-5-2-5z" fill="currentColor" opacity="0.3"/><rect x="10" y="10" width="4" height="10" rx="0.5"/><path d="M8 20h8"/></svg>',
-  key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="4"/><path d="M11 11l9 9m-2-4l3 3m-5-1l3 3"/></svg>',
-  scroll:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3c-1 0-2 1-2 2v14c0 1 1 2 2 2h1V5h10c0-1-1-2-2-2H6z"/><path d="M9 5v16h9c1 0 2-1 2-2V7c0-1-1-2-2-2H9z"/><path d="M12 9h5m-5 3h5m-5 3h3"/></svg>',
   heart:
     '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
-  star: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
-  amphora:
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3h8M9 3v2c0 2-3 4-3 8v5c0 2 2 3 6 3s6-1 6-3v-5c0-4-3-6-3-8V3"/><path d="M6 7c-2 1-3 2-3 3s1 2 3 2m12-5c2 1 3 2 3 3s-1 2-3 2"/></svg>',
 };
 
 /** Read-only reaction summary + sign-in nudge shown to logged-out visitors,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition, useEffect } from "react";
+import React, { useState, useTransition, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -28,6 +28,73 @@ export default function PublishModal({
   const [wings, setWings] = useState<PublishableWing[]>([]);
   const [selectedWings, setSelectedWings] = useState<Set<string>>(new Set());
   const [selectedRooms, setSelectedRooms] = useState<Set<string>>(new Set());
+  // Palace description (profiles.bio) — editable here so the publish flow and
+  // the explore/profile cards stay in sync without a trip to Settings.
+  const [bio, setBio] = useState("");
+  const [bioSavedFlash, setBioSavedFlash] = useState(false);
+  const lastSavedBio = useRef<string>("");
+  const bioFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Prefill description with the user's current bio on modal open.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data } = await supabase
+          .from("profiles")
+          .select("bio")
+          .eq("id", user.id)
+          .single();
+        if (!cancelled && data?.bio) {
+          setBio((data.bio as string).slice(0, 150));
+          lastSavedBio.current = (data.bio as string).slice(0, 150);
+        }
+      } catch {
+        // Non-fatal — description simply starts empty
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => () => {
+    if (bioFlashTimer.current) clearTimeout(bioFlashTimer.current);
+  }, []);
+
+  /** Persist bio (RLS-scoped to own profile row). Returns true on success/no-op. */
+  const saveBio = async (): Promise<boolean> => {
+    const value = bio.slice(0, 150).trim();
+    if (value === lastSavedBio.current) return true;
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({ bio: value || null })
+        .eq("id", user.id);
+      if (dbError) return false;
+      lastSavedBio.current = value;
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  /** Save-on-blur so the description persists even without republishing. */
+  const handleBioBlur = async () => {
+    if (bio.slice(0, 150).trim() === lastSavedBio.current) return;
+    const ok = await saveBio();
+    if (ok) {
+      setBioSavedFlash(true);
+      if (bioFlashTimer.current) clearTimeout(bioFlashTimer.current);
+      bioFlashTimer.current = setTimeout(() => setBioSavedFlash(false), 2000);
+    }
+  };
 
   // Flush settings then load content
   useEffect(() => {
@@ -130,11 +197,27 @@ export default function PublishModal({
           }
         }
       }
+      // Persist the palace description alongside publishing (blur usually
+      // already saved it; this covers Enter-key publishes and races).
+      const bioChanged = bio.slice(0, 150).trim() !== lastSavedBio.current;
+      if (bioChanged) {
+        const bioOk = await saveBio();
+        if (!bioOk) {
+          setError(t("publishFailed"));
+          return;
+        }
+      }
       // The current selection already matches the server state — nothing to do.
       // Surface this instead of silently flashing "success" so the user isn't
-      // left wondering whether their intended change was applied.
+      // left wondering whether their intended change was applied. (If only the
+      // description changed, that's a real saved change — treat as success.)
       if (wingOps.length === 0 && roomOps.length === 0) {
-        setError(t("publishNoChanges"));
+        if (bioChanged) {
+          setDone(true);
+          setTimeout(() => { onPublished?.(); onClose(); }, 1200);
+        } else {
+          setError(t("publishNoChanges"));
+        }
         return;
       }
       try {
@@ -210,6 +293,52 @@ export default function PublishModal({
           </div>
         ) : (
           <>
+            {/* Palace description — shown on explore directory cards + public profile */}
+            <div style={{ marginBottom: "1.25rem" }}>
+              <label
+                htmlFor="mp-palace-desc"
+                style={{
+                  display: "block", fontFamily: T.font.body, fontSize: "0.8125rem",
+                  fontWeight: 600, color: T.color.inkSoft, marginBottom: "0.375rem",
+                }}
+              >
+                {t("palaceDescLabel")}
+              </label>
+              <textarea
+                id="mp-palace-desc"
+                value={bio}
+                maxLength={150}
+                rows={2}
+                placeholder={t("palaceDescPlaceholder")}
+                onChange={(e) => setBio(e.target.value.slice(0, 150))}
+                onBlur={handleBioBlur}
+                style={{
+                  width: "100%", boxSizing: "border-box", resize: "vertical",
+                  minHeight: "3.5rem",
+                  fontFamily: T.font.body, fontSize: "1rem", lineHeight: 1.4,
+                  color: T.color.inkSoft,
+                  background: T.color.cream,
+                  border: `1px solid ${T.color.hairline}`,
+                  borderRadius: "0.625rem",
+                  padding: "0.625rem 0.75rem",
+                }}
+              />
+              <div style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                gap: "0.5rem", marginTop: "0.25rem",
+              }}>
+                <span aria-live="polite" style={{
+                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.goldDark,
+                  opacity: bioSavedFlash ? 1 : 0, transition: "opacity 0.2s ease",
+                }}>
+                  {t("palaceDescSaved")}
+                </span>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
+                  {t("palaceDescCounter", { count: String(bio.length) })}
+                </span>
+              </div>
+            </div>
+
             {/* Select/Deselect all */}
             <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
               <button

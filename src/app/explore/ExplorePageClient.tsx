@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRouter } from "next/navigation";
 import { searchPalaces } from "@/lib/social/directory-actions";
 import type { DirectoryPalace, FollowingPalace } from "@/lib/social/directory-actions";
+import { createClient } from "@/lib/supabase/client";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 // Note: do NOT import usePalaceStore — Explore is outside the (app) layout group
@@ -20,11 +21,11 @@ import {
   HAIRLINE,
   CREAM,
   GOLD,
+  SAGE,
   TRAY,
   SHADOW,
   HOVER_SHADOW,
   TOP_HIGHLIGHT,
-  CARD_BG,
   CARD_BORDER,
   INK_DEEP,
   INPUT_SHADOW,
@@ -52,6 +53,23 @@ type RailFilter = "featured" | "new" | "following" | null;
 const EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
 const EMBER_WASH = "rgba(154,79,42,0.07)";
 const MOBILE_CARD_CAP = 8;
+
+/* ── Atrium tray grammar (AtriumRelay canon): recessed tinted panels the
+   sections sit in, so Explore reads as an Atrium sibling board. TRAY_GOLD is
+   the Atrium gold-lane tray hex — reserved for the curated/featured zone. ── */
+const TRAY_GOLD = "#FAF3E0";
+const TRAY_INSET = "inset 0 0.0625rem 0.1875rem rgba(64,59,54,0.06)";
+function trayPanel(tint: string = TRAY): React.CSSProperties {
+  return {
+    background: tint,
+    borderRadius: "1rem",
+    border: `0.0625rem solid ${HAIRLINE}`,
+    boxShadow: TRAY_INSET,
+  };
+}
+/* Cream tile surface that lifts from the recessed tray (Atrium tile grammar,
+   rebased on cream/white so cards read a step above the tray tint). */
+const CARD_ON_TRAY = `linear-gradient(160deg, #FFFFFF 0%, ${CREAM} 78%)`;
 
 const srOnly: React.CSSProperties = {
   position: "absolute",
@@ -122,6 +140,36 @@ export default function ExplorePageClient({
   // Request-sequence guard so only the latest search response lands.
   const searchSeq = useRef(0);
   const [searchFocused, setSearchFocused] = useState(false);
+  // null = unknown (render the unchanged CTA to avoid flicker); true = the
+  // keeper's palace is already listed in this directory (profiles.is_public —
+  // the exact gate directory-actions filters on), so the publish CTA becomes
+  // a modest "live" chip instead.
+  const [isPublished, setIsPublished] = useState<boolean | null>(null);
+
+  // On mount (authenticated only): ask whether the keeper's palace is already
+  // published. Own-row read on profiles is RLS-safe from the browser client
+  // (same query the profile settings page performs).
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data } = await supabase
+          .from("profiles")
+          .select("is_public")
+          .eq("id", user.id)
+          .single();
+        if (!cancelled) setIsPublished(!!data?.is_public);
+      } catch {
+        // Fail open to the existing CTA — publishing is idempotent to revisit.
+        if (!cancelled) setIsPublished(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
 
   // Cancel any pending debounce + in-flight search response on unmount.
   useEffect(() => {
@@ -351,8 +399,17 @@ export default function ExplorePageClient({
           </p>
         </div>
 
-        {/* ── Search ──────────────────────────────────────── */}
-        <div role="search" data-nudge="explore_search" style={{ maxWidth: "32rem", margin: "0 auto 1.5rem" }}>
+        {/* ── Search + pills band: recessed Atrium tray ─── */}
+        <section
+          aria-label={t("searchPalaces")}
+          style={{
+            ...trayPanel(),
+            padding: isMobile ? "1rem 0.875rem 1.25rem" : "1.25rem 1.5rem 1.5rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <LaneHeader>{t("searchPalaces")}</LaneHeader>
+          <div role="search" data-nudge="explore_search" style={{ maxWidth: "32rem", margin: "0 auto" }}>
           <div className="explore-search-field" style={{
             position: "relative",
             borderRadius: "0.875rem",
@@ -416,37 +473,86 @@ export default function ExplorePageClient({
           )}
         </div>
 
-        {/* Screen-reader search status */}
-        <span aria-live="polite" style={srOnly}>
-          {searchResults !== null
-            ? t("searchStatus", { count: String(searchResults.length), query })
-            : ""}
-        </span>
+          {/* Screen-reader search status */}
+          <span aria-live="polite" style={srOnly}>
+            {searchResults !== null
+              ? t("searchStatus", { count: String(searchResults.length), query })
+              : ""}
+          </span>
 
-        {/* ── Quiet utility door: publishing lives on /settings/sharing ── */}
-        {isAuthenticated && searchResults === null && (
-          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-            <button
-              onClick={() => router.push("/settings/sharing")}
-              data-nudge="explore_publish"
-              className="explore-quiet"
+          {/* ── Quiet utility door: publishing lives on /settings/sharing.
+                 Once the palace is live, the door becomes a modest chip. ── */}
+          {isAuthenticated && searchResults === null && (
+            isPublished === true ? (
+              <PalaceLiveChip t={t} />
+            ) : (
+              <div style={{ textAlign: "center", marginTop: "1.25rem" }}>
+                <button
+                  onClick={() => router.push("/settings/sharing")}
+                  data-nudge="explore_publish"
+                  className="explore-quiet"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                    minHeight: "2.75rem", padding: "0 1.25rem", borderRadius: "2rem",
+                    border: `0.0625rem solid ${HAIRLINE}`,
+                    background: "transparent",
+                    color: MUTED, cursor: "pointer",
+                  }}
+                >
+                  {t("publishYourPalace")} {"→"}
+                </button>
+              </div>
+            )
+          )}
+
+          {/* ── Pill rail: Featured / New / Following ──── */}
+          {searchResults === null && (
+            <div
+              data-nudge="explore_tabs"
+              role="group"
+              aria-label={t("exploreTitle")}
               style={{
-                display: "inline-flex", alignItems: "center", gap: "0.5rem",
-                fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                minHeight: "2.75rem", padding: "0 1.25rem", borderRadius: "2rem",
-                border: `0.0625rem solid ${HAIRLINE}`,
-                background: "transparent",
-                color: MUTED, cursor: "pointer",
+                display: "flex", gap: "0.5rem", flexWrap: "wrap",
+                justifyContent: "center", marginTop: "1.25rem",
               }}
             >
-              {t("publishYourPalace")} {"→"}
-            </button>
-          </div>
-        )}
+              {pills.map((p) => {
+                const active = rail === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => { setRail(active ? null : p.id); setShowAll(false); }}
+                    aria-pressed={active}
+                    className="explore-pill"
+                    style={{
+                      fontFamily: T.font.body, fontSize: "0.875rem",
+                      fontWeight: active ? 600 : 500,
+                      minHeight: "2.75rem", padding: "0 1.25rem",
+                      borderRadius: "2rem", cursor: "pointer",
+                      background: active ? CREAM : "transparent",
+                      border: `0.0625rem solid ${active ? EMBER : HAIRLINE}`,
+                      color: active ? EMBER : MUTED,
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {searchResults !== null ? (
           /* ── Search Results ────────────────────────────── */
-          <section aria-busy={isPending}>
+          <section
+            aria-busy={isPending}
+            style={{
+              ...trayPanel(),
+              padding: isMobile ? "1rem 0.875rem 1.25rem" : "1.25rem 1.5rem 1.5rem",
+              marginBottom: "2.5rem",
+            }}
+          >
             <LaneHeader
               badge={
                 <span aria-hidden="true" style={{
@@ -468,50 +574,29 @@ export default function ExplorePageClient({
           </section>
         ) : (
           <>
-            {/* ── Pill rail: Featured / New / Following ──── */}
-            <div
-              data-nudge="explore_tabs"
-              role="group"
-              aria-label={t("exploreTitle")}
-              style={{
-                display: "flex", gap: "0.5rem", flexWrap: "wrap",
-                justifyContent: "center", marginBottom: "1.75rem",
-              }}
-            >
-              {pills.map((p) => {
-                const active = rail === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => { setRail(active ? null : p.id); setShowAll(false); }}
-                    aria-pressed={active}
-                    className="explore-pill"
-                    style={{
-                      fontFamily: T.font.body, fontSize: "0.875rem",
-                      fontWeight: active ? 600 : 500,
-                      minHeight: "2.75rem", padding: "0 1.25rem",
-                      borderRadius: "2rem", cursor: "pointer",
-                      background: "transparent",
-                      border: `0.0625rem solid ${active ? EMBER : HAIRLINE}`,
-                      color: active ? EMBER : MUTED,
-                    }}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* ── Featured rail (default view, curated only) ── */}
+            {/* ── Featured rail (default view, curated only): gold-zone tray ── */}
             {rail === null && featuredRail.length > 0 && (
-              <section style={{ marginBottom: "2rem" }}>
+              <section
+                style={{
+                  ...trayPanel(TRAY_GOLD),
+                  padding: isMobile ? "1rem 0.875rem 1.25rem" : "1.25rem 1.5rem 1.5rem",
+                  marginBottom: "1.5rem",
+                }}
+              >
                 <LaneHeader>{t("featured")}</LaneHeader>
                 <PalaceGrid palaces={featuredRail} i18n={cardI18n} featured />
               </section>
             )}
 
             {/* ── The one grid ───────────────────────────── */}
-            <section data-nudge="explore_cards" style={{ marginBottom: "2.5rem" }}>
+            <section
+              data-nudge="explore_cards"
+              style={{
+                ...trayPanel(),
+                padding: isMobile ? "1rem 0.875rem 1.25rem" : "1.25rem 1.5rem 1.5rem",
+                marginBottom: "2.5rem",
+              }}
+            >
               <LaneHeader>{gridLabel}</LaneHeader>
 
               {visiblePalaces.length > 0 ? (
@@ -546,7 +631,7 @@ export default function ExplorePageClient({
                     text={t("exploreEmpty")}
                     hint={hasContent ? undefined : t("exploreEmptyHint")}
                   />
-                  {isAuthenticated && !hasContent && (
+                  {isAuthenticated && !hasContent && isPublished !== true && (
                     <button
                       onClick={() => router.push("/settings/sharing")}
                       className="explore-cta"
@@ -614,6 +699,49 @@ export default function ExplorePageClient({
           .explore-card:hover { transform: none !important; }
         }
       `}</style>
+    </div>
+  );
+}
+
+/* ── "Palace is live" chip — replaces the publish door once published ── */
+
+function PalaceLiveChip({ t }: { t: (key: string, params?: Record<string, string>) => string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "center", marginTop: "1.25rem" }}>
+      <div
+        style={{
+          display: "inline-flex", alignItems: "center", flexWrap: "wrap",
+          justifyContent: "center", gap: "0.375rem 0.625rem",
+          minHeight: "2.75rem", padding: "0.5rem 1.25rem",
+          borderRadius: "2rem",
+          background: CREAM,
+          border: `0.0625rem solid ${HAIRLINE}`,
+          boxShadow: SHADOW[1],
+          maxWidth: "100%",
+        }}
+      >
+        <span aria-hidden="true" style={{
+          width: "0.5rem", height: "0.5rem", borderRadius: "50%",
+          background: SAGE, flexShrink: 0,
+        }} />
+        <span style={{ fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, color: INK, whiteSpace: "nowrap" }}>
+          {t("palaceLiveTitle")}
+        </span>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED }}>
+          {t("palaceLiveHint")}
+        </span>
+        <Link
+          href="/settings/sharing"
+          className="explore-link"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "0.25rem",
+            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+            color: EMBER, textDecoration: "none", whiteSpace: "nowrap",
+          }}
+        >
+          {t("palaceLiveManage")} {"→"}
+        </Link>
+      </div>
     </div>
   );
 }
@@ -728,7 +856,9 @@ const PalaceCard = React.memo(function PalaceCard({
       style={{
         display: "block",
         position: "relative",
-        background: CARD_BG,
+        // Cream tile on the recessed tray — a step lighter than CARD_BG so the
+        // card lifts from the tray tint (Atrium tile-on-tray grammar).
+        background: CARD_ON_TRAY,
         border: `0.0625rem solid ${CARD_BORDER}`,
         borderTop: `0.1875rem solid ${EMBER}`,
         borderRadius: "1rem",
@@ -860,7 +990,8 @@ function EmptyState({ text, hint }: { text: string; hint?: string }) {
       <div style={{
         width: "3rem", height: "3rem", margin: "0 auto 1rem",
         borderRadius: "50%",
-        background: TRAY,
+        background: CREAM,
+        border: `0.0625rem solid ${HAIRLINE}`,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
         <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.5" aria-hidden="true">
