@@ -4267,6 +4267,9 @@
     "dialogLabel": "Elige un ala para colocar la sala"
   },
   "library": {
+    "capsulePickTitle": "¿Dónde pertenece esta cápsula?",
+    "capsulePickHint": "Elige el ala y la sala donde vivirá tu cápsula del tiempo. Después, sube una foto nueva o elige una que ya tengas.",
+    "wingLabel": "Ala",
     "title": "Biblioteca",
     "subtitle": "{count} recuerdos en todas las alas",
     "wingCount": "{rooms} salas · {memories} recuerdos",
@@ -4868,7 +4871,8 @@
     "relay.destExplore": "Explorar",
     "relay.destPalace": "Palacio",
     "relay.laneJourneysPill": "Recorridos",
-    "relay.laneJourneysOf": "{done} de {total}",
+    "relay.laneJourneysOf": "{done} de {total} recorridos",
+    "relay.laneJourneysXp": "{xp} XP",
     "relay.tilePublish": "Compartir públicamente",
     "relay.tilePublishDesc": "Publicar en Explorar",
     "relay.tileShared": "Compartido contigo",
@@ -4966,7 +4970,17 @@
     "saved": "Guardado",
     "errorGeneric": "Algo salió mal. Inténtalo de nuevo.",
     "errorNotConfigured": "El tejido de historias aún no está activado.",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "recordInterview": "Graba una entrevista para este capítulo",
+    "recordInterviewHint": "Unas preguntas guiadas sobre este capítulo — tus respuestas habladas enriquecen el relato tejido.",
+    "chapterInterviewDesc": "Una breve entrevista guiada sobre este capítulo de tu vida.",
+    "q1": "Hablemos de {chapter}. ¿Dónde comienza esta parte de tu vida?",
+    "q2": "¿Quiénes fueron las personas importantes en {chapter} y qué significaron para ti?",
+    "q3": "¿Qué momento de {chapter} recuerdas con más viveza?",
+    "q4": "¿Qué fue difícil en aquella época y cómo lo superaste?",
+    "q5": "Mirando atrás a {chapter}, ¿qué te gustaría que tu familia supiera o recordara?",
+    "selectAllRoom": "Seleccionar todo en esta sala",
+    "treeNoMedia": "Aún no hay recuerdos en esta sala"
   },
   "navigation": {
     "nav_label": "Navegación principal",

@@ -6,7 +6,8 @@ import { useRoomStore, MAX_ROOMS_PER_WING } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Wing } from "@/lib/constants/wings";
-import { RoomIcon, ROOM_ICON_MAP } from "./WingRoomIcons";
+import { translateWingName } from "@/lib/constants/wings";
+import { RoomIcon, WingIcon, ROOM_ICON_MAP } from "./WingRoomIcons";
 
 const EMOJI_PRESETS = [
   // Home & Family
@@ -29,6 +30,10 @@ const EMOJI_PRESETS = [
 
 interface RoomManagerPanelProps {
   wing: Wing;
+  /** When provided, a wing selector lets the user re-scope the whole panel
+   *  (room list + add-room target) to any wing — used by the Library's
+   *  "Create a Gallery" flow. Omitted = single-wing behavior, unchanged. */
+  wings?: Wing[];
   onClose: () => void;
   onEnterRoom?: (roomId: string) => void;
 }
@@ -50,9 +55,11 @@ function RoomGlyph({ icon, wingId, size, color }: { icon: string; wingId: string
   );
 }
 
-export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomManagerPanelProps) {
+export default function RoomManagerPanel({ wing, wings, onClose, onEnterRoom }: RoomManagerPanelProps) {
   const { t } = useTranslation("room");
   const { t: tc } = useTranslation("common");
+  const { t: tLib } = useTranslation("library");
+  const { t: tWings } = useTranslation("wings");
   const isMobile = useIsMobile();
   // Treat tablet-touch (iPad portrait) as mobile for SIZING so controls meet the
   // 2.75rem touch floor and the panel goes full-width.
@@ -65,12 +72,16 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
   // so unrelated store mutations (other wings, wing customizations, cross-device
   // syncs mid-edit) no longer re-render the whole panel + full room list.
   const { getWingRooms, renameRoom, changeRoomIcon, addRoom, deleteRoom, reorderRoom } = useRoomStore.getState();
-  // Subscribe narrowly: re-render only when THIS wing's room array identity
-  // changes. getWingRooms falls back to WING_ROOMS defaults when there's no
-  // custom entry, preserving the exact same result.
-  useRoomStore(s => s.customRooms[wing.id]);
-  const rooms = getWingRooms(wing.id);
-  const accent = wing.accent;
+  // Cross-wing scope: with a `wings` list the panel can be re-pointed at any
+  // wing via the selector chips; otherwise it stays locked to the `wing` prop.
+  const [activeWingId, setActiveWingId] = useState(wing.id);
+  const activeWing = wings?.find(w => w.id === activeWingId) || wing;
+  // Subscribe narrowly: re-render only when the ACTIVE wing's room array
+  // identity changes. getWingRooms falls back to WING_ROOMS defaults when
+  // there's no custom entry, preserving the exact same result.
+  useRoomStore(s => s.customRooms[activeWing.id]);
+  const rooms = getWingRooms(activeWing.id);
+  const accent = activeWing.accent;
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -94,13 +105,13 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
     // Guard against double-commit: Enter fires the form submit AND the input's
     // onBlur. Early-return once editing has already been cleared.
     if (editingId !== id) return;
-    if (editName.trim()) renameRoom(wing.id, id, editName);
+    if (editName.trim()) renameRoom(activeWing.id, id, editName);
     setEditingId(null);
   };
 
   const handleAdd = () => {
     if (!newName.trim()) return;
-    addRoom(wing.id, newName, newIcon);
+    addRoom(activeWing.id, newName, newIcon);
     setAdding(false);
     setNewName("");
     setNewIcon("ro1");
@@ -108,13 +119,28 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
   };
 
   const handleDelete = (roomId: string) => {
-    deleteRoom(wing.id, roomId);
+    deleteRoom(activeWing.id, roomId);
     setConfirmDelete(null);
   };
 
   const STANDARD_ROOM_IDS = Object.keys(ROOM_ICON_MAP);
 
   const [showEmoji, setShowEmoji] = useState(false);
+
+  // Switching wings drops all transient edit state so nothing (rename field,
+  // icon picker, delete confirm, half-typed new room) leaks across wings.
+  const switchWing = (id: string) => {
+    if (id === activeWingId) return;
+    setActiveWingId(id);
+    setEditingId(null);
+    setPickingIconId(null);
+    setAdding(false);
+    setNewName("");
+    setNewIcon("ro1");
+    setShowNewIconPicker(false);
+    setConfirmDelete(null);
+    setShowEmoji(false);
+  };
 
   const iconPicker = (currentIcon: string, onPick: (icon: string) => void) => (
     <div role="radiogroup" aria-label={t("changeIcon")} style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.hairline}`, padding: touch ? "0.5rem" : "0.625rem", marginTop: "0.375rem" }}>
@@ -125,7 +151,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
           {STANDARD_ROOM_IDS.map(id => (
             <button key={id} onClick={() => onPick(id)} role="radio" aria-checked={currentIcon === id}
               style={{ width: touch ? "3rem" : "2.5rem", height: touch ? "3rem" : "2.5rem", borderRadius: "0.5rem", border: currentIcon === id ? `2px solid ${accent}` : `1px solid ${T.color.hairline}`, background: currentIcon === id ? `${accent}15` : T.color.warmStone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>
-              <RoomIcon roomId={id} wingId={wing.id} size={touch ? 22 : 20} color={currentIcon === id ? accent : T.color.walnut} />
+              <RoomIcon roomId={id} wingId={activeWing.id} size={touch ? 22 : 20} color={currentIcon === id ? accent : T.color.walnut} />
             </button>
           ))}
         </div>
@@ -161,11 +187,30 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
             <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.ink, margin: 0 }}>{t("manageRooms")}</h3>
             <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.inkMuted, margin: "0.25rem 0 0", display: "flex", alignItems: "center", gap: "0.375rem" }}>
               <span aria-hidden style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: accent, flexShrink: 0 }} />
-              {t("wingLabel", { name: wing.name })}
+              {t("wingLabel", { name: translateWingName(activeWing, tWings) })}
             </p>
           </div>
           <button onClick={onClose} aria-label={tc("close")} style={{ width: touch ? "2.75rem" : "2rem", height: touch ? "2.75rem" : "2rem", borderRadius: touch ? "1.375rem" : "1rem", border: `1px solid ${T.color.hairline}`, background: T.color.warmStone, color: T.color.inkMuted, fontSize: touch ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
         </div>
+
+        {/* Wing selector — only when the caller opens the panel palace-wide */}
+        {wings && wings.length > 1 && (
+          <div style={{ marginBottom: "1rem" }}>
+            <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.inkMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{tLib("wingLabel")}</span>
+            <div role="radiogroup" aria-label={tLib("wingLabel")} style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap", marginTop: "0.375rem" }}>
+              {wings.map(w => {
+                const on = w.id === activeWing.id;
+                return (
+                  <button key={w.id} role="radio" aria-checked={on} onClick={() => switchWing(w.id)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "0.375rem", minHeight: "2.75rem", padding: "0 0.75rem", borderRadius: "2rem", border: on ? `2px solid ${w.accent}` : `1px solid ${T.color.hairline}`, background: on ? `${w.accent}15` : T.color.white, color: on ? w.accent : T.color.inkMuted, fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", transition: "all .15s" }}>
+                    <WingIcon wingId={w.id} size={16} color={on ? w.accent : T.color.inkMuted} />
+                    {translateWingName(w, tWings)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Room count */}
         <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.inkMuted, marginBottom: "1rem" }}>
@@ -185,7 +230,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                   aria-label={t("changeIcon")}
                   style={{ width: touch ? "2.75rem" : "2.375rem", height: touch ? "2.75rem" : "2.375rem", borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`, background: pickingIconId === room.id ? `${accent}12` : T.color.warmStone, fontSize: "1.25rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s" }}
                   title={t("changeIcon")}>
-                  <RoomGlyph icon={room.icon} wingId={wing.id} size={22} color={accent} />
+                  <RoomGlyph icon={room.icon} wingId={activeWing.id} size={22} color={accent} />
                 </button>
 
                 {/* Name */}
@@ -212,9 +257,9 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
 
                 {/* Reorder buttons \u2014 full 2.75rem tap targets on touch */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem" }}>
-                  <button onClick={() => reorderRoom(wing.id, room.id, -1)} disabled={i === 0} aria-label={tc("moveUp")}
+                  <button onClick={() => reorderRoom(activeWing.id, room.id, -1)} disabled={i === 0} aria-label={tc("moveUp")}
                     style={{ minWidth: touch ? "2.75rem" : undefined, minHeight: touch ? "2.75rem" : undefined, width: touch ? "2.75rem" : "1.375rem", height: touch ? "2.75rem" : "1.125rem", borderRadius: "0.25rem", border: "none", background: i === 0 ? "transparent" : T.color.warmStone, color: i === 0 ? T.color.hairline : T.color.inkMuted, fontSize: touch ? "0.6875rem" : "0.5625rem", cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25B2"}</button>
-                  <button onClick={() => reorderRoom(wing.id, room.id, 1)} disabled={i === rooms.length - 1} aria-label={tc("moveDown")}
+                  <button onClick={() => reorderRoom(activeWing.id, room.id, 1)} disabled={i === rooms.length - 1} aria-label={tc("moveDown")}
                     style={{ minWidth: touch ? "2.75rem" : undefined, minHeight: touch ? "2.75rem" : undefined, width: touch ? "2.75rem" : "1.375rem", height: touch ? "2.75rem" : "1.125rem", borderRadius: "0.25rem", border: "none", background: i === rooms.length - 1 ? "transparent" : T.color.warmStone, color: i === rooms.length - 1 ? T.color.hairline : T.color.inkMuted, fontSize: touch ? "0.6875rem" : "0.5625rem", cursor: i === rooms.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25BC"}</button>
                 </div>
 
@@ -236,7 +281,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
 
               {/* Icon picker (expanded) */}
               {pickingIconId === room.id && iconPicker(room.icon, (icon) => {
-                changeRoomIcon(wing.id, room.id, icon);
+                changeRoomIcon(activeWing.id, room.id, icon);
                 setPickingIconId(null);
               })}
 
@@ -263,7 +308,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
               <button onClick={() => { setShowEmoji(false); setShowNewIconPicker(!showNewIconPicker); }}
                 style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.625rem", border: `1px solid ${T.color.hairline}`, background: T.color.warmStone, fontSize: "1.375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                 title={t("chooseIcon")}>
-                <RoomGlyph icon={newIcon} wingId={wing.id} size={24} color={accent} />
+                <RoomGlyph icon={newIcon} wingId={activeWing.id} size={24} color={accent} />
               </button>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("roomNamePlaceholder")} autoFocus
                 onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}

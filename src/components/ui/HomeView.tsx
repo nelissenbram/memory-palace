@@ -794,9 +794,13 @@ export default function HomeView() {
   // wrapper on AtriumRelay can actually skip reconciliation on unrelated ticks.
   const relayWeekHistory = useMemo(() => computeWeekHistory(creationDates), [creationDates]);
   const relayLabels = useMemo(() => ({ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), weeksWarm: t("relay.weeksWarm"), quietKept: t("relay.quietKept"), laneJourneysPill: t("relay.laneJourneysPill") }), [t]);
-  // Per-lane journey pills (change 4): every track mapped to one of the three
-  // verb lanes by its nature — collect/record new material → capture; making
-  // existing content vivid → bring to life; social/legacy → share.
+  // Per-lane journey pills (change 4, scoring rework): every track mapped to
+  // one of the three verb lanes by its nature — collect/record new material →
+  // capture; making existing content vivid → bring to life; social/legacy →
+  // share. Owner feedback ("5/20 is confusing"): done/total are now JOURNEY
+  // COUNTS (completed tracks over mapped tracks), xp is the earned XP for the
+  // lane (sum of completed steps' pointValue + completionBonus per finished
+  // track), and percent is the step-weighted progress that drives the bar.
   const laneJourneys = useMemo(() => {
     const LANE_TRACKS: Record<"capture" | "bring" | "share", string[]> = {
       capture: ["preserve", "capture", "resolutions"],
@@ -805,14 +809,30 @@ export default function HomeView() {
     };
     const openJourneys = () => setShowTracksPanel(true);
     const mk = (ids: string[]) => {
-      let done = 0, total = 0;
-      for (const td of trackData) {
-        if (ids.includes(td.id)) { done += td.progress; total += td.total; }
+      let done = 0, total = 0, xp = 0, stepsDone = 0, stepsTotal = 0;
+      for (const track of TRACKS) {
+        if (!ids.includes(track.id)) continue;
+        total++;
+        const prog = getTrackProgress(track.id);
+        const isComplete = !!prog.completedAt || prog.percentage >= 100;
+        if (isComplete) done++;
+        // Only count steps that are actually defined on the track (guards
+        // against stale ids lingering in stepsCompleted).
+        const doneSteps = track.steps.filter((s) => prog.stepsCompleted.includes(s.id));
+        xp += doneSteps.reduce((sum, s) => sum + s.pointValue, 0);
+        if (isComplete) xp += track.completionBonus;
+        stepsDone += doneSteps.length;
+        stepsTotal += track.steps.length;
       }
-      return { done, total, onClick: openJourneys, ofLabel: t("relay.laneJourneysOf", { done: String(done), total: String(total) }) };
+      const percent = stepsTotal > 0 ? Math.round((100 * stepsDone) / stepsTotal) : 0;
+      return {
+        done, total, xp, percent, onClick: openJourneys,
+        ofLabel: t("relay.laneJourneysOf", { done: String(done), total: String(total) }),
+        xpLabel: t("relay.laneJourneysXp", { xp: String(xp) }),
+      };
     };
     return { capture: mk(LANE_TRACKS.capture), bring: mk(LANE_TRACKS.bring), share: mk(LANE_TRACKS.share) };
-  }, [trackData, setShowTracksPanel, t]);
+  }, [trackProgressMap, getTrackProgress, setShowTracksPanel, t]);
   // Palace + Library stay ON TOP as anchors. The Palace card's counterpart to
   // the Library's photo fan: wing seals — the lived-in wings with their counts.
   // The complete set: every wing gets its seal (canonical order); untouched

@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/interview-actions";
 import { getTemplate } from "@/lib/constants/interviews";
 import type { InterviewTemplate, InterviewQuestion } from "@/lib/constants/interviews";
+import { createClient } from "@/lib/supabase/client";
 
 export interface InterviewResponse {
   questionId: string;
@@ -69,6 +70,11 @@ interface InterviewState {
 
   // Session actions
   startSession: (templateId: string) => Promise<void>;
+  /** Start a session for a client-built template (e.g. Life Story chapter
+   *  interviews, id `lifestory-${chapterId}`) that is NOT in the static
+   *  INTERVIEW_TEMPLATES set. Does not set showInterview — the caller renders
+   *  its own <InterviewPanel/>. Returns true when the session was created. */
+  startDynamicSession: (template: InterviewTemplate) => Promise<boolean>;
   resumeSession: (sessionId: string) => Promise<void>;
   nextQuestion: () => void;
   skipQuestion: () => void;
@@ -149,6 +155,71 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
       showInterview: true,
       showLibrary: false,
     });
+  },
+
+  startDynamicSession: async (template) => {
+    // The startInterview server action validates templateId against the static
+    // template whitelist, so dynamic (client-built) templates must create their
+    // row directly with the user-scoped browser client — the exact same RLS
+    // scope as the server action's cookie client. The interview quota is
+    // checked first to mirror the server-side guard (the InterviewPanel intro
+    // screen re-checks it and disables "Begin" as a second gate).
+    try {
+      const quotaRes = await fetch("/api/ai-interview/quota");
+      if (quotaRes.ok) {
+        const quota: { allowed?: boolean } = await quotaRes.json();
+        if (quota && quota.allowed === false) return false;
+      }
+    } catch {
+      // Quota endpoint unreachable — fall through; the panel gate still applies.
+    }
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { data: row, error } = await supabase
+      .from("interview_sessions")
+      .insert({
+        user_id: user.id,
+        interview_template_id: template.id,
+        status: "in_progress",
+        responses: [],
+        metadata: {},
+      })
+      .select("id")
+      .single();
+    if (error || !row) {
+      console.error("Failed to start dynamic interview:", error?.message);
+      return false;
+    }
+
+    const session: InterviewSession = {
+      id: row.id as string,
+      templateId: template.id,
+      status: "in_progress",
+      responses: [],
+      narrativeSummary: null,
+      generatedMemoryId: null,
+      metadata: {},
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+      totalDurationSeconds: 0,
+    };
+
+    // No RESUME_KEY here: resumeSession resolves templates via getTemplate(),
+    // which cannot rebuild a dynamic template, so a resume prompt would be dead.
+    set({
+      currentSession: session,
+      currentTemplate: template,
+      currentQuestionIndex: 0,
+      isFollowUp: false,
+      transcript: "",
+      showLibrary: false,
+      // showInterview intentionally left unchanged — the global MemoryPalace
+      // instance must not mount a second InterviewPanel.
+    });
+    return true;
   },
 
   resumeSession: async (sessionId) => {

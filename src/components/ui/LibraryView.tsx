@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, type CSSProperties } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -34,7 +34,8 @@ import TuscanStyles from "./TuscanStyles";
 import TuscanCard from "./TuscanCard";
 import WingManagerPanel from "@/components/ui/WingManagerPanel";
 import RoomManagerPanel from "@/components/ui/RoomManagerPanel";
-import { WingIcon, RoomIcon } from "./WingRoomIcons";
+import { WingIcon, RoomIcon, ROOM_ICON_MAP } from "./WingRoomIcons";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
 import { CREAM, HAIRLINE, TRAY, EMBER, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
@@ -408,6 +409,178 @@ const normalizeDisplayType = (type: string) => {
 // A memory's date, wherever it lives — every date path must use the same fallback.
 const memDate = (m: Mem) => m.createdAt || (m as { date?: string }).date || "";
 
+/**
+ * Time Capsule destination chooser — the capsule pill no longer auto-enters
+ * the fullest room ("it opened a random photo"); the user explicitly picks
+ * wing → room, then UploadPanel opens there (upload new OR pick "from room").
+ */
+function CapsulePicker({ wings, getWingRooms, onClose, onPick, t, tc, tWings }: {
+  wings: Wing[];
+  getWingRooms: (wingId: string) => WingRoom[];
+  onClose: () => void;
+  onPick: (wingId: string, roomId: string) => void;
+  t: (key: string, params?: Record<string, string>) => string;
+  tc: (key: string) => string;
+  tWings: (key: string) => string;
+}) {
+  const [wingId, setWingId] = useState<string | null>(null);
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
+  const wing = wingId ? wings.find(w => w.id === wingId) || null : null;
+  const rooms = wing ? getWingRooms(wing.id) : [];
+  const rowStyle: CSSProperties = {
+    display: "flex", alignItems: "center", gap: "0.625rem", width: "100%",
+    minHeight: "2.75rem", padding: "0.5rem 0.75rem", borderRadius: "0.75rem",
+    border: `0.0625rem solid ${HAIRLINE}`, background: "#FCFAF5", cursor: "pointer",
+    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#403B36",
+    textAlign: "left" as const, transition: "all .15s",
+  };
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 9999,
+      background: "rgba(64,59,54,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      animation: "libFadeIn 0.2s ease both",
+    }}>
+      <div
+        ref={containerRef}
+        role="dialog" aria-modal="true" aria-label={t("capsulePickTitle")}
+        onClick={e => e.stopPropagation()}
+        onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } handleKeyDown(e); }}
+        style={{
+          background: CREAM, borderRadius: "1.25rem",
+          border: `0.0625rem solid ${HAIRLINE}`,
+          boxShadow: "0 1.5rem 3rem rgba(64,59,54,0.18), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+          width: "min(26rem, 92vw)", maxHeight: "min(30rem, 85vh)",
+          display: "flex", flexDirection: "column", overflow: "hidden",
+          animation: "libSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${HAIRLINE}`, flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
+            <div>
+              <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: "#403B36", margin: 0 }}>
+                {t("capsulePickTitle")}
+              </h3>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", margin: "0.25rem 0 0", lineHeight: 1.45 }}>
+                {t("capsulePickHint")}
+              </p>
+            </div>
+            <button onClick={onClose} aria-label={tc("close")} style={{ minWidth: "2.75rem", minHeight: "2.75rem", borderRadius: "1.375rem", border: `0.0625rem solid ${HAIRLINE}`, background: T.color.warmStone, color: "#716A5E", fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"✕"}</button>
+          </div>
+        </div>
+
+        {/* Two-level pick: wings → rooms of the chosen wing */}
+        <div style={{ flex: 1, overflow: "auto", padding: "1rem 1.5rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {!wing ? (
+            wings.map(w => (
+              <button key={w.id} type="button" onClick={() => setWingId(w.id)} style={rowStyle}>
+                <WingIcon wingId={w.id} size={18} color={w.accent} />
+                <span style={{ flex: 1 }}>{translateWingName(w, tWings)}</span>
+                <span aria-hidden="true" style={{ color: "#716A5E", fontSize: "0.75rem" }}>{"›"}</span>
+              </button>
+            ))
+          ) : (
+            <>
+              <button type="button" onClick={() => setWingId(null)} style={{ ...rowStyle, border: "none", background: "transparent", color: "#716A5E", fontWeight: 500, minHeight: "2.75rem" }}>
+                <span aria-hidden="true" style={{ fontSize: "0.75rem" }}>{"‹"}</span>
+                {tc("back") !== "back" ? tc("back") : translateWingName(wing, tWings)}
+              </button>
+              {rooms.map(r => (
+                <button key={r.id} type="button" onClick={() => onPick(wing.id, r.id)} style={rowStyle}>
+                  {ROOM_ICON_MAP[r.icon] ? (
+                    <RoomIcon roomId={r.icon} wingId={wing.id} size={18} color={wing.accent} />
+                  ) : (
+                    <span aria-hidden style={{ fontSize: "1rem", lineHeight: 1 }}>{r.icon}</span>
+                  )}
+                  <span style={{ flex: 1 }}>{translateRoomName(r, tWings)}</span>
+                  <span aria-hidden="true" style={{ color: "#716A5E", fontSize: "0.75rem" }}>{"›"}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Playful hand-drawn gold arrow that floats above (or, near the top edge,
+ * below) the spotlighted action button and bounces toward it — guiding the
+ * click-through from an Atrium card. Purely decorative (aria-hidden); the
+ * spotlight pulse + hint remain the accessible affordance. Lifetime is tied
+ * to spotlightTarget, so it vanishes exactly when the spotlight clears.
+ */
+function SpotlightArrow({ targetKey }: { targetKey: string }) {
+  const [pos, setPos] = useState<{ left: number; top: number; below: boolean } | null>(null);
+  useEffect(() => {
+    // 3.5rem × 4.25rem doodle, px-measured against the button's viewport rect
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const ARROW_W = 3.5 * rem, ARROW_H = 4.25 * rem, GAP = 0.5 * rem;
+    let raf = 0;
+    const measure = () => {
+      const el = document.querySelector(`[data-spotlight-id="${targetKey}"]`);
+      const r = el?.getBoundingClientRect();
+      if (!r || (r.width === 0 && r.height === 0)) { setPos(null); return; }
+      const below = r.top < ARROW_H + GAP + rem; // button near top edge → arrow underneath, pointing up
+      setPos({
+        left: r.left + r.width / 2 - ARROW_W / 2,
+        top: below ? r.bottom + GAP : r.top - ARROW_H - GAP,
+        below,
+      });
+    };
+    const schedule = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; measure(); }); };
+    measure();
+    const settle = setTimeout(measure, 350); // pill rows may still be settling
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    return () => {
+      clearTimeout(settle);
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+    };
+  }, [targetKey]);
+  if (!pos) return null;
+  return (
+    <div
+      aria-hidden="true"
+      data-spotlight-arrow=""
+      style={{
+        position: "fixed", left: pos.left, top: pos.top,
+        width: "3.5rem", height: "4.25rem",
+        zIndex: 10050, pointerEvents: "none",
+        // Flip for the "below the button" case: the doodle points up and the
+        // child bounce (translateY 0→0.4rem) visually moves TOWARD the button.
+        transform: pos.below ? "scaleY(-1)" : undefined,
+      }}
+    >
+      <style>{`
+        @keyframes mpArrowBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(0.4rem); } }
+        @media (prefers-reduced-motion: reduce) { [data-spotlight-arrow] svg { animation: none !important; } }
+      `}</style>
+      <svg
+        viewBox="0 0 56 68" width="100%" height="100%" fill="none"
+        style={{ display: "block", overflow: "visible", animation: "mpArrowBounce 1.6s ease-in-out infinite" }}
+      >
+        {/* darker-gold outline shadow, nudged for a loose hand-drawn depth */}
+        <g stroke="#8A6410" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" opacity="0.45" transform="translate(1.5 1.75)">
+          <path d="M12 6 C 30 1, 45 13, 40 30 C 37 41, 31 48, 28 56" />
+          <path d="M19 48 C 22 52, 25 55, 28 58" />
+          <path d="M39 46 C 35 50, 31 54, 28 58" />
+        </g>
+        {/* wobbly gold stroke + loose arrowhead */}
+        <g stroke="#D4AF37" strokeWidth="4.25" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 6 C 30 1, 45 13, 40 30 C 37 41, 31 48, 28 56" />
+          <path d="M19 48 C 22 52, 25 55, 28 58" />
+          <path d="M39 46 C 35 50, 31 54, 28 58" />
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 export default function LibraryView() {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
@@ -450,6 +623,8 @@ export default function LibraryView() {
   useEffect(() => () => { if (movedToastTimerRef.current) clearTimeout(movedToastTimerRef.current); }, []);
   const [showWingManager, setShowWingManager] = useState(false);
   const [showRoomManager, setShowRoomManager] = useState(false);
+  // Time Capsule wing→room chooser (explicit destination pick, no auto-room)
+  const [capsulePickerOpen, setCapsulePickerOpen] = useState(false);
   // List view is retired (redundant beside wall + timeline) — validate the
   // persisted value so a stale 'list' can never strand the user viewless.
   const [viewMode, setViewMode] = useState<"grid" | "timeline">(() => {
@@ -1230,7 +1405,8 @@ export default function LibraryView() {
       // Text fields cancel their own edit on Escape — never hijack it
       const el = e.target as HTMLElement | null;
       if (el && (el.closest?.("input, textarea, select") || el.isContentEditable)) return;
-      if (showImportHub) setShowImportHub(false);
+      if (capsulePickerOpen) setCapsulePickerOpen(false);
+      else if (showImportHub) setShowImportHub(false);
       else if (cloudBrowserProvider) setCloudBrowserProvider(null);
       else if (pickerStatus !== "idle") { setPickerStatus("idle"); if (pickerPollRef.current) { clearInterval(pickerPollRef.current); pickerPollRef.current = null; } }
       else if (showPublishModal) setShowPublishModal(false);
@@ -1247,7 +1423,7 @@ export default function LibraryView() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showImportHub, cloudBrowserProvider, pickerStatus, showPublishModal, activeToolPanel, closeToolPanel, bulkMoving, mediaPlayerIndex, detailPanelMem, movingMem, detailMem, showUploadFor, mobileSortOpen, selectMode, selectedRoom, handleBackToRooms]);
+  }, [capsulePickerOpen, showImportHub, cloudBrowserProvider, pickerStatus, showPublishModal, activeToolPanel, closeToolPanel, bulkMoving, mediaPlayerIndex, detailPanelMem, movingMem, detailMem, showUploadFor, mobileSortOpen, selectMode, selectedRoom, handleBackToRooms]);
 
   const handleAddMemory = useCallback((mem: Mem) => {
     if (showUploadFor) {
@@ -1872,20 +2048,11 @@ export default function LibraryView() {
                   if (spotlightTarget === a.key) setSpotlightTarget(null);
                 }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === a.key ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>{a.label}</button>
               ))}
-              {/* Time Capsule — opens the same UploadPanel flow with the
-                  sealed-memory preset flag; Atrium spotlight target */}
+              {/* Time Capsule — explicit wing→room chooser, then the same
+                  UploadPanel flow with the sealed-memory preset flag;
+                  Atrium spotlight target */}
               <button type="button" data-spotlight-id="timeCapsule" title={t("actionTimeCapsuleHint")} aria-label={`${t("actionTimeCapsule")} — ${t("actionTimeCapsuleHint")}`} onClick={() => {
-                let roomId = selectedRoom, wingId = selectedWing;
-                if (!roomId) {
-                  roomId = pickFullestRoom();
-                  if (!roomId) return;
-                  wingId = roomWingMap[roomId] || wingId;
-                  setSelectedWing(wingId);
-                  setSelectedRoom(roomId);
-                  fetchRoomMemories(roomId);
-                }
-                try { localStorage.setItem("mp_upload_time_capsule", "true"); } catch { /* full */ }
-                setShowUploadFor({ wingId, roomId });
+                setCapsulePickerOpen(true);
                 if (spotlightTarget === "timeCapsule") setSpotlightTarget(null);
               }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: isMobile ? "2.75rem" : "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === "timeCapsule" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h12M6 21h12" /><path d="M8 3v3c0 2.5 4 3.5 4 6s-4 3.5-4 6v3" /><path d="M16 3v3c0 2.5-4 3.5-4 6s4 3.5 4 6v3" /></svg>
@@ -2899,6 +3066,29 @@ export default function LibraryView() {
         />
       )}
 
+      {/* Time Capsule destination chooser (wing → room, then UploadPanel) */}
+      {capsulePickerOpen && (
+        <CapsulePicker
+          wings={wings}
+          getWingRooms={getWingRooms}
+          t={t}
+          tc={tc}
+          tWings={tWings}
+          onClose={() => setCapsulePickerOpen(false)}
+          onPick={(wingId, roomId) => {
+            setCapsulePickerOpen(false);
+            try { localStorage.setItem("mp_upload_time_capsule", "true"); } catch { /* full */ }
+            setSelectedWing(wingId);
+            setSelectedRoom(roomId);
+            fetchRoomMemories(roomId);
+            setShowUploadFor({ wingId, roomId });
+          }}
+        />
+      )}
+
+      {/* Playful gold arrow pointing at the spotlighted action (Atrium CTA) */}
+      {spotlightTarget && <SpotlightArrow targetKey={spotlightTarget} />}
+
       {/* Wing manager overlay */}
       {showWingManager && (
         <WingManagerPanel onClose={() => setShowWingManager(false)} />
@@ -2908,6 +3098,7 @@ export default function LibraryView() {
       {showRoomManager && currentWing && (
         <RoomManagerPanel
           wing={currentWing}
+          wings={wings}
           onClose={() => setShowRoomManager(false)}
           onEnterRoom={(roomId: string) => {
             setShowRoomManager(false);

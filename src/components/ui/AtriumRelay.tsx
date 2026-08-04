@@ -55,9 +55,12 @@ export type RelayLedger = { text: string; warm: boolean };
 /** Family Embers — one loved one's recent presence on the palace. */
 export type EmberPerson = { key: string; name: string; unseen: number; latest?: string };
 export type RelayEmbers = { title: string; people: EmberPerson[]; onOpen: () => void; scrollHint?: string };
-/** Per-lane journey summary: completed units over all tracks mapped to the
-    lane. `ofLabel` is the preformatted "{done} of {total}" i18n string. */
-export type LaneJ = { done: number; total: number; onClick: () => void; ofLabel?: string };
+/** Per-lane journey summary: `done`/`total` are JOURNEY COUNTS (completed
+    tracks over tracks mapped to the lane). `ofLabel` is the preformatted
+    "{done} of {total} journeys" i18n string; `xp`/`xpLabel` carry the earned
+    XP for the lane ("{xp} XP", chip hidden when 0); `percent` is the
+    step-weighted progress 0–100 that drives the pill's bar. */
+export type LaneJ = { done: number; total: number; onClick: () => void; ofLabel?: string; xp?: number; xpLabel?: string; percent?: number };
 
 interface AtriumRelayProps {
   greeting: string;
@@ -296,11 +299,9 @@ const Tile = React.memo(function Tile({ tile, accent, index, isMobile, suggestio
           <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, maxWidth: "80%", overflowWrap: "break-word" }}>{tile.desc}</span>
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
-        {tile.dest ? (
-          <span aria-hidden="true" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: GOLD_GRAPHIC, opacity: 0.85 }}>→</span>
-        ) : (
-          <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
-        )}
+        {/* Owner call: NO gold arrows on card fronts — only the pre-existing
+            subtle accent hover arrow remains. */}
+        <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
       </button>
     );
   }
@@ -321,7 +322,7 @@ const Tile = React.memo(function Tile({ tile, accent, index, isMobile, suggestio
       onClick={handleSecClick}
       aria-label={`${tile.title}. ${tile.desc}${tile.dest ? ` — ${tile.dest}` : ""}`}
       className={`relay-tile relay-tile-sec${flipped ? " relay-flipped" : ""}`}
-      style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.65rem", textAlign: "left", borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${a.border}`, background: a.tileBg, cursor: "pointer", minHeight: "3.5rem", padding: "0.75rem 2.4rem 0.75rem 1rem", boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}` }}
+      style={{ position: "relative", display: "grid", textAlign: "left", borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${a.border}`, background: a.tileBg, cursor: "pointer", minHeight: "3.5rem", padding: "0.75rem 2.2rem 0.75rem 1rem", boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}` }}
     >
       {/* front-side whisper of the scene: the vignette rests on the right at
           low volume — the invitation is visible before any flip */}
@@ -330,28 +331,42 @@ const Tile = React.memo(function Tile({ tile, accent, index, isMobile, suggestio
           <Vignette c={vigPalette} />
         </span>
       ) : null}
-      <Medallion k={tile.key} accent={accent} index={index} animated={animated} />
-      <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "100%", gap: "0.1rem" }}>
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word" }}>{tile.title}</span>
-        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
+      {/* HEIGHT GHOST: an invisible copy of the backcard's content, in normal
+          flow (grid area 1/1, stacked under the front content), so the tile's
+          natural height is always ≥ the flipped backcard's content height —
+          the full description + destination chip can NEVER clip, in any
+          locale, at any column width. Mirrors the backcard's font metrics and
+          vertical gap exactly (its horizontal box is the button's own padding,
+          which matches the backcard padding). */}
+      <span aria-hidden="true" style={{ gridArea: "1 / 1", visibility: "hidden", pointerEvents: "none", display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.25rem", minWidth: 0 }}>
+        <span style={{ fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3 }}>{tile.desc}</span>
+        {tile.dest ? (
+          <span style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.1rem 0.5rem", borderRadius: "1rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, whiteSpace: "nowrap" }}>{tile.dest} →</span>
+        ) : null}
       </span>
-      {/* Destination affordance (change 2a): always-visible small GOLD arrow,
-          bottom-right, only on tiles that navigate away. */}
-      {tile.dest ? (
-        <span aria-hidden="true" className="relay-sec-openarrow" style={{ position: "absolute", right: "0.85rem", bottom: "0.6rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: GOLD_GRAPHIC, opacity: 0.85, pointerEvents: "none" }}>→</span>
-      ) : null}
+      {/* FRONT: title + datum, vertically centred over the ghost-sized tile.
+          Owner call: the small gold front arrow is GONE — the backcard's
+          "{dest} →" chip + gilt arrow carry the destination affordance. */}
+      <span style={{ gridArea: "1 / 1", display: "flex", alignItems: "center", gap: "0.65rem", minWidth: 0 }}>
+        <Medallion k={tile.key} accent={accent} index={index} animated={animated} />
+        <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "100%", gap: "0.1rem" }}>
+          <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word" }}>{tile.title}</span>
+          {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
+        </span>
+      </span>
       {/* BACKCARD (restored, eeff195~1 design): the tile turns over to the
-          zone-tinted reverse — vignette wash, full description, destination
-          chip and the gilt open-arrow. */}
-      <span aria-hidden="true" className="relay-backcard" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.25rem", padding: "0.5rem 2.4rem 0.5rem 1rem", background: `linear-gradient(160deg, ${TRAY[accent] === "transparent" ? "#FCFAF5" : TRAY[accent]} 0%, #FCFAF5 115%)`, borderTop: `0.1875rem solid ${a.tileTop}`, overflow: "hidden" }}>
+          zone-tinted reverse — vignette wash, FULL description (never
+          clamped; the height ghost above guarantees room), destination chip
+          and the gilt open-arrow. */}
+      <span aria-hidden="true" className="relay-backcard" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.25rem", padding: "0.5rem 2.2rem 0.5rem 1rem", background: `linear-gradient(160deg, ${TRAY[accent] === "transparent" ? "#FCFAF5" : TRAY[accent]} 0%, #FCFAF5 115%)`, borderTop: `0.1875rem solid ${a.tileTop}`, overflow: "hidden" }}>
         {Vignette ? (
-          <span style={{ position: "absolute", inset: 0, opacity: 0.95, maskImage: "linear-gradient(90deg, transparent 8%, black 48%)", WebkitMaskImage: "linear-gradient(90deg, transparent 8%, black 48%)" }}>
+          <span style={{ position: "absolute", inset: 0, opacity: 0.8, maskImage: "linear-gradient(90deg, transparent 8%, black 48%)", WebkitMaskImage: "linear-gradient(90deg, transparent 8%, black 48%)" }}>
             <Vignette c={vigPalette} />
           </span>
         ) : null}
-        <span style={{ position: "relative", fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: "58%", textShadow: "0 0 0.5rem rgba(252,250,245,0.95), 0 0 1rem rgba(252,250,245,0.8)" }}>{tile.desc}</span>
+        <span style={{ position: "relative", fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, overflowWrap: "break-word", textShadow: "0 0 0.5rem rgba(252,250,245,0.95), 0 0 1rem rgba(252,250,245,0.8)" }}>{tile.desc}</span>
         {tile.dest ? (
-          <span style={{ position: "relative", alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.1rem 0.5rem", borderRadius: "1rem", background: `rgba(${OCHRE_RGB},0.14)`, fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: LEDGER_OCHRE, maxWidth: "58%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.dest} →</span>
+          <span style={{ position: "relative", alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.1rem 0.5rem", borderRadius: "1rem", background: `rgba(${OCHRE_RGB},0.14)`, fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: LEDGER_OCHRE, whiteSpace: "nowrap" }}>{tile.dest} →</span>
         ) : null}
         <span className="relay-backcard-arrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
       </span>
@@ -558,16 +573,20 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
                   type="button"
                   onClick={lj.onClick}
                   className="relay-pill"
-                  aria-label={`${labels?.laneJourneysPill ?? "Journeys"} · ${lj.ofLabel ?? `${lj.done}/${lj.total}`}`}
+                  aria-label={`${labels?.laneJourneysPill ?? "Journeys"} · ${lj.ofLabel ?? `${lj.done}/${lj.total}`}${(lj.xp ?? 0) > 0 && lj.xpLabel ? ` · ${lj.xpLabel}` : ""}`}
                   style={{ display: "inline-flex", flexDirection: "column", alignItems: "stretch", justifyContent: "center", gap: "0.25rem", minHeight: "2.75rem", padding: "0.35rem 0.8rem", borderRadius: "1.375rem", border: `0.0625rem solid ${a.border}`, background: "rgba(252,250,245,0.65)", cursor: "pointer", flexShrink: 0 }}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontFamily: T.font.body, fontSize: RT.overline, fontWeight: 700, color: a.glyph, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                     <span aria-hidden="true" style={{ width: "0.9rem", height: "0.9rem", display: "inline-flex" }}><RelayIcons.journeys /></span>
-                    {labels?.laneJourneysPill ?? "Journeys"}
+                    {/* "{done} of {total} journeys" — journeys COUNT, not step units */}
                     <span style={{ fontWeight: 600 }}>{lj.ofLabel ?? `${lj.done}/${lj.total}`}</span>
+                    {/* gold-tinted XP chip, hidden until the first point lands */}
+                    {(lj.xp ?? 0) > 0 && lj.xpLabel ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", padding: "0.05rem 0.4rem", borderRadius: "1rem", background: `rgba(${OCHRE_RGB},0.14)`, color: LEDGER_OCHRE, fontWeight: 700 }}>{lj.xpLabel}</span>
+                    ) : null}
                   </span>
                   <span aria-hidden="true" style={{ display: "block", height: "0.1875rem", borderRadius: "1rem", background: a.medallion, overflow: "hidden" }}>
-                    <span style={{ display: "block", height: "100%", width: `${Math.round((100 * lj.done) / Math.max(1, lj.total))}%`, background: a.tileTop, borderRadius: "1rem" }} />
+                    <span style={{ display: "block", height: "100%", width: `${Math.min(100, Math.max(0, lj.percent ?? Math.round((100 * lj.done) / Math.max(1, lj.total))))}%`, background: a.tileTop, borderRadius: "1rem" }} />
                   </span>
                 </button>
               ) : null}
@@ -619,16 +638,13 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
            first-tap). Reduced motion kills the transition → instant toggle. */
         .relay-backcard { opacity: 0; transform: translateY(100%); pointer-events: none; transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease; }
         .relay-sec-vig { transition: opacity 0.2s ease; }
-        .relay-sec-openarrow { transition: opacity 0.24s ease; }
         .relay-backcard-arrow { transition: transform 0.25s ease 0.1s; transform: translateY(-50%) translateX(-0.3rem); }
         .relay-tile-sec.relay-flipped .relay-backcard { opacity: 1; transform: translateY(0); }
         .relay-tile-sec.relay-flipped .relay-sec-vig { opacity: 0; }
-        .relay-tile-sec.relay-flipped .relay-sec-openarrow { opacity: 0; }
         .relay-tile-sec.relay-flipped .relay-backcard-arrow { transform: translateY(-50%) translateX(0); }
         @media (hover: hover) {
           .relay-tile-sec:hover .relay-backcard, .relay-tile-sec:focus-visible .relay-backcard { opacity: 1; transform: translateY(0); }
           .relay-tile-sec:hover .relay-sec-vig, .relay-tile-sec:focus-visible .relay-sec-vig { opacity: 0; }
-          .relay-tile-sec:hover .relay-sec-openarrow, .relay-tile-sec:focus-visible .relay-sec-openarrow { opacity: 0; }
           .relay-tile-sec:hover .relay-backcard-arrow, .relay-tile-sec:focus-visible .relay-backcard-arrow { transform: translateY(-50%) translateX(0); }
           .relay-invite-arrow { transition: opacity 0.25s ease, transform 0.25s ease; }
           .relay-tile:hover .relay-invite-arrow { opacity: 1; transform: translateX(0); }
@@ -686,7 +702,7 @@ function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, w
         @keyframes ri-wave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
         @keyframes ri-bob { 0%,100% { transform: translateY(0.04rem); } 50% { transform: translateY(-0.09rem); } }
         @media (prefers-reduced-motion: reduce) {
-          .relay-tile, .relay-pill, .relay-suggest, .relay-suggest-sheen, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob, .relay-name, .relay-sug-blink, .relay-ember-breathe, .relay-ember-flicker, .relay-anchor-glow, .relay-backcard, .relay-backcard-arrow, .relay-invite-arrow, .relay-sec-openarrow, .relay-sec-vig, .relay-suggest-reason, .relay-suggest-arrow { animation: none !important; transition: none !important; }
+          .relay-tile, .relay-pill, .relay-suggest, .relay-suggest-sheen, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob, .relay-name, .relay-sug-blink, .relay-ember-breathe, .relay-ember-flicker, .relay-anchor-glow, .relay-backcard, .relay-backcard-arrow, .relay-invite-arrow, .relay-sec-vig, .relay-suggest-reason, .relay-suggest-arrow { animation: none !important; transition: none !important; }
           .relay-tile:hover, .relay-suggest:hover { transform: none !important; }
           .relay-suggest-sheen { display: none; }
         }

@@ -4267,6 +4267,9 @@
     "dialogLabel": "Choose wing for room placement"
   },
   "library": {
+    "capsulePickTitle": "Where does this capsule belong?",
+    "capsulePickHint": "Choose the wing and room where your time capsule will live. Then upload a new photo or pick one you already have.",
+    "wingLabel": "Wing",
     "title": "Library",
     "subtitle": "{count} memories across all wings",
     "wingCount": "{rooms} rooms · {memories} memories",
@@ -4868,7 +4871,8 @@
     "relay.destExplore": "Explore",
     "relay.destPalace": "Palace",
     "relay.laneJourneysPill": "Journeys",
-    "relay.laneJourneysOf": "{done} of {total}",
+    "relay.laneJourneysOf": "{done} of {total} journeys",
+    "relay.laneJourneysXp": "{xp} XP",
     "relay.tilePublish": "Share Publicly",
     "relay.tilePublishDesc": "Publish to Explore",
     "relay.tileShared": "Shared with you",
@@ -4966,7 +4970,17 @@
     "saved": "Saved",
     "errorGeneric": "Something went wrong. Please try again.",
     "errorNotConfigured": "Story weaving is not switched on yet.",
-    "close": "Close"
+    "close": "Close",
+    "recordInterview": "Record an interview for this chapter",
+    "recordInterviewHint": "A few guided questions about this chapter — your spoken answers enrich the weave.",
+    "chapterInterviewDesc": "A short guided interview about this chapter of your life.",
+    "q1": "Let's talk about {chapter}. Where does this part of your life begin?",
+    "q2": "Who were the important people in {chapter}, and what did they mean to you?",
+    "q3": "Which moment from {chapter} do you remember most vividly?",
+    "q4": "What was difficult in that time, and how did you get through it?",
+    "q5": "Looking back on {chapter}, what would you like your family to know or remember?",
+    "selectAllRoom": "Select all in this room",
+    "treeNoMedia": "No memories in this room yet"
   },
   "navigation": {
     "nav_label": "Main navigation",

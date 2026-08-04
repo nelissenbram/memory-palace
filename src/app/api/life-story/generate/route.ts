@@ -15,6 +15,10 @@ import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
 const MODEL = "claude-sonnet-4-6";
 const MAX_MEMORIES = 40;
 const MAX_INTERVIEW_CHARS = 8_000;
+// Chapter-specific interviews (template id `lifestory-${chapterId}`) are always
+// included in full; this hard ceiling only guards against pathological prompt
+// sizes when a user has recorded many long interviews for one chapter.
+const MAX_INTERVIEW_CHARS_HARD = 24_000;
 
 const LOCALE_LANGUAGES: Record<string, string> = {
   en: "English",
@@ -44,6 +48,7 @@ interface InterviewResponse {
 }
 
 interface InterviewSessionRow {
+  id: string;
   interview_template_id: string | null;
   narrative_summary: string | null;
   responses: InterviewResponse[] | null;
@@ -104,18 +109,35 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Interview material — completed sessions only, capped to a safe prompt size.
-    const { data: sessionsData } = await supabase
-      .from("interview_sessions")
-      .select("interview_template_id, narrative_summary, responses, completed_at")
-      .eq("user_id", user.id)
-      .eq("status", "completed")
-      .order("completed_at", { ascending: false })
-      .limit(20);
-    const sessions = (sessionsData as InterviewSessionRow[] | null) ?? [];
+    // Chapter-specific interviews (recorded from this chapter's card, template
+    // id `lifestory-${chapterId}`) are fetched separately so they are never
+    // pushed out of the newest-20 window, included FIRST and IN FULL; the
+    // remaining char budget is then filled with the newest other sessions.
+    const chapterTemplateId = `lifestory-${chapter.id}`;
+    const SESSION_COLUMNS = "id, interview_template_id, narrative_summary, responses, completed_at";
+    const [{ data: chapterSessionsData }, { data: sessionsData }] = await Promise.all([
+      supabase
+        .from("interview_sessions")
+        .select(SESSION_COLUMNS)
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .eq("interview_template_id", chapterTemplateId)
+        .order("completed_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("interview_sessions")
+        .select(SESSION_COLUMNS)
+        .eq("user_id", user.id)
+        .eq("status", "completed")
+        .order("completed_at", { ascending: false })
+        .limit(20),
+    ]);
+    const chapterSessions = (chapterSessionsData as InterviewSessionRow[] | null) ?? [];
+    const chapterSessionIds = new Set(chapterSessions.map((s) => s.id));
+    const otherSessions = ((sessionsData as InterviewSessionRow[] | null) ?? [])
+      .filter((s) => !chapterSessionIds.has(s.id) && s.interview_template_id !== chapterTemplateId);
 
-    let interviewExcerpts = "";
-    for (const session of sessions) {
-      if (interviewExcerpts.length >= MAX_INTERVIEW_CHARS) break;
+    const sessionBlock = (session: InterviewSessionRow): string | null => {
       const parts: string[] = [];
       if (session.narrative_summary) {
         parts.push(`Summary: ${session.narrative_summary}`);
@@ -123,11 +145,24 @@ export async function POST(request: NextRequest) {
       for (const r of session.responses ?? []) {
         if (r?.transcript) parts.push(`They said: "${r.transcript}"`);
       }
-      if (parts.length === 0) continue;
-      const block = `--- Interview (${session.interview_template_id ?? "session"}) ---\n${parts.join("\n")}\n`;
-      interviewExcerpts += block;
+      if (parts.length === 0) return null;
+      const label = session.interview_template_id === chapterTemplateId
+        ? "Interview recorded specifically for THIS chapter"
+        : `Interview (${session.interview_template_id ?? "session"})`;
+      return `--- ${label} ---\n${parts.join("\n")}\n`;
+    };
+
+    let interviewExcerpts = "";
+    for (const session of chapterSessions) {
+      const block = sessionBlock(session);
+      if (block) interviewExcerpts += block; // always in full — no budget break
     }
-    interviewExcerpts = interviewExcerpts.slice(0, MAX_INTERVIEW_CHARS);
+    for (const session of otherSessions) {
+      if (interviewExcerpts.length >= MAX_INTERVIEW_CHARS) break;
+      const block = sessionBlock(session);
+      if (block) interviewExcerpts += block;
+    }
+    interviewExcerpts = interviewExcerpts.slice(0, MAX_INTERVIEW_CHARS_HARD);
 
     // 6. Locale for the output language.
     const { data: profile } = await supabase

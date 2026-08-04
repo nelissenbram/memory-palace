@@ -1,11 +1,18 @@
 "use client";
-import { useState, useEffect, useCallback, useRef, type CSSProperties } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, type CSSProperties } from "react";
 import { T } from "@/lib/theme";
 import { Sheet } from "@/components/ui/Sheet";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useReducedMotion } from "@/lib/hooks/useIsMobile";
+import { useInterviewStore } from "@/lib/stores/interviewStore";
+import { useRoomStore } from "@/lib/stores/roomStore";
+import { translateWingName, translateRoomName, type Wing, type WingRoom } from "@/lib/constants/wings";
+import type { InterviewTemplate } from "@/lib/constants/interviews";
 import { CREAM, TRAY, HAIRLINE, INK, MUTED, EMBER, SAGE, GOLD } from "@/lib/libraryTokens";
+
+// Full-screen interview dialog, loaded only when a chapter interview starts.
+const InterviewPanel = lazy(() => import("@/components/ui/InterviewPanel"));
 
 /* ------------------------------------------------------------------ types */
 
@@ -24,6 +31,14 @@ interface MemoryItem {
   title: string | null;
   type: string | null;
   created_at: string | null;
+  room_id: string | null; // DB room uuid — mapped to a palace room via RoomRef
+}
+
+/** DB room uuid → the client-side palace location (rooms.name stores the local
+ *  room id like "ro1"; wings.slug stores the local wing id like "roots"). */
+interface RoomRef {
+  localRoomId: string;
+  wingId: string;
 }
 
 type ChapterPatch = Partial<Pick<Chapter, "title" | "period_label" | "content" | "memory_ids" | "position">>;
@@ -51,6 +66,20 @@ const inputStyle: CSSProperties = {
   outline: "none",
 };
 
+/** Small glyph per memory type for the attach tree rows. */
+const TYPE_GLYPHS: Record<string, string> = {
+  photo: "\u{1F4F7}", image: "\u{1F4F7}", video: "\u{1F39E}️", audio: "\u{1F399}️",
+  voice: "\u{1F399}️", interview: "\u{1F3A4}", text: "\u{1F4DD}", note: "\u{1F4DD}",
+};
+const typeGlyph = (type: string | null): string => TYPE_GLYPHS[type ?? ""] ?? "\u{1F4C4}";
+
+/** Attached-count pill shown on wing/room rows. */
+const countPillStyle: CSSProperties = {
+  fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 700, color: EMBER,
+  background: "rgba(184,92,56,0.10)", borderRadius: "0.625rem",
+  padding: "0.125rem 0.5rem", flexShrink: 0,
+};
+
 /* ---------------------------------------------------------- chapter card */
 
 interface ChapterCardProps {
@@ -66,20 +95,34 @@ interface ChapterCardProps {
   onDelete: (id: string) => void;
   onMove: (index: number, dir: -1 | 1) => void;
   reducedMotion: boolean;
+  roomMap: Record<string, RoomRef> | null;
+  wings: Wing[];
+  getWingRooms: (wingId: string) => WingRoom[];
+  tWings: (key: string) => string;
 }
 
 function ChapterCard({
   chapter, index, count, t, memories, memoriesLoading, ensureMemories,
   persist, patchLocal, onDelete, onMove, reducedMotion,
+  roomMap, wings, getWingRooms, tWings,
 }: ChapterCardProps) {
   // Header inline edit
   const [editing, setEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState(chapter.title);
   const [periodDraft, setPeriodDraft] = useState(chapter.period_label ?? "");
 
-  // Attach-memories expander
+  // Attach-memories expander — collapsible wings → rooms → media tree
   const [memoriesOpen, setMemoriesOpen] = useState(false);
   const [memFilter, setMemFilter] = useState("");
+  const [expandedWings, setExpandedWings] = useState<Record<string, boolean>>({});
+  const [expandedRooms, setExpandedRooms] = useState<Record<string, boolean>>({});
+  const autoExpandedRef = useRef(false);
+
+  // Chapter-specific interview
+  const startDynamicSession = useInterviewStore((s) => s.startDynamicSession);
+  const [interviewOpen, setInterviewOpen] = useState(false);
+  const [interviewStarting, setInterviewStarting] = useState(false);
+  const [interviewDone, setInterviewDone] = useState(false);
 
   // Weave
   const [generating, setGenerating] = useState(false);
@@ -126,6 +169,94 @@ function ChapterCard({
     void persist(chapter.id, { memory_ids: next }).then((ok) => {
       if (!ok) patchLocal(chapter.id, { memory_ids: prev }); // revert on failure
     });
+  };
+
+  /** Attach/detach a whole room's memories at once — same optimistic + revert
+   *  contract as toggleMemory, but with a single persist round-trip. */
+  const setRoomAll = (memIds: string[], select: boolean) => {
+    if (memIds.length === 0) return;
+    const prev = attachedIds;
+    const idSet = new Set(memIds);
+    const next = select
+      ? [...prev, ...memIds.filter((x) => !prev.includes(x))]
+      : prev.filter((x) => !idSet.has(x));
+    patchLocal(chapter.id, { memory_ids: next }); // optimistic
+    void persist(chapter.id, { memory_ids: next }).then((ok) => {
+      if (!ok) patchLocal(chapter.id, { memory_ids: prev }); // revert on failure
+    });
+  };
+
+  // Collapsed by default; auto-expand the wings/rooms that already contain
+  // attached memories, once per open of the expander.
+  useEffect(() => {
+    if (!memoriesOpen) { autoExpandedRef.current = false; return; }
+    if (autoExpandedRef.current || memories === null || roomMap === null) return;
+    autoExpandedRef.current = true;
+    const attached = new Set(chapter.memory_ids ?? []);
+    const w: Record<string, boolean> = {};
+    const r: Record<string, boolean> = {};
+    for (const m of memories) {
+      if (!attached.has(m.id) || !m.room_id) continue;
+      const ref = roomMap[m.room_id];
+      if (!ref) continue;
+      w[ref.wingId] = true;
+      r[`${ref.wingId}/${ref.localRoomId}`] = true;
+    }
+    setExpandedWings(w);
+    setExpandedRooms(r);
+    // attachedIds intentionally read once at open — this is an init, not a sync.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memoriesOpen, memories, roomMap]);
+
+  /** Dynamic interview template for this chapter. Localization contract with
+   *  InterviewPanel: it renders tTpl(textKey) in the "interviewLibrary"
+   *  namespace and falls back to `question.text` when the lookup returns the
+   *  key unchanged. So textKey is a deliberate miss ("lifestory-qN") and `text`
+   *  carries the localized, {chapter}-interpolated question from the lifeStory
+   *  section. titleKey/descKey hold already-localized literals for the same
+   *  reason — a missed lookup renders them verbatim. */
+  const buildChapterTemplate = (): InterviewTemplate => {
+    const chapterRef = chapter.period_label
+      ? `${chapter.title} (${chapter.period_label})`
+      : chapter.title;
+    return {
+      id: `lifestory-${chapter.id}`,
+      titleKey: chapter.title,
+      descKey: t("chapterInterviewDesc"),
+      wingId: "general",
+      icon: "\u{1F4D6}",
+      difficulty: "light",
+      estimatedTotalMinutes: 10,
+      questions: [1, 2, 3, 4, 5].map((n) => ({
+        id: `lsq-${n}`,
+        textKey: `lifestory-q${n}`,
+        text: t(`q${n}`, { chapter: chapterRef }),
+        estimatedMinutes: 2,
+      })),
+    };
+  };
+
+  const startChapterInterview = async () => {
+    if (interviewStarting || interviewOpen) return;
+    setGenError(null);
+    setInterviewStarting(true);
+    try {
+      const ok = await startDynamicSession(buildChapterTemplate());
+      if (ok) setInterviewOpen(true);
+      else setGenError(t("errorGeneric"));
+    } finally {
+      setInterviewStarting(false);
+    }
+  };
+
+  const closeChapterInterview = () => {
+    setInterviewOpen(false);
+    // Only surface the "re-weaving will use this" hint when the interview was
+    // actually completed (abandon clears currentSession in the store).
+    const s = useInterviewStore.getState().currentSession;
+    if (s && s.status === "completed" && s.templateId === `lifestory-${chapter.id}`) {
+      setInterviewDone(true);
+    }
   };
 
   const weave = async () => {
@@ -184,9 +315,28 @@ function ChapterCard({
   };
 
   const filterLower = memFilter.trim().toLowerCase();
-  const visibleMemories = (memories ?? []).filter((m) =>
-    !filterLower || (m.title ?? "").toLowerCase().includes(filterLower)
-  );
+  const matchesFilter = (m: MemoryItem) =>
+    !filterLower || (m.title ?? "").toLowerCase().includes(filterLower);
+
+  // ── Tree grouping: wings → rooms → this chapter's attachable memories ──
+  // (counts use the full set; the filter only narrows what is displayed)
+  const allMems = memories ?? [];
+  const refFor = (m: MemoryItem): RoomRef | undefined =>
+    m.room_id && roomMap ? roomMap[m.room_id] : undefined;
+  const wingsTree = wings.map((wing) => ({
+    wing,
+    rooms: getWingRooms(wing.id).map((room) => ({
+      room,
+      mems: allMems.filter((m) => {
+        const ref = refFor(m);
+        return ref?.wingId === wing.id && ref.localRoomId === room.id;
+      }),
+    })),
+  }));
+  const groupedIds = new Set<string>();
+  for (const w of wingsTree) for (const r of w.rooms) for (const m of r.mems) groupedIds.add(m.id);
+  // Memories whose room maps to no known wing/room → final flat group.
+  const ungrouped = allMems.filter((m) => !groupedIds.has(m.id));
 
   const hasContent = draft !== null || (chapter.content !== null && chapter.content !== "");
 
@@ -285,7 +435,7 @@ function ChapterCard({
           marginTop: "0.5rem", padding: "0.75rem",
           background: T.color.white, border: `0.0625rem solid ${HAIRLINE}`, borderRadius: "0.625rem",
         }}>
-          {memoriesLoading || memories === null ? (
+          {memoriesLoading || memories === null || roomMap === null ? (
             <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, padding: "0.5rem 0" }}>
               {"…"}
             </div>
@@ -302,35 +452,168 @@ function ChapterCard({
                 aria-label={t("attachMemories")}
                 style={{ ...inputStyle, marginBottom: "0.5rem" }}
               />
-              <div className="mp-scroll" style={{ maxHeight: "14rem", overflowY: "auto", display: "flex", flexDirection: "column" }}>
-                {visibleMemories.map((m) => {
-                  const checked = attachedIds.includes(m.id);
+              <div className="mp-scroll" style={{ maxHeight: "18rem", overflowY: "auto", display: "flex", flexDirection: "column" }}>
+                {wingsTree.map(({ wing, rooms }) => {
+                  const wingMems = rooms.flatMap((r) => r.mems);
+                  const wingAttached = wingMems.reduce((n, m) => n + (attachedIds.includes(m.id) ? 1 : 0), 0);
+                  // While filtering, hide wings without matches and force-expand the rest.
+                  if (filterLower && !wingMems.some(matchesFilter)) return null;
+                  const wingOpen = filterLower ? true : !!expandedWings[wing.id];
+                  const wingEmpty = wingMems.length === 0; // shown collapsed-muted, still expandable
                   return (
-                    <label
-                      key={m.id}
-                      style={{
-                        display: "flex", alignItems: "center", gap: "0.625rem",
-                        minHeight: "2.75rem", padding: "0.25rem 0.25rem", cursor: "pointer",
-                        borderBottom: `0.0625rem solid ${HAIRLINE}40`,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleMemory(m.id)}
-                        style={{ width: "1.125rem", height: "1.125rem", accentColor: EMBER, flexShrink: 0, cursor: "pointer" }}
-                      />
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: checked ? INK : MUTED, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {m.title || "—"}
-                      </span>
-                      {m.created_at && (
-                        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, flexShrink: 0 }}>
-                          {m.created_at.slice(0, 10)}
+                    <div key={wing.id}>
+                      <button
+                        onClick={() => setExpandedWings((prev) => ({ ...prev, [wing.id]: !prev[wing.id] }))}
+                        aria-expanded={wingOpen}
+                        style={{
+                          display: "flex", alignItems: "center", gap: "0.5rem", width: "100%",
+                          minHeight: "2.75rem", padding: "0.25rem", boxSizing: "border-box",
+                          background: "transparent", border: "none", cursor: "pointer", textAlign: "left",
+                          borderBottom: `0.0625rem solid ${HAIRLINE}40`,
+                          opacity: wingEmpty ? 0.55 : 1,
+                          transition: reducedMotion ? "none" : "background 0.2s ease",
+                        }}
+                      >
+                        <span aria-hidden="true" style={{ color: MUTED, fontSize: "0.75rem", width: "1rem", flexShrink: 0 }}>
+                          {wingOpen ? "▾" : "▸"}
                         </span>
-                      )}
-                    </label>
+                        <span aria-hidden="true" style={{ flexShrink: 0 }}>{wing.icon}</span>
+                        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: INK, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {translateWingName(wing, tWings)}
+                        </span>
+                        {wingAttached > 0 && (
+                          <span aria-label={t("memoriesAttached", { count: String(wingAttached) })} style={countPillStyle}>
+                            {wingAttached}
+                          </span>
+                        )}
+                      </button>
+                      {wingOpen && rooms.map(({ room, mems }) => {
+                        const roomKey = `${wing.id}/${room.id}`;
+                        const visibleRoomMems = mems.filter(matchesFilter);
+                        if (filterLower && visibleRoomMems.length === 0) return null;
+                        const roomOpen = filterLower ? true : !!expandedRooms[roomKey];
+                        const roomAttached = mems.reduce((n, m) => n + (attachedIds.includes(m.id) ? 1 : 0), 0);
+                        const allAttached = visibleRoomMems.length > 0 && visibleRoomMems.every((m) => attachedIds.includes(m.id));
+                        return (
+                          <div key={roomKey}>
+                            <div style={{ display: "flex", alignItems: "center", borderBottom: `0.0625rem solid ${HAIRLINE}40` }}>
+                              <button
+                                onClick={() => setExpandedRooms((prev) => ({ ...prev, [roomKey]: !prev[roomKey] }))}
+                                aria-expanded={roomOpen}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: "0.5rem", flex: 1, minWidth: 0,
+                                  minHeight: "2.75rem", padding: "0.25rem 0.25rem 0.25rem 1.375rem", boxSizing: "border-box",
+                                  background: "transparent", border: "none", cursor: "pointer", textAlign: "left",
+                                  transition: reducedMotion ? "none" : "background 0.2s ease",
+                                }}
+                              >
+                                <span aria-hidden="true" style={{ color: MUTED, fontSize: "0.75rem", width: "1rem", flexShrink: 0 }}>
+                                  {roomOpen ? "▾" : "▸"}
+                                </span>
+                                <span style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: INK, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {translateRoomName(room, tWings)}
+                                </span>
+                                {roomAttached > 0 && (
+                                  <span aria-label={t("memoriesAttached", { count: String(roomAttached) })} style={countPillStyle}>
+                                    {roomAttached}
+                                  </span>
+                                )}
+                              </button>
+                              {visibleRoomMems.length > 0 && (
+                                <label
+                                  title={t("selectAllRoom")}
+                                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem", cursor: "pointer", flexShrink: 0 }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    aria-label={t("selectAllRoom")}
+                                    checked={allAttached}
+                                    onChange={() => setRoomAll(visibleRoomMems.map((m) => m.id), !allAttached)}
+                                    style={{ width: "1.125rem", height: "1.125rem", accentColor: EMBER, cursor: "pointer" }}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                            {roomOpen && (
+                              visibleRoomMems.length === 0 ? (
+                                <div style={{ padding: "0.375rem 0.25rem 0.625rem 2.5rem", fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED }}>
+                                  {t("treeNoMedia")}
+                                </div>
+                              ) : (
+                                visibleRoomMems.map((m) => {
+                                  const checked = attachedIds.includes(m.id);
+                                  return (
+                                    <label
+                                      key={m.id}
+                                      style={{
+                                        display: "flex", alignItems: "center", gap: "0.625rem",
+                                        minHeight: "2.75rem", padding: "0.25rem 0.25rem 0.25rem 2.5rem", cursor: "pointer",
+                                        borderBottom: `0.0625rem solid ${HAIRLINE}40`,
+                                      }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleMemory(m.id)}
+                                        style={{ width: "1.125rem", height: "1.125rem", accentColor: EMBER, flexShrink: 0, cursor: "pointer" }}
+                                      />
+                                      <span aria-hidden="true" style={{ fontSize: "0.875rem", flexShrink: 0 }}>{typeGlyph(m.type)}</span>
+                                      <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: checked ? INK : MUTED, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {m.title || "—"}
+                                      </span>
+                                      {m.created_at && (
+                                        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, flexShrink: 0 }}>
+                                          {m.created_at.slice(0, 4)}
+                                        </span>
+                                      )}
+                                    </label>
+                                  );
+                                })
+                              )
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   );
                 })}
+                {/* Memories whose room maps to no known wing/room — final flat group */}
+                {ungrouped.filter(matchesFilter).length > 0 && (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", minHeight: "2.75rem", padding: "0.25rem", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: MUTED, borderBottom: `0.0625rem solid ${HAIRLINE}40` }}>
+                      {t("attachMemories")}
+                    </div>
+                    {ungrouped.filter(matchesFilter).map((m) => {
+                      const checked = attachedIds.includes(m.id);
+                      return (
+                        <label
+                          key={m.id}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "0.625rem",
+                            minHeight: "2.75rem", padding: "0.25rem", cursor: "pointer",
+                            borderBottom: `0.0625rem solid ${HAIRLINE}40`,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleMemory(m.id)}
+                            style={{ width: "1.125rem", height: "1.125rem", accentColor: EMBER, flexShrink: 0, cursor: "pointer" }}
+                          />
+                          <span aria-hidden="true" style={{ fontSize: "0.875rem", flexShrink: 0 }}>{typeGlyph(m.type)}</span>
+                          <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: checked ? INK : MUTED, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {m.title || "—"}
+                          </span>
+                          {m.created_at && (
+                            <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, flexShrink: 0 }}>
+                              {m.created_at.slice(0, 4)}
+                            </span>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             </>
           )}
@@ -358,6 +641,37 @@ function ChapterCard({
           </span>
         )}
       </div>
+
+      {/* ---- chapter-specific interview ---- */}
+      <div style={{ marginTop: "0.625rem" }}>
+        <button
+          onClick={() => void startChapterInterview()}
+          disabled={interviewStarting}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "0.5rem",
+            padding: "0.5rem 1rem", minHeight: "2.75rem", borderRadius: "0.75rem",
+            border: `0.0625rem solid ${HAIRLINE}`, background: TRAY,
+            fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+            color: interviewStarting ? MUTED : EMBER,
+            cursor: interviewStarting ? "default" : "pointer",
+            transition: reducedMotion ? "none" : "background 0.2s ease, color 0.2s ease",
+          }}
+        >
+          <span aria-hidden="true">{"\u{1F399}️"}</span>
+          {t("recordInterview")}
+        </button>
+        <p
+          role={interviewDone ? "status" : undefined}
+          style={{
+            fontFamily: T.font.body, fontSize: "0.8125rem",
+            color: interviewDone ? SAGE : MUTED, fontWeight: interviewDone ? 600 : 400,
+            margin: "0.375rem 0 0", lineHeight: 1.4,
+          }}
+        >
+          {interviewDone ? `✓ ${t("recordInterviewHint")}` : t("recordInterviewHint")}
+        </p>
+      </div>
+
       {genError && (
         <p role="alert" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DANGER, margin: "0.5rem 0 0", lineHeight: 1.4 }}>
           {genError}
@@ -400,6 +714,13 @@ function ChapterCard({
           {deleteArmed ? t("confirmDelete") : t("deleteChapter")}
         </button>
       </div>
+
+      {/* ---- full-screen chapter interview (self-contained dialog) ---- */}
+      {interviewOpen && (
+        <Suspense fallback={null}>
+          <InterviewPanel onClose={closeChapterInterview} />
+        </Suspense>
+      )}
     </div>
   );
 }
@@ -408,16 +729,25 @@ function ChapterCard({
 
 export default function LifeStoryPanel({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation("lifeStory");
+  const { t: tWings } = useTranslation("wings");
   const reducedMotion = useReducedMotion();
   const [supabase] = useState(() => createClient());
+
+  // Wing/room structure for the attach tree — same client-side, localStorage-
+  // backed store HomeView uses.
+  const getWings = useRoomStore((s) => s.getWings);
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
+  const wings = getWings();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // Lazily-fetched memory list, shared by all cards (null = not fetched yet).
+  // Lazily-fetched memory list, shared by all cards (null = not fetched yet),
+  // plus the DB-room-uuid → palace-location map that drives the tree grouping.
   const [memories, setMemories] = useState<MemoryItem[] | null>(null);
+  const [roomMap, setRoomMap] = useState<Record<string, RoomRef> | null>(null);
   const [memoriesLoading, setMemoriesLoading] = useState(false);
 
   // Add-chapter form
@@ -461,17 +791,41 @@ export default function LifeStoryPanel({ onClose }: { onClose: () => void }) {
   const ensureMemories = useCallback(() => {
     if (memories !== null || memoriesLoading || !userId) return;
     setMemoriesLoading(true);
-    void supabase
-      .from("memories")
-      .select("id, title, type, created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(200)
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const [memRes, roomRes, wingRes] = await Promise.all([
+          supabase
+            .from("memories")
+            .select("id, title, type, created_at, room_id")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(200),
+          supabase.from("rooms").select("id, name, wing_id").eq("user_id", userId),
+          supabase.from("wings").select("id, slug").eq("user_id", userId),
+        ]);
         if (cancelledRef.current) return;
-        setMemories((data as MemoryItem[] | null) ?? []);
-        setMemoriesLoading(false);
-      });
+        // rooms.name stores the LOCAL room id (e.g. "ro1") and wings.slug the
+        // local wing id (e.g. "roots") — build db-uuid → palace location.
+        const wingSlugById: Record<string, string> = {};
+        for (const w of (wingRes.data as { id: string; slug: string }[] | null) ?? []) {
+          wingSlugById[w.id] = w.slug;
+        }
+        const map: Record<string, RoomRef> = {};
+        for (const r of (roomRes.data as { id: string; name: string; wing_id: string }[] | null) ?? []) {
+          const slug = wingSlugById[r.wing_id];
+          if (slug) map[r.id] = { localRoomId: r.name, wingId: slug };
+        }
+        setRoomMap(map);
+        setMemories((memRes.data as MemoryItem[] | null) ?? []);
+      } catch {
+        if (!cancelledRef.current) {
+          setRoomMap({}); // degrade gracefully: everything lands in the flat group
+          setMemories([]);
+        }
+      } finally {
+        if (!cancelledRef.current) setMemoriesLoading(false);
+      }
+    })();
   }, [memories, memoriesLoading, userId, supabase]);
 
   const patchLocal = useCallback((id: string, patch: ChapterPatch) => {
@@ -682,6 +1036,10 @@ export default function LifeStoryPanel({ onClose }: { onClose: () => void }) {
               onDelete={deleteChapter}
               onMove={moveChapter}
               reducedMotion={reducedMotion}
+              roomMap={roomMap}
+              wings={wings}
+              getWingRooms={getWingRooms}
+              tWings={tWings}
             />
           ))}
           {addForm}

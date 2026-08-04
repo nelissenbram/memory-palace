@@ -4267,6 +4267,9 @@
     "dialogLabel": "Choisir une aile pour placer la salle"
   },
   "library": {
+    "capsulePickTitle": "Où cette capsule a-t-elle sa place ?",
+    "capsulePickHint": "Choisissez l'aile et la salle où vivra votre capsule temporelle. Ensuite, ajoutez une nouvelle photo ou choisissez-en une que vous avez déjà.",
+    "wingLabel": "Aile",
     "title": "Bibliothèque",
     "subtitle": "{count} souvenirs dans toutes les ailes",
     "wingCount": "{rooms} salles · {memories} souvenirs",
@@ -4868,7 +4871,8 @@
     "relay.destExplore": "Explorer",
     "relay.destPalace": "Palais",
     "relay.laneJourneysPill": "Parcours",
-    "relay.laneJourneysOf": "{done} sur {total}",
+    "relay.laneJourneysOf": "{done} sur {total} parcours",
+    "relay.laneJourneysXp": "{xp} XP",
     "relay.tilePublish": "Partager publiquement",
     "relay.tilePublishDesc": "Publier dans Explorer",
     "relay.tileShared": "Partagé avec vous",
@@ -4966,7 +4970,17 @@
     "saved": "Enregistré",
     "errorGeneric": "Une erreur s'est produite. Veuillez réessayer.",
     "errorNotConfigured": "Le tissage d'histoires n'est pas encore activé.",
-    "close": "Fermer"
+    "close": "Fermer",
+    "recordInterview": "Enregistrez un entretien pour ce chapitre",
+    "recordInterviewHint": "Quelques questions guidées sur ce chapitre — vos réponses parlées enrichissent le récit tissé.",
+    "chapterInterviewDesc": "Un court entretien guidé sur ce chapitre de votre vie.",
+    "q1": "Parlons de {chapter}. Où commence cette partie de votre vie ?",
+    "q2": "Qui étaient les personnes importantes de {chapter}, et que représentaient-elles pour vous ?",
+    "q3": "Quel moment de {chapter} vous revient le plus vivement en mémoire ?",
+    "q4": "Qu'est-ce qui était difficile à cette époque, et comment l'avez-vous traversée ?",
+    "q5": "En repensant à {chapter}, que voudriez-vous que votre famille sache ou retienne ?",
+    "selectAllRoom": "Tout sélectionner dans cette salle",
+    "treeNoMedia": "Aucun souvenir dans cette salle pour l'instant"
   },
   "navigation": {
     "nav_label": "Navigation principale",

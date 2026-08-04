@@ -4267,6 +4267,9 @@
     "dialogLabel": "Flügel für die Raumplatzierung wählen"
   },
   "library": {
+    "capsulePickTitle": "Wohin gehört diese Kapsel?",
+    "capsulePickHint": "Wähle den Flügel und den Raum, in dem deine Zeitkapsel wohnen soll. Lade dann ein neues Foto hoch oder wähle eines, das du schon hast.",
+    "wingLabel": "Flügel",
     "title": "Bibliothek",
     "subtitle": "{count} Erinnerungen in allen Flügeln",
     "wingCount": "{rooms} Räume · {memories} Erinnerungen",
@@ -4868,7 +4871,8 @@
     "relay.destExplore": "Entdecken",
     "relay.destPalace": "Palast",
     "relay.laneJourneysPill": "Reisen",
-    "relay.laneJourneysOf": "{done} von {total}",
+    "relay.laneJourneysOf": "{done} von {total} Reisen",
+    "relay.laneJourneysXp": "{xp} XP",
     "relay.tilePublish": "Öffentlich teilen",
     "relay.tilePublishDesc": "In Entdecken veröffentlichen",
     "relay.tileShared": "Mit dir geteilt",
@@ -4966,7 +4970,17 @@
     "saved": "Gespeichert",
     "errorGeneric": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "errorNotConfigured": "Das Weben von Geschichten ist noch nicht freigeschaltet.",
-    "close": "Schließen"
+    "close": "Schließen",
+    "recordInterview": "Nimm ein Interview für dieses Kapitel auf",
+    "recordInterviewHint": "Ein paar geführte Fragen zu diesem Kapitel — deine gesprochenen Antworten bereichern die gewobene Geschichte.",
+    "chapterInterviewDesc": "Ein kurzes geführtes Interview über dieses Kapitel deines Lebens.",
+    "q1": "Lass uns über {chapter} sprechen. Wo beginnt dieser Teil deines Lebens?",
+    "q2": "Wer waren die wichtigen Menschen in {chapter}, und was haben sie dir bedeutet?",
+    "q3": "An welchen Moment aus {chapter} erinnerst du dich am lebhaftesten?",
+    "q4": "Was war schwierig in dieser Zeit, und wie bist du da durchgekommen?",
+    "q5": "Wenn du auf {chapter} zurückblickst, was soll deine Familie wissen oder in Erinnerung behalten?",
+    "selectAllRoom": "Alles in diesem Raum auswählen",
+    "treeNoMedia": "Noch keine Erinnerungen in diesem Raum"
   },
   "navigation": {
     "nav_label": "Hauptnavigation",

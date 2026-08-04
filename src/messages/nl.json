@@ -4269,6 +4269,9 @@
     "dialogLabel": "Kies vleugel voor kamerplaatsing"
   },
   "library": {
+    "capsulePickTitle": "Waar hoort deze capsule thuis?",
+    "capsulePickHint": "Kies de vleugel en kamer waar je tijdcapsule komt te wonen. Upload daarna een nieuwe foto of kies er een die je al hebt.",
+    "wingLabel": "Vleugel",
     "title": "Bibliotheek",
     "subtitle": "{count} herinneringen in alle vleugels",
     "wingCount": "{rooms} kamers · {memories} herinneringen",
@@ -4870,7 +4873,8 @@
     "relay.destExplore": "Ontdek",
     "relay.destPalace": "Paleis",
     "relay.laneJourneysPill": "Reizen",
-    "relay.laneJourneysOf": "{done} van {total}",
+    "relay.laneJourneysOf": "{done} van {total} reizen",
+    "relay.laneJourneysXp": "{xp} XP",
     "relay.tilePublish": "Openbaar delen",
     "relay.tilePublishDesc": "Publiceer op Ontdekken",
     "relay.tileShared": "Met jou gedeeld",
@@ -4968,7 +4972,17 @@
     "saved": "Opgeslagen",
     "errorGeneric": "Er ging iets mis. Probeer het opnieuw.",
     "errorNotConfigured": "Verhalen weven is nog niet ingeschakeld.",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "recordInterview": "Neem een interview op voor dit hoofdstuk",
+    "recordInterviewHint": "Een paar begeleide vragen over dit hoofdstuk — je gesproken antwoorden verrijken het geweven verhaal.",
+    "chapterInterviewDesc": "Een kort begeleid interview over dit hoofdstuk van je leven.",
+    "q1": "Laten we het over {chapter} hebben. Waar begint dit deel van je leven?",
+    "q2": "Wie waren de belangrijke mensen in {chapter}, en wat betekenden ze voor je?",
+    "q3": "Welk moment uit {chapter} herinner je je het levendigst?",
+    "q4": "Wat was moeilijk in die tijd, en hoe ben je erdoorheen gekomen?",
+    "q5": "Als je terugkijkt op {chapter}, wat zou je willen dat je familie weet of onthoudt?",
+    "selectAllRoom": "Alles in deze kamer selecteren",
+    "treeNoMedia": "Nog geen herinneringen in deze kamer"
   },
   "navigation": {
     "nav_label": "Hoofdnavigatie",
