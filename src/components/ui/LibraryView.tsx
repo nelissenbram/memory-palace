@@ -1536,6 +1536,36 @@ export default function LibraryView() {
   const touchHitRafRef = useRef(0);
   useEffect(() => () => { if (touchHitRafRef.current) cancelAnimationFrame(touchHitRafRef.current); }, []);
 
+  // Edge-auto-scroll for the drop tray: during a one-finger drag the user has
+  // no finger free to scroll the tray, so holding the finger near the tray's
+  // top/bottom edge scrolls it via a rAF loop (move events stop when the
+  // finger holds still, so the loop must self-sustain while in the zone).
+  const trayScrollRef = useRef<HTMLDivElement | null>(null);
+  const edgeScrollRafRef = useRef(0);
+  const lastTouchPosRef = useRef({ x: -1, y: -1 });
+  const stopEdgeScroll = useCallback(() => {
+    if (edgeScrollRafRef.current) { cancelAnimationFrame(edgeScrollRafRef.current); edgeScrollRafRef.current = 0; }
+  }, []);
+  useEffect(() => stopEdgeScroll, [stopEdgeScroll]);
+  const edgeScrollTick = useCallback(function tick() {
+    edgeScrollRafRef.current = 0;
+    const tray = trayScrollRef.current;
+    const { x, y } = lastTouchPosRef.current;
+    if (!tray || y < 0) return;
+    const rect = tray.getBoundingClientRect();
+    const EDGE = 40; // px activation zone at each edge
+    let dy = 0;
+    if (y > rect.top - 12 && y < rect.top + EDGE) dy = -7;
+    else if (y > rect.bottom - EDGE && y < rect.bottom + 12) dy = 7;
+    if (dy !== 0) {
+      const before = tray.scrollTop;
+      tray.scrollTop = before + dy;
+      // Content moved under the stationary finger — refresh the chip highlight
+      if (tray.scrollTop !== before) setTouchHoverRoomId(dropRoomIdAt(x, y));
+      edgeScrollRafRef.current = requestAnimationFrame(tick);
+    }
+  }, []);
+
   const handleTouchDragStart = useCallback((memId: string) => {
     setTouchDragMemId(memId);
     // First long-press of the session: transient "drop it on a room" hint
@@ -1550,21 +1580,26 @@ export default function LibraryView() {
   }, []);
 
   const handleTouchDragMove = useCallback((x: number, y: number) => {
+    lastTouchPosRef.current = { x, y };
+    // Kick the edge-scroll loop if the finger is in a tray edge zone
+    if (!edgeScrollRafRef.current) edgeScrollRafRef.current = requestAnimationFrame(edgeScrollTick);
     if (touchHitRafRef.current) return; // rAF-throttled chip highlight
     touchHitRafRef.current = requestAnimationFrame(() => {
       touchHitRafRef.current = 0;
       setTouchHoverRoomId(dropRoomIdAt(x, y));
     });
-  }, []);
+  }, [edgeScrollTick]);
 
   const handleTouchDragEnd = useCallback((x: number, y: number) => {
     if (touchHitRafRef.current) { cancelAnimationFrame(touchHitRafRef.current); touchHitRafRef.current = 0; }
+    stopEdgeScroll();
+    lastTouchPosRef.current = { x: -1, y: -1 };
     const roomId = dropRoomIdAt(x, y);
     if (roomId && touchDragMemId) handleDropMemory(roomId, touchDragMemId);
     // ALWAYS clear drag state, hit or miss or cancel
     setTouchDragMemId(null);
     setTouchHoverRoomId(null);
-  }, [touchDragMemId, handleDropMemory]);
+  }, [touchDragMemId, handleDropMemory, stopEdgeScroll]);
 
   const handleBulkMoveToRoom = useCallback((targetRoomId: string) => {
     if (selectedMemIds.size === 0) return;
@@ -4216,17 +4251,32 @@ export default function LibraryView() {
           <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#716A5E", margin: "0 0 0.4rem" }}>
             {t("dropTrayTitle")}
           </p>
-          <div style={{ display: "flex", gap: "1rem", overflowX: "auto", WebkitOverflowScrolling: "touch", scrollbarWidth: "none", paddingBottom: "0.15rem" }}>
+          {/* Vertically scrollable wrap-grid: every wing is a row whose chips
+              WRAP, so (nearly) all rooms are visible at once — the old single
+              horizontal rail hid everything past ~3 chips with no way to
+              scroll one-fingered. Overflow scrolls via the edge-auto-scroll
+              loop (finger near the tray's top/bottom edge). */}
+          <div
+            ref={trayScrollRef}
+            style={{
+              maxHeight: "min(38dvh, 19rem)",
+              overflowY: "auto",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              display: "flex", flexDirection: "column", gap: "0.55rem",
+              paddingBottom: "0.15rem",
+            }}
+          >
             {wings.map(w => {
               const wRooms = getWingRooms(w.id);
               if (wRooms.length === 0) return null;
               return (
-                <div key={w.id} style={{ flexShrink: 0 }}>
+                <div key={w.id}>
                   {/* wing overline */}
                   <span style={{ display: "block", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: w.accent, marginBottom: "0.25rem" }}>
                     {w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings)}
                   </span>
-                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                     {wRooms.map(r => {
                       const hover = touchHoverRoomId === r.id;
                       return (
@@ -4235,7 +4285,7 @@ export default function LibraryView() {
                           data-drop-room-id={r.id}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: "0.35rem",
-                            minHeight: "2.75rem", padding: "0 0.75rem", borderRadius: "0.75rem",
+                            minHeight: "2.75rem", padding: "0 0.625rem", borderRadius: "0.75rem",
                             border: `0.0625rem solid ${hover ? w.accent : HAIRLINE}`,
                             background: hover ? `${w.accent}22` : "#FFF",
                             boxShadow: hover ? `0 0 0 0.125rem ${w.accent}55` : "none",
