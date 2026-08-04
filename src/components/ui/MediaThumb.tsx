@@ -100,14 +100,17 @@ export const MediaThumb = React.memo(function MediaThumb({
      ruled lines. Falls back to EMBER/TRAY tones when no hue is set. */
   const hasHue = typeof mem.hue === "number" && Number.isFinite(mem.hue);
   const noteHue = hasHue ? ((mem.hue % 360) + 360) % 360 : 0;
+  // Full-tile pastel in the memory's hue (deeper at the top-left, lighter at
+  // the bottom-right) so notes read as distinctly colored cards on the wall —
+  // the earlier near-white wash (93% → cream) had too little contrast.
   const paperWash = hasHue
-    ? `linear-gradient(150deg, hsl(${noteHue},40%,93%) 0%, ${CREAM} 75%)`
-    : CREAM;
-  const noteDeep = hasHue ? `hsl(${noteHue},45%,45%)` : EMBER_GLYPH;
+    ? `linear-gradient(150deg, hsl(${noteHue},52%,82%) 0%, hsl(${noteHue},45%,90%) 100%)`
+    : `linear-gradient(150deg, ${TRAY} 0%, ${CREAM} 100%)`;
+  const noteDeep = hasHue ? `hsl(${noteHue},50%,38%)` : EMBER_GLYPH;
   const flapFold = hasHue
-    ? `linear-gradient(225deg, rgba(64,59,54,0.10) 0%, rgba(64,59,54,0.10) 50%, hsl(${noteHue},45%,52%) 50%, hsl(${noteHue},42%,45%) 100%)`
+    ? `linear-gradient(225deg, rgba(64,59,54,0.10) 0%, rgba(64,59,54,0.10) 50%, hsl(${noteHue},48%,48%) 50%, hsl(${noteHue},45%,40%) 100%)`
     : `linear-gradient(225deg, rgba(64,59,54,0.10) 0%, rgba(64,59,54,0.10) 50%, ${TRAY} 50%, ${TRAY} 100%)`;
-  const noteRule = hasHue ? `hsl(${noteHue},30%,85%)` : "rgba(227,214,188,0.7)";
+  const noteRule = hasHue ? `hsl(${noteHue},38%,72%)` : "rgba(227,214,188,0.9)";
 
   return (
     <div
@@ -119,8 +122,11 @@ export const MediaThumb = React.memo(function MediaThumb({
         overflow: "hidden",
         position: "relative",
         background: isTextNote ? paperWash : gradient,
-        // Hairline edge so the cream paper reads as a card, never a blank hole
-        boxShadow: isTextNote ? "inset 0 0 0 0.0625rem rgba(227,214,188,0.8)" : undefined,
+        // Hairline edge so the paper reads as a card, never a blank hole —
+        // tinted along with the paper for definition against cream surfaces
+        boxShadow: isTextNote
+          ? `inset 0 0 0 0.0625rem ${hasHue ? `hsl(${noteHue},40%,68%)` : "rgba(227,214,188,0.9)"}`
+          : undefined,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
