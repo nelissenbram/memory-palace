@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/help", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/passcode", "/legacy", "/security", "/privacy", "/terms", "/help", "/data-deletion", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -89,12 +89,17 @@ export async function middleware(request: NextRequest) {
   // Exception: invite pages and public share pages should be accessible to authenticated users
   const isInvitePage = path.startsWith("/invite");
   const isKepPage = path.startsWith("/kep");
-  const isPublicSharePage = path.startsWith("/public");
+  // /public share galleries AND the /passcode gate must stay reachable by
+  // authenticated users too — an account holder can receive a passcode share
+  // link and needs to enter it rather than being bounced to /atrium.
+  const isPublicSharePage = path.startsWith("/public") || path.startsWith("/passcode");
   const isLegacyPage = path.startsWith("/legacy");
   const isResetPasswordPage = path.startsWith("/reset-password");
   const isApiRoute = path.startsWith("/api/");
   const isPricingPage = path.startsWith("/pricing");
-  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security") || path.startsWith("/help");
+  // /data-deletion is a public GDPR/App-Store page; a logged-in user requesting
+  // deletion must be able to reach it instead of redirecting to /atrium.
+  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security") || path.startsWith("/help") || path.startsWith("/data-deletion");
   const isBlogPage = path.startsWith("/blog");
   const isSocialPage = path.startsWith("/explore") || path.startsWith("/u/") || path.startsWith("/visit/");
   if (fullyAuthed && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage) {
