@@ -767,6 +767,202 @@ export async function getAllMyShares() {
   };
 }
 
+// ═══ COMBINED WINGS+ROOMS → EMAIL GRANT (Sharing settings "Family access") ═══
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Grant access to a selection of wings and rooms to an email address in one go,
+ * using the two mechanisms the reading paths actually enforce:
+ *  - whole standard wings → a `wing_shares` row (getSharedWingData /
+ *    getAcceptedShares / getPendingInvites all key off wing_shares);
+ *  - individual rooms (and whole custom/extra wings, which wing_shares'
+ *    slug-keyed schema can't represent) → `room_shares` rows, the same rows
+ *    getSharedRoomMemories / getAcceptedShares / the /invite landing enforce.
+ *
+ * De-dupes against existing shares for that email (skipped, not errored).
+ * Sends ONE invite email (for the first newly created room share) so a
+ * multi-room grant doesn't fan out into a mailbox flood — after signup,
+ * autoMatchInvites links every other pending share to the account and they
+ * surface in the in-app invites panel, which is also how wing shares (which
+ * have no email template today) have always been delivered.
+ */
+export async function grantAccessByEmail(input: {
+  email: string;
+  /** Fully selected wings; roomIds is the per-room fallback for non-standard wings. */
+  wholeWings: { slug: string; roomIds: string[] }[];
+  /** Individually selected rooms (DB uuid, or local room id for never-persisted rooms). */
+  roomIds: string[];
+}): Promise<{ error?: string; granted?: number; skipped?: number; failed?: number }> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
+  }
+  const supabase = await createClient();
+  const t = await serverError();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: t("notAuthenticated") };
+
+  const email = input.email.trim().toLowerCase();
+  if (!email || !email.includes("@")) return { error: t("validEmailRequired") };
+  if (email === user.email?.toLowerCase()) return { error: t("cannotShareWithYourself") };
+
+  const admin = createAdminClient();
+  const { data: inviteeProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .single();
+
+  let granted = 0;
+  let skipped = 0;
+  let failed = 0;
+  const roomTargets: string[] = [...input.roomIds];
+
+  // ── Wing-level shares for standard wings (the real wing mechanism) ──
+  const { data: existingWingRows } = await admin
+    .from("wing_shares")
+    .select("wing_id")
+    .eq("owner_id", user.id)
+    .eq("shared_with_email", email);
+  const alreadyWingShared = new Set((existingWingRows || []).map((r) => r.wing_id));
+
+  for (const w of input.wholeWings) {
+    if (!VALID_WINGS.includes(w.slug)) {
+      // wing_shares.wing_id is a slug constrained to the 6 standard wings —
+      // custom/extra wings fall back to per-room shares for all their rooms.
+      roomTargets.push(...w.roomIds);
+      continue;
+    }
+    if (alreadyWingShared.has(w.slug)) { skipped++; continue; }
+    const { data: ownedWing } = await supabase
+      .from("wings")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("slug", w.slug)
+      .single();
+    if (!ownedWing) {
+      // Wing row not persisted yet — the slug-join reading path couldn't
+      // resolve it; grant its rooms individually instead (rooms are created
+      // on demand by resolveRoomId below).
+      roomTargets.push(...w.roomIds);
+      continue;
+    }
+    const { error } = await admin
+      .from("wing_shares")
+      .insert({
+        owner_id: user.id,
+        shared_with_id: inviteeProfile?.id || null,
+        shared_with_email: email,
+        wing_id: w.slug,
+        permission: "view",
+        status: "pending",
+        invite_message: null,
+        can_add: false,
+        can_edit: false,
+        can_delete: false,
+      });
+    if (error) failed++; else granted++;
+  }
+
+  // ── Room-level shares ──
+  // Resolve each target to a DB room uuid (creating never-persisted rooms,
+  // mirroring shareRoomWithEmail's resolveRoomId flow).
+  const resolvedRoomIds: string[] = [];
+  for (const rid of [...new Set(roomTargets)]) {
+    if (UUID_RE.test(rid)) {
+      const { data: room } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("id", rid)
+        .eq("user_id", user.id)
+        .single();
+      if (room) resolvedRoomIds.push(room.id); else failed++;
+    } else {
+      const dbId = await resolveRoomId(supabase, user.id, rid);
+      if (dbId) resolvedRoomIds.push(dbId); else failed++;
+    }
+  }
+
+  let firstCreatedShare: { id: string; room_id: string } | null = null;
+  if (resolvedRoomIds.length > 0) {
+    const { data: existingRoomRows } = await admin
+      .from("room_shares")
+      .select("room_id")
+      .eq("owner_id", user.id)
+      .eq("shared_with_email", email)
+      .in("room_id", resolvedRoomIds);
+    const alreadyRoomShared = new Set((existingRoomRows || []).map((r) => r.room_id));
+
+    for (const roomId of resolvedRoomIds) {
+      if (alreadyRoomShared.has(roomId)) { skipped++; continue; }
+      const { data: share, error } = await supabase
+        .from("room_shares")
+        .insert({
+          room_id: roomId,
+          owner_id: user.id,
+          shared_with_email: email,
+          shared_with_id: inviteeProfile?.id || null,
+          permission: "view",
+          status: "pending",
+          invite_message: null,
+        })
+        .select("id, room_id")
+        .single();
+      if (error || !share) { failed++; continue; }
+      granted++;
+      if (!firstCreatedShare) firstCreatedShare = share;
+      await supabase.from("rooms").update({ is_shared: true }).eq("id", roomId);
+    }
+  }
+
+  // ── One invite email, best-effort (never fails the grant) ──
+  if (firstCreatedShare) {
+    try {
+      const { sendInviteEmail } = await import("@/lib/email/send-invite");
+      const [{ data: profile }, { data: room }] = await Promise.all([
+        supabase.from("profiles").select("display_name").eq("id", user.id).single(),
+        supabase.from("rooms").select("name, wing_id").eq("id", firstCreatedShare.room_id).single(),
+      ]);
+      let wingName = "";
+      if (room?.wing_id) {
+        const { data: wing } = await supabase
+          .from("wings")
+          .select("slug")
+          .eq("id", room.wing_id)
+          .single();
+        const def = wing ? WINGS.find((w) => w.id === wing.slug) : undefined;
+        if (def) wingName = def.name;
+      }
+      // rooms.name stores the local room id for standard rooms — resolve the
+      // human display name from WING_ROOMS, else use the stored name as-is.
+      let roomName = room?.name || "";
+      for (const rooms of Object.values(WING_ROOMS)) {
+        const match = rooms.find((r: { id: string; name: string }) => r.id === roomName);
+        if (match) { roomName = match.name; break; }
+      }
+      const result = await sendInviteEmail({
+        inviterName: profile?.display_name || user.email?.split("@")[0] || "Someone",
+        recipientEmail: email,
+        roomName: roomName || "A Memory Room",
+        wingName,
+        shareId: firstCreatedShare.id,
+        permission: "view",
+        personalMessage: null,
+      });
+      if (result.success) {
+        await supabase
+          .from("room_shares")
+          .update({ email_sent: true, email_sent_at: new Date().toISOString() })
+          .eq("id", firstCreatedShare.id);
+      }
+    } catch {
+      /* email is a courtesy — pending shares still surface in-app */
+    }
+  }
+
+  return { granted, skipped, failed };
+}
+
 export async function toggleRoomSharing(localRoomId: string, enabled: boolean) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }

@@ -807,49 +807,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Section overline — Account & data */}
-      <SectionOverline label={tf("sectionAccountData", "Account & data")} />
-
-      {/* ── Connections (folded under Profile — change 16; route survives for OAuth returns) ── */}
-      <Link href="/settings/connections" style={{ textDecoration: "none", display: "block", marginBottom: "1.5rem" }}>
-        <div style={{
-          background: T.color.white,
-          borderRadius: "1rem",
-          border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
-          padding: "1.125rem 1.5rem",
-          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
-          display: "flex", alignItems: "center", gap: "1rem",
-          minHeight: "2.75rem",
-        }}>
-          <div style={{
-            width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
-            background: "rgba(154,79,42,0.11)", /* Atrium terracotta medallion */
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, color: EMBER_GLYPH,
-          }}>
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-            </svg>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
-              color: INK /* Atrium ink */, marginBottom: "0.125rem",
-            }}>
-              {tc("connections")}
-            </div>
-            <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */, lineHeight: 1.4,
-            }}>
-              {tf("connectionsRowDesc", "Manage connected photo and cloud services for importing memories")}
-            </div>
-          </div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <path d="m9 18 6-6-6-6" />
-          </svg>
-        </div>
-      </Link>
+      {/* Connections + Security link cards removed — both are now first-class
+          doors in the settings nav (layout.tsx NAV_ITEMS), so the in-page
+          duplicates are gone. */}
 
       {/* Section overline — Preferences */}
       <SectionOverline label={tf("sectionPreferences", "Preferences")} />
@@ -1224,46 +1184,6 @@ export default function ProfilePage() {
           );
         })()}
       </div>
-
-      {/* ── Security & account controls (change 17) ── */}
-      <Link href="/settings/security" style={{ textDecoration: "none", display: "block" }}>
-        <div style={{
-          background: T.color.white,
-          borderRadius: "1rem",
-          border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
-          padding: "1.125rem 1.5rem",
-          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
-          display: "flex", alignItems: "center", gap: "1rem",
-          minHeight: "2.75rem",
-        }}>
-          <div style={{
-            width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
-            background: "rgba(154,79,42,0.11)", /* Atrium terracotta medallion */
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, color: EMBER_GLYPH,
-          }}>
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
-              color: INK /* Atrium ink */, marginBottom: "0.125rem",
-            }}>
-              {tc("security")}
-            </div>
-            <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */, lineHeight: 1.4,
-            }}>
-              {tf("securityRowDesc", "Password, two-factor authentication, data export and account deletion")}
-            </div>
-          </div>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
-            <path d="m9 18 6-6-6-6" />
-          </svg>
-        </div>
-      </Link>
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }

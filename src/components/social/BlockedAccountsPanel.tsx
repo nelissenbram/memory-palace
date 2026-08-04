@@ -37,9 +37,6 @@ export default function BlockedAccountsPanel() {
     });
   };
 
-  // Still loading — don't flash an empty state.
-  if (users === null) return null;
-
   return (
     <div
       style={{
@@ -89,7 +86,10 @@ export default function BlockedAccountsPanel() {
           {error}
         </p>
       )}
-      {users.length === 0 ? (
+      {/* While the list loads, keep the card (title + hint) mounted — the
+          section disappearing entirely read as "blocked accounts is missing"
+          and violates the page's Apple-1.2 always-mounted contract. */}
+      {users === null ? null : users.length === 0 ? (
         <p
           style={{
             fontFamily: T.font.body,

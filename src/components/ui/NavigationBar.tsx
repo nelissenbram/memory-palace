@@ -336,10 +336,41 @@ function NavigationBar({
   // Prefetch routes for instant navigation
   useEffect(() => {
     router.prefetch("/me");
+    router.prefetch("/explore");
     router.prefetch("/palace");
     router.prefetch("/family-tree");
     router.prefetch("/settings/profile");
   }, [router]);
+
+  /* ---- transient pressed/navigating feedback (mobile tabs) ----
+     Route-navigating taps (Me, Explore, mode tabs from /me or /settings) can
+     take a beat before the destination paints — /me is force-dynamic with
+     server fetches. Without immediate feedback the tap feels dead. Mark the
+     tapped tab pressed on pointerdown, clear when the pathname changes (nav
+     settled) or after a 3s safety timeout. */
+  const [pressedTab, setPressedTab] = useState<string | null>(null);
+  const pressedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markPressed = useCallback((tab: string) => {
+    setPressedTab(tab);
+    if (pressedTimeoutRef.current) clearTimeout(pressedTimeoutRef.current);
+    pressedTimeoutRef.current = setTimeout(() => setPressedTab(null), 3000);
+  }, []);
+  useEffect(() => {
+    // Navigation settled — release the pressed state.
+    setPressedTab(null);
+    if (pressedTimeoutRef.current) {
+      clearTimeout(pressedTimeoutRef.current);
+      pressedTimeoutRef.current = null;
+    }
+  }, [pathname]);
+  useEffect(() => {
+    // Mode switches inside the SPA settle without a pathname change — release
+    // the pressed state as soon as the tapped mode becomes the active one.
+    if (pressedTab && pressedTab === currentMode && !activeTab) setPressedTab(null);
+  }, [currentMode, activeTab, pressedTab]);
+  useEffect(() => () => {
+    if (pressedTimeoutRef.current) clearTimeout(pressedTimeoutRef.current);
+  }, []);
 
   /* ---- refs for sliding indicator ---- */
   const containerRef = useRef<HTMLDivElement>(null);
@@ -499,8 +530,8 @@ function NavigationBar({
             fontFamily: T.font.body,
           }}
         >
-          {/* sliding top indicator */}
-          <div style={indicatorStyle} aria-hidden />
+          {/* sliding top indicator — decorative, must never intercept taps */}
+          <div style={{ ...indicatorStyle, pointerEvents: "none" }} aria-hidden />
 
           {mobileTabs.map(({ mode, labelKey, nudgeId }) => {
             if (mode === ("_spacer" as any)) {
@@ -527,7 +558,11 @@ function NavigationBar({
               : isHelp ? nudgeActive
               : hasSpecialActive ? false  /* suppress mode highlight when a special tab is active */
               : mode === currentMode;
-            const color = isActive ? "#9A4F2A" : NAV_MUTED;
+            // Route-navigating tabs get immediate pressed feedback (help and
+            // notifications toggle overlays synchronously — no need).
+            const navigates = !isHelp && !isNotifications;
+            const isPressed = navigates && pressedTab === mode;
+            const color = isActive || isPressed ? "#9A4F2A" : NAV_MUTED;
 
             return (
               <button
@@ -537,7 +572,9 @@ function NavigationBar({
                   allTabRefs.current[mode] = el;
                   if (isNavMode) buttonRefs.current[mode as ModeKey] = el;
                 }}
+                onPointerDown={navigates && !isActive ? () => markPressed(mode) : undefined}
                 onClick={() => {
+                  if (navigates && !isActive) markPressed(mode); // fallback for keyboard / non-pointer activation
                   if (isExplore) {
                     if (onNavigate) {
                       onNavigate("/explore");
@@ -594,8 +631,8 @@ function NavigationBar({
                     alignItems: "center",
                     justifyContent: "center",
                     lineHeight: 1,
-                    transition: `transform 0.3s ${EASE}`,
-                    transform: "scale(1)",
+                    transition: `transform 0.15s ${EASE}`,
+                    transform: isPressed ? "scale(0.88)" : "scale(1)",
                     animation:
                       pulsingMode === mode
                         ? `navMobileIconPop 0.4s ${EASE}`
@@ -606,12 +643,12 @@ function NavigationBar({
                   {isNotifications ? (
                     <NotificationIcon size={20} color={color} />
                   ) : (
-                    <ModeIcon mode={mode as ModeKey | "me" | "help"} active={isActive} size={20} />
+                    <ModeIcon mode={mode as ModeKey | "me" | "help"} active={isActive || isPressed} size={20} />
                   )}
                 </span>
                 <span
                   style={{
-                    opacity: isActive ? 1 : 0,
+                    opacity: isActive || isPressed ? 1 : 0,
                     height: "1rem",
                     overflow: "hidden",
                     transition: `opacity 0.3s ${EASE}`,

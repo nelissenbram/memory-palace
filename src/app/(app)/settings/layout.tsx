@@ -115,13 +115,16 @@ function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
 }
 
 /**
- * Settings IA (Explore/Me revision, change 16): 7 honest doors.
+ * Settings IA (Explore/Me revision, change 16): 8 honest doors.
  * - Cookies folded into Privacy & Security (/settings/cookies redirects there).
- * - Connections reachable from Profile (route survives for OAuth returns/deep links).
+ * - Connections promoted to its own door (route also survives OAuth returns/deep links).
  * - All /settings/* sub-pages remain canonical deep-link targets for /me.
  */
 const NAV_ITEMS = [
   { href: "/settings/profile", labelKey: "profile", iconKey: "profile", descKey: "navDescProfile", descFallback: "Your name, photo and public page" },
+  // descKey reuses the existing translated settings.connectionsRowDesc line
+  // (messages files are frozen this pass — no new navDescConnections key).
+  { href: "/settings/connections", labelKey: "connections", iconKey: "connections", descKey: "connectionsRowDesc", descFallback: "Manage connected photo and cloud services for importing memories" },
   { href: "/settings/family", labelKey: "family", iconKey: "family", descKey: "navDescFamily", descFallback: "The people you build the palace with" },
   // iOS is free-tier only (Apple 3.1.1) — hide the Subscription tab and its
   // link to the billing/plan page inside the native app.

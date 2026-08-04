@@ -193,9 +193,9 @@ export default function NotificationsPage() {
   const { t } = useTranslation("notifications");
   const isMobile = useIsMobile();
   const { prefs, init, setPrefs } = usePushNotificationStore();
-  // Web Push works on desktop Chrome/Firefox/Edge too — gate the push section on
-  // CAPABILITY (Notification API present), not viewport, so desktop-web and iPad
-  // portrait users aren't stripped of push management. Resolved after mount.
+  // Push section is gated on capability (Notification API present, resolved
+  // after mount) AND `isMobile` — push delivery does not work on desktop, so
+  // the card is hidden there and only mobile-web users manage push.
   const [pushCapable, setPushCapable] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [subscribing, setSubscribing] = useState(false);
@@ -478,11 +478,11 @@ export default function NotificationsPage() {
       />
 
       {/* ── Push Notifications Section ──
-          Gate on CAPABILITY, not viewport: Web Push runs on desktop Chrome/
-          Firefox/Edge and iPad-portrait too, so we show it wherever the
-          Notification API exists. Still hidden inside the native WKWebView,
-          where the web-push stack is a dead toggle (Apple 2.1). */}
-      {pushCapable && !nativeApp && <>
+          Gate on capability AND the mobile viewport: push delivery does not
+          work on desktop, so the whole card is mobile-web only (iPad portrait
+          counts as mobile via useIsMobile). Still hidden inside the native
+          WKWebView, where the web-push stack is a dead toggle (Apple 2.1). */}
+      {pushCapable && !nativeApp && isMobile && <>
 
       {/* Browser support warning */}
       {isUnsupported && (

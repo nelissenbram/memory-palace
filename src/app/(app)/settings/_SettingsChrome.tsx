@@ -6,9 +6,11 @@
  * The settings SHELL (layout.tsx sidebar/tab-bar + the /me identity page) is
  * already premium; these helpers bring each sub-page BODY up to the same canon:
  *
- *   • SettingsPageHeader — the warm page header used across all 8 sub-pages:
- *       ember-tinted icon medallion (reusing the SettingsIcon glyph family from
- *       layout.tsx) + Fraunces ink title + one muted subtitle line. Desktop-only
+ *   • SettingsPageHeader — the quiet page intro used across all 8 sub-pages:
+ *       one muted subtitle line (+ optional right-aligned action). The sidebar /
+ *       tab nav already names the section, so the old icon medallion + Fraunces
+ *       title were duplicate chrome and are no longer rendered (the `icon` and
+ *       `title` props are still accepted so callers stay untouched). Desktop-only
  *       by default (the nav tab carries context on mobile), matching how the
  *       pages already gate their old <h2> headers on !isMobile.
  *
@@ -99,18 +101,21 @@ export function SettingsGlyph({ name, size = 20 }: { name: string; size?: number
 }
 
 /**
- * The warm page header — ember medallion + Fraunces title + muted subtitle.
+ * The quiet page intro — one muted subtitle line + optional right-aligned action.
+ * The sidebar / tab nav already names the section, so no icon medallion or big
+ * title is rendered; `icon` and `title` remain in the props contract so the
+ * existing sub-page call sites keep compiling unchanged.
  * `hidden` lets callers preserve their existing `!isMobile` gate.
  */
 export function SettingsPageHeader({
-  icon,
-  title,
   subtitle,
   hidden = false,
   action,
 }: {
-  icon: string;
-  title: string;
+  /** Accepted for call-site compatibility; no longer rendered. */
+  icon?: string;
+  /** Accepted for call-site compatibility; no longer rendered (nav names the section). */
+  title?: string;
   subtitle: string;
   hidden?: boolean;
   action?: React.ReactNode;
@@ -119,33 +124,15 @@ export function SettingsPageHeader({
   return (
     <div style={{
       display: "flex", alignItems: "flex-start", gap: "1rem",
-      marginBottom: "2rem",
+      marginBottom: "1.25rem",
     }}>
-      {/* Ember medallion (matches layout.tsx active-door medallion grammar) */}
-      <span aria-hidden="true" style={{
-        width: "3rem", height: "3rem", borderRadius: "50%",
-        flexShrink: 0,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(184,92,56,0.09)",
-        color: EMBER_GLYPH,
-        boxShadow: "inset 0 0.0625rem 0 rgba(255,255,255,0.35)",
+      <p style={{
+        flex: 1, minWidth: 0,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED,
+        margin: 0, lineHeight: 1.45, maxWidth: "34rem",
       }}>
-        <SettingsGlyph name={icon} size={20} />
-      </span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <h2 style={{
-          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
-          color: INK, margin: "0 0 0.375rem", lineHeight: 1.15,
-        }}>
-          {title}
-        </h2>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED,
-          margin: 0, lineHeight: 1.45, maxWidth: "34rem",
-        }}>
-          {subtitle}
-        </p>
-      </div>
+        {subtitle}
+      </p>
       {action && <div style={{ flexShrink: 0 }}>{action}</div>}
     </div>
   );

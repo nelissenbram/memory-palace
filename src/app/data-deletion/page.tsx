@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -13,12 +15,40 @@ const C = T.color;
 /** Shared page constants so the four legal pages read consistently. */
 const PROSE_MAX = "47.5rem";
 
+/** History-aware back: when the user arrived from another in-app page (e.g.
+ *  Settings → Subscription), intercept the click and go back through history
+ *  instead of dumping them on the landing page. Falls back to the Link's
+ *  normal href="/" navigation when there is no in-app history (direct visit,
+ *  external referrer, modified click, malformed referrer). */
+function useHistoryBack() {
+  const router = useRouter();
+  return useCallback(
+    (e: React.MouseEvent) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      try {
+        if (
+          window.history.length > 1 &&
+          !!document.referrer &&
+          new URL(document.referrer).origin === window.location.origin
+        ) {
+          e.preventDefault();
+          router.back();
+        }
+      } catch {
+        /* malformed referrer — let the Link navigate to "/" */
+      }
+    },
+    [router],
+  );
+}
+
 export default function DataDeletionPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const isCompact = useIsCompact();
   const { t, locale, setLocaleNoReload } = useTranslation("dataDeletion");
   const { t: tc } = useTranslation("common");
+  const handleBack = useHistoryBack();
 
   return (
     <div
@@ -47,6 +77,7 @@ export default function DataDeletionPage() {
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <Link
             href="/"
+            onClick={handleBack}
             aria-label={tc("a11yBackToHome")}
             style={{
               display: "flex",

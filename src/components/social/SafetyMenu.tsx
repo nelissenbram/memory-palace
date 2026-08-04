@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useTransition, useEffect } from "react";
+import React, { useState, useTransition, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
@@ -42,8 +43,51 @@ export default function SafetyMenu({
   const isPortrait = useIsPortrait();
   const asSheet = isMobile && isPortrait;
   const [open, setOpen] = useState(false);
+  // Fixed viewport coordinates for the portaled menu. The menu used to be
+  // position:absolute inside the card, but every TuscanCard host clips
+  // overflow AND keeps a persistent transform (entrance animation with
+  // fill-mode:both + hover lift), which both clipped the dropdown and turned
+  // position:fixed descendants into card-contained boxes — the menu opened
+  // invisibly, so blocking looked completely broken. Rendering through a
+  // portal to <body> escapes both traps for every call site.
+  const [menuPos, setMenuPos] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const [dialog, setDialog] = useState<null | "report">(null);
   const { containerRef, handleKeyDown } = useFocusTrap(dialog === "report");
+
+  const toggleMenu = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Right-align the menu to the trigger, clamped 0.5rem from the edge.
+    const right = Math.max(8, window.innerWidth - rect.right);
+    // Flip upward when the space below can't fit the menu (~10rem estimate).
+    const EST_MENU_PX = 160;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setMenuPos(
+      spaceBelow < EST_MENU_PX && rect.top > spaceBelow
+        ? { bottom: Math.round(window.innerHeight - rect.top + 4), right }
+        : { top: Math.round(rect.bottom + 4), right },
+    );
+    setBlockError(false);
+    setOpen(true);
+  };
+
+  // The portaled menu is viewport-anchored: close it if the page scrolls or
+  // resizes underneath so it can never drift away from its trigger.
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open]);
 
   // Escape-to-close for the report dialog (focus trap handles Tab + restore).
   useEffect(() => {
@@ -113,7 +157,8 @@ export default function SafetyMenu({
   return (
     <div style={{ position: "relative", flexShrink: 0 }}>
       <button
-        onClick={() => setOpen((o) => { const next = !o; if (next) setBlockError(false); return next; })}
+        ref={btnRef}
+        onClick={toggleMenu}
         aria-label={t("safetyMenuLabel")}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -135,20 +180,21 @@ export default function SafetyMenu({
         <MoreIcon />
       </button>
 
-      {open && (
+      {open && menuPos && typeof document !== "undefined" && createPortal(
         <>
           {/* click-away */}
           <div
             onClick={() => setOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: 40 }}
+            style={{ position: "fixed", inset: 0, zIndex: 990 }}
           />
           <div
             role="menu"
             style={{
-              position: "absolute",
-              right: 0,
-              top: "100%",
-              zIndex: 41,
+              position: "fixed",
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+              right: menuPos.right,
+              zIndex: 991,
               minWidth: "11rem",
               maxWidth: "calc(100vw - 2rem)",
               background: T.color.cream,
@@ -196,16 +242,17 @@ export default function SafetyMenu({
               </p>
             )}
           </div>
-        </>
+        </>,
+        document.body,
       )}
 
-      {dialog === "report" && (
+      {dialog === "report" && typeof document !== "undefined" && createPortal(
         <div
           onClick={() => setDialog(null)}
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 60,
+            zIndex: 1000,
             background: "rgba(64,59,54,0.55)",
             display: "flex",
             alignItems: asSheet ? "flex-end" : "center",
@@ -340,7 +387,8 @@ export default function SafetyMenu({
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

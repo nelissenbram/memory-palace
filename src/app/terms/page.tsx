@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useContext } from "react";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -17,6 +18,33 @@ const PROSE_MAX = "47.5rem";
 /** Shared responsive flag so the module-level P/Li helpers can bump body copy
  *  to ~1rem on phones without threading a prop through every call site. */
 const MobileCtx = createContext(false);
+
+/** History-aware back: when the user arrived from another in-app page (e.g.
+ *  Settings → Subscription → Terms), intercept the click and go back through
+ *  history instead of dumping them on the landing page. Falls back to the
+ *  Link's normal href="/" navigation when there is no in-app history (direct
+ *  visit, external referrer, modified click, malformed referrer). */
+function useHistoryBack() {
+  const router = useRouter();
+  return useCallback(
+    (e: React.MouseEvent) => {
+      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      try {
+        if (
+          window.history.length > 1 &&
+          !!document.referrer &&
+          new URL(document.referrer).origin === window.location.origin
+        ) {
+          e.preventDefault();
+          router.back();
+        }
+      } catch {
+        /* malformed referrer — let the Link navigate to "/" */
+      }
+    },
+    [router],
+  );
+}
 
 const EMAIL = "privacy@thememorypalace.ai";
 const MARKER = "@@LINK@@";
@@ -55,6 +83,7 @@ export default function TermsOfServicePage() {
   const isCompact = useIsCompact();
   const { t, locale, setLocaleNoReload } = useTranslation("terms");
   const { t: tc } = useTranslation("common");
+  const handleBack = useHistoryBack();
 
   return (
     <MobileCtx.Provider value={isMobile}>
@@ -83,7 +112,7 @@ export default function TermsOfServicePage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <Link href="/" aria-label={tc("a11yBackToHome")} style={{
+          <Link href="/" onClick={handleBack} aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
             border: `1px solid ${C.hairline}`,
@@ -273,7 +302,7 @@ export default function TermsOfServicePage() {
           >
             {t("securityPolicy")}
           </Link>
-          <Link href="/" style={{ ...linkStyle, fontSize: "0.875rem" }}>
+          <Link href="/" onClick={handleBack} style={{ ...linkStyle, fontSize: "0.875rem" }}>
             {t("backToHome")}
           </Link>
         </div>
