@@ -10,6 +10,7 @@ import { layoutForRoom } from "@/lib/3d/roomLayouts";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
+import { EXPOSURE, GOLDEN } from "@/lib/3d/canon";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
@@ -114,11 +115,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       envBrightness:Math.max(dlPresetRaw.envBrightness,0.35),
       exposure:Math.max(dlPresetRaw.exposure,0.9),
     };
-    const scene=new THREE.Scene();scene.background=new THREE.Color(layout.isExhibition?"#87CEEB":dlPreset.fogColor);
+    // Warm canon background at mount (MUSEO VIVO): golden sky for open-air
+    // exhibition rooms, golden interior haze otherwise — the cool blue is dead.
+    const scene=new THREE.Scene();scene.background=new THREE.Color(layout.isExhibition?GOLDEN.skyColor:dlPreset.fogColor);
     const camera=new THREE.PerspectiveCamera(58,w/h,0.1,layout.isExhibition?120:60);
     const Q=getQuality();
     const ren=borrowRenderer(w,h);
-    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.7*dlPreset.exposure;
+    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.NoToneMapping;ren.toneMappingExposure=EXPOSURE;// grade lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE)
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
@@ -136,9 +139,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ── ATMOSPHERIC FOG ──
     const isExhibition=!!layout.isExhibition;
     const fogFar=isExhibition?65/dlPreset.fogDensity:22/dlPreset.fogDensity;
-    scene.fog=new THREE.Fog(isExhibition?"#B8D8E8":dlPreset.fogColor,isExhibition?8:3,fogFar);
+    scene.fog=new THREE.Fog(isExhibition?GOLDEN.skyColor:dlPreset.fogColor,isExhibition?8:3,fogFar);
 
-    scene.add(new THREE.HemisphereLight(isExhibition?"#87CEEB":dlPreset.ambientColor,isExhibition?"#D4C8A8":"#C4B8A0",isExhibition?.7:.4*dlPreset.ambientIntensity/0.5));
+    // Warm sky + terracotta ground bounce (WS1-6)
+    scene.add(new THREE.HemisphereLight(isExhibition?GOLDEN.skyColor:dlPreset.ambientColor,dlPreset.groundBounceColor,isExhibition?.7:.4*dlPreset.ambientIntensity/0.5));
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.1*dlPreset.sunIntensity);sun.position.set(isExhibition?18:10,isExhibition?20:14,-4);sun.castShadow=true;sun.shadow.mapSize.set(Math.min(Q.shadowMapSize,isExhibition?2048:1024),Math.min(Q.shadowMapSize,isExhibition?2048:1024));
     const shCam=isExhibition?20:12;
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=isExhibition?60:30;sun.shadow.camera.left=-shCam;sun.shadow.camera.right=shCam;sun.shadow.camera.top=shCam;sun.shadow.camera.bottom=-shCam;

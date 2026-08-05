@@ -9,6 +9,7 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
+import { EXPOSURE, GOLDEN, PLASTER_RAMP, CLEAR_COLOR } from "@/lib/3d/canon";
 import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
@@ -75,7 +76,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const dlPreset=getLightingPreset();
     const Q=getQuality();
     const isMobileQ=Q.maxEagerTextureSets<=6;
-    const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(dlPreset.fogColor,.0018*dlPreset.fogDensity);
+    const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(GOLDEN.fogExterior,.0018*dlPreset.fogDensity);
     // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
     // Mobile: 512x256 (4x fewer pixels), Desktop: 2048x1024
     const skyGeo=new THREE.SphereGeometry(500,Q.skyCanvasWidth>=2048?64:24,Q.skyCanvasHeight>=1024?40:16);
@@ -176,16 +177,21 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Procedural sky sphere used as fallback only — hidden when HDRI background loads
     const skySphere=new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide}));
     scene.add(skySphere);
-    // On mobile (no HDRI background), set scene.background to the procedural sky texture.
-    // The sky sphere mesh alone can be clipped by the camera far plane (300) since its
-    // radius (500) exceeds it, causing a black background on Android/mobile.
-    if(!Q.loadBackgroundHDRI){scene.background=skyTex;scene.backgroundIntensity=1.0;skySphere.visible=false;}
+    // UNCONDITIONAL golden sky at mount, every tier (MUSEO VIVO WS1-5/WS9-1):
+    // the procedural sky is the background from the very first frame — the
+    // black void while the 6.5MB HDRI decoded is dead. Where the HDRI still
+    // loads (desktop) it replaces this background asynchronously below.
+    // (The sky sphere mesh alone can be clipped by the camera far plane (300)
+    // since its radius (500) exceeds it — the background texture cannot.)
+    scene.background=skyTex;scene.backgroundIntensity=1.0;
+    if(!Q.loadBackgroundHDRI){skySphere.visible=false;}
 
     const camera=new THREE.PerspectiveCamera(32,w/h,1.0,300);
     let ren:THREE.WebGLRenderer;
     try{ren=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:"high-performance"});}catch{ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"default"});}
     ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,Q.maxPixelRatio));
-    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=2048?THREE.PCFSoftShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.4*dlPreset.exposure;
+    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=2048?THREE.PCFSoftShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.NoToneMapping;ren.toneMappingExposure=EXPOSURE;// grade lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE)
+    ren.setClearColor(CLEAR_COLOR,1);
     ren.outputColorSpace=THREE.SRGBColorSpace;
     ren.domElement.addEventListener("webglcontextlost",(e)=>{e.preventDefault();});
     ren.domElement.addEventListener("webglcontextrestored",()=>{ren.shadowMap.needsUpdate=true;});
@@ -233,7 +239,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     el.appendChild(hovLabel);
 
     // Dramatic golden-hour lighting
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#8A7858",0.6*dlPreset.ambientIntensity/0.5));
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,0.6*dlPreset.ambientIntensity/0.5));
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,3.2*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
     sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
     sun.shadow.camera.left=-80;sun.shadow.camera.right=80;sun.shadow.camera.top=80;sun.shadow.camera.bottom=-80;sun.shadow.bias=-0.0003;scene.add(sun);
@@ -244,12 +250,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     if(!isMobileGPU()){const porticoWarm=new THREE.SpotLight("#FFE0A0",0.3,60,Math.PI*0.3);porticoWarm.position.set(0,2,-20);porticoWarm.target.position.set(0,5,0);scene.add(porticoWarm);scene.add(porticoWarm.target);}
 
     const M={
-      // ── WALLS — warm golden Tuscan ochre stucco with subtle plaster normalMap
-      stone:new THREE.MeshStandardMaterial({color:"#FFDD78",roughness:.72,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.9,.9),roughnessMap:clayPlasterTex.roughnessMap}),
-      stoneL:new THREE.MeshStandardMaterial({color:"#FFE898",roughness:.65,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.8,.8),roughnessMap:clayPlasterTex.roughnessMap}),
-      stoneW:new THREE.MeshStandardMaterial({color:"#FFD468",roughness:.70,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
-      stoneD:new THREE.MeshStandardMaterial({color:"#FFCC58",roughness:.75,metalness:0,envMapIntensity:.6,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
-      stoneDk:new THREE.MeshStandardMaterial({color:"#D8B050",roughness:.82,metalness:0,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(1,1),roughnessMap:clayPlasterTex.roughnessMap}),
+      // ── WALLS — sun-bleached canon plaster (MUSEO VIVO: honey comes from the sun, not albedo)
+      stone:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.base,roughness:.72,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.9,.9),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneL:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.light,roughness:.65,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.8,.8),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneW:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.mid,roughness:.70,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneD:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.shade,roughness:.75,metalness:0,envMapIntensity:.6,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneDk:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.dark,roughness:.82,metalness:0,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(1,1),roughnessMap:clayPlasterTex.roughnessMap}),
       // ── TRIM — pietra serena (cool blue-grey sandstone) & aged gold
       trim:new THREE.MeshStandardMaterial({color:"#EDE4D4",roughness:.60,metalness:0,envMapIntensity:.6,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
       gold:mkPhys(THREE,{color:"#B8973A",roughness:.35,metalness:.92,emissive:"#3D3010",emissiveIntensity:.08,clearcoat:.15,clearcoatRoughness:.4,envMapIntensity:1.0}),

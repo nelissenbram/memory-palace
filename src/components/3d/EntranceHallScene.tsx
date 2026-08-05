@@ -9,6 +9,7 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
+import { EXPOSURE, CLEAR_COLOR } from "@/lib/3d/canon";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
 import { loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, acquireEnvMap, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
@@ -268,8 +269,11 @@ function EntranceHallScene({
       ren.shadowMap.autoUpdate = false;
       ren.shadowMap.needsUpdate = true;
     }
-    ren.toneMapping = THREE.ACESFilmicToneMapping;
-    ren.toneMappingExposure = 0.7 * dlPreset.exposure; // eerie filmic: noticeably underexposed for atmosphere
+    // Golden grade (MUSEO VIVO WS4-1): the 0.7 "eerie" underexposure is dead.
+    // Tone mapping lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE).
+    ren.toneMapping = THREE.NoToneMapping;
+    ren.toneMappingExposure = EXPOSURE;
+    ren.setClearColor(CLEAR_COLOR, 1);
     ren.outputColorSpace = THREE.SRGBColorSpace;
     ren.localClippingEnabled = true;
     el.appendChild(ren.domElement);
@@ -287,10 +291,10 @@ function EntranceHallScene({
     }
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
+    // Bloom/vignette inherit the canon SCENE_PRESETS (bloom threshold 0.85,
+    // vignette 0.35) — the old 0.25-threshold/0.7-vignette overrides are dead.
     const composer = createPostProcessing(ren, scene, camera, "entrance", {
       ssao: false, // disabled for performance even on desktop
-      bloom: { luminanceThreshold: 0.25, luminanceSmoothing: 0.5, intensity: 0.9 },
-      vignette: { darkness: 0.7, offset: 0.15 },
     });
     const disposeFit = autoFit(el, { camera, renderer: ren, composer });
 
@@ -357,7 +361,9 @@ function EntranceHallScene({
 
     // ── LIGHTING (dramatic PBR upgrade) ──
     // Hemisphere: warm sky / cool dark ground for contrast
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, "#1A0F05", 0.15 * dlPreset.ambientIntensity / 0.5));
+    // Warm sky + terracotta ground bounce (WS1-6): the near-black #1A0F05
+    // ground and 0.15 intensity were a main cause of the "eerie" hall.
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, dlPreset.groundBounceColor, 0.4 * dlPreset.ambientIntensity / 0.5));
     // Main oculus directional light — filmic: dramatic but not blown out
     const sunLight = new THREE.DirectionalLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity);
     sunLight.position.set(0, TOTAL_H + 10, 0);

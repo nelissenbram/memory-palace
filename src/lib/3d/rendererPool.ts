@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { getQuality } from "./mobilePerf";
+import { CLEAR_COLOR, EXPOSURE } from "./canon";
 
 /**
  * WebGL Renderer Pool — reuses a single renderer across scene transitions.
@@ -27,9 +28,14 @@ export function borrowRenderer(w: number, h: number): THREE.WebGLRenderer {
     _inUse = true;
     _pool.setSize(w, h);
     _pool.setPixelRatio(Math.min(window.devicePixelRatio, Q.maxPixelRatio));
-    // Reset state that scenes may have changed
+    // Reset state that scenes may have changed — grade continuity (MUSEO VIVO
+    // WS9-5): a renderer leaving the pool for ANY scene carries the identical
+    // canon grade. Tone mapping lives in the composer's ToneMappingEffect, so
+    // the renderer stays at NoToneMapping; exposure feeds the effect uniform.
     _pool.shadowMap.enabled = Q.shadowsEnabled;
-    _pool.toneMapping = THREE.ACESFilmicToneMapping;
+    _pool.toneMapping = THREE.NoToneMapping;
+    _pool.toneMappingExposure = EXPOSURE;
+    _pool.setClearColor(CLEAR_COLOR, 1);
     _pool.outputColorSpace = THREE.SRGBColorSpace;
     _pool.localClippingEnabled = false;
     _pool.clear();
@@ -45,6 +51,10 @@ export function borrowRenderer(w: number, h: number): THREE.WebGLRenderer {
     ren.setSize(w, h);
     ren.setPixelRatio(Math.min(window.devicePixelRatio, Q.maxPixelRatio));
     ren.outputColorSpace = THREE.SRGBColorSpace;
+    // Canon grade from birth — identical to the borrow-path reset above.
+    ren.toneMapping = THREE.NoToneMapping;
+    ren.toneMappingExposure = EXPOSURE;
+    ren.setClearColor(CLEAR_COLOR, 1);
     _pool = ren;
     _inUse = true;
     return ren;
@@ -57,6 +67,9 @@ export function borrowRenderer(w: number, h: number): THREE.WebGLRenderer {
     ren.setSize(w, h);
     ren.setPixelRatio(Math.min(window.devicePixelRatio, 1));
     ren.outputColorSpace = THREE.SRGBColorSpace;
+    ren.toneMapping = THREE.NoToneMapping;
+    ren.toneMappingExposure = EXPOSURE;
+    ren.setClearColor(CLEAR_COLOR, 1);
     _pool = ren;
     _inUse = true;
     return ren;

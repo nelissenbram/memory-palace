@@ -8,6 +8,7 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
+import { EXPOSURE } from "@/lib/3d/canon";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, registerCachedTexture, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
@@ -121,13 +122,16 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const _rc=new THREE.Raycaster(),_mouse=new THREE.Vector2();
     const _dir=new THREE.Vector3(),_yAxis=new THREE.Vector3(0,1,0);
     const _ld=new THREE.Vector3(),_lookTarget=new THREE.Vector3();
-    const scene=new THREE.Scene();scene.background=new THREE.Color(wing.wall);
+    // Warm canon background/fog at mount (MUSEO VIVO): the wing-tinted haze is
+    // dead — the corridor joins the one golden grade so the hall doorway is
+    // continuous, not a jump cut.
+    const scene=new THREE.Scene();scene.background=new THREE.Color(dlPreset.fogColor);
     // Add atmospheric fog for depth
-    scene.fog=new THREE.FogExp2(wing.wall,.008*dlPreset.fogDensity);
+    scene.fog=new THREE.FogExp2(dlPreset.fogColor,.008*dlPreset.fogDensity);
     const camera=new THREE.PerspectiveCamera(55,w/h,0.3,80);
     const Q=getQuality();
     const ren=borrowRenderer(w,h);
-    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.8*dlPreset.exposure;
+    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.NoToneMapping;ren.toneMappingExposure=EXPOSURE;// grade lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE)
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
@@ -142,7 +146,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const composer=createPostProcessing(ren,scene,camera,"corridor");
     const disposeFit=autoFit(el,{camera,renderer:ren,composer});
 
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#C4B8A0",.55*dlPreset.ambientIntensity/0.5));
+    // Warm sky + terracotta ground bounce (WS1-6)
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,.55*dlPreset.ambientIntensity/0.5));
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.5*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=60;sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
     scene.add(sun);
