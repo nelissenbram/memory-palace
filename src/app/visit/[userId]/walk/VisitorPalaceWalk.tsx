@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
+import { mountAmbientMusic } from "@/lib/3d/ambientAudio";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -43,9 +44,17 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
   const [hoveredDoor, setHoveredDoor] = useState<string | null>(null);
   const [opacity, setOpacity] = useState(1);
   const [sceneLoading, setSceneLoading] = useState(false);
+  const [loadingDest, setLoadingDest] = useState<string | undefined>(undefined);
   const [pending, setPending] = useState<PalacePending>(null);
   const [showGuestbook, setShowGuestbook] = useState(false);
   const [selectedMemory, setSelectedMemory] = useState<Mem | null>(null);
+
+  // WS9-13: visitors hear the same score as the owner — mount the ONE ambient
+  // audio singleton on entry. Idempotent; deliberately never stopped on
+  // unmount so the music carries across scene transitions.
+  useEffect(() => {
+    mountAmbientMusic();
+  }, []);
 
   // Build Wing[] array for ExteriorScene and EntranceHallScene (only published wings)
   const publishedWings: Wing[] = useMemo(() =>
@@ -157,7 +166,24 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
 
   // --- Navigation handlers ---
 
+  // WS10-3: resolve the human name of the place being entered so the canon
+  // loading card can announce the destination during the transition.
+  const destinationFor = useCallback((target: View, wingSlug?: string | null, roomId?: string | null): string | undefined => {
+    if (target === "entrance") return tPalace("entranceHallLabel");
+    if (target === "corridor" && wingSlug) {
+      return data.wings.find((w) => w.wing.slug === wingSlug)?.wing.name;
+    }
+    if (target === "room" && roomId) {
+      for (const wd of data.wings) {
+        const room = wd.rooms.find((r) => r.id === roomId);
+        if (room) return room.name;
+      }
+    }
+    return undefined;
+  }, [data.wings, tPalace]);
+
   const navigateTo = useCallback((target: View, wingSlug?: string | null, roomId?: string | null) => {
+    setLoadingDest(destinationFor(target, wingSlug, roomId));
     fade(() => {
       if (target === "exterior" || target === "entrance") {
         setActiveWingSlug(null);
@@ -171,7 +197,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
       }
       setView(target);
     });
-  }, [fade]);
+  }, [fade, destinationFor]);
 
   const handleExteriorClick = useCallback((wingId: string) => {
     if (wingId === "__entrance__") {
@@ -236,8 +262,8 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
         overflow: "hidden",
       }}
     >
-      {/* Loading screen during transitions */}
-      {sceneLoading && <PalaceLoadingScreen overlay fadeDelay={0.2} />}
+      {/* Loading screen during transitions — canon card (WS10-3) */}
+      {sceneLoading && <PalaceLoadingScreen overlay fadeDelay={0.2} destination={loadingDest} />}
 
       {/* 3D Scene */}
       <div
@@ -263,7 +289,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           </Suspense>
         )}
         {view === "entrance" && (
-          <Suspense fallback={<PalaceLoadingScreen />}>
+          <Suspense fallback={<PalaceLoadingScreen destination={tPalace("entranceHallLabel")} />}>
             <EntranceHallScene
               onDoorClick={handleEntranceDoorClick}
               wings={publishedWings}
@@ -272,7 +298,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           </Suspense>
         )}
         {view === "corridor" && activeWingSlug && wingData && (
-          <Suspense fallback={<PalaceLoadingScreen />}>
+          <Suspense fallback={<PalaceLoadingScreen destination={wingData.name} />}>
             <CorridorScene
               wingId={activeWingSlug}
               rooms={corridorRooms}
@@ -287,7 +313,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           </Suspense>
         )}
         {view === "room" && activeRoomId && activeWingSlug && (
-          <Suspense fallback={<PalaceLoadingScreen />}>
+          <Suspense fallback={<PalaceLoadingScreen destination={activeWingData?.rooms.find((r) => r.id === activeRoomId)?.name} />}>
             <InteriorScene
               roomId={activeWingSlug}
               actualRoomId={activeRoomId}

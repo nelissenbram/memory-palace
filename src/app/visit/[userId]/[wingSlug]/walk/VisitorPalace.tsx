@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
+import { mountAmbientMusic } from "@/lib/3d/ambientAudio";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { ANIM } from "@/components/ui/TuscanStyles";
@@ -29,6 +30,14 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
   const [hoveredDoor, setHoveredDoor] = useState<string | null>(null);
   const [opacity, setOpacity] = useState(1);
   const [sceneLoading, setSceneLoading] = useState(false);
+  const [loadingDest, setLoadingDest] = useState<string | undefined>(undefined);
+
+  // WS9-13: visitors hear the same score as the owner — mount the ONE ambient
+  // audio singleton on entry. Idempotent; deliberately never stopped on
+  // unmount so the music carries across scene transitions.
+  useEffect(() => {
+    mountAmbientMusic();
+  }, []);
 
   // Transform data to 3D-compatible formats
   const wingData: Wing = useMemo(() => ({
@@ -87,11 +96,12 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
       window.location.href = "/explore";
       return;
     }
+    setLoadingDest(data.rooms.find((r) => r.id === roomId)?.name);
     fade(() => {
       setActiveRoomId(roomId);
       setView("room");
     });
-  }, [fade]);
+  }, [fade, data.rooms]);
 
   const handleBack = useCallback(() => {
     window.location.href = "/explore";
@@ -99,11 +109,12 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
 
   const handleRoomNav = useCallback((roomId: string) => {
     if (roomId === activeRoomId) return;
+    setLoadingDest(data.rooms.find((r) => r.id === roomId)?.name);
     fade(() => {
       setActiveRoomId(roomId);
       setView("room");
     });
-  }, [fade, activeRoomId]);
+  }, [fade, activeRoomId, data.rooms]);
 
   const currentMems = activeRoomId ? (roomMemories[activeRoomId] || []) : [];
 
@@ -116,8 +127,8 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
         overflow: "hidden",
       }}
     >
-      {/* Loading screen during transitions */}
-      {sceneLoading && <PalaceLoadingScreen overlay fadeDelay={0.2} />}
+      {/* Loading screen during transitions — canon card (WS10-3) */}
+      {sceneLoading && <PalaceLoadingScreen overlay fadeDelay={0.2} destination={loadingDest} />}
 
       {/* 3D Scene */}
       <div
@@ -132,7 +143,7 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
         }}
       >
         {view === "corridor" && (
-          <Suspense fallback={<PalaceLoadingScreen />}>
+          <Suspense fallback={<PalaceLoadingScreen destination={data.wing.name} />}>
             <CorridorScene
               wingId={data.wing.slug}
               rooms={wingRooms}
@@ -147,7 +158,7 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
           </Suspense>
         )}
         {view === "room" && activeRoomId && (
-          <Suspense fallback={<PalaceLoadingScreen />}>
+          <Suspense fallback={<PalaceLoadingScreen destination={data.rooms.find((r) => r.id === activeRoomId)?.name} />}>
             <InteriorScene
               roomId={data.wing.slug}
               actualRoomId={activeRoomId}

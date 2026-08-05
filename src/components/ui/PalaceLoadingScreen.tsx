@@ -1,17 +1,27 @@
 "use client";
 import { useMemo } from "react";
-import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { PLASTER, INK, GOLD } from "@/lib/3d/canon";
 
 const LOADING_PHRASE_COUNT = 10;
+
+/**
+ * WS10-3 — the ONE canon loading card. Owner and visitor loaders alike render
+ * this exact card while a 3D scene loads: warm plaster ground, ink type set in
+ * Fraunces, a single subtle gold accent. No cold or blue spinners, ever.
+ */
+const FRAUNCES = "'Fraunces', Georgia, serif";
 
 export default function PalaceLoadingScreen({
   overlay = false,
   fadeDelay = 0,
+  destination,
 }: {
   overlay?: boolean;
   fadeDelay?: number;
+  /** Name of the place being entered (wing, room, hall) — shown when known. */
+  destination?: string;
 }) {
   const { t } = useTranslation("palace");
 
@@ -25,16 +35,16 @@ export default function PalaceLoadingScreen({
       <style>{`@keyframes palaceProgressSlide{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}`}</style>
       <div style={{
         width: "min(16rem, 60vw)",
-        height: "0.25rem",
+        height: "0.1875rem",
         borderRadius: "0.125rem",
-        background: `${T.color.sandstone}40`,
+        background: `${GOLD}2E`,
         overflow: "hidden",
         marginTop: "1.5rem",
       }}>
         <div style={{
           width: "40%",
           height: "100%",
-          background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
+          background: GOLD,
           borderRadius: "0.125rem",
           animation: "palaceProgressSlide 1.4s ease-in-out infinite",
         }} />
@@ -48,18 +58,30 @@ export default function PalaceLoadingScreen({
         <PalaceLogo variant="mark" color="dark" size="xl" />
       </div>
       <div style={{
+        fontFamily: FRAUNCES,
         fontSize: "1.75rem",
         fontWeight: 300,
-        color: T.color.charcoal,
+        color: INK,
       }}>
         {t("appTitle")}
       </div>
+      {destination && (
+        <div style={{
+          fontFamily: FRAUNCES,
+          fontSize: "1.0625rem",
+          fontWeight: 500,
+          color: INK,
+          marginTop: "0.75rem",
+        }}>
+          {t("loadingDestination", { name: destination })}
+        </div>
+      )}
       <div style={{
+        fontFamily: FRAUNCES,
         fontSize: "0.9375rem",
-        color: T.color.muted,
-        marginTop: "0.75rem",
-        fontFamily: T.font.body,
         fontStyle: "italic",
+        color: `${INK}A6`,
+        marginTop: destination ? "0.375rem" : "0.75rem",
       }}>
         {t(phrase)}
       </div>
@@ -78,8 +100,8 @@ export default function PalaceLoadingScreen({
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone} 100%)`,
-          fontFamily: T.font.display,
+          background: PLASTER,
+          fontFamily: FRAUNCES,
           animation: `sceneLoadFadeOut 0.8s ease-in-out ${fadeDelay}s forwards`,
           pointerEvents: "none",
           paddingTop: "env(safe-area-inset-top, 0px)",
@@ -101,8 +123,8 @@ export default function PalaceLoadingScreen({
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone} 100%)`,
-        fontFamily: T.font.display,
+        background: PLASTER,
+        fontFamily: FRAUNCES,
         paddingTop: "env(safe-area-inset-top, 0px)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
