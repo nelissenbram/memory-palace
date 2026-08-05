@@ -11,6 +11,8 @@ import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, CLEAR_COLOR, INK, GOLD, EMBER } from "@/lib/3d/canon";
 import { flag3d } from "@/lib/3d/flags3d";
+import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
+import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { EYE_HEIGHT, MAX_YAW_DEG_S, MAX_WALK_SPEED, easeInOutCubic } from "@/lib/3d/cameraComfort";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
@@ -198,7 +200,6 @@ function EntranceHallScene({
   const onReadyRef = useRef(onReady);
   useEffect(() => { onReadyRef.current = onReady; }, [onReady]);
   const readyFiredRef = useRef(false); // onReady fires EXACTLY once per mount (survives effect re-runs)
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const camDebugRef = useRef<HTMLPreElement | null>(null);
   const camDebug = false; // set true to show camera debug overlay
   const [blinkOpacity, setBlinkOpacity] = useState(0);
@@ -240,11 +241,11 @@ function EntranceHallScene({
     const _persistent = !!_pausedHost;
     const _isHidden = () => _persistent && _pausedHost!.dataset.paused === "1";
     let _wasHidden = false;
-    // Ambient-audio pause/resume — assigned once the audio element exists below;
-    // driven from the hidden-edge in animate() (persistence means unmount no
-    // longer stops the loop on every transition).
-    let ambientPause: () => void = () => {};
-    let ambientResume: () => void = () => {};
+    // WS10-2: the shared ambient score never stops across scene transitions, so
+    // the hidden-edge hooks in animate() are no-ops now — resume just re-arms
+    // the idempotent singleton in case autoplay was still blocked at mount.
+    const ambientPause: () => void = () => {};
+    const ambientResume: () => void = () => { mountAmbientMusic(); };
 
     const dlPreset = getLightingPreset();
     const scene = new THREE.Scene();
@@ -253,11 +254,11 @@ function EntranceHallScene({
 
     const Q = getQuality();
     let alive = true;
-    // Wave-1 hall flag captured for this mount + inline reduced-motion check
-    // (matchMedia inline for now — shared singleton lands with WS12-1).
+    // Wave-1 hall flag captured for this mount + the shared reduced-motion
+    // singleton (WS12-1) — the w1 cinematic swaps its push-in for the cream
+    // crossfade to the same end framing (shot B) when this reports true.
     const W1 = w1;
-    const reduceMotion = typeof window !== "undefined" && !!window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduceMotion = prefersReducedMotion();
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
     // Persistent hall owns its renderer (mirrors ExteriorScene); transient
     // corridor/interior keep borrowing the shared pool untouched.
@@ -2046,7 +2047,9 @@ function EntranceHallScene({
     const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: 0.04 * dlPreset.sunIntensity });
     scene.add(oculusBeam.mesh);
 
-    // Footstep sounds removed
+    // WS10-4 (w1_hall): footsteps return as procedural marble taps — fired from
+    // the walk integrator on real position delta (playFootstep cadence-caps).
+    const w1StepPrev = { x: 0, z: 7.3 };
 
     // ── Optimize: deduplicate materials to reduce GPU state changes ──
     optimizeMaterials(scene);
@@ -2358,6 +2361,13 @@ function EntranceHallScene({
 
       // Smooth position interpolation
       pos.current.lerp(posT.current, kPos);
+      // WS10-4 (w1_hall): marble footsteps while actually moving — per-frame
+      // position delta above ~0.5 m/s equivalent; cadence capped in playFootstep.
+      if (W1) {
+        const sdx = pos.current.x - w1StepPrev.x, sdz = pos.current.z - w1StepPrev.z;
+        if (dt > 0 && sdx * sdx + sdz * sdz > (0.5 * dt) * (0.5 * dt)) playFootstep();
+        w1StepPrev.x = pos.current.x; w1StepPrev.z = pos.current.z;
+      }
       camera.position.copy(pos.current);
 
       // Look direction
@@ -2603,49 +2613,11 @@ function EntranceHallScene({
     el.addEventListener("touchmove", onTM, { passive: false });
     el.addEventListener("touchend", onTE, { passive: true });
 
-    // ── AUDIO with fade-in ──
-    let audioFadeInterval: ReturnType<typeof setInterval> | null = null;
-    // Autoplay-retry listener — hoisted so cleanup can remove it (these document-level
-    // listeners previously leaked and could resurrect the looping ambient after unmount)
-    let tryPlay: (() => void) | null = null;
-    const removeTryPlay = () => {
-      if (!tryPlay) return;
-      document.removeEventListener("click", tryPlay);
-      document.removeEventListener("touchstart", tryPlay);
-      tryPlay = null;
-    };
-    try {
-      const audio = new Audio("/audio/entrance-ambient.mp3");
-      audio.loop = true;
-      audio.volume = 0;
-      const targetVol = 0.3;
-      // Fade in over ~2 seconds
-      const fadeIn = () => {
-        audioFadeInterval = setInterval(() => {
-          if (audio.volume < targetVol - 0.01) {
-            audio.volume = Math.min(targetVol, audio.volume + 0.015);
-          } else {
-            audio.volume = targetVol;
-            if (audioFadeInterval) clearInterval(audioFadeInterval);
-          }
-        }, 50);
-      };
-      audio.play().then(fadeIn).catch(() => {
-        // Autoplay blocked; play on first user interaction
-        tryPlay = () => {
-          removeTryPlay();
-          if (!alive) return; // scene unmounted — do not resurrect the loop
-          audio.play().then(fadeIn).catch(() => {});
-        };
-        document.addEventListener("click", tryPlay, { once: true });
-        document.addEventListener("touchstart", tryPlay, { once: true });
-      });
-      audioRef.current = audio;
-      // Persistent mode: pause the loop while hidden, resume on re-show (unmount
-      // no longer fires on every transition, so cleanup alone can't stop it).
-      ambientPause = () => { try { if (audioFadeInterval) clearInterval(audioFadeInterval); audio.pause(); } catch {} };
-      ambientResume = () => { try { if (alive && audio.paused) audio.play().then(fadeIn).catch(() => {}); } catch {} };
-    } catch (_) {}
+    // ── AUDIO (WS10-1/2) — the ONE ambient singleton replaces the legacy
+    // per-scene /audio/entrance-ambient.mp3 loop (which 404'd anyway).
+    // Idempotent, gesture-armed on autoplay denial, and deliberately NOT
+    // stopped on unmount/hide: the score carries across scene transitions.
+    mountAmbientMusic();
 
     return () => {
       alive = false;
@@ -2662,22 +2634,8 @@ function EntranceHallScene({
       clearInterval(touchTick);
       window.removeEventListener("resize", _refreshRect);
       _rectRO?.disconnect();
-      if (audioFadeInterval) clearInterval(audioFadeInterval);
-      removeTryPlay();
-      // Fade out audio, then fully stop and release the media resource
-      if (audioRef.current) {
-        const a = audioRef.current;
-        const fadeOut = setInterval(() => {
-          if (a.volume > 0.02) {
-            a.volume = Math.max(0, a.volume - 0.03);
-          } else {
-            a.pause();
-            a.src = "";
-            clearInterval(fadeOut);
-          }
-        }, 50);
-        audioRef.current = null;
-      }
+      // WS10-2: no audio teardown — the shared ambient score keeps playing
+      // across scene transitions (singleton owns the element, not this scene).
       if (envRT) { envRT.texture.dispose(); envRT.dispose(); }
       else releaseEnvMap(envFromScene); // cached fromScene bake — stays warm for the next mount
       const _cachedSet=buildCachedTextureSet();
@@ -2716,11 +2674,6 @@ function EntranceHallScene({
   // changes still rebuild (they're part of the fingerprint).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wingsFingerprint]);
-
-  // Handle audio ref muting (always unmuted now — mute button removed)
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = false;
-  }, []);
 
   const skipCinematic = () => {
     entranceCinematicRef.current = false;

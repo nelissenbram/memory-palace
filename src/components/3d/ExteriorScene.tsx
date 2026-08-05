@@ -11,6 +11,9 @@ import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, GOLDEN, PLASTER_RAMP, CLEAR_COLOR, GOLD, EMBER, INK, TRAVERTINE_GROUT } from "@/lib/3d/canon";
 import { flag3d } from "@/lib/3d/flags3d";
+import { mountAmbientMusic } from "@/lib/3d/ambientAudio";
+import { MAX_YAW_DEG_S } from "@/lib/3d/cameraComfort";
+import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadSandstoneTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField, createSharedWheatMaterial } from "@/lib/3d/grassShader";
@@ -81,6 +84,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // MUSEO VIVO Wave-1 exterior pass (WS3-4 retunes, WS2-1/3/4 terrain + shared
     // field materials, emissive-lerp kill). Staging ON / prod OFF via flags3d.
     const W1=flag3d("w1_exterior");
+    // W1 (WS10-2): mount the ONE ambient score — idempotent singleton, plays on
+    // across scene transitions, so deliberately NOT stopped in cleanup.
+    if(W1)mountAmbientMusic();
     const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(GOLDEN.fogExterior,.0018*dlPreset.fogDensity);
     // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
     // Mobile: 512x256 (4x fewer pixels), Desktop: 2048x1024
@@ -3078,6 +3084,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             cinematicPauseFiredRef.current = true;
             if (onCinematicPauseRef.current) onCinematicPauseRef.current();
           }
+        } else if (W1 && prefersReducedMotion()) {
+          // W1 (WS12-1): prefers-reduced-motion skips the WP2-5 flyover pans —
+          // cut straight to the end framing and hand off to the entrance. The
+          // pause-prompt flow above (phase 0, camera already at WP1) still ran.
+          camO.current.theta = camOT.current.theta = Math.PI * 1.5;
+          camO.current.phi   = camOT.current.phi   = Math.PI * 0.22;
+          camD.current = 35;
+          onboardingModeRef.current = false;
+          onRoomClickRef.current("__entrance__");
         } else {
           // Resumed — compute time since resume
           const ot = rawT - cinematicResumeTimeRef.current;
@@ -3136,8 +3151,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       }
       const camLerp=_sm(onboardingModeRef.current?0.9068:autoWalkToRef.current?1.2122:2.4493); // f=.015/.02/.04 @60fps
-      camO.current.theta+=(camOT.current.theta-camO.current.theta)*camLerp;
-      camO.current.phi+=(camOT.current.phi-camO.current.phi)*camLerp;
+      let _dTh=(camOT.current.theta-camO.current.theta)*camLerp;
+      let _dPh=(camOT.current.phi-camO.current.phi)*camLerp;
+      // W1 (WS8-2, WS12-5): automatic pans (cinematic/autoWalk) obey the shared
+      // MAX_YAW_DEG_S cap; user drags stay direct-manipulation (legacy when flag off).
+      if(W1&&(onboardingModeRef.current||autoWalkToRef.current)){
+        const _yawCap=MAX_YAW_DEG_S*(Math.PI/180)*dt;
+        _dTh=THREE.MathUtils.clamp(_dTh,-_yawCap,_yawCap);
+        _dPh=THREE.MathUtils.clamp(_dPh,-_yawCap,_yawCap);
+      }
+      camO.current.theta+=_dTh;
+      camO.current.phi+=_dPh;
       const r=camD.current;
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
       camera.lookAt(0,HILL_Y+8,0);

@@ -13,6 +13,8 @@ import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, GOLDEN, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD } from "@/lib/3d/canon";
 import { makeArtwork } from "@/lib/3d/makeArtwork";
 import { flag3d } from "@/lib/3d/flags3d";
+import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
+import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { mergeBufferGeometries } from "@/lib/3d/geometryOptimizer";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
@@ -112,6 +114,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // anisotropy and static-mesh merging. Guarded so a missing/late-landing
     // flags3d module degrades to the legacy (flag-off) scene.
     const W1=(()=>{try{return !!flag3d("w1_interior");}catch{return false;}})();
+    // WS10-1/2 (W1): mount the ONE shared ambient score — idempotent, never
+    // stopped on unmount so the music carries across scene transitions.
+    if(W1)mountAmbientMusic();
+    // WS12-1 (W1): shared reduced-motion singleton — forced onboarding pans
+    // below jump to the end framing when this reports true.
+    const reduceMotion=W1&&prefersReducedMotion();
     const layout=layoutForRoom(actualRoomId||roomId,layoutOverride);
     const dlPresetRaw=getLightingPreset();
     // Interior rooms have artificial lighting — enforce minimum brightness
@@ -2137,6 +2145,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
     let _cinStep=-1;
+    // WS10-4 (W1): footsteps as procedural marble taps — fired from the walk
+    // integrator on real position delta (playFootstep cadence-caps at ~340ms).
+    const w1StepPrev={x:pos.current.x,z:pos.current.z};
     // ── Hover-raycast hygiene: onMove only records the cursor position; the actual
     // raycast runs at most once per frame inside animate() (same behavior, less work).
     const _hoverPt={x:0,y:0};
@@ -2159,7 +2170,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if (onboardingModeRef.current) {
         const ot = clock.getElapsedTime();
         const d=isMobileProp?0.5:0;
-        if(ot<=1.0+d){
+        if(reduceMotion){
+          // WS12-1 (W1): reduced motion — skip the forced look/walk pans and
+          // jump straight to the end framing (step 9: at the painting, gaze
+          // level), then wait for the painting click exactly like step 9.
+          if(_cinStep!==9){_cinStep=9;onCinematicStepRef.current?.(9);}
+          posT.current.z=-1.5;lookT.current.yaw=0;lookT.current.pitch=0;
+        }else if(ot<=1.0+d){
           // Step 0: look down
           if(_cinStep!==0){_cinStep=0;onCinematicStepRef.current?.(0);}
           const p=Math.min(ot/(1.0+d),1);const ease=p*p*(3-2*p);
@@ -2218,7 +2235,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(_dir.current.length()>0){_dir.current.normalize().multiplyScalar(spd);_dir.current.applyAxisAngle(_yAxis.current,-lookA.current.yaw);posT.current.add(_dir.current);}
       posT.current.x=Math.max(-rW/2+1,Math.min(rW/2-1,posT.current.x));posT.current.z=Math.max(-rL/2+1,Math.min(rL/2-1.5,posT.current.z));
       }
-      pos.current.lerp(posT.current,kPos);camera.position.copy(pos.current);
+      pos.current.lerp(posT.current,kPos);
+      // WS10-4 (W1): marble footsteps while actually moving — per-frame position
+      // delta above ~0.5 m/s equivalent; cadence capped inside playFootstep.
+      if(W1){
+        const sdx=pos.current.x-w1StepPrev.x,sdz=pos.current.z-w1StepPrev.z;
+        if(dt>0&&sdx*sdx+sdz*sdz>(0.5*dt)*(0.5*dt))playFootstep();
+        w1StepPrev.x=pos.current.x;w1StepPrev.z=pos.current.z;
+      }
+      camera.position.copy(pos.current);
       _ld.current.set(Math.sin(lookA.current.yaw)*Math.cos(lookA.current.pitch),Math.sin(lookA.current.pitch),-Math.cos(lookA.current.yaw)*Math.cos(lookA.current.pitch));
       _lookTarget.current.copy(camera.position).add(_ld.current);camera.lookAt(_lookTarget.current);
       // ── Camera debug overlay ──
