@@ -9,7 +9,10 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { EXPOSURE, CLEAR_COLOR } from "@/lib/3d/canon";
+import { EXPOSURE, CLEAR_COLOR, INK, GOLD, EMBER } from "@/lib/3d/canon";
+import { flag3d } from "@/lib/3d/flags3d";
+import { EYE_HEIGHT, MAX_YAW_DEG_S, MAX_WALK_SPEED, easeInOutCubic } from "@/lib/3d/cameraComfort";
+import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
 import { loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, acquireEnvMap, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
@@ -202,6 +205,11 @@ function EntranceHallScene({
   const blinkRef = useRef(0); // updated every frame, React state synced periodically
   const entranceCinematicRef = useRef(!!onboardingMode); // only play cinematic in onboarding
   const [cinematicActive, setCinematicActive] = useState(!!onboardingMode);
+  // ── MUSEO VIVO Wave-1 hall flag (WS4 steps 2-5, WS8, WS12-2/3) — read once at
+  // mount per flags3d read-at-mount semantics; all visible Wave-1 changes gate on it.
+  const [w1] = useState<boolean>(() => { try { return flag3d("w1_hall"); } catch { return false; } });
+  // Cream crossfade overlay (reduced-motion cinematic; NEVER black — WS12-2)
+  const [creamFade, setCreamFade] = useState(0);
 
   // First-person camera refs (matching InteriorScene pattern)
   const lookA = useRef({ yaw: 0, pitch: 0 });
@@ -245,6 +253,11 @@ function EntranceHallScene({
 
     const Q = getQuality();
     let alive = true;
+    // Wave-1 hall flag captured for this mount + inline reduced-motion check
+    // (matchMedia inline for now — shared singleton lands with WS12-1).
+    const W1 = w1;
+    const reduceMotion = typeof window !== "undefined" && !!window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
     // Persistent hall owns its renderer (mirrors ExteriorScene); transient
     // corridor/interior keep borrowing the shared pool untouched.
@@ -363,34 +376,44 @@ function EntranceHallScene({
     // Hemisphere: warm sky / cool dark ground for contrast
     // Warm sky + terracotta ground bounce (WS1-6): the near-black #1A0F05
     // ground and 0.15 intensity were a main cause of the "eerie" hall.
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, dlPreset.groundBounceColor, 0.4 * dlPreset.ambientIntensity / 0.5));
-    // Main oculus directional light — filmic: dramatic but not blown out
-    const sunLight = new THREE.DirectionalLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity);
-    sunLight.position.set(0, TOTAL_H + 10, 0);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
-    sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 60;
-    sunLight.shadow.camera.left = -12;
-    sunLight.shadow.camera.right = 12;
-    sunLight.shadow.camera.top = 12;
-    sunLight.shadow.camera.bottom = -12;
-    sunLight.shadow.bias = -0.001;
-    scene.add(sunLight);
-    // Warm fill light (subtle, for depth)
-    const fillLight = new THREE.DirectionalLight(dlPreset.fillColor, 0.2 * dlPreset.fillIntensity / 0.35);
-    fillLight.position.set(-10, 8, 5);
-    scene.add(fillLight);
-    // Main oculus spotlight — filmic beam
-    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, dlPreset.groundBounceColor, (W1 ? 0.55 : 0.4) * dlPreset.ambientIntensity / 0.5));
+    if (!W1) {
+      // (pre-Wave-1 rig) Main oculus directional light — deleted under w1_hall:
+      // the oculus key spot below is THE one shadow caster (WS4-3 light budget).
+      const sunLight = new THREE.DirectionalLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity);
+      sunLight.position.set(0, TOTAL_H + 10, 0);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
+      sunLight.shadow.camera.near = 1;
+      sunLight.shadow.camera.far = 60;
+      sunLight.shadow.camera.left = -12;
+      sunLight.shadow.camera.right = 12;
+      sunLight.shadow.camera.top = 12;
+      sunLight.shadow.camera.bottom = -12;
+      sunLight.shadow.bias = -0.001;
+      scene.add(sunLight);
+      // Warm fill light (subtle, for depth)
+      const fillLight = new THREE.DirectionalLight(dlPreset.fillColor, 0.2 * dlPreset.fillIntensity / 0.35);
+      fillLight.position.set(-10, 8, 5);
+      scene.add(fillLight);
+    }
+    // Oculus key spot — under w1_hall this is THE one shadow in the hall:
+    // static 1024 map, normalBias 0.03, radius 6 (budget law; autoUpdate=false above).
+    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, (W1 ? 2.8 : 2.4) * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
     oculusSpot.position.set(0, TOTAL_H - 1, 0);
     oculusSpot.target.position.set(0, 0, 0);
     oculusSpot.castShadow = true;
-    oculusSpot.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
+    if (W1) {
+      oculusSpot.shadow.mapSize.set(1024, 1024);
+      oculusSpot.shadow.normalBias = 0.03;
+      oculusSpot.shadow.radius = 6;
+    } else {
+      oculusSpot.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
+    }
     scene.add(oculusSpot);
     scene.add(oculusSpot.target);
-    // Secondary warm fill from oculus
-    const oculusFill = new THREE.PointLight(dlPreset.fillColor, 0.7 * dlPreset.sunIntensity, 40);
+    // Secondary warm fill from oculus (warm point 1 of max 2 under w1_hall)
+    const oculusFill = new THREE.PointLight(dlPreset.fillColor, (W1 ? 0.9 : 0.7) * dlPreset.sunIntensity, 40);
     oculusFill.position.set(0, TOTAL_H - 2, 0);
     scene.add(oculusFill);
 
@@ -581,11 +604,15 @@ function EntranceHallScene({
     oculusRing.position.y = TOTAL_H - 0.3;
     scene.add(oculusRing);
 
-    // ── VOLUMETRIC LIGHT CONE from oculus ──
-    const beamGeo = new THREE.ConeGeometry(6, 22, 16, 1, true);
-    const beamMesh = new THREE.Mesh(beamGeo, MS.lightBeam);
-    beamMesh.position.y = TOTAL_H - 11;
-    scene.add(beamMesh);
+    // ── VOLUMETRIC LIGHT CONE from oculus — deleted under w1_hall (WS4-5/WS10-3:
+    // ONE oculus beam max; the createLightBeam system below is THE beam) ──
+    let beamMesh: THREE.Mesh | null = null;
+    if (!W1) {
+      const beamGeo = new THREE.ConeGeometry(6, 22, 16, 1, true);
+      beamMesh = new THREE.Mesh(beamGeo, MS.lightBeam);
+      beamMesh.position.y = TOTAL_H - 11;
+      scene.add(beamMesh);
+    }
 
     // ── COLUMNS (skip columns that would block doors or exit portal) ──
     const colR = 0.4;
@@ -728,6 +755,51 @@ function EntranceHallScene({
       keyholeDarkMat: new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0 }),
     };
 
+    // ── WAVE-1 SHARED DOOR RESOURCES (WS4-3/4): the deleted doorFill/doorFaceSpot
+    // rigs are compensated with ONE shared additive glow texture (sprite above each
+    // door + warm pool decal at each threshold — zero dynamic-light cost), ink door
+    // casings, an ember hover outline, and a gold walkthrough ring decal (replaces
+    // the 7 intensity-0 hlDoorLights). All disposed by the scene traversal below.
+    let w1GlowSpriteMat: THREE.SpriteMaterial | null = null;
+    let w1PoolMat: THREE.MeshBasicMaterial | null = null;
+    let w1PoolGeo: THREE.PlaneGeometry | null = null;
+    let w1InkCasingMat: THREE.MeshStandardMaterial | null = null;
+    let w1HoverPlane: THREE.Mesh | null = null;
+    let w1HlRing: THREE.Mesh | null = null;
+    if (W1) {
+      const gc = document.createElement("canvas");
+      gc.width = gc.height = 128;
+      const gctx = gc.getContext("2d")!;
+      const grad = gctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, "rgba(255,216,168,0.85)");
+      grad.addColorStop(0.5, "rgba(255,196,130,0.30)");
+      grad.addColorStop(1, "rgba(255,184,112,0)");
+      gctx.fillStyle = grad;
+      gctx.fillRect(0, 0, 128, 128);
+      const glowTex = new THREE.CanvasTexture(gc);
+      glowTex.colorSpace = THREE.SRGBColorSpace;
+      w1GlowSpriteMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+      w1PoolMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false });
+      w1PoolGeo = new THREE.PlaneGeometry(4.2, 4.2);
+      w1InkCasingMat = new THREE.MeshStandardMaterial({ color: INK, roughness: 0.6, metalness: 0.0, envMapIntensity: 0.4 });
+      // Ember hover outline plane — the ONLY interactive accent (dogma 3); moved to
+      // the hovered door each frame, replaces the emissive hover/proximity glow loop.
+      w1HoverPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(DOOR_W + 0.5, DOOR_H + 0.5),
+        new THREE.MeshBasicMaterial({ color: EMBER, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+      );
+      w1HoverPlane.visible = false;
+      scene.add(w1HoverPlane);
+      // Gold walkthrough ring decal (no PointLight)
+      w1HlRing = new THREE.Mesh(
+        new THREE.RingGeometry(1.1, 1.45, 48),
+        new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0, depthWrite: false })
+      );
+      w1HlRing.rotation.x = -Math.PI / 2;
+      w1HlRing.position.y = 0.02;
+      scene.add(w1HlRing);
+    }
+
     // Map shared wings to locked door slots
     const sharedWingsArr = sharedWings || [];
     const lockedSlots = doorDefs.map((d, idx) => ({ ...d, idx })).filter(d => d.locked);
@@ -761,8 +833,9 @@ function EntranceHallScene({
       recessMesh.lookAt(0, (DOOR_H + 0.6) / 2, 0);
       scene.add(recessMesh);
 
-      // ── ELEGANT MARBLE FRAME (not gold — classy stone) ──
-      const frameMat = MS.marbleDark;
+      // ── DOOR CASING — ink under w1_hall (WS4-4: ink casings, canon INK),
+      // marble otherwise ──
+      const frameMat = (W1 && w1InkCasingMat) ? w1InkCasingMat : MS.marbleDark;
       // Left frame pillar
       const lp = new THREE.Mesh(DS.lpGeo, frameMat);
       lp.position.set(
@@ -811,10 +884,15 @@ function EntranceHallScene({
       const doorMat = isSharedDoor
         ? new THREE.MeshStandardMaterial({
             color: sharedAccent, roughness: 0.2, metalness: 0.3,
-            emissive: sharedAccent, emissiveIntensity: 0.15,
+            // w1_hall: colored emissive door glows are dead (WS4-4) — the shared
+            // door keeps its accent ALBEDO identity, not a glow.
+            emissive: sharedAccent, emissiveIntensity: W1 ? 0.05 : 0.15,
             transparent: true, opacity: 0.85,
           })
         : new THREE.MeshStandardMaterial({
+            // Neutral warm-wood self-illumination (fixture compensation, not a
+            // wing-accent glow) — static under w1_hall; pre-W1 the animate loop
+            // overwrites it with the accent proximity glow.
             color: "#7A5030", roughness: 0.45, metalness: 0.0,
             emissive: "#5A3A20", emissiveIntensity: 0.2,
           });
@@ -970,19 +1048,37 @@ function EntranceHallScene({
       scene.add(keyholeSlot);
       }
 
-      // Warm fill light for door visibility (dimmer for locked niches)
-      const doorFillColor = isSharedDoor ? sharedAccent : dlPreset.sunColor;
-      const doorFill = new THREE.PointLight(doorFillColor, (isUnlocked ? 1.5 : 0.5) * dlPreset.sunIntensity, 10);
-      doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
-      scene.add(doorFill);
+      if (!W1) {
+        // (pre-Wave-1) Warm fill light for door visibility (dimmer for locked niches)
+        const doorFillColor = isSharedDoor ? sharedAccent : dlPreset.sunColor;
+        const doorFill = new THREE.PointLight(doorFillColor, (isUnlocked ? 1.5 : 0.5) * dlPreset.sunIntensity, 10);
+        doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
+        scene.add(doorFill);
 
-      // Spotlight on door face (dimmer for locked niches, skip on mobile)
-      if (!isMobileGPU()) {
-        const doorFaceSpot = new THREE.SpotLight(isSharedDoor ? sharedAccent : dlPreset.sunColor, (isUnlocked ? 2.0 : 0.6) * dlPreset.sunIntensity, 16, Math.PI / 4.5, 0.4, 0.7);
-        doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
-        doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
-        scene.add(doorFaceSpot);
-        scene.add(doorFaceSpot.target);
+        // (pre-Wave-1) Spotlight on door face (dimmer for locked niches, skip on mobile)
+        if (!isMobileGPU()) {
+          const doorFaceSpot = new THREE.SpotLight(isSharedDoor ? sharedAccent : dlPreset.sunColor, (isUnlocked ? 2.0 : 0.6) * dlPreset.sunIntensity, 16, Math.PI / 4.5, 0.4, 0.7);
+          doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
+          doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
+          scene.add(doorFaceSpot);
+          scene.add(doorFaceSpot.target);
+        }
+      } else {
+        // w1_hall: doorFill/doorFaceSpot deleted — baked compensation so no door
+        // reads dark (dogma: walls/floors ≥0.5 relative luminance): one additive
+        // glow sprite above the door face + one warm pool decal at the threshold.
+        if (w1GlowSpriteMat) {
+          const glow = new THREE.Sprite(w1GlowSpriteMat);
+          glow.position.set(dx + inN.x * 1.1, DOOR_H * 0.72, dz + inN.z * 1.1);
+          glow.scale.set(isUnlocked ? 5.5 : 4.0, isUnlocked ? 5.5 : 4.0, 1);
+          scene.add(glow);
+        }
+        if (w1PoolMat && w1PoolGeo) {
+          const pool = new THREE.Mesh(w1PoolGeo, w1PoolMat);
+          pool.rotation.x = -Math.PI / 2;
+          pool.position.set(dx + inN.x * 1.7, 0.012, dz + inN.z * 1.7);
+          scene.add(pool);
+        }
       }
 
       // ── ELEGANT WING NAME LABEL (upper portion of door/niche) ──
@@ -990,6 +1086,15 @@ function EntranceHallScene({
         ? (sharedWingRef?.name?.toUpperCase() || sharedWingForSlot!.wingId.toUpperCase())
         : (wing ? (() => { if (wing.nameKey) { const tr = tw(wing.nameKey); if (tr && tr !== wing.nameKey) return tr.toUpperCase(); } return wing.name.toUpperCase(); })() : "");
       if (effectiveLabel) {
+        if (W1) {
+        // w1_hall (WS4-4): Fraunces brass lintel plaque — ink on cream, always
+        // visible, one per door (replaces the Georgia/Times canvas label below).
+        const plaque: THREE.Object3D = makeFrauncesLabel(effectiveLabel, { width: 2.6, height: 0.5 });
+        const plaqueY = DOOR_H + 0.32;
+        plaque.position.set(dx + inN.x * 0.5, plaqueY, dz + inN.z * 0.5);
+        plaque.lookAt(new THREE.Vector3(0, plaqueY, 0));
+        scene.add(plaque);
+        } else {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
         labelCanvas.height = isSharedDoor ? 256 : 192;
@@ -1074,6 +1179,7 @@ function EntranceHallScene({
         );
         labelMesh.lookAt(new THREE.Vector3(0, labelY, 0));
         scene.add(labelMesh);
+        }
       }
     });
 
@@ -1332,8 +1438,9 @@ function EntranceHallScene({
               cx + perpX, branchY + 0.06, cz + perpZ));
           }
 
-          // PointLight per candelabra (skip on mobile)
-          if (!isMobileGPU()) {
+          // PointLight per candelabra (skip on mobile; deleted under w1_hall —
+          // the emissive candle tips are the fixture)
+          if (!isMobileGPU() && !W1) {
             const candleLight = new THREE.PointLight("#FFF5E0", 0.3, 4);
             candleLight.position.set(cx, baseY + 0.5, cz);
             scene.add(candleLight);
@@ -1573,7 +1680,8 @@ function EntranceHallScene({
       {
         const lampBronzeMat = MS.bronze;
         const lampGlowMat = new THREE.MeshStandardMaterial({
-          color: "#FF9040", emissive: "#FF9040", emissiveIntensity: 0.3, roughness: 0.4,
+          // w1_hall: lamp PointLights die — the emissive dish glow IS the fixture
+          color: "#FF9040", emissive: "#FF9040", emissiveIntensity: W1 ? 0.9 : 0.3, roughness: 0.4,
         });
 
         for (let ci = 0; ci < validColAngles.length && ci < 16; ci += 2) {
@@ -1604,8 +1712,8 @@ function EntranceHallScene({
           // Emissive glow on dish
           scene.add(mk(new THREE.SphereGeometry(0.04, 6, 4), lampGlowMat, inwardX, lY + 0.05, inwardZ));
 
-          // PointLight per lamp (skip on mobile)
-          if (!isMobileGPU()) {
+          // PointLight per lamp (skip on mobile; deleted under w1_hall)
+          if (!isMobileGPU() && !W1) {
             const lampLight = new THREE.PointLight("#FF9040", 0.4, 6);
             lampLight.position.set(inwardX, lY + 0.15, inwardZ);
             scene.add(lampLight);
@@ -1714,29 +1822,33 @@ function EntranceHallScene({
 
     // Storage room removed — kept virtual (accessible via menu only)
 
-    // ── DUST PARTICLES (upgraded: varied sizes, concentrated in beam, additive glow) ──
+    // ── DUST PARTICLES — duplicate 300-pt system deleted under w1_hall
+    // (WS4-5/WS10-3: ONE 150-sprite system per scene — createDustParticles below) ──
     const dustN = 300;
-    const dustGeo = new THREE.BufferGeometry();
-    const dustPos = new Float32Array(dustN * 3);
-    const dustSizes = new Float32Array(dustN);
-    for (let i = 0; i < dustN; i++) {
-      const a = Math.random() * Math.PI * 2;
-      // 70% of particles concentrated in the light beam area
-      const inBeam = Math.random() < 0.7;
-      const r2 = inBeam ? Math.random() * OCULUS_R * 1.5 : Math.random() * RADIUS * 0.8;
-      dustPos[i * 3] = Math.cos(a) * r2;
-      dustPos[i * 3 + 1] = 1 + Math.random() * (TOTAL_H - 2);
-      dustPos[i * 3 + 2] = Math.sin(a) * r2;
-      dustSizes[i] = 0.02 + Math.random() * 0.13; // varied sizes 0.02 to 0.15
+    let dustGeo: THREE.BufferGeometry | null = null;
+    if (!W1) {
+      dustGeo = new THREE.BufferGeometry();
+      const dustPos = new Float32Array(dustN * 3);
+      const dustSizes = new Float32Array(dustN);
+      for (let i = 0; i < dustN; i++) {
+        const a = Math.random() * Math.PI * 2;
+        // 70% of particles concentrated in the light beam area
+        const inBeam = Math.random() < 0.7;
+        const r2 = inBeam ? Math.random() * OCULUS_R * 1.5 : Math.random() * RADIUS * 0.8;
+        dustPos[i * 3] = Math.cos(a) * r2;
+        dustPos[i * 3 + 1] = 1 + Math.random() * (TOTAL_H - 2);
+        dustPos[i * 3 + 2] = Math.sin(a) * r2;
+        dustSizes[i] = 0.02 + Math.random() * 0.13; // varied sizes 0.02 to 0.15
+      }
+      dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+      dustGeo.setAttribute("size", new THREE.BufferAttribute(dustSizes, 1));
+      const dustMat = new THREE.PointsMaterial({
+        color: dlPreset.sunColor, size: 0.1, transparent: true, opacity: 0.5 * dlPreset.sunIntensity,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+        sizeAttenuation: true,
+      });
+      scene.add(new THREE.Points(dustGeo, dustMat));
     }
-    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-    dustGeo.setAttribute("size", new THREE.BufferAttribute(dustSizes, 1));
-    const dustMat = new THREE.PointsMaterial({
-      color: dlPreset.sunColor, size: 0.1, transparent: true, opacity: 0.5 * dlPreset.sunIntensity,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-      sizeAttenuation: true,
-    });
-    scene.add(new THREE.Points(dustGeo, dustMat));
 
     // ── GRAND EXIT PORTAL (back to exterior) — larger and more imposing than wing doors ──
     const exitAngle = Math.PI / 2;
@@ -1838,16 +1950,23 @@ function EntranceHallScene({
     portalHit.lookAt(0, EXIT_H / 2, 0);
     scene.add(portalHit);
 
-    // Strong outdoor light streaming in
+    // Outdoor light streaming in — under w1_hall this is warm point 2 of 2
+    // (portalSpot deleted; the emissive portalGlow/sky planes carry the read).
     let portalLight: THREE.PointLight | null = null;
-    if(!isMobileGPU()){portalLight = new THREE.PointLight(dlPreset.sunColor, 1.2 * dlPreset.sunIntensity, 12);
-    portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
-    scene.add(portalLight);}
-    if(!isMobileGPU()){const portalSpot = new THREE.SpotLight(dlPreset.sunColor, 1.5 * dlPreset.sunIntensity, 18, Math.PI / 5, 0.5, 0.7);
-    portalSpot.position.set(exitX + exitInN.x * 3, EXIT_H * 0.5, exitZ + exitInN.z * 3);
-    portalSpot.target.position.set(exitX - exitInN.x * 4, 0, exitZ - exitInN.z * 4);
-    scene.add(portalSpot);
-    scene.add(portalSpot.target);}
+    if (W1) {
+      portalLight = new THREE.PointLight(dlPreset.sunColor, 1.0 * dlPreset.sunIntensity, 12);
+      portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
+      scene.add(portalLight);
+    } else {
+      if(!isMobileGPU()){portalLight = new THREE.PointLight(dlPreset.sunColor, 1.2 * dlPreset.sunIntensity, 12);
+      portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
+      scene.add(portalLight);}
+      if(!isMobileGPU()){const portalSpot = new THREE.SpotLight(dlPreset.sunColor, 1.5 * dlPreset.sunIntensity, 18, Math.PI / 5, 0.5, 0.7);
+      portalSpot.position.set(exitX + exitInN.x * 3, EXIT_H * 0.5, exitZ + exitInN.z * 3);
+      portalSpot.target.position.set(exitX - exitInN.x * 4, 0, exitZ - exitInN.z * 4);
+      scene.add(portalSpot);
+      scene.add(portalSpot.target);}
+    }
 
     // ── ENVIRONMENT MAP (critical for PBR reflections) ──
     // The fromScene PMREM bake is deterministic given the hall construction inputs
@@ -1887,9 +2006,10 @@ function EntranceHallScene({
     // From angle A on the circle, direction to center is (-cos(A), 0, -sin(A)),
     // so the correct yaw to face inward is A - PI/2.
     const startAngle = exitAngle - Math.PI / 2;
-    // Always start with entrance cinematic position
-    pos.current.set(0, 2.0, 7.3);
-    posT.current.set(0, 2.0, 7.3);
+    // Always start with entrance cinematic position (eye height = the single
+    // shared EYE_HEIGHT constant from cameraComfort — dogma 5)
+    pos.current.set(0, EYE_HEIGHT, 7.3);
+    posT.current.set(0, EYE_HEIGHT, 7.3);
     lookT.current = { yaw: 0.0270, pitch: 0.0360 };
     lookA.current = { yaw: 0.0270, pitch: 0.0360 };
 
@@ -1903,16 +2023,19 @@ function EntranceHallScene({
       });
     }
 
-    // ── WALKTHROUGH HIGHLIGHT RINGS ──
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door meshes ──
+    // Under w1_hall the 7 intensity-0 PointLights are deleted (WS4-3); the gold
+    // ring decal (w1HlRing) marks the walkthrough target instead.
     const hlDoorLights: Map<string,THREE.PointLight>=new Map();
-    const seenWings=new Set<string>();
-    doorMeshes.forEach(d=>{
-      if(seenWings.has(d.wingId))return;seenWings.add(d.wingId);
-      const dx2=Math.cos(d.angle)*(RADIUS-2);const dz2=Math.sin(d.angle)*(RADIUS-2);
-      const light=new THREE.PointLight("#D4AF37",0,15);light.position.set(dx2,3,dz2);scene.add(light);
-      hlDoorLights.set(d.wingId,light);
-    });
+    if (!W1) {
+      const seenWings=new Set<string>();
+      doorMeshes.forEach(d=>{
+        if(seenWings.has(d.wingId))return;seenWings.add(d.wingId);
+        const dx2=Math.cos(d.angle)*(RADIUS-2);const dz2=Math.sin(d.angle)*(RADIUS-2);
+        const light=new THREE.PointLight("#D4AF37",0,15);light.position.set(dx2,3,dz2);scene.add(light);
+        hlDoorLights.set(d.wingId,light);
+      });
+    }
     const goldColor=new THREE.Color("#D4AF37");
 
     // ── DUST PARTICLES (oculus light beam) ──
@@ -1929,6 +2052,20 @@ function EntranceHallScene({
     optimizeMaterials(scene);
 
     const clock = new THREE.Clock();
+    // Tap-is-travel click target (WS8-4, w1_hall): any-distance door/portal tap
+    // auto-walks (comfort-capped) then enters — the 15m dead-click gate is gone.
+    const awClick: { id: string | null; x: number; z: number } = { id: null, x: 0, z: 0 };
+    const startAutoWalk = (id: string) => {
+      const ang = id === "__exterior__" ? exitAngle : doorMeshes.find(d => d.wingId === id)?.angle;
+      if (ang === undefined) { onDoorClickRef.current(id); return; }
+      awClick.id = id;
+      awClick.x = Math.cos(ang) * (RADIUS - 4);
+      awClick.z = Math.sin(ang) * (RADIUS - 4);
+    };
+    let _lastCream = 0; // cream veil state throttle (reduced-motion crossfade)
+    // Touch-move vector — hoisted above animate() so the w1_hall movement block
+    // can read it directly per frame (replaces the 16ms synthetic-WASD poll).
+    const touchMoveDir = { x: 0, z: 0 };
     let hoveredWing: string | null = null;
     const _isMobile = window.innerWidth < 768 || window.innerHeight < 500;
     let _frameCount = 0;
@@ -1958,7 +2095,7 @@ function EntranceHallScene({
         // cut, exactly as a fresh mount would), resume ambient audio, and re-fire
         // onReady so MemoryPalace dismisses its loading overlay on real readiness.
         _wasHidden = false;
-        pos.current.set(0, 2.0, 7.3); posT.current.set(0, 2.0, 7.3);
+        pos.current.set(0, EYE_HEIGHT, 7.3); posT.current.set(0, EYE_HEIGHT, 7.3);
         lookT.current = { yaw: 0.0270, pitch: 0.0360 };
         lookA.current = { yaw: 0.0270, pitch: 0.0360 };
         ambientResume();
@@ -1968,8 +2105,23 @@ function EntranceHallScene({
       const t = clock.getElapsedTime();
       _frameCount++;
 
-      // Walkthrough highlight — pulse golden emissive on target door
+      // Walkthrough highlight
       const hlTarget=highlightDoorRef.current;
+      if (W1) {
+        // w1_hall (WS4-3/4): gold ring decal marks the target — no PointLight,
+        // no colored emissive pulse on the door material.
+        if (w1HlRing) {
+          const rm = w1HlRing.material as THREE.MeshBasicMaterial;
+          const hlDoor = hlTarget ? doorMeshes.find(d => d.wingId === hlTarget) : undefined;
+          if (hlDoor) {
+            w1HlRing.position.set(Math.cos(hlDoor.angle) * (RADIUS - 3), 0.02, Math.sin(hlDoor.angle) * (RADIUS - 3));
+            rm.opacity = 0.45 + Math.sin(t * 2.5) * 0.2;
+          } else if (rm.opacity > 0.005) {
+            rm.opacity += (0 - rm.opacity) * 0.08;
+          }
+        }
+      } else {
+      // (pre-Wave-1) pulse golden emissive on target door
       doorMeshes.forEach(d=>{
         if(hlTarget===d.wingId){
           const pulse=0.6+Math.sin(t*2.5)*.25;
@@ -1981,9 +2133,67 @@ function EntranceHallScene({
         if(hlTarget===id)light.intensity=3+Math.sin(t*2)*1.5;
         else light.intensity+=(0-light.intensity)*.05;
       });
+      }
 
-      // ── Entrance cinematic (onboarding only): look around → walk to roots door ──
-      if (entranceCinematicRef.current && !autoWalkToRef.current) {
+      // ── Entrance cinematic (onboarding only) ──
+      if (entranceCinematicRef.current && !autoWalkToRef.current && !awClick.id) {
+        if (W1) {
+          // w1_hall (WS4-2, WS12-2/3): ONE ~6s graceful push-in toward the hall
+          // centre/impluvium — ZERO blink blackouts, ends with doors in view.
+          // Contract preserved (plan §7 risk 5): onboardingMode still fires
+          // onDoorClick("roots") at the end, exactly like skipCinematic().
+          const ot = clock.getElapsedTime();
+          const CIN_DUR = 6.0;
+          const START_Z = 7.3, END_Z = 3.2;
+          if (reduceMotion) {
+            // Reduced motion: crossfade sequence of the same two composed shots
+            // (spawn framing → final push-in framing) via a CREAM veil — no
+            // camera motion, never black.
+            const FADE = 0.4, HOLD_A = 2.6;
+            let cream = 0;
+            if (ot < HOLD_A) {
+              cream = 0; // shot A: hold the spawn framing
+            } else if (ot < HOLD_A + FADE) {
+              cream = (ot - HOLD_A) / FADE; // veil in
+            } else {
+              // shot B: the final composed framing, set under full veil
+              pos.current.set(0, EYE_HEIGHT, END_Z);
+              posT.current.set(0, EYE_HEIGHT, END_Z);
+              lookT.current.yaw = 0; lookT.current.pitch = 0.02;
+              lookA.current.yaw = 0; lookA.current.pitch = 0.02;
+              cream = Math.max(0, 1 - (ot - HOLD_A - FADE) / FADE); // veil out
+            }
+            if (Math.abs(cream - _lastCream) > 0.02 || (cream === 0 && _lastCream !== 0)) {
+              _lastCream = cream; setCreamFade(cream);
+            }
+            if (ot >= CIN_DUR) {
+              if (_lastCream !== 0) { _lastCream = 0; setCreamFade(0); }
+              entranceCinematicRef.current = false;
+              setCinematicActive(false);
+              if (onboardingModeRef.current) {
+                onboardingModeRef.current = false;
+                onDoorClickRef.current("roots");
+              }
+            }
+          } else {
+            // Push-in: ~4m over 6s eased (peak ~1.0 m/s, yaw held ≈0 — well
+            // inside the ≤25°/s / ≤2.2 m/s comfort caps).
+            const p = easeInOutCubic(Math.min(ot / CIN_DUR, 1));
+            posT.current.x = 0;
+            posT.current.z = START_Z + (END_Z - START_Z) * p;
+            lookT.current.yaw = 0;
+            lookT.current.pitch = 0.036 + (0.02 - 0.036) * p;
+            if (ot >= CIN_DUR) {
+              entranceCinematicRef.current = false;
+              setCinematicActive(false);
+              if (onboardingModeRef.current) {
+                onboardingModeRef.current = false;
+                onDoorClickRef.current("roots");
+              }
+            }
+          }
+        } else {
+        // (pre-Wave-1): look around with blinks → 12s walk to roots door
         const ot = clock.getElapsedTime();
         // Single blink helper — slow, deliberate (x2 original speed: close 0.4s, hold 0.2s, open 0.4s)
         const singleBlink = (localT: number): number => {
@@ -2071,6 +2281,7 @@ function EntranceHallScene({
             onDoorClickRef.current("roots");
           }
         }
+        } // end pre-Wave-1 cinematic branch
       }
 
       // ── Smooth look interpolation ──
@@ -2142,8 +2353,8 @@ function EntranceHallScene({
           posT.current.z = col.z + Math.sin(pushAng) * col.r;
         }
       }
-      // Keep at eye level
-      posT.current.y = 2.0;
+      // Keep at eye level (shared EYE_HEIGHT constant)
+      posT.current.y = EYE_HEIGHT;
 
       // Smooth position interpolation
       pos.current.lerp(posT.current, kPos);
@@ -2224,24 +2435,27 @@ function EntranceHallScene({
       // Animate particles — throttle to every 2nd frame on mobile for performance
       const _doParticles = !_isMobile || (_frameCount & 1) === 0;
       if (_doParticles) {
-        // Dust float (upward drift, stronger in beam area)
-        const dp = dustGeo.attributes.position.array as Float32Array;
-        for (let i = 0; i < dustN; i++) {
-          const px = dp[i * 3], pz = dp[i * 3 + 2];
-          const distFromCenter = Math.sqrt(px * px + pz * pz);
-          const inBeamArea = distFromCenter < OCULUS_R * 2;
-          const upDrift = inBeamArea ? 0.0025 : 0.0006;
-          dp[i * 3] += Math.sin(t * 0.15 + i * 0.7) * 0.002;
-          dp[i * 3 + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.001 + upDrift;
-          dp[i * 3 + 2] += Math.cos(t * 0.15 + i * 0.3) * 0.002;
-          if (dp[i * 3 + 1] > TOTAL_H - 1) dp[i * 3 + 1] = 1;
+        // Dust float (upward drift, stronger in beam area) — legacy duplicate
+        // system, only mounted when w1_hall is off
+        if (dustGeo) {
+          const dp = dustGeo.attributes.position.array as Float32Array;
+          for (let i = 0; i < dustN; i++) {
+            const px = dp[i * 3], pz = dp[i * 3 + 2];
+            const distFromCenter = Math.sqrt(px * px + pz * pz);
+            const inBeamArea = distFromCenter < OCULUS_R * 2;
+            const upDrift = inBeamArea ? 0.0025 : 0.0006;
+            dp[i * 3] += Math.sin(t * 0.15 + i * 0.7) * 0.002;
+            dp[i * 3 + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.001 + upDrift;
+            dp[i * 3 + 2] += Math.cos(t * 0.15 + i * 0.3) * 0.002;
+            if (dp[i * 3 + 1] > TOTAL_H - 1) dp[i * 3 + 1] = 1;
+          }
+          dustGeo.attributes.position.needsUpdate = true;
         }
-        dustGeo.attributes.position.needsUpdate = true;
         dust.update(t, dt);
       }
 
-      // Light beam breathing
-      (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
+      // Light beam breathing (legacy duplicate cone, only mounted when w1_hall is off)
+      if (beamMesh) (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
       oculusBeam.update(t);
 
       // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
@@ -2302,7 +2516,7 @@ function EntranceHallScene({
     let touchTap = true;
     let touchLookId: number | null = null;
     let touchMoveId: number | null = null;
-    const touchMoveDir = { x: 0, z: 0 };
+    // (touchMoveDir is hoisted above animate() — see the w1_hall movement block)
     const onTS = (e: TouchEvent) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
         const tch = e.changedTouches[i];
