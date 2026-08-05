@@ -3290,7 +3290,11 @@
     "today": "Vandaag",
     "thisWeek": "Deze week",
     "earlier": "Eerder",
-    "andOthers": "en {count} andere"
+    "andOthers": "en {count} andere",
+    "visitorPeekTitle": "Bezoeker",
+    "visitorPeekVisited": "Heeft je paleis bezocht",
+    "visitorNoPalace": "Deze bezoeker heeft zelf nog geen paleis gepubliceerd.",
+    "visitorVisitPalace": "Bezoek hun paleis"
   },
   "achievementsPanel": {
     "title": "Prestaties",

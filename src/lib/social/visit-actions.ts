@@ -361,6 +361,52 @@ export async function recordVisit(input: {
   }
 }
 
+/** Lightweight visitor info for the palace_visit notification "peek" modal */
+export interface VisitorPeek {
+  displayName: string;
+  username: string | null;
+  isPublic: boolean;
+  hasPublishedPalace: boolean;
+}
+
+/**
+ * Who visited my palace? Auth-required, owner-agnostic read used by the
+ * notification click "visitor peek" (replaces navigating to /visit/{id}/walk,
+ * which 404'd when the visitor had nothing published). Reads the cross-user-safe
+ * public_profiles view (display_name/username/is_public) and checks for any
+ * published wing. Exposes only data that is already public-directory-grade.
+ */
+export async function getVisitorPeek(userId: string): Promise<VisitorPeek | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const admin = createAdminClient();
+  const [{ data: profile }, { count: publishedCount }] = await Promise.all([
+    supabase
+      .from("public_profiles")
+      .select("display_name, username, is_public")
+      .eq("id", userId)
+      .single(),
+    admin
+      .from("wings")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .not("published_at", "is", null),
+  ]);
+
+  if (!profile) return null;
+
+  return {
+    displayName: profile.display_name || "Someone",
+    username: profile.username || null,
+    isPublic: !!profile.is_public,
+    hasPublishedPalace: (publishedCount || 0) > 0,
+  };
+}
+
 /** Get full 3D-ready data for a published wing (rooms + memories) */
 export interface VisitorWingData {
   wing: {

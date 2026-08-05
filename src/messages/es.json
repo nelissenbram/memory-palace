@@ -3288,7 +3288,11 @@
     "today": "Hoy",
     "thisWeek": "Esta semana",
     "earlier": "Antes",
-    "andOthers": "y {count} más"
+    "andOthers": "y {count} más",
+    "visitorPeekTitle": "Visitante",
+    "visitorPeekVisited": "Visitó tu palacio",
+    "visitorNoPalace": "Aún no ha publicado un palacio propio.",
+    "visitorVisitPalace": "Visitar su palacio"
   },
   "achievementsPanel": {
     "title": "Logros",

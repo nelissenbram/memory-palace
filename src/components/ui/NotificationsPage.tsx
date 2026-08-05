@@ -9,6 +9,11 @@ import { useNotificationStore } from "@/lib/stores/notificationStore";
 import type { NotificationRow } from "@/lib/auth/notification-actions";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import {
+  VisitorPeekModal,
+  toVisitorPeekTarget,
+  type VisitorPeekTarget,
+} from "@/components/ui/NotificationBell";
+import {
   groupNotifications,
   filterByTab,
   getDateSection,
@@ -195,6 +200,9 @@ export default function NotificationsPage() {
 
   const sectionOrder: DateSection[] = ["today", "yesterday", "thisWeek", "earlier"];
 
+  // Visitor peek modal target (palace_visit notifications open a peek, not a nav)
+  const [peekTarget, setPeekTarget] = useState<VisitorPeekTarget | null>(null);
+
   const handleNotificationClick = (group: GroupedNotification) => {
     const n = group.primary;
     if (!n.read) markRead(n.id);
@@ -202,6 +210,10 @@ export default function NotificationsPage() {
     for (const item of group.items) {
       if (!item.read) markRead(item.id);
     }
+    // palace_visit → show WHO/WHEN peek instead of navigating (the old
+    // /visit/{id}/walk target 404'd for visitors with nothing published).
+    const peek = toVisitorPeekTarget(n, timeAgo(n.created_at, t));
+    if (peek) { setPeekTarget(peek); return; }
     const url = getNotificationAction(n);
     if (url) router.push(url);
   };
@@ -584,6 +596,11 @@ export default function NotificationsPage() {
           </div>
         </>,
         document.body,
+      )}
+
+      {/* Visitor peek — who visited + conditional palace link */}
+      {peekTarget && (
+        <VisitorPeekModal target={peekTarget} onClose={() => setPeekTarget(null)} />
       )}
     </div>
   );

@@ -14,6 +14,8 @@ import {
   buildGroupMessage,
   type NotificationTab,
 } from "@/lib/utils/notification-grouping";
+import { getVisitorPeek, type VisitorPeek } from "@/lib/social/visit-actions";
+import type { NotificationRow } from "@/lib/auth/notification-actions";
 import {
   INK,
   MUTED,
@@ -40,6 +42,218 @@ function timeAgo(dateStr: string, t: (key: string, params?: Record<string, strin
   const days = Math.floor(hrs / 24);
   if (days === 1) return t("yesterday");
   return t("daysAgo", { count: String(days) });
+}
+
+/** Target for the visitor-peek modal (a palace_visit notification's visitor). */
+export interface VisitorPeekTarget {
+  userId: string;
+  name: string;
+  timeText: string;
+}
+
+/** Build a peek target from a palace_visit notification, or null if it can't peek. */
+export function toVisitorPeekTarget(
+  n: NotificationRow,
+  timeText: string,
+): VisitorPeekTarget | null {
+  if (n.type !== "palace_visit" || !n.from_user_id) return null;
+  return { userId: n.from_user_id, name: n.from_user_name || "", timeText };
+}
+
+/**
+ * Small canon modal shown when tapping a "X visited your palace" notification.
+ * Shows WHO + WHEN, and — only if the visitor is public with a published
+ * palace — an ember CTA to visit them. Shared by NotificationBell (dropdown)
+ * and NotificationsPage (full Activity page).
+ */
+export function VisitorPeekModal({
+  target,
+  onClose,
+}: {
+  target: VisitorPeekTarget;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation("notificationBell");
+  const router = useRouter();
+  const [peek, setPeek] = useState<VisitorPeek | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getVisitorPeek(target.userId)
+      .then((p) => { if (!cancelled) setPeek(p); })
+      .catch(() => { /* peek is best-effort */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [target.userId]);
+
+  // Escape closes
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const displayName = target.name || peek?.displayName || "";
+  const canVisit = !!peek && peek.hasPublishedPalace && peek.isPublic;
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <>
+      <style>{`
+        @keyframes mpPeekSpin { to { transform: rotate(360deg); } }
+        .mp-peek-spinner { animation: mpPeekSpin 0.8s linear infinite; }
+        @media (prefers-reduced-motion: no-preference) {
+          .mp-peek-card { animation: mpPeekIn 0.25s ease both; }
+        }
+        @keyframes mpPeekIn { from { opacity: 0; transform: translate(-50%, calc(-50% + 0.375rem)); } to { opacity: 1; transform: translate(-50%, -50%); } }
+        @media (prefers-reduced-motion: reduce) {
+          .mp-peek-card, .mp-peek-spinner { animation: none !important; }
+        }
+        @media (hover: hover) {
+          .mp-peek-cta:hover { box-shadow: ${SHADOW[2]}; }
+          .mp-peek-close:hover { background: ${EMBER_WASH}; }
+        }
+        .mp-peek-cta:focus-visible, .mp-peek-close:focus-visible {
+          outline: 0.1875rem solid ${GOLD};
+          outline-offset: 0.1875rem;
+        }
+      `}</style>
+      {/* Warm-ink scrim — click outside closes */}
+      <div
+        role="presentation"
+        onClick={onClose}
+        style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(64,59,54,0.4)" }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("visitorPeekTitle")}
+        className="mp-peek-card"
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 1001,
+          width: "calc(100vw - 2rem)",
+          maxWidth: "20rem",
+          background: CREAM,
+          border: `0.0625rem solid ${HAIRLINE}`,
+          borderRadius: "0.875rem",
+          boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
+          padding: "1.25rem 1.25rem 1rem",
+          fontFamily: T.font.body,
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.625rem",
+        }}
+      >
+        {/* Overline title + close */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{
+            fontFamily: T.font.body,
+            fontSize: "0.6875rem",
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: EMBER_GLYPH,
+          }}>
+            {t("visitorPeekTitle")}
+          </span>
+          <button
+            onClick={onClose}
+            aria-label={t("title")}
+            className="mp-peek-close"
+            style={{
+              minWidth: "2.75rem",
+              minHeight: "2.75rem",
+              margin: "-0.75rem -0.75rem 0 0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              borderRadius: "0.375rem",
+              color: MUTED,
+              fontSize: "1rem",
+              cursor: "pointer",
+            }}
+          >
+            {"✕"}
+          </button>
+        </div>
+
+        {/* Who */}
+        <div style={{
+          fontFamily: T.font.display,
+          fontSize: "1.25rem",
+          fontWeight: 600,
+          lineHeight: 1.2,
+          color: INK,
+          overflowWrap: "anywhere",
+        }}>
+          {displayName}
+        </div>
+
+        {/* When */}
+        <div style={{ fontSize: "0.8125rem", color: MUTED }}>
+          {t("visitorPeekVisited")}{" · "}{target.timeText}
+        </div>
+
+        {/* Conditional palace link */}
+        {loading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: "0.5rem 0" }}>
+            <div
+              className="mp-peek-spinner"
+              aria-hidden="true"
+              style={{
+                width: "1.25rem",
+                height: "1.25rem",
+                border: "0.125rem solid rgba(184,92,56,0.25)",
+                borderTopColor: EMBER,
+                borderRadius: "50%",
+              }}
+            />
+          </div>
+        ) : canVisit ? (
+          <button
+            onClick={() => {
+              onClose();
+              router.push(peek?.username ? `/u/${peek.username}` : `/visit/${target.userId}`);
+            }}
+            className="mp-peek-cta"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              minHeight: "2.75rem",
+              marginTop: "0.25rem",
+              background: EMBER,
+              color: CREAM,
+              border: "none",
+              borderRadius: "2rem",
+              fontFamily: T.font.body,
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: SHADOW[1],
+            }}
+          >
+            {t("visitorVisitPalace")}
+          </button>
+        ) : (
+          <div style={{ fontSize: "0.8125rem", color: MUTED, fontStyle: "italic" }}>
+            {t("visitorNoPalace")}
+          </div>
+        )}
+      </div>
+    </>,
+    document.body,
+  );
 }
 
 const ICON_MAP: Record<string, string> = {
@@ -139,6 +353,9 @@ export default function NotificationBell() {
     return () => document.removeEventListener("keydown", handler);
   }, [open, setOpen]);
 
+  // Visitor peek modal target (palace_visit notifications open a peek, not a nav)
+  const [peekTarget, setPeekTarget] = useState<VisitorPeekTarget | null>(null);
+
   const handleItemClick = useCallback((group: typeof grouped[number]) => {
     const n = group.primary;
     if (!n.read) markRead(n.id);
@@ -146,9 +363,13 @@ export default function NotificationBell() {
       if (!item.read) markRead(item.id);
     }
     setOpen(false);
+    // palace_visit → show WHO/WHEN peek instead of navigating (the old
+    // /visit/{id}/walk target 404'd for visitors with nothing published).
+    const peek = toVisitorPeekTarget(n, timeAgo(n.created_at, t));
+    if (peek) { setPeekTarget(peek); return; }
     const url = getNotificationAction(n);
     if (url) router.push(url);
-  }, [markRead, setOpen, router]);
+  }, [markRead, setOpen, router, t]);
 
   /* ── Shared dropdown content (header + list + footer) ── */
   const dropdownContent = (
@@ -394,7 +615,10 @@ export default function NotificationBell() {
           <button
             onClick={() => {
               setOpen(false);
-              if (window.location.pathname.startsWith("/palace")) {
+              const path = window.location.pathname;
+              // /atrium is a rewrite of /palace — both are MemoryPalace, already
+              // mounted, so a router.push would be a no-op there. Open directly.
+              if (path.startsWith("/palace") || path.startsWith("/atrium")) {
                 window.dispatchEvent(new CustomEvent("mp:open-notifications-page"));
               } else {
                 // Open Activity over the Atrium, NOT the 3D Palace — routing to
@@ -619,6 +843,11 @@ export default function NotificationBell() {
         >
           {dropdownContent}
         </div>
+      )}
+
+      {/* Visitor peek — who visited + conditional palace link */}
+      {peekTarget && (
+        <VisitorPeekModal target={peekTarget} onClose={() => setPeekTarget(null)} />
       )}
     </div>
   );

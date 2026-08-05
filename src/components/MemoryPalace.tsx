@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { navigateInApp, isNative, isIOS } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { createPortal } from "react-dom";
@@ -308,6 +309,20 @@ export default function MemoryPalace(){
     window.addEventListener("mp:open-notifications-page", handler);
     return () => window.removeEventListener("mp:open-notifications-page", handler);
   }, []);
+  // React to ?notifications=1 on EVERY URL change, not just first mount — the
+  // useState initializer above only runs once, so a router.push to
+  // /atrium?notifications=1 while this component was already mounted (e.g.
+  // client-nav within /atrium|/palace) was silently ignored. useSearchParams
+  // re-renders on client navigations, so this effect catches them all.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams?.get("notifications") === "1") {
+      setShowNotificationsPage(true);
+      setShowSettings(false);
+      // Strip the param (preserving history state) so back/refresh doesn't retrigger.
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    }
+  }, [searchParams]);
   const [showSettings, setShowSettings] = useState(false);
   const walkthroughActive = useWalkthroughStore((s) => s.isActive);
   const showDiscoveryMenu = useWalkthroughStore((s) => s.showDiscoveryMenu);
@@ -1008,12 +1023,8 @@ export default function MemoryPalace(){
       window.history.replaceState({}, "", window.location.pathname);
       setNavMode(modeParam);
     }
-    // Handle ?notifications=1 param (also triggers on navigation from other pages)
-    if (params.get("notifications") === "1") {
-      setShowNotificationsPage(true);
-      setShowSettings(false);
-      window.history.replaceState({}, "", window.location.pathname);
-    }
+    // ?notifications=1 is handled by the searchParams effect above (which also
+    // catches client navigations while this component is already mounted).
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

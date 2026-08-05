@@ -152,11 +152,15 @@ export function buildGroupMessage(
   );
 }
 
-/** Get the click-through URL for a notification */
+/** Get the click-through URL for a notification.
+ * Returns null when the notification has no navigation — notably palace_visit,
+ * which is handled by the click handlers as an in-place "visitor peek" modal
+ * (navigating to /visit/{id}/walk 404'd when the visitor had nothing published).
+ */
 export function getNotificationAction(n: NotificationRow): string | null {
   switch (n.type) {
     case "palace_visit":
-      return n.from_user_id ? `/visit/${n.from_user_id}/walk` : null;
+      return null;
     case "comment_reply":
     case "reaction":
       if (n.room_id) return `/palace?room=${n.room_id}`;
