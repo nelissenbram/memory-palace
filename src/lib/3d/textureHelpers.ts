@@ -2,6 +2,43 @@ import * as THREE from "three";
 import type { Mem } from "@/lib/constants/defaults";
 import { getQuality } from "./mobilePerf";
 
+// ── WS7-1 QUARTER-CROP FIX ──
+// The painting canvases are sized from Q.paintingResWidth/Height (512×384 desktop,
+// 256×192 mobile, 128×96 potato) but every draw call below composes in a fixed
+// 512×384 logical space. Before this fix the logical space was NOT mapped onto the
+// actual canvas, so on mobile/potato only the top-left quarter (or sixteenth) of
+// every photo was visible and titles drew off-canvas. One ctx.scale() maps the
+// full 512×384 composition onto whatever the tier's real canvas size is.
+const LOGICAL_W = 512, LOGICAL_H = 384;
+function scaleToTier(ctx: CanvasRenderingContext2D, c: HTMLCanvasElement) {
+  ctx.scale(c.width / LOGICAL_W, c.height / LOGICAL_H);
+}
+
+/**
+ * Dev-only regression check (WS7-1/WS6-1): warn when a texture's aspect and the
+ * plane it is mapped onto diverge by more than 2% — the visible symptom of the
+ * quarter-crop/stretch class of bugs. No-op in production builds.
+ */
+export function devCheckArtworkAspect(
+  tex: THREE.Texture,
+  planeW: number,
+  planeH: number,
+  label = "artwork"
+): void {
+  if (process.env.NODE_ENV === "production") return;
+  const img: any = tex.image;
+  const tw = img?.width, th = img?.height;
+  if (!tw || !th || !planeW || !planeH) return;
+  const texAspect = tw / th;
+  const planeAspect = planeW / planeH;
+  const divergence = Math.abs(texAspect / planeAspect - 1);
+  if (divergence > 0.02) {
+    console.warn(
+      `[3d-aspect] ${label}: texture aspect ${texAspect.toFixed(3)} (${tw}x${th}) vs plane aspect ${planeAspect.toFixed(3)} (${planeW}x${planeH}) diverge ${(divergence * 100).toFixed(1)}% (>2%)`
+    );
+  }
+}
+
 function isMemLocked(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }): boolean {
   if (!('revealDate' in m) || !m.revealDate) return false;
   const todayStr = new Date().toISOString().split("T")[0];
@@ -11,8 +48,10 @@ function isMemLocked(m: Mem | { hue?: number; s?: number; l?: number; title: str
 function paintLockedTex(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }) {
   const Q = getQuality();
   const c = document.createElement("canvas"); c.width = Q.paintingResWidth; c.height = Q.paintingResHeight;
-  const ctx = c.getContext("2d")!, w = 512, h = 384;
+  const ctx = c.getContext("2d")!, w = LOGICAL_W, h = LOGICAL_H;
+  scaleToTier(ctx, c); // full composition on every tier (quarter-crop fix)
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  tex.userData.aspect = c.width / c.height; // canvas aspect (4:3) until a photo loads
   const baseHue = m.hue || 200;
   // Dark mysterious background
   const g = ctx.createLinearGradient(0, 0, w, h);
@@ -31,7 +70,7 @@ function paintLockedTex(m: Mem | { hue?: number; s?: number; l?: number; title: 
   ctx.fillStyle = "rgba(255,220,150,0.5)";
   ctx.fillText("\u{1F512}", w / 2, h / 2 - 20);
   // Obscured title
-  ctx.font = "500 18px Georgia,serif";
+  ctx.font = "500 18px Fraunces,Georgia,serif";
   ctx.fillStyle = "rgba(255,255,255,0.25)";
   ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 6;
   const obscured = m.title.replace(/[a-zA-Z0-9]/g, "\u{2022}");
@@ -55,8 +94,10 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
 
   const Q = getQuality();
   const c = document.createElement("canvas"); c.width = Q.paintingResWidth; c.height = Q.paintingResHeight;
-  const ctx = c.getContext("2d")!, w = 512, h = 384;
+  const ctx = c.getContext("2d")!, w = LOGICAL_W, h = LOGICAL_H;
+  scaleToTier(ctx, c); // full composition on every tier (quarter-crop fix)
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  tex.userData.aspect = c.width / c.height; // canvas aspect (4:3) until a photo loads
   const baseHue = m.hue || 200, baseS = m.s || 30, baseL = m.l || 65;
   const g = ctx.createLinearGradient(0, 0, w, h);
   g.addColorStop(0, `hsl(${baseHue},${baseS}%,${baseL}%)`);
@@ -71,7 +112,7 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
   v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.12)");
   ctx.fillStyle = v; ctx.fillRect(0, 0, w, h);
   ctx.textAlign = "center"; ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4;
-  ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.font = "500 20px Georgia,serif";
+  ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.font = "500 20px Fraunces,Georgia,serif";
   ctx.fillText(m.title, w / 2, h / 2 + 4);
   tex.needsUpdate = true;
 
@@ -79,6 +120,11 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
     const drawImg = (img: HTMLImageElement) => {
       ctx.clearRect(0, 0, w, h);
       const iw = img.width, ih = img.height, scale = Math.max(w / iw, h / ih);
+      // Record the photo's natural aspect so consumers (makeArtwork, salon-hang)
+      // can size planes aspect-correct instead of stretching the 4:3 canvas.
+      tex.userData.aspect = iw / ih;
+      tex.userData.naturalWidth = iw;
+      tex.userData.naturalHeight = ih;
       const sw = iw * scale, sh = ih * scale;
       ctx.drawImage(img, (w - sw) / 2, (h - sh) / 2, sw, sh);
       const v2 = ctx.createRadialGradient(w / 2, h / 2, h * .35, w / 2, h / 2, h * .8);

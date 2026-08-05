@@ -59,6 +59,13 @@ export function createTuscanTerrain(
     cropMap?: THREE.Texture;
     cropNormal?: THREE.Texture;
     cropRoughness?: THREE.Texture;
+    cropAO?: THREE.Texture;
+  },
+  opts?: {
+    /** Anisotropic filtering samples for the terrain maps (MUSEO VIVO WS2-1: 4 mobile / 8 desktop). */
+    anisotropy?: number;
+    /** Golden-hour vertex-tint variant (MUSEO VIVO WS3-4: warm field tints, no cold greens). */
+    warm?: boolean;
   }
 ) {
   const segments = getQuality().terrainSegments;
@@ -68,11 +75,14 @@ export function createTuscanTerrain(
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
 
-  // Golden wheat color for peaks, greener for valleys, atmospheric fade at edges
-  const colPeak = new THREE.Color("#C8A850"); // golden wheat
-  const colValley = new THREE.Color("#7A8A48"); // green valley
-  const colEdge = new THREE.Color("#D8C890"); // warm haze at edges
-  const colPlateau = new THREE.Color("#A8985A"); // warm golden for hilltop
+  // Golden wheat color for peaks, greener for valleys, atmospheric fade at edges.
+  // Warm variant (MUSEO VIVO): valleys shift from cool green to sun-dried olive so
+  // every terrain hue stays in the golden-hour earth family.
+  const warm = !!opts?.warm;
+  const colPeak = new THREE.Color(warm ? "#CCAA54" : "#C8A850"); // golden wheat
+  const colValley = new THREE.Color(warm ? "#8A8A4C" : "#7A8A48"); // valley (olive when warm)
+  const colEdge = new THREE.Color(warm ? "#DCC896" : "#D8C890"); // warm haze at edges
+  const colPlateau = new THREE.Color(warm ? "#AC9A5E" : "#A8985A"); // warm golden for hilltop
   const tmpColor = new THREE.Color();
 
   for (let i = 0; i < pos.count; i++) {
@@ -120,6 +130,15 @@ export function createTuscanTerrain(
   geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
 
+  // WS2-1: anisotropic filtering on the terrain maps — the terrain is the single
+  // most grazing-angle surface in the palace; zero anisotropy reads as smear.
+  const aniso = opts?.anisotropy ?? 0;
+  if (aniso > 1) {
+    for (const tex of [textures.cropMap, textures.cropNormal, textures.cropRoughness, textures.cropAO]) {
+      if (tex) { tex.anisotropy = aniso; tex.needsUpdate = true; }
+    }
+  }
+
   const mat = new THREE.MeshStandardMaterial({
     vertexColors: true,
     roughness: 1,
@@ -129,6 +148,8 @@ export function createTuscanTerrain(
     normalMap: textures.cropNormal || null,
     normalScale: new THREE.Vector2(0.5, 0.5),
     roughnessMap: textures.cropRoughness || null,
+    aoMap: textures.cropAO || null,
+    aoMapIntensity: textures.cropAO ? 0.35 : 1,
   });
 
   const mesh = new THREE.Mesh(geo, mat);

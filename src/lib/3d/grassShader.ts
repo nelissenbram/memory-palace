@@ -22,6 +22,60 @@ interface WheatFieldOptions {
   headColor: string;
   yOffset?: number;
   getHeightAt?: (x: number, z: number) => number;
+  /**
+   * MUSEO VIVO WS2-4: pass ONE material (from createSharedWheatMaterial) so every
+   * wheat field shares a single shader program + uniform set instead of compiling
+   * ~45 per-field ShaderMaterials. When provided, `stalkHeight` must equal the
+   * height the shared material was created with, `color`/`headColor` are ignored
+   * (per-instance variation lives in the shared shader), and the caller owns the
+   * material's `time` uniform + disposal.
+   */
+  material?: THREE.ShaderMaterial;
+}
+
+/**
+ * One shared wheat-stalk material for ALL fields (MUSEO VIVO WS2-4).
+ * Per-field color uniforms are replaced by a per-instance world-position hash
+ * (same trick as the grass blades) blending two sun-dried golden stalk tones,
+ * so visual variety survives the material collapse. Warm canon-family tones only.
+ */
+export function createSharedWheatMaterial(stalkHeight: number): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      time: { value: 0 },
+      stalkColorA: { value: new THREE.Color("#C9A94E") },
+      stalkColorB: { value: new THREE.Color("#B08E3C") },
+      headColor: { value: new THREE.Color("#E2C468") },
+    },
+    vertexShader: `
+      uniform float time;
+      varying float vHeight;
+      varying float vRandom;
+      void main() {
+        vHeight = (position.y + ${(stalkHeight / 2).toFixed(2)}) / ${stalkHeight.toFixed(2)};
+        vec4 worldPos = instanceMatrix * vec4(position, 1.0);
+        vRandom = fract(sin(worldPos.x * 12.9898 + worldPos.z * 78.233) * 43758.5453);
+        // Gentle wheat sway
+        float wind = sin(time * 1.2 + worldPos.x * 0.2 + worldPos.z * 0.15) * vHeight * vHeight * 0.4;
+        worldPos.x += wind;
+        worldPos.z += wind * 0.2;
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 stalkColorA;
+      uniform vec3 stalkColorB;
+      uniform vec3 headColor;
+      varying float vHeight;
+      varying float vRandom;
+      void main() {
+        vec3 stalk = mix(stalkColorA, stalkColorB, vRandom);
+        vec3 color = mix(stalk, headColor, smoothstep(0.7, 1.0, vHeight));
+        gl_FragColor = vec4(color, 1.0);
+      }
+    `,
+    side: THREE.DoubleSide,
+  });
 }
 
 /**
@@ -120,7 +174,8 @@ export function createWheatField(scene: THREE.Scene, opts: WheatFieldOptions) {
 
   // Stalk geometry — thin cylinder
   const stalkGeo = new THREE.CylinderGeometry(0.015, 0.02, stalkHeight, 3);
-  const stalkMat = new THREE.ShaderMaterial({
+  const sharedMat = opts.material;
+  const stalkMat = sharedMat ?? new THREE.ShaderMaterial({
     uniforms: {
       time: { value: 0 },
       stalkColor: { value: new THREE.Color(color) },
@@ -174,12 +229,13 @@ export function createWheatField(scene: THREE.Scene, opts: WheatFieldOptions) {
 
   return {
     update: () => {
-      stalkMat.uniforms.time.value = clock.getElapsedTime();
+      // Shared material: the caller drives the single time uniform once per frame.
+      if (!sharedMat) stalkMat.uniforms.time.value = clock.getElapsedTime();
     },
     dispose: () => {
       scene.remove(mesh);
       stalkGeo.dispose();
-      stalkMat.dispose();
+      if (!sharedMat) stalkMat.dispose();
     },
   };
 }
