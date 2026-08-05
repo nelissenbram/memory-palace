@@ -8,14 +8,18 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { EXPOSURE } from "@/lib/3d/canon";
+import { EXPOSURE, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD, EMBER } from "@/lib/3d/canon";
+import { flag3d } from "@/lib/3d/flags3d";
+import { EYE_HEIGHT, MAX_WALK_SPEED, MAX_YAW_DEG_S, easeInOutCubic } from "@/lib/3d/cameraComfort";
+import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
+import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, registerCachedTexture, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
 import { measure, autoFit } from "@/lib/3d/fitRenderer";
-import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
+import { optimizeMaterials, mergeBufferGeometries } from "@/lib/3d/geometryOptimizer";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ── Corridor painting texture cache — module-level, URL-keyed (mirrors
@@ -114,6 +118,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;const { w, h } = measure(el);
+    // ── MUSEO VIVO Wave-1 corridor flag (WS5, WS8, WS10, WS12) — read once at
+    // mount per flags3d semantics; the flag-off path is the untouched legacy
+    // corridor. Guarded so a missing module degrades to legacy.
+    const W1=(()=>{try{return !!flag3d("w1_corridor");}catch{return false;}})();
+    const reduceMotion=W1&&(()=>{try{return prefersReducedMotion();}catch{return false;}})();
+    // WS10-1: the one ambient score — idempotent mount, carries across scenes
+    if(W1){try{mountAmbientMusic();}catch{}}
     // Kick painting texture fetch+decode off FIRST so the network/decode work
     // overlaps scene construction and uploads land behind the transition overlay.
     if(corridorPaintingsRef.current)for(const pd of Object.values(corridorPaintingsRef.current)){if(pd?.url)loadPaintingTexture(pd.url).catch(()=>{});}
@@ -147,7 +158,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const disposeFit=autoFit(el,{camera,renderer:ren,composer});
 
     // Warm sky + terracotta ground bounce (WS1-6)
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,.55*dlPreset.ambientIntensity/0.5));
+    // W1 (WS5-3/4): hemisphere carries the baked compensation for the killed
+    // PointLight rows — budget is ≤4 lights (hemi + sun + fill + one portal point)
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?.7:.55)*dlPreset.ambientIntensity/0.5));
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.5*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=60;sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
     scene.add(sun);
@@ -182,53 +195,69 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const rugFabricTex=loadFabricTextures([2,2]);
     const velvetTex=loadVelvetTextures([2,2]);
     const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallStoneTex,floorTileTex,rugFabricTex,velvetTex];
+    // W1 (WS2-1 slice): anisotropic filtering on floor/wall sets — 8 desktop /
+    // 4 mobile, clamped to hardware caps. Kills the grazing-angle floor blur.
+    if(W1){
+      const maxAniso=ren.capabilities?.getMaxAnisotropy?.()??1;
+      const aniso=Math.min(isMobileGPU()?4:8,maxAniso);
+      for(const set of [marbleTex,woodTex,wallStoneTex,floorTileTex]){
+        for(const tx of [set.map,set.normalMap]){
+          if(tx&&tx.anisotropy!==aniso){tx.anisotropy=aniso;tx.needsUpdate=true;}
+        }
+      }
+    }
 
     // ── Archetype materials — module-cached so compiled shader programs survive
     // scene transitions (parameter-keyed: wall/floor/rug/accent colors differ per
     // wing, glow tints follow the daylight preset). Cleanup releases instead of
     // disposing; per-door clones stay per-mount and are disposed normally.
-    const msKey=`corridor|${wingId}|${wing.wall}|${wing.floor}|${C.accent}|${C.rugC}|${C.rugB}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    // W1 (WS5-2 canon regrade): walls → PLASTER family, floors → warm travertine
+    // (grout canon + plaster-ramp inlays), trim → ink, gold → canon GOLD; metal
+    // fixtures → ink. msKey includes the flag so acquireMaterialSet never serves
+    // a stale palette. Wall/floor tokens all sit ≥0.5 relative luminance (dogma).
+    const msKey=`corridor|w1:${W1?1:0}|${wingId}|${wing.wall}|${wing.floor}|${C.accent}|${C.rugC}|${C.rugB}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
     const MS=acquireMaterialSet(msKey,()=>({
-      wall:new THREE.MeshStandardMaterial({color:wing.wall,roughness:.85,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3),envMapIntensity:.5}),
-      wallD:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.8,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
-      floor:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.7,metalness:.02,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.7,envMapIntensity:.15}),
-      floorL:new THREE.MeshStandardMaterial({color:"#D0C0A0",roughness:.5,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
-      floorD:new THREE.MeshStandardMaterial({color:"#8A7858",roughness:.5,metalness:.08,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
-      ceil:new THREE.MeshStandardMaterial({color:"#F0EAE0",roughness:.92}),
-      trim:new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.5,metalness:.12,envMapIntensity:.6}),
-      gold:mkPhys(THREE,{color:"#C8A858",roughness:.18,metalness:.85,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
-      wain:new THREE.MeshStandardMaterial({color:"#C8BCA8",roughness:.6,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
-      wainP:new THREE.MeshStandardMaterial({color:"#BEB4A0",roughness:.65,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
+      wall:new THREE.MeshStandardMaterial({color:W1?PLASTER:wing.wall,roughness:.85,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3),envMapIntensity:.5}),
+      wallD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.shade:wing.floor,roughness:.8,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
+      floor:new THREE.MeshStandardMaterial({color:W1?TRAVERTINE_GROUT:wing.floor,roughness:.7,metalness:.02,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.7,envMapIntensity:.15}),
+      floorL:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#D0C0A0",roughness:.5,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
+      floorD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#8A7858",roughness:.5,metalness:.08,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
+      ceil:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#F0EAE0",roughness:.92}),
+      trim:new THREE.MeshStandardMaterial({color:W1?INK:"#D0C4B0",roughness:.5,metalness:.12,envMapIntensity:.6}),
+      gold:mkPhys(THREE,{color:W1?GOLD:"#C8A858",roughness:.18,metalness:.85,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
+      wain:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.mid:"#C8BCA8",roughness:.6,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
+      wainP:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.shade:"#BEB4A0",roughness:.65,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
       dkW:new THREE.MeshStandardMaterial({color:"#4A3828",roughness:.5,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.4,.4)}),
       door:new THREE.MeshStandardMaterial({color:"#5A3E28",roughness:.4,metalness:.06,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.6}),
       doorD:new THREE.MeshStandardMaterial({color:"#3A2818",roughness:.45,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
-      handle:mkPhys(THREE,{color:"#C8A858",roughness:.15,metalness:.85,clearcoat:.4,clearcoatRoughness:.08,envMapIntensity:1.5}),
+      handle:mkPhys(THREE,{color:W1?GOLD:"#C8A858",roughness:.15,metalness:.85,clearcoat:.4,clearcoatRoughness:.08,envMapIntensity:1.5}),
       bronze:mkPhys(THREE,{color:"#8A7050",roughness:.25,metalness:.7,clearcoat:.2,clearcoatRoughness:.3,envMapIntensity:1.0}),
       marble:mkPhys(THREE,{color:"#E8E2DA",roughness:.12,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:marbleTex.roughnessMap,aoMap:marbleTex.aoMap,aoMapIntensity:.8,clearcoat:.3,clearcoatRoughness:.15,reflectivity:.6,envMapIntensity:.8}),
       shared:new THREE.MeshStandardMaterial({color:"#4A6741",roughness:.4,emissive:"#4A6741",emissiveIntensity:.3}),
       rug:new THREE.MeshStandardMaterial({color:C.rugC,roughness:.9,map:rugFabricTex.map,normalMap:rugFabricTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:rugFabricTex.roughnessMap,aoMap:rugFabricTex.aoMap,aoMapIntensity:.5}),
       rugB:new THREE.MeshStandardMaterial({color:C.rugB,roughness:.8}),
-      sconce:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.25,metalness:.55,envMapIntensity:.8}),
-      glassG:new THREE.MeshStandardMaterial({color:"#FFF8E0",emissive:"#FFE8B0",emissiveIntensity:.6,transparent:true,opacity:.6}),
+      sconce:new THREE.MeshStandardMaterial({color:W1?INK:"#C8A858",roughness:.25,metalness:.55,envMapIntensity:.8}),
+      // W1: sconce/chandelier PointLights die (WS5-3) — the emissive glass IS the fixture
+      glassG:new THREE.MeshStandardMaterial({color:"#FFF8E0",emissive:"#FFE8B0",emissiveIntensity:W1?.9:.6,transparent:true,opacity:.6}),
       curtain:mkPhys(THREE,{color:C.accent,roughness:.92,side:THREE.DoubleSide,sheen:.3,sheenRoughness:.8,sheenColor:new THREE.Color(C.accent).offsetHSL(0,0,.2),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
       velvet:mkPhys(THREE,{color:C.accent,roughness:.92,sheen:.4,sheenRoughness:.7,sheenColor:new THREE.Color(C.accent).offsetHSL(0,-.1,.15),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:velvetTex.roughnessMap}),
       statue:new THREE.MeshStandardMaterial({color:"#E0D8CC",roughness:.22,metalness:.08,envMapIntensity:.7}),
-      fG:mkPhys(THREE,{color:"#B89850",roughness:.2,metalness:.85,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
-      windowFrame:new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.4,metalness:.15,envMapIntensity:.6}),
+      fG:mkPhys(THREE,{color:W1?GOLD:"#B89850",roughness:.2,metalness:.85,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
+      windowFrame:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.mid:"#D0C4B0",roughness:.4,metalness:.15,envMapIntensity:.6}),
       windowGlass:mkPhys(THREE,{color:"#C8E0F0",transparent:true,opacity:.1,side:THREE.DoubleSide,transmission:.6,ior:1.5,roughness:.02,thickness:.3}),
       windowGlow:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity,depthWrite:false,blending:THREE.AdditiveBlending}),
       bench:new THREE.MeshStandardMaterial({color:"#6A5240",roughness:.6,metalness:.04,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       benchCushion:mkPhys(THREE,{color:C.accent,roughness:.92,sheen:.3,sheenRoughness:.8,sheenColor:new THREE.Color(C.accent).offsetHSL(0,0,.15),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
       portalArch:mkPhys(THREE,{color:"#D4AF37",roughness:.15,metalness:.9,emissive:"#D4AF37",emissiveIntensity:.2,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.5}),
       portalPillar:mkPhys(THREE,{color:"#E8E0D4",roughness:.12,metalness:.04,clearcoat:.2,clearcoatRoughness:.2,envMapIntensity:.7}),
-      portalKeystone:mkPhys(THREE,{color:"#C8A858",roughness:.15,metalness:.85,emissive:"#C8A858",emissiveIntensity:.25,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
-      portalGoldTrim:mkPhys(THREE,{color:"#FFD700",roughness:.1,metalness:.95,emissive:"#FFD700",emissiveIntensity:.1,clearcoat:.4,clearcoatRoughness:.05,envMapIntensity:1.8}),
-      frescoBase:new THREE.MeshStandardMaterial({color:wing.wall,roughness:.9}),
+      portalKeystone:mkPhys(THREE,{color:W1?GOLD:"#C8A858",roughness:.15,metalness:.85,emissive:W1?GOLD:"#C8A858",emissiveIntensity:.25,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
+      portalGoldTrim:mkPhys(THREE,{color:W1?GOLD:"#FFD700",roughness:.1,metalness:.95,emissive:W1?GOLD:"#FFD700",emissiveIntensity:.1,clearcoat:.4,clearcoatRoughness:.05,envMapIntensity:1.8}),
+      frescoBase:new THREE.MeshStandardMaterial({color:W1?PLASTER:wing.wall,roughness:.9}),
       terracotta:new THREE.MeshStandardMaterial({color:"#C4704A",roughness:.8,metalness:.02}),
       foliage:new THREE.MeshStandardMaterial({color:"#3A6828",roughness:.85}),
       foliageDark:new THREE.MeshStandardMaterial({color:"#2A5020",roughness:.85}),
       pedestal:new THREE.MeshStandardMaterial({color:"#D8D0C4",roughness:.3,metalness:.05,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.6}),
-      floorGoldStrip:mkPhys(THREE,{color:"#C8A858",roughness:.2,metalness:.8,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.2}),
+      floorGoldStrip:mkPhys(THREE,{color:W1?GOLD:"#C8A858",roughness:.2,metalness:.8,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.2}),
       portalFog:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.08*dlPreset.sunIntensity,depthWrite:false,blending:THREE.AdditiveBlending}),
     }));
 
@@ -252,8 +281,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       scene.add(mk(new THREE.BoxGeometry(cW-1,.004,cL-2),MS.floorD,0,.01,0));
       scene.add(mk(new THREE.BoxGeometry(cW-2,.005,cL-3),MS.floorL,0,.015,0));
     }else{
-      // Pre-generate a shared palette of 10 mosaic tile materials instead of one per tile
-      const mosaicPalette=Array.from({length:10},(_,i)=>new THREE.MeshStandardMaterial({color:`hsl(${30+i*2},${25+i*1.5}%,${55+i*1.5}%)`,roughness:.6}));
+      // Pre-generate a shared palette of mosaic tile materials instead of one per tile
+      // (W1 WS5-2: the hsl() drift dies — travertine value ramp only)
+      const mosaicPalette=W1
+        ?[PLASTER_RAMP.light,PLASTER_RAMP.base,PLASTER_RAMP.mid,PLASTER_RAMP.shade,PLASTER_RAMP.dark].map(c2=>new THREE.MeshStandardMaterial({color:c2,roughness:.6}))
+        :Array.from({length:10},(_,i)=>new THREE.MeshStandardMaterial({color:`hsl(${30+i*2},${25+i*1.5}%,${55+i*1.5}%)`,roughness:.6}));
       for(let fz=-cL/2+1;fz<cL/2;fz+=2)for(let fx=-cW/2+1;fx<cW/2;fx+=2){
         scene.add(mk(new THREE.BoxGeometry(.8,.003,.8),mosaicPalette[Math.floor(Math.random()*mosaicPalette.length)],fx,.01,fz));}
     }
@@ -443,8 +475,61 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
     }
 
+    // ── W1 SHARED BAKED-LIGHT RESOURCES (WS5-3/4): the window/chandelier/sconce/
+    // lamp/door PointLight rows below die under w1_corridor; ONE shared additive
+    // gradient texture bakes their rhythm back in as warm floor pools + spaced
+    // wall bands (zero dynamic-light cost) plus a gold walkthrough ring decal
+    // replacing the per-door intensity-0 PointLights. Disposed by the cleanup sweep.
+    let w1PoolMat: THREE.MeshBasicMaterial|null=null;
+    let w1BandMat: THREE.MeshBasicMaterial|null=null;
+    let w1PoolGeo: THREE.PlaneGeometry|null=null;
+    let w1BandGeo: THREE.PlaneGeometry|null=null;
+    let w1HlRing: THREE.Mesh|null=null;
+    if(W1){
+      const gc=document.createElement("canvas");
+      gc.width=gc.height=128;
+      const gctx=gc.getContext("2d")!;
+      const grad=gctx.createRadialGradient(64,64,0,64,64,64);
+      grad.addColorStop(0,"rgba(255,216,168,0.85)");
+      grad.addColorStop(.5,"rgba(255,196,130,0.30)");
+      grad.addColorStop(1,"rgba(255,184,112,0)");
+      gctx.fillStyle=grad;gctx.fillRect(0,0,128,128);
+      const glowTex=new THREE.CanvasTexture(gc);
+      glowTex.colorSpace=THREE.SRGBColorSpace;
+      w1PoolMat=new THREE.MeshBasicMaterial({map:glowTex,transparent:true,opacity:.32,blending:THREE.AdditiveBlending,depthWrite:false});
+      w1BandMat=new THREE.MeshBasicMaterial({map:glowTex,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+      w1PoolGeo=new THREE.PlaneGeometry(3.4,3.4);
+      w1BandGeo=new THREE.PlaneGeometry(1.5,3.4);
+      // Rhythmic warm wall bands — one per door bay on both walls, clear of windows
+      for(const s2 of[-1,1])for(let i2=0;i2<rooms.length;i2++){
+        const bz2=cL/2-5.5-i2*C.sp-C.sp*.5;
+        if(bz2>cL/2-3||bz2<-cL/2+3)continue;
+        if(s2===-1&&validWinPositions.some(wz2=>Math.abs(bz2-wz2)<winHalfGap+.6))continue;
+        const band=new THREE.Mesh(w1BandGeo,w1BandMat);
+        band.rotation.y=-s2*Math.PI/2;
+        band.position.set(s2*(cW/2-.04),2.5,bz2);
+        scene.add(band);
+      }
+      // Gold walkthrough ring decal (replaces the per-door PointLights below)
+      w1HlRing=new THREE.Mesh(
+        new THREE.RingGeometry(.55,.75,40),
+        new THREE.MeshBasicMaterial({color:GOLD,transparent:true,opacity:0,depthWrite:false})
+      );
+      w1HlRing.rotation.x=-Math.PI/2;
+      w1HlRing.position.y=.03;
+      scene.add(w1HlRing);
+    }
+    const w1AddPool=(px: number,pz2: number,sc=1)=>{
+      if(!w1PoolMat||!w1PoolGeo)return;
+      const pool=new THREE.Mesh(w1PoolGeo,w1PoolMat);
+      pool.rotation.x=-Math.PI/2;
+      pool.position.set(px,.032,pz2); // above rug top (.026) — additive, depthWrite off
+      pool.scale.setScalar(sc);
+      scene.add(pool);
+    };
+
     // ═══ TALL ARCHED WINDOWS — render into wall openings ═══
-    const winStoneMat=new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.4,metalness:.05});
+    const winStoneMat=new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.mid:"#D0C4B0",roughness:.4,metalness:.05});
     const winSide=-1;
     const winX=winSide*(cW/2);
     let winLightCount=0;
@@ -484,9 +569,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
       // Vertical bar (center, dividing into 2 columns)
       scene.add(mk(new THREE.BoxGeometry(mullThick,winRectH-0.1,mullThick),mullMat,winX+(winSide*0.02),winBottom+winRectH/2,wz));
-      // ── Bright natural light flooding in ──
+      // ── Bright natural light flooding in — W1 KILL (WS5-3): the 2-per-window
+      // PointLight row dies; a baked sun-pool decal on the floor compensates ──
+      if(W1)w1AddPool(winX-(winSide*1.0),wz,1.2);
       if(winLightCount<10){
-        if(!isMobileGPU()){const sunBeam=new THREE.PointLight(dlPreset.sunColor,0.8*dlPreset.sunIntensity,12);
+        if(!isMobileGPU()&&!W1){const sunBeam=new THREE.PointLight(dlPreset.sunColor,0.8*dlPreset.sunIntensity,12);
         sunBeam.position.set(winX-(winSide*1.0),winCenterY,wz);
         scene.add(sunBeam);
         // Secondary fill light lower (floor bounce)
@@ -598,7 +685,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       for(let b=0;b<6;b++){const ba=(b/6)*Math.PI*2;
         scene.add(mk(new THREE.CylinderGeometry(.01,.008,.06,4),MS.sconce,Math.cos(ba)*.42,cH-.42,cz+Math.sin(ba)*.42));
         const bl=new THREE.Mesh(new THREE.SphereGeometry(.028,5,5),MS.glassG);bl.position.set(Math.cos(ba)*.42,cH-.36,cz+Math.sin(ba)*.42);scene.add(bl);}
-      if(!isMobileGPU())scene.add(new THREE.PointLight("#FFE8C0",.7,9).translateY(cH-.5).translateZ(cz));
+      // W1 KILL (WS5-3): chandelier PointLights die — the emissive bulbs read as lit
+      if(!isMobileGPU()&&!W1)scene.add(new THREE.PointLight("#FFE8C0",.7,9).translateY(cH-.5).translateZ(cz));
     }
 
     // ── SCONCES between door zones — at z_i + sp*0.75, skip near paintings/windows ──
@@ -611,7 +699,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       scene.add(mk(new THREE.BoxGeometry(.06,.14,.06),MS.sconce,s*(cW/2-.03),3.5,sz));
       scene.add(mk(new THREE.CylinderGeometry(.04,.03,.06,6),MS.sconce,s*(cW/2-.06),3.62,sz));
       const bl=new THREE.Mesh(new THREE.SphereGeometry(.025,6,6),MS.glassG);bl.position.set(s*(cW/2-.06),3.72,sz);scene.add(bl);
-      if(!isMobileGPU())scene.add(new THREE.PointLight("#FFE0B0",.18,3.5).translateX(s*(cW/2-.15)).translateY(3.6).translateZ(sz));
+      if(!isMobileGPU()&&!W1)scene.add(new THREE.PointLight("#FFE0B0",.18,3.5).translateX(s*(cW/2-.15)).translateY(3.6).translateZ(sz)); // W1 KILL (WS5-3)
     }
 
     // ── CENTRAL STATUE on marble pedestal ──
@@ -624,7 +712,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     else if(wingId==="nest"){scene.add(mk(new THREE.CylinderGeometry(.25,.3,.45,8),MS.statue,0,pH2+.22,sZ));scene.add(mk(new THREE.ConeGeometry(.3,.35,8),MS.velvet,0,pH2+.62,sZ));scene.add(mk(new THREE.SphereGeometry(.05,6,6),MS.gold,0,pH2+.84,sZ));}
     else if(wingId==="craft"){scene.add(mk(new THREE.BoxGeometry(.14,1,.14),MS.statue,0,pH2+.5,sZ));scene.add(mk(new THREE.ConeGeometry(.1,.22,4),MS.gold,0,pH2+1.12,sZ));}
     else{scene.add(mk(new THREE.CylinderGeometry(.1,.15,.65,8),MS.statue,0,pH2+.33,sZ));scene.add(mk(new THREE.SphereGeometry(.14,8,8),MS.statue,0,pH2+.8,sZ));}
-    if(!isMobileGPU()){const sL=new THREE.SpotLight("#FFF5E0",.7,5,Math.PI/6,.5,1);sL.position.set(0,cH-.1,sZ);sL.target.position.set(0,pH2,sZ);scene.add(sL);scene.add(sL.target);}
+    // W1 KILL (WS5-3): statue spot dies — hemi compensation + envmap carry the marble
+    if(!isMobileGPU()&&!W1){const sL=new THREE.SpotLight("#FFF5E0",.7,5,Math.PI/6,.5,1);sL.position.set(0,cH-.1,sZ);sL.target.position.set(0,pH2,sZ);scene.add(sL);scene.add(sL.target);}
+    if(W1)w1AddPool(0,sZ,.9);
 
     // ═══ INTERACTIVE PAINTING/MEDIA SLOTS — 1 painting per door ═══
     const paintingClickMeshes: {mesh: THREE.Mesh, slotKey: string}[] = [];
@@ -764,8 +854,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         scene.add(mk(new THREE.BoxGeometry(.004,.6,dW/2-.18),MS.gold,wx-(side*.05),.65+py*1.3,z+pz2*(dW/4)));
       // Handles
       for(let hz of[-.12,.12])scene.add(mk(new THREE.SphereGeometry(.03,6,6),MS.handle,wx-(side*.06),1.5,z+hz));
-      // Warm glow
-      if(!isMobileGPU())scene.add(new THREE.PointLight(`hsl(${room.coverHue},35%,60%)`,.2,3.5).translateX(wx-(side*.4)).translateY(dH/2).translateZ(z));
+      // Warm glow — W1 KILL (WS5-2/3): per-door hsl() PointLight dies; a baked
+      // warm threshold pool compensates so no door reads dark
+      if(!isMobileGPU()&&!W1)scene.add(new THREE.PointLight(`hsl(${room.coverHue},35%,60%)`,.2,3.5).translateX(wx-(side*.4)).translateY(dH/2).translateZ(z));
+      if(W1)w1AddPool(wx-side*1.1,z);
       // Name plaque — large, centered ON the door
       const plq=document.createElement("canvas");plq.width=560;plq.height=96;
       const pc=plq.getContext("2d")!;pc.fillStyle="#3E3020";pc.fillRect(0,0,560,96);pc.fillStyle="#C8A868";pc.fillRect(3,3,554,90);pc.fillStyle="#3E3020";pc.fillRect(8,8,544,80);
@@ -782,8 +874,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     if (inlayCount > 0) {
       const dW=1.7,dH=3.6; // match real door dimensions
       const nicheDepth=0.2; // recess depth
-      const nicheMat=new THREE.MeshStandardMaterial({color:"#B8AE9C",roughness:.75,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)});
-      const nicheBackMat=new THREE.MeshStandardMaterial({color:"#A09888",roughness:.85});
+      const nicheMat=new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.shade:"#B8AE9C",roughness:.75,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)});
+      const nicheBackMat=new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#A09888",roughness:.85});
       for (let ii = 0; ii < inlayCount; ii++) {
         const side = ii % 2 === 0 ? -1 : 1;
         const z = -cL / 2 + 5.5 + ii * C.sp;
@@ -807,7 +899,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         scene.add(archMesh);
         // Subtle arch fill — semicircular sealed panel
         const archFillGeo = new THREE.CircleGeometry(archRadius - 0.04, 16, 0, Math.PI);
-        const archFillMat = new THREE.MeshStandardMaterial({ color: "#C4B8A4", roughness: 0.7, transparent: true, opacity: 0.6 });
+        const archFillMat = new THREE.MeshStandardMaterial({ color: W1?PLASTER_RAMP.mid:"#C4B8A4", roughness: 0.7, transparent: true, opacity: 0.6 });
         const archFill = new THREE.Mesh(archFillGeo, archFillMat);
         archFill.position.set(wx - (side * 0.008), dH - 0.15, z);
         archFill.rotation.y = side * (-Math.PI / 2);
@@ -847,7 +939,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // ── BARREL VAULT ──
       const vaultGeo = new THREE.CylinderGeometry(cW / 2, cW / 2, cL, 16, 1, true, 0, Math.PI);
       const vaultMat = new THREE.MeshStandardMaterial({
-        color: "#F0EAE0", roughness: 0.8, side: THREE.BackSide,
+        color: W1?PLASTER_RAMP.light:"#F0EAE0", roughness: 0.8, side: THREE.BackSide,
       });
       const vault = new THREE.Mesh(vaultGeo, vaultMat);
       vault.rotation.z = Math.PI / 2;
@@ -858,7 +950,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // ── VAULT RIBS (transverse arched strips) ──
       const ribCount = 7;
       const ribSpacing = cL / (ribCount + 1);
-      const ribMat = new THREE.MeshStandardMaterial({ color: "#B8AA90", roughness: 0.5, metalness: 0.15 });
+      const ribMat = new THREE.MeshStandardMaterial({ color: W1?PLASTER_RAMP.mid:"#B8AA90", roughness: 0.5, metalness: 0.15 });
       for (let ri = 1; ri <= ribCount; ri++) {
         const ribZ = -cL / 2 + ri * ribSpacing;
         const ribGeo = new THREE.TorusGeometry(cW / 2 - 0.02, 0.04, 6, 16, Math.PI);
@@ -892,7 +984,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // ── CANDELABRA WALL SCONCES ──
       const sconceLightCount = Math.min(8, Math.floor(cL / 3));
       const sconceSpacing = cL / (sconceLightCount + 1);
-      const candleMat = new THREE.MeshStandardMaterial({ color: "#C8A858", roughness: 0.2, metalness: 0.8 });
+      const candleMat = new THREE.MeshStandardMaterial({ color: W1?INK:"#C8A858", roughness: 0.2, metalness: 0.8 });
       let rLightIdx = 0;
       for (let si = 1; si <= sconceLightCount; si++) {
         const sz = -cL / 2 + si * sconceSpacing;
@@ -915,8 +1007,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
             new THREE.MeshStandardMaterial({ color: "#F5F0E0", roughness: 0.9 }),
             sx - sSide * 0.18, 3.32, bz));
         }
-        // PointLight (limit to 8 total, skip on mobile)
-        if (!isMobileGPU() && rLightIdx < 8) {
+        // PointLight (limit to 8 total, skip on mobile; W1 KILL — WS5-3)
+        if (!isMobileGPU() && !W1 && rLightIdx < 8) {
           const sLight = new THREE.PointLight("#FFE0A0", 0.3, 4);
           sLight.position.set(sx - sSide * 0.18, 3.4, sz);
           scene.add(sLight);
@@ -929,8 +1021,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // ── DIAMOND FLOOR PATTERN (InstancedMesh) ──
       const tileSz = 0.6;
       const tileGeo = new THREE.PlaneGeometry(tileSz, tileSz);
-      const tileDarkMat = new THREE.MeshStandardMaterial({ color: "#4A4A42", roughness: 0.5, metalness: 0.08 });
-      const tileLightMat = new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.5, metalness: 0.05 });
+      const tileDarkMat = new THREE.MeshStandardMaterial({ color: W1?INK:"#4A4A42", roughness: 0.5, metalness: 0.08 });
+      const tileLightMat = new THREE.MeshStandardMaterial({ color: W1?TRAVERTINE_GROUT:"#E8E0D4", roughness: 0.5, metalness: 0.05 });
       const tilesX = Math.ceil(cW / tileSz) + 2;
       const tilesZ = Math.ceil(cL / tileSz) + 2;
       const totalTiles = tilesX * tilesZ;
@@ -1020,7 +1112,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const colR = 0.25;
       const colH = cH - 0.5;
       const colX = 1 * (cW / 2); // side=1 wall
-      const capitalMat = new THREE.MeshStandardMaterial({ color: "#E0D8CC", roughness: 0.3, metalness: 0.05 });
+      const capitalMat = new THREE.MeshStandardMaterial({ color: W1?PLASTER_RAMP.light:"#E0D8CC", roughness: 0.3, metalness: 0.05 });
 
       // Collect door z-positions on side=1 (odd-indexed rooms) for column/railing skip
       const side1DoorZs: number[] = [];
@@ -1197,8 +1289,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // ── MOSAIC FLOOR RUNNER (central strip) ──
       const mosaicW = 1.5;
       const mTerracotta = new THREE.MeshStandardMaterial({ color: "#C4704A", roughness: 0.6 });
-      const mCream = new THREE.MeshStandardMaterial({ color: "#F0E8D8", roughness: 0.55 });
-      const mBlack = new THREE.MeshStandardMaterial({ color: "#2A2A28", roughness: 0.5 });
+      const mCream = new THREE.MeshStandardMaterial({ color: W1?TRAVERTINE_GROUT:"#F0E8D8", roughness: 0.55 });
+      const mBlack = new THREE.MeshStandardMaterial({ color: W1?INK:"#2A2A28", roughness: 0.5 });
       // Border strips
       scene.add(mk(new THREE.BoxGeometry(0.08, 0.004, cL - 2), mBlack, -mosaicW / 2 - 0.04, 0.006, 0));
       scene.add(mk(new THREE.BoxGeometry(0.08, 0.004, cL - 2), mBlack, mosaicW / 2 + 0.04, 0.006, 0));
@@ -1255,8 +1347,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         scene.add(mk(new THREE.SphereGeometry(0.02, 5, 5),
           new THREE.MeshBasicMaterial({ color: "#FFE080" }),
           lx - nicheWall * 0.2, 2.56, lz));
-        // PointLight (limit to 8, skip on mobile)
-        if (!isMobileGPU() && lampLightCount < 8) {
+        // PointLight (limit to 8, skip on mobile; W1 KILL — WS5-3, the emissive
+        // flame + wall bands carry the read)
+        if (!isMobileGPU() && !W1 && lampLightCount < 8) {
           const lLight = new THREE.PointLight("#FF9040", 0.4, 6);
           lLight.position.set(lx - nicheWall * 0.2, 2.6, lz);
           scene.add(lLight);
@@ -1279,8 +1372,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     }
 
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door ──
+    // Under w1_corridor the per-door intensity-0 PointLights are deleted (WS5-3);
+    // the gold ring decal (w1HlRing) marks the walkthrough target instead.
     const hlDoorLights: Map<string,THREE.PointLight>=new Map();
-    dMeshes.forEach(d=>{
+    if(!W1)dMeshes.forEach(d=>{
       const light=new THREE.PointLight("#D4AF37",0,10);light.position.set(d.x-(d.side*.5),2.5,d.z);scene.add(light);
       hlDoorLights.set(d.room.id,light);
     });
@@ -1350,9 +1445,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     sparkG.setAttribute("position",new THREE.BufferAttribute(sparkP,3));
     const sparkPoints=new THREE.Points(sparkG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.05,transparent:true,opacity:.5*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false}));
     scene.add(sparkPoints);
-    // Portal lights — stronger, multiple
+    // Portal lights — W1 (WS5-3): the portal keeps ONE warm point (light 4 of the
+    // ≤4 budget, now also on mobile); fill point + spot die, the emissive
+    // glow/fog planes carry the rest.
     let portalLight: THREE.PointLight | null = null;
-    if(!isMobileGPU()){portalLight=new THREE.PointLight(dlPreset.sunColor,1.0*dlPreset.sunIntensity,9);portalLight.position.set(0,pH/2+.5,portalZ);scene.add(portalLight);
+    if(W1){
+      portalLight=new THREE.PointLight(dlPreset.sunColor,1.0*dlPreset.sunIntensity,9);portalLight.position.set(0,pH/2+.5,portalZ);scene.add(portalLight);
+    }else if(!isMobileGPU()){portalLight=new THREE.PointLight(dlPreset.sunColor,1.0*dlPreset.sunIntensity,9);portalLight.position.set(0,pH/2+.5,portalZ);scene.add(portalLight);
     const portalLight2=new THREE.PointLight(dlPreset.fillColor,.4*dlPreset.fillIntensity,5);portalLight2.position.set(0,.5,portalZ);scene.add(portalLight2);
     const portalSpot=new THREE.SpotLight(dlPreset.sunColor,.7*dlPreset.sunIntensity,10,Math.PI/5,.4,1);portalSpot.position.set(0,cH-.2,portalZ-.8);portalSpot.target.position.set(0,pH/2,portalZ);scene.add(portalSpot);scene.add(portalSpot.target);}
     // Invisible hitbox for click
@@ -1429,7 +1528,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const fTex=new THREE.CanvasTexture(fC);fTex.colorSpace=THREE.SRGBColorSpace;
     // Fresco plane — 80% of corridor width
     const frescoW=cW*.8,frescoH=frescoW*.3;
-    const frescoMesh=new THREE.Mesh(new THREE.PlaneGeometry(frescoW,frescoH),new THREE.MeshStandardMaterial({map:fTex,roughness:.82,transparent:true}));
+    // W1: fresco spot/fill die below — baked self-illumination compensates
+    const frescoMesh=new THREE.Mesh(new THREE.PlaneGeometry(frescoW,frescoH),new THREE.MeshStandardMaterial({map:fTex,roughness:.82,transparent:true,...(W1?{emissive:new THREE.Color("#FFFFFF"),emissiveMap:fTex,emissiveIntensity:.18}:{})}));
     frescoMesh.position.set(0,cH*.55,-cL/2+.01);scene.add(frescoMesh);
     // ── Gold frame around fresco ──
     const fFW=frescoW,fFH=frescoH,fFY=cH*.55,fFZ=-cL/2+.02;
@@ -1441,19 +1541,26 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     for(let cx2 of[-fFW/2-.06,fFW/2+.06])for(let cy of[fFY-fFH/2-.06,fFY+fFH/2+.06]){
       const ros=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.02,8),MS.gold);ros.rotation.x=Math.PI/2;ros.position.set(cx2,cy,fFZ+.02);scene.add(ros);
     }
-    // Spotlight on fresco — stronger, more prominent
-    if(!isMobileGPU()){const fSpot=new THREE.SpotLight("#FFF5E0",1.0,10,Math.PI/4,.5,1);fSpot.position.set(0,cH-.2,-cL/2+3);fSpot.target.position.set(0,cH*.55,-cL/2);scene.add(fSpot);scene.add(fSpot.target);
+    // Spotlight on fresco — W1 KILL (WS5-3): baked fresco emissive above compensates
+    if(!isMobileGPU()&&!W1){const fSpot=new THREE.SpotLight("#FFF5E0",1.0,10,Math.PI/4,.5,1);fSpot.position.set(0,cH-.2,-cL/2+3);fSpot.target.position.set(0,cH*.55,-cL/2);scene.add(fSpot);scene.add(fSpot.target);
     // Secondary fill light
     const fFill=new THREE.PointLight("#FFE8C0",.4,6);fFill.position.set(0,cH*.55,-cL/2+1.5);scene.add(fFill);}
 
-    // Dust particles
-    const rdN=90,rdG=new THREE.BufferGeometry(),rdP=new Float32Array(rdN*3);
+    // Dust particles — duplicate raw-Points system deleted under w1_corridor
+    // (WS10-3: createDustParticles below is THE one dust system per scene)
+    const rdN=90;
+    let rdG: THREE.BufferGeometry|null=null;
+    if(!W1){
+    rdG=new THREE.BufferGeometry();const rdP=new Float32Array(rdN*3);
     for(let i=0;i<rdN;i++){rdP[i*3]=(Math.random()-.5)*cW;rdP[i*3+1]=.5+Math.random()*cH;rdP[i*3+2]=(Math.random()-.5)*cL;}
     rdG.setAttribute("position",new THREE.BufferAttribute(rdP,3));
     scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.035,transparent:true,opacity:.28*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
+    }
 
     // ── CAMERA + CONTROLS ──
-    const startPos = onboardingModeRef.current ? new THREE.Vector3(0, 2.0, 25.5) : new THREE.Vector3(0, 2.0, cL/2-1);
+    // Eye height = the single shared EYE_HEIGHT constant under w1_corridor (dogma 5)
+    const camY0 = W1 ? EYE_HEIGHT : 2.0;
+    const startPos = onboardingModeRef.current ? new THREE.Vector3(0, camY0, 25.5) : new THREE.Vector3(0, camY0, cL/2-1);
     camera.position.copy(startPos);
     const lookA={yaw:0,pitch:0},lookT={yaw:0,pitch:0};
     const pos=camera.position.clone(),posT=pos.clone();
@@ -1466,7 +1573,100 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // ── Optimize: deduplicate materials to reduce GPU state changes ──
     optimizeMaterials(scene);
 
+    // ── W1 (WS11-5): merge the static corridor shell per material ──
+    // Runs after optimizeMaterials so deduped materials bucket together.
+    // Interactive meshes (doors, painting slots, click targets), animated meshes
+    // (portal glow/fog/sparkles, dust), instanced tiles and transparent/additive
+    // decals are excluded — only opaque Standard/Physical direct scene children
+    // merge, so every raycast/hover/applier contract is untouched while draw
+    // calls collapse toward the ≤150 mobile budget.
+    if(W1){
+      try{
+        const mergeSkip=new Set<THREE.Object3D>();
+        dMeshes.forEach(d=>mergeSkip.add(d.mesh));
+        paintingSlots.forEach(slot=>{mergeSkip.add(slot.canvasMesh);mergeSkip.add(slot.emptyGroup);});
+        paintingClickMeshes.forEach(pm=>mergeSkip.add(pm.mesh));
+        inlayClickMeshes.forEach(im=>mergeSkip.add(im));
+        mergeSkip.add(portalHit);mergeSkip.add(frescoMesh);mergeSkip.add(dust.points);
+        scene.updateMatrixWorld(true);
+        const attrSig=(g: THREE.BufferGeometry)=>Object.keys(g.attributes).sort().join(",")+"|"+(g.index?"i":"n");
+        const mergeBuckets=new Map<string,THREE.Mesh[]>();
+        for(const child of scene.children){
+          if(!(child instanceof THREE.Mesh))continue;
+          const mm=child;
+          if(mergeSkip.has(mm))continue;
+          if(mm instanceof THREE.InstancedMesh||mm instanceof THREE.SkinnedMesh)continue;
+          if(Array.isArray(mm.material))continue;
+          const mat=mm.material as THREE.Material;
+          if(!mat||(mat.type!=="MeshStandardMaterial"&&mat.type!=="MeshPhysicalMaterial"))continue;
+          if(mat.transparent)continue;
+          const ud=mm.userData||{};
+          if(ud.roomId||ud.isInlay||ud.isPaintingSlot||ud.isMergedStatic)continue;
+          const key=mat.uuid+"|"+attrSig(mm.geometry);
+          if(!mergeBuckets.has(key))mergeBuckets.set(key,[]);
+          mergeBuckets.get(key)!.push(mm);
+        }
+        const mergedAway: THREE.Mesh[]=[];
+        let mergedCount=0,removedCount=0;
+        for(const bucket of mergeBuckets.values()){
+          if(bucket.length<2)continue;
+          const clones=bucket.map(mm2=>{const g=mm2.geometry.clone();g.applyMatrix4(mm2.matrixWorld);return g;});
+          const mergedGeo=mergeBufferGeometries(clones);
+          clones.forEach(g=>g.dispose());
+          if(!mergedGeo)continue;
+          const mergedMesh=new THREE.Mesh(mergedGeo,bucket[0].material as THREE.Material);
+          mergedMesh.castShadow=true;mergedMesh.receiveShadow=true;
+          mergedMesh.userData.isMergedStatic=true;
+          scene.add(mergedMesh);
+          for(const mm2 of bucket){scene.remove(mm2);mergedAway.push(mm2);}
+          mergedCount++;removedCount+=bucket.length;
+        }
+        // Dispose original geometries no longer referenced by the scene
+        if(mergedAway.length){
+          const liveGeos=new Set<string>();
+          scene.traverse(o=>{const g=(o as THREE.Mesh).geometry;if(g)liveGeos.add(g.uuid);});
+          const disposed=new Set<string>();
+          for(const mm2 of mergedAway){
+            const g=mm2.geometry;
+            if(g&&!liveGeos.has(g.uuid)&&!disposed.has(g.uuid)){g.dispose();disposed.add(g.uuid);}
+          }
+        }
+        if(process.env.NODE_ENV!=="production"&&mergedCount>0)console.debug(`[CorridorScene] mergeStatic: ${removedCount} meshes → ${mergedCount} merged draws`);
+      }catch(e){if(process.env.NODE_ENV!=="production")console.warn("[CorridorScene] mergeStatic skipped:",e);}
+    }
+
     const clock=new THREE.Clock();
+    // ── W1 tap-is-travel target (WS8-4): any-distance door/painting/portal tap
+    // auto-walks (comfort-capped, easeInOutCubic arrival) then enters — the 5m
+    // dead-click gate is gone. Pattern shared with the hall's awClick/startAutoWalk.
+    const awClick: {id: string|null; x: number; z: number; fx: number; fz: number}={id:null,x:0,z:0,fx:0,fz:0};
+    const startAutoWalk=(id: string,ax: number,az: number,fx: number,fz: number)=>{awClick.id=id;awClick.x=ax;awClick.z=az;awClick.fx=fx;awClick.fz=fz;};
+    const fireAwClick=(id: string)=>{
+      if(id==="__portal__")onDoorClickRef.current("__portal__");
+      else if(id==="__inlay__")onInlayClick?.();
+      else if(id.startsWith("paint:"))onPaintingClick?.();
+      else onDoorClickRef.current(id);
+    };
+    // Shared W1 picker for mouse click + touch tap: nearest hit wins; near → enter
+    // immediately (legacy behavior), far → walk there first.
+    const w1Pick=(cx: number,cy: number)=>{
+      const rect2=el.getBoundingClientRect();
+      _mouse.set(((cx-rect2.left)/rect2.width)*2-1,-((cy-rect2.top)/rect2.height)*2+1);
+      _rc.setFromCamera(_mouse,camera);
+      const bestRef={v:null as null|{id: string;dist: number;ax: number;az: number;fx: number;fz: number}};
+      const consider=(id: string,hit: THREE.Intersection|undefined,ax: number,az: number,fx2: number,fz2: number)=>{
+        if(hit&&(!bestRef.v||hit.distance<bestRef.v.dist))bestRef.v={id,dist:hit.distance,ax,az,fx:fx2,fz:fz2};
+      };
+      dMeshes.forEach(d=>consider(d.room.id,_rc.intersectObject(d.mesh)[0],d.x-d.side*1.6,d.z,d.x,d.z));
+      consider("__portal__",_rc.intersectObject(portalHit)[0],0,portalZ-2.2,0,portalZ);
+      inlayClickMeshes.forEach(im=>consider("__inlay__",_rc.intersectObject(im)[0],im.position.x-Math.sign(im.position.x||1)*1.6,im.position.z,im.position.x,im.position.z));
+      paintingClickMeshes.forEach(pm=>consider("paint:"+pm.slotKey,_rc.intersectObject(pm.mesh)[0],pm.mesh.position.x-Math.sign(pm.mesh.position.x||1)*1.6,pm.mesh.position.z,pm.mesh.position.x,pm.mesh.position.z));
+      const b=bestRef.v;
+      if(!b)return false;
+      if(b.dist<5)fireAwClick(b.id);
+      else startAutoWalk(b.id,b.ax,b.az,b.fx,b.fz);
+      return true;
+    };
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
     let _cinStep=-1;
@@ -1481,7 +1681,20 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // Steps: 0=initial pause 3s, 1=walk forward 3s, 2=turn left 1.5s, 3=walk left 1s,
       //        4=pause 2s, 5=walk back 2s, 6=pause 2s, 7=auto-walk to door
       // On mobile, each step gets +0.5s extra for readability
-      if(onboardingModeRef.current&&!autoWalkToRef.current){
+      if(onboardingModeRef.current&&!autoWalkToRef.current&&!awClick.id){
+        if(reduceMotion){
+          // W1 (WS12-1): reduced motion skips the forced pan/walk sequence
+          // straight to its end framing (step-6 wait state) — no camera motion;
+          // the user's Enter click still drives the (comfort-capped) walk.
+          if(_cinStep!==6&&_cinStep!==7){
+            _cinStep=6;onCinematicStepRef.current?.(6);
+            posT.x=0.4;posT.z=18.2;lookT.yaw=-1.8990;lookT.pitch=-0.0150;
+            pos.set(0.4,EYE_HEIGHT,18.2);lookA.yaw=lookT.yaw;lookA.pitch=lookT.pitch;
+          }else if(_cinStep===6){
+            posT.x=0.4;posT.z=18.2;lookT.yaw=-1.8990;lookT.pitch=-0.0150;
+            if(corridorEnterClickedRef.current){_cinStep=7;onCinematicStepRef.current?.(7);autoWalkToRef.current="ro1";}
+          }
+        }else{
         const ot=clock.getElapsedTime();
         const d=isMobileProp?0.5:0;
         if(ot<=3.0+d){
@@ -1535,6 +1748,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           }
           // Step 7+: don't override position — let auto-walk handle movement
         }
+        } // end non-reduced-motion cinematic branch
       }
       // ── Auto-walk toward target door ──
       const awTarget=autoWalkToRef.current;
@@ -1547,24 +1761,56 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           const dz2=targetZ-posT.z;
           const dist=Math.sqrt(dx2*dx2+dz2*dz2);
           if(dist>0.5){
-            const speed=5.0*dt;
+            // W1 (WS8-1/2 mercy): autoWalk clamps to MAX_WALK_SPEED and the
+            // MAX_YAW_DEG_S yaw cap — no per-scene speed numbers
+            const speed=(W1?MAX_WALK_SPEED:5.0)*dt;
             posT.x+=(dx2/dist)*speed;
             posT.z+=(dz2/dist)*speed;
             const targetYaw=Math.atan2(dm.x-posT.x,-(dm.z-posT.z));
-            lookT.yaw+=(targetYaw-lookT.yaw)*0.06;
+            if(W1){
+              let dyaw=targetYaw-lookT.yaw;dyaw=Math.atan2(Math.sin(dyaw),Math.cos(dyaw));
+              const maxYaw=MAX_YAW_DEG_S*(Math.PI/180)*dt;
+              lookT.yaw+=Math.max(-maxYaw,Math.min(maxYaw,dyaw*3.6*dt));
+              playFootstep();
+            }else lookT.yaw+=(targetYaw-lookT.yaw)*0.06;
           }else{
             autoWalkToRef.current=null;
             onDoorClickRef.current(awTarget);
           }
         }
       }
+      // ── W1 tap-is-travel integrator (WS8-4): comfort-capped walk to the tapped
+      // target, easeInOutCubic deceleration into arrival, then enter ──
+      if(W1&&!awTarget&&awClick.id){
+        const adx=awClick.x-posT.x,adz=awClick.z-posT.z;
+        const dist=Math.sqrt(adx*adx+adz*adz);
+        if(dist>0.45){
+          const sp=Math.max(.5,MAX_WALK_SPEED*easeInOutCubic(Math.min(1,dist/2.5)))*dt;
+          posT.x+=(adx/dist)*sp;posT.z+=(adz/dist)*sp;
+          const targetYaw=Math.atan2(awClick.fx-posT.x,-(awClick.fz-posT.z));
+          let dyaw=targetYaw-lookT.yaw;dyaw=Math.atan2(Math.sin(dyaw),Math.cos(dyaw));
+          const maxYaw=MAX_YAW_DEG_S*(Math.PI/180)*dt;
+          lookT.yaw+=Math.max(-maxYaw,Math.min(maxYaw,dyaw*3.6*dt));
+          playFootstep();
+        }else{const id=awClick.id;awClick.id=null;fireAwClick(id);}
+      }
       if(!awTarget){
+      if(W1){
+        // WS8-1/2 mercy kills: sprint is deleted — full input equals MAX_WALK_SPEED;
+        // manual input cancels a pending tap-travel. Footsteps while actually walking.
+        _dir.set(0,0,0);
+        if(keys.w||keys.arrowup)_dir.z-=1;if(keys.s||keys.arrowdown)_dir.z+=1;
+        if(keys.a||keys.arrowleft)_dir.x-=1;if(keys.d||keys.arrowright)_dir.x+=1;
+        if(_dir.length()>0){awClick.id=null;_dir.normalize().multiplyScalar(MAX_WALK_SPEED*dt);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);playFootstep();}
+      }else{
       const spd=(keys["shift"]?9:3)*dt;_dir.set(0,0,0);
       if(keys.w||keys.arrowup)_dir.z-=1;if(keys.s||keys.arrowdown)_dir.z+=1;
       if(keys.a||keys.arrowleft)_dir.x-=1;if(keys.d||keys.arrowright)_dir.x+=1;
       if(_dir.length()>0){_dir.normalize().multiplyScalar(spd);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);}
       }
+      }
       posT.x=Math.max(-cW/2+1,Math.min(cW/2-1,posT.x));posT.z=Math.max(-cL/2+1.5,Math.min(cL/2-1.5,posT.z));
+      if(W1)posT.y=EYE_HEIGHT; // dogma 5: the one shared eye height
       pos.lerp(posT,kPos);camera.position.copy(pos);
       _ld.set(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
       _lookTarget.copy(camera.position).add(_ld);camera.lookAt(_lookTarget);
@@ -1573,6 +1819,23 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         camDebugRef.current.textContent = `yaw: ${lookA.yaw.toFixed(4)}\npitch: ${lookA.pitch.toFixed(4)}\npos: ${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
       }
       const hlTarget=highlightDoorRef.current;
+      if(W1){
+        // w1_corridor (WS5-3/4): gold ring decal marks the walkthrough target —
+        // no PointLight, no gold emissive pulse; hover accent is EMBER (dogma 3).
+        if(w1HlRing){
+          const rm=w1HlRing.material as THREE.MeshBasicMaterial;
+          const hlDoor=hlTarget?dMeshes.find(d=>d.room.id===hlTarget):undefined;
+          if(hlDoor){
+            w1HlRing.position.set(hlDoor.x-hlDoor.side*1.2,.03,hlDoor.z);
+            rm.opacity=.45+Math.sin(t*2.5)*.2;
+          }else if(rm.opacity>.005)rm.opacity+=(0-rm.opacity)*.08;
+        }
+        dMeshes.forEach(d=>{
+          const isH=hovDoor===d.room.id;
+          if(isH)d.mat.emissive.set(EMBER);else d.mat.emissive.setScalar(0);
+          d.mat.emissiveIntensity=isH?.12+Math.sin(t*3)*.04:0;
+        });
+      }else{
       dMeshes.forEach(d=>{
         if(hlTarget===d.room.id){
           // Walkthrough golden glow — strong pulse
@@ -1589,6 +1852,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         if(hlTarget===id)light.intensity=3+Math.sin(t*2)*1.5;
         else light.intensity+=(0-light.intensity)*.05;
       });
+      }
       portalGlow.material.opacity=.06+Math.sin(t*2)*.04;if(portalLight)portalLight.intensity=.9+Math.sin(t*1.5)*.2;
       // Portal sparkle animation
       const sp2=sparkG.attributes.position.array as Float32Array;
@@ -1598,7 +1862,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // Animate particles — throttle to every 2nd frame on mobile for performance
       const _doParticles=!_isMobile||(_frameCount&1)===0;
       if(_doParticles){
-        const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>cH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;(rdG.attributes.position as any).updateRange={offset:0,count:rdN*3};
+        // (legacy duplicate dust — only mounted when w1_corridor is off)
+        if(rdG){const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>cH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;(rdG.attributes.position as any).updateRange={offset:0,count:rdN*3};}
         dust.update(t,dt);
       }
       // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
@@ -1622,6 +1887,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       if(newCursor!==lastCursor){lastCursor=newCursor;el.style.cursor=newCursor;}
       onDoorHover(found||(portalHov?"__portal__":null));};
     const onCk=()=>{
+      if(W1){
+        // WS8-4 no-dead-clicks: fresh raycast without the 5m gate — near targets
+        // enter immediately (legacy feel), far targets walk-then-enter.
+        if(!drag.v)w1Pick(prev.x,prev.y);
+        return;
+      }
       if(!drag.v&&hovDoor)onDoorClickRef.current(hovDoor);
       else if(!drag.v){
         const rect2=el.getBoundingClientRect();_mouse.set(((prev.x-rect2.left)/rect2.width)*2-1,-((prev.y-rect2.top)/rect2.height)*2+1);_rc.setFromCamera(_mouse,camera);
@@ -1678,6 +1949,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         if(t.identifier===touchMoveId){touchMoveId=null;touchMoveDir.x=0;touchMoveDir.z=0;}
         if(t.identifier===touchLookId){
           if(touchTap){
+            if(W1){
+              // WS8-4 tap-is-travel — same no-dead-clicks picker as mouse
+              w1Pick(t.clientX,t.clientY);
+            }else{
             const rect=el.getBoundingClientRect();_mouse.set(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1);
             _rc.setFromCamera(_mouse,camera);
             let found: string|null=null;
@@ -1685,6 +1960,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
             if(found)onDoorClickRef.current(found);
             else{
               const ph=_rc.intersectObject(portalHit);if(ph.length>0&&ph[0].distance<5)onDoorClickRef.current("__portal__");
+            }
             }
           }
           touchLookId=null;
