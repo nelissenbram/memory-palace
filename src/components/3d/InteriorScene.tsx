@@ -4,13 +4,16 @@ import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
-import { paintTex } from "@/lib/3d/textureHelpers";
+import { paintTex, devCheckArtworkAspect } from "@/lib/3d/textureHelpers";
 import { mk } from "@/lib/3d/meshHelpers";
 import { layoutForRoom } from "@/lib/3d/roomLayouts";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { EXPOSURE, GOLDEN } from "@/lib/3d/canon";
+import { EXPOSURE, GOLDEN, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD } from "@/lib/3d/canon";
+import { makeArtwork } from "@/lib/3d/makeArtwork";
+import { flag3d } from "@/lib/3d/flags3d";
+import { mergeBufferGeometries } from "@/lib/3d/geometryOptimizer";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
@@ -104,6 +107,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // context loss and a pitch-dark scene).
     while(el.firstChild)el.removeChild(el.firstChild);
     const { w, h } = measure(el);
+    // ── MUSEO VIVO Wave-1 flag (WS11-13): staging-ON/prod-OFF, read at mount ──
+    // Gates the interior canon regrade, kill list, makeArtwork hero spots,
+    // anisotropy and static-mesh merging. Guarded so a missing/late-landing
+    // flags3d module degrades to the legacy (flag-off) scene.
+    const W1=(()=>{try{return !!flag3d("w1_interior");}catch{return false;}})();
     const layout=layoutForRoom(actualRoomId||roomId,layoutOverride);
     const dlPresetRaw=getLightingPreset();
     // Interior rooms have artificial lighting — enforce minimum brightness
@@ -156,29 +164,44 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const rugTex=loadFabricTextures([2,2]);
     const velvetTex=loadVelvetTextures([2,2]);
     const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallTex,rugTex,velvetTex];
+    // W1 (WS2-1 slice): anisotropic filtering on floor/wall sets — 8 desktop / 4
+    // mobile, clamped to hardware caps. Kills the grazing-angle floor blur.
+    if(W1){
+      const maxAniso=ren.capabilities?.getMaxAnisotropy?.()??1;
+      const aniso=Math.min(isMobileGPU()?4:8,maxAniso);
+      for(const set of [marbleTex,woodTex,wallTex]){
+        for(const tx of [set.map,set.normalMap]){
+          if(tx&&tx.anisotropy!==aniso){tx.anisotropy=aniso;tx.needsUpdate=true;}
+        }
+      }
+    }
 
     // Archetype materials — module-cached so compiled shader programs survive scene
     // transitions. Parameter-keyed: wall/accent colors differ per wing, lampG follows
     // the (clamped) daylight preset. Runtime mutations (fire/water opacity) are
     // absolute per-frame writes, so shared cached instances stay correct.
-    const msKey=`interior|${wing?.wall||"-"}|${wing?.accent||"-"}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    // W1 (WS6-3 canon regrade): walls → PLASTER family, floors → warm travertine
+    // tones with canon grout, trim → ink, gold → canon gold; the leather
+    // "gentleman's club" set and fireplace brick regrade to canon ink/travertine.
+    // msKey includes the flag so acquireMaterialSet never serves a stale palette.
+    const msKey=`interior|w1:${W1?1:0}|${wing?.wall||"-"}|${wing?.accent||"-"}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
     const MS=acquireMaterialSet(msKey,()=>({
-      wall:new THREE.MeshStandardMaterial({color:wing?.wall||"#DDD4C6",roughness:.88,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:wallTex.roughnessMap,aoMap:wallTex.aoMap,aoMapIntensity:.6}),
-      floor:new THREE.MeshStandardMaterial({color:"#8A7358",roughness:.45,metalness:.1,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.7}),
-      floorL:new THREE.MeshStandardMaterial({color:"#B8A480",roughness:.5,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
-      ceil:new THREE.MeshStandardMaterial({color:"#F0EAE0",roughness:.95}),
-      trim:new THREE.MeshStandardMaterial({color:"#CFC3AE",roughness:.55,metalness:.12}),
-      gold:new THREE.MeshStandardMaterial({color:"#C8A868",roughness:.28,metalness:.6}),
+      wall:new THREE.MeshStandardMaterial({color:W1?PLASTER:(wing?.wall||"#DDD4C6"),roughness:.88,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:wallTex.roughnessMap,aoMap:wallTex.aoMap,aoMapIntensity:.6}),
+      floor:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#8A7358",roughness:.45,metalness:.1,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.7}),
+      floorL:new THREE.MeshStandardMaterial({color:W1?TRAVERTINE_GROUT:"#B8A480",roughness:.5,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
+      ceil:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#F0EAE0",roughness:.95}),
+      trim:new THREE.MeshStandardMaterial({color:W1?INK:"#CFC3AE",roughness:.55,metalness:.12}),
+      gold:new THREE.MeshStandardMaterial({color:W1?GOLD:"#C8A868",roughness:.28,metalness:.6}),
       dkW:new THREE.MeshStandardMaterial({color:"#3E2A18",roughness:.5,metalness:.08,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.4,.4),aoMap:woodTex.aoMap,aoMapIntensity:.5}),
       ltW:new THREE.MeshStandardMaterial({color:"#A08060",roughness:.55,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
-      wain:new THREE.MeshStandardMaterial({color:"#B8A890",roughness:.65,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.2,.2),roughnessMap:wallTex.roughnessMap}),
-      leather:new THREE.MeshStandardMaterial({color:"#5A3020",roughness:.55,metalness:.05,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
-      leatherD:new THREE.MeshStandardMaterial({color:"#4A2818",roughness:.5,metalness:.04,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.12,.12)}),
-      button:new THREE.MeshStandardMaterial({color:"#3A1E10",roughness:.3,metalness:.1}),
+      wain:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.mid:"#B8A890",roughness:.65,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.2,.2),roughnessMap:wallTex.roughnessMap}),
+      leather:new THREE.MeshStandardMaterial({color:W1?INK:"#5A3020",roughness:.55,metalness:.05,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
+      leatherD:new THREE.MeshStandardMaterial({color:W1?INK:"#4A2818",roughness:.5,metalness:.04,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.12,.12)}),
+      button:new THREE.MeshStandardMaterial({color:W1?INK:"#3A1E10",roughness:.3,metalness:.1}),
       bronze:new THREE.MeshStandardMaterial({color:"#8A7050",roughness:.32,metalness:.48}),
       marble:mkPhys(THREE,{color:"#E8E2DA",roughness:.15,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:marbleTex.roughnessMap,aoMap:marbleTex.aoMap,aoMapIntensity:.8,clearcoat:.3,clearcoatRoughness:.2,reflectivity:.6}),
-      brick:new THREE.MeshStandardMaterial({color:"#8A5040",roughness:.9}),
-      brickD:new THREE.MeshStandardMaterial({color:"#6A3830",roughness:.85}),
+      brick:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.shade:"#8A5040",roughness:.9}),
+      brickD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#6A3830",roughness:.85}),
       iron:new THREE.MeshStandardMaterial({color:"#3A3A3A",roughness:.5,metalness:.4}),
       fire:new THREE.MeshBasicMaterial({color:"#FF8030",transparent:true,opacity:.7}),
       fireG:new THREE.MeshBasicMaterial({color:"#FFD060",transparent:true,opacity:.5}),
@@ -204,6 +227,28 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const fMats=[MS.fG,MS.fB,MS.gold];
     memMeshes.current=[];hitAreaMeshes.current=[];
     const animTex: any[]=[];
+    // W1 (WS7-3/WS6-5): makeArtwork instances mounted this cycle — disposed in cleanup.
+    const artworks: {group: THREE.Group;dispose(): void;setTexture(t2: THREE.Texture): void}[]=[];
+    const artQuality: "low"|"med"|"high"=Q.paintingResWidth>=512?"high":Q.paintingResWidth>=256?"med":"low";
+    const memYear=(m: any)=>{const d=m?.createdAt||m?.revealDate;if(!d)return undefined;const y=new Date(d).getFullYear();return Number.isFinite(y)?String(y):undefined;};
+    // Mount a makeArtwork group at a wall spot, preserving the existing raycast
+    // contract: every mesh in the group carries the same userData the interaction
+    // code expects (userData.memory) and is registered in memMeshes.
+    const mountArtwork=(mem: any,tex: THREE.Texture,x: number,y: number,z: number,rotY: number,width: number)=>{
+      const aspect=(tex.userData?.aspect as number)||4/3;
+      const art=makeArtwork({texture:tex,aspect,title:mem.title,year:memYear(mem),width,quality:artQuality});
+      art.group.position.set(x,y,z);
+      art.group.rotation.y=rotY;
+      art.group.userData={...art.group.userData,memory:mem};
+      art.group.traverse((o: any)=>{
+        o.userData={...o.userData,memory:mem};
+        if(o.isMesh)memMeshes.current.push(o);
+      });
+      scene.add(art.group);
+      artworks.push(art);
+      devCheckArtworkAspect(tex,width,width/aspect,`makeArtwork:${mem.id||mem.title}`);
+      return art;
+    };
 
     const rW=layout.rW,rL=layout.rL,rH=layout.rH;
 
@@ -303,7 +348,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       }
 
       // ── OPEN SKY (no ceiling in center) — use a sky-colored plane far above ──
-      const skyMat=new THREE.MeshBasicMaterial({color:"#87CEEB"});
+      // W1 (canon): golden-hour sky, not the off-canon #87CEEB blue
+      const skyMat=new THREE.MeshBasicMaterial({color:W1?GOLDEN.skyColor:"#87CEEB"});
       const sky=new THREE.Mesh(new THREE.PlaneGeometry(rW+20,rL+20),skyMat);
       sky.rotation.x=Math.PI/2;sky.position.y=rH+8;scene.add(sky);
       // Soft cloud wisps
@@ -1039,6 +1085,21 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // Helper to place a single painting on a wall
       const placePainting=(px: number,py: number,pz: number,facingDir: "x"|"z",facingSign: number)=>{
         const isZ=facingDir==="z";
+        const mem=exPaintings[paintIdx];
+        // W1 hero spot (WS7-3/WS6-5): the shared makeArtwork replaces the inline
+        // frame boxes + stretched canvas + per-painting SpotLight. Aspect-correct
+        // plane, gold frame, Fraunces plaque, baked art light — identical on every
+        // tier (mobile finally gets lit art). Raycast contract preserved via
+        // mountArtwork (userData.memory on every mesh, registered in memMeshes).
+        if(W1&&mem){
+          const tex=paintTex(mem);
+          const rotY=isZ?(facingSign<0?Math.PI:0):(facingSign>0?-Math.PI/2:Math.PI/2);
+          const ax=isZ?px:px+facingSign*frameDepth;
+          const az=isZ?pz+facingSign*frameDepth:pz;
+          mountArtwork(mem,tex,ax,py,az,rotY,paintW);
+          paintIdx++;
+          return;
+        }
         // Frame (thick outline + gold inner)
         if(isZ){
           scene.add(mk(new THREE.BoxGeometry(paintW+0.18,paintH+0.18,0.08),MS.fG,px,py,pz-facingSign*0.02));
@@ -1047,8 +1108,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           scene.add(mk(new THREE.BoxGeometry(0.08,paintH+0.18,paintW+0.18),MS.fG,px-facingSign*0.02,py,pz));
           scene.add(mk(new THREE.BoxGeometry(0.02,paintH+0.04,paintW+0.04),MS.gold,px-facingSign*0.06,py,pz));
         }
-        // Warm spotlight (skip on mobile)
-        if(!isMobileGPU()){
+        // Warm spotlight (deleted under W1 — makeArtwork's baked light replaces it; skip on mobile)
+        if(!W1&&!isMobileGPU()){
         const pSpot=new THREE.SpotLight("#FFF5E0",0.5,5,Math.PI/8,0.5,1.2);
         if(isZ){
           pSpot.position.set(px,rH-0.3,pz+facingSign*1);
@@ -1059,7 +1120,6 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         }
         scene.add(pSpot);scene.add(pSpot.target);}
         // Canvas or empty station
-        const mem=exPaintings[paintIdx];
         if(mem){
           const tex=paintTex(mem);
           const canvas=new THREE.Mesh(new THREE.PlaneGeometry(paintW,paintH),new THREE.MeshStandardMaterial({map:tex,roughness:0.8}));
@@ -1071,6 +1131,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
             canvas.rotation.y=facingSign>0?-Math.PI/2:Math.PI/2;
           }
           canvas.userData={memory:mem};scene.add(canvas);memMeshes.current.push(canvas);
+          devCheckArtworkAspect(tex,paintW,paintH,"exhibition painting (legacy)");
         }else{
           const emptyMat=new THREE.Mesh(new THREE.PlaneGeometry(paintW-0.1,paintH-0.1),MS.matF);
           if(isZ){
@@ -1153,7 +1214,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // Priority: explicit painting assignment > unassigned photo fallback
     const bigPaintMem=paintingMems.length>0?paintingMems[0]:photoMems.length>0?photoMems[0]:null;
     const bigPaintUsedPhoto=paintingMems.length===0&&photoMems.length>0;// track if we borrowed an unassigned photo
-    if(bigPaintMem){
+    if(bigPaintMem&&W1){
+      // W1 hero spot (WS7-3): the big painting over the fireplace becomes a
+      // makeArtwork piece — aspect-correct plane (no more 1.6×1.1 stretch of the
+      // 4:3 canvas), canon gold frame, Fraunces brass plaque, baked art light.
+      // The per-painting SpotLight is deleted (zero dynamic lights per artwork).
+      const om=bigPaintMem;const t=paintTex(om);
+      mountArtwork(om,t,fpX,2.4,fpZ+.06,0,1.7);
+    }else if(bigPaintMem){
       // Frame only shown when there's actual content
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
       scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,2.4,fpZ+.08));
@@ -1161,6 +1229,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const om=bigPaintMem;const t=paintTex(om);
       const omc=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),new THREE.MeshStandardMaterial({map:t,roughness:.8}));
       omc.position.set(fpX,2.4,fpZ+.12);omc.userData={memory:om};scene.add(omc);memMeshes.current.push(omc);
+      devCheckArtworkAspect(t,1.6,1.1,"fireplace painting (legacy)");
     }else if((actualRoomId||roomId)==="ro1"){
       // "Me, Over Time" placeholder — ornate frame with personalised title
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
@@ -1168,16 +1237,17 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(!isMobileGPU()){const fpSp2=new THREE.SpotLight("#FFF5E0",.6,5,Math.PI/7,.5,1.2);fpSp2.position.set(fpX,rH-.2,fpZ+.5);fpSp2.target.position.set(fpX,2.4,fpZ);scene.add(fpSp2);scene.add(fpSp2.target);}
       const cvs=document.createElement("canvas");cvs.width=512;cvs.height=352;
       const ctx=cvs.getContext("2d")!;
-      ctx.fillStyle="#F5F0E6";ctx.fillRect(0,0,512,352);
+      // W1 (WS6-4): placeholder regraded to canon Fraunces ink-on-cream
+      ctx.fillStyle=W1?PLASTER:"#F5F0E6";ctx.fillRect(0,0,512,352);
       for(let i=0;i<800;i++){ctx.fillStyle=`rgba(180,160,130,${Math.random()*0.04})`;ctx.fillRect(Math.random()*512,Math.random()*352,2,2);}
       ctx.textAlign="center";ctx.textBaseline="middle";
       const displayName=userName||"Your";
       const now=new Date();const month=now.toLocaleString("en",{month:"long"});const year=now.getFullYear();
-      ctx.fillStyle="#8B7355";ctx.font="italic 22px Georgia, serif";
+      ctx.fillStyle=W1?INK:"#8B7355";ctx.font=W1?"italic 22px Fraunces, Georgia, serif":"italic 22px Georgia, serif";
       ctx.fillText(t("paintingTitle",{name:displayName}),256,150);
-      ctx.fillStyle="#A09889";ctx.font="italic 16px Georgia, serif";
+      ctx.fillStyle=W1?INK:"#A09889";ctx.font=W1?"italic 16px Fraunces, Georgia, serif":"italic 16px Georgia, serif";
       ctx.fillText(t("paintingDate",{date:`${month} ${year}`}),256,195);
-      ctx.strokeStyle="#C8B898";ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(160,225);ctx.lineTo(352,225);ctx.stroke();
+      ctx.strokeStyle=W1?INK:"#C8B898";ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(160,225);ctx.lineTo(352,225);ctx.stroke();
       const tex=new THREE.CanvasTexture(cvs);tex.colorSpace=THREE.SRGBColorSpace;
       const placeholderMat=new THREE.MeshStandardMaterial({map:tex,roughness:.85});
       const phMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),placeholderMat);
@@ -1187,7 +1257,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ── PHOTO FRAMES: small fireplace frame ──
     // Priority: explicit frame assignment > remaining unassigned photos
     const framePhoto=frameMems.length>0?frameMems[0]:(bigPaintUsedPhoto?photoMems.slice(1):photoMems)[0]||null;
-    if(framePhoto){const pm=paintTex(framePhoto);const pf=new THREE.Mesh(new THREE.PlaneGeometry(.25,.2),new THREE.MeshStandardMaterial({map:pm,roughness:.8}));pf.position.set(fpX-.5,1.46,fpZ+.18);pf.userData={memory:framePhoto};scene.add(pf);memMeshes.current.push(pf);scene.add(mk(new THREE.BoxGeometry(.32,.27,.04),MS.fB,fpX-.5,1.46,fpZ+.15));}
+    if(framePhoto&&W1){
+      // W1 hero spot: mantle photo frame via makeArtwork (aspect-correct, plaqued)
+      const pm=paintTex(framePhoto);
+      mountArtwork(framePhoto,pm,fpX-.5,1.46,fpZ+.16,0,.3);
+    }else if(framePhoto){const pm=paintTex(framePhoto);const pf=new THREE.Mesh(new THREE.PlaneGeometry(.25,.2),new THREE.MeshStandardMaterial({map:pm,roughness:.8}));pf.position.set(fpX-.5,1.46,fpZ+.18);pf.userData={memory:framePhoto};scene.add(pf);memMeshes.current.push(pf);scene.add(mk(new THREE.BoxGeometry(.32,.27,.04),MS.fB,fpX-.5,1.46,fpZ+.15));devCheckArtworkAspect(pm,.25,.2,"mantle frame (legacy)");}
     // Wall paintings removed — only the big fireplace painting is shown
     } // end !isExhibition painting block
 
@@ -1799,9 +1873,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const starMat=new THREE.MeshStandardMaterial({color:"#F0D060",emissive:"#F0D060",emissiveIntensity:.6,metalness:.95,roughness:.1});
       const star=new THREE.Mesh(new THREE.OctahedronGeometry(.1,0),starMat);
       star.position.set(txX,3.08,txZ);star.rotation.y=Math.PI/4;scene.add(star);
-      // Subtle star light halo
+      // Subtle star light halo — W1 KILL (WS6-4): flourish lights deleted, the
+      // emissive star mesh alone reads as lit
       let starLight: THREE.PointLight|null=null;
-      if(!isMobileGPU()){starLight=new THREE.PointLight("#FFF0C0",.6,4);starLight.position.set(txX,3.1,txZ);scene.add(starLight);}
+      if(!W1&&!isMobileGPU()){starLight=new THREE.PointLight("#FFF0C0",.6,4);starLight.position.set(txX,3.1,txZ);scene.add(starLight);}
       // ── Ornaments — matte glass baubles, muted palette ──
       const ornDefs=[
         {c:"#8B1A1A",e:"#5A1010",tier:0},{c:"#C8A858",e:"#8A7030",tier:0},{c:"#8B1A1A",e:"#5A1010",tier:0},
@@ -1839,9 +1914,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // Present 3 — tiny
       scene.add(mk(new THREE.BoxGeometry(.18,.14,.18),presentMat1,txX+.08,.07,txZ+.5));
       scene.add(mk(new THREE.BoxGeometry(.2,.02,.03),ribbonMat,txX+.08,.14,txZ+.5));
-      // ── Warm ambient glow — like the tree is lit from within ──
+      // ── Warm ambient glow — W1 KILL (WS6-4): xmasTree flourish PointLights
+      // deleted (emissive materials carry the warmth); star keeps a slow spin only.
       let treeLight: THREE.PointLight|null=null;
-      if(!isMobileGPU()){treeLight=new THREE.PointLight("#FFE0A0",.8,6);treeLight.position.set(txX,1.5,txZ);scene.add(treeLight);
+      if(!W1&&!isMobileGPU()){treeLight=new THREE.PointLight("#FFE0A0",.8,6);treeLight.position.set(txX,1.5,txZ);scene.add(treeLight);
       const treeLight2=new THREE.PointLight("#FFF5D0",.4,4);treeLight2.position.set(txX,2.5,txZ);scene.add(treeLight2);}
       animTex.push({type:"xmasTree" as any,mesh:star as any,light:treeLight,star:starLight as any,x:txX,z:txZ});
     }
@@ -1879,8 +1955,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
     // ═══════════════════════════════════════════
     // ORBS: floating spheres
+    // W1 KILL (WS6-4): sci-fi floating orbs + per-orb PointLights are deleted.
+    // Orb-typed memories already route to the vitrine ("orb"→"case" above), so
+    // no memory is lost — it just stops glowing like a sci-fi prop.
     // ═══════════════════════════════════════════
-    orbMems.forEach((m: any,i: any)=>{
+    if(!W1)orbMems.forEach((m: any,i: any)=>{
       const ox=-2+i*2,oy=1.5+Math.random()*.5,oz=rL/2-2-i;
       let orbMat;
       if(m.dataUrl){const orbTex=paintTex(m);orbMat=new THREE.MeshStandardMaterial({map:orbTex,emissive:`hsl(${m.hue},${m.s}%,${m.l-15}%)`,emissiveIntensity:.3,transparent:true,opacity:.9,roughness:.15,metalness:.15});}
@@ -1951,7 +2030,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // Warm light spilling from corridor
     const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.04*dlPreset.sunIntensity}));
     bdGlow.position.set(0,1.9,bdZ);scene.add(bdGlow);
-    animTex.push({type:"doorGlow",mesh:bdGlow});
+    // W1 KILL (WS6-4): the doorGlow pulse animation dies; the faint static warm
+    // spill plane stays (zero per-frame cost, no throbbing glow).
+    if(!W1)animTex.push({type:"doorGlow",mesh:bdGlow});
     const bdLight=new THREE.SpotLight("#FFE0B0",.5,6,Math.PI/5,.6,1);
     bdLight.position.set(0,2.5,bdZ-.5);bdLight.target.position.set(0,1,bdZ-2);scene.add(bdLight);scene.add(bdLight.target);
     const bdAmbient=new THREE.PointLight("#FFE8C0",.25,4);bdAmbient.position.set(0,2,bdZ-.3);scene.add(bdAmbient);
@@ -1968,11 +2049,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     bdHit.position.set(0,1.7,bdZ);bdHit.userData={isBackDoor:true};scene.add(bdHit);
     memMeshes.current.push(bdHit);
 
-    // Golden dust
-    const rdN=isExhibition?180:70,rdG=new THREE.BufferGeometry(),rdP=new Float32Array(rdN*3);
+    // Golden dust — W1 KILL (WS6-4): duplicate raw-Points dust system deleted;
+    // createDustParticles below is the single canonical dust system per scene.
+    let rdN=0,rdG: THREE.BufferGeometry|null=null;
+    if(!W1){
+    rdN=isExhibition?180:70;rdG=new THREE.BufferGeometry();const rdP=new Float32Array(rdN*3);
     for(let i=0;i<rdN;i++){rdP[i*3]=(Math.random()-.5)*rW;rdP[i*3+1]=.5+Math.random()*rH;rdP[i*3+2]=(Math.random()-.5)*rL;}
     rdG.setAttribute("position",new THREE.BufferAttribute(rdP,3));
     scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.03,transparent:true,opacity:.25*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
+    }
 
     const camY=isExhibition?2.1:2.0;
     const camZ=initialCameraZ!=null?initialCameraZ:isExhibition?rL/2-4:rL/2-2.5;
@@ -1985,6 +2070,68 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
     // ── Optimize: deduplicate materials to reduce GPU state changes ──
     optimizeMaterials(scene);
+
+    // ── W1 (WS11-5): merge static room architecture per material ──
+    // Runs after optimizeMaterials so deduped materials bucket together.
+    // Interactive meshes (memMeshes/hitAreaMeshes and anything carrying the
+    // raycast userData contract), animated meshes (animTex/dust), instanced
+    // meshes, transparent/glow materials and makeArtwork groups are excluded —
+    // only opaque Standard/Physical direct scene children merge, so the
+    // click/hover raycast (which raycasts ONLY memMeshes+hitAreaMeshes) is
+    // untouched while draw calls collapse toward the ≤150 mobile budget.
+    if(W1){
+      try{
+        const mergeSkip=new Set<THREE.Object3D>();
+        memMeshes.current.forEach(o=>mergeSkip.add(o));
+        hitAreaMeshes.current.forEach(o=>mergeSkip.add(o));
+        animTex.forEach((a: any)=>{for(const key of["mesh","inner","label"]){if(a[key]&&a[key].isObject3D)mergeSkip.add(a[key]);}});
+        mergeSkip.add(dust.points);
+        scene.updateMatrixWorld(true);
+        const attrSig=(g: THREE.BufferGeometry)=>Object.keys(g.attributes).sort().join(",")+"|"+(g.index?"i":"n");
+        const mergeBuckets=new Map<string,THREE.Mesh[]>();
+        for(const child of scene.children){
+          if(!(child as any).isMesh)continue;
+          const mm=child as THREE.Mesh;
+          if(mergeSkip.has(mm))continue;
+          if((mm as any).isInstancedMesh||(mm as any).isSkinnedMesh)continue;
+          if(Array.isArray(mm.material))continue;
+          const mat=mm.material as THREE.Material;
+          if(!mat||(mat.type!=="MeshStandardMaterial"&&mat.type!=="MeshPhysicalMaterial"))continue;
+          if(mat.transparent)continue;
+          const ud=mm.userData||{};
+          if(ud.memory||ud.isStation||ud.isHitArea||ud.isBackDoor||ud.isUploadPainting||ud.isInlay)continue;
+          const key=mat.uuid+"|"+attrSig(mm.geometry);
+          if(!mergeBuckets.has(key))mergeBuckets.set(key,[]);
+          mergeBuckets.get(key)!.push(mm);
+        }
+        const mergedAway: THREE.Mesh[]=[];
+        let mergedCount=0,removedCount=0;
+        for(const bucket of mergeBuckets.values()){
+          if(bucket.length<2)continue;
+          const clones=bucket.map(mm2=>{const g=mm2.geometry.clone();g.applyMatrix4(mm2.matrixWorld);return g;});
+          const mergedGeo=mergeBufferGeometries(clones);
+          clones.forEach(g=>g.dispose());
+          if(!mergedGeo)continue;
+          const mergedMesh=new THREE.Mesh(mergedGeo,bucket[0].material as THREE.Material);
+          mergedMesh.castShadow=true;mergedMesh.receiveShadow=true;
+          mergedMesh.userData.isMergedStatic=true;
+          scene.add(mergedMesh);
+          for(const mm2 of bucket){scene.remove(mm2);mergedAway.push(mm2);}
+          mergedCount++;removedCount+=bucket.length;
+        }
+        // Dispose original geometries that are no longer referenced by the scene
+        if(mergedAway.length){
+          const liveGeos=new Set<string>();
+          scene.traverse((o: any)=>{if(o.geometry)liveGeos.add(o.geometry.uuid);});
+          const disposed=new Set<string>();
+          for(const mm2 of mergedAway){
+            const g=mm2.geometry;
+            if(g&&!liveGeos.has(g.uuid)&&!disposed.has(g.uuid)){g.dispose();disposed.add(g.uuid);}
+          }
+        }
+        if(process.env.NODE_ENV!=="production"&&mergedCount>0)console.debug(`[InteriorScene] mergeStatic: ${removedCount} meshes → ${mergedCount} merged draws`);
+      }catch(e){if(process.env.NODE_ENV!=="production")console.warn("[InteriorScene] mergeStatic skipped:",e);}
+    }
 
     const clock=new THREE.Clock();
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
@@ -2115,7 +2262,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           if(vinylAudio){const vo=volOverride.current.audio;vinylAudio.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_vinylPos.current.set(vpX,1,vpZ))/8));}
         }
         if(a.type==="globe"){a.mesh.rotation.y=t*.15;}
-        if((a as any).type==="xmasTree"){const xl=(a as any).light as THREE.PointLight;xl.intensity=.7+Math.sin(t*1.2)*.15;const sl=(a as any).star as THREE.PointLight;if(sl)sl.intensity=.5+Math.sin(t*2)*.2;const sm=(a as any).mesh;if(sm)sm.rotation.y=t*.3;}
+        if((a as any).type==="xmasTree"){const xl=(a as any).light as THREE.PointLight|null;if(xl)xl.intensity=.7+Math.sin(t*1.2)*.15;const sl=(a as any).star as THREE.PointLight;if(sl)sl.intensity=.5+Math.sin(t*2)*.2;const sm=(a as any).mesh;if(sm)sm.rotation.y=t*.3;}
         if(a.type==="video"){
           const cx=a.ctx,cw=a.w,ch=a.h,m=a.mem,ph=t*.5+a.phase;
           const vEl=a.videoEl?a.videoEl():null;
@@ -2178,7 +2325,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // Animate particles — throttle to every 2nd frame on mobile for performance
       const _doParticles=!_isMobile||(_frameCount&1)===0;
       if(_doParticles){
-        const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>rH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;(rdG.attributes.position as any).updateRange={offset:0,count:rdN*3};
+        if(rdG){const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>rH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;(rdG.attributes.position as any).updateRange={offset:0,count:rdN*3};}
         dust.update(t,dt);
       }
       // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
@@ -2315,6 +2462,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       animTex.forEach(a=>{if(a.type==="video"){const vEl=a.videoEl?a.videoEl():null;if(vEl){vEl.pause();vEl.src="";if(vEl.parentNode)vEl.parentNode.removeChild(vEl);}}});
       window.removeEventListener("resize",_refreshRect);
       _rectRO?.disconnect();
+      // Dispose makeArtwork instances (frames/plaques/pool decals own their
+      // geometries + canvas textures) before the generic scene sweep.
+      artworks.forEach(a=>{try{a.dispose();}catch{}});
       const _cachedSet=buildCachedTextureSet();
       const _cachedMats=buildCachedMaterialSet();
       scene.traverse((obj: any) => {
