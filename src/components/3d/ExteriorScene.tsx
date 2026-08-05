@@ -9,9 +9,11 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { EXPOSURE, GOLDEN, PLASTER_RAMP, CLEAR_COLOR } from "@/lib/3d/canon";
-import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
-import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
+import { EXPOSURE, GOLDEN, PLASTER_RAMP, CLEAR_COLOR, GOLD, EMBER, INK, TRAVERTINE_GROUT } from "@/lib/3d/canon";
+import { flag3d } from "@/lib/3d/flags3d";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadSandstoneTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { createGrassSystem, createWheatField, createSharedWheatMaterial } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
@@ -76,6 +78,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const dlPreset=getLightingPreset();
     const Q=getQuality();
     const isMobileQ=Q.maxEagerTextureSets<=6;
+    // MUSEO VIVO Wave-1 exterior pass (WS3-4 retunes, WS2-1/3/4 terrain + shared
+    // field materials, emissive-lerp kill). Staging ON / prod OFF via flags3d.
+    const W1=flag3d("w1_exterior");
     const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(GOLDEN.fogExterior,.0018*dlPreset.fogDensity);
     // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
     // Mobile: 512x256 (4x fewer pixels), Desktop: 2048x1024
@@ -231,7 +236,20 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const cropTex=isMobileQ?paintedPlasterTex:loadCropTextures([6,6]);
     const whiteGravelTex=isMobileQ?stoneTex:loadWhiteGravelTextures([4,4]);
     const roadTex=isMobileQ?stoneTex:loadGravelRoadTextures([3,3]);
-    const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,clayPlasterTex,paintedPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex];
+    // WS2-3: real terrain textures. The plaster stand-in terrain is replaced by the
+    // sandstone PBR set (dry Tuscan soil read) on ALL tiers — the terrain is the
+    // largest visible surface in the scene, so it earns an eager 1k set even on mobile.
+    const terrainTex=W1?loadSandstoneTextures([64,64]):null;
+    const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,clayPlasterTex,paintedPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex,...(terrainTex?[terrainTex]:[])];
+    // WS2-1: anisotropic filtering on ground-plane texture sets (4 mobile / 8 desktop,
+    // clamped to hardware max). Grazing-angle floor blur is the most visible cheapness.
+    const aniso=W1?Math.min(isMobileQ?4:8,ren.capabilities.getMaxAnisotropy()):0;
+    if(W1&&aniso>1){
+      for(const set of [terrainTex,whiteGravelTex,roadTex,cropTex,grassTex,groundTex]){
+        if(!set)continue;
+        for(const tex of [set.map,set.normalMap,set.roughnessMap]){tex.anisotropy=aniso;tex.needsUpdate=true;}
+      }
+    }
 
     // Hover label overlay
     const hovLabel=document.createElement("div");
@@ -297,6 +315,38 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       ivy:new THREE.MeshStandardMaterial({color:"#3A6030",roughness:.8}),
     };
 
+    // ══ MUSEO VIVO WS3-4 — material/emissive/envMap retune for Neutral@1.15 ══
+    // Every value below was tuned for ACESFilmic@2.4; under the Neutral grade the
+    // scene reads dimmer and flatter, so envMapIntensity lifts recover the sun-
+    // bleached warmth while emissives come DOWN (no neon under the honest grade).
+    // Hues anchor to canon.ts tokens or restrained earth tones — teal/verdigris die.
+    if(W1){
+      // Walls already on PLASTER_RAMP (atomic commit) — lift env response so plaster catches the golden PMREM
+      M.stone.envMapIntensity=.85;M.stoneL.envMapIntensity=.85;M.stoneW.envMapIntensity=.85;M.stoneD.envMapIntensity=.8;
+      // Gold: canon #D4AF37, calmer emissive/clearcoat — gold may gleam, never glow
+      M.gold.color.set(GOLD);M.gold.emissiveIntensity=.05;
+      M.goldBright.color.set(GOLD);M.goldBright.emissiveIntensity=.06;M.goldBright.envMapIntensity=1.1;
+      // Copper was teal (#5A9A80) — off-canon; retone to aged bronze
+      M.copper.color.set("#8A6B4E");M.copper.emissive.set("#2A2014");M.copper.emissiveIntensity=.04;M.copper.metalness=.5;
+      // Terracotta roofs — warmer, sun-struck, catching more sky
+      M.roof.color.set("#B08262");M.roof.envMapIntensity=.5;
+      M.roofD.color.set("#8C6F5C");M.roofD.envMapIntensity=.35;
+      M.roofSlate.color.set("#8A7A66");M.roofSlate.metalness=.1;
+      M.tile.color.set("#B88566");
+      // Windows: warm glass, emissive down .25→.16 so panes never bloom at 1.15
+      M.win.emissive.set("#FFC488");M.win.emissiveIntensity=.16;
+      M.winBlue.color.set("#F2ECDC");M.winBlue.emissive.set("#FFD8A0");M.winBlue.emissiveIntensity=.06;
+      // Doors: lift from near-black walnut so they read as wood at golden hour (60+ eyes)
+      M.door.color.set("#6B4526");M.doorRich.color.set("#7A4E2C");
+      // Water: kill the teal — hazy golden-sky reflection tones
+      M.water.color.set("#8C9884");M.waterDeep.color.set("#76806C");
+      // Vegetation: cool greens → sun-dried olive family
+      M.grass.color.set("#7A7E48");M.grassL.color.set("#8A8C54");M.grassD.color.set("#6A7040");M.grassRich.color.set("#6E7242");
+      M.hedge.color.set("#44502E");M.hedgeL.color.set("#525E38");M.ivy.color.set("#4E5C38");
+      // Travertine columns catch a touch more of the golden env
+      M.col.envMapIntensity=.9;
+    }
+
     // Helper to build a tower with conical roof
     const buildTower=(parent: THREE.Group|THREE.Object3D,x: number,z: number,radius: number,height: number,roofH: number,mat: THREE.Material,roofMat: THREE.Material)=>{
       // Tower body (cylinder)
@@ -350,11 +400,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── TERRAIN — Continuous rolling Tuscan hills (single displaced mesh) ──
     const HILL_Y = 8; // Palace hill elevation
-    const terrain = createTuscanTerrain(scene, {
-      cropMap: cropTex.map, cropNormal: cropTex.normalMap, cropRoughness: cropTex.roughnessMap,
-    });
-    // Cobblestone courtyard — completely matte to avoid specular glare
-    const courtyardMat = new THREE.MeshStandardMaterial({ color: "#C8B898", roughness: 0.92, metalness: 0, map: groundTex.map, normalMap: groundTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3), roughnessMap: groundTex.roughnessMap });
+    const terrain = W1
+      ? createTuscanTerrain(scene, {
+          cropMap: terrainTex!.map, cropNormal: terrainTex!.normalMap, cropRoughness: terrainTex!.roughnessMap, cropAO: terrainTex!.aoMap,
+        }, { anisotropy: aniso, warm: true })
+      : createTuscanTerrain(scene, {
+          cropMap: cropTex.map, cropNormal: cropTex.normalMap, cropRoughness: cropTex.roughnessMap,
+        });
+    // Cobblestone courtyard — completely matte to avoid specular glare.
+    // W1: real sandstone maps (WS2-3) instead of the tinted plaster stand-in.
+    const courtyardGroundTex = W1 ? terrainTex! : groundTex;
+    const courtyardMat = new THREE.MeshStandardMaterial({ color: W1 ? "#CDBC9A" : "#C8B898", roughness: 0.92, metalness: 0, map: courtyardGroundTex.map, normalMap: courtyardGroundTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3), roughnessMap: courtyardGroundTex.roughnessMap });
     const cyGeo = new THREE.CircleGeometry(39, 64);
     cyGeo.rotateX(-Math.PI / 2);
     const cyMesh = new THREE.Mesh(cyGeo, courtyardMat);
@@ -366,7 +422,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     scene.add(mk(new THREE.TorusGeometry(20,.08,4,48),M.stoneD,0,HILL_Y+.38,0));
     scene.add(mk(new THREE.TorusGeometry(14,.06,4,36),M.stoneD,0,HILL_Y+.38,0));
     // Compass rose / medallion at courtyard centre
-    const medallion = new THREE.Mesh(new THREE.CircleGeometry(2,16),M.goldBright);
+    // W1: gold is reserved for entrance/tympanum (canon dogma) — medallion reads as pale travertine inlay
+    const medallion = new THREE.Mesh(new THREE.CircleGeometry(2,16),W1?M.trim:M.goldBright);
     medallion.rotation.x = -Math.PI/2;
     medallion.position.set(0,HILL_Y+0.4,0);
     scene.add(medallion);
@@ -647,12 +704,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     const vW = 20, vD = 18, vH = 7;
     const ochreWall = M.stone; // reuse identical material from M dictionary
-    const gardenGreen = new THREE.MeshStandardMaterial({ color: "#4A7A3A", roughness: 0.9 });
-    const waterMat = new THREE.MeshStandardMaterial({ color: "#4A7A7A", roughness: 0.7, metalness: 0, transparent: true, opacity: 0.45, envMapIntensity: 0.1 });
+    // W1 retunes: garden green → sun-dried olive, teal water → warm sky reflection, mullions → canon ink
+    const gardenGreen = new THREE.MeshStandardMaterial({ color: W1 ? "#66703E" : "#4A7A3A", roughness: 0.9 });
+    const waterMat = new THREE.MeshStandardMaterial({ color: W1 ? "#8C9884" : "#4A7A7A", roughness: 0.7, metalness: 0, transparent: true, opacity: 0.45, envMapIntensity: W1 ? 0.3 : 0.1 });
     extraDisposables.push(gardenGreen, waterMat);
 
     // ── Helper: arched window assembly with shutters & deep reveal ──
-    const mullionMat = new THREE.MeshStandardMaterial({ color: "#1A1A1A", roughness: 0.9, metalness: 0 });
+    const mullionMat = new THREE.MeshStandardMaterial({ color: W1 ? INK : "#1A1A1A", roughness: 0.9, metalness: 0 });
     const shutterMat = new THREE.MeshStandardMaterial({ color: "#6B7A5A", roughness: 0.75, metalness: 0, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3) });
     extraDisposables.push(mullionMat, shutterMat);
     const addArchedWindow = (parent: THREE.Group | THREE.Object3D, x: number, y: number, z: number, width: number, height: number, facingSide: "x" | "z", mat: THREE.Material) => {
@@ -894,8 +952,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       tymShape.lineTo(0, 1.1);
       tymShape.closePath();
       const tymGeo = new THREE.ShapeGeometry(tymShape);
+      // W1 (WS3-4): tympanum reads as honed travertine — the gold hue moves to the sun, not the stone
       const tymMat = new THREE.MeshStandardMaterial({
-        color: "#D8B458", roughness: 0.75, metalness: 0,
+        color: W1 ? TRAVERTINE_GROUT : "#D8B458", roughness: W1 ? 0.7 : 0.75, metalness: 0,
+        envMapIntensity: W1 ? 0.7 : 1,
         normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
       });
       const tymMesh = new THREE.Mesh(tymGeo, tymMat);
@@ -1009,8 +1069,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Stacked marble rim
     centralGroup.add(mk(new THREE.BoxGeometry(8, 0.12, 6.5), M.marble, 0, 1.86, 0));
 
-    // ── MOSAIC FLOOR BORDER — gold ring around impluvium ──
-    const mosaicRing = new THREE.Mesh(new THREE.TorusGeometry(4.5, 0.08, 4, 32), M.goldBright);
+    // ── MOSAIC FLOOR BORDER — ring around impluvium (W1: travertine, gold is frames/tympanum only) ──
+    const mosaicRing = new THREE.Mesh(new THREE.TorusGeometry(4.5, 0.08, 4, 32), W1 ? M.trim : M.goldBright);
     mosaicRing.rotation.x = -Math.PI / 2;
     mosaicRing.position.set(0, 1.38, 0);
     centralGroup.add(mosaicRing);
@@ -1342,12 +1402,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       centralGroup.add(mk(new THREE.BoxGeometry(0.7, 1.6, 0.12), M.win,
         Math.cos(da) * (rDrumR + 0.05), drumBaseY + rDrumH * 0.6, Math.sin(da) * (rDrumR + 0.05)));
     }
-    // Hemispherical dome — verdigris copper with patina texture
+    // Hemispherical dome — W1: verdigris teal is off-canon; aged sun-struck bronze instead
     const domeMat = new THREE.MeshStandardMaterial({
-      color: '#6B9A85', roughness: 0.65, metalness: 0.35,
+      color: W1 ? '#8A6F52' : '#6B9A85', roughness: 0.65, metalness: W1 ? 0.45 : 0.35,
       normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(1.2, 1.2),
       roughnessMap: clayPlasterTex.roughnessMap,
-      envMapIntensity: 0.7,
+      envMapIntensity: W1 ? 0.85 : 0.7,
     });
     extraDisposables.push(domeMat);
     const rDome = new THREE.Mesh(
@@ -1615,13 +1675,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
 
       // ── DECORATIVE MEDALLION (clock face) between floors, front face ──
-      addM(mk(new THREE.CircleGeometry(0.8, 16), M.goldBright, 0, eH * 0.5 + 1.3, eZ - eD / 2 - 0.06));
+      // W1: wing towers lose their gold — bronze accents; gold is entrance/tympanum only
+      addM(mk(new THREE.CircleGeometry(0.8, 16), W1 ? M.bronze : M.goldBright, 0, eH * 0.5 + 1.3, eZ - eD / 2 - 0.06));
 
       // Tower entrance door
       addM(mk(new THREE.BoxGeometry(2.8, 4.5, 0.2), M.doorRich, 0, 3.7, eZ - eD / 2 - 0.08));
       addM(mk(new THREE.BoxGeometry(3.2, 5, 0.1), M.trim, 0, 3.9, eZ - eD / 2 - 0.04));
       // Tower door divider
-      addM(mk(new THREE.BoxGeometry(0.07, 4.5, 0.1), M.gold, 0, 3.7, eZ - eD / 2 - 0.19));
+      addM(mk(new THREE.BoxGeometry(0.07, 4.5, 0.1), W1 ? M.bronze : M.gold, 0, 3.7, eZ - eD / 2 - 0.19));
       // Tower door panels — two recessed panels per leaf
       for (let tdp = -1; tdp <= 1; tdp += 2) {
         addM(mk(new THREE.BoxGeometry(1.1, 1.5, 0.03), M.door, tdp * 0.65, 2.7, eZ - eD / 2 - 0.1));
@@ -1885,8 +1946,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // Symmetrical parterre gardens with flower beds
     const parterreData=[[-16,-25],[16,-25],[-16,-45],[16,-45],[-24,-35],[24,-35]];
-    const hedgeDark=new THREE.MeshStandardMaterial({color:"#2E4A22",roughness:.88});
-    const hedgeMid=new THREE.MeshStandardMaterial({color:"#3A5A2A",roughness:.85});
+    const hedgeDark=new THREE.MeshStandardMaterial({color:W1?"#3E4828":"#2E4A22",roughness:.88});
+    const hedgeMid=new THREE.MeshStandardMaterial({color:W1?"#4C5A32":"#3A5A2A",roughness:.85});
     const gravelWarm=new THREE.MeshStandardMaterial({color:"#C8B898",roughness:.92});
     const lavenderMat=new THREE.MeshStandardMaterial({color:"#7A6898",roughness:.82});
     const rosedustMat=new THREE.MeshStandardMaterial({color:"#B88A7A",roughness:.8});
@@ -2015,6 +2076,22 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     });
 
     // ── PALACE CYPRESS RING — LatheGeometry with vertex noise for natural columnar shape ──
+    // W1 (WS2-4): ~150 unique per-tree hsl foliage materials collapse to 3 shared warm
+    // olive tones picked by seed — silhouette variety stays in the per-tree geometry noise.
+    // (Full cypress instancing deferred to Wave 2: it breaks per-tree Lathe silhouettes.)
+    const cypressFoliageMats=W1?[
+      new THREE.MeshStandardMaterial({color:"#26301E",roughness:.92,flatShading:true}),
+      new THREE.MeshStandardMaterial({color:"#2E3A22",roughness:.92,flatShading:true}),
+      new THREE.MeshStandardMaterial({color:"#39452B",roughness:.92,flatShading:true}),
+    ]:null;
+    // Distance-bucketed shared materials for the far columnar cypresses (3 haze bands)
+    const farCypressMats=W1?[
+      new THREE.MeshStandardMaterial({color:atmosColor("#33402A",200),roughness:.9}),
+      new THREE.MeshStandardMaterial({color:atmosColor("#33402A",300),roughness:.9}),
+      new THREE.MeshStandardMaterial({color:atmosColor("#33402A",430),roughness:.9}),
+    ]:null;
+    if(cypressFoliageMats)extraDisposables.push(...cypressFoliageMats);
+    if(farCypressMats)extraDisposables.push(...farCypressMats);
     const buildCypress=(px: number,pz: number,h: number,baseY: number)=>{
       // Trunk
       scene.add(mk(new THREE.CylinderGeometry(.04,.14,h*.3,5),M.barkD,px,baseY+h*.15,pz));
@@ -2055,12 +2132,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         pos.setY(v,vy+Math.sin(angle*7+ht*23+seed)*.02*foliageH);
       }
       cypGeo.computeVertexNormals();
-      const hue=126+Math.sin(seed)*14;
-      const sat=38+Math.abs(Math.cos(seed*.5))*10;
-      const lt=9+Math.abs(Math.sin(seed*.3))*4;
-      const foliageMat=new THREE.MeshStandardMaterial({
-        color:new THREE.Color(`hsl(${hue},${sat}%,${lt}%)`),roughness:.92,flatShading:true,
-      });
+      let foliageMat: THREE.MeshStandardMaterial;
+      if(cypressFoliageMats){
+        foliageMat=cypressFoliageMats[Math.abs(Math.floor(seed*7))%3];
+      }else{
+        const hue=126+Math.sin(seed)*14;
+        const sat=38+Math.abs(Math.cos(seed*.5))*10;
+        const lt=9+Math.abs(Math.sin(seed*.3))*4;
+        foliageMat=new THREE.MeshStandardMaterial({
+          color:new THREE.Color(`hsl(${hue},${sat}%,${lt}%)`),roughness:.92,flatShading:true,
+        });
+      }
       const lean=(Math.sin(seed*1.7)-.5)*.03;
       const mesh=new THREE.Mesh(cypGeo,foliageMat);
       mesh.position.set(px+lean,baseY+h*.18,pz);
@@ -2078,7 +2160,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── NEAR-PALACE VINEYARD — organized rows on south-east slope ──
-    const vineRowMat=new THREE.MeshStandardMaterial({color:"#3A5828",roughness:.84});
+    const vineRowMat=new THREE.MeshStandardMaterial({color:W1?"#4C5A30":"#3A5828",roughness:.84});
     const vineRowCount=isMobileQ?5:14;
     for(let row=0;row<vineRowCount;row++){
       const vx=35+row*2.2;const vz=35+Math.sin(row*.3)*3;
@@ -2088,7 +2170,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── COURTYARD BOXWOOD HEDGES ──
-    const boxwoodMat=new THREE.MeshStandardMaterial({color:"#2A4A1E",roughness:.88});
+    const boxwoodMat=new THREE.MeshStandardMaterial({color:W1?"#3C4828":"#2A4A1E",roughness:.88});
     for(let hi=0;hi<24;hi++){
       const ha=(hi/24)*Math.PI*2;
       const hx2=Math.cos(ha)*34,hz2=Math.sin(ha)*34;
@@ -2111,8 +2193,48 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const cropDispMap=loadDisplacementMap("/textures/pbr/crop/crop_disp_1k.jpg",[4,4]);
     // Sunny crop yellow palette — warm golden tints dominate
     const wheatTints=["#D8B848","#C8A848","#E0C060","#B8A040","#C8B050","#E4C868","#D0B048","#CCB258","#D4B450","#C0A048","#DAC058","#C4A838","#E2C468","#D6B850","#CCAA48"];
-    const greenTints=["#8A9848","#7A8840","#909850"];
+    // W1 (WS3-4): warm field tints — greens shift to sun-dried olive
+    const greenTints=W1?["#9A9850","#8C8C48","#A29C58"]:["#8A9848","#7A8840","#909850"];
     const earthTints=["#B0A070","#A09060","#B8A878"];
+    // ══ W1 (WS2-4): SHARED FIELD MATERIALS + VERTEX-COLOR TINTING ══
+    // The ~500 per-patch (+~250 per-vineyard-row, +25 sunflower) unique
+    // MeshStandardMaterials collapse to 4 shared materials; the per-patch tint
+    // moves into a baked vertex-color attribute, and every bucket merges into
+    // ONE mesh — ~790 materials → 4 and ~790 draw calls → 4 on desktop.
+    const fieldMats=W1?{
+      wheat:new THREE.MeshStandardMaterial({
+        map:cropTex.map,normalMap:cropTex.normalMap,normalScale:new THREE.Vector2(.6,.6),
+        roughnessMap:cropTex.roughnessMap,aoMap:cropTex.aoMap,aoMapIntensity:.3,
+        displacementMap:cropDispMap,displacementScale:0.8,
+        vertexColors:true,roughness:.92,envMapIntensity:.15,
+      }),
+      green:new THREE.MeshStandardMaterial({
+        map:grassTex.map,normalMap:grassTex.normalMap,normalScale:new THREE.Vector2(.5,.5),
+        roughnessMap:grassTex.roughnessMap,
+        vertexColors:true,roughness:.90,envMapIntensity:.12,
+      }),
+      earth:new THREE.MeshStandardMaterial({
+        map:groundTex.map,normalMap:groundTex.normalMap,normalScale:new THREE.Vector2(.4,.4),
+        roughnessMap:groundTex.roughnessMap,
+        vertexColors:true,roughness:.94,envMapIntensity:.1,
+      }),
+      vine:new THREE.MeshStandardMaterial({vertexColors:true,roughness:.84}),
+    }:null;
+    if(fieldMats)extraDisposables.push(fieldMats.wheat,fieldMats.green,fieldMats.earth,fieldMats.vine);
+    const fieldBuckets=fieldMats?{
+      wheat:[] as THREE.BufferGeometry[],green:[] as THREE.BufferGeometry[],
+      earth:[] as THREE.BufferGeometry[],vine:[] as THREE.BufferGeometry[],
+    }:null;
+    const _fieldDummy=new THREE.Object3D();
+    // Bake a uniform tint into a color attribute, apply the world transform, queue for merge
+    const pushTinted=(bucket:THREE.BufferGeometry[],geo:THREE.BufferGeometry,tint:THREE.Color,px:number,py:number,pz:number,rx:number,ry:number,rz:number)=>{
+      const n=geo.attributes.position.count;const arr=new Float32Array(n*3);
+      for(let i=0;i<n;i++){arr[i*3]=tint.r;arr[i*3+1]=tint.g;arr[i*3+2]=tint.b;}
+      geo.setAttribute("color",new THREE.BufferAttribute(arr,3));
+      _fieldDummy.position.set(px,py,pz);_fieldDummy.rotation.set(rx,ry,rz);_fieldDummy.updateMatrix();
+      geo.applyMatrix4(_fieldDummy.matrix);
+      bucket.push(geo);
+    };
     // VERY dense field coverage — 500 patches for a sea of golden wheat (60 on mobile)
     const fieldPatchCount=isMobileQ?60:500;
     for(let fi=0;fi<fieldPatchCount;fi++){
@@ -2124,6 +2246,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const d=Math.sqrt(fx*fx+fz*fz);
       // 90% golden wheat, 6% green crop, 4% plowed earth
       const fieldType=Math.random();
+      if(fieldBuckets){
+        const geo=new THREE.PlaneGeometry(fw,fl,16,16);
+        const fy=getHeightAt(fx,fz)+.2,frz=Math.random()*.5-.25;
+        if(fieldType<0.90)pushTinted(fieldBuckets.wheat,geo,atmosColor(wheatTints[fi%wheatTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
+        else if(fieldType<0.96)pushTinted(fieldBuckets.green,geo,atmosColor(greenTints[fi%greenTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
+        else pushTinted(fieldBuckets.earth,geo,atmosColor(earthTints[fi%earthTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
+        continue;
+      }
       let fieldMat: THREE.MeshStandardMaterial;
       if(fieldType<0.90){
         const tint=atmosColor(wheatTints[fi%wheatTints.length],d);
@@ -2155,7 +2285,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── VINEYARDS: organized rows on gentle slopes ──
-    const vineM=[new THREE.MeshStandardMaterial({color:"#3A5828",roughness:.85}),new THREE.MeshStandardMaterial({color:"#4A6830",roughness:.82})];
+    // W1: warm olive vine tones; every row's unique material collapses into the shared
+    // vertex-tinted vine bucket (one merged mesh) instead of ~250 materials/draws.
+    const vineM=[new THREE.MeshStandardMaterial({color:W1?"#4C5A30":"#3A5828",roughness:.85}),new THREE.MeshStandardMaterial({color:W1?"#5C6A38":"#4A6830",roughness:.82})];
+    extraDisposables.push(...vineM);
     const vineyardCount=isMobileQ?3:14;
     for(let vi=0;vi<vineyardCount;vi++){
       const vAngle=Math.random()*Math.PI*2;
@@ -2168,6 +2301,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const rx=vx+Math.cos(vRot)*row*1.8,rz=vz+Math.sin(vRot)*row*1.8;
         const rowLen=14+Math.random()*10;
         const vCol=atmosColor(vineM[row%2].color.getStyle(),Math.sqrt(rx*rx+rz*rz));
+        if(fieldBuckets){
+          pushTinted(fieldBuckets.vine,new THREE.BoxGeometry(.35,.7,rowLen),vCol,rx,getHeightAt(rx,rz)+.35,rz,0,vRot,0);
+          continue;
+        }
         const rm=mk(new THREE.BoxGeometry(.35,.7,rowLen),new THREE.MeshStandardMaterial({color:vCol,roughness:.84}),rx,getHeightAt(rx,rz)+.35,rz);
         rm.rotation.y=vRot;scene.add(rm);
       }
@@ -2215,10 +2352,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if(d<180){
         buildCypress(cx2,cz,ch,cyBaseY);
       }else{
-        const cCol=atmosColor(`hsl(${126+Math.random()*12},${32+Math.random()*10}%,${10+Math.random()*5}%)`,d);
         scene.add(mk(new THREE.CylinderGeometry(.06,.12,ch*.2,5),M.barkD,cx2,cyBaseY+ch*.1,cz));
         // Columnar silhouette — tapered cylinder (narrow, not cone-shaped)
-        const mat=new THREE.MeshStandardMaterial({color:cCol,roughness:.9});
+        // W1: 3 shared distance-band materials instead of a unique material per tree
+        const mat=farCypressMats
+          ?farCypressMats[d<260?0:d<360?1:2]
+          :new THREE.MeshStandardMaterial({color:atmosColor(`hsl(${126+Math.random()*12},${32+Math.random()*10}%,${10+Math.random()*5}%)`,d),roughness:.9});
         const col=new THREE.Mesh(new THREE.CylinderGeometry(.12,.3,ch*.8,6),mat);
         col.position.set(cx2,cyBaseY+ch*.5,cz);col.castShadow=d<250;scene.add(col);
       }
@@ -2615,6 +2754,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const d=Math.sqrt(sx*sx+sz*sz);
       const sfCol=atmosColor(sunflowerTones[sf%sunflowerTones.length],d);
       const sfGeo=new THREE.PlaneGeometry(22+Math.random()*18,16+Math.random()*12,12,12);
+      if(fieldBuckets){
+        // W1: fold into the shared wheat bucket (same crop maps — one merged mesh)
+        pushTinted(fieldBuckets.wheat,sfGeo,sfCol,sx,getHeightAt(sx,sz)+.25,sz,-Math.PI/2,0,Math.random()*.4);
+        continue;
+      }
       const sfm=new THREE.Mesh(sfGeo,new THREE.MeshStandardMaterial({
         map:cropTex.map,normalMap:cropTex.normalMap,normalScale:new THREE.Vector2(.5,.5),
         roughnessMap:cropTex.roughnessMap,
@@ -2623,6 +2767,20 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }));
       sfm.rotation.x=-Math.PI/2;sfm.position.set(sx,getHeightAt(sx,sz)+.25,sz);sfm.rotation.z=Math.random()*.4;
       sfm.receiveShadow=true;scene.add(sfm);
+    }
+
+    // ══ W1 (WS2-4): merge each shared-material field bucket into ONE mesh ══
+    if(fieldBuckets&&fieldMats){
+      ([["wheat",fieldMats.wheat],["green",fieldMats.green],["earth",fieldMats.earth],["vine",fieldMats.vine]] as const).forEach(([key,mat])=>{
+        const geos=fieldBuckets[key as keyof typeof fieldBuckets];
+        if(!geos.length)return;
+        const merged=mergeGeometries(geos);
+        geos.forEach(g=>g.dispose());
+        if(!merged)return;
+        const mesh=new THREE.Mesh(merged,mat);
+        mesh.receiveShadow=true;
+        scene.add(mesh);
+      });
     }
 
     // ── 3D WHEAT/GRAIN FIELDS: dense instanced stalks — Tuscan golden harvest ──
@@ -2659,16 +2817,22 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
     // On mobile, skip far wheat fields entirely and reduce near-field density
     const wheatSubset=isMobileQ?wheatPositions.slice(0,8):wheatPositions;
+    // W1 (WS2-4): ONE shared wheat shader material for every field (~45 ShaderMaterials → 1);
+    // per-field hsl uniforms are replaced by per-instance variation baked into the shared shader.
+    const W1_WHEAT_STALK_H=1.7;
+    const sharedWheatMat=W1?createSharedWheatMaterial(W1_WHEAT_STALK_H):null;
+    if(sharedWheatMat)extraDisposables.push(sharedWheatMat);
     wheatSubset.forEach(([wx, wz, ww, wd], i) => {
       const isFar = i >= 16;
       const baseCount=isFar ? 600 : (1500 + Math.floor(Math.random() * 1000));
       wheatFields.push(createWheatField(scene, {
         count: Math.round(baseCount*Q.vegetationDensity),
         centerX: wx, centerZ: wz, width: ww, depth: wd,
-        stalkHeight: 1.4 + Math.random() * 0.9,
+        stalkHeight: sharedWheatMat ? W1_WHEAT_STALK_H : 1.4 + Math.random() * 0.9,
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
         headColor: `hsl(${40 + Math.random() * 12}, ${50 + Math.random() * 20}%, ${64 + Math.random() * 12}%)`,
         getHeightAt,
+        material: sharedWheatMat ?? undefined,
       }));
     });
 
@@ -2739,67 +2903,87 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     ect.position.set(0,HILL_Y+entrClickHeight/2+2,0);ect.userData={roomId:entranceId,wingMeshes:centralMeshes,accent:"#E0C060"};
     scene.add(ect);clickTargets.push(ect);
 
-    // ── HOVER POINT LIGHTS (one per wing + entrance) ──
+    // ── HOVER / WALKTHROUGH AFFORDANCE ──
+    // W1 (WS3-7 + perf audit): the idle emissive-lerp loop that mutated ~1000 cloned
+    // materials every frame is DEAD, along with the per-mesh material cloning that fed
+    // it and the 12 idle per-wing PointLights. Replacement: ONE shared ember hover
+    // light + ONE shared gold walkthrough light, repositioned on state CHANGE only.
+    const targetWorldPos=new Map<string,THREE.Vector3>();
+    clickTargets.forEach((ct: any)=>{const pos=new THREE.Vector3();ct.getWorldPosition(pos);targetWorldPos.set(ct.userData.roomId,pos);});
     const hoverLights: {light:THREE.PointLight,targetIntensity:number,wingId:string}[]=[];
-    clickTargets.forEach((ct: any)=>{
-      const pos=new THREE.Vector3();ct.getWorldPosition(pos);
-      const hl=new THREE.PointLight(ct.userData.accent,0,45);
-      hl.position.set(pos.x,12,pos.z);
-      scene.add(hl);
-      hoverLights.push({light:hl,targetIntensity:0,wingId:ct.userData.roomId});
-    });
+    let w1HoverLight: THREE.PointLight|null=null;
+    let w1HlLight: THREE.PointLight|null=null;
+    if(W1){
+      w1HoverLight=new THREE.PointLight(EMBER,0,45);scene.add(w1HoverLight);
+      w1HlLight=new THREE.PointLight(GOLD,0,50);scene.add(w1HlLight);
+    }else{
+      // Legacy: one accent PointLight per wing + entrance
+      clickTargets.forEach((ct: any)=>{
+        const pos=targetWorldPos.get(ct.userData.roomId)!;
+        const hl=new THREE.PointLight(ct.userData.accent,0,45);
+        hl.position.set(pos.x,12,pos.z);
+        scene.add(hl);
+        hoverLights.push({light:hl,targetIntensity:0,wingId:ct.userData.roomId});
+      });
+    }
 
-    // ── PER-WING WINDOW MATERIALS ──
+    // ── PER-WING WINDOW MATERIALS (legacy path only) ──
     // Clone window materials for each wing so hover glow is independent
     const wingWindowMats: Map<string,{mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]>=new Map();
-    clickTargets.forEach((ct: any)=>{
-      const entries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
-      ct.userData.wingMeshes.forEach((wm: THREE.Mesh)=>{
+    if(!W1){
+      clickTargets.forEach((ct: any)=>{
+        const entries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
+        ct.userData.wingMeshes.forEach((wm: THREE.Mesh)=>{
+          const mat=wm.material as THREE.MeshStandardMaterial;
+          if(mat===M.win||mat===M.winBlue){
+            const cl=mat.clone();wm.material=cl;
+            entries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
+          }
+        });
+        wingWindowMats.set(ct.userData.roomId,entries);
+      });
+      // For the entrance, also clone window materials on central meshes
+      const centralWinEntries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
+      centralMeshes.forEach((wm: THREE.Mesh)=>{
         const mat=wm.material as THREE.MeshStandardMaterial;
         if(mat===M.win||mat===M.winBlue){
           const cl=mat.clone();wm.material=cl;
-          entries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
+          centralWinEntries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
         }
       });
-      wingWindowMats.set(ct.userData.roomId,entries);
-    });
-    // For the entrance, also clone window materials on central meshes
-    const centralWinEntries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
-    centralMeshes.forEach((wm: THREE.Mesh)=>{
-      const mat=wm.material as THREE.MeshStandardMaterial;
-      if(mat===M.win||mat===M.winBlue){
-        const cl=mat.clone();wm.material=cl;
-        centralWinEntries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
-      }
-    });
-    wingWindowMats.set(entranceId,centralWinEntries);
+      wingWindowMats.set(entranceId,centralWinEntries);
 
-    // ── CLONE ALL BODY MATERIALS per section so emissive glow is fully isolated ──
-    // Without this, shared materials like ochreWall cause glow to bleed across all buildings
-    sectionGroups.forEach(sg=>{
-      sg.meshes.forEach((wm: any)=>{
-        if(!wm.material||wm.material.transparent)return;
-        const mat=wm.material as THREE.MeshStandardMaterial;
-        if(!mat.emissive)return;
-        // Skip already-cloned window materials
-        if(mat===M.win||mat===M.winBlue)return;
-        wm.material=mat.clone();
+      // ── CLONE ALL BODY MATERIALS per section so emissive glow is fully isolated ──
+      // Without this, shared materials like ochreWall cause glow to bleed across all buildings
+      sectionGroups.forEach(sg=>{
+        sg.meshes.forEach((wm: any)=>{
+          if(!wm.material||wm.material.transparent)return;
+          const mat=wm.material as THREE.MeshStandardMaterial;
+          if(!mat.emissive)return;
+          // Skip already-cloned window materials
+          if(mat===M.win||mat===M.winBlue)return;
+          wm.material=mat.clone();
+        });
       });
-    });
+    }
 
     scene.add(palace);
     if(!isMobileGPU()){scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(-5).translateY(HILL_Y+5).translateZ(0));
     scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(5).translateY(HILL_Y+5).translateZ(0));}
 
-    // ── WALKTHROUGH HIGHLIGHT — golden glow on target wing/entrance meshes ──
+    // ── WALKTHROUGH HIGHLIGHT — golden glow on target wing/entrance (legacy: one light per target) ──
     const hlLights: Map<string,THREE.PointLight>=new Map();
-    clickTargets.forEach((ct: any)=>{
-      const pos=new THREE.Vector3();ct.getWorldPosition(pos);
-      const light=new THREE.PointLight("#D4AF37",0,50);light.position.set(pos.x,12,pos.z);scene.add(light);
-      hlLights.set(ct.userData.roomId,light);
-    });
+    if(!W1){
+      clickTargets.forEach((ct: any)=>{
+        const pos=targetWorldPos.get(ct.userData.roomId)!;
+        const light=new THREE.PointLight("#D4AF37",0,50);light.position.set(pos.x,12,pos.z);scene.add(light);
+        hlLights.set(ct.userData.roomId,light);
+      });
+    }
 
     let prevHovered: string|null=null;
+    // W1 affordance state — lights update only when these change (no per-frame writes)
+    let _w1PrevHover: string|null=null,_w1PrevHl: string|null=null;
     const clock=new THREE.Clock();
     const goldColor=new THREE.Color("#D4AF37");
     // Pre-allocated objects reused every frame to avoid GC pressure
@@ -2836,9 +3020,33 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // preserves the old per-frame factors f exactly at 60fps.
       const _sm=(k:number)=>1-Math.exp(-k*dt);
 
-      // Walkthrough highlight — pulse golden emissive on target meshes
+      // Walkthrough highlight
       const hlTarget=highlightDoorRef.current;
-      if(hlTarget){
+      if(W1){
+        // W1: shared lights, repositioned/stepped on state CHANGE only — the per-frame
+        // emissive-lerp over ~1000 cloned materials is dead (WS3-7 / audit finding).
+        const hovNow=hoveredRoomRef.current;
+        if(hovNow!==_w1PrevHover){
+          _w1PrevHover=hovNow;
+          const p=hovNow?targetWorldPos.get(hovNow):undefined;
+          if(w1HoverLight){
+            if(p){w1HoverLight.position.set(p.x,12,p.z);w1HoverLight.intensity=1.8;}
+            else w1HoverLight.intensity=0;
+          }
+        }
+        const hlNow=hlTarget??null;
+        if(hlNow!==_w1PrevHl){
+          _w1PrevHl=hlNow;
+          const p=hlNow?targetWorldPos.get(hlNow):undefined;
+          if(w1HlLight){
+            if(p)w1HlLight.position.set(p.x,12,p.z);
+            else w1HlLight.intensity=0;
+          }
+        }
+        // Gentle pulse on the single active walkthrough light (one scalar write)
+        if(hlNow&&w1HlLight&&targetWorldPos.has(hlNow))w1HlLight.intensity=3+Math.sin(t*2)*1.5;
+      }else if(hlTarget){
+        // Legacy: pulse golden emissive on target meshes
         clickTargets.forEach((ct: any)=>{
           const active=hlTarget===ct.userData.roomId;
           if(active){
@@ -2990,9 +3198,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       }
 
-      // Wing & entrance hover glow — emissive body + accent point light + window brightening
-      // Materials are cloned per section, so emissive changes are fully isolated
+      // Wing & entrance hover glow — LEGACY path only (W1 killed the per-frame
+      // emissive mutation; its affordance is the shared ember light above)
       const _hovRoom=hoveredRoomRef.current;
+      if(!W1){
       clickTargets.forEach((ct: any)=>{
         const isHov=_hovRoom===ct.userData.roomId;
         const isWtHl=hlTarget===ct.userData.roomId;
@@ -3039,6 +3248,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           hl.light.intensity+=Math.sin(t*2.5)*.15;
         }
       });
+      } // end !W1 legacy hover path
 
       // Animate particles — throttle to every 2nd frame on mobile for performance
       const _doParticles=!_isMobile||(_frameCount&1)===0;
@@ -3071,7 +3281,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
       // Update grass and wheat wind animation
       grassSystem.update();
-      wheatFields.forEach(wf => wf.update());
+      if(sharedWheatMat)sharedWheatMat.uniforms.time.value=t; // W1: one uniform write for ALL fields
+      else wheatFields.forEach(wf => wf.update());
 
       composer.render();
       if (!_firstFrameDone) { _firstFrameDone = true; try { onReady?.(); } catch {} console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
