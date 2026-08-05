@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { T } from "@/lib/theme";
+import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, GOLD, SHADOW } from "@/lib/libraryTokens";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useNudgeStore, type NudgeId } from "@/lib/stores/nudgeStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -360,21 +361,18 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
   const isBridge = !!BRIDGE_TARGET[activeNudge];
   const ctaLabel = isBridge ? t("tryIt") : t("next");
 
-  // ── Playful annotation palette — the landing page's margin-note voice:
-  //    gold italic text + hand-drawn arrows on a warm dark scrap. ──
-  const cardBg = "linear-gradient(160deg, #2A2018 0%, #201811 100%)";
-  const cardBorder = "rgba(212,175,55,0.35)";
-  const cardShadow = "0 0.75rem 2rem rgba(0,0,0,0.42), inset 0 0.0625rem 0 rgba(212,175,55,0.12)";
-  const GOLD = "#D4AF37";        // the playful yellow (landing L.accentDark)
-  const GOLD_BRIGHT = "#E8C766";
-  const NOTE_INK = GOLD_BRIGHT;  // title / playful text → gold
-  const NOTE_BODY = "rgba(250,247,235,0.9)";   // secondary / bullet text → warm cream
-  const NOTE_MUTED = "rgba(232,215,180,0.55)"; // footer / skip
-  const NOTE_DOT = `linear-gradient(135deg, ${GOLD}, #B85C38)`; // gold→ember bullet
+  // ── Canon tutorial-card grammar (CorridorTutorial / SettingsTutorial):
+  //    opaque cream card, hairline border, warm-ink shadow, ink titles,
+  //    muted body, solid-ember CTA. Bottom palace prompts float over the live
+  //    3D scene → translucent cream + blur there so the scene stays visible.
+  const cardBg = CREAM;
+  const cardBgOverScene = "rgba(252,250,245,0.96)";
+  const cardBorder = HAIRLINE;
+  const cardShadow = SHADOW[2];
   const cardInAnim = "nudgeCardIn .3s ease both";
   const cardOutAnim = "nudgeCardOut .2s ease forwards";
-  // Playful gold italic style for the primary tutorial line (landing voice).
-  const playfulText: React.CSSProperties = { fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500, color: GOLD_BRIGHT, letterSpacing: "0.01em" };
+  // Canon title voice — display face, 600, ink (no italic, no gold text).
+  const playfulText: React.CSSProperties = { fontFamily: T.font.display, fontWeight: 600, color: INK, letterSpacing: "0.02em" };
   // Hand-drawn curved arrow (the landing "peiltje") — dir points it at the target.
   const HandArrow = ({ dir }: { dir: "up" | "down" | "left" | "right" }) => {
     const tf = dir === "up" ? "scaleY(-1)" : dir === "left" ? "scale(-1,1)" : dir === "right" ? "none" : "none";
@@ -393,9 +391,10 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
         <style>{`
           @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
           @keyframes nudgeCardOut { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.95); } }
+          @media (prefers-reduced-motion: reduce) { .nudge-anim { animation: none !important; } }
         `}</style>
         <div style={{ position:"fixed", inset:0, zIndex:57, background:"rgba(64,59,54,0.4)", pointerEvents:"auto" }} />
-        <div style={{
+        <div className="nudge-anim" style={{
           position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:59,
           width: isMobile ? "calc(100vw - 2rem)" : "22rem", maxWidth:"24rem",
           maxHeight: "calc(100dvh - 4rem)", overflowY: "auto",
@@ -408,24 +407,24 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             display:"flex", flexDirection:"column", gap:"0.75rem",
           }}>
             {cornerFold}
-            <div style={{ fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.01em" }}>
+            <div style={{ fontFamily:T.font.display, fontSize:"1.0625rem", fontWeight:600, color:INK, letterSpacing:"0.02em" }}>
               {t("palaceWalkTitle")}
             </div>
-            <div style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:NOTE_BODY, lineHeight:1.6 }}>
+            <div style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:MUTED, lineHeight:1.6 }}>
               {t("palaceWalkDesc")}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.5rem", marginTop:"0.25rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleAutoWalk(); }} style={{
                 fontFamily:T.font.body, fontSize:"0.8125rem", fontWeight:600, color:"#FFF",
-                background:"#B85C38",
-                border:"none", borderRadius:"0.5rem", padding:"0.625rem 1rem",
+                background:EMBER,
+                border:"none", borderRadius:"0.5rem", padding:"0.625rem 1rem", minHeight:T.touch,
                 cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em", textAlign:"center",
               }}>
                 {t("palaceWalkAuto")}
               </button>
               <button onClick={(e) => { e.stopPropagation(); handleManualWalk(); }} style={{
                 fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500,
-                color:NOTE_INK, background:"none",
+                color:INK, background:"none",
                 border:`1px solid ${cardBorder}`, borderRadius:"0.5rem",
                 padding:"0.5rem 1rem", cursor:"pointer", transition:"all .2s",
                 letterSpacing:"0.02em", textAlign:"center",
@@ -437,12 +436,12 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
               </button>
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-              alignSelf:"center", fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
-              color:NOTE_MUTED, background:"none", border:"none",
-              cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em", marginTop:"0.125rem",
+              alignSelf:"center", fontFamily:T.font.body, fontSize:"0.6875rem", fontWeight:500,
+              color:MUTED, background:"none", border:"none",
+              cursor:"pointer", padding:"0.125rem 0.5rem", minHeight:T.touch, letterSpacing:"0.03em", marginTop:"0.125rem",
             }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = NOTE_INK; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = NOTE_MUTED; }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = INK; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
             >
               {t("skip")}
             </button>
@@ -460,15 +459,17 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
         <style>{`
           @keyframes nudgePromptIn { from { opacity:0; transform:translate(-50%,0.5rem); } to { opacity:1; transform:translate(-50%,0); } }
           @keyframes nudgePromptOut { from { opacity:1; transform:translate(-50%,0); } to { opacity:0; transform:translate(-50%,0.5rem); } }
+          @media (prefers-reduced-motion: reduce) { .nudge-anim { animation: none !important; } }
         `}</style>
-        <div style={{
+        <div className="nudge-anim" style={{
           position:"fixed", bottom: isMobile ? "calc(5rem + env(safe-area-inset-bottom, 0px))" : "6rem", left:"50%", transform:"translate(-50%,0)", zIndex:59,
           width: isMobile ? "calc(100vw - 2rem)" : "20rem", maxWidth:"22rem",
           animation: fading ? "nudgePromptOut .2s ease forwards" : "nudgePromptIn .3s ease both",
         }}>
           <div style={{
-            background:cardBg, position:"relative", overflow:"hidden",
-            borderRadius:"1rem", padding:"0.875rem 1rem",
+            background:cardBgOverScene, backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+            position:"relative", overflow:"hidden",
+            borderRadius:"0.875rem", padding:"0.875rem 1rem",
             border:`1px solid ${cardBorder}`, boxShadow:cardShadow,
             display:"flex", flexDirection:"column", gap:"0.5rem",
           }}>
@@ -479,23 +480,23 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
                 boxShadow:"0 0 10px rgba(212,175,55,0.6)",
                 animation:"nudgeDotPulse 1.5s ease-in-out infinite",
               }} />
-              <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:NOTE_BODY, lineHeight:1.5 }}>
+              <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:INK, lineHeight:1.5 }}>
                 {t(config.messageKey)}
               </span>
             </div>
             {autoWalkingRef.current && (
-              <div style={{ fontFamily:T.font.body, fontSize:"0.6875rem", color:NOTE_MUTED, fontStyle:"italic" }}>
+              <div style={{ fontFamily:T.font.body, fontSize:"0.6875rem", color:MUTED, fontStyle:"italic" }}>
                 {t("autoWalkingHint")}
               </div>
             )}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:"0.5rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
-                color:NOTE_MUTED, background:"none", border:"none",
-                cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
+                fontFamily:T.font.body, fontSize:"0.6875rem", fontWeight:500,
+                color:MUTED, background:"none", border:"none",
+                cursor:"pointer", padding:"0.125rem 0.5rem", minHeight:T.touch, letterSpacing:"0.03em",
               }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = NOTE_INK; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = NOTE_MUTED; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = INK; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
               >
                 {t("skip")}
               </button>
@@ -515,15 +516,17 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
         <style>{`
           @keyframes nudgePromptIn { from { opacity:0; transform:translate(-50%,0.5rem); } to { opacity:1; transform:translate(-50%,0); } }
           @keyframes nudgePromptOut { from { opacity:1; transform:translate(-50%,0); } to { opacity:0; transform:translate(-50%,0.5rem); } }
+          @media (prefers-reduced-motion: reduce) { .nudge-anim { animation: none !important; } }
         `}</style>
-        <div style={{
+        <div className="nudge-anim" style={{
           position:"fixed", bottom: isMobile ? "calc(5rem + env(safe-area-inset-bottom, 0px))" : "6rem", left:"50%", transform:"translate(-50%,0)", zIndex:59,
           width: isMobile ? "calc(100vw - 2rem)" : "20rem", maxWidth:"22rem",
           animation: fading ? "nudgePromptOut .2s ease forwards" : "nudgePromptIn .3s ease both",
         }}>
           <div style={{
-            background:cardBg, position:"relative", overflow:"hidden",
-            borderRadius:"1rem", padding:"0.875rem 1rem",
+            background:cardBgOverScene, backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",
+            position:"relative", overflow:"hidden",
+            borderRadius:"0.875rem", padding:"0.875rem 1rem",
             border:`1px solid ${cardBorder}`, boxShadow:cardShadow,
             display:"flex", flexDirection:"column", gap:"0.5rem",
           }}>
@@ -533,29 +536,26 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
                 background:"radial-gradient(circle, #FFEEBB 0%, #FFD080 60%, transparent 100%)",
                 boxShadow:"0 0 8px rgba(255,224,160,0.5)",
               }} />
-              <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:NOTE_BODY, lineHeight:1.5 }}>
+              <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:INK, lineHeight:1.5 }}>
                 {t(config.messageKey)}
               </span>
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
-                color:NOTE_MUTED, background:"none", border:"none",
-                cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
+                fontFamily:T.font.body, fontSize:"0.6875rem", fontWeight:500,
+                color:MUTED, background:"none", border:"none",
+                cursor:"pointer", padding:"0.125rem 0.5rem", minHeight:T.touch, letterSpacing:"0.03em",
               }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = NOTE_INK; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = NOTE_MUTED; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = INK; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
               >
                 {t("skip")}
               </button>
               <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.6875rem", fontWeight:600, color:"#B85C38",
-                background:"none", border:`1px solid rgba(184,92,56,0.4)`, borderRadius:"0.375rem",
-                padding:"0.25rem 0.75rem", cursor:"pointer", transition:"all .2s", letterSpacing:"0.03em",
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(184,92,56,0.12)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-              >
+                fontFamily:T.font.body, fontSize:"0.6875rem", fontWeight:600, color:"#FFF",
+                background:EMBER, border:"none", borderRadius:"0.5rem",
+                padding:"0.25rem 0.875rem", minHeight:T.touch, cursor:"pointer", transition:"all .2s", letterSpacing:"0.03em",
+              }}>
                 {ctaLabel}
               </button>
             </div>
@@ -578,9 +578,10 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
         <style>{`
           @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
           @keyframes nudgeCardOut { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.95); } }
+          @media (prefers-reduced-motion: reduce) { .nudge-anim { animation: none !important; } }
         `}</style>
         <div style={{ position:"fixed", inset:0, zIndex:57, background:"rgba(64,59,54,0.28)", pointerEvents:"auto" }} />
-        <div style={{
+        <div className="nudge-anim" style={{
           position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:59,
           width: isMobile ? "calc(100vw - 2rem)" : "22rem", maxWidth:"24rem",
           maxHeight: "calc(100dvh - 4rem)", overflowY: "auto",
@@ -593,17 +594,14 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             display:"flex", flexDirection:"column", gap:"0.75rem",
           }}>
             {cornerFold}
-            <div style={{ fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.01em" }}>
+            <div style={{ fontFamily:T.font.display, fontSize:"1.0625rem", fontWeight:600, color:INK, letterSpacing:"0.02em" }}>
               {title}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.4375rem" }}>
               {items.map((item, i) => (
                 <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
-                  <div style={{
-                    width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
-                    background:NOTE_DOT,
-                  }} />
-                  <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:NOTE_BODY, lineHeight:1.5 }}>
+                  <span style={{ color:EMBER_GLYPH, fontSize:"0.5rem", lineHeight:"1.375rem", flexShrink:0 }}>{"◆"}</span>
+                  <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:INK, lineHeight:1.5 }}>
                     {item.text}
                   </span>
                 </div>
@@ -611,19 +609,19 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
-                color:NOTE_MUTED, background:"none", border:"none",
-                cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
+                fontFamily:T.font.body, fontSize:"0.6875rem", fontWeight:500,
+                color:MUTED, background:"none", border:"none",
+                cursor:"pointer", padding:"0.125rem 0.5rem", minHeight:T.touch, letterSpacing:"0.03em",
               }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = NOTE_INK; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = NOTE_MUTED; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = INK; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
               >
                 {t("skip")}
               </button>
               <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
                 fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
-                background:"#B85C38",
-                border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem",
+                background:EMBER,
+                border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem", minHeight:T.touch,
                 cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
               }}>
                 {ctaLabel}
@@ -648,9 +646,10 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
         <style>{`
           @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
           @keyframes nudgeCardOut { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.95); } }
+          @media (prefers-reduced-motion: reduce) { .nudge-anim { animation: none !important; } }
         `}</style>
         <div style={{ position:"fixed", inset:0, zIndex:57, background:"rgba(64,59,54,0.32)", pointerEvents:"auto" }} />
-        <div style={{
+        <div className="nudge-anim" style={{
           position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:59,
           width: isMobile ? "calc(100vw - 2rem)" : "22rem", maxWidth:"24rem",
           maxHeight: "calc(100dvh - 4rem)", overflowY: "auto",
@@ -663,38 +662,35 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             display:"flex", flexDirection:"column", gap:"0.75rem",
           }}>
             {cornerFold}
-            <div style={{ fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.01em" }}>
+            <div style={{ fontFamily:T.font.display, fontSize:"1.0625rem", fontWeight:600, color:INK, letterSpacing:"0.02em" }}>
               {title}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.4375rem" }}>
               {items.map((item, i) => (
                 <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
-                  <div style={{
-                    width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
-                    background:NOTE_DOT,
-                  }} />
-                  <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:NOTE_BODY, lineHeight:1.5 }}>
+                  <span style={{ color:EMBER_GLYPH, fontSize:"0.5rem", lineHeight:"1.375rem", flexShrink:0 }}>{"◆"}</span>
+                  <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:INK, lineHeight:1.5 }}>
                     {item.text}
                   </span>
                 </div>
               ))}
             </div>
-            {footer && <div style={{ fontFamily:T.font.body, fontSize:"0.75rem", color:NOTE_MUTED, fontStyle:"italic", marginTop:"0.125rem" }}>{footer}</div>}
+            {footer && <div style={{ fontFamily:T.font.body, fontSize:"0.75rem", color:MUTED, fontStyle:"italic", marginTop:"0.125rem" }}>{footer}</div>}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
-                color:NOTE_MUTED, background:"none", border:"none",
-                cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
+                fontFamily:T.font.body, fontSize:"0.6875rem", fontWeight:500,
+                color:MUTED, background:"none", border:"none",
+                cursor:"pointer", padding:"0.125rem 0.5rem", minHeight:T.touch, letterSpacing:"0.03em",
               }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = NOTE_INK; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = NOTE_MUTED; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = INK; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = MUTED; }}
               >
                 {t("skip")}
               </button>
               <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
                 fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
-                background:"#B85C38",
-                border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem",
+                background:EMBER,
+                border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem", minHeight:T.touch,
                 cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
               }}>
                 {ctaLabel}
@@ -720,9 +716,10 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
         <style>{`
           @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
           @keyframes nudgeCardOut { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.95); } }
+          @media (prefers-reduced-motion: reduce) { .nudge-anim { animation: none !important; } }
         `}</style>
         <div style={{ position:"fixed", inset:0, zIndex:57, background:"rgba(64,59,54,0.35)", pointerEvents:"auto" }} />
-        <div style={{
+        <div className="nudge-anim" style={{
           position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:59,
           width: isMobile ? "calc(100vw - 2rem)" : "22rem", maxWidth:"24rem",
           maxHeight: "calc(100dvh - 4rem)", overflowY: "auto",
@@ -735,37 +732,34 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             display:"flex", flexDirection:"column", gap:"0.75rem",
           }}>
             {cornerFold}
-            <div style={{ fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.01em" }}>
+            <div style={{ fontFamily:T.font.display, fontSize:"1.0625rem", fontWeight:600, color:INK, letterSpacing:"0.02em" }}>
               {title}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.4375rem" }}>
               {items.map((item, i) => (
                 <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
-                  <div style={{
-                    width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
-                    background:NOTE_DOT,
-                  }} />
-                  <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:NOTE_BODY, lineHeight:1.5 }}>
+                  <span style={{ color:EMBER_GLYPH, fontSize:"0.5rem", lineHeight:"1.375rem", flexShrink:0 }}>{"◆"}</span>
+                  <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:INK, lineHeight:1.5 }}>
                     {item.text}
                   </span>
                 </div>
               ))}
             </div>
-            <div style={{ fontFamily:T.font.body, fontSize:"0.75rem", color:NOTE_MUTED, fontStyle:"italic", marginTop:"0.125rem" }}>
+            <div style={{ fontFamily:T.font.body, fontSize:"0.75rem", color:MUTED, fontStyle:"italic", marginTop:"0.125rem" }}>
               {footer}
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:NOTE_MUTED,
-                background:"transparent", border:"none", padding:"0.4375rem 0.5rem",
+                fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:MUTED,
+                background:"transparent", border:"none", padding:"0.4375rem 0.5rem", minHeight:T.touch,
                 cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
               }}>
                 {t("skip")}
               </button>
               <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
                 fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
-                background:"#B85C38",
-                border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem",
+                background:EMBER,
+                border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem", minHeight:T.touch,
                 cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
               }}>
                 {t("gotIt")}
@@ -789,7 +783,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
       <style>{`
         @keyframes nudgeFadeIn { from { opacity:0; transform:translateY(0.375rem); } to { opacity:1; transform:translateY(0); } }
         @keyframes nudgeFadeOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(0.375rem); } }
-        @keyframes nudgePulse { 0%,100% { box-shadow:0 0 0 0 rgba(232,169,58,0.5); } 50% { box-shadow:0 0 0 0.5rem rgba(232,169,58,0); } }
+        @keyframes nudgePulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.4); } 50% { box-shadow:0 0 0 0.5rem rgba(212,175,55,0); } }
         @media (prefers-reduced-motion: reduce) { .nudge-note-anim { animation: none !important; } }
         @keyframes nudgeCenterIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
         @keyframes nudgeCenterOut { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.95); } }
@@ -824,9 +818,9 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
               </svg>
             </div>
             {/* Pulsing border ring */}
-            <div style={{
+            <div className="nudge-note-anim" style={{
               position:"fixed", top:t_, left:l_, width:w_, height:h_,
-              borderRadius:`${r}px`, border:`0.1875rem solid #E8A93A`,
+              borderRadius:`${r}px`, border:`0.1875rem solid ${GOLD}`,
               animation:"nudgePulse 2s ease-in-out infinite", pointerEvents:"none", zIndex:58,
             }} />
           </>
@@ -871,7 +865,6 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
           borderRadius:"0.875rem", padding:"0.875rem 1rem",
           border:`1px solid ${cardBorder}`, boxShadow:cardShadow,
           display:"flex", flexDirection:"column", gap:"0.5rem", position:"relative", overflow:"hidden",
-          transform:"rotate(-1deg)",
         }}>
           {cornerFold}
           <span style={{ ...playfulText, fontSize: isMobile ? "0.9375rem" : "1rem", lineHeight:1.35 }}>
@@ -879,16 +872,16 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
           </span>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
             <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-              fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:NOTE_MUTED,
-              background:"transparent", border:"none", padding:"0.4375rem 0.5rem",
+              fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:MUTED,
+              background:"transparent", border:"none", padding:"0.4375rem 0.5rem", minHeight:T.touch,
               cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
             }}>
               {t("skip")}
             </button>
             <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
               fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
-              background:"#B85C38",
-              border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem",
+              background:EMBER,
+              border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem", minHeight:T.touch,
               cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
             }}>
               {ctaLabel}

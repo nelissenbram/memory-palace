@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
+import { CREAM, INK, MUTED, HAIRLINE, EMBER, SHADOW } from "@/lib/libraryTokens";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
@@ -180,24 +181,26 @@ export default function FeatureSpotlight({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(42, 34, 24, 0.4)",
+        background: "rgba(36, 28, 21, 0.4)",
         backdropFilter: "blur(4px)",
         WebkitBackdropFilter: "blur(4px)",
         animation: exiting ? "fadeOut .3s ease forwards" : "fadeIn .4s ease",
       }}
+      className="mp-spotlight-anim"
       onClick={dismiss}
     >
-      <style>{`@keyframes fadeOut{from{opacity:1}to{opacity:0}}@keyframes slideUp{from{opacity:0;transform:translateY(1.5rem)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <style>{`@keyframes fadeOut{from{opacity:1}to{opacity:0}}@keyframes slideUp{from{opacity:0;transform:translateY(1.5rem)}to{opacity:1;transform:translateY(0)}}
+        @media (prefers-reduced-motion: reduce) { .mp-spotlight-anim, .mp-spotlight-anim * { animation: none !important; transition: none !important; } }`}</style>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: T.color.linen,
-          borderRadius: "1.5rem",
+          background: CREAM,
+          borderRadius: "0.875rem",
           padding: isMobile ? "2rem 1.5rem 1.5rem" : "2.5rem 2.25rem 1.75rem",
           maxWidth: "26.25rem",
           width: isMobile ? "calc(100% - 2.5rem)" : "90%",
-          boxShadow: "0 1.5rem 5rem rgba(44, 44, 42, 0.35)",
-          border: `2px solid ${T.color.cream}`,
+          boxShadow: SHADOW[2],
+          border: `1px solid ${HAIRLINE}`,
           animation: exiting
             ? "fadeOut .3s ease forwards"
             : "slideUp .5s ease",
@@ -213,7 +216,7 @@ export default function FeatureSpotlight({
             right: "max(1.25rem, env(safe-area-inset-right, 1.25rem))",
             fontFamily: T.font.body,
             fontSize: "0.75rem",
-            color: T.color.muted,
+            color: MUTED,
           }}
         >
           {cardIndex + 1} / {CARDS.length}
@@ -235,8 +238,8 @@ export default function FeatureSpotlight({
           style={{
             fontFamily: T.font.display,
             fontSize: isMobile ? "1.5rem" : "1.75rem",
-            fontWeight: 500,
-            color: T.color.charcoal,
+            fontWeight: 600,
+            color: INK,
             marginBottom: "0.75rem",
             lineHeight: 1.2,
           }}
@@ -248,9 +251,9 @@ export default function FeatureSpotlight({
         <p
           style={{
             fontFamily: T.font.body,
-            fontSize: isMobile ? "0.9375rem" : "1rem",
+            fontSize: "0.8125rem",
             lineHeight: 1.7,
-            color: T.color.muted,
+            color: MUTED,
             marginBottom: "1.75rem",
             maxWidth: "21.25rem",
             marginLeft: "auto",
@@ -268,25 +271,23 @@ export default function FeatureSpotlight({
             fontSize: isMobile ? "1.0625rem" : "1rem",
             fontWeight: 600,
             padding: isMobile ? "0.9375rem 2.25rem" : "0.8125rem 2.25rem",
-            borderRadius: "0.75rem",
+            borderRadius: "0.5rem",
             border: "none",
-            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+            background: EMBER,
             color: "#FFF",
             cursor: "pointer",
-            boxShadow: `0 0.25rem 1rem rgba(193, 127, 89, 0.3)`,
+            boxShadow: SHADOW[1],
             transition: "transform 0.15s, box-shadow 0.15s",
             minHeight: "3rem",
             display: "inline-block",
           }}
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLElement).style.transform = "scale(1.03)";
-            (e.currentTarget as HTMLElement).style.boxShadow =
-              "0 0.375rem 1.5rem rgba(193, 127, 89, 0.45)";
+            (e.currentTarget as HTMLElement).style.boxShadow = SHADOW[2];
           }}
           onMouseLeave={(e) => {
             (e.currentTarget as HTMLElement).style.transform = "none";
-            (e.currentTarget as HTMLElement).style.boxShadow =
-              "0 0.25rem 1rem rgba(193, 127, 89, 0.3)";
+            (e.currentTarget as HTMLElement).style.boxShadow = SHADOW[1];
           }}
         >
           {t(currentCard.cta)}
@@ -300,7 +301,7 @@ export default function FeatureSpotlight({
             style={{
               fontFamily: T.font.body,
               fontSize: "0.875rem",
-              color: T.color.muted,
+              color: MUTED,
               background: "none",
               border: "none",
               cursor: "pointer",
