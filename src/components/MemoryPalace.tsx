@@ -111,6 +111,10 @@ import TuscanStyles from "@/components/ui/TuscanStyles";
 import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
 import type { SharedWingDoor } from "@/components/3d/EntranceHallScene";
 import { isMobileGPU } from "@/lib/3d/mobilePerf";
+// MUSEO VIVO WS11-1/-3: `?perfhud=1` overlay + staging perf assertions.
+// Mounted in every return that keeps 3D scenes alive (warm portals included)
+// so the pooled renderer is observable across all modes and scene cycles.
+import PerfHud from "@/components/3d/PerfHud";
 
 // ── Delayed spinner fallback — avoids flash for fast lazy loads ──
 function DelayedFallback() {
@@ -1310,6 +1314,7 @@ export default function MemoryPalace(){
       <NavigationBar key={"nav-atrium-"+orientKey} currentMode="atrium" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><HomeView /></Suspense>
+      <PerfHud />
       <NudgeProvider page="atrium" />
       {sharedPanelOverlays}
     </>);
@@ -1323,6 +1328,7 @@ export default function MemoryPalace(){
       <NavigationBar key={"nav-library-"+orientKey} currentMode="library" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><LibraryView /></Suspense>
+      <PerfHud />
       <NudgeProvider page="library" />
       {sharedPanelOverlays}
     </>);
@@ -1341,6 +1347,7 @@ export default function MemoryPalace(){
         {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} onReady={handleSceneReady} layoutOverride={roomLayouts[activeRoomId]} memories={effectiveRoomMems} onMemoryClick={handleMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
       </div>
 
+      <PerfHud />
       {view==="exterior"&&<LandscapeNudge />}
       {view==="exterior"&&<PalaceExteriorTutorial open={palaceTourOpen} onClose={()=>setPalaceTourOpen(false)} />}
       {view==="entrance"&&<EntranceHallTutorial open={entranceTourOpen} onClose={()=>setEntranceTourOpen(false)} />}

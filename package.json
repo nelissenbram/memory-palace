@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "audit:contrast": "node scripts/audit-canon-contrast.mjs",
     "cap:build": "bash scripts/cap-build.sh",
     "cap:build:local": "cross-env CAPACITOR_BUILD=true next build && npx cap sync",
     "cap:ios": "npx cap open ios",

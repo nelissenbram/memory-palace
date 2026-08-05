@@ -90,6 +90,15 @@ export function returnRenderer(ren: THREE.WebGLRenderer): void {
   }
 }
 
+/**
+ * Peek at the pooled renderer WITHOUT borrowing it (perf HUD / staging
+ * assertions, WS11-1/-3). Read-only consumers only — never mutate state or
+ * call render() through this reference.
+ */
+export function getPooledRenderer(): THREE.WebGLRenderer | null {
+  return _pool;
+}
+
 /** Force-dispose the pooled renderer (e.g., on app unmount). */
 export function disposePool(): void {
   if (_pool) {
