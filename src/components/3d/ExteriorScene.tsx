@@ -209,7 +209,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     scene.background=skyTex;scene.backgroundIntensity=1.0;
     if(!Q.loadBackgroundHDRI){skySphere.visible=false;}
 
-    const camera=new THREE.PerspectiveCamera(32,w/h,1.0,300);
+    // Owner feedback 2026-08-06 #6 (z-fighting): near 1.0→2.5 — the dolly/orbit
+    // never comes closer than ~14 world units to any geometry (min camD is 35,
+    // user zoom clamps at 40), and depth precision at the far haze scales with
+    // near, so this alone buys 2.5× depth resolution on the distant planes.
+    const camera=new THREE.PerspectiveCamera(32,w/h,2.5,300);
     let ren:THREE.WebGLRenderer;
     try{ren=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:"high-performance"});}catch{ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"default"});}
     ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,Q.maxPixelRatio));
@@ -884,12 +888,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     if (W2) {
       const parX = vW / 2 + 1.45, parZ = vD / 2 + 1.15, parY = vH + 1.9; // eave line
       for (const s of [-1, 1]) {
-        // Front/back parapet walls + caps
+        // Front/back parapet walls + caps — cap length ends 0.04 INSIDE the
+        // corner piers (0.62 not 0.70): at 0.70 the cap end faces sat exactly
+        // coplanar with the pier faces at ±(parX+0.35) and z-fought (#6).
         centralGroup.add(mk(new THREE.BoxGeometry(parX * 2 + 0.4, 0.8, 0.35), M.stoneL, 0, parY, s * parZ));
-        centralGroup.add(mk(new THREE.BoxGeometry(parX * 2 + 0.7, 0.14, 0.5), M.trim, 0, parY + 0.45, s * parZ));
+        centralGroup.add(mk(new THREE.BoxGeometry(parX * 2 + 0.62, 0.14, 0.5), M.trim, 0, parY + 0.45, s * parZ));
         // Side parapet walls + caps
         centralGroup.add(mk(new THREE.BoxGeometry(0.35, 0.8, parZ * 2 + 0.4), M.stoneL, s * parX, parY, 0));
-        centralGroup.add(mk(new THREE.BoxGeometry(0.5, 0.14, parZ * 2 + 0.7), M.trim, s * parX, parY + 0.45, 0));
+        centralGroup.add(mk(new THREE.BoxGeometry(0.5, 0.14, parZ * 2 + 0.62), M.trim, s * parX, parY + 0.45, 0));
       }
       // Corner piers
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
@@ -898,19 +904,22 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // Arched windows on central domus walls (front and back)
-    const waterStainMat = new THREE.MeshStandardMaterial({ color: "#8A7860", roughness: 0.95, transparent: true, opacity: 0.15 });
+    // Water stains: transparent facade decals — no depth write, and at +0.09
+    // off the wall (was +0.06, which straddled the decorative wall panels'
+    // front faces at +0.06 by only 0.01 — z-fighting sweep #6)
+    const waterStainMat = new THREE.MeshStandardMaterial({ color: "#8A7860", roughness: 0.95, transparent: true, opacity: 0.15, depthWrite: false });
     for (let wi = 0; wi < 3; wi++) {
       const wx = -6 + wi * 6;
       // Front face (-Z), skip center (entrance)
       if (Math.abs(wx) > 2) {
         addArchedWindow(centralGroup, wx, vH * 0.5 + 1.3, -(vD / 2 + 0.05), 1.4, 2.2, "x", M.trim);
         // Water staining streak below front window
-        centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, -(vD / 2 + 0.06)));
+        centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, -(vD / 2 + 0.09)));
       }
       // Back face (+Z)
       addArchedWindow(centralGroup, wx, vH * 0.5 + 1.3, (vD / 2 + 0.05), 1.4, 2.2, "x", M.trim);
       // Water staining streak below back window
-      centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, (vD / 2 + 0.06)));
+      centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, (vD / 2 + 0.09)));
     }
     // Side arched windows
     for (let wi = 0; wi < 3; wi++) {
@@ -976,8 +985,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Frieze band between entablature and pediment
     centralGroup.add(mk(new THREE.BoxGeometry(12, 0.4, 2.1), M.stoneL, 0, 7.8, vestZ));
 
-    // Marble entablature beam
-    centralGroup.add(mk(new THREE.BoxGeometry(12, 0.5, 2), M.marble, 0, 7.55, vestZ));
+    // Marble entablature beam — 11.94 not 12: at 12 its end faces at x=±6 were
+    // exactly coplanar with the frieze-band end faces in their y-overlap
+    // (7.6–7.8) and z-fought from side angles (z-fighting sweep #6)
+    centralGroup.add(mk(new THREE.BoxGeometry(11.94, 0.5, 2), M.marble, 0, 7.55, vestZ));
 
     // TRIGLYPHS — 6 grooved vertical panels across the frieze area
     for (let ti = 0; ti < 6; ti++) {
@@ -992,11 +1003,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const pedLeft = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.2), M.marbleVein, -pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
     pedLeft.rotation.z = pedAngle;
     centralGroup.add(pedLeft);
-    const pedRight = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.2), M.marbleVein, pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
+    // Right slab is 0.04 shallower (2.16): both raking slabs cross at the apex
+    // and their front/back faces at vestZ±1.1 were exactly coplanar in the
+    // overlap — the left slab now wins cleanly there (z-fighting sweep #6).
+    const pedRight = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.16), M.marbleVein, pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
     pedRight.rotation.z = -pedAngle;
     centralGroup.add(pedRight);
-    // Pediment base beam
-    centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1, 0.2, 2.2), M.trim, 0, pedBaseY, vestZ));
+    // Pediment base beam — depth 2.16 (was 2.2: its faces sat coplanar with the
+    // raking-slab faces where the slab ends dip to y≈7.74) and +0.02 up so its
+    // top face no longer shares the frieze-band top plane at y 8.0 (#6).
+    centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1, 0.2, 2.16), M.trim, 0, pedBaseY + 0.02, vestZ));
 
     // CORONA / GEISON — projecting cornice shelf
     centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1.2, 0.15, 2.5), M.marble, 0, pedBaseY - 0.15, vestZ));
@@ -1005,7 +1021,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const rakLeft = mk(new THREE.BoxGeometry(pedSlab, 0.10, 0.15), M.gold, -pedHalfSpan / 2, pedBaseY + 0.55 + 0.18, vestZ);
     rakLeft.rotation.z = pedAngle;
     centralGroup.add(rakLeft);
-    const rakRight = mk(new THREE.BoxGeometry(pedSlab, 0.10, 0.15), M.gold, pedHalfSpan / 2, pedBaseY + 0.55 + 0.18, vestZ);
+    // 0.13 deep (left strip is 0.15): the two gilded strips cross at the apex —
+    // equal depths left their front faces coplanar there (z-fighting sweep #6)
+    const rakRight = mk(new THREE.BoxGeometry(pedSlab, 0.10, 0.13), M.gold, pedHalfSpan / 2, pedBaseY + 0.55 + 0.18, vestZ);
     rakRight.rotation.z = -pedAngle;
     centralGroup.add(rakRight);
 
@@ -1036,21 +1054,25 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
       });
       const tymMesh = new THREE.Mesh(tymGeo, tymMat);
-      tymMesh.position.set(0, pedBaseY + 0.05, vestZ - 1.11);
+      // 0.03 in front of the raking-slab faces (was 0.01 — depth-marginal on
+      // the long dolly; z-fighting sweep #6)
+      tymMesh.position.set(0, pedBaseY + 0.05, vestZ - 1.13);
       tymMesh.rotation.y = Math.PI; // face outward (-Z, toward entrance)
       centralGroup.add(tymMesh);
 
       if(!W2){
         // SCULPTURAL RELIEF — laurel wreath frame in bronze (legacy: empty wreath)
+        // (tracks the tympanum plane at vestZ-1.13 so the bronze keeps the same
+        // relief now the plane moved 0.02 forward — z-fighting sweep #6)
         const wreathGeo = new THREE.TorusGeometry(1.2, 0.08, 8, 24);
         const wreathMesh = new THREE.Mesh(wreathGeo, M.bronze);
-        wreathMesh.position.set(0, 8.65, vestZ - 1.12);
+        wreathMesh.position.set(0, 8.65, vestZ - 1.145);
         centralGroup.add(wreathMesh);
         // Ribbon tails at bottom of wreath — two angled crossing strips
-        const ribbonL = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, -0.3, 7.5, vestZ - 1.12);
+        const ribbonL = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, -0.3, 7.5, vestZ - 1.145);
         ribbonL.rotation.z = 0.35;
         centralGroup.add(ribbonL);
-        const ribbonR = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, 0.3, 7.5, vestZ - 1.12);
+        const ribbonR = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, 0.3, 7.5, vestZ - 1.145);
         ribbonR.rotation.z = -0.35;
         centralGroup.add(ribbonR);
       }else{
@@ -1078,9 +1100,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         drawTymName();
         if(document.fonts?.ready)document.fonts.ready.then(drawTymName).catch(()=>{});
         tymNameRedrawRef.current=drawTymName;
-        const namePlane=new THREE.Mesh(new THREE.PlaneGeometry(5.6,0.875),new THREE.MeshBasicMaterial({map:nameTex,transparent:true}));
-        namePlane.position.set(0,8.28,vestZ-1.13);
+        // Transparent decal over the tympanum: 0.03 in front of the tym plane
+        // (which itself moved to vestZ-1.13), no depth write + late renderOrder
+        // so the gold leaf can never depth-spar with the stone or the window
+        // glass on the long dolly (z-fighting sweep #6).
+        const namePlane=new THREE.Mesh(new THREE.PlaneGeometry(5.6,0.875),new THREE.MeshBasicMaterial({map:nameTex,transparent:true,depthWrite:false}));
+        namePlane.position.set(0,8.28,vestZ-1.16);
         namePlane.rotation.y=Math.PI; // face outward with the tympanum (-Z)
+        namePlane.renderOrder=2;
         centralGroup.add(namePlane);
       }
 
@@ -1140,9 +1167,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         centralGroup.add(mk(new THREE.BoxGeometry(12 + si, 0.22, 1.5), M.marble, 0, 0.92 - si * 0.21, -(15.6 + si * 1.05)));
       }
       for (const s of [-1, 1]) {
-        centralGroup.add(mk(new THREE.BoxGeometry(1.7, 1.6, 1.7), M.trim, s * 9.4, 0.85, -21.2));
-        centralGroup.add(mk(new THREE.CylinderGeometry(0.42, 0.62, 1.15, 10), M.bronze, s * 9.4, 2.25, -21.2));
-        centralGroup.add(mk(new THREE.CylinderGeometry(0.55, 0.38, 0.35, 10), M.bronze, s * 9.4, 3.0, -21.2));
+        // Plinth 0.03 lower so its base sinks just below the courtyard disc at
+        // world y 8.35 instead of resting exactly ON its plane (z-fighting
+        // sweep #6); the urn follows to keep the same seat.
+        centralGroup.add(mk(new THREE.BoxGeometry(1.7, 1.6, 1.7), M.trim, s * 9.4, 0.82, -21.2));
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.42, 0.62, 1.15, 10), M.bronze, s * 9.4, 2.22, -21.2));
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.55, 0.38, 0.35, 10), M.bronze, s * 9.4, 2.97, -21.2));
       }
     }
 
@@ -1515,9 +1545,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const rDrumR = W2 ? 9.2 : 8.5, rDrumH = W2 ? 5.2 : 3.5;
     const drumBaseY = W2 ? vH + 4.6 : vH + 1.8;
     if (W2) {
-      // Square crossing attic carrying the raised drum (rises through the roof)
+      // Square crossing attic carrying the raised drum (rises through the roof).
+      // Cap at vH+4.58, not 4.55: at 4.55 the cap TOP face (11.7) was exactly
+      // coplanar with the attic-box top face — the whole 19×17.4 plan z-fought
+      // from any high camera (#6). 0.03 up keeps the attic top embedded inside
+      // the cap; the drum base + base cornice still land inside the cap volume.
       centralGroup.add(mk(new THREE.BoxGeometry(19, 3.4, 17.4), ochreWall, 0, vH + 3.0, 0));
-      centralGroup.add(mk(new THREE.BoxGeometry(19.8, 0.3, 18.2), M.trim, 0, vH + 4.55, 0));
+      centralGroup.add(mk(new THREE.BoxGeometry(19.8, 0.3, 18.2), M.trim, 0, vH + 4.58, 0));
     }
     centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR, rDrumR + 0.3, rDrumH, 32), ochreWall, 0, drumBaseY + rDrumH / 2, 0));
     // Drum base cornice — wider band at bottom of drum
@@ -2086,8 +2120,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const canopy2 = mk(new THREE.SphereGeometry(1.8, 8, 6), new THREE.MeshStandardMaterial({ color: "#8A9A68", roughness: 0.82 }), ox + 1.2, 3.8, oz - 0.5);
       canopy2.scale.set(1, 0.3, 0.9);
       cAdd(canopy2);
-      // Dappled shadow disc on ground
-      const shadow = mk(new THREE.CircleGeometry(2.5, 12), new THREE.MeshStandardMaterial({ color: "#2A3A1A", roughness: 1, transparent: true, opacity: 0.12 }), ox, 0.06, oz);
+      // Dappled shadow disc on ground — 0.09 up (courtyard disc sits at +0.05
+      // in this group's frame; 0.06 left only 0.01 clearance) and no depth
+      // write: a transparent ground decal must never depth-spar with the
+      // courtyard plane at distance (z-fighting sweep #6)
+      const shadow = mk(new THREE.CircleGeometry(2.5, 12), new THREE.MeshStandardMaterial({ color: "#2A3A1A", roughness: 1, transparent: true, opacity: 0.12, depthWrite: false }), ox, 0.09, oz);
       shadow.rotation.x = -Math.PI / 2;
       cAdd(shadow);
     });
@@ -2163,13 +2200,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const pz=-14-pi*1.6;
       if(!isInWingZone(0,pz,4))cAdd(mk(new THREE.BoxGeometry(5.5,.05,2.2),M.pathD,0,.04,pz));
     }
-    // Radiating side paths (skip wing zones)
+    // Radiating side paths (skip wing zones) — y .05 not .03: these stones lie
+    // ON the courtyard disc (world 8.35) and at .03 their top faces landed
+    // exactly coplanar with it (z-fighting sweep #6); .05 puts them 0.02 proud
     for(let ri=0;ri<6;ri++){
       const pa=(ri/6)*Math.PI*2;if(Math.abs(Math.sin(pa))<.3&&Math.cos(pa)<0)continue;
       for(let s=0;s<6;s++){
         const pd=22+s*3;
         const px=Math.cos(pa)*pd,pz=Math.sin(pa)*pd;
-        if(!isInWingZone(px,pz,2))cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.03,pz));
+        if(!isInWingZone(px,pz,2))cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.05,pz));
       }
     }
 
@@ -2604,23 +2643,26 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const m=new THREE.Mesh(geo,mat);
       m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.rotation.z=rotY;
       m.receiveShadow=true;scene.add(m);
-      // Dusty shoulder — wider, softer
+      // Dusty shoulder — wider, softer. Transparent overlay: no depth write
+      // (z-fighting sweep #6 — decal planes never contest the depth buffer)
       const dustGeo=new THREE.PlaneGeometry(w+2.5,len+1);
       const dustMat=new THREE.MeshStandardMaterial({
-        color:atmosColor("#E8DCC4",d),roughness:.96,transparent:true,opacity:.3,
+        color:atmosColor("#E8DCC4",d),roughness:.96,transparent:true,opacity:.3,depthWrite:false,
       });
       const dust=new THREE.Mesh(dustGeo,dustMat);
       dust.rotation.x=-Math.PI/2;dust.position.set(x,y-.04,z);dust.rotation.z=rotY;
       scene.add(dust);
-      // Wheel ruts — two subtle darker tracks
+      // Wheel ruts — two subtle darker tracks. +0.03 over the gravel (was +0.01:
+      // right at the 24-bit depth epsilon for the farthest road segments, the
+      // classic distance shimmer) + no depth write (z-fighting sweep #6)
       for(const offset of[-w*.28,w*.28]){
         const rutGeo=new THREE.PlaneGeometry(w*.12,len-.5);
         const rutMat=new THREE.MeshStandardMaterial({
-          color:atmosColor("#C8B8A0",d),roughness:.96,transparent:true,opacity:.22,
+          color:atmosColor("#C8B8A0",d),roughness:.96,transparent:true,opacity:.22,depthWrite:false,
         });
         const rut=new THREE.Mesh(rutGeo,rutMat);
         rut.rotation.x=-Math.PI/2;
-        rut.position.set(x+Math.cos(rotY)*offset,y+.01,z-Math.sin(rotY)*offset);
+        rut.position.set(x+Math.cos(rotY)*offset,y+.03,z-Math.sin(rotY)*offset);
         rut.rotation.z=rotY;
         scene.add(rut);
       }
