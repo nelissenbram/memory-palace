@@ -14,15 +14,19 @@ export function makeFrauncesLabel(
 ): THREE.Object3D {
   const width = opts.width ?? 2.6;
   const height = opts.height ?? 0.5;
-  const cw = Math.min(1024, Math.max(256, Math.round(width * 220)));
-  const ch = Math.max(64, Math.round(cw * (height / width)));
+  // Owner feedback 2026-08-06: door plaques read soft — the old canvas labels
+  // rendered at 1024px wide, 220px/unit gave a 2.6m plaque only ~572px. Render
+  // at 420px/unit (2048 cap) with full anisotropy so the type stays crisp at
+  // grazing angles.
+  const cw = Math.min(2048, Math.max(512, Math.round(width * 420)));
+  const ch = Math.max(96, Math.round(cw * (height / width)));
   const canvas = document.createElement("canvas");
   canvas.width = cw;
   canvas.height = ch;
   const ctx = canvas.getContext("2d")!;
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
 
   const draw = () => {
     ctx.clearRect(0, 0, cw, ch);

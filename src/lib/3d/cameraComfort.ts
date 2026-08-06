@@ -10,8 +10,16 @@
 /** Camera eye level in metres (the hall's established framing height). */
 export const EYE_HEIGHT = 2.0;
 
-/** Walking speed cap in m/s — calm museum pace; there is no sprint. */
+/** Walking speed cap in m/s — calm museum pace. */
 export const MAX_WALK_SPEED = 2.2;
+
+/**
+ * Sprint speed in m/s (Shift held). Owner decision 2026-08-06: the speed
+ * function returns — the plan's sprint-deletion is overruled; sprint is an
+ * explicit, visible modifier (no hidden zones), still well under the legacy
+ * 7.5–12 m/s teleport-runs.
+ */
+export const SPRINT_SPEED = 5.0;
 
 /** Yaw-rate cap in deg/s for autoWalk and cinematic camera integrators. */
 export const MAX_YAW_DEG_S = 120;

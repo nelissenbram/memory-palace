@@ -12,7 +12,7 @@ import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, GOLDEN, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD, EMBER } from "@/lib/3d/canon";
 import { makeArtwork } from "@/lib/3d/makeArtwork";
-import { MAX_WALK_SPEED, MAX_YAW_DEG_S, easeInOutCubic, EYE_HEIGHT } from "@/lib/3d/cameraComfort";
+import { MAX_WALK_SPEED, MAX_YAW_DEG_S, SPRINT_SPEED, easeInOutCubic, EYE_HEIGHT } from "@/lib/3d/cameraComfort";
 import { createFocusMode, computeFocusPose, type FocusTarget, type FocusMode } from "@/lib/3d/focusMode";
 import { computeSalonHang, mountSalonHang, makeSalonEmptyEasel, type SalonMemoryRef, type SalonHangMount } from "@/lib/3d/salonHang";
 import { makeVideoArtwork, type VideoArtwork } from "@/lib/3d/videoArtwork";
@@ -2628,9 +2628,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         }
         }
       }
-      // Manual walk — W2 (WS6-7 mercy kill): the hidden shift-7.5 sprint is
-      // deleted; full input equals the flat comfort cap.
-      const spd=(W2?MAX_WALK_SPEED:(keys.current["shift"]?7.5:2.5))*dt;_dir.current.set(0,0,0);
+      // Manual walk — owner 2026-08-06: sprint restored as an explicit Shift
+      // modifier (comfort-capped SPRINT_SPEED, not the legacy 7.5).
+      const spd=(W2?(keys.current["shift"]?SPRINT_SPEED:MAX_WALK_SPEED):(keys.current["shift"]?7.5:2.5))*dt;_dir.current.set(0,0,0);
       if(k["w"]||k["arrowup"])_dir.current.z-=1;if(k["s"]||k["arrowdown"])_dir.current.z+=1;
       if(k["a"]||k["arrowleft"])_dir.current.x-=1;if(k["d"]||k["arrowright"])_dir.current.x+=1;
       if(_dir.current.length()>0){_dir.current.normalize().multiplyScalar(spd);_dir.current.applyAxisAngle(_yAxis.current,-lookA.current.yaw);posT.current.add(_dir.current);}

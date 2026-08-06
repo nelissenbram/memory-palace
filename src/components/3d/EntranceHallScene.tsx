@@ -13,7 +13,7 @@ import { EXPOSURE, CLEAR_COLOR, INK, GOLD, EMBER, PLASTER } from "@/lib/3d/canon
 import { flag3d } from "@/lib/3d/flags3d";
 import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
 import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
-import { EYE_HEIGHT, MAX_YAW_DEG_S, MAX_WALK_SPEED, easeInOutCubic } from "@/lib/3d/cameraComfort";
+import { EYE_HEIGHT, MAX_YAW_DEG_S, MAX_WALK_SPEED, SPRINT_SPEED, easeInOutCubic } from "@/lib/3d/cameraComfort";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 // MUSEO VIVO Wave 2 — w2_hall (WS4-6..9, WS7-7/10/15): Ancestral Wall salon
 // hang, dolly-to-frame focus mode, living water/oculus light, bust plaque.
@@ -412,6 +412,10 @@ function EntranceHallScene({
     // the salon hang reads as one dedicated wall segment.
     const AW_ANGLE = (Math.PI * 1.5 + Math.PI / NUM_DOORS) % (Math.PI * 2);
     const AW_HALF = Math.max(0.15, Math.PI / NUM_DOORS - 0.17); // arc kept clear of door casings
+    // Owner feedback 2026-08-06: the Ancestral Wall leaves the entrance hall
+    // until it earns a proper redesign (concept approved, execution not).
+    // Bust, living water, oculus pool and the focus rig stay live.
+    const AW_ENABLED = false;
     const angDiff = (a: number, b: number) => { let d = Math.abs(a - b); if (d > Math.PI) d = Math.PI * 2 - d; return d; };
     // WS4-7 bust-moment anchor (left-front of the impluvium, facing the spawn).
     const W2_BUST = { x: -4.9, z: 1.7 };
@@ -684,7 +688,7 @@ function EntranceHallScene({
       }
       // W2 (WS4-6): keep the Ancestral Wall bay open — no columns in front of
       // the family photos (mirrors the door/exit clearings above).
-      if (W2 && angDiff(colAngle, AW_ANGLE) < AW_HALF + 0.06) skip = true;
+      if (W2 && AW_ENABLED && angDiff(colAngle, AW_ANGLE) < AW_HALF + 0.06) skip = true;
       if (!skip) validColAngles.push(colAngle);
     }
     const NUM_VALID_COLS = validColAngles.length;
@@ -1694,7 +1698,7 @@ function EntranceHallScene({
           if (tooCloseToDoor || diffExit < 0.28) continue;
           // W2 (WS4-6): the Ancestral Wall bay replaces its Pompeian panels —
           // real family photos hang there instead of colored boxes.
-          if (W2 && angDiff(aMid, AW_ANGLE) < AW_HALF + 0.1) continue;
+          if (W2 && AW_ENABLED && angDiff(aMid, AW_ANGLE) < AW_HALF + 0.1) continue;
           const px = Math.cos(aMid) * wallPanelR;
           const pz = Math.sin(aMid) * wallPanelR;
 
@@ -1796,7 +1800,7 @@ function EntranceHallScene({
           });
           if (tooCloseToOpening) continue;
           // W2 (WS4-6): no oil lamp floating in front of the Ancestral Wall.
-          if (W2 && angDiff(lAngle, AW_ANGLE) < AW_HALF + 0.05) continue;
+          if (W2 && AW_ENABLED && angDiff(lAngle, AW_ANGLE) < AW_HALF + 0.05) continue;
           const lR = RADIUS - 0.35;
           const lx = Math.cos(lAngle) * lR, lz = Math.sin(lAngle) * lR;
           const lY = 3.2;
@@ -1942,6 +1946,7 @@ function EntranceHallScene({
       // Selection = owner decision 4 (favorites → oldest, cap 3 mobile / 5
       // desktop) + decision 7 (visitor routes hang PUBLIC only via the
       // ancestralPublicOnly prop — WS7-15).
+      if (AW_ENABLED) {
       const awMax = isMobileGPU() ? 3 : 5;
       const awSelected = selectAncestralMemories(ancestralMemories ?? [], {
         max: awMax,
@@ -2028,6 +2033,7 @@ function EntranceHallScene({
         };
         if (awHitMeshes[i]) awHitMeshes[i].userData.awTarget = target;
       });
+      } // end AW_ENABLED
 
       // ── WS4-7 bust + Fraunces name plaque (canon pedestal) ──
       // The existing bustBuilder path carries the bust; if the GLB fails the
@@ -2671,8 +2677,9 @@ function EntranceHallScene({
 
       // ── Movement (WASD / Arrow keys; w1_hall adds the direct analog touch vector) ──
       if (!awTarget && !focusOwns) {
-      // WS8-1 (w1_hall): sprint deleted — full input = the calm 2.2 m/s cap
-      const spd = (W1 ? MAX_WALK_SPEED : (keys.current["shift"] ? 12.0 : 4.0)) * dt;
+      // Owner 2026-08-06: sprint restored as an explicit Shift modifier
+      // (comfort-capped SPRINT_SPEED, not the legacy 12 m/s)
+      const spd = (W1 ? (keys.current["shift"] ? SPRINT_SPEED : MAX_WALK_SPEED) : (keys.current["shift"] ? 12.0 : 4.0)) * dt;
       _dir.current.set(0, 0, 0);
       const k = keys.current;
       if (k["w"] || k["arrowup"]) _dir.current.z -= 1;
