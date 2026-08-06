@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useEffect, memo } from "react";
+import { useRef, useEffect, useState, memo } from "react";
 import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
@@ -11,6 +11,9 @@ import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD, EMBER } from "@/lib/3d/canon";
 import { flag3d } from "@/lib/3d/flags3d";
 import { EYE_HEIGHT, MAX_WALK_SPEED, MAX_YAW_DEG_S, easeInOutCubic } from "@/lib/3d/cameraComfort";
+import { computeSalonHang, mountSalonHang, type SalonHangMount, type SalonMemoryRef } from "@/lib/3d/salonHang";
+import { createFocusMode, type FocusMode, type FocusTarget } from "@/lib/3d/focusMode";
+import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
 import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
@@ -98,6 +101,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
   const wing=wingDataProp||DEFAULT_WINGS.find(w=>w.id===wingId)!;
   const rooms=roomsProp||[];
   const doorMeshes=useRef<any[]>([]);
+  // ── W2 (WS5-9): onboarding cinematic UI state — ember Skip button ──
+  const [w2CinActive,setW2CinActive]=useState(false);
+  const w2CinActiveRef=useRef(false);
+  const w2CinSkipRef=useRef(false);
 
   // ── Paintings prop handled IN PLACE (no scene rebuild / React remount) ──
   // corridorPaintings populates async in MemoryPalace after the corridor mounts,
@@ -122,7 +129,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // mount per flags3d semantics; the flag-off path is the untouched legacy
     // corridor. Guarded so a missing module degrades to legacy.
     const W1=(()=>{try{return !!flag3d("w1_corridor");}catch{return false;}})();
+    // ── MUSEO VIVO Wave-2 corridor flag (WS5-5..9) — requires W1 (baked light
+    // bands, canon sweep, awClick tap-is-travel are its substrate). Flag-off =
+    // W1 behavior fully intact.
+    const W2=W1&&(()=>{try{return !!flag3d("w2_corridor");}catch{return false;}})();
     const reduceMotion=W1&&(()=>{try{return prefersReducedMotion();}catch{return false;}})();
+    // WS5-9: show the ember Skip during the W2 onboarding push-in
+    if(W2&&onboardingModeRef.current&&!reduceMotion){w2CinSkipRef.current=false;w2CinActiveRef.current=true;setW2CinActive(true);}
     // WS10-1: the one ambient score — idempotent mount, carries across scenes
     if(W1){try{mountAmbientMusic();}catch{}}
     // Kick painting texture fetch+decode off FIRST so the network/decode work
@@ -160,7 +173,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // Warm sky + terracotta ground bounce (WS1-6)
     // W1 (WS5-3/4): hemisphere carries the baked compensation for the killed
     // PointLight rows — budget is ≤4 lights (hemi + sun + fill + one portal point)
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?.7:.55)*dlPreset.ambientIntensity/0.5));
+    const hemiLight=new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?.7:.55)*dlPreset.ambientIntensity/0.5);scene.add(hemiLight);
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.5*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=60;sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
     scene.add(sun);
@@ -735,7 +748,88 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const sSide = si % 2 === 0 ? -1 : 1;
       if (sSide === -1) sconceZsSideMinus.push(sz);
     }
-    for(let i=0;i<rooms.length;i+=1){
+    // ── W2 (WS5-5/6): SALON-HANG BOTH WALLS — one salon section per door bay,
+    // centred in its W1 baked light band (the band IS the "spot" above the
+    // piece). Data source unchanged: corridorPaintings = ONE curated memory per
+    // room (CorridorGalleryPanel/localStorage) — a SELECTION, not all room
+    // memories. Sections hang OPPOSITE each bay's door, so pieces alternate
+    // across BOTH walls; the colonnade side stands as framed easels in front of
+    // the columns. No caps: overflow reports via layout.omitted (maxPieces tier
+    // budget 4 mobile / 8 desktop per section).
+    type W2Slot={key:string;secGroup:THREE.Group;side:number;secZ:number;wallX:number;easelX:number;wall:{width:number;height:number};seed:number;mount:SalonHangMount|null;appliedUrl:string|null;appliedTitle?:string;aspect:number;roomLabel:string};
+    const w2Slots=new Map<string,W2Slot>();
+    const w2FocusTargets=new Map<string,FocusTarget>();
+    const w2Quality:"low"|"med"|"high"=isMobileGPU()?"med":"high";
+    // Basic-material builds (Fraunces labels, makeArtwork pieces, easels) are
+    // DEFERRED past optimizeMaterials: its fingerprint ignores a
+    // MeshBasicMaterial's map, so mount-time dedupe would collapse every label/
+    // photo/plaque onto one texture. Deferral keeps them out of that pass.
+    const w2Deferred:(()=>void)[]=[];
+    let w2LegGeo:THREE.BoxGeometry|null=null,w2LegMat:THREE.MeshStandardMaterial|null=null;
+    const w2TexAspect=(tex?:THREE.Texture)=>{const im=tex?.image as {width?:number;height?:number}|undefined;return im&&im.width&&im.height?im.width/im.height:0;};
+    const w2Remount=(slot:W2Slot)=>{
+      slot.mount?.dispose();slot.mount=null;
+      w2FocusTargets.delete(slot.key);
+      slot.secGroup.position.x=slot.appliedUrl?slot.wallX:slot.easelX; // empty easel steps off the solid wall so its rear leg never pierces it
+      const mems:SalonMemoryRef[]=slot.appliedUrl?[{id:slot.key,aspect:slot.aspect,title:slot.appliedTitle||slot.roomLabel}]:[];
+      const layout=computeSalonHang(mems,slot.wall,{seed:slot.seed,maxPieces:isMobileGPU()?4:8,maxPieceWidth:1.9});
+      slot.mount=mountSalonHang(layout,{
+        getTexture:()=>(slot.appliedUrl?paintingTextureCache.get(slot.appliedUrl):undefined)||getPaintingPlaceholderTex(),
+        quality:w2Quality,
+        emptyText:t("hangFirstMemory"),
+        onPiece:(art,p)=>{
+          art.group.userData={memory:{id:slot.key,title:slot.appliedTitle,url:slot.appliedUrl}};
+          if(slot.side===1){
+            // Colonnade side (WS5-6): the piece stands as a framed easel — two
+            // ink legs behind the frame (shared geo/mat, disposed at cleanup)
+            if(!w2LegGeo){w2LegGeo=new THREE.BoxGeometry(.05,1,.05);w2LegMat=new THREE.MeshStandardMaterial({color:INK,roughness:.85});}
+            for(const lx of[-1,1]){
+              const legLen=p.y+p.height*.2;
+              const leg=new THREE.Mesh(w2LegGeo,w2LegMat!);
+              leg.scale.y=legLen;
+              leg.position.set(lx*p.width*.38,-p.y+legLen/2,-.05);
+              leg.rotation.z=lx*.05;
+              art.group.add(leg);
+            }
+          }
+          // WS5-8 focus target — world frame (secGroup rotY maps wall-local x → ∓z)
+          w2FocusTargets.set(slot.key,{
+            position:new THREE.Vector3(slot.wallX,p.y,slot.secZ+(slot.side===-1?-p.x:p.x)),
+            normal:new THREE.Vector3(slot.side===-1?1:-1,0,0),
+            planeHeight:p.height,planeWidth:p.width,data:"paint:"+slot.key,
+          });
+        },
+      });
+      slot.secGroup.add(slot.mount.group);
+    };
+    if(W2)for(let i=0;i<rooms.length;i++){
+      const sBz=cL/2-5.5-i*C.sp-C.sp*.5;
+      if(sBz>cL/2-3||sBz<-cL/2+3)continue;
+      // Opposite the bay's door → pieces alternate BOTH walls; window bays on
+      // the solid wall (where W1 skips the band too) flip to the colonnade row.
+      let s=i%2===0?1:-1;
+      if(s===-1&&validWinPositions.some(wz=>Math.abs(sBz-wz)<winHalfGap+1.6))s=1;
+      const slotKey=rooms[i]?.id||`corridor-${wingId}-painting-${i}`;
+      const secRoom=rooms[i];
+      const roomLabel=secRoom?(secRoom.nameKey?tWings(secRoom.nameKey):secRoom.name):"";
+      const secGroup=new THREE.Group();
+      const wallX=s===-1?-(cW/2-.07):cW/2-.5;
+      const easelX=s===-1?-(cW/2-.45):cW/2-.5;
+      secGroup.position.set(easelX,0,sBz);
+      secGroup.rotation.y=s===-1?Math.PI/2:-Math.PI/2;
+      scene.add(secGroup);
+      let seed=0x811c9dc5;const seedStr=wingId+"|"+slotKey;
+      for(let k=0;k<seedStr.length;k++){seed^=seedStr.charCodeAt(k);seed=Math.imul(seed,0x01000193);}
+      w2Slots.set(slotKey,{key:slotKey,secGroup,side:s,secZ:sBz,wallX,easelX,wall:{width:Math.min(C.sp-2.6,2.9),height:Math.min(cH-1,4.4)},seed:seed>>>0,mount:null,appliedUrl:null,aspect:4/3,roomLabel});
+      // Persistent invisible hit box — raycast contract preserved: stable mesh
+      // identity in paintingClickMeshes across remounts, userData.isPaintingSlot.
+      const hit=new THREE.Mesh(new THREE.BoxGeometry(.5,3.6,Math.min(C.sp-2.6,2.9)),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+      hit.position.set(s===-1?-(cW/2-.3):cW/2-.55,2.1,sBz);
+      hit.userData={isPaintingSlot:true,slotKey};
+      scene.add(hit);
+      paintingClickMeshes.push({mesh:hit,slotKey});
+    }
+    if(!W2)for(let i=0;i<rooms.length;i+=1){
       // Place painting midway after the i-th door (between door i and door i+1, or past last).
       // This gives exactly N paintings for N rooms.
       let pz=cL/2-5.5-i*C.sp-C.sp/2;
@@ -824,10 +918,36 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         slot.canvasMesh.visible=true;
       }).catch(()=>{});
     };
+    // ── W2 (WS5-5): in-place applier over makeArtwork salon pieces — same
+    // fingerprint/ref contract as legacy. Unchanged url → texture uniform swap
+    // only (setTexture keeps USE_MAP defined via the shared placeholder);
+    // aspect/title change → cheap remount of the few piece meshes (shared
+    // frame/liner/glow materials, no shader recompile), never a scene rebuild.
+    const w2ApplyToSlot=(slotKey: string,url: string|undefined,title: string|undefined)=>{
+      const slot=w2Slots.get(slotKey);if(!slot)return;
+      if(!url){
+        if(!slot.appliedUrl&&slot.mount)return;
+        slot.appliedUrl=null;slot.appliedTitle=undefined;
+        w2Remount(slot);return;
+      }
+      if(slot.appliedUrl===url&&slot.appliedTitle===title&&slot.mount)return;
+      slot.appliedUrl=url;slot.appliedTitle=title;
+      const cachedAsp=w2TexAspect(paintingTextureCache.get(url));
+      if(cachedAsp)slot.aspect=cachedAsp;
+      w2Remount(slot); // shows the warm placeholder canvas until the decode lands
+      loadPaintingTexture(url).then((tex)=>{
+        if(paintingsDisposed||slot.appliedUrl!==url)return; // torn down or superseded
+        const asp=w2TexAspect(tex)||4/3;
+        if(Math.abs(asp-slot.aspect)>.02){slot.aspect=asp;w2Remount(slot);} // aspect-correct, never stretch (dogma 6)
+        else slot.mount?.artworks.get(slotKey)?.setTexture(tex);
+      }).catch(()=>{});
+    };
     const applyPaintings=(paintings: Record<string,{url?: string, title?: string}>|undefined)=>{
+      if(W2){for(const key of w2Slots.keys())w2ApplyToSlot(key,paintings?.[key]?.url,paintings?.[key]?.title);return;}
       for(const key of paintingSlots.keys())applyPaintingToSlot(key,paintings?.[key]?.url);
     };
-    applyPaintings(corridorPaintingsRef.current);
+    if(W2)w2Deferred.push(()=>applyPaintings(corridorPaintingsRef.current)); // after optimizeMaterials — see w2Deferred note
+    else applyPaintings(corridorPaintingsRef.current);
     applyPaintingsRef.current=applyPaintings;
 
     // (Plants at ends are included with the side tables above)
@@ -858,13 +978,26 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // warm threshold pool compensates so no door reads dark
       if(!isMobileGPU()&&!W1)scene.add(new THREE.PointLight(`hsl(${room.coverHue},35%,60%)`,.2,3.5).translateX(wx-(side*.4)).translateY(dH/2).translateZ(z));
       if(W1)w1AddPool(wx-side*1.1,z);
+      const roomLabel=room.nameKey?tWings(room.nameKey):room.name;
+      if(W2){
+        // W2 (WS5-7): canon door lintel — travertine beam over an ink shadow
+        // reveal, Fraunces ink-on-cream plaque (replaces the Georgia door
+        // plaque), always visible — consistent with the hall's W1 lintels.
+        scene.add(mk(new THREE.BoxGeometry(.14,.34,dW+.5),MS.wain,wx-(side*.06),dH+.29,z));
+        scene.add(mk(new THREE.BoxGeometry(.15,.06,dW+.5),MS.trim,wx-(side*.065),dH+.09,z));
+        w2Deferred.push(()=>{ // Basic-material label — deferred past optimizeMaterials
+          const lp=makeFrauncesLabel(roomLabel,{width:1.7,height:.4});
+          lp.rotation.y=side*(-Math.PI/2);lp.position.set(wx-(side*.14),dH+.29,z);scene.add(lp);
+        });
+      }else{
       // Name plaque — large, centered ON the door
       const plq=document.createElement("canvas");plq.width=560;plq.height=96;
       const pc=plq.getContext("2d")!;pc.fillStyle="#3E3020";pc.fillRect(0,0,560,96);pc.fillStyle="#C8A868";pc.fillRect(3,3,554,90);pc.fillStyle="#3E3020";pc.fillRect(8,8,544,80);
-      pc.fillStyle="#F0EAE0";pc.font="bold 30px Georgia,serif";pc.textAlign="center";pc.textBaseline="middle";const roomLabel=room.nameKey?tWings(room.nameKey):room.name;pc.fillText(roomLabel,280,48);
+      pc.fillStyle="#F0EAE0";pc.font="bold 30px Georgia,serif";pc.textAlign="center";pc.textBaseline="middle";pc.fillText(roomLabel,280,48);
       const ptex=new THREE.CanvasTexture(plq);ptex.colorSpace=THREE.SRGBColorSpace;
       const plm=new THREE.Mesh(new THREE.PlaneGeometry(1.4,.28),new THREE.MeshStandardMaterial({map:ptex,roughness:.4}));
       plm.rotation.y=side*(-Math.PI/2);plm.position.set(wx-(side*.06),dH*.75,z);scene.add(plm);
+      }
       if(room.shared){const badge=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.02,12),MS.shared);badge.rotation.z=side*Math.PI/2;badge.position.set(wx-(side*.005),dH+1.1,z+.5);scene.add(badge);}
     });
     doorMeshes.current=dMeshes;
@@ -1457,6 +1590,14 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // Invisible hitbox for click
     const portalHit=new THREE.Mesh(new THREE.BoxGeometry(pW,pH,.4),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
     portalHit.position.set(0,pH/2,portalZ);scene.add(portalHit);
+    if(W2){
+      // W2 (WS5-7): portal label joins the Fraunces canon — ink on cream with a
+      // gold hairline rule (replaces the gold-gradient Georgia canvas).
+      w2Deferred.push(()=>{
+        const pl=makeFrauncesLabel(t("backToEntrance"),{width:2.4,height:.45});
+        pl.position.set(0,pH+.95,portalZ);scene.add(pl);
+      });
+    }else{
     // ── ENTRANCE HALL label — LARGER, GOLDEN ──
     const plC=document.createElement("canvas");plC.width=600;plC.height=80;const plx=plC.getContext("2d")!;
     // Gold gradient text background
@@ -1472,9 +1613,19 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     plx.beginPath();plx.moveTo(120,62);plx.lineTo(480,62);plx.stroke();
     const plT=new THREE.CanvasTexture(plC);plT.colorSpace=THREE.SRGBColorSpace;
     scene.add(mk(new THREE.PlaneGeometry(2.4,.36),new THREE.MeshBasicMaterial({map:plT,transparent:true}),0,pH+.95,portalZ));
+    }
 
     // ═══ WING NAME FRESCO — DRAMATIC, on far end wall (-cL/2) ═══
     const wingLabel=(wing.nameKey?tWings(wing.nameKey):wing.name||wingId).toUpperCase();
+    let frescoMesh: THREE.Mesh|null=null;
+    if(W2){
+      // W2 (WS5-7): restrained Fraunces wing plaque — the Georgia fresco (wing-
+      // wall gradient, accent swirls, off-canon hues) dies; ink on cream.
+      w2Deferred.push(()=>{
+        const wf=makeFrauncesLabel(wingLabel,{width:cW*.6,height:cW*.12});
+        wf.position.set(0,cH*.5,-cL/2+.02);scene.add(wf);
+      });
+    }else{
     const fC=document.createElement("canvas");fC.width=1200;fC.height=360;const fc=fC.getContext("2d")!;
     // Fresco background — aged plaster look
     const fGrad=fc.createLinearGradient(0,0,1200,360);
@@ -1529,7 +1680,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // Fresco plane — 80% of corridor width
     const frescoW=cW*.8,frescoH=frescoW*.3;
     // W1: fresco spot/fill die below — baked self-illumination compensates
-    const frescoMesh=new THREE.Mesh(new THREE.PlaneGeometry(frescoW,frescoH),new THREE.MeshStandardMaterial({map:fTex,roughness:.82,transparent:true,...(W1?{emissive:new THREE.Color("#FFFFFF"),emissiveMap:fTex,emissiveIntensity:.18}:{})}));
+    frescoMesh=new THREE.Mesh(new THREE.PlaneGeometry(frescoW,frescoH),new THREE.MeshStandardMaterial({map:fTex,roughness:.82,transparent:true,...(W1?{emissive:new THREE.Color("#FFFFFF"),emissiveMap:fTex,emissiveIntensity:.18}:{})}));
     frescoMesh.position.set(0,cH*.55,-cL/2+.01);scene.add(frescoMesh);
     // ── Gold frame around fresco ──
     const fFW=frescoW,fFH=frescoH,fFY=cH*.55,fFZ=-cL/2+.02;
@@ -1541,6 +1692,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     for(let cx2 of[-fFW/2-.06,fFW/2+.06])for(let cy of[fFY-fFH/2-.06,fFY+fFH/2+.06]){
       const ros=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.02,8),MS.gold);ros.rotation.x=Math.PI/2;ros.position.set(cx2,cy,fFZ+.02);scene.add(ros);
     }
+    } // end !W2 fresco branch
     // Spotlight on fresco — W1 KILL (WS5-3): baked fresco emissive above compensates
     if(!isMobileGPU()&&!W1){const fSpot=new THREE.SpotLight("#FFF5E0",1.0,10,Math.PI/4,.5,1);fSpot.position.set(0,cH-.2,-cL/2+3);fSpot.target.position.set(0,cH*.55,-cL/2);scene.add(fSpot);scene.add(fSpot.target);
     // Secondary fill light
@@ -1566,6 +1718,57 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const pos=camera.position.clone(),posT=pos.clone();
     const keys: Record<string,boolean>={},drag={v:false},prev={x:0,y:0},lastRayPos={x:0,y:0};let hovDoor: string|null=null,lastCursor="";
 
+    // ── W2 (WS5-8): DOLLY-TO-FRAME — one shared focus controller. While
+    // update(dt) returns true it owns the camera (no walk/autoWalk/cinematic
+    // that frame — single camera authority); any manual input cancels; a second
+    // tap on the focused piece opens the existing memory flow (onPaintingClick).
+    let w2Focus: FocusMode|null=null;
+    let w2EnvDimmed=false;
+    if(W2){
+      const _fl=new THREE.Vector3();
+      w2Focus=createFocusMode({
+        rig:{
+          getPosition:()=>pos,
+          getLookAt:()=>{
+            _fl.set(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
+            return _fl.multiplyScalar(3).add(pos);
+          },
+          setPose:(p2,la)=>{
+            pos.copy(p2);posT.copy(p2);
+            const fdx=la.x-p2.x,fdy=la.y-p2.y,fdz=la.z-p2.z;
+            const flen=Math.max(1e-4,Math.sqrt(fdx*fdx+fdy*fdy+fdz*fdz));
+            const fyaw=Math.atan2(fdx,-fdz),fpitch=Math.asin(Math.max(-1,Math.min(1,fdy/flen)));
+            lookT.yaw=fyaw;lookT.pitch=fpitch;lookA.yaw=fyaw;lookA.pitch=fpitch;
+          },
+        },
+        // 15% dim (FOCUS_DIM) via hemi + env ONLY: plaster (≥0.58 rel-lum) ×0.85
+        // stays ≥0.5 (dogma 1); photos/plaques are unlit MeshBasic → stay bright.
+        setDimmed:(dim)=>{
+          if(dim===w2EnvDimmed)return;
+          w2EnvDimmed=dim;
+          const f=dim?.85:1/.85;
+          hemiLight.intensity*=f;
+          scene.environmentIntensity*=f; // async HDRI swap may reset this mid-focus: ≤2% drift, self-heals on next undim
+        },
+        openMemory:()=>{onPaintingClick?.();},
+        floorY:0,
+      });
+    }
+    // W2 (WS5-9) cinematic framing: ≤6s push-in ending framed on the salon
+    // section nearest the entrance (fallback = the legacy end framing).
+    const w2CinStart={x:0,z:Math.min(25.5,cL/2-1.5)};
+    let w2CinEnd={x:.4,z:18.2,yaw:-1.899,pitch:-.015};
+    if(W2){
+      let firstSec: W2Slot|null=null;
+      w2Slots.forEach(sl=>{if(!firstSec||sl.secZ>firstSec.secZ)firstSec=sl;});
+      if(firstSec){
+        const fs=firstSec as W2Slot;
+        const ex=fs.side===1?fs.wallX-2.4:fs.wallX+2.4;
+        const ez=fs.secZ+.9;
+        w2CinEnd={x:ex,z:ez,yaw:Math.atan2(fs.wallX-ex,-(fs.secZ-ez)),pitch:-.03};
+      }
+    }
+
     // ── DUST PARTICLES ──
     const dust=createDustParticles({count:130,bounds:{x:cW/2-.5,y:cH/2,z:cL/2},center:new THREE.Vector3(0,cH/2,-cL/2+cL/2),opacity:0.2,size:0.03});
     scene.add(dust.points);
@@ -1587,7 +1790,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         paintingSlots.forEach(slot=>{mergeSkip.add(slot.canvasMesh);mergeSkip.add(slot.emptyGroup);});
         paintingClickMeshes.forEach(pm=>mergeSkip.add(pm.mesh));
         inlayClickMeshes.forEach(im=>mergeSkip.add(im));
-        mergeSkip.add(portalHit);mergeSkip.add(frescoMesh);mergeSkip.add(dust.points);
+        mergeSkip.add(portalHit);if(frescoMesh)mergeSkip.add(frescoMesh);mergeSkip.add(dust.points);
+        w2Slots.forEach(sl=>mergeSkip.add(sl.secGroup));
         scene.updateMatrixWorld(true);
         const attrSig=(g: THREE.BufferGeometry)=>Object.keys(g.attributes).sort().join(",")+"|"+(g.index?"i":"n");
         const mergeBuckets=new Map<string,THREE.Mesh[]>();
@@ -1635,6 +1839,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }catch(e){if(process.env.NODE_ENV!=="production")console.warn("[CorridorScene] mergeStatic skipped:",e);}
     }
 
+    // ── W2: run the deferred Basic-material builds (Fraunces lintels/portal/
+    // wing plaques + the initial salon-hang apply) AFTER optimizeMaterials +
+    // mergeStatic, so map-less Basic fingerprints can't dedupe labels/photos
+    // onto one texture and artwork never merges away.
+    if(W2)for(const fn of w2Deferred)fn();
+
     const clock=new THREE.Clock();
     // ── W1 tap-is-travel target (WS8-4): any-distance door/painting/portal tap
     // auto-walks (comfort-capped, easeInOutCubic arrival) then enters — the 5m
@@ -1662,7 +1872,24 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       inlayClickMeshes.forEach(im=>consider("__inlay__",_rc.intersectObject(im)[0],im.position.x-Math.sign(im.position.x||1)*1.6,im.position.z,im.position.x,im.position.z));
       paintingClickMeshes.forEach(pm=>consider("paint:"+pm.slotKey,_rc.intersectObject(pm.mesh)[0],pm.mesh.position.x-Math.sign(pm.mesh.position.x||1)*1.6,pm.mesh.position.z,pm.mesh.position.x,pm.mesh.position.z));
       const b=bestRef.v;
-      if(!b)return false;
+      if(!b){
+        // W2 (WS5-8): tapping empty space exits/cancels focus (handleTap(null))
+        if(w2Focus&&w2Focus.state()!=="idle")w2Focus.handleTap(null);
+        return false;
+      }
+      if(w2Focus){
+        if(b.id.startsWith("paint:")){
+          const tg=w2FocusTargets.get(b.id.slice(6));
+          if(tg){
+            // W2 (WS5-8) dolly-to-frame state machine: idle→glide→focused;
+            // second tap on the same piece opens the existing memory flow.
+            awClick.id=null;
+            w2Focus.handleTap(tg);
+            return true;
+          }
+          if(w2Focus.state()!=="idle")w2Focus.cancel(); // empty slot → legacy walk/open (gallery panel)
+        }else if(w2Focus.state()!=="idle")w2Focus.cancel(); // door/portal tap cancels focus, then travels
+      }
       if(b.dist<5)fireAwClick(b.id);
       else startAutoWalk(b.id,b.ax,b.az,b.fx,b.fz);
       return true;
@@ -1677,12 +1904,45 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // and fps dips no longer add rubber-band lag (dt is clamped above).
       const kLook=1-Math.exp(-5.0029*dt),kPos=1-Math.exp(-6.3216*dt);
       lookA.yaw+=(lookT.yaw-lookA.yaw)*kLook;lookA.pitch+=(lookT.pitch-lookA.pitch)*kLook;
+      // ── W2 (WS5-8) focus integrator — an externally-set autoWalk target
+      // (walkthrough/nudge) takes precedence and cancels focus; otherwise while
+      // update(dt) returns true, focus mode is the ONE camera authority.
+      if(w2Focus&&autoWalkToRef.current&&w2Focus.state()!=="idle")w2Focus.cancel();
+      const focusOwns=w2Focus?w2Focus.update(dt):false;
       // ── Onboarding cinematic: multi-step waypoint sequence ──
       // Steps: 0=initial pause 3s, 1=walk forward 3s, 2=turn left 1.5s, 3=walk left 1s,
       //        4=pause 2s, 5=walk back 2s, 6=pause 2s, 7=auto-walk to door
       // On mobile, each step gets +0.5s extra for readability
-      if(onboardingModeRef.current&&!autoWalkToRef.current&&!awClick.id){
-        if(reduceMotion){
+      if(onboardingModeRef.current&&!autoWalkToRef.current&&!awClick.id&&!focusOwns){
+        if(W2){
+          // ── W2 (WS5-9): ≤6s onboarding cinematic in the hall grammar — one
+          // eased push-in past the first light band, ending framed on the
+          // nearest salon artwork; ember Skip button; reduced-motion jumps
+          // straight to the end framing (W1 behavior kept). onCinematicStep
+          // contract intact: 0=start, 6=wait-for-Enter, 7=enter walk
+          // (intermediate steps 1-5 are retired under W2).
+          const ot=clock.getElapsedTime();
+          const CIN=6.0;
+          if(reduceMotion||w2CinSkipRef.current||ot>=CIN){
+            if(_cinStep!==6&&_cinStep!==7){
+              _cinStep=6;onCinematicStepRef.current?.(6);
+              posT.x=w2CinEnd.x;posT.z=w2CinEnd.z;lookT.yaw=w2CinEnd.yaw;lookT.pitch=w2CinEnd.pitch;
+              pos.set(w2CinEnd.x,EYE_HEIGHT,w2CinEnd.z);lookA.yaw=lookT.yaw;lookA.pitch=lookT.pitch;
+            }else if(_cinStep===6){
+              posT.x=w2CinEnd.x;posT.z=w2CinEnd.z;lookT.yaw=w2CinEnd.yaw;lookT.pitch=w2CinEnd.pitch;
+              if(corridorEnterClickedRef.current){_cinStep=7;onCinematicStepRef.current?.(7);autoWalkToRef.current="ro1";}
+            }
+            if(w2CinActiveRef.current){w2CinActiveRef.current=false;setW2CinActive(false);}
+          }else{
+            if(_cinStep!==0){_cinStep=0;onCinematicStepRef.current?.(0);}
+            const p=easeInOutCubic(ot/CIN);
+            posT.x=w2CinStart.x+(w2CinEnd.x-w2CinStart.x)*p;
+            posT.z=w2CinStart.z+(w2CinEnd.z-w2CinStart.z)*p;
+            // yaw eases in over the back ~3.6s: ≈|endYaw|/2s peak ≈ 15-45°/s — inside the comfort cap
+            const yp=easeInOutCubic(Math.min(1,Math.max(0,(ot-CIN*.4)/(CIN*.6))));
+            lookT.yaw=w2CinEnd.yaw*yp;lookT.pitch=w2CinEnd.pitch*yp;
+          }
+        }else if(reduceMotion){
           // W1 (WS12-1): reduced motion skips the forced pan/walk sequence
           // straight to its end framing (step-6 wait state) — no camera motion;
           // the user's Enter click still drives the (comfort-capped) walk.
@@ -1781,7 +2041,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
       // ── W1 tap-is-travel integrator (WS8-4): comfort-capped walk to the tapped
       // target, easeInOutCubic deceleration into arrival, then enter ──
-      if(W1&&!awTarget&&awClick.id){
+      if(W1&&!awTarget&&awClick.id&&!focusOwns){
         const adx=awClick.x-posT.x,adz=awClick.z-posT.z;
         const dist=Math.sqrt(adx*adx+adz*adz);
         if(dist>0.45){
@@ -1801,7 +2061,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         _dir.set(0,0,0);
         if(keys.w||keys.arrowup)_dir.z-=1;if(keys.s||keys.arrowdown)_dir.z+=1;
         if(keys.a||keys.arrowleft)_dir.x-=1;if(keys.d||keys.arrowright)_dir.x+=1;
-        if(_dir.length()>0){awClick.id=null;_dir.normalize().multiplyScalar(MAX_WALK_SPEED*dt);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);playFootstep();}
+        if(_dir.length()>0){awClick.id=null;w2Focus?.cancel();_dir.normalize().multiplyScalar(MAX_WALK_SPEED*dt);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);playFootstep();}
       }else{
       const spd=(keys["shift"]?9:3)*dt;_dir.set(0,0,0);
       if(keys.w||keys.arrowup)_dir.z-=1;if(keys.s||keys.arrowdown)_dir.z+=1;
@@ -1873,7 +2133,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     };animate();
     const onDown=(e: MouseEvent)=>{drag.v=false;prev.x=e.clientX;prev.y=e.clientY;};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.x,dy=e.clientY-prev.y;if(Math.abs(dx)>2||Math.abs(dy)>2)drag.v=true;
-      if(e.buttons===1){lookT.yaw-=dx*.003;lookT.pitch=Math.max(-.85,Math.min(.5,lookT.pitch+dy*.003));prev.x=e.clientX;prev.y=e.clientY;}
+      if(e.buttons===1){if(drag.v)w2Focus?.cancel();lookT.yaw-=dx*.003;lookT.pitch=Math.max(-.85,Math.min(.5,lookT.pitch+dy*.003));prev.x=e.clientX;prev.y=e.clientY;}
       const rdx=e.clientX-lastRayPos.x,rdy=e.clientY-lastRayPos.y;if(rdx*rdx+rdy*rdy<9)return;lastRayPos.x=e.clientX;lastRayPos.y=e.clientY;
       const rect=el.getBoundingClientRect();_mouse.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);_rc.setFromCamera(_mouse,camera);
       let found=null;let portalHov=false;
@@ -1937,7 +2197,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           touchMoveDir.x=nx;touchMoveDir.z=nz;
         }else if(t.identifier===touchLookId){
           const dx=t.clientX-prev.x,dy=t.clientY-prev.y;
-          if(Math.abs(dx)>2||Math.abs(dy)>2){drag.v=true;touchTap=false;}
+          if(Math.abs(dx)>2||Math.abs(dy)>2){drag.v=true;touchTap=false;w2Focus?.cancel();}
           lookT.yaw-=dx*.003;lookT.pitch=Math.max(-.85,Math.min(.5,lookT.pitch+dy*.003));
           prev.x=t.clientX;prev.y=t.clientY;
         }
@@ -1984,6 +2244,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);disposeFit();
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       clearInterval(touchTick);
+      // W2 teardown: dispose focus + salon mounts BEFORE the traverse sweep so
+      // makeArtwork's shared (module-cached) frame/liner/glow materials are
+      // detached from the scene and survive for other scenes/mounts.
+      w2Focus?.dispose();
+      w2Slots.forEach(sl=>{sl.mount?.dispose();sl.mount=null;});
+      w2FocusTargets.clear();
+      w2LegGeo?.dispose();w2LegMat?.dispose();
       const _cachedSet=buildCachedTextureSet();
       const _cachedMats=buildCachedMaterialSet();
       scene.traverse((obj: any) => {
@@ -2014,6 +2281,14 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
   return (
     <div style={{width:"100%",height:"100%",position:"relative"}}>
       <div ref={mountRef} role="application" aria-label={t("sceneLabel")} style={{width:"100%",height:"100%"}}/>
+      {/* W2 (WS5-9): ember Skip during the 6s onboarding push-in (dogma 3 — ember is THE interactive accent) */}
+      {w2CinActive&&(
+        <button
+          onClick={()=>{w2CinSkipRef.current=true;w2CinActiveRef.current=false;setW2CinActive(false);}}
+          aria-label={t("skipIntro")}
+          style={{position:"absolute",top:"1.5rem",right:"1.5rem",zIndex:30,fontFamily:"Fraunces, Georgia, serif",fontSize:"0.8125rem",fontWeight:500,color:"#FFF6EC",background:EMBER,border:"none",borderRadius:"0.5rem",padding:"0.5rem 1rem",cursor:"pointer",minHeight:"2.75rem",minWidth:"2.75rem",boxShadow:"0 0.125rem 0.5rem rgba(64,59,54,0.35)"}}
+        >{t("skipIntro")}</button>
+      )}
       {camDebug && createPortal(<pre ref={camDebugRef} onClick={() => { if (camDebugRef.current) navigator.clipboard.writeText(camDebugRef.current.textContent || ""); }} style={{ position: "fixed", bottom: "6rem", left: "1rem", zIndex: 99999, background: "rgba(0,0,0,0.85)", color: "#0f0", padding: "0.75rem 1rem", borderRadius: "0.5rem", fontFamily: "monospace", fontSize: "0.8125rem", cursor: "pointer", border: "1px solid #0f03", lineHeight: 1.6, userSelect: "all" as const }} />, document.body)}
     </div>
   );
