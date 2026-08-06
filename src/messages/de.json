@@ -2958,7 +2958,11 @@
     "thisWing": "Dieser Flügel",
     "noPhotos": "Keine Foto-Erinnerungen gefunden. Füge Fotos zu deinen Räumen hinzu oder lade ein Bild hoch.",
     "hint": "Hier zugewiesene Fotos erscheinen als Gemälde im Korridor. Klicke in der Szene auf ein Gemälde, um den dazugehörigen Raum zu betreten.",
-    "filterSource": "Fotoquelle filtern"
+    "filterSource": "Fotoquelle filtern",
+    "sizeLabel": "Rahmengröße",
+    "sizeSmall": "Klein",
+    "sizeNormal": "Normal",
+    "sizeLarge": "Groß"
   },
   "roomMedia": {
     "title": "Raum-Medien",

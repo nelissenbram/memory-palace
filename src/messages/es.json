@@ -2958,7 +2958,11 @@
     "thisWing": "Esta ala",
     "noPhotos": "No se encontraron recuerdos con fotos. Añade fotos a tus salas o sube una imagen.",
     "hint": "Las fotos asignadas aquí aparecerán como cuadros en el corredor. Haz clic en un cuadro en la escena para entrar en su sala.",
-    "filterSource": "Filtrar origen de fotos"
+    "filterSource": "Filtrar origen de fotos",
+    "sizeLabel": "Tamaño del marco",
+    "sizeSmall": "Pequeño",
+    "sizeNormal": "Normal",
+    "sizeLarge": "Grande"
   },
   "roomMedia": {
     "title": "Medios de la sala",

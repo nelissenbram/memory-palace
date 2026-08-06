@@ -2960,7 +2960,11 @@
     "thisWing": "Deze vleugel",
     "noPhotos": "Geen fotoherinneringen gevonden. Voeg foto's toe aan je kamers of upload een afbeelding.",
     "hint": "Foto's die hier worden toegewezen verschijnen als schilderijen in de gang. Klik op een schilderij in de scene om de kamer te betreden.",
-    "filterSource": "Filter fotobron"
+    "filterSource": "Filter fotobron",
+    "sizeLabel": "Kadergrootte",
+    "sizeSmall": "Klein",
+    "sizeNormal": "Normaal",
+    "sizeLarge": "Groot"
   },
   "roomMedia": {
     "title": "Kamermedia",

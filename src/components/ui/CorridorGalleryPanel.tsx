@@ -13,11 +13,15 @@ import { WINGS } from "@/lib/constants/wings";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { WingIcon, RoomIcon } from "@/components/ui/WingRoomIcons";
 
+/** Frame size per corridor slot (owner 2026-08-06 #1). Absent in older saved data = "normal". */
+export type CorridorPaintingSize = "small" | "normal" | "large";
+
 export interface CorridorPaintingOverride {
   url?: string;
   title?: string;
   memId?: string;
   roomId?: string;
+  size?: CorridorPaintingSize;
 }
 
 export type CorridorPaintings = Record<string, CorridorPaintingOverride>;
@@ -121,7 +125,8 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
     setPaintings((prev) => {
       const next: CorridorPaintings = {
         ...prev,
-        [slotRoomId]: { url: mem.dataUrl || undefined, title: mem.title, memId: mem.id, roomId: fromRoomId },
+        // Keep the slot's chosen frame size when swapping the photo.
+        [slotRoomId]: { url: mem.dataUrl || undefined, title: mem.title, memId: mem.id, roomId: fromRoomId, size: prev[slotRoomId]?.size },
       };
       saveCorridorPaintings(wing.id, next);
       onPaintingsChange(next);
@@ -144,7 +149,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
         setPaintings((prev) => {
           const next: CorridorPaintings = {
             ...prev,
-            [slotRoomId]: { url: dataUrl, title },
+            [slotRoomId]: { url: dataUrl, title, size: prev[slotRoomId]?.size },
           };
           saveCorridorPaintings(wing.id, next);
           onPaintingsChange(next);
@@ -155,6 +160,17 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
       reader.readAsDataURL(file);
     };
     input.click();
+  }, [wing.id, onPaintingsChange]);
+
+  const handleSize = useCallback((slotRoomId: string, size: CorridorPaintingSize) => {
+    setPaintings((prev) => {
+      const cur = prev[slotRoomId];
+      if (!cur?.url) return prev; // size only applies to a hung photo
+      const next: CorridorPaintings = { ...prev, [slotRoomId]: { ...cur, size } };
+      saveCorridorPaintings(wing.id, next);
+      onPaintingsChange(next);
+      return next;
+    });
   }, [wing.id, onPaintingsChange]);
 
   const handleClear = useCallback((slotRoomId: string) => {
@@ -315,6 +331,34 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                     </div>
                   </div>
                 </button>
+                {/* Frame size — small/normal/large per slot (owner 2026-08-06 #1) */}
+                {override?.url && (
+                  <div role="radiogroup" aria-label={t("sizeLabel")} style={{ display: "flex", gap: "0.25rem", marginTop: "0.5rem" }}>
+                    {(["small", "normal", "large"] as const).map((sz) => {
+                      const active = (override.size || "normal") === sz;
+                      return (
+                        <button
+                          key={sz}
+                          role="radio"
+                          aria-checked={active}
+                          onClick={(e) => { e.stopPropagation(); handleSize(roomId, sz); }}
+                          className="corridor-focusable"
+                          style={{
+                            flex: 1, minHeight: "2rem", padding: "0.25rem 0",
+                            borderRadius: "0.5rem",
+                            border: `0.0625rem solid ${active ? accent : HAIRLINE}`,
+                            background: active ? `${accent}15` : T.color.warmStone,
+                            fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: active ? 500 : 400,
+                            color: active ? accent : T.color.muted,
+                            cursor: "pointer", transition: "all .15s",
+                          }}
+                        >
+                          {t(sz === "small" ? "sizeSmall" : sz === "large" ? "sizeLarge" : "sizeNormal")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 {override && (
                   <button
                     type="button"

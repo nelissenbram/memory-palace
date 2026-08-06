@@ -2958,7 +2958,11 @@
     "thisWing": "This Wing",
     "noPhotos": "No photo memories found. Add photos to your rooms or upload an image.",
     "hint": "Photos assigned here will appear as paintings in the corridor. Click a painting in-scene to enter its room.",
-    "filterSource": "Filter photo source"
+    "filterSource": "Filter photo source",
+    "sizeLabel": "Frame size",
+    "sizeSmall": "Small",
+    "sizeNormal": "Normal",
+    "sizeLarge": "Large"
   },
   "roomMedia": {
     "title": "Room Media",

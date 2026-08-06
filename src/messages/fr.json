@@ -2958,7 +2958,11 @@
     "thisWing": "Cette aile",
     "noPhotos": "Aucun souvenir photo trouvé. Ajoutez des photos à vos salles ou téléversez une image.",
     "hint": "Les photos assignées ici apparaîtront comme des tableaux dans le couloir. Cliquez sur un tableau dans la scène pour accéder à sa salle.",
-    "filterSource": "Filtrer la source des photos"
+    "filterSource": "Filtrer la source des photos",
+    "sizeLabel": "Taille du cadre",
+    "sizeSmall": "Petit",
+    "sizeNormal": "Normal",
+    "sizeLarge": "Grand"
   },
   "roomMedia": {
     "title": "Médias de la salle",

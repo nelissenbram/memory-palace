@@ -91,7 +91,7 @@ function getPaintingPlaceholderTex(): THREE.DataTexture {
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo,onboardingMode,onCinematicStep,isMobile:isMobileProp,corridorEnterClicked,onReady}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: ()=>void,autoWalkTo?: string|null,onboardingMode?: boolean,onCinematicStep?: (step: number)=>void,isMobile?: boolean,corridorEnterClicked?: boolean,onReady?: ()=>void}){
+function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo,onboardingMode,onCinematicStep,isMobile:isMobileProp,corridorEnterClicked,onReady}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string, size?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: ()=>void,autoWalkTo?: string|null,onboardingMode?: boolean,onCinematicStep?: (step: number)=>void,isMobile?: boolean,corridorEnterClicked?: boolean,onReady?: ()=>void}){
   const { t } = useTranslation("corridor3d");
   const { t: tWings } = useTranslation("wings");
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
@@ -126,7 +126,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
   // publishes an applier that swaps texture maps on the existing painting meshes;
   // this effect (keyed on a content fingerprint) invokes it on any change.
   const corridorPaintingsRef=useRef(corridorPaintings);
-  const applyPaintingsRef=useRef<((paintings: Record<string,{url?: string, title?: string}>|undefined)=>void)|null>(null);
+  const applyPaintingsRef=useRef<((paintings: Record<string,{url?: string, title?: string, size?: string}>|undefined)=>void)|null>(null);
   const paintingsFingerprint=JSON.stringify(corridorPaintings||{});
   const appliedPaintingsFpRef=useRef<string|null>(null);
   useEffect(()=>{
@@ -783,7 +783,28 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // have no wall run there, so those bays are simply skipped (their piece
     // stays omitted — no free-standing colonnade stands). No caps: overflow
     // reports via layout.omitted (maxPieces tier budget 4 mobile / 8 desktop).
-    type W2Slot={key:string;secGroup:THREE.Group;side:number;secZ:number;wallX:number;wall:{width:number;height:number};seed:number;mount:SalonHangMount|null;empty:{group:THREE.Group;dispose():void}|null;appliedUrl:string|null;appliedTitle?:string;aspect:number;roomLabel:string};
+    type W2Slot={key:string;secGroup:THREE.Group;side:number;secZ:number;wallX:number;wall:{width:number;height:number};seed:number;mount:SalonHangMount|null;empty:{group:THREE.Group;dispose():void}|null;appliedUrl:string|null;appliedTitle?:string;appliedSize?:string;aspect:number;roomLabel:string};
+    // ── Owner feedback 2026-08-06 (#1): per-slot frame size from the gallery
+    // panel (small/normal/large, persisted beside url/title in
+    // mp_corridor_paintings_*; older saves have no size → normal), over a
+    // smaller default: the hero hang used to fill the whole 1.9m usable run
+    // (w=1.9) which read too big — new normal is 1.45m (~24% down).
+    const W2_SIZE_FACTOR:Record<string,number>={small:.7,normal:1,large:1.25};
+    const W2_BASE_W=1.45;
+    // ── Owner feedback 2026-08-06 (#2): wainscot-rail clearance. The solid
+    // wall carries a gold rail Box(.05,.07) at y=1.43 (top 1.465, front face at
+    // wall+.085) over a wainscot box whose front face is wall+.08 — exactly the
+    // plane the makeArtwork frame front (mount wall+.07, frame local z −.05..
+    // +.01) used to land on. The salon clamp allowed the photo bottom down to
+    // 1.2875 (frame bottom 1.1875), burying 28cm of frame inside the wainscot
+    // coplanar with its front while the rail sliced through it → z-fighting.
+    // Fix is structural: (a) every piece bottom incl. its plaque is clamped
+    // ABOVE the rail top, (b) the mount stands off far enough that the frame
+    // back face (mount−.05) clears the rail front (wall+.085) by ≥1cm even if
+    // geometry ever dips.
+    const W2_RAIL_TOP=1.465;
+    const W2_PLAQUE_DROP=.35; // frame lip .1 + plaque ≤.22 below the photo + clearance
+    const W2_TOP_CLEAR=.3;    // salonHang TOP_CLEAR — keep the top clamp in sync
     const w2Slots=new Map<string,W2Slot>();
     const w2FocusTargets=new Map<string,FocusTarget>();
     const w2Quality:"low"|"med"|"high"=isMobileGPU()?"med":"high";
@@ -803,7 +824,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // the persistent invisible hit box still routes the click.
     const makeW2EmptyFrame=()=>{
       const g=new THREE.Group();
-      const fw=1.0,fh=.75,cy=EYE_HEIGHT; // frame centre on the salon sightline
+      // (#2 2026-08-06): centre raised off the sightline so the frame AND its
+      // plaque (label bottom = cy−fh/2−.36) clear the wainscot rail top like
+      // the hung pieces do — matches the hung-piece clamp band.
+      const fw=1.0,fh=.75,cy=W2_RAIL_TOP+.38+fh/2;
       const frameGeo=new THREE.BoxGeometry(fw+.14,fh+.14,.05);
       const frameMat=new THREE.MeshStandardMaterial({color:GOLD,roughness:.28,metalness:.6});
       const frame=new THREE.Mesh(frameGeo,frameMat);frame.position.set(0,cy,.025);
@@ -833,6 +857,19 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
       const mems:SalonMemoryRef[]=[{id:slot.key,aspect:slot.aspect,title:slot.appliedTitle||slot.roomLabel}];
       const layout=computeSalonHang(mems,slot.wall,{seed:slot.seed,maxPieces:isMobileGPU()?4:8,maxPieceWidth:1.9});
+      // Post-pass on the (single) hero placement — see W2_BASE_W/W2_RAIL_TOP
+      // notes above: smaller default × panel size factor, then hard clamps so
+      // the piece + plaque always live in the rail→crown band (the "groot"
+      // variant shrinks via maxH before it could ever reach the rail).
+      const sizeF=W2_SIZE_FACTOR[slot.appliedSize||"normal"]??1;
+      for(const p of layout.placements){
+        const asp=p.memory.aspect||4/3;
+        const maxH=slot.wall.height-W2_TOP_CLEAR-(W2_RAIL_TOP+W2_PLAQUE_DROP);
+        p.width=Math.min(p.width,W2_BASE_W*sizeF,maxH*asp);
+        p.height=p.width/asp;
+        p.y=Math.max(layout.sightY,W2_RAIL_TOP+W2_PLAQUE_DROP+p.height/2);
+        p.y=Math.min(p.y,slot.wall.height-W2_TOP_CLEAR-p.height/2);
+      }
       slot.mount=mountSalonHang(layout,{
         getTexture:()=>(slot.appliedUrl?paintingTextureCache.get(slot.appliedUrl):undefined)||getPaintingPlaceholderTex(),
         quality:w2Quality,
@@ -861,7 +898,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const secRoom=rooms[i];
       const roomLabel=secRoom?(secRoom.nameKey?tWings(secRoom.nameKey):secRoom.name):"";
       const secGroup=new THREE.Group();
-      const wallX=-(cW/2-.07);
+      // (#2 2026-08-06): stand-off .07→.145 — frame back face (mount−.05) now
+      // sits at wall+.095, 1cm proud of the gold rail front (wall+.085) and
+      // 1.5cm off the wainscot front plane (wall+.08) it used to be coplanar
+      // with; the glow decal (mount−.035 = wall+.11) clears everything too.
+      const wallX=-(cW/2-.145);
       secGroup.position.set(wallX,0,sBz);
       secGroup.rotation.y=Math.PI/2;
       scene.add(secGroup);
@@ -970,15 +1011,17 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // only (setTexture keeps USE_MAP defined via the shared placeholder);
     // aspect/title change → cheap remount of the few piece meshes (shared
     // frame/liner/glow materials, no shader recompile), never a scene rebuild.
-    const w2ApplyToSlot=(slotKey: string,url: string|undefined,title: string|undefined)=>{
+    const w2ApplyToSlot=(slotKey: string,url: string|undefined,title: string|undefined,size: string|undefined)=>{
       const slot=w2Slots.get(slotKey);if(!slot)return;
       if(!url){
         if(!slot.appliedUrl&&(slot.mount||slot.empty))return; // already showing the empty wall frame
-        slot.appliedUrl=null;slot.appliedTitle=undefined;
+        slot.appliedUrl=null;slot.appliedTitle=undefined;slot.appliedSize=undefined;
         w2Remount(slot);return;
       }
-      if(slot.appliedUrl===url&&slot.appliedTitle===title&&slot.mount)return;
-      slot.appliedUrl=url;slot.appliedTitle=title;
+      // size participates in the change fingerprint — a panel size flip alone
+      // remounts the slot at its new width (owner 2026-08-06 #1).
+      if(slot.appliedUrl===url&&slot.appliedTitle===title&&slot.appliedSize===size&&slot.mount)return;
+      slot.appliedUrl=url;slot.appliedTitle=title;slot.appliedSize=size;
       const cachedAsp=w2TexAspect(paintingTextureCache.get(url));
       if(cachedAsp)slot.aspect=cachedAsp;
       w2Remount(slot); // shows the warm placeholder canvas until the decode lands
@@ -989,8 +1032,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         else slot.mount?.artworks.get(slotKey)?.setTexture(tex);
       }).catch(()=>{});
     };
-    const applyPaintings=(paintings: Record<string,{url?: string, title?: string}>|undefined)=>{
-      if(W2){for(const key of w2Slots.keys())w2ApplyToSlot(key,paintings?.[key]?.url,paintings?.[key]?.title);return;}
+    const applyPaintings=(paintings: Record<string,{url?: string, title?: string, size?: string}>|undefined)=>{
+      if(W2){for(const key of w2Slots.keys())w2ApplyToSlot(key,paintings?.[key]?.url,paintings?.[key]?.title,paintings?.[key]?.size);return;}
       for(const key of paintingSlots.keys())applyPaintingToSlot(key,paintings?.[key]?.url);
     };
     if(W2)w2Deferred.push(()=>applyPaintings(corridorPaintingsRef.current)); // after optimizeMaterials — see w2Deferred note
