@@ -97,19 +97,65 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // infrastructure, so it requires W1; flag OFF ⇒ W1 behavior intact.
     const W2=W1&&flag3d("w2_exterior");
     // ══════════════════════════════════════════════════════════════════════
-    // W2 GROUNDS REDESIGN — "the setting" (owner redesign brief 2026-08-06)
-    // Stage 1 (BUILT): the circular "target-disc" courtyard is DEAD. In its
-    // place a formal Tuscan approach carries the arrival — a stone apron only
-    // at the stair, a gravel parterre garden with four buxus compartments and
-    // a centre urn on the entrance axis, marble benches on the cross-path, and
-    // a cypressenlaan leading the 18s dolly up the hillside to the stair.
-    // Stage 2 (PENDING, owner's headline ask "groter in de breedte / van
-    // scratch"): broadening the building into one horizontal corps-de-logis
-    // with borgo growth. That is a COUPLED wing+tower spatial re-layout (the
-    // seven Sette Sorelle towers are an east-heavy world-space family, so any
-    // wing broadening must re-home them together) — done as a deliberate next
-    // iteration against a render, not blind. The wings + towers below are
-    // still the iter-2 arrangement. Flag OFF ⇒ radial legacy, byte-identical.
+    // W2 MASTERPLAN — "un corpo largo, cresciuto nei secoli" (owner brief
+    // 2026-08-06: "groter in de breedte / van scratch / impressive én
+    // authentiek / niet manu militari"). The v2 plan read as a 5-spoke
+    // windmill; this stage re-lays the whole ground floor as ONE BROAD
+    // CORPS DE LOGIS embracing an open cour d'honneur, with a San-Gimignano
+    // hill-town of towers grown asymmetrically against it.
+    //
+    // GROUNDS (Stage 1, BUILT, kept verbatim below): the circular target-disc
+    // courtyard is DEAD — a stone apron at the stair, a gravel parterre with
+    // four buxus compartments + centre urn on the −Z entrance axis, marble
+    // benches on the cross-path, and a cypressenlaan leading the 18s dolly up
+    // the hill. These stay.
+    //
+    // PARTI (Stage 2, this pass):
+    //  · TWO LONG SIDE-ARMS give the breadth the owner asked for — wing 1
+    //    (E, angle 82°) and wing 4 (W, broad+low, 278°) run almost to ±X,
+    //    canted 8° forward so the whole front embraces. Both lengthened to
+    //    wL 29 (from 20/21) for horizontal volume; arcade/window loops are
+    //    parametric on wL so they simply space out.
+    //  · TWO FRONT RETURNS (wing 2 @125°, wing 3 @235°) cant forward off the
+    //    ±X arms to frame a broad cour d'honneur — deliberately unequal
+    //    (wL 18 vs 19, one carries a risalit) so the court is not mirror-neat.
+    //  · ONE REAR WING (wing 0 @0°) closes the composition behind the dome.
+    //  · The whole −Z ENTRANCE AXIS stays a wing-free forecourt: nearest wing
+    //    (2 or 3) sits 55° off the axis — no wing within ±22° of −Z.
+    //  WING TABLE (id · angle° · wL · world-dir (sinθ,cosθ)):
+    //    0 rear     0°   20  ( 0.000, 1.000)
+    //    1 E-arm   82°   29  ( 0.990, 0.139)
+    //    2 fr-E   125°   18  ( 0.819,-0.574)
+    //    3 fr-W   235°   19  (-0.819,-0.574)
+    //    4 W-arm  278°   29  (-0.990, 0.139)
+    //
+    //  TOWERS (SORELLE) — 7 square casa-torri, an ASYMMETRIC hill-town, NOT a
+    //  ring. Two tall SISTERS flank the entrance as a gatehouse just outside
+    //  the ±22° wedge (±7, −16); an EAST BORGO cluster of three grows on the
+    //  rear-east slope (the "old town"); two lone towers hold the rear-west.
+    //  Every tower is verified (see collision note at the SORELLE array) to
+    //  fall OUTSIDE every swept wing footprint. Sisters top at 28.6/29.4 —
+    //  above the dome apex (~25.8) but below the lantern finial (~30.4): the
+    //  dome stays the hero.
+    //    T1 E-sister  ( 7,  -16) fp3.5  gatehouse, tall (footing)
+    //    T2 W-sister  (-7,  -16) fp3.6  gatehouse, tall (footing)
+    //    T3 borgo-E   ( 9,   12) fp4.1  east cluster (footing)
+    //    T5 borgo-E   (17,   12) fp3.6  east cluster (footing)
+    //    T7 borgo-E   (14,   17) fp3.6  east cluster (footing)
+    //    T4 rear-W    (-9.5, 12) fp4.5  battered plinth
+    //    T6 rear-W    (-17,  12) fp3.6  footing
+    //
+    //  BORGO GROWTH (kill the diagram): (A) a low coppo garden wall runs from
+    //  the W side-arm's outboard flank to tower T6 — the "aanhaken" the owner
+    //  liked; (B) a low tower-to-tower wall with a gate links T3→T5, closing
+    //  an irregular borgo court behind the dome. Both are merged into the
+    //  tower draw buckets (zero extra draw calls) and sit in wing-free ground.
+    //
+    //  DOLLY: the ~7.5s name-beat keeps framing the tympanum between the two
+    //  sisters; the beat waypoint was re-projected against the new ±7 sister
+    //  spacing (see the WP array). Skip/pause/resume + reduced-motion stills
+    //  unchanged.
+    // Flag OFF ⇒ radial legacy, byte-identical.
     // ══════════════════════════════════════════════════════════════════════
     // W1 (WS10-2): mount the ONE ambient score — idempotent singleton, plays on
     // across scene transitions, so deliberately NOT stopped in cleanup.
@@ -1790,13 +1836,30 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       { wH: 5.9, wW: 7,   pitch: 0.22, loggia: 0,   risalit: 0.8 }, // 3 front-W — taller (+18%) + risalit: the front pair is deliberately unequal
       { wH: 4.3, wW: 8.6, pitch: 0.24, loggia: 0,   risalit: 0   }, // 4 W — broad & low (stockier profile; hooks to the lone W tower)
     ];
+    // ══ W2 CORPS-DE-LOGIS re-layout (owner: "groter in de breedte / niet
+    // manu militari") — bespoke world-bearing + length + attach-offset per
+    // wing, replacing the (i/5)·2π radial windmill. The bearing IS the world
+    // compass of the wing's outward axis (wg.rotation.y=angle+π maps local −Z
+    // → world (sinθ,cosθ)). Two long ±X side-arms (breadth), two forward
+    // returns framing the court, one rear wing; the −Z entrance axis is kept
+    // wing-free (nearest wing 55° off). `len` OVERRIDES def.length under W2
+    // (side-arms grow to 29). `att` is the radial attach-offset (was a flat 2).
+    // Flag OFF ⇒ legacy angle=(i/5)·2π, len=def.length, att=2 (byte-identical).
+    const D2R = Math.PI / 180;
+    const WING_W2: { angle: number, len: number, att: number }[] = [
+      { angle:   0 * D2R, len: 20, att: 2 }, // 0 rear — closes behind the dome (+Z)
+      { angle:  82 * D2R, len: 29, att: 3 }, // 1 E side-arm — long, canted 8° forward
+      { angle: 125 * D2R, len: 18, att: 2 }, // 2 front-E return — frames the court
+      { angle: 235 * D2R, len: 19, att: 2 }, // 3 front-W return — deliberately unequal to #2
+      { angle: 278 * D2R, len: 29, att: 3 }, // 4 W side-arm — long, broad & low
+    ];
     const wingFluteGeo = new THREE.BoxGeometry(0.015, (5 - 0.5) * 0.9, 0.04); // colH = wH - 0.5, shared across all wing columns
     extraGeoDisposables.push(wingFluteGeo);
     wingDefs.forEach((def, i) => {
-      const angle = (i / 5) * Math.PI * 2;
+      const angle = W2 ? WING_W2[i].angle : (i / 5) * Math.PI * 2;
       const wg = new THREE.Group();
       const WV = W2 ? WING_VAR[i] : null;
-      const wW = WV ? WV.wW : 7, wH = WV ? WV.wH : 5, wL = def.length;
+      const wW = WV ? WV.wW : 7, wH = WV ? WV.wH : 5, wL = W2 ? WING_W2[i].len : def.length;
       const roofLift = WV ? WV.loggia : 0; // loggia storey height — the roof rides up by this
       const wingMeshes: THREE.Mesh[] = [];
       function addM(m: any) { wg.add(m); if (m.material && !m.material.transparent) wingMeshes.push(m); return m; }
@@ -2146,7 +2209,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       addM(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze, 0, tRoofPeak + 0.25, eZ));
 
       wg.rotation.y = angle + Math.PI;
-      const att = 2;
+      const att = W2 ? WING_W2[i].att : 2;
       wg.position.set(Math.sin(angle) * att, 0, Math.cos(angle) * att);
       palace.add(wg);
       sectionGroups.push({ group: wg, id: def.room.id, targetY: 0, currentY: 0, meshes: wingMeshes, accent: def.room.accent });
@@ -2163,48 +2226,39 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if (W2) wingAnchors.push(ct); else clickTargets.push(ct);
     });
 
-    // ══ W2 — LE SETTE SORELLE, iter 2 (owner design review 2026-08-06) ══
-    // Seven SQUARE San Gimignano casa-torre towers grown around the dome.
-    // Owner brief iter 2: "impressive én authentiek … een beetje fantasy mag;
-    // niet manu militari" — the even ring read as minarets and one tower
-    // crowded the tympanum. REGROUPED:
-    //  1. SQUARE plans only (Box shafts, footprints 3.4-4.5), massive
-    //     masonry — never cylindrical, never tapering toward a spire.
-    //  2. Tops: the two tall sisters (and low SE) are FLAT with a DOUBLE
-    //     corbelled crown (0.25 + 0.35 overstek) carried on dark serena
-    //     corbel brackets — real silhouette depth at dolly distance; the
-    //     rest carry a low coppo hip cap (4-seg cone rotated 45°, face
-    //     slope ~15° ≤ 20°). No spires, no domes, no tower finials — gold
-    //     stays exclusive to the dome lantern + tympanum (canon dogma).
-    //  3. Facades: canon plaster shafts (ochreWall) with travertine quoin
-    //     chains (M.trim), ONE broad dark pietra-serena band per tower at a
-    //     staggered height (0.55 tall, 0.1 proud — reads at distance), and
-    //     a glowing bifora (the two tall sisters get a second, lower one) —
-    //     re-using the existing M.win emissive (.16); zero new dynamic lights.
-    //  4. GATEHOUSE + HILL TOWN, not a ring: the two tall sisters flank the
-    //     tympanum gable at (±~9.75, -11.5) — wider apart than iter 1, clear
-    //     of the name-beat sight cone (they frame the name; the tympanum and
-    //     the dome ribs stay unobstructed from every dolly frame). The other
-    //     five cluster asymmetrically: a tight SE trio (low-E out of the
-    //     wing-1 root roof + two free plinth towers), one battered free
-    //     tower behind wing 0, and one lone battered sister W of the block —
-    //     NO tower inside the ±20° entrance-axis wedge (sisters sit at ~40°,
-    //     everything else ≥ 70°).
-    //  5. The dome stays the hero: the sisters top at 28.6/29.4 — just
-    //     above the dome shell apex (~25.8) but under the lantern's gold
-    //     finial (~30.4) — and an order slimmer than the 18.4-wide drum:
-    //     the silhouette reads as dome-with-watchers.
-    //  6. A low coppo passage hooks wing 4 to the lone W tower (threaded
-    //     between the r=11 and r=14.4 arcade columns — verified clear) so
-    //     the ensemble reads as grown, not designed.
-    // Draw budget: ALL seven towers + the passage still merge into the same
-    // 6 meshes — shafts+passage walls / trim / serena (bands+surrounds+
-    // corbel brackets) / caps+passage roof / bifora glass / plinths+battered
-    // bases. Deterministic literals, no random. Shafts+caps cast the long
-    // golden-hour shadows (all towers sit at r≤18.8, well inside the ±58
-    // sun-shadow frustum). Never added to clickTargets or wingAnchors →
-    // entrance click, anchor highlights and the dolly pause-prompt raycasts
-    // are untouched; the sisters (r≈15) visually ARE the gatehouse.
+    // ══ W2 — LE SETTE SORELLE, iter 3: HILL TOWN vs the BROAD CORPS ══
+    // (owner brief 2026-08-06: "groter in de breedte / van scratch / niet
+    // manu militari"). The wings are now a wide corps de logis (E/W side-arms
+    // + two forward returns framing the court, see WING_W2), so the towers
+    // were RE-HOMED as a coherent asymmetric San-Gimignano family read against
+    // that front — no longer an east-heavy ring. The tower SHAPE RULES are
+    // unchanged (square casa-torre, double-corbel or low coppo crown, quoin
+    // chains, one staggered serena band, glowing bifora, NO gold): only the
+    // world positions moved. Family:
+    //  · TWO TALL SISTERS as a GATEHOUSE flanking the −Z entrance at (±7,-16),
+    //    just outside the ±22° axis wedge (they sit ~23.6° off-axis): they
+    //    bracket the tympanum for the name-beat, dome + lantern above them.
+    //  · an EAST BORGO of three (T3/T5/T7 on the rear-east slope) reads as the
+    //    "old town" grown on the hillside behind the dome.
+    //  · two lone towers hold the rear-west (T4 battered, T6).
+    // COLLISION PROOF (each tower centre ± footprint/2 vs every swept wing
+    // footprint; wing corridor half-width hw = max(wW/2+1.2, 4.25), clearance
+    // needed = hw + fp/2 + 1.2). Nearest-wing perpendicular clearance margin,
+    // computed against the att=2 baseline (att=3 on wings 1&4 only widens it):
+    //    T1 ( 7,-16) → wing2  d 9.09  (mgn +1.44)  PASS
+    //    T2 (-7,-16) → wing3  d 9.09  (mgn +1.39)  PASS
+    //    T3 ( 9, 12) → wing0  d 9.00  (mgn +1.05)  PASS
+    //    T5 (17, 12) → wing1  d 9.52  (mgn +1.82)  PASS
+    //    T7 (14, 17) → wing1  d14.89  (mgn +7.19)  PASS
+    //    T4 (-9.5,12)→ wing0  d 9.50  (mgn +1.35)  PASS   (battered base)
+    //    T6 (-17,12) → wing4  d 9.52  (mgn +0.82)  PASS
+    // (every other wing per tower is either off the axial band or ≥ 10 away.)
+    // Dome stays the hero: sisters top 28.6/29.4 > apex 25.8, < finial 30.4.
+    // Draw budget: ALL seven towers + BOTH borgo walls still merge into the
+    // same 6 meshes (shafts+borgo-walls / trim / serena / caps+wall-roofs /
+    // bifora glass / plinths). Deterministic literals, no random. Never added
+    // to clickTargets or wingAnchors → entrance click, anchor highlights and
+    // the dolly pause-prompt raycasts are untouched.
     if (W2) {
       // One shade darker than iter 1 (#4A463F): the bands must read at 90-106
       // camera distance, and darker serena buys silhouette without a new hue.
@@ -2213,14 +2267,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const gShaft: THREE.BufferGeometry[] = [], gTrim: THREE.BufferGeometry[] = [], gSerena: THREE.BufferGeometry[] = [],
             gCap: THREE.BufferGeometry[] = [], gWin: THREE.BufferGeometry[] = [], gPlinth: THREE.BufferGeometry[] = [];
       // [x, z, footprint, topY, flatTop, serena-bandY, base (0=grown from roof, 1=stone footing, 2=battered plinth), biforaYaw]
+      // iter 3 re-home (see collision proof above): gatehouse sisters flank the
+      // −Z entrance at ±7,-16 (23.6° off-axis, outside the ±22° wedge); an east
+      // borgo of three on the rear-east slope; two lone towers rear-west.
       const SORELLE: [number, number, number, number, boolean, number, number, number][] = [
-        [ -9.8, -11.8, 3.6, 28.6, true,  17.8, 0, 0], // Sorella W — gatehouse, rises out of the wing-3 root roof (cross-dist 1.0 < gallery half-width)
-        [  9.7, -11.2, 3.5, 29.4, true,  12.6, 0, 0], // Sorella E — gatehouse, wing-2 root roof; taller + slimmer (asymmetric pair)
-        [  7.9,  14.9, 4.1, 21.8, false,  9.4, 2, 0], // rear-E — FREE, battered base, 0.5 clear of the wing-0 arcade: wing 0 "grew a tower"
-        [-16.9,  -4.6, 4.5, 20.9, false, 13.2, 2, 0], // lone W sister — free, battered base, clear of the broad wing-4 arcade at ±5.5 (passage hooks them)
-        [ 13.6,   5.0, 4.0, 15.6, false, 10.4, 0, 0], // low E — rises out of the wing-1 root roof (SE trio, anchor)
-        [ 18.6,  -2.4, 3.6, 14.1, true,   6.2, 1, 0], // low SE — free footing beyond the wing-1 arcade (SE trio)
-        [ 13.9,  -7.2, 3.6, 11.3, false,  7.6, 1, 0], // piccolina — free footing between wings 1 and 2 (SE trio closes; footings never touch → no coplanar tops)
+        [  7.0, -16.0, 3.5, 29.4, true,  12.6, 1, 0], // T1 Sorella E — gatehouse, tall+slim, footing (free-standing in the court, flanks entrance E)
+        [ -7.0, -16.0, 3.6, 28.6, true,  17.8, 1, 0], // T2 Sorella W — gatehouse, tall, footing (asymmetric pair: taller-slimmer E vs stockier W)
+        [  9.0,  12.0, 4.1, 21.8, false,  9.4, 1, 0], // T3 borgo-E — east hill-town cluster, footing
+        [ 17.0,  12.0, 3.6, 15.6, false, 10.4, 1, 0], // T5 borgo-E — east cluster, lower (the "old town" steps down the slope)
+        [ 14.0,  17.0, 3.6, 11.3, false,  7.6, 1, 0], // T7 borgo-E — east cluster, lowest (closes the borgo court behind the dome)
+        [ -9.5,  12.0, 4.5, 20.9, false, 13.2, 2, 0], // T4 rear-W — free, BATTERED plinth ("grown from the hill")
+        [-17.0,  12.0, 3.6, 14.1, true,   6.2, 1, 0], // T6 rear-W — free footing, flat double-corbel crown (linked to the W arm by a borgo wall)
       ];
       SORELLE.forEach(([tx, tz, fp, topY, flatTop, bandY, base, bYaw]) => {
         const put = (arr: THREE.BufferGeometry[], g: THREE.BufferGeometry, dx: number, dy: number, dz: number) => {
@@ -2286,22 +2343,45 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           gPlinth.push(bat);
         }
       });
-      // ── Passage hooking wing 4 to the lone W tower (owner: "aanhaken") ──
-      // Runs obliquely from the broad wing-4 gallery wall (anchored at r≈12,
-      // embedded ~0.3) into the tower shaft at (-16.9,-4.6); threaded between
-      // the wing-4 arcade columns at r=11 and r=14.4 (point-to-axis clearances
-      // 1.43 / 1.62 against passage half-width 1.05 + column 0.3). Shed coppo
-      // roof slips under the arcade spring line (arches y≈5.15; roof top ~3.8).
+      // ── BORGO GROWTH — two low connectors "kill the diagram" (owner:
+      // "aanhaken … eeuwenlang aangegroeid"). Both are LOW (≤2.6 shaft) so
+      // they read as garden/enclosure walls, sit in wing-free ground, and
+      // merge into the tower buckets (walls→gShaft, coppo caps→gCap): zero
+      // extra draw calls. Deterministic literals; feet sink ~0.3 (never float).
+      //
+      // (A) Wall from the W side-arm's outboard flank (~(-12,8), perpendicular
+      //     clearance 6.25 > 5.9 needed vs the broad wing-4 corridor hw 5.5 +
+      //     wall 0.4) obliquely into tower T6 at (-17,12): the "aanhaken" of an
+      //     arm to a free tower. Run 5.4 along dir (dx,dz)=(-5,4).
       {
-        const psYaw = Math.atan2(-4.16, -4.22); // wall point (-12.74,-0.38) → tower center
-        const body = new THREE.BoxGeometry(2.1, 3.9, 4.4);
-        body.rotateY(psYaw);
-        body.translate(-14.07, 1.55, -1.73); // foot sinks to y=-0.4 (courtyard never floats)
+        const yaw = Math.atan2(-5, 4);          // (-12,8) → (-17,12)
+        const cx = -14.5, cz = 10.0;            // wall centre (clear of wing-4 body)
+        const body = new THREE.BoxGeometry(0.5, 2.6, 5.4);
+        body.rotateY(yaw);
+        body.translate(cx, 1.0, cz);            // foot y = -0.3
         gShaft.push(body);
-        const shed = new THREE.BoxGeometry(2.7, 0.14, 3.8);
-        shed.rotateZ(0.24); // slope away from the tower — coppo shed, no coplanar face
-        shed.rotateY(psYaw);
-        shed.translate(-14.07, 3.72, -1.73);
+        const shed = new THREE.BoxGeometry(0.9, 0.14, 5.6); // coppo shed cap
+        shed.rotateZ(0.14);                     // slight tilt — no coplanar face with the wall top
+        shed.rotateY(yaw);
+        shed.translate(cx, 2.42, cz);
+        gCap.push(shed);
+      }
+      // (B) A gated garden wall linking east-borgo towers T3(9,12) → T5(17,12),
+      //     closing an irregular borgo court behind the dome. Two posts flank a
+      //     gate gap; centre (13,12) is 10.1 clear of the E side-arm corridor
+      //     and ≥10.5 clear of the rear wing. Straight along +X (z=12).
+      {
+        const wall = new THREE.BoxGeometry(5.0, 2.4, 0.5);
+        wall.translate(13.0, 0.9, 12.0);        // foot y = -0.3
+        gShaft.push(wall);
+        for (const gx of [10.6, 15.4]) {         // gate posts (taller than the wall)
+          const post = new THREE.BoxGeometry(0.6, 3.0, 0.6);
+          post.translate(gx, 1.2, 12.0);
+          gShaft.push(post);
+        }
+        const shed = new THREE.BoxGeometry(5.2, 0.14, 0.9);
+        shed.rotateZ(0.12);
+        shed.translate(13.0, 2.22, 12.0);
         gCap.push(shed);
       }
       ([[gShaft, ochreWall, true], [gTrim, M.trim, false], [gSerena, serenaMat, false],
@@ -3734,7 +3814,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const SHOT=2.4,FADE=.5;
           const stills: [number,number,number][]=[
             [Math.PI*1.4987,Math.PI*0.4387,180],
-            [Math.PI*1.562,Math.PI*0.324,106], // grandeur/sorelle: matches the dolly name-beat — name framed between the two tall sisters, dome apex in frame
+            [Math.PI*1.556,Math.PI*0.322,104], // iter-3 name-beat: sisters now ±7,-16 (tighter gatehouse) → slightly more frontal + closer so BOTH bracket the tympanum, dome ribs clear
             [Math.PI*1.5,Math.PI*0.22,35],
           ];
           const si=Math.min(Math.floor(ot/SHOT),2);
@@ -3775,19 +3855,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // the raised dome — beats 2-4 ride slightly higher and a touch wider so
           // the lantern-crowned silhouette dominates the frame; the TYMPANUM BEAT
           // stays at ~7.5s (name legible), then the descent to the one door.
-          // Sette Sorelle (signature): the existing WP1→WP2 lateral swing to
-          // θ=1.66π sweeps the camera across the eastern group (the SE trio
-          // low-E/low-SE/piccolina, then Sorella E) so the verticals slide
-          // past each other as coulisses — free parallax, no extra waypoints;
-          // the ~7.5s beat (1.562π/.324π/106) puts the name between the two
-          // sisters. Iter 2 regroup (sisters wider at ±~9.75, z≈-11.5) was
-          // re-projected against this beat: the sisters bracket the tympanum
-          // (camera-azimuth spans ≈ -18..-21° and -4.5..-7° vs the tympanum's
-          // -8.5..-17.4°) and no tower cuts the dome ribs — waypoints keep.
+          // Sette Sorelle (signature): the WP1→WP2 lateral swing to θ=1.66π
+          // sweeps the camera sun-side across the E gatehouse sister and the
+          // broad E side-arm/return so verticals slide past each other as
+          // coulisses — free parallax, no extra waypoints. Iter-3 re-home:
+          // the gatehouse sisters moved to ±7,-16 (tighter, forward), so the
+          // ~7.5s TYMPANUM BEAT was re-projected slightly MORE FRONTAL + a
+          // touch CLOSER (1.556π/.322π/104, was 1.562/.324/106) so both
+          // symmetric sisters bracket the x=0 tympanum equally and the dome
+          // ribs stay clear above them; the rest of the path is unchanged.
           const WP: [number,number,number][] = W2 ? [
             [Math.PI*1.4987, Math.PI*0.4387, 185.0], // 0s: seamless from the WP1 hold
             [Math.PI*1.6600, Math.PI*0.4050, 152.0], // ~3.8s: swing sun-side, cypress contre-jour, dome crowning the ridge
-            [Math.PI*1.5620, Math.PI*0.3240, 106.0], // ~7.5s: TYMPANUM BEAT — name framed BETWEEN the two tall sisters (Sette Sorelle), dome + lantern above; slightly more frontal/wider/higher than the pre-sorelle 1.575/.33/104 so both towers stay in frame
+            [Math.PI*1.5560, Math.PI*0.3220, 104.0], // ~7.5s: TYMPANUM BEAT — name framed BETWEEN the two tall sisters (now ±7,-16), dome + lantern above; frontal enough that both bracket the axis
             [Math.PI*1.5000, Math.PI*0.3100,  90.0], // ~11.3s: frontal hold — full stacked massing (stair → parapet → drum → dome)
             [Math.PI*1.5000, Math.PI*0.2650,  63.0], // 15s: descend toward the door
           ] : [
