@@ -103,6 +103,7 @@ const CorridorTutorial = lazy(() => import("@/components/ui/CorridorTutorial"));
 import { useCorridorTourStore } from "@/components/ui/CorridorTutorial";
 const RoomTutorial = lazy(() => import("@/components/ui/RoomTutorial"));
 import { useRoomTourStore } from "@/components/ui/RoomTutorial";
+import { tutorialsMuted, unmuteTutorials } from "@/lib/tutorialMute";
 import NudgeProvider, { getNudgeHighlight } from "@/components/ui/NudgeTooltip";
 import { RoomIcon } from "@/components/ui/WingRoomIcons";
 import { useNudgeStore } from "@/lib/stores/nudgeStore";
@@ -872,6 +873,9 @@ export default function MemoryPalace(){
     }
     const key = "mp_room_tour_seen_v1";
     if (tourFired.current[key]) return;
+    // Globally muted (user skipped a scene tutorial): no auto-fire, and leave
+    // the seen flag + session marker untouched so un-muting resumes the sequence.
+    if (tutorialsMuted()) return;
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
         tourFired.current[key] = true;
@@ -893,6 +897,7 @@ export default function MemoryPalace(){
     }
     const key = "mp_corridor_tour_seen_v1";
     if (tourFired.current[key]) return;
+    if (tutorialsMuted()) return; // global mute — see room-tour effect above
     try {
       if (!window.localStorage.getItem(key)) {
         tourFired.current[key] = true;
@@ -908,7 +913,9 @@ export default function MemoryPalace(){
   }, [navMode, view, setCorridorTourOpen]);
 
   useEffect(() => {
-    const h = () => setEntranceTourOpen(true);
+    // Manual open — always works and lifts the global tutorial mute so the
+    // remaining scene tutorials auto-fire again.
+    const h = () => { unmuteTutorials(); setEntranceTourOpen(true); };
     window.addEventListener("mp:open-entrance-tutorial", h);
     return () => window.removeEventListener("mp:open-entrance-tutorial", h);
   }, [setEntranceTourOpen]);
@@ -920,6 +927,7 @@ export default function MemoryPalace(){
     }
     const key = "mp_entrance_tour_seen_v1";
     if (tourFired.current[key]) return;
+    if (tutorialsMuted()) return; // global mute — see room-tour effect above
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
         tourFired.current[key] = true;
@@ -935,6 +943,9 @@ export default function MemoryPalace(){
   // Listen for help-button-triggered palace tour open
   useEffect(() => {
     const h = () => {
+      // Manual restart (help menu / mobile "tour" action) — always works and
+      // lifts the global tutorial mute so the sequence auto-fires again.
+      unmuteTutorials();
       if (view === "room") setRoomTourOpen(true);
       else if (view === "entrance") setEntranceTourOpen(true);
       else if (view === "corridor") setCorridorTourOpen(true);
@@ -952,6 +963,7 @@ export default function MemoryPalace(){
     }
     const key = "mp_palace_tour_seen_v1";
     if (tourFired.current[key]) return;
+    if (tutorialsMuted()) return; // global mute — see room-tour effect above
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
         tourFired.current[key] = true;

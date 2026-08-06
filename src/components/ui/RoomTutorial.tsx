@@ -7,6 +7,7 @@ import { T } from "@/lib/theme";
 import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, SHADOW, RT } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useTouchControls } from "@/lib/hooks/useIsMobile";
+import { muteTutorials, tutorialsMuted } from "@/lib/tutorialMute";
 
 const STORAGE_KEY = "mp_room_tour_seen_v1";
 
@@ -35,12 +36,16 @@ export default function RoomTutorial({ open, onClose }: Props) {
   const [mounted, setMounted] = useState(false);
   const doneRef = useRef<HTMLButtonElement | null>(null);
 
+  // Explicit dismissal (backdrop / Escape) mutes ALL scene tutorials'
+  // auto-fire until a manual restart. Completing via "Done" does NOT mute.
+  const dismiss = () => { muteTutorials(); onClose(); };
+
   useEffect(() => { setMounted(true); }, []);
 
   // Escape-to-dismiss + move focus to the primary action while open.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { muteTutorials(); onClose(); } };
     window.addEventListener("keydown", onKey);
     const prev = (typeof document !== "undefined" ? document.activeElement : null) as HTMLElement | null;
     const focusId = setTimeout(() => doneRef.current?.focus(), 0);
@@ -75,7 +80,7 @@ export default function RoomTutorial({ open, onClose }: Props) {
       {/* Backdrop */}
       <div
         style={{ position: "absolute", inset: 0, background: "rgba(36,28,21,0.5)", pointerEvents: "auto" }}
-        onClick={onClose}
+        onClick={dismiss}
       />
 
       {/* Card */}
@@ -184,6 +189,9 @@ export function useRoomTutorial(shouldShow: boolean): [boolean, (v: boolean) => 
     if (!shouldShow) return;
     try {
       if (typeof window === "undefined") return;
+      // Globally muted (a scene tutorial was skipped): no auto-fire, and leave
+      // the seen flag untouched so un-muting resumes the sequence.
+      if (tutorialsMuted()) return;
       const seen = window.localStorage.getItem(STORAGE_KEY);
       if (!seen) {
         setTimeout(() => setOpen(true), 800);

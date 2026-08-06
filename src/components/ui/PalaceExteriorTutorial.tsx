@@ -7,6 +7,7 @@ import { T } from "@/lib/theme";
 import { CREAM, INK, MUTED, HAIRLINE, EMBER, GOLD, SHADOW, RT } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { muteTutorials, unmuteTutorials, tutorialsMuted } from "@/lib/tutorialMute";
 
 const STORAGE_KEY = "mp_palace_tour_seen_v1";
 
@@ -39,6 +40,10 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
   const [targetBox, setTargetBox] = useState<Rect | null>(null);
   const nextRef = useRef<HTMLButtonElement | null>(null);
 
+  // Explicit dismissal (skip / backdrop / Escape) mutes ALL scene tutorials'
+  // auto-fire until a manual restart. Completing via "Done" does NOT mute.
+  const dismiss = () => { muteTutorials(); onClose(); };
+
   // Cache the root font-size once (it never changes within a session) so remToPx
   // doesn't force a synchronous getComputedStyle reflow on every call/render.
   // Refreshed only on resize (covers browser zoom / responsive root sizing).
@@ -58,7 +63,7 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
   // Escape-to-dismiss + move focus to the primary action while open.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { muteTutorials(); onClose(); } };
     window.addEventListener("keydown", onKey);
     const prev = (typeof document !== "undefined" ? document.activeElement : null) as HTMLElement | null;
     const focusId = setTimeout(() => nextRef.current?.focus(), 0);
@@ -252,7 +257,7 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
               height="100%"
               fill="rgba(36,28,21,0.45)"
               mask="url(#mp-palace-cutout)"
-              onClick={onClose}
+              onClick={dismiss}
             />
           </svg>
           <div
@@ -271,7 +276,7 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
         /* No target — semi-transparent overlay */
         <div
           style={{ position: "absolute", inset: 0, background: "rgba(36,28,21,0.45)", pointerEvents: "auto" }}
-          onClick={onClose}
+          onClick={dismiss}
         />
       )}
 
@@ -320,7 +325,7 @@ export default function PalaceExteriorTutorial({ open, onClose }: Props) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.125rem" }}>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onClose(); }}
+              onClick={(e) => { e.stopPropagation(); dismiss(); }}
               style={{
                 fontFamily: T.font.body, fontSize: RT.overline, fontWeight: 500,
                 color: MUTED,
@@ -395,11 +400,16 @@ export function usePalaceExteriorTutorial(shouldShow: boolean): [boolean, (v: bo
       if (typeof window === "undefined") return;
       const params = new URLSearchParams(window.location.search);
       if (params.get("palaceTour") === "1") {
+        // Manual restart: always works and lifts the global mute.
+        unmuteTutorials();
         window.localStorage.removeItem(STORAGE_KEY);
         setOpen(true);
         window.localStorage.setItem(STORAGE_KEY, "1");
         return;
       }
+      // Globally muted (a scene tutorial was skipped): no auto-fire, and leave
+      // the seen flag untouched so un-muting resumes the sequence.
+      if (tutorialsMuted()) return;
       const seen = window.localStorage.getItem(STORAGE_KEY);
       if (!seen) {
         setOpen(true);
