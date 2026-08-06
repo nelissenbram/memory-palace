@@ -19,6 +19,7 @@ import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, lo
 import { createGrassSystem, createWheatField, createSharedWheatMaterial } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
+import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { hapticLight } from "@/lib/native/haptics";
@@ -41,6 +42,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
   const entranceHallLabel = t("entranceHall");
   const entranceHallLabelRef = useRef(entranceHallLabel);
   entranceHallLabelRef.current = entranceHallLabel;
+  // W2 (WS3-5): the tympanum-name canvas lives inside the mount effect; these
+  // refs let a late store hydration (or name change) redraw it in place.
+  const ownerNameRef = useRef(ownerName);
+  const tymNameRedrawRef = useRef<(() => void) | null>(null);
+  useEffect(() => { ownerNameRef.current = ownerName; tymNameRedrawRef.current?.(); }, [ownerName]);
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const camDebugRef=useRef<HTMLPreElement|null>(null);
   const camDebug=false; // set true to show camera debug overlay
@@ -84,6 +90,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // MUSEO VIVO Wave-1 exterior pass (WS3-4 retunes, WS2-1/3/4 terrain + shared
     // field materials, emissive-lerp kill). Staging ON / prod OFF via flags3d.
     const W1=flag3d("w1_exterior");
+    // MUSEO VIVO Wave-2 exterior pass (WS3-5..11): owner's name on the
+    // tympanum, Fraunces signposts replacing the hover label, Renaissance
+    // coercion, instanced cypresses, per-frame material-mutation deletion,
+    // 18s establishing dolly, tap-is-travel entrance. W2 builds on the W1
+    // infrastructure, so it requires W1; flag OFF ⇒ W1 behavior intact.
+    const W2=W1&&flag3d("w2_exterior");
     // W1 (WS10-2): mount the ONE ambient score — idempotent singleton, plays on
     // across scene transitions, so deliberately NOT stopped in cleanup.
     if(W1)mountAmbientMusic();
@@ -257,10 +269,24 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
     }
 
-    // Hover label overlay
-    const hovLabel=document.createElement("div");
-    hovLabel.style.cssText="position:absolute;display:none;pointer-events:none;z-index:10;transform:translate(-50%,-100%);font-family:'Cormorant Garamond',serif;font-size:1.375rem;font-weight:600;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(42,34,24,.5);padding:0.5rem 1.25rem;background:rgba(42,34,24,0.85);border-radius:0.75rem;backdrop-filter:blur(6px);white-space:nowrap;border:1px solid rgba(255,255,255,.2);";
-    el.appendChild(hovLabel);
+    // Hover label overlay — W2 (WS3-6/WS3-10): the hover-only Cormorant label
+    // and its per-frame screen projection are dead; the persistent Fraunces
+    // travertine signposts below replace it (dogma 7: all 3D type Fraunces).
+    const hovLabel: HTMLDivElement|null=W2?null:document.createElement("div");
+    if(hovLabel){
+      hovLabel.style.cssText="position:absolute;display:none;pointer-events:none;z-index:10;transform:translate(-50%,-100%);font-family:'Cormorant Garamond',serif;font-size:1.375rem;font-weight:600;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(42,34,24,.5);padding:0.5rem 1.25rem;background:rgba(42,34,24,0.85);border-radius:0.75rem;backdrop-filter:blur(6px);white-space:nowrap;border:1px solid rgba(255,255,255,.2);";
+      el.appendChild(hovLabel);
+    }
+    // W2 (WS3-10 dolly): cream veil for the reduced-motion stills crossfade (lazy)
+    let rmVeil: HTMLDivElement|null=null;
+    const ensureRmVeil=()=>{
+      if(!rmVeil){
+        rmVeil=document.createElement("div");
+        rmVeil.style.cssText=`position:absolute;inset:0;background:${CLEAR_COLOR};opacity:0;pointer-events:none;z-index:5;`;
+        el.appendChild(rmVeil);
+      }
+      return rmVeil;
+    };
 
     // Dramatic golden-hour lighting
     scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,0.6*dlPreset.ambientIntensity/0.5));
@@ -439,7 +465,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Track each section group for split/lift animation: {group, id, targetY, currentY, meshes}
     const sectionGroups: {group:THREE.Group,id:string,targetY:number,currentY:number,meshes:THREE.Mesh[],accent:string}[]=[];
 
-    const isRenaissance = styleEra === "renaissance";
+    // W2 (WS3-7, owner decision 2): styleEra is coerced to the canon Roman
+    // path under the flag — no data migration; flag OFF keeps the era fork.
+    const isRenaissance = !W2 && styleEra === "renaissance";
 
     // Shared variables for entrance click target (assigned inside era branch)
     let centralGroup: THREE.Group;
@@ -969,18 +997,49 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       tymMesh.rotation.y = Math.PI; // face outward (-Z, toward entrance)
       centralGroup.add(tymMesh);
 
-      // SCULPTURAL RELIEF — laurel wreath frame in bronze
-      const wreathGeo = new THREE.TorusGeometry(1.2, 0.08, 8, 24);
-      const wreathMesh = new THREE.Mesh(wreathGeo, M.bronze);
-      wreathMesh.position.set(0, 8.65, vestZ - 1.12);
-      centralGroup.add(wreathMesh);
-      // Ribbon tails at bottom of wreath — two angled crossing strips
-      const ribbonL = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, -0.3, 7.5, vestZ - 1.12);
-      ribbonL.rotation.z = 0.35;
-      centralGroup.add(ribbonL);
-      const ribbonR = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, 0.3, 7.5, vestZ - 1.12);
-      ribbonR.rotation.z = -0.35;
-      centralGroup.add(ribbonR);
+      if(!W2){
+        // SCULPTURAL RELIEF — laurel wreath frame in bronze (legacy: empty wreath)
+        const wreathGeo = new THREE.TorusGeometry(1.2, 0.08, 8, 24);
+        const wreathMesh = new THREE.Mesh(wreathGeo, M.bronze);
+        wreathMesh.position.set(0, 8.65, vestZ - 1.12);
+        centralGroup.add(wreathMesh);
+        // Ribbon tails at bottom of wreath — two angled crossing strips
+        const ribbonL = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, -0.3, 7.5, vestZ - 1.12);
+        ribbonL.rotation.z = 0.35;
+        centralGroup.add(ribbonL);
+        const ribbonR = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, 0.3, 7.5, vestZ - 1.12);
+        ribbonR.rotation.z = -0.35;
+        centralGroup.add(ribbonR);
+      }else{
+        // ══ W2 (WS3-5) — the owner's name on the tympanum, in Fraunces ══
+        // Gold leaf over the honed travertine (the tympanum is gold's one
+        // allowed home besides frames — canon dogma 3), with an ink carve
+        // shadow for relief. Redraws when the Fraunces webfont lands or the
+        // store hydrates the name; falls back to the localized hall label so
+        // the pediment never reads blank. Personal by ~0:08 of the dolly.
+        const nameC=document.createElement("canvas");nameC.width=1024;nameC.height=160;
+        const nameCtx=nameC.getContext("2d")!;
+        const nameTex=new THREE.CanvasTexture(nameC);nameTex.colorSpace=THREE.SRGBColorSpace;nameTex.anisotropy=4;
+        const drawTymName=()=>{
+          const label=(ownerNameRef.current||entranceHallLabelRef.current||"").toUpperCase();
+          nameCtx.clearRect(0,0,1024,160);
+          nameCtx.font="600 92px Fraunces, Georgia, serif";
+          nameCtx.textAlign="center";nameCtx.textBaseline="middle";
+          try{
+            (nameCtx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing="10px";
+          }catch{/* letterSpacing unsupported — plain tracking is fine */}
+          nameCtx.fillStyle=INK;nameCtx.fillText(label,515,84,940);
+          nameCtx.fillStyle=GOLD;nameCtx.fillText(label,512,80,940);
+          nameTex.needsUpdate=true;
+        };
+        drawTymName();
+        if(document.fonts?.ready)document.fonts.ready.then(drawTymName).catch(()=>{});
+        tymNameRedrawRef.current=drawTymName;
+        const namePlane=new THREE.Mesh(new THREE.PlaneGeometry(5.6,0.875),new THREE.MeshBasicMaterial({map:nameTex,transparent:true}));
+        namePlane.position.set(0,8.28,vestZ-1.13);
+        namePlane.rotation.y=Math.PI; // face outward with the tympanum (-Z)
+        centralGroup.add(namePlane);
+      }
 
     }
 
@@ -2098,7 +2157,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     ]:null;
     if(cypressFoliageMats)extraDisposables.push(...cypressFoliageMats);
     if(farCypressMats)extraDisposables.push(...farCypressMats);
+    // ══ W2 (WS3-8) — instanced cypresses: collect per-tree transforms here and
+    // materialize them as InstancedMesh per W1 foliage-material group after the
+    // last planting site. Deterministic — reuses the exact positions/heights the
+    // per-mesh path produced; each tree's seed derives from its position.
+    const cypressNear: {px:number,pz:number,h:number,baseY:number,seed:number}[]|null=W2?[]:null;
+    const cypressFar: {px:number,pz:number,h:number,baseY:number,band:number}[]|null=W2?[]:null;
     const buildCypress=(px: number,pz: number,h: number,baseY: number)=>{
+      if(cypressNear){cypressNear.push({px,pz,h,baseY,seed:px*137.5+pz*281.3});return;}
       // Trunk
       scene.add(mk(new THREE.CylinderGeometry(.04,.14,h*.3,5),M.barkD,px,baseY+h*.15,pz));
       scene.add(mk(new THREE.CylinderGeometry(.12,.18,.25,5),M.barkD,px,baseY+.12,pz));
@@ -2357,6 +2423,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Near cypresses get full layered detail; far ones get simpler geometry
       if(d<180){
         buildCypress(cx2,cz,ch,cyBaseY);
+      }else if(cypressFar){
+        // W2 (WS3-8): far tier joins the per-haze-band instanced buckets
+        cypressFar.push({px:cx2,pz:cz,h:ch,baseY:cyBaseY,band:d<260?0:d<360?1:2});
       }else{
         scene.add(mk(new THREE.CylinderGeometry(.06,.12,ch*.2,5),M.barkD,cx2,cyBaseY+ch*.1,cz));
         // Columnar silhouette — tapered cylinder (narrow, not cone-shaped)
@@ -2789,6 +2858,72 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       });
     }
 
+    // ══ W2 (WS3-8) — materialize the instanced cypresses ══
+    // Near tier: ONE canonical unit-height Lathe silhouette (fixed seed) × the
+    // 3 shared W1 olive foliage materials + one instanced trunk; far tier: ONE
+    // tapered column × the 3 haze-band materials + one instanced trunk.
+    // ~200 per-tree meshes/geometries collapse to ≤8 draw calls; per-instance
+    // scale/lean (from each tree's deterministic seed) keeps the variety.
+    if(W2&&cypressNear&&cypressFar&&cypressFoliageMats&&farCypressMats){
+      const _cyDummy=new THREE.Object3D();
+      const NSEED=12.7,profSegs=18;
+      const prof: THREE.Vector2[]=[];
+      for(let i=0;i<=profSegs;i++){
+        const tt=i/profSegs;let r: number;
+        if(tt<0.05)r=.5*.35*(tt/.05);
+        else if(tt<0.2)r=.5*(.35+.65*((tt-.05)/.15));
+        else if(tt<0.9){const tp=(tt-.2)/.7;r=.5*(1-.4*tp);}
+        else{const tp=(tt-.9)/.1;r=.5*.6*(1-tp);}
+        const n=Math.sin(NSEED+tt*47.3)*Math.cos(NSEED*.7+tt*31.1);
+        prof.push(new THREE.Vector2(Math.max(r*(1+n*.12),.02),tt));
+      }
+      const nearFoliageGeo=new THREE.LatheGeometry(prof,8);
+      nearFoliageGeo.computeVertexNormals();
+      const nearTrunkGeo=new THREE.CylinderGeometry(.04,.14,.3,5);nearTrunkGeo.translate(0,.15,0);
+      const farColGeo=new THREE.CylinderGeometry(.12,.3,.8,6);farColGeo.translate(0,.5,0);
+      const farTrunkGeo=new THREE.CylinderGeometry(.06,.12,.2,5);farTrunkGeo.translate(0,.1,0);
+      const setInstances=(mesh:THREE.InstancedMesh,items:{px:number,pz:number,h:number,baseY:number,seed?:number}[],foliage:boolean)=>{
+        items.forEach((c,i)=>{
+          const seed=c.seed??0;
+          if(foliage){
+            const lean=(Math.sin(seed*1.7)-.5)*.03;
+            const s=1+Math.sin(seed*1.3)*.1;
+            _cyDummy.position.set(c.px+lean,c.baseY+c.h*.18,c.pz);
+            _cyDummy.rotation.set(0,seed,0);
+            _cyDummy.scale.set(s,c.h*.82,s);
+          }else{
+            _cyDummy.position.set(c.px,c.baseY,c.pz);
+            _cyDummy.rotation.set(0,0,0);
+            _cyDummy.scale.set(1,c.h,1);
+          }
+          _cyDummy.updateMatrix();
+          mesh.setMatrixAt(i,_cyDummy.matrix);
+        });
+        mesh.instanceMatrix.needsUpdate=true;
+        scene.add(mesh);
+      };
+      for(let b=0;b<3;b++){
+        const items=cypressNear.filter(c=>Math.abs(Math.floor(c.seed*7))%3===b);
+        if(!items.length)continue;
+        const im=new THREE.InstancedMesh(nearFoliageGeo,cypressFoliageMats[b],items.length);
+        im.castShadow=true;
+        setInstances(im,items,true);
+      }
+      if(cypressNear.length){
+        setInstances(new THREE.InstancedMesh(nearTrunkGeo,M.barkD,cypressNear.length),cypressNear,false);
+      }else{nearFoliageGeo.dispose();nearTrunkGeo.dispose();}
+      for(let b=0;b<3;b++){
+        const items=cypressFar.filter(c=>c.band===b);
+        if(!items.length)continue;
+        const im=new THREE.InstancedMesh(farColGeo,farCypressMats[b],items.length);
+        im.castShadow=b===0; // only the nearest haze band casts (matches d<250 rule)
+        setInstances(im,items,false);
+      }
+      if(cypressFar.length){
+        setInstances(new THREE.InstancedMesh(farTrunkGeo,M.barkD,cypressFar.length),cypressFar,false);
+      }else{farColGeo.dispose();farTrunkGeo.dispose();}
+    }
+
     // ── 3D WHEAT/GRAIN FIELDS: dense instanced stalks — Tuscan golden harvest ──
     const wheatFields: ReturnType<typeof createWheatField>[] = [];
     // Dense wheat fields blanketing the landscape — Tuscan summer harvest
@@ -2916,6 +3051,39 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // light + ONE shared gold walkthrough light, repositioned on state CHANGE only.
     const targetWorldPos=new Map<string,THREE.Vector3>();
     clickTargets.forEach((ct: any)=>{const pos=new THREE.Vector3();ct.getWorldPosition(pos);targetWorldPos.set(ct.userData.roomId,pos);});
+
+    // ══ W2 (WS3-10/11) — persistent travertine signposts in Fraunces ink ══
+    // Always-visible wayfinding replacing the hover-only label: a travertine
+    // stele + Fraunces plaque beside every wing and at the entrance approach,
+    // each with an oversized invisible hit box (tremor-friendly) that joins
+    // clickTargets under the same roomId — so a signpost tap runs the exact
+    // wing/entrance tap contract, and the W1 ember hover light answers hover.
+    // Unlit label (MeshBasicMaterial) + existing materials: zero new lights.
+    if(W2){
+      const addSignpost=(id: string,label: string,sx: number,sz: number,ry: number)=>{
+        const g=new THREE.Group();
+        g.position.set(sx,HILL_Y+0.3,sz);g.rotation.y=ry;
+        g.add(mk(new THREE.BoxGeometry(0.9,0.3,0.9),M.stoneD,0,0.15,0));
+        g.add(mk(new THREE.BoxGeometry(0.34,2.1,0.34),M.trim,0,1.35,0));
+        g.add(mk(new THREE.BoxGeometry(0.5,0.12,0.5),M.trim,0,2.46,0));
+        const lbl=makeFrauncesLabel(label,{width:2.3,height:0.55});
+        lbl.position.set(0,1.85,0.19);
+        g.add(lbl);
+        const hit=new THREE.Mesh(new THREE.BoxGeometry(3.2,3.4,1.6),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+        hit.position.set(0,1.7,0);hit.userData={roomId:id,wingMeshes:[],accent:EMBER};
+        g.add(hit);clickTargets.push(hit);
+        scene.add(g);
+      };
+      WINGS.forEach((wing: Wing)=>{
+        const p=targetWorldPos.get(wing.id);if(!p)return;
+        const r0=Math.hypot(p.x,p.z)||1;
+        // Beside the wing (perpendicular offset clears the portico), facing the courtyard
+        const sx=p.x+(-p.z/r0)*6.5,sz=p.z+(p.x/r0)*6.5;
+        addSignpost(wing.id,wing.name,sx,sz,Math.atan2(-sx,-sz));
+      });
+      // Entrance signpost flanks the vestibule approach, facing the arrival path
+      addSignpost(entranceId,entranceHallLabelRef.current,5.2,-17,Math.PI);
+    }
     const hoverLights: {light:THREE.PointLight,targetIntensity:number,wingId:string}[]=[];
     let w1HoverLight: THREE.PointLight|null=null;
     let w1HlLight: THREE.PointLight|null=null;
@@ -3084,6 +3252,33 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             cinematicPauseFiredRef.current = true;
             if (onCinematicPauseRef.current) onCinematicPauseRef.current();
           }
+        } else if (W2 && prefersReducedMotion()) {
+          // W2 (WS3-10): reduced-motion = crossfade between 3 composed stills
+          // of the same dolly (wide → tympanum beat, name in frame → before
+          // the door), cream veil at each cut, then the same entrance handoff.
+          const ot = rawT - cinematicResumeTimeRef.current;
+          const SHOT=2.4,FADE=.5;
+          const stills: [number,number,number][]=[
+            [Math.PI*1.4987,Math.PI*0.4387,180],
+            [Math.PI*1.5,Math.PI*0.33,95],
+            [Math.PI*1.5,Math.PI*0.22,35],
+          ];
+          const si=Math.min(Math.floor(ot/SHOT),2);
+          const s=stills[si];
+          camO.current.theta=camOT.current.theta=s[0];
+          camO.current.phi=camOT.current.phi=s[1];
+          camD.current=s[2];
+          const local=ot-si*SHOT;
+          const veil=ensureRmVeil();
+          let vo=0;
+          if(si>0&&local<FADE)vo=1-local/FADE;
+          if(si<2&&local>SHOT-FADE)vo=Math.max(vo,(local-(SHOT-FADE))/FADE);
+          veil.style.opacity=String(vo*.9);
+          if(si===2&&local>=SHOT){
+            veil.style.opacity="0";
+            onboardingModeRef.current=false;
+            onRoomClickRef.current("__entrance__");
+          }
         } else if (W1 && prefersReducedMotion()) {
           // W1 (WS12-1): prefers-reduced-motion skips the WP2-5 flyover pans —
           // cut straight to the end framing and hand off to the entrance. The
@@ -3096,16 +3291,27 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         } else {
           // Resumed — compute time since resume
           const ot = rawT - cinematicResumeTimeRef.current;
-          // 5 waypoints, Catmull-Rom interpolated
-          const WP: [number,number,number][] = [
+          // W2 (WS3-10): ~18s authored establishing dolly INTO the low SW sun —
+          // cypress contre-jour over the fields, TYMPANUM BEAT (owner's name
+          // legible) at ~7.5s, descending to eye level at camD≈35 before the
+          // door. Same Catmull-Rom machinery, same Skip/pause/resume contract;
+          // yaw stays under the shared MAX_YAW_DEG_S clamp applied below.
+          // Legacy (flag off): 5-waypoint flyover, 7s + 3.8s zoom.
+          const WP: [number,number,number][] = W2 ? [
+            [Math.PI*1.4987, Math.PI*0.4387, 185.0], // 0s: seamless from the WP1 hold
+            [Math.PI*1.6600, Math.PI*0.4150, 150.0], // ~3.8s: swing sun-side, cypress contre-jour
+            [Math.PI*1.5750, Math.PI*0.3450, 100.0], // ~7.5s: TYMPANUM BEAT — name flares in frame
+            [Math.PI*1.5000, Math.PI*0.3200,  84.0], // ~11.3s: frontal hold on the name
+            [Math.PI*1.5000, Math.PI*0.2700,  62.0], // 15s: descend toward the door
+          ] : [
             [Math.PI*1.4987, Math.PI*0.4387, 180.0], // 1: wide establishing shot
             [Math.PI*1.6197, Math.PI*0.3967, 175.0], // 2: pan right & up
             [Math.PI*1.4910, Math.PI*0.3471, 150.0], // 3: sweep left, higher angle
             [Math.PI*1.3854, Math.PI*0.4336, 150.0], // 4: continue left, drop down
             [Math.PI*1.4809, Math.PI*0.4400, 115.0], // 5: settle front, closer
           ];
-          const FLY_DUR = 7.0;
-          const ZOOM_DUR = 3.8; // extended zoom for dramatic effect
+          const FLY_DUR = W2 ? 15.0 : 7.0;
+          const ZOOM_DUR = W2 ? 3.0 : 3.8; // W2: 15+3 = the 18s dolly; legacy: extended zoom
 
           if (ot < FLY_DUR) {
             const progress = ot / FLY_DUR;
@@ -3172,11 +3378,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         el.textContent=`theta: Math.PI * ${(camO.current.theta/Math.PI).toFixed(4)}\nphi: Math.PI * ${(camO.current.phi/Math.PI).toFixed(4)}\ndistance: ${camD.current.toFixed(1)}`;
       }
 
-      // Subtle water opacity animation
+      // Subtle water opacity animation — W2 (WS3-9): the audit's remaining
+      // per-frame material mutations are deleted; water reads as a still
+      // golden mirror (W1 already killed the emissive-lerp clone system).
+      if(!W2){
       if (pool) (pool.material as THREE.MeshStandardMaterial).opacity=.5+Math.sin(t*.8)*.03;
       if (fW1) (fW1.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*.9)*.03;
       if (fW2) (fW2.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*1.0)*.03;
       if (fW3) (fW3.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*1.1)*.02;
+      }
 
       // ── HOVER GLOW — handled entirely in the per-wing block below ──
       // (removed shared-material sectionGroups loop that caused bleed across sections)
@@ -3294,7 +3504,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // Animate mist drift
         mistMeshes.forEach((mm,i)=>{
           mm.position.x+=Math.sin(t*.02+i)*.01;
-          (mm.material as THREE.MeshBasicMaterial).opacity=.03+Math.sin(t*.1+i*2)*.015;
+          // W2 (WS3-9): no per-frame material mutations — mist opacity is static
+          if(!W2)(mm.material as THREE.MeshBasicMaterial).opacity=.03+Math.sin(t*.1+i*2)*.015;
         });
 
         // Animate birds
@@ -3322,7 +3533,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);onRoomHover(hits.length>0?hits[0].object.userData.roomId:null);};
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
-      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0){hapticLight();onRoomClickRef.current(hits[0].object.userData.roomId);}};
+      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0){hapticLight();const hitId=hits[0].object.userData.roomId;
+      // W2 (WS3-11): tap-is-travel — an entrance tap from any distance first
+      // runs the existing comfort-capped camD approach (the __entrance__
+      // autoWalk path fires the same onRoomClick contract on arrival);
+      // reduced-motion keeps the direct enter.
+      if(W2&&hitId==="__entrance__"&&camD.current>45&&!prefersReducedMotion()){autoWalkToRef.current="__entrance__";return;}
+      onRoomClickRef.current(hitId);}};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=aspect<1?115:140;};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
@@ -3353,6 +3570,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const hitId=hits[0].object.userData.roomId;
           onRoomHover(hitId);
           hapticLight();
+          // W2 (WS3-11): tap-is-travel — same walk-then-enter as the mouse path
+          if(W2&&hitId==="__entrance__"&&camD.current>45&&!prefersReducedMotion()){autoWalkToRef.current="__entrance__";return;}
           onRoomClickRef.current(hitId);
         }else{
           onRoomHover(null);
@@ -3363,7 +3582,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
-      if(el.contains(hovLabel))el.removeChild(hovLabel);
+      if(hovLabel&&el.contains(hovLabel))el.removeChild(hovLabel);
+      if(rmVeil&&el.contains(rmVeil))el.removeChild(rmVeil);
+      tymNameRedrawRef.current=null;
       const _cachedSet=buildCachedTextureSet();
       scene.traverse((obj: any) => {
         if (obj.geometry) obj.geometry.dispose();
