@@ -340,7 +340,11 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
             <WingIcon wingId={currentWing.id} size={compact ? 14 : 16} color={isActive ? accent : CANON_MUTED} />
           </span>
-          {!compact && <span>{displayName}</span>}
+          {!compact && (
+            <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(10rem * var(--a11y-scale, 1))" }}>
+              {displayName}
+            </span>
+          )}
           {/* Down chevron to indicate wing switcher */}
           {isActive && (
             <svg
@@ -352,6 +356,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                 transition: "transform 0.15s ease",
                 transform: showWingPicker ? "rotate(180deg)" : "rotate(0deg)",
                 marginLeft: compact ? "0" : "0.0625rem",
+                flexShrink: 0,
               }}
             >
               <path d="M2 3l2 2 2-2" />
@@ -470,6 +475,9 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           alignItems: "center",
           gap: compact ? "0.25rem" : "0.375rem",
           flexWrap: "nowrap",
+          // Part of the shrink chain — wing labels ellipsize before anything
+          // can push the Passcode/Publish actions out of the capsule.
+          minWidth: 0,
         }}
       >
         {/* Vertical separator */}
@@ -495,7 +503,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
             <div
               key={w.id}
               ref={(el) => { quickNavRefs.current[w.id] = el; }}
-              style={{ position: "relative", flexShrink: 0 }}
+              style={{ position: "relative", display: "flex", minWidth: 0, flexShrink: 1 }}
             >
               <button
                 onClick={() => {
@@ -519,6 +527,11 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                   fontSize: compact ? "0.6875rem" : "0.875rem",
                   padding: compact ? "0.375rem 0.375rem" : "0.375rem 0.75rem",
                   minHeight: compact ? "2.75rem" : undefined,
+                  // Wing pills are the designated shrink victims (higher
+                  // flex-shrink than the room pill): label ellipsizes, icon +
+                  // chevron stay. Same look while everything fits.
+                  minWidth: 0,
+                  flexShrink: 3,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = `${w.accent}20`;
@@ -532,7 +545,11 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                 <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
                   <WingIcon wingId={w.id} size={compact ? 12 : 14} color={w.accent} />
                 </span>
-                {!compact && <span>{displayName}</span>}
+                {!compact && (
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", maxWidth: "calc(9rem * var(--a11y-scale, 1))" }}>
+                    {displayName}
+                  </span>
+                )}
                 {rooms.length > 0 && (
                   <svg
                     width={7} height={7} viewBox="0 0 8 8" fill="none"
@@ -543,6 +560,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                       transition: "transform 0.15s ease",
                       transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
                       marginLeft: compact ? "0" : "0.0625rem",
+                      flexShrink: 0,
                     }}
                   >
                     <path d="M2 3l2 2 2-2" />
@@ -608,7 +626,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                     <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
                       <WingIcon wingId={w.id} size={14} color={w.accent} />
                     </span>
-                    <span>{displayName}</span>
+                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{displayName}</span>
                   </button>
 
                   {/* Individual rooms */}
@@ -684,6 +702,10 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           overflow: "hidden",
           textOverflow: "ellipsis",
           maxWidth: compact ? "calc(8rem * var(--a11y-scale, 1))" : "calc(12rem * var(--a11y-scale, 1))",
+          // May shrink under pressure (after the wing pills, which carry a
+          // higher flex-shrink) but never below icon + a few characters.
+          flexShrink: 1,
+          minWidth: "3.5rem",
         }}
       >
         {roomId && (
@@ -731,7 +753,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
     if (wings.length > 0) {
       crumbs.push(<span key="sep-quicknav">{renderChevron()}</span>);
       crumbs.push(
-        <span key="quicknav" style={{ display: "inline-flex" }}>
+        <span key="quicknav" style={{ display: "inline-flex", minWidth: 0 }}>
           {renderQuickNavWings()}
         </span>
       );
@@ -740,7 +762,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
     // Level 4: Current room indicator (shown when in room view)
     if (view === "room" && roomName) {
       crumbs.push(<span key="sep-room">{renderChevron()}</span>);
-      crumbs.push(<span key="room">{renderRoomPill()}</span>);
+      crumbs.push(<span key="room" style={{ display: "inline-flex", minWidth: 0 }}>{renderRoomPill()}</span>);
     }
 
     return crumbs;
@@ -793,7 +815,9 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         top: "4.75rem",
         left: "50%",
         transform: "translateX(-50%)",
-        maxWidth: "calc(100vw - 2rem)",
+        // Never wider than the viewport minus margins AND any notch safe-area
+        // (iPad landscape) — the shrink chain below keeps content inside this.
+        maxWidth: "calc(100vw - 2rem - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px))",
         height: "3.25rem",
         zIndex: 42,
         overflow: "visible",
@@ -821,6 +845,10 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           flexWrap: "nowrap",
           whiteSpace: "nowrap",
           minWidth: 0,
+          // Overflow hardening: cap at the capsule width so the shrink chain
+          // (quicknav wings > room pill) ellipsizes instead of spilling out.
+          // No overflow:hidden here — the wing/room dropdowns must escape.
+          maxWidth: "100%",
         }}
       >
         {renderBreadcrumbs()}
@@ -1053,7 +1081,9 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     display: "flex",
     alignItems: "center",
     gap: "0.25rem",
-    padding: "0 0.5rem",
+    // Left notch safe-area (phone landscape): keep the section label + first
+    // pill out from under the notch; the bar itself still spans edge-to-edge.
+    padding: `0 0.5rem 0 calc(0.5rem + ${safeL})`,
     overflowX: "auto",
     overflowY: "hidden",
     backdropFilter: "blur(0.75rem)",
@@ -1153,7 +1183,9 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
             aria-current={isCurr ? "location" : undefined}
           >
             <WingIcon wingId={w.id} size={12} color={isCurr || isPending ? w.accent : T.color.charcoal} />
-            <span>{translateWingName(w, tWings)}</span>
+            <span style={{ maxWidth: "calc(9rem * var(--a11y-scale, 1))", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {translateWingName(w, tWings)}
+            </span>
           </button>
         );
       })}
@@ -1192,7 +1224,9 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
             aria-current={isCurr ? "location" : undefined}
           >
             <RoomIcon roomId={r.id} size={12} color={isCurr || isPending ? accent : T.color.charcoal} />
-            <span>{translateRoomName(r, tWings)}</span>
+            <span style={{ maxWidth: "calc(9rem * var(--a11y-scale, 1))", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {translateRoomName(r, tWings)}
+            </span>
           </button>
         );
       })}
@@ -1335,7 +1369,11 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         <path d="M14 26 L26 26" strokeWidth="2.2" />
         <path d="M21 20 L27 26 L21 32" strokeWidth="2.2" />
       </svg>
-      <span style={{ marginTop: "0.125rem" }}>{t("enterAction")}</span>
+      {/* Long locale labels (DE "Betreten") ellipsize instead of hard-clipping
+          against the button's overflow:hidden edge. */}
+      <span style={{ marginTop: "0.125rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 0.125rem" }}>
+        {t("enterAction")}
+      </span>
     </button>
 
     {/* Spacer to push 3d content below the 3 bars — MemoryPalace's main tree
