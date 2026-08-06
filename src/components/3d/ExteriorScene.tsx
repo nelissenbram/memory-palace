@@ -96,6 +96,21 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // 18s establishing dolly, tap-is-travel entrance. W2 builds on the W1
     // infrastructure, so it requires W1; flag OFF ⇒ W1 behavior intact.
     const W2=W1&&flag3d("w2_exterior");
+    // ══════════════════════════════════════════════════════════════════════
+    // W2 GROUNDS REDESIGN — "the setting" (owner redesign brief 2026-08-06)
+    // Stage 1 (BUILT): the circular "target-disc" courtyard is DEAD. In its
+    // place a formal Tuscan approach carries the arrival — a stone apron only
+    // at the stair, a gravel parterre garden with four buxus compartments and
+    // a centre urn on the entrance axis, marble benches on the cross-path, and
+    // a cypressenlaan leading the 18s dolly up the hillside to the stair.
+    // Stage 2 (PENDING, owner's headline ask "groter in de breedte / van
+    // scratch"): broadening the building into one horizontal corps-de-logis
+    // with borgo growth. That is a COUPLED wing+tower spatial re-layout (the
+    // seven Sette Sorelle towers are an east-heavy world-space family, so any
+    // wing broadening must re-home them together) — done as a deliberate next
+    // iteration against a render, not blind. The wings + towers below are
+    // still the iter-2 arrangement. Flag OFF ⇒ radial legacy, byte-identical.
+    // ══════════════════════════════════════════════════════════════════════
     // W1 (WS10-2): mount the ONE ambient score — idempotent singleton, plays on
     // across scene transitions, so deliberately NOT stopped in cleanup.
     if(W1)mountAmbientMusic();
@@ -461,31 +476,75 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // W1: real sandstone maps (WS2-3) instead of the tinted plaster stand-in.
     const courtyardGroundTex = W1 ? terrainTex! : groundTex;
     const courtyardMat = new THREE.MeshStandardMaterial({ color: W1 ? "#CDBC9A" : "#C8B898", roughness: 0.92, metalness: 0, map: courtyardGroundTex.map, normalMap: courtyardGroundTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3), roughnessMap: courtyardGroundTex.roughnessMap });
-    const cyGeo = new THREE.CircleGeometry(39, 64);
-    cyGeo.rotateX(-Math.PI / 2);
-    const cyMesh = new THREE.Mesh(cyGeo, courtyardMat);
-    cyMesh.position.y = HILL_Y + 0.35;
-    cyMesh.receiveShadow = true;
-    scene.add(cyMesh);
-    // Decorative courtyard rings — cobblestone pattern
-    // ⚠ Sette Sorelle iter 2 — THE FLOATING-ARCHES BUG: these tori were added
-    // with NO rotation, and TorusGeometry stands in the XY plane by default —
-    // all three "cobble rings" were giant VERTICAL hoops (r=28/20/14) slicing
-    // through and above the palace, reading as the thin cream ellipses drifting
-    // over the roofs on the owner's screenshot (the medallion below always got
-    // its rotation.x=-PI/2; the rings never did). Under W2 they lie flat on the
-    // courtyard as intended; flag OFF keeps the legacy scene bit-identical.
-    for(const [rr,tube,rSeg,ry] of [[28,.12,8,.42],[20,.08,4,.38],[14,.06,4,.38]] as [number,number,number,number][]){
-      const ring=mk(new THREE.TorusGeometry(rr,tube,rSeg,rr===14?36:48),M.stoneD,0,HILL_Y+ry,0);
-      if(W2)ring.rotation.x=-Math.PI/2;
-      scene.add(ring);
+    if (!W2) {
+      const cyGeo = new THREE.CircleGeometry(39, 64);
+      cyGeo.rotateX(-Math.PI / 2);
+      const cyMesh = new THREE.Mesh(cyGeo, courtyardMat);
+      cyMesh.position.y = HILL_Y + 0.35;
+      cyMesh.receiveShadow = true;
+      scene.add(cyMesh);
+      // Decorative courtyard rings — cobblestone pattern (legacy only: under the
+      // W2 masterplan the whole "target-disc" hardscape is retired below)
+      for(const [rr,tube,rSeg,ry] of [[28,.12,8,.42],[20,.08,4,.38],[14,.06,4,.38]] as [number,number,number,number][]){
+        const ring=mk(new THREE.TorusGeometry(rr,tube,rSeg,rr===14?36:48),M.stoneD,0,HILL_Y+ry,0);
+        scene.add(ring);
+      }
+      // Compass rose / medallion at courtyard centre
+      // W1: gold is reserved for entrance/tympanum (canon dogma) — medallion reads as pale travertine inlay
+      const medallion = new THREE.Mesh(new THREE.CircleGeometry(2,16),W1?M.trim:M.goldBright);
+      medallion.rotation.x = -Math.PI/2;
+      medallion.position.set(0,HILL_Y+0.4,0);
+      scene.add(medallion);
+    } else {
+      // ══ W2 MASTERPLAN GROUNDS — the circle disc dies ══
+      // Paving lives ONLY around the stair: a rectangular stone apron under the
+      // stair foot / urn plinths / signpost. South of it the formal parterre
+      // rides a low gravel garden terrace (its 1.6-deep body walls down to the
+      // falling ground at the far corners, so the garden itself reads terraced).
+      // Everything else is terrain, grass and planting. All shared/canon
+      // materials, receive-only shadows, deterministic literals.
+      // Stone apron — courtyardMat (sandstone under W1), top 8.42, sunk 0.5
+      const apron = mk(new THREE.BoxGeometry(26, 0.5, 7.5), courtyardMat, 0, HILL_Y + 0.17, -19.75);
+      apron.castShadow = false; scene.add(apron);
+      // Parterre garden terrace — warm gravel carpet x ±17, z -23.25..-46.85.
+      // Overlaps the apron 0.25 in z (stepped tops 8.42→8.36, never coplanar).
+      const parterreGravelMat = new THREE.MeshStandardMaterial({
+        color: "#D9CCAC", roughness: .94, envMapIntensity: .12,
+        map: whiteGravelTex.map, normalMap: whiteGravelTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
+        roughnessMap: whiteGravelTex.roughnessMap, aoMap: whiteGravelTex.aoMap, aoMapIntensity: .3,
+      });
+      const carpet = mk(new THREE.BoxGeometry(34, 1.6, 23.6), parterreGravelMat, 0, HILL_Y - 0.44, -35.05);
+      carpet.castShadow = false; scene.add(carpet);
+      // Compartment green panels — 4 merged boxes (tops 8.44, embedded in the
+      // carpet; the instanced buxus hedges plant into these further down)
+      {
+        const panelGeos: THREE.BufferGeometry[] = [];
+        for (const [px, pz] of [[-11.5, -29], [11.5, -29], [-11.5, -41], [11.5, -41]] as [number, number][]) {
+          const g = new THREE.BoxGeometry(8.4, 0.16, 8.2);
+          g.translate(px, HILL_Y + 0.36, pz);
+          panelGeos.push(g);
+        }
+        const merged = mergeGeometries(panelGeos);
+        panelGeos.forEach(g => g.dispose());
+        if (merged) {
+          // merged geometry rides a scene mesh — the cleanup traversal disposes it
+          const panels = new THREE.Mesh(merged, M.grassRich);
+          panels.receiveShadow = true;
+          scene.add(panels);
+        }
+      }
+      // Centre node on the cross-axis (0,-35): octagonal travertine plinth +
+      // bronze urn (gold stays lantern/tympanum-exclusive)
+      scene.add(mk(new THREE.CylinderGeometry(2.3, 2.5, 0.34, 8), M.trim, 0, HILL_Y + 0.4, -35));
+      scene.add(mk(new THREE.CylinderGeometry(0.5, 0.72, 1.25, 10), M.bronze, 0, HILL_Y + 1.18, -35));
+      scene.add(mk(new THREE.CylinderGeometry(0.64, 0.44, 0.4, 10), M.bronze, 0, HILL_Y + 1.99, -35));
+      // Two marble benches on the cross path (z -35 gap between hedge rows)
+      for (const bx of [-13, 13]) {
+        scene.add(mk(new THREE.BoxGeometry(2.5, 0.06, 1), M.marble, bx, HILL_Y + 0.71, -35));
+        scene.add(mk(new THREE.BoxGeometry(2.5, 0.35, 0.7), M.marbleVein, bx, HILL_Y + 0.52, -35));
+        for (const s of [-0.9, 0.9]) scene.add(mk(new THREE.BoxGeometry(0.4, 0.35, 0.7), M.stoneD, bx + s, HILL_Y + 0.5, -35));
+      }
     }
-    // Compass rose / medallion at courtyard centre
-    // W1: gold is reserved for entrance/tympanum (canon dogma) — medallion reads as pale travertine inlay
-    const medallion = new THREE.Mesh(new THREE.CircleGeometry(2,16),W1?M.trim:M.goldBright);
-    medallion.rotation.x = -Math.PI/2;
-    medallion.position.set(0,HILL_Y+0.4,0);
-    scene.add(medallion);
 
     const palace=new THREE.Group(),clickTargets: THREE.Mesh[]=[];
     // Owner feedback 2026-08-06 #6B: under W2 the exterior is no longer a click-hub.
@@ -2825,6 +2884,22 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         col.position.set(cx2,cyBaseY+ch*.5,cz);col.castShadow=d<250;scene.add(col);
       }
     });
+
+    // ── W2 CYPRESSENLAAN — the arrival avenue on the entrance axis ──
+    // Owner redesign 2026-08-06: a double file of cypresses leads the 18s dolly
+    // up the hillside to the stair, so the palace reads as something you come
+    // upon in the Tuscan landscape. Deterministic pairs (no random); under W2
+    // they join the instanced buckets via buildCypress → cypressNear.
+    // Placed south of the parterre (which ends at z≈-47), clear of every wing,
+    // tower and the cross-axis path.
+    if (W2) {
+      for (let a = 0; a < 11; a++) {
+        const az = -50 - a * 6;      // z -50 → -110 down the descending slope
+        const ax = 6 + a * 0.18;     // splay outward very slightly with distance
+        const ah = 8.6 - a * 0.16;   // tall near, tapering into the haze
+        for (const sx of [-ax, ax]) buildCypress(sx, az, ah, getHeightAt(sx, az));
+      }
+    }
 
     // ── OLIVE GROVES: silver-green, gnarled ──
     const oliveCount=isMobileQ?10:40;
