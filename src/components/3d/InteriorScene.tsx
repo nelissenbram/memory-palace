@@ -148,7 +148,19 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // Warm canon background at mount (MUSEO VIVO): golden sky for open-air
     // exhibition rooms, golden interior haze otherwise — the cool blue is dead.
     const scene=new THREE.Scene();scene.background=new THREE.Color(layout.isExhibition?GOLDEN.skyColor:dlPreset.fogColor);
-    const camera=new THREE.PerspectiveCamera(58,w/h,0.1,layout.isExhibition?120:60);
+    // z-fight sweep r3 (W1): near 0.1 → 0.3. Depth precision is ~proportional to
+    // near, so 0.1 against far 60/120 spent most of the buffer on the first
+    // 30 cm and left the floor layers (mm apart, 2-15 m away) shimmering — the
+    // main reason the mm-separation work below still showed z-fighting.
+    // Safe lower bound, verified: wall clamp keeps the eye ≥1 m from every wall
+    // (x ±(rW/2-1), z ∈ [-rL/2+1, rL/2-1.5]) incl. the door walk-out; W2
+    // colliders (COL_R=0.35) keep furniture ≥0.35 m off the walker; focus mode
+    // dollies no closer than max(1.2, planeHeight·1.4) m (focusMode.ts); eye
+    // height 2.0/2.1 keeps the floor 2 m below. Nothing renderable ever enters
+    // the first 0.3 m. Legacy (flag off) keeps 0.1. NOTE: do NOT reach for
+    // ren.logarithmicDepthBuffer instead — the renderer is pool-shared
+    // (rendererPool.ts) across exterior/corridor scenes.
+    const camera=new THREE.PerspectiveCamera(58,w/h,W1?0.3:0.1,layout.isExhibition?120:60);
     const Q=getQuality();
     const ren=borrowRenderer(w,h);
     ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.NoToneMapping;ren.toneMappingExposure=EXPOSURE;// grade lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE)
@@ -904,6 +916,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // ═══ ROMAN CUBICULUM / TRICLINIUM ═══
 
       // ─── FULL MOSAIC FLOOR ───
+      // z-fight sweep r3: this whole overlay sits INSIDE the den floorL inlay
+      // footprint (inlay top = 0.005). The diamond tiles used to sit at exactly
+      // 0.005 (perfectly coplanar with the inlay top — guaranteed shimmer), the
+      // medallion at 0.006 (1 mm) and the meander top at 0.0065 (1.5 mm). All
+      // lifted to ≥6 mm above the inlay top; visually identical mm-work.
       // Center medallion: compass rose (8 triangular segments)
       const medallionR=0.6;
       const compassColors=[
@@ -918,11 +935,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         triShape.setAttribute("position",new THREE.BufferAttribute(verts,3));
         triShape.computeVertexNormals();
         const triM=new THREE.Mesh(triShape,compassColors[ci%3]);
-        triM.position.set(0,0.006,0);scene.add(triM);
+        triM.position.set(0,0.011,0);scene.add(triM); // r3: 0.006→0.011 (6mm over inlay top)
       }
       // Compass rose border ring
       const compassRing=new THREE.Mesh(new THREE.TorusGeometry(medallionR,0.02,8,32),MS.gold);
-      compassRing.rotation.x=-Math.PI/2;compassRing.position.y=0.008;scene.add(compassRing);
+      compassRing.rotation.x=-Math.PI/2;compassRing.position.y=0.012;scene.add(compassRing); // r3: rides the lifted medallion
 
       // Greek key meander border (repeating L-shaped segments)
       const mdrMat1=new THREE.MeshStandardMaterial({color:"#C17040",roughness:0.6});
@@ -933,15 +950,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         for(let mi=0;mi<Math.floor((rW-1)/mdrStep);mi++){
           const mx=-rW/2+0.5+mi*mdrStep;
           const mMat=mi%2===0?mdrMat1:mdrMat2;
-          scene.add(mk(new THREE.BoxGeometry(mdrStep*0.4,0.005,mdrW2),mMat,mx,0.004,s*(rL/2-0.8)));
-          scene.add(mk(new THREE.BoxGeometry(mdrW2,0.005,mdrStep*0.3),mMat,mx+mdrStep*0.15,0.004,s*(rL/2-0.8+s*mdrStep*0.15)));
+          scene.add(mk(new THREE.BoxGeometry(mdrStep*0.4,0.005,mdrW2),mMat,mx,0.0105,s*(rL/2-0.8))); // r3: y .004→.0105 (top .013, 8mm over inlay)
+          scene.add(mk(new THREE.BoxGeometry(mdrW2,0.005,mdrStep*0.3),mMat,mx+mdrStep*0.15,0.0105,s*(rL/2-0.8+s*mdrStep*0.15)));
         }
         // along Z edges
         for(let mi=0;mi<Math.floor((rL-1)/mdrStep);mi++){
           const mz=-rL/2+0.5+mi*mdrStep;
           const mMat=mi%2===0?mdrMat1:mdrMat2;
-          scene.add(mk(new THREE.BoxGeometry(mdrW2,0.005,mdrStep*0.4),mMat,s*(rW/2-0.8),0.004,mz));
-          scene.add(mk(new THREE.BoxGeometry(mdrStep*0.3,0.005,mdrW2),mMat,s*(rW/2-0.8+s*mdrStep*0.15),0.004,mz+mdrStep*0.15));
+          scene.add(mk(new THREE.BoxGeometry(mdrW2,0.005,mdrStep*0.4),mMat,s*(rW/2-0.8),0.0105,mz)); // r3: y .004→.0105
+          scene.add(mk(new THREE.BoxGeometry(mdrStep*0.3,0.005,mdrW2),mMat,s*(rW/2-0.8+s*mdrStep*0.15),0.0105,mz+mdrStep*0.15));
         }
       }
 
@@ -965,19 +982,20 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           // skip center medallion area
           if(Math.sqrt(tx*tx+tz*tz)<medallionR+0.15)continue;
           dm.makeRotationX(-Math.PI/2);
-          dm.setPosition(tx,0.005,tz);
+          dm.setPosition(tx,0.011,tz); // r3: 0.005 was EXACTLY the floorL inlay top — coplanar shimmer over the whole room
           // rotate 45° for diamond pattern
           const rot=new THREE.Matrix4().makeRotationZ(Math.PI/4);
           dm.multiply(rot);
-          dm.setPosition(tx,0.005,tz);
+          dm.setPosition(tx,0.011,tz);
           inst.setMatrixAt(idx++,dm);
         }
         inst.count=idx;inst.instanceMatrix.needsUpdate=true;
         scene.add(inst);
       }
 
-      // Threshold strip at door (front wall)
-      scene.add(mk(new THREE.BoxGeometry(1.2,0.01,0.15),MS.marble,0,0.005,rL/2-0.3));
+      // Threshold strip at door (front wall) — r3: y .005→.006 so the box bottom
+      // clears the base floor plane (was coincident at y=0) instead of resting in it.
+      scene.add(mk(new THREE.BoxGeometry(1.2,0.01,0.15),MS.marble,0,0.006,rL/2-0.3));
 
       // ─── POMPEIAN FRESCO WALLS ───
       const socleH=0.6, friezeH=0.8, mainH=rH-socleH-friezeH;
@@ -2069,7 +2087,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(W2){
         const pool=new THREE.Mesh(new THREE.PlaneGeometry(3.2,4.6),getGlowCardMat());
         pool.rotation.x=-Math.PI/2;pool.rotation.z=wDir>0?0:Math.PI;
-        pool.position.set(winX,0.02,winZ+wDir*2.4);
+        // z-fight sweep r3: y .02→.025 — the decal spans the dkW border strips
+        // (top .011) and the roman-era meander (top .013); .025 keeps it ≥12mm
+        // above every opaque layer beneath. Material already carries
+        // depthWrite:false + polygonOffset −2 (glowCardMat is per-mount, not in
+        // the shared acquireMaterialSet cache, so the offset leaks nowhere).
+        pool.position.set(winX,0.025,winZ+wDir*2.4);
         pool.scale.y=1.4;pool.renderOrder=1;
         scene.add(pool);
       }
@@ -2098,11 +2121,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // ═══ PERISTYLIUM: additional courtyard ornaments ═══
 
       // ── Mosaic floor detail: Greek key / meander pattern border around impluvium ──
+      // z-fight sweep r3: y .012→.015 — the segments overlap the courtyard diamond
+      // tiles (top .010); the old bottom (.0095) poked 0.5mm into them and the tops
+      // sat only 4.5mm apart. Now: bottom .0125 (2.5mm clear), top .0175 (7.5mm sep).
       for(let s=-1;s<=1;s+=2){
         for(let mx=-3;mx<=3;mx++){
           const keyMat=mx%2===0?MS.bronze:MS.marble;
-          scene.add(mk(new THREE.BoxGeometry(0.3,0.005,0.12),keyMat,mx*0.55,0.012,s*2.8));
-          scene.add(mk(new THREE.BoxGeometry(0.12,0.005,0.3),keyMat,s*3.5,0.012,mx*0.55));
+          scene.add(mk(new THREE.BoxGeometry(0.3,0.005,0.12),keyMat,mx*0.55,0.015,s*2.8));
+          scene.add(mk(new THREE.BoxGeometry(0.12,0.005,0.3),keyMat,s*3.5,0.015,mx*0.55));
         }
       }
 
