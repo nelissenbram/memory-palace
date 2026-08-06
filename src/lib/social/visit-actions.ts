@@ -238,6 +238,54 @@ export async function getPublishedMemories(
   }));
 }
 
+/**
+ * W2 (WS7-15, owner decision 7): image memories a PUBLIC visitor may see on the
+ * hall's Ancestral Wall — only memories inside PUBLISHED wings, honoring the
+ * owner's `displayed` flag. Server-side gate: the client marks the result
+ * visibility:"public" because this action already enforced it. Oldest-first
+ * (decision 4's fallback order; favorites don't exist as a column yet).
+ */
+export async function getVisitorAncestralMemories(
+  userId: string
+): Promise<{ id: string; title: string; type: string; hue: number; s: number; l: number; dataUrl: string | null; thumbnailUrl: string | null; createdAt: string | null; visibility: "public" }[]> {
+  const supabase = createAdminClient();
+
+  const { data: wings } = await supabase
+    .from("wings")
+    .select("id")
+    .eq("user_id", userId)
+    .not("published_at", "is", null);
+  if (!wings || wings.length === 0) return [];
+
+  const { data: rooms } = await supabase
+    .from("rooms")
+    .select("id")
+    .in("wing_id", wings.map((w) => w.id));
+  if (!rooms || rooms.length === 0) return [];
+
+  const { data: memories } = await supabase
+    .from("memories")
+    .select("id, title, type, hue, saturation, lightness, file_url, thumbnail_url, created_at")
+    .in("room_id", rooms.map((r) => r.id))
+    .not("displayed", "is", false)
+    .not("file_url", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(12);
+
+  return (memories || []).map((m) => ({
+    id: m.id,
+    title: m.title,
+    type: m.type,
+    hue: m.hue ?? 30,
+    s: m.saturation ?? 50,
+    l: m.lightness ?? 60,
+    dataUrl: m.file_url,
+    thumbnailUrl: m.thumbnail_url,
+    createdAt: m.created_at ?? null,
+    visibility: "public" as const,
+  }));
+}
+
 /** Record a visit to a published wing/room */
 export async function recordVisit(input: {
   ownerId: string;

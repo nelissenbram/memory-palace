@@ -3611,6 +3611,7 @@
     "loopOn": "Bucle activado",
     "loopOff": "Bucle desactivado",
     "loadingVideo": "Cargando vídeo...",
+    "emptyEasel": "Cuelga tu primer recuerdo",
     "backToCorridor": "← Volver al corredor",
     "close": "Cerrar",
     "paintingTitle": "La Hermosa Sonrisa de {name}",
@@ -3632,7 +3633,9 @@
   },
   "corridor3d": {
     "backToEntrance": "← VESTÍBULO",
-    "sceneLabel": "Escena 3D del corredor — usa el teclado para navegar"
+    "sceneLabel": "Escena 3D del corredor — usa el teclado para navegar",
+    "hangFirstMemory": "Cuelga tu primer recuerdo",
+    "skipIntro": "Saltar intro"
   },
   "exterior3d": {
     "entranceHall": "Vestíbulo",
@@ -3716,7 +3719,8 @@
     "welcomeLabel": "Bienvenido al",
     "title": "Vestíbulo",
     "subtitle": "Una vista general de los capítulos de tu vida — continuemos al Roots Wing",
-    "skipIntro": "Saltar intro"
+    "skipIntro": "Saltar intro",
+    "ancestralEmpty": "Cuelga tu primer recuerdo"
   },
   "contributorBanner": {
     "contributing": "Contribuyendo al palacio de {ownerName}",

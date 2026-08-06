@@ -3611,6 +3611,7 @@
     "loopOn": "Schleife an",
     "loopOff": "Schleife aus",
     "loadingVideo": "Video wird geladen...",
+    "emptyEasel": "Hänge deine erste Erinnerung auf",
     "backToCorridor": "← Zurück zum Korridor",
     "close": "Schließen",
     "paintingTitle": "{name}s Wunderschones Lacheln",
@@ -3632,7 +3633,9 @@
   },
   "corridor3d": {
     "backToEntrance": "← EINGANGSHALLE",
-    "sceneLabel": "3D-Korridor-Szene — mit Tastatur navigieren"
+    "sceneLabel": "3D-Korridor-Szene — mit Tastatur navigieren",
+    "hangFirstMemory": "Hänge deine erste Erinnerung auf",
+    "skipIntro": "Intro überspringen"
   },
   "exterior3d": {
     "entranceHall": "Eingangshalle",
@@ -3716,7 +3719,8 @@
     "welcomeLabel": "Willkommen in der",
     "title": "Eingangshalle",
     "subtitle": "Ein Überblick über die Kapitel deines Lebens — weiter zum Roots Wing",
-    "skipIntro": "Intro überspringen"
+    "skipIntro": "Intro überspringen",
+    "ancestralEmpty": "Häng deine erste Erinnerung auf"
   },
   "contributorBanner": {
     "contributing": "Du trägst zu {ownerName}s Palast bei",

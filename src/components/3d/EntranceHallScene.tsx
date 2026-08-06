@@ -9,12 +9,19 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { EXPOSURE, CLEAR_COLOR, INK, GOLD, EMBER } from "@/lib/3d/canon";
+import { EXPOSURE, CLEAR_COLOR, INK, GOLD, EMBER, PLASTER } from "@/lib/3d/canon";
 import { flag3d } from "@/lib/3d/flags3d";
 import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
 import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { EYE_HEIGHT, MAX_YAW_DEG_S, MAX_WALK_SPEED, easeInOutCubic } from "@/lib/3d/cameraComfort";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
+// MUSEO VIVO Wave 2 — w2_hall (WS4-6..9, WS7-7/10/15): Ancestral Wall salon
+// hang, dolly-to-frame focus mode, living water/oculus light, bust plaque.
+import { computeSalonHang, mountSalonHang, type SalonHangMount, type SalonMemoryRef } from "@/lib/3d/salonHang";
+import { createFocusMode, FOCUS_DIM, type FocusMode, type FocusTarget } from "@/lib/3d/focusMode";
+import { selectAncestralMemories, makeWaterNormalTexture, makeCausticsTexture, makeOculusPoolTexture } from "@/lib/3d/ancestralWall";
+import { paintTex } from "@/lib/3d/textureHelpers";
+import type { Mem } from "@/lib/constants/defaults";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
 import { loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, acquireEnvMap, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
@@ -157,6 +164,9 @@ function EntranceHallScene({
   autoWalkTo,
   onboardingMode,
   onReady,
+  ancestralMemories,
+  ancestralPublicOnly,
+  onAncestralMemoryClick,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
@@ -174,10 +184,26 @@ function EntranceHallScene({
   bustName?: string | null;
   bustGender?: string | null;
   sharedWings?: SharedWingDoor[];
+  /** MUSEO VIVO W2 w2_hall (WS4-6): candidate photo memories for the Ancestral
+   *  Wall. The hall applies owner decision 4 itself (favorites → oldest, cap
+   *  3 mobile / 5 desktop) via selectAncestralMemories, so callers may pass the
+   *  full photo corpus. Default [] → warm cream easel empty state. */
+  ancestralMemories?: Mem[];
+  /** WS7-15 (owner decision 7): visitor routes set true — ONLY memories with
+   *  visibility === "public" hang; fewer than 3 public photos → empty state. */
+  ancestralPublicOnly?: boolean;
+  /** Second tap on a focused Ancestral Wall piece opens the existing memory
+   *  interaction (WS7-10) — wire to MemoryPalace's memory viewer. */
+  onAncestralMemoryClick?: (mem: Mem) => void;
 }) {
   const { t } = useTranslation("entranceHall");
   const { t: tw } = useTranslation("wings");
   const WINGS = wingsProp || DEFAULT_WINGS;
+  // ── MUSEO VIVO Wave-2 hall flag (WS4-6..10, WS7-7/10/15): Ancestral Wall,
+  // bust plaque, living water/oculus pool, focus mode. Read once at mount
+  // (declared before the fingerprint below, which folds the Wave-2 inputs in);
+  // flag off = current Wave-1 behavior fully intact.
+  const [w2] = useState<boolean>(() => { try { return flag3d("w2_hall"); } catch { return false; } });
   // ── FINGERPRINT: rebuild the hall only when construction INPUT actually
   // changes (wing id/label/icon/accent, unlocked state, shared-wing doors,
   // translated plaque labels, era) — NOT on parent re-renders, where wingsProp
@@ -186,7 +212,15 @@ function EntranceHallScene({
   const wingsFingerprint =
     WINGS.map(w => `${w.id}:${w.nameKey ? tw(w.nameKey) : ""}:${w.name}:${w.icon}:${w.accent}:${w.unlocked === false ? "L" : "U"}`).join("|") +
     "||" + (sharedWings || []).map(s => `${s.shareId}:${s.wingId}`).join("|") +
-    `||${styleEra}||${t("sharedBadge")}`;
+    `||${styleEra}||${t("sharedBadge")}` +
+    // MUSEO VIVO W2 (WS4-6/7): the Ancestral Wall + name plaque rebuild when
+    // their construction input changes — memories/name arrive async after the
+    // first mount. Folded in ONLY under the w2 flag so flag-off keeps today's
+    // rebuild cadence exactly.
+    (w2
+      ? "||AW:" + (ancestralMemories || []).map(m => `${m.id}:${m.title}:${m.visibility || ""}:${m.createdAt || ""}`).join(",") +
+        `|${ancestralPublicOnly ? "P" : ""}|${bustName || ""}`
+      : "");
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const onDoorClickRef = useRef(onDoorClick);
@@ -209,6 +243,8 @@ function EntranceHallScene({
   // ── MUSEO VIVO Wave-1 hall flag (WS4 steps 2-5, WS8, WS12-2/3) — read once at
   // mount per flags3d read-at-mount semantics; all visible Wave-1 changes gate on it.
   const [w1] = useState<boolean>(() => { try { return flag3d("w1_hall"); } catch { return false; } });
+  const onAncestralClickRef = useRef(onAncestralMemoryClick);
+  useEffect(() => { onAncestralClickRef.current = onAncestralMemoryClick; }, [onAncestralMemoryClick]);
   // Cream crossfade overlay (reduced-motion cinematic; NEVER black — WS12-2)
   const [creamFade, setCreamFade] = useState(0);
 
@@ -258,6 +294,8 @@ function EntranceHallScene({
     // singleton (WS12-1) — the w1 cinematic swaps its push-in for the cream
     // crossfade to the same end framing (shot B) when this reports true.
     const W1 = w1;
+    // Wave-2 hall flag captured for this mount (WS4-6..10, WS7-7/10/15).
+    const W2 = w2;
     const reduceMotion = prefersReducedMotion();
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
     // Persistent hall owns its renderer (mirrors ExteriorScene); transient
@@ -368,6 +406,16 @@ function EntranceHallScene({
       return a;
     });
 
+    // ── MUSEO VIVO W2 (WS4-6): Ancestral Wall bay geometry — the family wall
+    // claims the first inter-door bay (between doors 0 and 1, inside the
+    // entrance-spawn sightline). Columns/panels inside this arc are skipped so
+    // the salon hang reads as one dedicated wall segment.
+    const AW_ANGLE = (Math.PI * 1.5 + Math.PI / NUM_DOORS) % (Math.PI * 2);
+    const AW_HALF = Math.max(0.15, Math.PI / NUM_DOORS - 0.17); // arc kept clear of door casings
+    const angDiff = (a: number, b: number) => { let d = Math.abs(a - b); if (d > Math.PI) d = Math.PI * 2 - d; return d; };
+    // WS4-7 bust-moment anchor (left-front of the impluvium, facing the spawn).
+    const W2_BUST = { x: -4.9, z: 1.7 };
+
     // ── DOOR DIMENSIONS (MASSIVE) ──
     const DOOR_H = 7.0;
     const DOOR_W = 3.5;
@@ -377,7 +425,10 @@ function EntranceHallScene({
     // Hemisphere: warm sky / cool dark ground for contrast
     // Warm sky + terracotta ground bounce (WS1-6): the near-black #1A0F05
     // ground and 0.15 intensity were a main cause of the "eerie" hall.
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, dlPreset.groundBounceColor, (W1 ? 0.55 : 0.4) * dlPreset.ambientIntensity / 0.5));
+    // (W2/WS7-10: `hemi` is captured so focus mode can dim it 15% — same rig.)
+    const hemi = new THREE.HemisphereLight(dlPreset.ambientColor, dlPreset.groundBounceColor, (W1 ? 0.55 : 0.4) * dlPreset.ambientIntensity / 0.5);
+    scene.add(hemi);
+    const hemiBase = hemi.intensity;
     if (!W1) {
       // (pre-Wave-1 rig) Main oculus directional light — deleted under w1_hall:
       // the oculus key spot below is THE one shadow caster (WS4-3 light budget).
@@ -417,6 +468,7 @@ function EntranceHallScene({
     const oculusFill = new THREE.PointLight(dlPreset.fillColor, (W1 ? 0.9 : 0.7) * dlPreset.sunIntensity, 40);
     oculusFill.position.set(0, TOTAL_H - 2, 0);
     scene.add(oculusFill);
+    const oculusFillBase = oculusFill.intensity;
 
     // ── FLOOR — radial marble mosaic ──
     const floorGeo = new THREE.CircleGeometry(RADIUS + 1, 64);
@@ -630,6 +682,9 @@ function EntranceHallScene({
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff < COL_SKIP_THRESHOLD) { skip = true; break; }
       }
+      // W2 (WS4-6): keep the Ancestral Wall bay open — no columns in front of
+      // the family photos (mirrors the door/exit clearings above).
+      if (W2 && angDiff(colAngle, AW_ANGLE) < AW_HALF + 0.06) skip = true;
       if (!skip) validColAngles.push(colAngle);
     }
     const NUM_VALID_COLS = validColAngles.length;
@@ -1190,6 +1245,15 @@ function EntranceHallScene({
     // ── BUST PEDESTALS — disabled for now, will revisit later ──
     const bustMeshes: THREE.Mesh[] = [];
 
+    // ── MUSEO VIVO W2 living-light handles (WS4-8/9) — assigned by the era
+    // branch / W2 block below; the frame loop drifts them on capable GPUs and
+    // leaves the static variant on mobile (budget: zero dynamic lights).
+    const w2Anim = W2 && !isMobileGPU();
+    let w2WaterNormal: THREE.Texture | null = null;
+    let w2CausticA: THREE.Texture | null = null;
+    let w2CausticB: THREE.Texture | null = null;
+    let w2PoolTex: THREE.Texture | null = null;
+
     // ── ERA-SPECIFIC MODIFICATIONS ──
     if (styleEra === "renaissance") {
       // ═══ RENAISSANCE CORTILE ═══
@@ -1454,10 +1518,20 @@ function EntranceHallScene({
 
       // ── Grand Impluvium: recessed pool 7×5 ──
       const implW = 7, implD = 5, implDepth = 0.35;
+      // W2 (WS4-8, joint WS3-7): dead teal → canon-warm living water. A tileable
+      // procedural normal map is scrolled ~0.02/s in the frame loop (desktop;
+      // static on mobile) and envMapIntensity catches the golden PMREM — one
+      // material tweak, zero extra lights.
       const waterMat = mkPhys(THREE,{
-        color: "#4A8A7A", roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.65,
+        color: W2 ? "#7BA48E" : "#4A8A7A", roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.65,
         envMapIntensity: 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
       });
+      if (W2) {
+        w2WaterNormal = makeWaterNormalTexture();
+        w2WaterNormal.repeat.set(3, 2);
+        (waterMat as THREE.MeshPhysicalMaterial).normalMap = w2WaterNormal;
+        (waterMat as THREE.MeshPhysicalMaterial).normalScale = new THREE.Vector2(0.35, 0.35);
+      }
 
       // Pool bottom
       scene.add(mk(new THREE.BoxGeometry(implW, 0.06, implD), MS.marble, 0, -implDepth, 0));
@@ -1470,6 +1544,29 @@ function EntranceHallScene({
       // Water surface
       const water = mk(new THREE.BoxGeometry(implW - 0.1, 0.03, implD - 0.1), waterMat, 0, -0.05, 0);
       scene.add(water);
+
+      // W2 (WS4-8/9): living caustic web over the water — two counter-drifting
+      // additive layers of ONE seeded texture (mobile: a single static layer).
+      // Additive decals, depthWrite off, no light — the 4-light budget holds.
+      if (W2) {
+        w2CausticA = makeCausticsTexture(isMobileGPU() ? 128 : 256);
+        const cGeo = new THREE.PlaneGeometry(implW - 0.4, implD - 0.4);
+        const mkCaustic = (tex: THREE.Texture, op: number, y: number) => {
+          const m = new THREE.Mesh(cGeo, new THREE.MeshBasicMaterial({
+            map: tex, transparent: true, opacity: op,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+          }));
+          m.rotation.x = -Math.PI / 2;
+          m.position.y = y;
+          scene.add(m);
+        };
+        mkCaustic(w2CausticA, 0.3, -0.028);
+        if (w2Anim) {
+          w2CausticB = w2CausticA.clone();
+          w2CausticB.needsUpdate = true;
+          mkCaustic(w2CausticB, 0.2, -0.022);
+        }
+      }
 
       // Marble rim with double molding
       const rimH = 0.12;
@@ -1595,6 +1692,9 @@ function EntranceHallScene({
           const EXIT_A = Math.PI / 2;
           let diffExit = Math.abs(aMid - EXIT_A); if (diffExit > Math.PI) diffExit = Math.PI * 2 - diffExit;
           if (tooCloseToDoor || diffExit < 0.28) continue;
+          // W2 (WS4-6): the Ancestral Wall bay replaces its Pompeian panels —
+          // real family photos hang there instead of colored boxes.
+          if (W2 && angDiff(aMid, AW_ANGLE) < AW_HALF + 0.1) continue;
           const px = Math.cos(aMid) * wallPanelR;
           const pz = Math.sin(aMid) * wallPanelR;
 
@@ -1695,6 +1795,8 @@ function EntranceHallScene({
             return diff < 0.25;
           });
           if (tooCloseToOpening) continue;
+          // W2 (WS4-6): no oil lamp floating in front of the Ancestral Wall.
+          if (W2 && angDiff(lAngle, AW_ANGLE) < AW_HALF + 0.05) continue;
           const lR = RADIUS - 0.35;
           const lx = Math.cos(lAngle) * lR, lz = Math.sin(lAngle) * lR;
           const lY = 3.2;
@@ -1822,6 +1924,207 @@ function EntranceHallScene({
     }
 
     // Storage room removed — kept virtual (accessible via menu only)
+
+    // ═══ MUSEO VIVO WAVE 2 — w2_hall (WS4-6/7/9, WS7-7/10/15) ═══
+    // The Ancestral Wall (salon hang of auto-selected family photos), the
+    // owner's bust moment with a Fraunces name plaque, the baked oculus light
+    // pool, and dolly-to-frame focus mode. Everything below is additive and
+    // budget-neutral: zero new dynamic lights, decals additive/depthWrite:false.
+    let awMountHandle: SalonHangMount | null = null;
+    const awTextures: THREE.Texture[] = [];
+    const awHitMeshes: THREE.Mesh[] = [];
+    const awOwnedGeos: THREE.BufferGeometry[] = [];
+    let awHitMat: THREE.MeshBasicMaterial | null = null;
+    let focus: FocusMode | null = null;
+    let focusFadeTimer: number | null = null;
+    if (W2) {
+      // ── WS4-6 THE ANCESTRAL WALL ──
+      // Selection = owner decision 4 (favorites → oldest, cap 3 mobile / 5
+      // desktop) + decision 7 (visitor routes hang PUBLIC only via the
+      // ancestralPublicOnly prop — WS7-15).
+      const awMax = isMobileGPU() ? 3 : 5;
+      const awSelected = selectAncestralMemories(ancestralMemories ?? [], {
+        max: awMax,
+        publicOnly: !!ancestralPublicOnly,
+      });
+      const awCos = Math.cos(AW_ANGLE), awSin = Math.sin(AW_ANGLE);
+      // Flat family-wall segment inside the curved rotunda: chord width from the
+      // cleared arc, distance chosen so the flat panel's edges never poke
+      // through the cylinder wall.
+      const awRun = 2 * (RADIUS - 0.9) * Math.sin(AW_HALF);
+      const awPanelW = awRun + 0.8;
+      const awDist = Math.min(RADIUS - 1.0, Math.sqrt(Math.max(1, (RADIUS - 0.2) ** 2 - (awPanelW / 2) ** 2)));
+      // Warm plaster backing (canon PLASTER — the wall reads ≥0.5 luminance by
+      // albedo, per dogma 1) with an ink base strip grounding the segment.
+      const awBackGeo = new THREE.PlaneGeometry(awPanelW, 8.6);
+      const awBackMat = new THREE.MeshStandardMaterial({ color: PLASTER, roughness: 0.92, metalness: 0 });
+      const awBack = new THREE.Mesh(awBackGeo, awBackMat);
+      awBack.position.set(awCos * (awDist + 0.05), 4.3, awSin * (awDist + 0.05));
+      awBack.lookAt(0, 4.3, 0);
+      awBack.receiveShadow = true;
+      scene.add(awBack);
+      const awTrimGeo = new THREE.BoxGeometry(awPanelW, 0.22, 0.08);
+      const awTrimMat = new THREE.MeshStandardMaterial({ color: INK, roughness: 0.7, metalness: 0 });
+      const awTrim = new THREE.Mesh(awTrimGeo, awTrimMat);
+      awTrim.position.set(awCos * (awDist - 0.02), 0.11, awSin * (awDist - 0.02));
+      awTrim.lookAt(0, 0.11, 0);
+      scene.add(awTrim);
+
+      // Salon hang — deterministic (seeded from memory ids inside salonHang),
+      // photo textures scene-owned via paintTex (disposed in cleanup below,
+      // per the salonHang texture-ownership contract). paintTex composes a
+      // cover-cropped 4:3 canvas, so aspect 4/3 matches the texture exactly.
+      const awById = new Map(awSelected.map((m) => [m.id, m]));
+      const awRefs: SalonMemoryRef[] = awSelected.map((m) => ({
+        id: m.id,
+        aspect: 4 / 3,
+        title: m.title,
+        year: m.createdAt ? m.createdAt.slice(0, 4) : undefined,
+      }));
+      const awLayout = computeSalonHang(
+        awRefs,
+        { width: Math.max(3, awRun - 1.1), height: 6.4, yBase: 0 },
+        { maxPieces: awMax, maxPieceWidth: 2.6 }
+      );
+      awHitMat = new THREE.MeshBasicMaterial({ visible: false }); // raycast-only — zero draw calls
+      awMountHandle = mountSalonHang(awLayout, {
+        getTexture: (ref) => {
+          const tex = paintTex(awById.get(ref.id)!);
+          awTextures.push(tex);
+          return tex;
+        },
+        quality: isMobileGPU() ? "low" : "high",
+        // 0 family photos → warm cream easel, never colored boxes (i18n ×5, flat key).
+        emptyText: t("ancestralEmpty"),
+        onPiece: (art, p) => {
+          const mem = awById.get(p.memory.id)!;
+          // Raycast contract identical to the interior scenes: userData.memory
+          // on EVERY mesh of the piece, so memory interactions keep working.
+          art.group.traverse((o) => { o.userData.memory = mem; });
+          // Invisible hit plane (~1.4x, bounded so salon neighbours don't overlap).
+          const hitGeo = new THREE.PlaneGeometry(p.width * 1.4, (p.height + 0.5) * 1.2);
+          const hit = new THREE.Mesh(hitGeo, awHitMat!);
+          hit.position.set(0, -0.15, 0.06);
+          hit.userData.memory = mem;
+          awOwnedGeos.push(hitGeo);
+          awHitMeshes.push(hit);
+          art.group.add(hit);
+        },
+      });
+      awMountHandle.group.position.set(awCos * (awDist - 0.09), 0, awSin * (awDist - 0.09));
+      awMountHandle.group.lookAt(0, 0, 0);
+      scene.add(awMountHandle.group);
+      awMountHandle.group.updateMatrixWorld(true);
+      // WS7-10 focus targets: world pose per piece; the wall's outward normal
+      // points at the hall centre. Hit meshes were pushed in placement order.
+      const awNormal = new THREE.Vector3(-awCos, 0, -awSin).normalize();
+      awLayout.placements.forEach((p, i) => {
+        const target: FocusTarget = {
+          position: awMountHandle!.group.localToWorld(new THREE.Vector3(p.x, p.y, 0.02)),
+          normal: awNormal.clone(),
+          planeHeight: p.height,
+          planeWidth: p.width,
+          data: awById.get(p.memory.id),
+        };
+        if (awHitMeshes[i]) awHitMeshes[i].userData.awTarget = target;
+      });
+
+      // ── WS4-7 bust + Fraunces name plaque (canon pedestal) ──
+      // The existing bustBuilder path carries the bust; if the GLB fails the
+      // plaque below still delivers the personal moment (plan fallback).
+      {
+        const { x: bx, z: bz } = W2_BUST;
+        const pedBase = mk(new THREE.BoxGeometry(1.05, 0.16, 1.05), MS.marbleDark, bx, 0.08, bz);
+        scene.add(pedBase);
+        const pedShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 1.02, 20), MS.marbleWarm);
+        pedShaft.position.set(bx, 0.67, bz);
+        pedShaft.castShadow = true;
+        scene.add(pedShaft);
+        const pedCap = mk(new THREE.BoxGeometry(0.92, 0.1, 0.92), MS.marbleDark, bx, 1.23, bz);
+        scene.add(pedCap);
+        addBustToScene(
+          scene, bx, bz, 0,
+          styleEra === "renaissance" ? "renaissance" : "roman",
+          1.28, bustTextureUrl, marbleTex,
+          (bustGender as BustGender) || "male", ren
+        );
+        const ownerName = (bustName || "").trim();
+        if (ownerName) {
+          const plaque = makeFrauncesLabel(ownerName, { width: 1.0, height: 0.26 });
+          // Face the entrance spawn (0, 7.3) — the name reads on the walk-in.
+          const pd = new THREE.Vector3(0 - bx, 0, 7.3 - bz).normalize();
+          plaque.position.set(bx + pd.x * 0.56, 0.86, bz + pd.z * 0.56);
+          plaque.lookAt(bx + pd.x * 8, 0.86, bz + pd.z * 8);
+          scene.add(plaque);
+        }
+      }
+
+      // ── WS4-9 oculus light pool — baked additive floor decal where the shaft
+      // lands (transparent core over the sunken impluvium, warm glow on the
+      // rim). Slow texture-rotation drift on desktop; static on mobile.
+      w2PoolTex = makeOculusPoolTexture(isMobileGPU() ? 128 : 256);
+      const poolGeo = new THREE.PlaneGeometry(11.5, 9.5);
+      const poolMat = new THREE.MeshBasicMaterial({
+        map: w2PoolTex, transparent: true, opacity: 0.5,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      });
+      const w2Pool = new THREE.Mesh(poolGeo, poolMat);
+      w2Pool.rotation.x = -Math.PI / 2;
+      w2Pool.position.y = 0.016;
+      scene.add(w2Pool);
+
+      // ── WS7-10 focus mode: dolly-to-frame on the Ancestral Wall. ONE camera
+      // authority: while focus.update(dt) returns true the walk/autoWalk
+      // integrators in animate() are skipped; any manual input cancels.
+      focus = createFocusMode({
+        rig: {
+          getPosition: () => pos.current.clone(),
+          getLookAt: () => {
+            const d = new THREE.Vector3(
+              Math.sin(lookA.current.yaw) * Math.cos(lookA.current.pitch),
+              Math.sin(lookA.current.pitch),
+              -Math.cos(lookA.current.yaw) * Math.cos(lookA.current.pitch)
+            );
+            return pos.current.clone().add(d.multiplyScalar(4));
+          },
+          setPose: (p, look) => {
+            // Write BOTH actual and target refs: the glide provides its own
+            // easing, so the scene's smoothing must not double-filter it.
+            posT.current.copy(p);
+            pos.current.copy(p);
+            const d = new THREE.Vector3().subVectors(look, p);
+            const len = Math.max(d.length(), 1e-6);
+            const yaw = Math.atan2(d.x, -d.z);
+            const pitch = Math.asin(Math.max(-1, Math.min(1, d.y / len)));
+            lookT.current.yaw = yaw; lookT.current.pitch = pitch;
+            lookA.current.yaw = yaw; lookA.current.pitch = pitch;
+          },
+        },
+        setDimmed: (dimmed) => {
+          // 15% dim on hemi + env + oculus fill. Photos are unlit MeshBasic —
+          // they stay the brightest pixels; PLASTER walls stay ≥0.5 luminance.
+          const k = dimmed ? 1 - FOCUS_DIM : 1;
+          hemi.intensity = hemiBase * k;
+          oculusFill.intensity = oculusFillBase * k;
+          scene.environmentIntensity = 0.35 * k;
+        },
+        openMemory: (tg) => {
+          const mem = tg.data as Mem | undefined;
+          if (mem) onAncestralClickRef.current?.(mem);
+        },
+        // Reduced-motion: cream veil (never black) around the instant cut.
+        fade: (applyCut) => {
+          setCreamFade(1);
+          if (focusFadeTimer !== null) window.clearTimeout(focusFadeTimer);
+          focusFadeTimer = window.setTimeout(() => {
+            focusFadeTimer = null;
+            applyCut();
+            setCreamFade(0);
+          }, 240);
+        },
+        floorY: 0,
+      });
+    }
 
     // ── DUST PARTICLES — duplicate 300-pt system deleted under w1_hall
     // (WS4-5/WS10-3: ONE 150-sprite system per scene — createDustParticles below) ──
@@ -2023,6 +2326,8 @@ function EntranceHallScene({
         r: 0.7,
       });
     }
+    // W2 (WS4-7): the bust pedestal is solid — no ghost-walking through it.
+    if (W2) colPositions.push({ x: W2_BUST.x, z: W2_BUST.z, r: 0.95 });
 
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door meshes ──
     // Under w1_hall the 7 intensity-0 PointLights are deleted (WS4-3); the gold
@@ -2070,6 +2375,9 @@ function EntranceHallScene({
     // can read it directly per frame (replaces the 16ms synthetic-WASD poll).
     const touchMoveDir = { x: 0, z: 0 };
     let hoveredWing: string | null = null;
+    // W2 (WS7-10): the Ancestral Wall focus target under the cursor (fed by the
+    // per-frame hover raycast; consumed by the click/tap handlers).
+    let hovAWTarget: FocusTarget | null = null;
     const _isMobile = window.innerWidth < 768 || window.innerHeight < 500;
     let _frameCount = 0;
     // ── Hover-raycast hygiene: onMove only records the cursor position; the actual
@@ -2098,6 +2406,9 @@ function EntranceHallScene({
         // cut, exactly as a fresh mount would), resume ambient audio, and re-fire
         // onReady so MemoryPalace dismisses its loading overlay on real readiness.
         _wasHidden = false;
+        // W2 (WS7-10): a hidden→shown cycle resets to the spawn — never resume
+        // a stale focus hold (undims via cancel's setDimmed(false)).
+        focus?.cancel();
         pos.current.set(0, EYE_HEIGHT, 7.3); posT.current.set(0, EYE_HEIGHT, 7.3);
         lookT.current = { yaw: 0.0270, pitch: 0.0360 };
         lookA.current = { yaw: 0.0270, pitch: 0.0360 };
@@ -2287,6 +2598,21 @@ function EntranceHallScene({
         } // end pre-Wave-1 cinematic branch
       }
 
+      // ── W2 (WS7-10): focus mode owns the camera while active — ONE camera
+      // authority. Manual input (keys/joystick) or a pending autoWalk cancels;
+      // while focusOwns the walk/autoWalk integrators below are skipped.
+      let focusOwns = false;
+      if (focus) {
+        if (focus.state() !== "idle") {
+          const k = keys.current;
+          const manualMove =
+            !!(k["w"] || k["a"] || k["s"] || k["d"] || k["arrowup"] || k["arrowdown"] || k["arrowleft"] || k["arrowright"]) ||
+            Math.abs(touchMoveDir.x) > 0.2 || Math.abs(touchMoveDir.z) > 0.2;
+          if (manualMove || autoWalkToRef.current) focus.cancel();
+        }
+        focusOwns = focus.update(dt);
+      }
+
       // ── Smooth look interpolation ──
       // Framerate-independent: 1-exp(-k*dt) with k=-ln(1-f)*60 preserves the old
       // per-frame factors (f=.08 look, f=.1 pos) exactly at 60fps (dt clamped above).
@@ -2296,7 +2622,7 @@ function EntranceHallScene({
 
       // ── Auto-walk toward target door ──
       const awTarget = autoWalkToRef.current;
-      if (awTarget) {
+      if (awTarget && !focusOwns) {
         const doorIdx = doorDefs.findIndex(d => d.id === awTarget);
         if (doorIdx >= 0) {
           const doorAngle = (doorIdx / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
@@ -2308,7 +2634,8 @@ function EntranceHallScene({
           const dist = Math.sqrt(dx * dx + dz * dz);
 
           if (dist > 0.8) {
-            const speed = 5.0 * dt;
+            // WS12-5 (w1_hall): comfort-capped — legacy ran 5.0 m/s
+            const speed = (W1 ? MAX_WALK_SPEED : 5.0) * dt;
             posT.current.x += (dx / dist) * speed;
             posT.current.z += (dz / dist) * speed;
             // Face the door using atan2 (look toward target position)
@@ -2321,17 +2648,43 @@ function EntranceHallScene({
         }
       }
 
-      // ── Movement (WASD / Arrow keys) ──
-      if (!awTarget) {
-      const spd = (keys.current["shift"] ? 12.0 : 4.0) * dt;
+      // ── Tap-is-travel walk-then-enter (WS8-4, w1_hall): consume awClick ──
+      if (W1 && awClick.id && !awTarget && !focusOwns) {
+        const dxC = awClick.x - posT.current.x;
+        const dzC = awClick.z - posT.current.z;
+        const distC = Math.sqrt(dxC * dxC + dzC * dzC);
+        if (distC > 0.8) {
+          const stepC = Math.min(MAX_WALK_SPEED * dt, distC);
+          posT.current.x += (dxC / distC) * stepC;
+          posT.current.z += (dzC / distC) * stepC;
+          const faceC = Math.atan2(awClick.x - posT.current.x, -(awClick.z - posT.current.z));
+          let dyaw = faceC - lookT.current.yaw;
+          dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+          const maxYaw = (MAX_YAW_DEG_S * Math.PI / 180) * dt;
+          lookT.current.yaw += Math.max(-maxYaw, Math.min(maxYaw, dyaw));
+        } else {
+          const idC = awClick.id;
+          awClick.id = null;
+          onDoorClickRef.current(idC);
+        }
+      }
+
+      // ── Movement (WASD / Arrow keys; w1_hall adds the direct analog touch vector) ──
+      if (!awTarget && !focusOwns) {
+      // WS8-1 (w1_hall): sprint deleted — full input = the calm 2.2 m/s cap
+      const spd = (W1 ? MAX_WALK_SPEED : (keys.current["shift"] ? 12.0 : 4.0)) * dt;
       _dir.current.set(0, 0, 0);
       const k = keys.current;
       if (k["w"] || k["arrowup"]) _dir.current.z -= 1;
       if (k["s"] || k["arrowdown"]) _dir.current.z += 1;
       if (k["a"] || k["arrowleft"]) _dir.current.x -= 1;
       if (k["d"] || k["arrowright"]) _dir.current.x += 1;
-      if (_dir.current.length() > 0) {
-        _dir.current.normalize().multiplyScalar(spd);
+      // WS8-2 (w1_hall): direct joystick vector — no 16ms synthetic-WASD poll
+      if (W1) { _dir.current.x += touchMoveDir.x; _dir.current.z += touchMoveDir.z; }
+      if (_dir.current.length() > (W1 ? 0.15 : 0)) {
+        if (awClick.id) awClick.id = null; // manual input cancels tap-travel
+        const mag = W1 ? Math.min(1, _dir.current.length()) : 1;
+        _dir.current.normalize().multiplyScalar(spd * mag);
         _dir.current.applyAxisAngle(_yAxis.current, -lookA.current.yaw);
         posT.current.add(_dir.current);
       }
@@ -2396,12 +2749,14 @@ function EntranceHallScene({
         let portalHov = false;
         let inlayHov = false;
         let bustHov: number | null = null;
+        // WS8-4 (w1_hall): doors/portal respond at ANY distance — the 15m
+        // dead-click gate only survives on the legacy path.
         doorMeshes.forEach(d => {
           const hits = _rc.current.intersectObject(d.mesh);
-          if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
+          if (hits.length > 0 && (W1 || hits[0].distance < 15)) found = d.wingId;
         });
         const pHits = _rc.current.intersectObject(portalHit);
-        if (pHits.length > 0 && pHits[0].distance < 15) portalHov = true;
+        if (pHits.length > 0 && (W1 || pHits[0].distance < 15)) portalHov = true;
         // Check inlay clicks
         inlayMeshes.forEach(im => {
           const hits = _rc.current.intersectObject(im);
@@ -2412,9 +2767,17 @@ function EntranceHallScene({
           const hits = _rc.current.intersectObject(bm);
           if (hits.length > 0 && hits[0].distance < 15) bustHov = bm.userData.pedestalIndex;
         });
+        // W2 (WS7-10): Ancestral Wall pieces respond at ANY distance (tap-is-
+        // travel dogma — no distance gate on artworks).
+        let awHov: FocusTarget | null = null;
+        if (awHitMeshes.length > 0) {
+          const aHits = _rc.current.intersectObjects(awHitMeshes, false);
+          if (aHits.length > 0) awHov = (aHits[0].object.userData.awTarget as FocusTarget) || null;
+        }
+        hovAWTarget = awHov;
         hoveredWing = found;
         hovMem.current = found || (portalHov ? "__exterior__" : (inlayHov ? "__inlay__" : (bustHov !== null ? `__bust_${bustHov}__` : null)));
-        const newCursor = (found || portalHov || inlayHov || bustHov !== null) ? "pointer" : "grab";
+        const newCursor = (found || portalHov || inlayHov || bustHov !== null || awHov) ? "pointer" : "grab";
         if (newCursor !== _lastCursor) { _lastCursor = newCursor; el.style.cursor = newCursor; }
       }
 
@@ -2468,6 +2831,16 @@ function EntranceHallScene({
       if (beamMesh) (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
       oculusBeam.update(t);
 
+      // ── W2 (WS4-8/9): living light — slow UV drift on the water normal map,
+      // counter-drifting caustic layers, and a lazy rotation of the oculus
+      // pool decal. Desktop only (w2Anim); mobile keeps the static variant.
+      if (w2Anim) {
+        if (w2WaterNormal) { w2WaterNormal.offset.set(t * 0.02, t * 0.011); }
+        if (w2CausticA) { w2CausticA.offset.set(t * 0.013, t * 0.009); }
+        if (w2CausticB) { w2CausticB.offset.set(-t * 0.01, -t * 0.007); }
+        if (w2PoolTex) { w2PoolTex.rotation = t * 0.015; }
+      }
+
       // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
       if (document.hidden) return;
       composer.render();
@@ -2486,6 +2859,8 @@ function EntranceHallScene({
       if (Math.abs(dx2) > 2 || Math.abs(dy2) > 2) drag.current = true;
       if (e.buttons === 1) {
         // Drag-look: apply the look math and skip hover raycasting (cursor is grabbed)
+        // W2 (WS7-10): manual look input cancels focus mode (input contract).
+        if (drag.current && focus && focus.state() !== "idle") focus.cancel();
         lookT.current.yaw -= dx2 * 0.003;
         lookT.current.pitch = Math.max(-0.6, Math.min(0.6, lookT.current.pitch + dy2 * 0.003));
         prev.current = { x: e.clientX, y: e.clientY };
@@ -2502,16 +2877,32 @@ function EntranceHallScene({
       _hoverDirty = true;
     };
     const onClick = () => {
-      if (!drag.current && hovMem.current) {
-        if (hovMem.current === "__exterior__") onDoorClickRef.current("__exterior__");
-        else if (hovMem.current === "__inlay__") onInlayClick?.();
+      if (drag.current) return;
+      // W2 (WS7-10): Ancestral Wall taps drive the focus state machine — tap →
+      // dolly-to-frame, second tap on the same piece → open the memory, tap on
+      // empty space while focused → exit. Tapping a door while focused releases
+      // the camera first, then travels (one authority, no fighting).
+      if (focus) {
+        if (hovAWTarget) { focus.handleTap(hovAWTarget); return; }
+        if (focus.state() !== "idle") {
+          if (!hovMem.current) { focus.handleTap(null); return; }
+          focus.cancel();
+        }
+      }
+      if (hovMem.current) {
+        if (hovMem.current === "__inlay__") onInlayClick?.();
         else if (hovMem.current.startsWith("__bust_")) onBustClick?.(parseInt(hovMem.current.replace("__bust_","").replace("__","")));
+        // WS8-4 (w1_hall): doors + exit portal walk-then-enter from any distance
+        else if (W1) startAutoWalk(hovMem.current);
+        else if (hovMem.current === "__exterior__") onDoorClickRef.current("__exterior__");
         else onDoorClickRef.current(hovMem.current);
       }
     };
     const onKD = (e: KeyboardEvent) => {
       keys.current[e.key.toLowerCase()] = true;
       if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(e.key.toLowerCase())) e.preventDefault();
+      // W2 (WS7-10): Escape exits focus mode (movement keys cancel in animate()).
+      if (e.key === "Escape" && focus && focus.state() !== "idle") focus.cancel();
     };
     const onKU = (e: KeyboardEvent) => {
       keys.current[e.key.toLowerCase()] = false;
@@ -2561,6 +2952,8 @@ function EntranceHallScene({
           const dx2 = tch.clientX - prev.current.x;
           const dy2 = tch.clientY - prev.current.y;
           if (Math.abs(dx2) > 2 || Math.abs(dy2) > 2) { drag.current = true; touchTap = false; }
+          // W2 (WS7-10): manual touch-look cancels focus mode (input contract).
+          if (drag.current && focus && focus.state() !== "idle") focus.cancel();
           lookT.current.yaw -= dx2 * 0.003;
           lookT.current.pitch = Math.max(-0.6, Math.min(0.6, lookT.current.pitch + dy2 * 0.003));
           prev.current = { x: tch.clientX, y: tch.clientY };
@@ -2583,15 +2976,37 @@ function EntranceHallScene({
               -((tch.clientY - rect.top) / rect.height) * 2 + 1
             );
             _rc.current.setFromCamera(_mouse.current, camera);
+            // W2 (WS7-10): Ancestral Wall taps route through the focus state
+            // machine, any distance (tap → dolly, second tap → open).
+            let awTapped = false;
+            if (focus && awHitMeshes.length > 0) {
+              const aHits = _rc.current.intersectObjects(awHitMeshes, false);
+              if (aHits.length > 0) {
+                focus.handleTap((aHits[0].object.userData.awTarget as FocusTarget) || null);
+                awTapped = true;
+              }
+            }
             let found: string | null = null;
-            doorMeshes.forEach(d => {
-              const hits = _rc.current.intersectObject(d.mesh);
-              if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
-            });
-            if (found) onDoorClickRef.current(found);
-            else {
+            if (!awTapped) {
+              doorMeshes.forEach(d => {
+                const hits = _rc.current.intersectObject(d.mesh);
+                if (hits.length > 0 && (W1 || hits[0].distance < 15)) found = d.wingId;
+              });
+            }
+            if (found) {
+              // Tapping a door while focused releases the camera, then travels.
+              if (focus && focus.state() !== "idle") focus.cancel();
+              // WS8-4 (w1_hall): walk-then-enter from any distance
+              if (W1) startAutoWalk(found); else onDoorClickRef.current(found);
+            } else if (!awTapped) {
               const pHits = _rc.current.intersectObject(portalHit);
-              if (pHits.length > 0 && pHits[0].distance < 15) onDoorClickRef.current("__exterior__");
+              if (pHits.length > 0 && (W1 || pHits[0].distance < 15)) {
+                if (focus && focus.state() !== "idle") focus.cancel();
+                if (W1) startAutoWalk("__exterior__"); else onDoorClickRef.current("__exterior__");
+              } else if (focus && focus.state() !== "idle") {
+                // Tap on empty space while focused → exit focus (undim).
+                focus.handleTap(null);
+              }
             }
           }
           touchLookId = null;
@@ -2608,7 +3023,8 @@ function EntranceHallScene({
         k.d = touchMoveDir.x > 0.2;
       }
     };
-    const touchTick = setInterval(touchKeys, 16);
+    // WS8-2 (w1_hall): no synthetic-WASD polling — animate() reads touchMoveDir directly
+    const touchTick = W1 ? null : setInterval(touchKeys, 16);
     el.addEventListener("touchstart", onTS, { passive: true });
     el.addEventListener("touchmove", onTM, { passive: false });
     el.addEventListener("touchend", onTE, { passive: true });
@@ -2631,11 +3047,22 @@ function EntranceHallScene({
       el.removeEventListener("touchstart", onTS);
       el.removeEventListener("touchmove", onTM);
       el.removeEventListener("touchend", onTE);
-      clearInterval(touchTick);
+      if (touchTick !== null) clearInterval(touchTick);
       window.removeEventListener("resize", _refreshRect);
       _rectRO?.disconnect();
       // WS10-2: no audio teardown — the shared ambient score keeps playing
       // across scene transitions (singleton owns the element, not this scene).
+      // ── W2 teardown FIRST (WS4-6/WS7-10): dispose() detaches the salon-hang
+      // group, so the module-shared makeArtwork frame/liner/glow materials never
+      // enter the scene-wide dispose traversal below (they live for the app's
+      // lifetime). Photo textures are scene-owned (paintTex) → disposed here,
+      // per the salonHang texture-ownership contract.
+      if (focusFadeTimer !== null) { window.clearTimeout(focusFadeTimer); focusFadeTimer = null; }
+      focus?.dispose();
+      if (awMountHandle) awMountHandle.dispose();
+      awTextures.forEach(tx => tx.dispose());
+      awOwnedGeos.forEach(g => g.dispose());
+      awHitMat?.dispose();
       if (envRT) { envRT.texture.dispose(); envRT.dispose(); }
       else releaseEnvMap(envFromScene); // cached fromScene bake — stays warm for the next mount
       const _cachedSet=buildCachedTextureSet();
@@ -2691,6 +3118,8 @@ function EntranceHallScene({
       <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
       {/* Blink overlay — black curtain for eye-blink effect */}
       {blinkOpacity > 0.01 && <div style={{ position: "absolute", inset: 0, background: "#000", opacity: blinkOpacity, pointerEvents: "none", zIndex: 20, transition: "opacity 0.03s linear" }} />}
+      {/* Cream veil (WS12-2 / WS7-10 reduced motion) — warm crossfade, never black */}
+      {creamFade > 0.01 && <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: PLASTER, opacity: creamFade, pointerEvents: "none", zIndex: 21, transition: "opacity 0.05s linear" }} />}
       {/* Cinematic title overlay — matches exterior palace onboarding style */}
       {cinematicActive && (
         <>

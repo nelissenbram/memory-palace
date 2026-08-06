@@ -3613,6 +3613,7 @@
     "loopOn": "Herhaling aan",
     "loopOff": "Herhaling uit",
     "loadingVideo": "Video laden...",
+    "emptyEasel": "Hang je eerste herinnering op",
     "backToCorridor": "← Terug naar gang",
     "close": "Sluiten",
     "videoFallback": "Video",
@@ -3634,7 +3635,9 @@
   },
   "corridor3d": {
     "backToEntrance": "← ENTREEHAL",
-    "sceneLabel": "Gang 3D-scène — gebruik toetsenbord om te navigeren"
+    "sceneLabel": "Gang 3D-scène — gebruik toetsenbord om te navigeren",
+    "hangFirstMemory": "Hang je eerste herinnering op",
+    "skipIntro": "Intro overslaan"
   },
   "exterior3d": {
     "entranceHall": "Entreehal",
@@ -3718,7 +3721,8 @@
     "welcomeLabel": "Welkom in de",
     "title": "Entreehal",
     "subtitle": "Een overzicht van de hoofdstukken van je leven — laten we verdergaan naar de Roots-vleugel",
-    "skipIntro": "Intro overslaan"
+    "skipIntro": "Intro overslaan",
+    "ancestralEmpty": "Hang je eerste herinnering op"
   },
   "contributorBanner": {
     "contributing": "Bijdragen aan het paleis van {ownerName}",

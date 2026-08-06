@@ -3611,6 +3611,7 @@
     "loopOn": "Loop on",
     "loopOff": "Loop off",
     "loadingVideo": "Loading video...",
+    "emptyEasel": "Hang your first memory",
     "backToCorridor": "← Back to corridor",
     "close": "Close",
     "paintingTitle": "{name}'s Beautiful Smile",
@@ -3632,7 +3633,9 @@
   },
   "corridor3d": {
     "backToEntrance": "← ENTRANCE HALL",
-    "sceneLabel": "Corridor 3D scene — use keyboard to navigate"
+    "sceneLabel": "Corridor 3D scene — use keyboard to navigate",
+    "hangFirstMemory": "Hang your first memory",
+    "skipIntro": "Skip intro"
   },
   "exterior3d": {
     "entranceHall": "Entrance Hall",
@@ -3716,7 +3719,8 @@
     "welcomeLabel": "Welcome to",
     "title": "Entrance Hall",
     "subtitle": "An overview of the chapters of your life — let’s continue to the Roots Wing",
-    "skipIntro": "Skip intro"
+    "skipIntro": "Skip intro",
+    "ancestralEmpty": "Hang your first memory"
   },
   "contributorBanner": {
     "contributing": "Contributing to {ownerName}'s palace",

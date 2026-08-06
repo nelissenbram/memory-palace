@@ -12,6 +12,7 @@ import MobileJoystick from "@/components/ui/MobileJoystick";
 import PalaceSubNav from "@/components/ui/PalaceSubNav";
 import type { PalacePending } from "@/components/ui/PalaceSubNav";
 import type { VisitorPalaceData, VisitorWingData } from "@/lib/social/visit-actions";
+import { getVisitorAncestralMemories } from "@/lib/social/visit-actions";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import type { Mem } from "@/lib/constants/defaults";
 
@@ -55,6 +56,18 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
   useEffect(() => {
     mountAmbientMusic();
   }, []);
+
+  // W2 (WS7-15, decision 7): the hall's Ancestral Wall for guests — the server
+  // action only returns displayed memories from PUBLISHED wings and marks them
+  // visibility:"public"; the scene's publicOnly filter then passes exactly these.
+  const [ancestralMems, setAncestralMems] = useState<Mem[]>([]);
+  useEffect(() => {
+    let alive = true;
+    getVisitorAncestralMemories(data.owner.id)
+      .then((rows) => { if (alive) setAncestralMems(rows as unknown as Mem[]); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [data.owner.id]);
 
   // Build Wing[] array for ExteriorScene and EntranceHallScene (only published wings)
   const publishedWings: Wing[] = useMemo(() =>
@@ -294,6 +307,10 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
               onDoorClick={handleEntranceDoorClick}
               wings={publishedWings}
               styleEra={data.owner.styleEra || "roman"}
+              bustName={data.owner.name}
+              ancestralMemories={ancestralMems}
+              ancestralPublicOnly
+              onAncestralMemoryClick={(m) => setSelectedMemory(m as Mem)}
             />
           </Suspense>
         )}

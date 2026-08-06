@@ -3611,6 +3611,7 @@
     "loopOn": "Boucle activée",
     "loopOff": "Boucle désactivée",
     "loadingVideo": "Chargement de la vidéo...",
+    "emptyEasel": "Accrochez votre premier souvenir",
     "backToCorridor": "← Retour au couloir",
     "close": "Fermer",
     "paintingTitle": "Le Beau Sourire de {name}",
@@ -3632,7 +3633,9 @@
   },
   "corridor3d": {
     "backToEntrance": "← HALL D'ENTRÉE",
-    "sceneLabel": "Scène 3D du couloir — utilisez le clavier pour naviguer"
+    "sceneLabel": "Scène 3D du couloir — utilisez le clavier pour naviguer",
+    "hangFirstMemory": "Accrochez votre premier souvenir",
+    "skipIntro": "Passer l'intro"
   },
   "exterior3d": {
     "entranceHall": "Hall d'entrée",
@@ -3716,7 +3719,8 @@
     "welcomeLabel": "Bienvenue dans le",
     "title": "Hall d'entrée",
     "subtitle": "Un aperçu des chapitres de votre vie — continuons vers le Roots Wing",
-    "skipIntro": "Passer l'intro"
+    "skipIntro": "Passer l'intro",
+    "ancestralEmpty": "Accrochez votre premier souvenir"
   },
   "contributorBanner": {
     "contributing": "Vous contribuez au palais de {ownerName}",
