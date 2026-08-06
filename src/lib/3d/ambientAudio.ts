@@ -10,6 +10,11 @@
  * footstepSounds preference.
  */
 
+// Owner decision 2026-08-06 (round 2, overrules decision 5): background music
+// and footsteps are fully OFF. The singleton stays wired in every scene so a
+// single flip re-enables it if the owner ever changes course.
+const AUDIO_ENABLED = false;
+
 const MUSIC_URL = "/audio/ambient.mp3";
 const MUSIC_VOL = 0.3;
 const FOOT_VOL = 0.15;
@@ -75,6 +80,7 @@ function tryPlay() {
  * transitions ("plays from first entry and never stops").
  */
 export function mountAmbientMusic(): void {
+  if (!AUDIO_ENABLED) return;
   if (typeof window === "undefined") return;
   if (!musicEl) {
     musicEl = new Audio(MUSIC_URL);
@@ -90,6 +96,7 @@ let lastStep = 0;
 
 /** One procedural marble footstep, cadence-capped. Call from walk integrators while moving. */
 export function playFootstep(): void {
+  if (!AUDIO_ENABLED) return;
   if (typeof window === "undefined" || !footstepsEnabled()) return;
   const now = performance.now();
   if (now - lastStep < 340) return;

@@ -90,26 +90,28 @@ function makePlaqueTexture(title: string, year: string | undefined, pxPerUnit: n
   const ctx = canvas.getContext("2d")!;
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
+  // Owner feedback 2026-08-06 round 2: no plate, no border — gallery wall
+  // lettering directly under the frame (transparent bg, ink Fraunces with a
+  // whisper of an incision shadow).
   const draw = () => {
     ctx.clearRect(0, 0, cw, ch);
-    ctx.fillStyle = PLASTER;
-    ctx.fillRect(0, 0, cw, ch);
-    const inset = Math.max(2, ch * 0.06);
-    ctx.strokeStyle = GOLD;
-    ctx.lineWidth = Math.max(1, ch * 0.018);
-    ctx.strokeRect(inset, inset, cw - inset * 2, ch - inset * 2);
-    ctx.fillStyle = INK;
     ctx.textAlign = "center";
+    const maxW = cw * 0.96;
+    const hair = Math.max(1, Math.round(ch * 0.014));
+    const put = (s: string, y: number, font: string) => {
+      ctx.font = font;
+      ctx.fillStyle = "rgba(255,252,244,0.5)";
+      ctx.fillText(s, cw / 2, y - hair, maxW);
+      ctx.fillStyle = INK;
+      ctx.fillText(s, cw / 2, y, maxW);
+    };
     if (year) {
       ctx.textBaseline = "alphabetic";
-      ctx.font = `500 ${Math.round(ch * 0.3)}px Fraunces, Georgia, serif`;
-      ctx.fillText(title, cw / 2, ch * 0.48, cw - inset * 4);
-      ctx.font = `italic 400 ${Math.round(ch * 0.22)}px Fraunces, Georgia, serif`;
-      ctx.fillText(year, cw / 2, ch * 0.8, cw - inset * 4);
+      put(title, ch * 0.46, `500 ${Math.round(ch * 0.32)}px Fraunces, Georgia, serif`);
+      put(year, ch * 0.82, `italic 400 ${Math.round(ch * 0.23)}px Fraunces, Georgia, serif`);
     } else {
       ctx.textBaseline = "middle";
-      ctx.font = `500 ${Math.round(ch * 0.34)}px Fraunces, Georgia, serif`;
-      ctx.fillText(title, cw / 2, ch / 2 + ch * 0.02, cw - inset * 4);
+      put(title, ch / 2 + ch * 0.02, `500 ${Math.round(ch * 0.36)}px Fraunces, Georgia, serif`);
     }
     tex.needsUpdate = true;
   };
@@ -146,7 +148,7 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
 
   const linerGeo = new THREE.PlaneGeometry(w + 0.07, h + 0.07);
   const liner = new THREE.Mesh(linerGeo, getLinerMat());
-  liner.position.z = 0.012;
+  liner.position.z = 0.016; // 6mm off the frame front — z-fight margin at distance
   ownedGeos.push(linerGeo);
   group.add(liner);
 
@@ -154,7 +156,7 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
   const photoMat = new THREE.MeshBasicMaterial({ map: opts.texture });
   const photoGeo = new THREE.PlaneGeometry(w, h);
   const photo = new THREE.Mesh(photoGeo, photoMat);
-  photo.position.z = 0.02;
+  photo.position.z = 0.024;
   ownedGeos.push(photoGeo);
   ownedMats.push(photoMat);
   group.add(photo);
@@ -163,10 +165,10 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
     const plaqueW = Math.min(w * 0.75, 1.2);
     const plaqueH = opts.year ? 0.22 : 0.16;
     const plaqueTex = makePlaqueTexture(opts.title, opts.year, PLAQUE_PX[quality], plaqueW, plaqueH);
-    const plaqueMat = new THREE.MeshBasicMaterial({ map: plaqueTex });
+    const plaqueMat = new THREE.MeshBasicMaterial({ map: plaqueTex, transparent: true, depthWrite: false });
     const plaqueGeo = new THREE.PlaneGeometry(plaqueW, plaqueH);
     const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
-    plaque.position.set(0, -h / 2 - 0.1 - plaqueH / 2, 0.02);
+    plaque.position.set(0, -h / 2 - 0.1 - plaqueH / 2, 0.024);
     ownedGeos.push(plaqueGeo);
     ownedMats.push(plaqueMat);
     ownedTexs.push(plaqueTex);

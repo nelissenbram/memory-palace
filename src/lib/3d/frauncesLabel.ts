@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { PLASTER, INK, GOLD } from "./canon";
+import { INK } from "./canon";
 
 /**
  * WS4-4 — the Fraunces lintel plaque: ink on cream with a hairline gold rule.
@@ -28,24 +28,31 @@ export function makeFrauncesLabel(
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 8;
 
+  // Owner feedback 2026-08-06 round 2: the framed cream plate read as a
+  // license plate. No plate, no border — the letters sit directly on the
+  // architecture like carved museum lettering: transparent canvas, ink
+  // Fraunces capitals with a hairline light-top/dark-bottom emboss so the
+  // type reads incised in the surface.
   const draw = () => {
     ctx.clearRect(0, 0, cw, ch);
-    ctx.fillStyle = PLASTER;
-    ctx.fillRect(0, 0, cw, ch);
-    const inset = Math.max(3, ch * 0.07);
-    ctx.strokeStyle = GOLD;
-    ctx.lineWidth = Math.max(1.5, ch * 0.02);
-    ctx.strokeRect(inset, inset, cw - inset * 2, ch - inset * 2);
-    ctx.fillStyle = INK;
-    ctx.font = `500 ${Math.round(ch * 0.4)}px Fraunces, Georgia, serif`;
+    const size = Math.round(ch * 0.52);
+    ctx.font = `500 ${size}px Fraunces, Georgia, serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     try {
-      (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${Math.round(ch * 0.06)}px`;
+      (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing = `${Math.round(ch * 0.09)}px`;
     } catch {
       // letterSpacing unsupported — plain tracking is fine
     }
-    ctx.fillText(text, cw / 2, ch / 2 + ch * 0.02, cw - inset * 4);
+    const cx = cw / 2, cy = ch / 2 + ch * 0.02, maxW = cw * 0.94;
+    const hair = Math.max(1, Math.round(ch * 0.012));
+    // incision shadow above-light / below-dark
+    ctx.fillStyle = "rgba(255,252,244,0.55)";
+    ctx.fillText(text, cx, cy - hair, maxW);
+    ctx.fillStyle = "rgba(24,20,16,0.45)";
+    ctx.fillText(text, cx, cy + hair, maxW);
+    ctx.fillStyle = INK;
+    ctx.fillText(text, cx, cy, maxW);
     tex.needsUpdate = true;
   };
   draw();
@@ -55,6 +62,6 @@ export function makeFrauncesLabel(
 
   return new THREE.Mesh(
     new THREE.PlaneGeometry(width, height),
-    new THREE.MeshBasicMaterial({ map: tex })
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
   );
 }
