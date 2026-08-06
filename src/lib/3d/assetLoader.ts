@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 import { KTX2Loader } from "three/examples/jsm/loaders/KTX2Loader.js";
+import { getQuality, type QualitySettings } from "./mobilePerf";
+import { getPooledRenderer } from "./rendererPool";
 
 /**
  * Asset loader for real HDRI environment maps and PBR texture sets.
@@ -151,6 +153,41 @@ export function initKTX2Loader(renderer: THREE.WebGLRenderer): KTX2Loader {
     ktx2Loader.detectSupport(renderer);
   }
   return ktx2Loader;
+}
+
+// ── WS2-6: KTX2 manifest feature-detect ──
+// KTX2 routing is only active for files listed in
+// /textures/pbr/ktx2-manifest.json (written by scripts/build-ktx2.mjs).
+// No manifest (or an empty one) → the JPG pipeline stays authoritative, so
+// this ships safely before any .ktx2 assets are generated.
+let ktx2Manifest: Set<string> | null = null;
+let ktx2ManifestRequested = false;
+
+function requestKTX2Manifest(): void {
+  if (ktx2ManifestRequested || typeof window === "undefined" || typeof fetch === "undefined") return;
+  ktx2ManifestRequested = true;
+  fetch("/textures/pbr/ktx2-manifest.json")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((list) => {
+      if (Array.isArray(list) && list.length > 0) {
+        ktx2Manifest = new Set(list.map(String));
+        console.info(`[AssetLoader] WS2-6: KTX2 manifest loaded — ${ktx2Manifest.size} compressed textures available`);
+      }
+    })
+    .catch(() => { /* manifest absent — JPG pipeline stays authoritative */ });
+}
+
+/** WS2-6: pick a manifest-confirmed .ktx2 URL for this map, preferring the
+ *  active textureRes and falling back to the 1k variant. Returns null when
+ *  routing must stay on JPG (no manifest / no renderer for transcoding). */
+function pickKTX2Url(basePath: string, prefix: string, kind: string, res: QualitySettings["textureRes"]): string | null {
+  if (!ktx2Manifest || !getPooledRenderer()) return null;
+  const resChain = res === "1k" ? ["1k"] : [res, "1k"];
+  for (const r of resChain) {
+    const url = `${basePath}/${prefix}_${kind}_${r}.ktx2`;
+    if (ktx2Manifest.has(url)) return url;
+  }
+  return null;
 }
 
 /**
@@ -380,11 +417,104 @@ export interface PBRTextureSet {
   aoMap: THREE.Texture;
 }
 
+/** Base texture ready — clear the loading marker and flush clones created
+ *  before the load finished. Because KTX2 payloads and 404-fallback swaps
+ *  resolve AFTER clone() snapshotted mipmaps/format, the payload fields are
+ *  re-copied onto each waiting clone before marking it for upload. */
+function finishBaseLoad(baseTex: THREE.Texture): void {
+  (baseTex as { __mpLoading?: boolean }).__mpLoading = false;
+  const waiting = pendingClones.get(baseTex);
+  if (!waiting) return;
+  for (const c of waiting) {
+    c.image = baseTex.image;
+    c.mipmaps = baseTex.mipmaps;
+    c.format = baseTex.format;
+    c.type = baseTex.type;
+    c.colorSpace = baseTex.colorSpace;
+    c.minFilter = baseTex.minFilter;
+    c.magFilter = baseTex.magFilter;
+    c.generateMipmaps = baseTex.generateMipmaps;
+    c.flipY = baseTex.flipY;
+    (c as unknown as { isCompressedTexture: boolean }).isCompressedTexture =
+      (baseTex as unknown as { isCompressedTexture?: boolean }).isCompressedTexture === true;
+    c.needsUpdate = true;
+  }
+  pendingClones.delete(baseTex);
+}
+
+/** WS2-7: load a resolution-suffixed JPG base with graceful 404→1k fallback,
+ *  so the 512 tier works before all 512 variants exist. The fallback image is
+ *  swapped into the SAME Texture/Source, keeping clone-sharing intact. */
+function loadJPGBase(url: string, fallbackUrl: string | null): THREE.Texture {
+  const tex: THREE.Texture = textureLoader.load(
+    url,
+    () => finishBaseLoad(tex),
+    undefined,
+    fallbackUrl
+      ? () => {
+          console.info(`[AssetLoader] WS2-7: ${url} missing — falling back to ${fallbackUrl}`);
+          textureLoader.load(fallbackUrl, (fb) => {
+            tex.image = fb.image; // shared Source data — clones follow
+            tex.needsUpdate = true;
+            finishBaseLoad(tex);
+          });
+        }
+      : undefined
+  );
+  (tex as { __mpLoading?: boolean }).__mpLoading = true;
+  return tex;
+}
+
+/** WS2-6: load a manifest-confirmed .ktx2 base via KTX2Loader, adopting the
+ *  transcoded payload into a placeholder CompressedTexture so loadPBRSet's
+ *  sync contract and clone-sharing survive. Per-file JPG fallback on failure. */
+function loadKTX2Base(url: string, jpgFallbackUrl: string): THREE.Texture {
+  const tex = new THREE.CompressedTexture([], 1, 1);
+  (tex as { __mpLoading?: boolean }).__mpLoading = true;
+  tex.version = 0; // nothing to upload yet
+  const renderer = getPooledRenderer();
+  const loader = initKTX2Loader(renderer!); // pickKTX2Url guaranteed renderer non-null
+  loader.load(
+    url,
+    (loaded) => {
+      tex.image = loaded.image;
+      tex.mipmaps = loaded.mipmaps;
+      tex.format = loaded.format;
+      tex.type = loaded.type;
+      tex.colorSpace = loaded.colorSpace;
+      tex.minFilter = loaded.minFilter;
+      tex.magFilter = loaded.magFilter;
+      tex.generateMipmaps = false;
+      tex.flipY = loaded.flipY;
+      tex.needsUpdate = true;
+      finishBaseLoad(tex);
+    },
+    undefined,
+    () => {
+      // KTX2 failed (transcode/support/404) — drop this file to the JPG pipeline
+      console.warn(`[AssetLoader] WS2-6: KTX2 load failed for ${url} — falling back to ${jpgFallbackUrl}`);
+      (tex as unknown as { isCompressedTexture: boolean }).isCompressedTexture = false;
+      tex.mipmaps = [];
+      tex.generateMipmaps = true;
+      tex.flipY = true;
+      textureLoader.load(jpgFallbackUrl, (fb) => {
+        tex.image = fb.image;
+        tex.needsUpdate = true;
+        finishBaseLoad(tex);
+      });
+    }
+  );
+  return tex;
+}
+
 /** Load a PBR texture set (diffuse, normal, roughness, AO).
- *  Base textures are cached by basePath+prefix — each file is fetched and
+ *  Base textures are cached by basePath+prefix+res — each file is fetched and
  *  decoded exactly once regardless of how many repeat variants are requested.
  *  Per-repeat sets are lightweight clones sharing the base's image/Source
- *  (same-parameter clones also share one GL texture), cached by full key. */
+ *  (same-parameter clones also share one GL texture), cached by full key.
+ *  WS2-7: resolution suffix comes from getQuality().textureRes (512/1k/2k)
+ *  with 404→1k fallback. WS2-6: files listed in the KTX2 manifest route
+ *  through KTX2Loader with per-file JPG fallback. */
 function loadPBRSet(
   basePath: string,
   prefix: string,
@@ -393,34 +523,32 @@ function loadPBRSet(
     normalScale?: number;
   }
 ): PBRTextureSet {
+  requestKTX2Manifest(); // WS2-6: prime manifest (no-op after first call / on SSR)
+  const res = getQuality().textureRes; // WS2-7: tier-derived suffix
   const repeat = options?.repeat || [1, 1];
-  const cacheKey = `${basePath}|${prefix}|${repeat[0]},${repeat[1]}`;
+  const cacheKey = `${basePath}|${prefix}|${res}|${repeat[0]},${repeat[1]}`;
   const cached = pbrCache.get(cacheKey);
   if (cached) return cached;
 
-  const baseKey = `${basePath}|${prefix}`;
+  const baseKey = `${basePath}|${prefix}|${res}`;
   let base = pbrBaseCache.get(baseKey);
   if (!base) {
-    const loadBase = (path: string): THREE.Texture => {
-      const tex: THREE.Texture = textureLoader.load(path, () => {
-        // Image ready — mark clones created before the load finished for upload
-        const waiting = pendingClones.get(tex);
-        if (waiting) {
-          for (const c of waiting) c.needsUpdate = true;
-          pendingClones.delete(tex);
-        }
-      });
+    const loadBase = (kind: "diff" | "nor_gl" | "rough" | "ao", srgb = false): THREE.Texture => {
+      const jpg1k = `${basePath}/${prefix}_${kind}_1k.jpg`;
+      const ktxUrl = pickKTX2Url(basePath, prefix, kind, res); // WS2-6
+      const tex = ktxUrl
+        ? loadKTX2Base(ktxUrl, jpg1k)
+        : loadJPGBase(`${basePath}/${prefix}_${kind}_${res}.jpg`, res !== "1k" ? jpg1k : null); // WS2-7
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
+      if (srgb) tex.colorSpace = THREE.SRGBColorSpace;
       return tex;
     };
 
-    const map = loadBase(`${basePath}/${prefix}_diff_1k.jpg`);
-    map.colorSpace = THREE.SRGBColorSpace;
-
-    const normalMap = loadBase(`${basePath}/${prefix}_nor_gl_1k.jpg`);
-    const roughnessMap = loadBase(`${basePath}/${prefix}_rough_1k.jpg`);
-    const aoMap = loadBase(`${basePath}/${prefix}_ao_1k.jpg`);
+    const map = loadBase("diff", true);
+    const normalMap = loadBase("nor_gl");
+    const roughnessMap = loadBase("rough");
+    const aoMap = loadBase("ao");
     // Basic geometries (Box, Plane, etc.) only have UV channel 0.
     // Three.js aoMap defaults to channel 1 (uv2), so override to channel 0.
     aoMap.channel = 0;
@@ -435,9 +563,11 @@ function loadPBRSet(
     const tex = baseTex.clone();
     tex.repeat.set(repeat[0], repeat[1]);
     const img = baseTex.image as { complete?: boolean } | null;
-    if (!img || img.complete === false) {
+    const stillLoading =
+      (baseTex as { __mpLoading?: boolean }).__mpLoading === true || !img || img.complete === false;
+    if (stillLoading) {
       // Image still loading — keep version at 0 so the renderer doesn't warn
-      // about missing image data; the base's onLoad marks us for upload.
+      // about missing image data; finishBaseLoad marks us for upload.
       tex.version = 0;
       const waiting = pendingClones.get(baseTex);
       if (waiting) waiting.push(tex);

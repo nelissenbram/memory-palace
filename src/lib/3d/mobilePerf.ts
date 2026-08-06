@@ -114,8 +114,11 @@ export interface QualitySettings {
   loadBackgroundHDRI: boolean;
   /** Whether to load the environment HDRI (for reflections). */
   loadEnvHDRI: boolean;
-  /** PBR texture resolution suffix: "1k" or "2k". */
-  textureRes: "1k" | "2k";
+  /** PBR texture resolution suffix (WS2-7): "512" | "1k" | "2k".
+   *  loadPBRSet derives filename suffixes from this; missing variants
+   *  gracefully fall back to 1k (404→1k), so "512" is safe to set before
+   *  all 512 assets exist. */
+  textureRes: "512" | "1k" | "2k";
   /** Max number of PBR texture sets to load eagerly. Rest are deferred. */
   maxEagerTextureSets: number;
   /** Canvas texture resolution for memory paintings. */
@@ -185,7 +188,7 @@ const POTATO_QUALITY: QualitySettings = {
   vegetationDensity: 0,
   loadBackgroundHDRI: false,
   loadEnvHDRI: false,
-  textureRes: "1k",
+  textureRes: "512", // WS2-7: potato loads 512px PBR variants (404→1k fallback)
   maxEagerTextureSets: 2,
   paintingResWidth: 128,
   paintingResHeight: 96,
@@ -194,14 +197,130 @@ const POTATO_QUALITY: QualitySettings = {
 
 let _quality: QualitySettings | null = null;
 
-/** Get quality settings for the current device. Cached after first call. */
+const TIER_QUALITY: Record<GPUTier, QualitySettings> = {
+  desktop: DESKTOP_QUALITY,
+  mobile: MOBILE_QUALITY,
+  potato: POTATO_QUALITY,
+};
+
+/** Get quality settings for the current device. Cached after first call.
+ *  WS11-7: starts at a persisted governor demotion (≤7 days old) when one
+ *  exists, and arms the adaptive governor on first browser-side call. */
 export function getQuality(): QualitySettings {
   if (_quality) return _quality;
-  const tier = getGPUTier();
-  _quality = tier === "desktop" ? { ...DESKTOP_QUALITY }
-           : tier === "potato"  ? { ...POTATO_QUALITY }
-           : { ...MOBILE_QUALITY };
+  const native = getGPUTier();
+  let tier = native;
+  const demoted = readGovernorDemotion();
+  if (demoted && tierRank(demoted) < tierRank(native)) {
+    tier = demoted;
+    console.info(`[mp-perf] WS11-7 governor: starting at persisted demoted tier "${tier}" (native "${native}")`);
+  }
+  _effectiveTier = tier;
+  _quality = { ...TIER_QUALITY[tier] };
+  startGovernorOnce();
   return _quality;
+}
+
+// ════════════════════════════════════════════
+// ADAPTIVE GOVERNOR (WS11-7)
+// ════════════════════════════════════════════
+//
+// Samples rAF deltas for the first ~15s of 3D use. If >20% of frames miss
+// the frame budget in a sustained way (majority of 3s windows), the device
+// is demoted ONE tier (desktop→mobile→potato) — shadows/textureRes/
+// vegetation etc. all follow the existing tier presets, no scene edits.
+// The demotion is persisted per renderer string so the next load starts
+// directly at the demoted tier. One-way ratchet: at most one demotion per
+// session, never below potato. Promotion is manual (clearGovernorDemotion)
+// or automatic after 7 days (record expiry → re-audition at native tier).
+
+const GOV_KEY_PREFIX = "mp3d:governor:v1";
+const GOV_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7-day re-audition
+const GOV_SAMPLE_MS = 15000;  // total measurement span
+const GOV_WARMUP_MS = 2500;   // ignore scene-load jank
+const GOV_WINDOW_MS = 3000;   // evaluation window
+const GOV_MISSED_FRAME_MS = 25; // >25ms delta = missed frame (<40fps instant on 60Hz)
+const GOV_MISS_RATIO = 0.2;   // >20% missed frames = bad window
+const GOV_MIN_BAD_WINDOWS = 2; // "sustained" = ≥2 of ~4 windows
+const GOV_PAUSE_MS = 500;     // deltas above this = tab switch/GC pause, not a frame
+const GOV_MIN_WINDOW_FRAMES = 30; // window must have enough visible frames to count
+
+let _effectiveTier: GPUTier | null = null;
+let _governorStarted = false;
+
+function tierRank(t: GPUTier): number {
+  return t === "potato" ? 0 : t === "mobile" ? 1 : 2;
+}
+
+function govKey(): string {
+  return `${GOV_KEY_PREFIX}:${detectRendererString() || "unknown"}`;
+}
+
+function readGovernorDemotion(): GPUTier | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(govKey());
+    if (!raw) return null;
+    const rec = JSON.parse(raw) as { tier?: string; at?: number };
+    if (rec.tier !== "potato" && rec.tier !== "mobile") return null;
+    if (typeof rec.at !== "number" || Date.now() - rec.at > GOV_TTL_MS) {
+      window.localStorage.removeItem(govKey()); // expired → re-audition at native tier
+      return null;
+    }
+    return rec.tier;
+  } catch {
+    return null;
+  }
+}
+
+/** Manual promotion path: forget the persisted demotion so the next load
+ *  re-auditions at the native tier. */
+export function clearGovernorDemotion(): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.removeItem(govKey()); } catch {}
+}
+
+function governorDemote(): void {
+  const cur = _effectiveTier ?? getGPUTier();
+  const next: GPUTier | null = cur === "desktop" ? "mobile" : cur === "mobile" ? "potato" : null;
+  if (!next) return; // potato floor — never below
+  _effectiveTier = next;
+  try { window.localStorage.setItem(govKey(), JSON.stringify({ tier: next, at: Date.now() })); } catch {}
+  // In-place update so held getQuality() references read demoted values on
+  // their next access; mounted scenes adopt fully on next mount.
+  if (_quality) Object.assign(_quality, TIER_QUALITY[next]);
+  console.info(`[mp-perf] WS11-7 governor: sustained missed frames — demoted "${cur}"→"${next}" (persisted 7d; clearGovernorDemotion() to re-audition)`);
+}
+
+function startGovernorOnce(): void {
+  if (_governorStarted) return;
+  _governorStarted = true;
+  if (typeof window === "undefined" || typeof requestAnimationFrame === "undefined") return;
+  if (_effectiveTier === "potato") return; // already at the floor
+  let started = false;
+  let start = 0, last = 0, winStart = 0;
+  let winFrames = 0, winMissed = 0, badWindows = 0;
+  const closeWindow = () => {
+    if (winFrames >= GOV_MIN_WINDOW_FRAMES && winMissed / winFrames > GOV_MISS_RATIO) badWindows++;
+    winFrames = 0; winMissed = 0;
+  };
+  const tick = (now: number) => {
+    if (!started) { started = true; start = last = winStart = now; requestAnimationFrame(tick); return; }
+    const dt = now - last;
+    last = now;
+    if (now - start >= GOV_WARMUP_MS && dt < GOV_PAUSE_MS && !document.hidden) {
+      winFrames++;
+      if (dt > GOV_MISSED_FRAME_MS) winMissed++;
+    }
+    if (now - winStart >= GOV_WINDOW_MS) { closeWindow(); winStart = now; }
+    if (now - start >= GOV_SAMPLE_MS) {
+      closeWindow();
+      if (badWindows >= GOV_MIN_BAD_WINDOWS) governorDemote();
+      return; // sampling done — governor runs once per session
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 // ════════════════════════════════════════════
