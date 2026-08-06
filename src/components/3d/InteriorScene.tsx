@@ -10,8 +10,12 @@ import { layoutForRoom } from "@/lib/3d/roomLayouts";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { EXPOSURE, GOLDEN, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD } from "@/lib/3d/canon";
+import { EXPOSURE, GOLDEN, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD, EMBER } from "@/lib/3d/canon";
 import { makeArtwork } from "@/lib/3d/makeArtwork";
+import { MAX_WALK_SPEED, MAX_YAW_DEG_S, easeInOutCubic, EYE_HEIGHT } from "@/lib/3d/cameraComfort";
+import { createFocusMode, computeFocusPose, type FocusTarget, type FocusMode } from "@/lib/3d/focusMode";
+import { computeSalonHang, mountSalonHang, makeSalonEmptyEasel, type SalonMemoryRef, type SalonHangMount } from "@/lib/3d/salonHang";
+import { makeVideoArtwork, type VideoArtwork } from "@/lib/3d/videoArtwork";
 import { flag3d } from "@/lib/3d/flags3d";
 import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
 import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
@@ -114,6 +118,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // anisotropy and static-mesh merging. Guarded so a missing/late-landing
     // flags3d module degrades to the legacy (flag-off) scene.
     const W1=(()=>{try{return !!flag3d("w1_interior");}catch{return false;}})();
+    // ── MUSEO VIVO Wave-2 flag (WS6-6..10, WS7-5/8, WS8-6): salon-hang,
+    // tap-is-travel + dolly-to-frame, furniture colliders, light budget law,
+    // VideoTexture cinema wall. Flag-off = W1 behaviour intact.
+    const W2=(()=>{try{return !!flag3d("w2_interior");}catch{return false;}})();
+    // WS6-7 reduced-motion (independent of the W1 onboarding flag): artwork
+    // taps cut+fade instead of walking/gliding.
+    const RM2=W2&&(()=>{try{return prefersReducedMotion();}catch{return false;}})();
     // WS10-1/2 (W1): mount the ONE shared ambient score — idempotent, never
     // stopped on unmount so the music carries across scene transitions.
     if(W1)mountAmbientMusic();
@@ -158,12 +169,112 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.fog=new THREE.Fog(isExhibition?GOLDEN.skyColor:dlPreset.fogColor,isExhibition?8:3,fogFar);
 
     // Warm sky + terracotta ground bounce (WS1-6)
-    scene.add(new THREE.HemisphereLight(isExhibition?GOLDEN.skyColor:dlPreset.ambientColor,dlPreset.groundBounceColor,isExhibition?.7:.4*dlPreset.ambientIntensity/0.5));
+    const hemi=new THREE.HemisphereLight(isExhibition?GOLDEN.skyColor:dlPreset.ambientColor,dlPreset.groundBounceColor,isExhibition?.7:.4*dlPreset.ambientIntensity/0.5);
+    scene.add(hemi);
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.1*dlPreset.sunIntensity);sun.position.set(isExhibition?18:10,isExhibition?20:14,-4);sun.castShadow=true;sun.shadow.mapSize.set(Math.min(Q.shadowMapSize,isExhibition?2048:1024),Math.min(Q.shadowMapSize,isExhibition?2048:1024));
     const shCam=isExhibition?20:12;
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=isExhibition?60:30;sun.shadow.camera.left=-shCam;sun.shadow.camera.right=shCam;sun.shadow.camera.top=shCam;sun.shadow.camera.bottom=-shCam;
     scene.add(sun);
-    const ambL=new THREE.PointLight(dlPreset.fillColor,.3*dlPreset.fillIntensity/0.35,isExhibition?30:15);ambL.position.set(0,isExhibition?6:4,0);scene.add(ambL);
+    // W2 (WS6-9 light budget law): the den runs hemi + sun + fire ONLY (≤4);
+    // the point fill is deleted there (hemi covers it). Exhibition keeps its
+    // fill as the one "≤1 more" light (hemi + sun + fill = 3).
+    const ambL=new THREE.PointLight(dlPreset.fillColor,.3*dlPreset.fillIntensity/0.35,isExhibition?30:15);ambL.position.set(0,isExhibition?6:4,0);if(!W2||isExhibition)scene.add(ambL);
+    // ── W2 (WS7-8/WS6-7): dolly-to-frame focus mode — ONE camera authority.
+    // The rig maps onto the scene's own posT/lookT targets so glides ride the
+    // existing smoothing; setDimmed dims hemi/sun/env 15% (photos and plaques
+    // are MeshBasic/unlit, so the artwork "lifts" while walls stay ≥0.5 lum).
+    const focusTargets=new Map<string,FocusTarget>();
+    const _dimBase={hemi:0,sun:0,env:0};
+    let focus: FocusMode|null=null;
+    if(W2){
+      focus=createFocusMode({
+        rig:{
+          getPosition:()=>posT.current.clone(),
+          getLookAt:()=>{
+            const y=lookT.current.yaw,p2=lookT.current.pitch;
+            return new THREE.Vector3(posT.current.x+Math.sin(y)*Math.cos(p2),posT.current.y+Math.sin(p2),posT.current.z-Math.cos(y)*Math.cos(p2));
+          },
+          setPose:(p,look)=>{
+            posT.current.copy(p);
+            const dx=look.x-p.x,dy=look.y-p.y,dz=look.z-p.z;
+            const len=Math.max(1e-6,Math.sqrt(dx*dx+dy*dy+dz*dz));
+            lookT.current.yaw=Math.atan2(dx,-dz);
+            lookT.current.pitch=Math.asin(Math.max(-1,Math.min(1,dy/len)));
+          },
+        },
+        setDimmed:(dimmed)=>{
+          if(dimmed){
+            _dimBase.hemi=hemi.intensity;_dimBase.sun=sun.intensity;_dimBase.env=scene.environmentIntensity;
+            hemi.intensity*=.85;sun.intensity*=.85;scene.environmentIntensity*=.85;
+          }else{
+            hemi.intensity=_dimBase.hemi;sun.intensity=_dimBase.sun;scene.environmentIntensity=_dimBase.env;
+          }
+        },
+        openMemory:(target)=>{if(target.data)onMemoryClickRef.current(target.data);},
+        // Reduced-motion crossfade: a cream veil over the mount, cut at midpoint.
+        fade:(applyCut)=>{
+          const veil=document.createElement("div");
+          veil.style.cssText=`position:absolute;inset:0;background:${PLASTER};opacity:0;transition:opacity .16s ease;pointer-events:none;z-index:10;`;
+          el.appendChild(veil);
+          requestAnimationFrame(()=>{veil.style.opacity="1";});
+          setTimeout(()=>{applyCut();veil.style.opacity="0";setTimeout(()=>{veil.parentNode&&veil.parentNode.removeChild(veil);},220);},180);
+        },
+        // Exhibition walks at eye 2.1 — offset floorY so focus never dips the camera.
+        floorY:layout.isExhibition?0.1:0,
+      });
+    }
+    // ── W2 (WS8-6): autoWalk integrator state — straight line (one optional
+    // collider detour), clamped to rW/rL bounds, comfort-capped, eased arrival,
+    // then hands the camera to focus mode.
+    const aw={active:false,x:0,z:0,fx:0,fz:0,detour:null as {x:number,z:number}|null,target:null as FocusTarget|null};
+    // ── W2 (WS6-8): cheap AABB colliders around the big furniture ──
+    const colliders: {x:number,z:number,hw:number,hd:number}[]=[];
+    const addCol=(x: number,z: number,hw: number,hd: number)=>{if(W2)colliders.push({x,z,hw,hd});};
+    const COL_R=0.35; // walker radius
+    const resolveColliders=(p: THREE.Vector3)=>{
+      for(const c of colliders){
+        const dx=p.x-c.x,dz=p.z-c.z;
+        const px=c.hw+COL_R-Math.abs(dx),pz=c.hd+COL_R-Math.abs(dz);
+        if(px>0&&pz>0){
+          if(px<pz)p.x=c.x+(dx>=0?1:-1)*(c.hw+COL_R);
+          else p.z=c.z+(dz>=0?1:-1)*(c.hd+COL_R);
+        }
+      }
+    };
+    const pointBlocked=(x: number,z: number)=>{
+      for(const c of colliders){if(Math.abs(x-c.x)<c.hw+COL_R&&Math.abs(z-c.z)<c.hd+COL_R)return c;}
+      return null;
+    };
+    // Plan the walk: if the straight line crosses a collider, add ONE midpoint
+    // detour pushed sideways past it; if still blocked, the integrator just
+    // eases to a stop at the collider edge (resolveColliders keeps it outside).
+    const startAutoWalk=(target: FocusTarget)=>{
+      const pose=computeFocusPose(target,0);
+      aw.x=Math.max(-rWRef.w/2+1,Math.min(rWRef.w/2-1,pose.position.x));
+      aw.z=Math.max(-rWRef.l/2+1,Math.min(rWRef.l/2-1.5,pose.position.z));
+      aw.fx=target.position.x;aw.fz=target.position.z;
+      aw.target=target;aw.detour=null;
+      const sx=posT.current.x,sz=posT.current.z;
+      const ddx=aw.x-sx,ddz=aw.z-sz;const segLen=Math.sqrt(ddx*ddx+ddz*ddz);
+      for(let s=0.1;s<1;s+=0.1){
+        const hit=pointBlocked(sx+ddx*s,sz+ddz*s);
+        if(hit){
+          // Perpendicular push past the collider, away from its centre.
+          const mx=sx+ddx*0.5,mz=sz+ddz*0.5;
+          const pxn=-ddz/Math.max(1e-6,segLen),pzn=ddx/Math.max(1e-6,segLen);
+          const side=(mx-hit.x)*pxn+(mz-hit.z)*pzn>=0?1:-1;
+          const push=Math.max(hit.hw,hit.hd)+COL_R+0.5;
+          aw.detour={
+            x:Math.max(-rWRef.w/2+1,Math.min(rWRef.w/2-1,hit.x+pxn*side*push)),
+            z:Math.max(-rWRef.l/2+1,Math.min(rWRef.l/2-1.5,hit.z+pzn*side*push)),
+          };
+          break;
+        }
+      }
+      aw.active=true;
+    };
+    // Room bounds for the integrator — filled in once the layout shell is known.
+    const rWRef={w:20,l:20};
 
     // ── REAL PBR TEXTURES (Poly Haven) ──
     const marbleTex=loadMarbleTextures([3,3]);
@@ -237,6 +348,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const animTex: any[]=[];
     // W1 (WS7-3/WS6-5): makeArtwork instances mounted this cycle — disposed in cleanup.
     const artworks: {group: THREE.Group;dispose(): void;setTexture(t2: THREE.Texture): void}[]=[];
+    // W2 (WS6-6/WS7-5): salon-hang mounts + the paintTex textures they show
+    // (scene-owned per the salonHang contract) + the cream empty-state easel.
+    const salonMounts: SalonHangMount[]=[];
+    const salonTexs: THREE.Texture[]=[];
+    let salonEasel: {group: THREE.Group;dispose(): void}|null=null;
+    // W2 (WS7-8): VideoTexture cinema-wall handle — decoder released in cleanup.
+    let videoHandle: VideoArtwork|null=null;
     const artQuality: "low"|"med"|"high"=Q.paintingResWidth>=512?"high":Q.paintingResWidth>=256?"med":"low";
     const memYear=(m: any)=>{const d=m?.createdAt||m?.revealDate;if(!d)return undefined;const y=new Date(d).getFullYear();return Number.isFinite(y)?String(y):undefined;};
     // Mount a makeArtwork group at a wall spot, preserving the existing raycast
@@ -254,11 +372,45 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       });
       scene.add(art.group);
       artworks.push(art);
+      // W2 (WS6-7): register a focus target so tap-is-travel/dolly-to-frame
+      // works on the hero spots too. Normal from rotY (front faces +Z).
+      if(W2&&mem?.id){
+        focusTargets.set(String(mem.id),{
+          position:new THREE.Vector3(x,y,z),
+          normal:new THREE.Vector3(Math.sin(rotY),0,Math.cos(rotY)),
+          planeHeight:width/aspect,
+          planeWidth:width,
+          data:mem,
+        });
+      }
       devCheckArtworkAspect(tex,width,width/aspect,`makeArtwork:${mem.id||mem.title}`);
       return art;
     };
+    // ── W2 (WS6-9): shared warm glow card — the baked stand-in for the deleted
+    // decorative Point/SpotLights (sconces, lamps, vitrine, window pool). One
+    // canvas, additive, depthWrite:false — zero dynamic-light cost, disposed by
+    // the generic cleanup sweep.
+    let glowCardMat: THREE.MeshBasicMaterial|null=null;
+    const getGlowCardMat=()=>{
+      if(glowCardMat)return glowCardMat;
+      const c=document.createElement("canvas");c.width=64;c.height=64;
+      const g2=c.getContext("2d")!;
+      const grad=g2.createRadialGradient(32,32,0,32,32,32);
+      grad.addColorStop(0,"rgba(255,224,176,0.85)");grad.addColorStop(.55,"rgba(255,224,176,0.28)");grad.addColorStop(1,"rgba(255,224,176,0)");
+      g2.fillStyle=grad;g2.fillRect(0,0,64,64);
+      const gtex=new THREE.CanvasTexture(c);gtex.colorSpace=THREE.SRGBColorSpace;
+      glowCardMat=new THREE.MeshBasicMaterial({map:gtex,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false});
+      return glowCardMat;
+    };
+    const addGlowCard=(x: number,y: number,z: number,size: number,rotY=0)=>{
+      const gm=new THREE.Mesh(new THREE.PlaneGeometry(size,size),getGlowCardMat());
+      gm.position.set(x,y,z);gm.rotation.y=rotY;gm.renderOrder=1;
+      scene.add(gm);
+      return gm;
+    };
 
     const rW=layout.rW,rL=layout.rL,rH=layout.rH;
+    rWRef.w=rW;rWRef.l=rL;
 
     // ═══════════════════════════════════════════
     // SHELL: floor, ceiling, walls, wainscoting
@@ -431,6 +583,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
       // ── IMPLUVIUM: shallow reflecting pool in the center ──
       const poolW=5, poolL=3.5, poolDepth=0.2;
+      addCol(0,0,poolW/2+0.4,poolL/2+0.4); // WS6-8: impluvium + fountain
       // Pool basin (sunken)
       scene.add(mk(new THREE.BoxGeometry(poolW+0.3,0.08,poolL+0.3),stoneMat,0,0.01,0)); // rim
       scene.add(mk(new THREE.BoxGeometry(poolW,poolDepth,poolL),stoneMat,0,-poolDepth/2+0.01,0)); // basin walls
@@ -467,12 +620,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.CylinderGeometry(0.03,0.06,0.10,8),MS.bronze,0,1.58,0));
       scene.add(mk(new THREE.SphereGeometry(0.04,8,8),MS.bronze,0,1.65,0));
       // Subtle water shimmer light
-      if(!isMobileGPU()){const fountainLight=new THREE.PointLight("#B0D8E8",0.2,4);fountainLight.position.set(0,1.1,0);scene.add(fountainLight);}
+      if(!W2&&!isMobileGPU()){const fountainLight=new THREE.PointLight("#B0D8E8",0.2,4);fountainLight.position.set(0,1.1,0);scene.add(fountainLight);} // W2 (WS6-9): deleted — off-canon cool light
 
       // ── GARDEN ELEMENTS: potted plants, low hedges, small statues ──
       // Low hedges along the courtyard inner perimeter
       const hedgeInset=1.5; // inset from colonnade
       for(let s=-1;s<=1;s+=2){
+        addCol(0,s*(courtInZ-hedgeInset),courtInX-2,0.4); // WS6-8: long hedge
+        addCol(s*(courtInX-hedgeInset),0,0.4,courtInZ-2); // WS6-8: short hedge
         // Along long sides
         scene.add(mk(new THREE.BoxGeometry(courtInX*2-4,0.6,0.5),hedgeMat,0,0.3,s*(courtInZ-hedgeInset)));
         scene.add(mk(new THREE.BoxGeometry(courtInX*2-4.2,0.15,0.55),hedgeLightMat,0,0.68,s*(courtInZ-hedgeInset)));
@@ -498,6 +653,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // Small cypress trees flanking the impluvium
       for(let s=-1;s<=1;s+=2){
         const cyX=s*3.5, cyZ=0;
+        addCol(cyX,cyZ,0.45,0.45); // WS6-8: cypress
         scene.add(mk(new THREE.CylinderGeometry(0.06,0.08,0.5,6),MS.dkW,cyX,0.25,cyZ)); // trunk
         scene.add(mk(new THREE.ConeGeometry(0.35,2.0,8),hedgeMat,cyX,1.5,cyZ)); // foliage
         scene.add(mk(new THREE.ConeGeometry(0.25,1.5,8),hedgeLightMat,cyX,2.1,cyZ)); // top
@@ -506,6 +662,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // ── STATUES on pedestals flanking the impluvium ──
       for(let s=-1;s<=1;s+=2){
         const stX=s*1.5, stZ=poolL/2+1.5;
+        addCol(stX,stZ,0.45,0.45); // WS6-8: statue pedestal
         // Tiered pedestal with moulding
         scene.add(mk(new THREE.BoxGeometry(0.7,0.06,0.7),MS.marble,stX,0.03,stZ));   // base slab
         scene.add(mk(new THREE.BoxGeometry(0.6,0.06,0.6),stoneMat,stX,0.09,stZ));     // lower plinth
@@ -524,6 +681,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
       // ── Stone benches in the courtyard (for contemplation) ──
       for(const bz2 of[-3,3]){
+        addCol(0,bz2,1.5,0.35); // WS6-8: courtyard bench
         // Wider, more elegant bench with curved legs
         scene.add(mk(new THREE.BoxGeometry(2.8,0.06,0.55),MS.marble,0,0.46,bz2)); // seat
         scene.add(mk(new THREE.BoxGeometry(2.9,0.03,0.58),MS.gold,0,0.48,bz2));   // gilded edge
@@ -899,8 +1057,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.CylinderGeometry(0.008,0.015,0.06,4),bronzeLamp,lampX+0.07,lampY,lampZ2));
       // emissive warm glow
       scene.add(mk(new THREE.SphereGeometry(0.012,4,4),new THREE.MeshBasicMaterial({color:"#FFAA44"}),lampX+0.09,lampY+0.02,lampZ2));
-      // point light
-      if(!isMobileGPU()){const oilLight=new THREE.PointLight("#FF9930",0.3,3);oilLight.position.set(lampX+0.09,lampY+0.05,lampZ2);scene.add(oilLight);}
+      // point light — W2 (WS6-9): deleted; the emissive glow sphere + a glow card carry it
+      if(!W2&&!isMobileGPU()){const oilLight=new THREE.PointLight("#FF9930",0.3,3);oilLight.position.set(lampX+0.09,lampY+0.05,lampZ2);scene.add(oilLight);}
+      if(W2)addGlowCard(lampX+0.09,lampY+0.06,lampZ2+0.06,0.35);
 
       // ─── ROMAN CEILING BEAMS ───
       const beamCount=7;
@@ -916,6 +1075,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     const fpX=0,fpZ=-rL/2+.3;
     if(!isExhibition){
+    addCol(fpX,fpZ,1.4,0.55); // WS6-8: fireplace + hearth slab
     scene.add(mk(new THREE.BoxGeometry(2.8,.12,.5),MS.marble,fpX,1.3,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2.6,.08,.4),MS.gold,fpX,1.24,fpZ+.02));
     scene.add(mk(new THREE.BoxGeometry(1.6,1.1,.3),MS.brickD,fpX,.55,fpZ));
@@ -923,7 +1083,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.add(mk(new THREE.BoxGeometry(.2,1.1,.3),MS.brick,fpX+.9,.55,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2,.18,.3),MS.brick,fpX,1.19,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2.6,.06,.6),MS.marble,fpX,.03,fpZ+.15));
-    const fireL=new THREE.PointLight("#FF8030",isMobileGPU()?0:.6,5);fireL.position.set(fpX,.5,fpZ+.2);if(!isMobileGPU())scene.add(fireL);
+    // W2 (WS6-9): the fire point is one of the ≤4 budget lights — mobile
+    // finally gets the flicker too (it lost every other decorative light).
+    const fireL=new THREE.PointLight("#FF8030",(W2||!isMobileGPU())?.6:0,5);fireL.position.set(fpX,.5,fpZ+.2);if(W2||!isMobileGPU())scene.add(fireL);
     animTex.push({type:"fire",light:fireL});
     for(let l=0;l<3;l++){const log=mk(new THREE.CylinderGeometry(.06,.07,.5+Math.random()*.3,6),MS.dkW,fpX-.25+l*.25,.12,fpZ+.1);log.rotation.z=Math.PI/2+Math.random()*.2;scene.add(log);}
     for(let f=0;f<5;f++){const fl2=new THREE.Mesh(new THREE.ConeGeometry(.06+Math.random()*.04,.2+Math.random()*.15,4),f%2?MS.fire:MS.fireG);fl2.position.set(fpX-.2+f*.1,.2+Math.random()*.1,fpZ+.1);animTex.push({type:"flame",mesh:fl2,baseY:.2+Math.random()*.1,phase:Math.random()*6});scene.add(fl2);}
@@ -937,6 +1099,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     const sofaZ=rL/2-3.5;
     if(!isExhibition){
+    addCol(0,sofaZ,1.25,0.55); // WS6-8: chesterfield
     // Sofa legs (raised off floor to avoid z-fighting)
     for(let lx of[-1,1])for(let lz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.04,.045,.12,6),MS.dkW,lx*1,.06,sofaZ+lz*.35));
     // Seat base
@@ -958,6 +1121,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     for(let s=-1;s<=1;s+=2){
       if(s===-1&&layout.readingChair)continue; // reading chair occupies this spot
       const ax=s*Math.min(3.5,rW/2-2.5),az=fpZ+2.5;
+      addCol(ax,az,0.65,0.55); // WS6-8: armchair
       // Legs (cylinders raised off floor)
       for(let abx of[-1,1])for(let abz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.03,.035,.18,6),MS.dkW,ax+abx*.4,.09,az+abz*.3));
       // Seat
@@ -974,6 +1138,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     const ctZ=sofaZ-1.7;
     if(!isExhibition){
+    addCol(0,ctZ,0.65,0.4); // WS6-8: coffee table
     scene.add(mk(new THREE.BoxGeometry(1.2,.04,.6),MS.dkW,0,.52,ctZ));
     for(let cx of[-1,1])for(let cz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.03,.03,.5,6),MS.dkW,cx*.5,.25,ctZ+cz*.22));
     scene.add(mk(new THREE.BoxGeometry(1.1,.02,.5),MS.gold,0,.54,ctZ));
@@ -984,6 +1149,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     const dkX=-rW/2+1.8, dkZ=rL/2-2.2;
     if(!isExhibition){
+    addCol(dkX,dkZ+.35,0.85,0.85); // WS6-8: writing desk + chair
     scene.add(mk(new THREE.BoxGeometry(1.6,.06,.75),MS.dkW,dkX,.78,dkZ));
     for(let dx of[-1,1])for(let dz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.035,.04,.75,8),MS.dkW,dkX+dx*.65,.38,dkZ+dz*.28));
     for(let dd=-1;dd<=1;dd+=2){scene.add(mk(new THREE.BoxGeometry(.5,.1,.02),MS.ltW,dkX+dd*.4,.7,dkZ+.37));scene.add(mk(new THREE.CylinderGeometry(.012,.012,.06,6),MS.bronze,dkX+dd*.4,.7,dkZ+.39));}
@@ -996,7 +1162,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     for(let cx2 of[-1,1])for(let cz2 of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.022,.022,.43,6),MS.dkW,dkX+cx2*.18,.23,chZ+cz2*.17));
     scene.add(mk(new THREE.CylinderGeometry(.03,.05,.3,6),MS.bronze,dkX-.6,.93,dkZ-.15));
     const dkShade=mk(new THREE.CylinderGeometry(.05,.09,.12,8,1,true),MS.lamp,dkX-.6,1.12,dkZ-.15);scene.add(dkShade);
-    if(!isMobileGPU()){const dkLight=new THREE.PointLight("#FFE8C0",.25,3);dkLight.position.set(dkX-.6,1.15,dkZ-.15);scene.add(dkLight);}
+    if(!W2&&!isMobileGPU()){const dkLight=new THREE.PointLight("#FFE8C0",.25,3);dkLight.position.set(dkX-.6,1.15,dkZ-.15);scene.add(dkLight);} // W2 (WS6-9): deleted
+    if(W2)addGlowCard(dkX-.6,1.14,dkZ-.05,0.45);
     } // end !isExhibition desk
     // Clickable hit area for desk (opens upload when empty — placed after memory routing below)
 
@@ -1049,6 +1216,29 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const caseMems=pickDisplayed("case");
     const audioMems=pickDisplayed("audio");
     const docMems=pickDisplayed("document");
+
+    // ── W2 (WS6-6/WS7-5): the wall cap dies in the den — EVERY display-eligible
+    // painting/photo/frame memory hangs (fireplace hero + salon walls), capped
+    // only by the tier texture budget. Exhibition keeps its 18-slot system
+    // (WS6 acceptance: the exhibition wall behaves exactly as before).
+    const pickAllW2=(slot: string)=>{
+      const all=slotBuckets[slot]||[];
+      const explicit=all.filter((m: any)=>m.displayed===true);
+      const unmarked=all.filter((m: any)=>m.displayed===undefined||m.displayed===null);
+      const hidden=all.filter((m: any)=>m.displayed===false);
+      if(explicit.length>0||hidden.length>0)return explicit;
+      return unmarked;
+    };
+    const wallMems: any[]=[];
+    if(W2&&!isExhibition){
+      const seen=new Set<string>();
+      for(const m of [...pickAllW2("painting"),...pickAllW2("photo"),...pickAllW2("frame")]){
+        const id=String(m.id??m.title);
+        if(seen.has(id))continue;seen.add(id);wallMems.push(m);
+      }
+      // Chronological hang — rows fill oldest-first (stable for equal dates).
+      wallMems.sort((a: any,b: any)=>new Date(a.createdAt||a.revealDate||0).getTime()-new Date(b.createdAt||b.revealDate||0).getTime());
+    }
 
     // Store ALL video/audio mems (not just displayed) for playlist navigation
     // Playlist filters: use displayUnit first (explicit assignment), then fall back to type
@@ -1219,16 +1409,17 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         }
       }
     }else{
-    // Priority: explicit painting assignment > unassigned photo fallback
-    const bigPaintMem=paintingMems.length>0?paintingMems[0]:photoMems.length>0?photoMems[0]:null;
-    const bigPaintUsedPhoto=paintingMems.length===0&&photoMems.length>0;// track if we borrowed an unassigned photo
-    if(bigPaintMem&&W1){
+    // Priority: explicit painting assignment > unassigned photo fallback.
+    // W2: the hero is simply the oldest wall memory — "1 photo = one large piece".
+    const bigPaintMem=W2?(wallMems[0]||null):paintingMems.length>0?paintingMems[0]:photoMems.length>0?photoMems[0]:null;
+    const bigPaintUsedPhoto=!W2&&paintingMems.length===0&&photoMems.length>0;// track if we borrowed an unassigned photo
+    if(bigPaintMem&&(W1||W2)){
       // W1 hero spot (WS7-3): the big painting over the fireplace becomes a
       // makeArtwork piece — aspect-correct plane (no more 1.6×1.1 stretch of the
       // 4:3 canvas), canon gold frame, Fraunces brass plaque, baked art light.
       // The per-painting SpotLight is deleted (zero dynamic lights per artwork).
       const om=bigPaintMem;const t=paintTex(om);
-      mountArtwork(om,t,fpX,2.4,fpZ+.06,0,1.7);
+      mountArtwork(om,t,fpX,2.4,fpZ+.06,0,W2?2.0:1.7);
     }else if(bigPaintMem){
       // Frame only shown when there's actual content
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
@@ -1263,13 +1454,87 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     }
 
     // ── PHOTO FRAMES: small fireplace frame ──
-    // Priority: explicit frame assignment > remaining unassigned photos
-    const framePhoto=frameMems.length>0?frameMems[0]:(bigPaintUsedPhoto?photoMems.slice(1):photoMems)[0]||null;
+    // Priority: explicit frame assignment > remaining unassigned photos.
+    // W2: the mantle mini-frame is retired — frame memories hang in the salon.
+    const framePhoto=W2?null:frameMems.length>0?frameMems[0]:(bigPaintUsedPhoto?photoMems.slice(1):photoMems)[0]||null;
     if(framePhoto&&W1){
       // W1 hero spot: mantle photo frame via makeArtwork (aspect-correct, plaqued)
       const pm=paintTex(framePhoto);
       mountArtwork(framePhoto,pm,fpX-.5,1.46,fpZ+.16,0,.3);
     }else if(framePhoto){const pm=paintTex(framePhoto);const pf=new THREE.Mesh(new THREE.PlaneGeometry(.25,.2),new THREE.MeshStandardMaterial({map:pm,roughness:.8}));pf.position.set(fpX-.5,1.46,fpZ+.18);pf.userData={memory:framePhoto};scene.add(pf);memMeshes.current.push(pf);scene.add(mk(new THREE.BoxGeometry(.32,.27,.04),MS.fB,fpX-.5,1.46,fpZ+.15));devCheckArtworkAspect(pm,.25,.2,"mantle frame (legacy)");}
+    // ── W2 (WS6-6/WS7-5): salon-hang the remaining wall memories over the four
+    // free wall runs (front wall flanking the door, right wall flanking the
+    // cinema screen; back wall keeps fireplace+windows, left wall = bookshelf).
+    // Deterministic (roomId-seeded), tier-budgeted, overflow reported omitted.
+    if(W2&&wallMems.length>1){
+      let salonSeed=0;for(const c of (actualRoomId||roomId))salonSeed=(salonSeed*31+c.charCodeAt(0))>>>0;
+      const doorHalf=1.7,scrHalf=1.9,cornerIn=0.4;
+      const salonRuns=[
+        // front wall, left of the door — front faces -Z
+        {cx:-(doorHalf+(rW/2-cornerIn-doorHalf)/2),cz:rL/2-0.12,rotY:Math.PI,width:rW/2-cornerIn-doorHalf,nx:0,nz:-1},
+        // front wall, right of the door
+        {cx:doorHalf+(rW/2-cornerIn-doorHalf)/2,cz:rL/2-0.12,rotY:Math.PI,width:rW/2-cornerIn-doorHalf,nx:0,nz:-1},
+        // right wall, back of the screen — front faces -X
+        {cx:rW/2-0.12,cz:-(scrHalf+(rL/2-cornerIn-scrHalf)/2),rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
+        // right wall, front of the screen
+        {cx:rW/2-0.12,cz:scrHalf+(rL/2-cornerIn-scrHalf)/2,rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
+      ].filter(r=>r.width>1.6);
+      const salonRest=wallMems.slice(1); // hero already above the fireplace
+      // Tier budget: ~24 live CanvasTextures on mobile (WS6-6), minus the hero.
+      const texBudget=Q.paintingResWidth>=512?31:Q.paintingResWidth>=256?23:11;
+      const nHang=Math.min(salonRest.length,texBudget);
+      const totW=salonRuns.reduce((a,r)=>a+r.width,0)||1;
+      // Proportional-by-width allocation, largest-remainder rounding.
+      const raw=salonRuns.map(r=>nHang*r.width/totW);
+      const counts=raw.map(Math.floor);
+      let left=nHang-counts.reduce((a,b)=>a+b,0);
+      raw.map((v,i)=>({i,f:v-Math.floor(v)})).sort((a,b)=>b.f-a.f).forEach(({i})=>{if(left>0){counts[i]++;left--;}});
+      let omittedCount=salonRest.length-nHang;
+      let ptr=0;
+      const salonTexMap=new Map<string,THREE.Texture>();
+      salonRuns.forEach((run,ri)=>{
+        const slice=salonRest.slice(ptr,ptr+counts[ri]);ptr+=counts[ri];
+        if(slice.length===0)return;
+        const byId=new Map<string,any>();
+        const refs: SalonMemoryRef[]=slice.map((m: any)=>{
+          const id=String(m.id??m.title);
+          const tx=paintTex(m);salonTexMap.set(id,tx);salonTexs.push(tx);byId.set(id,m);
+          return {id,aspect:(tx.userData?.aspect as number)||4/3,title:m.title,year:memYear(m)};
+        });
+        const lay=computeSalonHang(refs,{width:run.width,height:rH-0.2,yBase:0},{seed:(salonSeed^(ri*0x9e3779b9))>>>0,maxPieces:slice.length});
+        omittedCount+=lay.omitted.length;
+        const mount=mountSalonHang(lay,{
+          getTexture:(ref)=>salonTexMap.get(ref.id)!,
+          quality:artQuality,
+          onPiece:(art,p)=>{
+            const m=byId.get(p.memory.id);
+            if(!m)return;
+            // Raycast contract preserved: userData.memory on every mesh + memMeshes.
+            art.group.userData={...art.group.userData,memory:m};
+            art.group.traverse((o: any)=>{o.userData={...o.userData,memory:m};if(o.isMesh)memMeshes.current.push(o);});
+            // WS6-7 focus target in WORLD space (wall-local → world by run pose).
+            const wp=new THREE.Vector3(p.x,p.y,0.02).applyEuler(new THREE.Euler(0,run.rotY,0)).add(new THREE.Vector3(run.cx,0,run.cz));
+            focusTargets.set(String(m.id??m.title),{position:wp,normal:new THREE.Vector3(run.nx,0,run.nz),planeHeight:p.height,planeWidth:p.width,data:m});
+          },
+        });
+        mount.group.position.set(run.cx,0,run.cz);
+        mount.group.rotation.y=run.rotY;
+        scene.add(mount.group);
+        salonMounts.push(mount);
+      });
+      if(process.env.NODE_ENV!=="production"&&omittedCount>0)console.debug(`[InteriorScene] salon-hang: ${omittedCount} memories omitted (tier budget/wall capacity)`);
+    }
+    // W2 (WS6-6 empty state): 0 wall memories → the warm cream easel ("Hang
+    // your first memory", i18n flat key ×5); tap routes to the existing
+    // __upload__ station path. ro1 keeps its personalised placeholder painting.
+    if(W2&&wallMems.length===0&&(actualRoomId||roomId)!=="ro1"){
+      salonEasel=makeSalonEmptyEasel(t("emptyEasel"),{yBase:0});
+      salonEasel.group.position.set(2.2,0,-rL/2+1.2);
+      salonEasel.group.userData={...salonEasel.group.userData,isStation:true};
+      salonEasel.group.traverse((o: any)=>{o.userData={...o.userData,isStation:true};if(o.isMesh)hitAreaMeshes.current.push(o);});
+      scene.add(salonEasel.group);
+      addCol(2.2,-rL/2+1.2,0.7,0.5); // WS6-8: easel
+    }
     // Wall paintings removed — only the big fireplace painting is shown
     } // end !isExhibition painting block
 
@@ -1393,14 +1658,20 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         // Small capitals on pilasters
         scene.add(mk(new THREE.BoxGeometry(0.22,0.08,0.22),MS.marble,scrX+sx*(scrPlaneW/2+0.28),scrY+scrPlaneH/2+0.08,scrZ));
       }
-      // Warm accent light on screen
+      // Warm accent light on screen — W2 (WS6-9): deleted (screen content is
+      // MeshBasic/unlit; the marble frame reads via hemi+sun)
+      if(!W2){
       const scrAccent=new THREE.SpotLight("#FFF5E0",0.4,6,Math.PI/6,0.5,1.2);
       scrAccent.position.set(scrX,rH-0.3,scrZ+1.5);scrAccent.target.position.set(scrX,scrY,scrZ);
       scene.add(scrAccent);scene.add(scrAccent.target);
+      }
     }else{
       scene.add(mk(new THREE.BoxGeometry(.08,2,3),MS.screen,scrX,scrY,scrZ));
       scene.add(mk(new THREE.BoxGeometry(.04,.15,.15),MS.iron,scrX,1.15,scrZ));
     }
+    // W2 (WS7-8) VideoTexture state — `active` flips true once metadata lands
+    // and the blit loop stands down; onError flips it back (canvas fallback).
+    const w2Vid={enabled:false,active:false};
     if(videoMems.length>0){
       const vc=document.createElement("canvas");vc.width=384;vc.height=256;
       const vctx=vc.getContext("2d")!;
@@ -1418,7 +1689,56 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(vm.dataUrl){
         // Type flags take priority over URL extension (dataUrl may be a thumbnail)
         const isVidSrc=vm.videoBlob||vm.type==="video"||/\.(mp4|webm|mov|avi|mkv|m4v)/i.test(vm.dataUrl)||vm.dataUrl.startsWith("data:video/");
-        if(isVidSrc){
+        if(isVidSrc&&W2){
+          // ── W2 (WS7-8): real THREE.VideoTexture on the cinema wall ──
+          // The per-frame 384×256 canvas blit dies; the plane letterboxes to the
+          // video's NATIVE aspect inside the niche once metadata lands. The
+          // media API serves no size renditions (only ?stream=1), so the source
+          // decodes at its stored size. onError keeps the existing canvas path
+          // (the poster/gradient blit below stays wired as the fallback map).
+          vctx.fillStyle="#1A1510";vctx.fillRect(0,0,384,256);
+          vctx.fillStyle="rgba(255,255,255,.3)";vctx.font="16px Georgia,serif";vctx.textAlign="center";
+          vctx.fillText(t("loadingVideo"),192,128);vtex.needsUpdate=true;
+          const vidSrc=vm.dataUrl.startsWith("/api/media/")?vm.dataUrl+(vm.dataUrl.includes("?")?"&":"?")+"stream=1":vm.dataUrl;
+          w2Vid.enabled=true;
+          // Ember play affordance — shown only when the browser blocks autoplay.
+          const affC=document.createElement("canvas");affC.width=96;affC.height=96;
+          const affCtx=affC.getContext("2d")!;
+          affCtx.beginPath();affCtx.arc(48,48,42,0,Math.PI*2);affCtx.fillStyle=EMBER;affCtx.fill();
+          affCtx.beginPath();affCtx.moveTo(38,30);affCtx.lineTo(38,66);affCtx.lineTo(68,48);affCtx.closePath();affCtx.fillStyle=PLASTER;affCtx.fill();
+          const affTex=new THREE.CanvasTexture(affC);affTex.colorSpace=THREE.SRGBColorSpace;
+          const affordance=new THREE.Mesh(new THREE.PlaneGeometry(.55,.55),new THREE.MeshBasicMaterial({map:affTex,transparent:true}));
+          if(isExhibition){affordance.position.set(scrX,scrY,scrZ+0.14);}
+          else{affordance.rotation.y=-Math.PI/2;affordance.position.set(scrX-.14,scrY,scrZ);}
+          affordance.visible=false;
+          affordance.userData={isPlayAffordance:true,memory:vm};
+          scene.add(affordance);memMeshes.current.push(affordance);
+          videoHandle=makeVideoArtwork({
+            url:vidSrc,
+            onReady:(tex)=>{
+              if(!alive)return;
+              const aspect=(tex.userData.aspect as number)||16/9;
+              const tw=Math.min(scrPlaneW,scrPlaneH*aspect);
+              scrMesh.scale.set(tw/scrPlaneW,(tw/aspect)/scrPlaneH,1);
+              const mat=scrMesh.material as THREE.MeshBasicMaterial;
+              mat.map=tex;mat.needsUpdate=true;
+              w2Vid.active=true; // stop the canvas blit for good
+            },
+            onAutoplayBlocked:()=>{if(alive)affordance.visible=true;},
+            onError:(err)=>{
+              if(!alive)return;
+              // Existing canvas path stays the map; the remote loses its element.
+              w2Vid.active=false;
+              const mat=scrMesh.material as THREE.MeshBasicMaterial;
+              if(mat.map!==vtex){mat.map=vtex;mat.needsUpdate=true;scrMesh.scale.set(1,1,1);}
+              if(process.env.NODE_ENV!=="production")console.warn("[InteriorScene] W2 VideoTexture fell back to canvas:",err);
+            },
+          });
+          videoEl=videoHandle.video;
+          videoEl.volume=1;
+          videoEl.addEventListener("play",()=>{affordance.visible=false;});
+          videoElRef.current=videoEl;
+        }else if(isVidSrc){
           videoEl=document.createElement("video");
           videoEl.loop=true;videoEl.playsInline=true;videoEl.volume=1;
           videoEl.preload="auto";
@@ -1463,10 +1783,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           const si=new Image();si.onload=()=>{screenImg=si;};si.crossOrigin="anonymous";si.src=vm.dataUrl;
         }
       }
-      const vidEntry={type:"video",canvas:vc,ctx:vctx,tex:vtex,mem:vm,w:384,h:256,phase:Math.random()*100,screenImg:()=>screenImg,videoEl:()=>videoEl};
+      const vidEntry={type:"video",canvas:vc,ctx:vctx,tex:vtex,mem:vm,w:384,h:256,phase:Math.random()*100,screenImg:()=>screenImg,videoEl:()=>videoEl,w2:w2Vid};
       animTex.push(vidEntry);
       vidAnimEntry.current=vidEntry;
-      if(!isMobileGPU()){const scrGl=new THREE.PointLight(`hsl(${vm.hue},40%,60%)`,isExhibition?.3:.15,isExhibition?8:4);scrGl.position.set(isExhibition?scrX:scrX-.5,scrY,isExhibition?scrZ+1:scrZ);scene.add(scrGl);}
+      if(!W2&&!isMobileGPU()){const scrGl=new THREE.PointLight(`hsl(${vm.hue},40%,60%)`,isExhibition?.3:.15,isExhibition?8:4);scrGl.position.set(isExhibition?scrX:scrX-.5,scrY,isExhibition?scrZ+1:scrZ);scene.add(scrGl);} // W2 (WS6-9): deleted — off-canon hsl() glow
     }else{
       const idleC=document.createElement("canvas");idleC.width=384;idleC.height=256;const ic=idleC.getContext("2d")!;
       ic.fillStyle="#1A1A1A";ic.fillRect(0,0,384,256);ic.fillStyle="#333";ic.font="24px Georgia,serif";ic.textAlign="center";ic.fillText(t("noVideos"),192,128);
@@ -1483,6 +1803,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const vpX=rW/2-1.5,vpZ=rL/2-2;
     let vinylAudio: HTMLAudioElement|null=null;
     if(!isExhibition){
+    addCol(vpX,vpZ,0.5,0.4); // WS6-8: vinyl player table
     scene.add(mk(new THREE.BoxGeometry(.8,.04,.6),MS.dkW,vpX,.78,vpZ));
     for(let vl=-1;vl<=1;vl+=2)for(let vlz=-1;vlz<=1;vlz+=2)scene.add(mk(new THREE.CylinderGeometry(.03,.03,.75,6),MS.dkW,vpX+vl*.3,.38,vpZ+vlz*.22));
     scene.add(mk(new THREE.BoxGeometry(.55,.08,.45),MS.ltW,vpX,.84,vpZ));
@@ -1515,6 +1836,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     if(!isExhibition){
     const vtX=-rW/2+2, vtZ=-rL/2+0.7;
     const vtW=1.4, vtD=0.7, vtBaseH=0.55, vtGlassH=1.0;
+    addCol(vtX,vtZ,0.8,0.45); // WS6-8: vitrine
     const vtBrassMat=new THREE.MeshStandardMaterial({color:"#B8963E",roughness:.22,metalness:.7});
     const vtVelvet=new THREE.MeshStandardMaterial({color:"#1A0A2E",roughness:.95,metalness:0});
     scene.add(mk(new THREE.BoxGeometry(vtW+.08,.06,vtD+.08),MS.dkW,vtX,.03,vtZ));
@@ -1553,8 +1875,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.add(mk(new THREE.BoxGeometry(.025,.02,vtD),vtBrassMat,vtX+vtW/2-.015,vtTopY-.01,vtZ));
     scene.add(mk(new THREE.BoxGeometry(vtW,.02,.025),vtBrassMat,vtX,vtGBot+.01,vtZ+vtD/2-.015));
     scene.add(mk(new THREE.BoxGeometry(vtW,.02,.025),vtBrassMat,vtX,vtGBot+.01,vtZ-vtD/2+.015));
-    if(!isMobileGPU()){const vtLight=new THREE.PointLight("#FFF5E0",.8,3);vtLight.position.set(vtX,vtTopY-.06,vtZ);scene.add(vtLight);
+    // W2 (WS6-9): vitrine PointLights deleted — an emissive strip under the lid
+    // + a glow card light the case identically on every tier.
+    if(!W2&&!isMobileGPU()){const vtLight=new THREE.PointLight("#FFF5E0",.8,3);vtLight.position.set(vtX,vtTopY-.06,vtZ);scene.add(vtLight);
     const vtLight2=new THREE.PointLight("#FFF0D0",.4,1.5);vtLight2.position.set(vtX,vtMidY-.05,vtZ);scene.add(vtLight2);}
+    if(W2){
+      scene.add(mk(new THREE.BoxGeometry(vtW-.2,.015,vtD-.2),MS.glassG,vtX,vtTopY-.03,vtZ));
+      addGlowCard(vtX,vtMidY,vtZ,0.8);
+    }
     caseMems.slice(0,3).forEach((m: any,i: any)=>{
       const recTex=paintTex(m);
       const rec=new THREE.Mesh(new THREE.PlaneGeometry(.45,.45),new THREE.MeshStandardMaterial({map:recTex,roughness:.4,metalness:.05}));
@@ -1604,11 +1932,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     if(!isExhibition){
     for(const[lx,lz] of [[rW/2-1.5,-rL/2+1.5]]){
+      addCol(lx,lz,0.32,0.32); // WS6-8: floor lamp
       scene.add(mk(new THREE.CylinderGeometry(.2,.25,.6,8),MS.dkW,lx,.3,lz));
       scene.add(mk(new THREE.CylinderGeometry(.28,.28,.04,10),MS.gold,lx,.62,lz));
       scene.add(mk(new THREE.CylinderGeometry(.04,.06,.4,6),MS.bronze,lx,.82,lz));
       const shade=mk(new THREE.CylinderGeometry(.08,.14,.2,8,1,true),MS.lamp,lx,1.1,lz);scene.add(shade);
-      if(!isMobileGPU()){const lampL=new THREE.PointLight("#FFE8C0",.35,4);lampL.position.set(lx,1.2,lz);scene.add(lampL);}
+      if(!W2&&!isMobileGPU()){const lampL=new THREE.PointLight("#FFE8C0",.35,4);lampL.position.set(lx,1.2,lz);scene.add(lampL);} // W2 (WS6-9): deleted — halo + glow card carry it
+      if(W2)addGlowCard(lx,1.15,lz+0.18,0.5);
       const halo=new THREE.Mesh(new THREE.SphereGeometry(.25,8,8),MS.lampG);halo.position.set(lx,1.1,lz);scene.add(halo);
     }
     } // end !isExhibition table lamps
@@ -1631,7 +1961,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         scene.add(mk(new THREE.CylinderGeometry(.06,.04,.05,8),MS.bronze,sx2,sconceH+.12,sz2+dir*0.04));
         // Flame
         const fl3=new THREE.Mesh(new THREE.SphereGeometry(.025,5,5),MS.glassG);fl3.position.set(sx2,sconceH+.18,sz2+dir*0.04);scene.add(fl3);
-        if(!isMobileGPU()){const sl3=new THREE.PointLight("#FFE0B0",.15,3.5);sl3.position.set(sx2,sconceH+.1,sz2+dir*0.15);scene.add(sl3);}
+        if(!W2&&!isMobileGPU()){const sl3=new THREE.PointLight("#FFE0B0",.15,3.5);sl3.position.set(sx2,sconceH+.1,sz2+dir*0.15);scene.add(sl3);} // W2 (WS6-9): deleted
+        if(W2)addGlowCard(sx2,sconceH+.16,sz2+dir*0.12,0.4,dir<0?Math.PI:0);
       };
       // Back wall sconces (z=-rL/2): skip center screen zone (|x|<3)
       for(const bsx of [-10,-5,5,10]){
@@ -1649,22 +1980,26 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           scene.add(mk(new THREE.CylinderGeometry(.05,.05,.02,8),MS.gold,sx3,sconceH-.08,fsz));
           scene.add(mk(new THREE.CylinderGeometry(.06,.04,.05,8),MS.bronze,sx3+s*0.04,sconceH+.12,fsz));
           const fl4=new THREE.Mesh(new THREE.SphereGeometry(.025,5,5),MS.glassG);fl4.position.set(sx3+s*0.04,sconceH+.18,fsz);scene.add(fl4);
-          if(!isMobileGPU()){const sl4=new THREE.PointLight("#FFE0B0",.12,3);sl4.position.set(sx3+s*0.12,sconceH+.1,fsz);scene.add(sl4);}
+          if(!W2&&!isMobileGPU()){const sl4=new THREE.PointLight("#FFE0B0",.12,3);sl4.position.set(sx3+s*0.12,sconceH+.1,fsz);scene.add(sl4);} // W2 (WS6-9): deleted
+          if(W2)addGlowCard(sx3+s*0.1,sconceH+.16,fsz,0.4,s>0?Math.PI/2:-Math.PI/2);
         }
       }
-      // Sunlight pouring into the open courtyard — bright directional fill
-      if(!isMobileGPU()){const courtyardSun=new THREE.DirectionalLight("#FFF5E0",0.8);
+      // Sunlight pouring into the open courtyard — W2 (WS6-9): the SECOND SUN is
+      // deleted (dogma 2: one sun) along with the floor uplight; hemi + the one
+      // sun + fill stay within the ≤4 budget.
+      if(!W2&&!isMobileGPU()){const courtyardSun=new THREE.DirectionalLight("#FFF5E0",0.8);
       courtyardSun.position.set(5,rH+6,-3);courtyardSun.target.position.set(0,0,0);
       scene.add(courtyardSun);scene.add(courtyardSun.target);}
       // Warm ambient uplighting from courtyard floor
-      if(!isMobileGPU()){const courtAmbient=new THREE.PointLight("#FFE8D0",0.3,15);courtAmbient.position.set(0,1,0);scene.add(courtAmbient);}
+      if(!W2&&!isMobileGPU()){const courtAmbient=new THREE.PointLight("#FFE8D0",0.3,15);courtAmbient.position.set(0,1,0);scene.add(courtAmbient);}
     }else{
     for(let s=-1;s<=1;s+=2){
       for(const sz of[-2,2]){
         scene.add(mk(new THREE.BoxGeometry(.07,.15,.07),MS.sconce,s*(rW/2-.04),sconceH,sz));
         scene.add(mk(new THREE.CylinderGeometry(.045,.03,.07,6),MS.sconce,s*(rW/2-.08),sconceH+.15,sz));
         const bl=new THREE.Mesh(new THREE.SphereGeometry(.03,6,6),MS.glassG);bl.position.set(s*(rW/2-.08),sconceH+.22,sz);scene.add(bl);
-        if(!isMobileGPU()){const sl=new THREE.PointLight("#FFE0B0",.2,3);sl.position.set(s*(rW/2-.15),sconceH+.1,sz);scene.add(sl);}
+        if(!W2&&!isMobileGPU()){const sl=new THREE.PointLight("#FFE0B0",.2,3);sl.position.set(s*(rW/2-.15),sconceH+.1,sz);scene.add(sl);} // W2 (WS6-9): deleted
+        if(W2)addGlowCard(s*(rW/2-.14),sconceH+.2,sz,0.45,s>0?-Math.PI/2:Math.PI/2);
       }
     }
     if(layout.extraSconces){
@@ -1672,7 +2007,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         scene.add(mk(new THREE.BoxGeometry(.07,.15,.07),MS.sconce,sx,sconceH,-rL/2+.04));
         scene.add(mk(new THREE.CylinderGeometry(.045,.03,.07,6),MS.sconce,sx,sconceH+.15,-rL/2+.08));
         const bl2=new THREE.Mesh(new THREE.SphereGeometry(.03,6,6),MS.glassG);bl2.position.set(sx,sconceH+.22,-rL/2+.08);scene.add(bl2);
-        if(!isMobileGPU()){const sl2=new THREE.PointLight("#FFE0B0",.15,3);sl2.position.set(sx,sconceH+.1,-rL/2+.15);scene.add(sl2);}
+        if(!W2&&!isMobileGPU()){const sl2=new THREE.PointLight("#FFE0B0",.15,3);sl2.position.set(sx,sconceH+.1,-rL/2+.15);scene.add(sl2);} // W2 (WS6-9): deleted
+        if(W2)addGlowCard(sx,sconceH+.2,-rL/2+.14,0.45);
       }
     }
     } // end sconce block
@@ -1693,8 +2029,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const winH=2.6;
       // Sky/light visible through window opening
       scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:dlPreset.fogColor}),winX,winH,winZ+wDir*.01));
-      // Bright daylight glow overlay
-      scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.45*dlPreset.sunIntensity}),winX,winH,winZ+wDir*.015));
+      // Bright daylight glow overlay — W2 (WS6-9): the emissive window plane
+      // brightens to compensate for the deleted window SpotLight
+      scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:W2?GOLDEN.sunColor:dlPreset.sunColor,transparent:true,opacity:(W2?.62:.45)*dlPreset.sunIntensity}),winX,winH,winZ+wDir*.015));
       // Window frame
       scene.add(mk(new THREE.BoxGeometry(1.5,.12,.12),MS.trim,winX,winH+.95,winZ+wDir*.04));// top
       scene.add(mk(new THREE.BoxGeometry(1.5,.12,.12),MS.trim,winX,winH-.95,winZ+wDir*.04));// bottom
@@ -1705,8 +2042,18 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // Curtains
       const c1=new THREE.Mesh(new THREE.PlaneGeometry(.45,2.2),MS.curtain);c1.position.set(winX-.85,winH,winZ+wDir*.06);scene.add(c1);
       const c2=new THREE.Mesh(new THREE.PlaneGeometry(.45,2.2),MS.curtain);c2.position.set(winX+.85,winH,winZ+wDir*.06);scene.add(c2);
-      // Strong directional light through window
-      if(!isMobileGPU()){const winSp=new THREE.SpotLight(dlPreset.sunColor,.8*dlPreset.sunIntensity,12,Math.PI/4,.5,1.2);winSp.position.set(winX,winH+.4,winZ+wDir*.5);winSp.target.position.set(winX,.5,winZ+wDir*3);scene.add(winSp);scene.add(winSp.target);}
+      // Strong directional light through window — W2 (WS6-9): SpotLight deleted;
+      // the authored window is an emissive plane + a baked floor pool aimed at
+      // the primary memory wall (the salon-hung front wall). RectAreaLight
+      // desktop upgrade deferred (needs the uniforms lib) — parity on all tiers.
+      if(!W2&&!isMobileGPU()){const winSp=new THREE.SpotLight(dlPreset.sunColor,.8*dlPreset.sunIntensity,12,Math.PI/4,.5,1.2);winSp.position.set(winX,winH+.4,winZ+wDir*.5);winSp.target.position.set(winX,.5,winZ+wDir*3);scene.add(winSp);scene.add(winSp.target);}
+      if(W2){
+        const pool=new THREE.Mesh(new THREE.PlaneGeometry(3.2,4.6),getGlowCardMat());
+        pool.rotation.x=-Math.PI/2;pool.rotation.z=wDir>0?0:Math.PI;
+        pool.position.set(winX,0.02,winZ+wDir*2.4);
+        pool.scale.y=1.4;pool.renderOrder=1;
+        scene.add(pool);
+      }
       // Light shaft particles effect (warm glow on floor)
       const shaftGeo=new THREE.PlaneGeometry(1.5,4);const shaftMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.06*dlPreset.sunIntensity});
       const shaft=new THREE.Mesh(shaftGeo,shaftMat);shaft.position.set(winX,1.5,winZ+wDir*2);shaft.rotation.x=wDir*(-.6);scene.add(shaft);
@@ -1749,6 +2096,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         [-5,rL/2-1.5],[5,rL/2-1.5],                      // front portico, flanking door
       ];
       for(const[ux,uz] of urnPositions){
+        addCol(ux,uz,0.35,0.35); // WS6-8: portico urn
         // Elegant amphora on a stone base
         scene.add(mk(new THREE.BoxGeometry(0.4,0.06,0.4),MS.marble,ux,0.03,uz)); // stone base
         scene.add(mk(new THREE.CylinderGeometry(0.15,0.18,0.5,8),MS.pot,ux,0.31,uz));
@@ -1763,6 +2111,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
       // ── Sundial on a pedestal (offset to avoid fountain) ──
       const sdX=3, sdZ=-3;
+      addCol(sdX,sdZ,0.35,0.35); // WS6-8: sundial
       scene.add(mk(new THREE.BoxGeometry(0.5,0.06,0.5),MS.marble,sdX,0.03,sdZ)); // base slab
       scene.add(mk(new THREE.CylinderGeometry(0.2,0.25,0.5,8),MS.marble,sdX,0.31,sdZ)); // pedestal
       scene.add(mk(new THREE.CylinderGeometry(0.3,0.3,0.04,12),MS.marble,sdX,0.58,sdZ)); // dial face
@@ -1778,6 +2127,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       for(let s=-1;s<=1;s+=2){
         for(const bx of [-6,6]){
           const benchZ=s*(rL/2-1.8);
+          addCol(bx,benchZ,1.2,0.32); // WS6-8: portico bench
           // Bench slab
           scene.add(mk(new THREE.BoxGeometry(2.2,0.08,0.45),MS.marble,bx,0.42,benchZ));
           // Bench legs (stone plinths)
@@ -1793,6 +2143,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // Additional benches along side porticos (facing inward)
       for(let s=-1;s<=1;s+=2){
         const benchX=s*(rW/2-1.8);
+        addCol(benchX,0,0.32,1.2); // WS6-8: side portico bench
         scene.add(mk(new THREE.BoxGeometry(0.45,0.08,2.2),MS.marble,benchX,0.42,0));
         for(const blz of [-0.85,0.85]){
           scene.add(mk(new THREE.BoxGeometry(0.45,0.38,0.18),MS.marble,benchX,0.19,blz));
@@ -1853,6 +2204,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     if(layout.readingChair){
     const rcX=-rW/2+2,rcZ=fpZ+2;
+    addCol(rcX,rcZ,0.6,0.55); // WS6-8: reading chair
     scene.add(mk(new THREE.BoxGeometry(1,.3,.85),MS.leather,rcX,.15,rcZ));
     scene.add(mk(new THREE.BoxGeometry(1,.7,.1),MS.leatherD,rcX,.55,rcZ+.38));
     for(let ws=-1;ws<=1;ws+=2)scene.add(mk(new THREE.BoxGeometry(.08,.5,.4),MS.leatherD,rcX+ws*.48,.45,rcZ+.2));
@@ -1865,6 +2217,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     if(currentRoomName.toLowerCase().includes("christmas")&&!isExhibition){
       const txX=-rW/2+1.8,txZ=-rL/2+1.8;
+      addCol(txX,txZ,0.95,0.95); // WS6-8: christmas tree
       // ── Elegant tree stand — turned walnut base with brass rim ──
       scene.add(mk(new THREE.CylinderGeometry(.35,.4,.08,16),MS.dkW,txX,.04,txZ));
       scene.add(mk(new THREE.CylinderGeometry(.37,.37,.02,16),MS.gold,txX,.08,txZ));
@@ -1935,6 +2288,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     if(layout.globe){
     const glX=dkX+1.2,glZ=dkZ;
+    addCol(glX,glZ,0.28,0.28); // WS6-8: globe stand
     scene.add(mk(new THREE.CylinderGeometry(.03,.06,.7,8),MS.dkW,glX,.35,glZ));
     scene.add(mk(new THREE.CylinderGeometry(.18,.18,.02,12),MS.dkW,glX,.72,glZ));
     const globe=new THREE.Mesh(new THREE.SphereGeometry(.2,16,12),new THREE.MeshStandardMaterial({color:"#6A8A6A",roughness:.6,metalness:.1}));globe.position.set(glX,.98,glZ);scene.add(globe);
@@ -1947,6 +2301,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     if(layout.piano){
     const piX=rW/2-3,piZ=-rL/2+3.5; // back-right area, away from sofa
+    addCol(piX,piZ,0.9,1.25); // WS6-8: grand piano (incl. bench)
     scene.add(mk(new THREE.BoxGeometry(1.6,.08,2.2),MS.iron,piX,.82,piZ));
     scene.add(mk(new THREE.BoxGeometry(1.6,.6,.08),MS.iron,piX,.48,piZ-1.05));
     scene.add(mk(new THREE.BoxGeometry(.08,.6,2.2),MS.iron,piX-.78,.48,piZ));
@@ -2035,15 +2390,20 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const transom=new THREE.Mesh(tranGeo,tranMat);
     transom.rotation.y=Math.PI;// face into room (towards -Z)
     transom.position.set(0,3.02,bdZ-.02);scene.add(transom);
-    // Warm light spilling from corridor
-    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.04*dlPreset.sunIntensity}));
+    // Warm light spilling from corridor — W2 brightens the static spill plane to
+    // compensate for the deleted door lights
+    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:(W2?.09:.04)*dlPreset.sunIntensity}));
     bdGlow.position.set(0,1.9,bdZ);scene.add(bdGlow);
     // W1 KILL (WS6-4): the doorGlow pulse animation dies; the faint static warm
     // spill plane stays (zero per-frame cost, no throbbing glow).
     if(!W1)animTex.push({type:"doorGlow",mesh:bdGlow});
+    // W2 (WS6-9): the door Spot+Point were the mobile budget-busters (5 lights
+    // on mobile pre-W2) — deleted; transom glow + spill plane are the baked pool.
+    if(!W2){
     const bdLight=new THREE.SpotLight("#FFE0B0",.5,6,Math.PI/5,.6,1);
     bdLight.position.set(0,2.5,bdZ-.5);bdLight.target.position.set(0,1,bdZ-2);scene.add(bdLight);scene.add(bdLight.target);
     const bdAmbient=new THREE.PointLight("#FFE8C0",.25,4);bdAmbient.position.set(0,2,bdZ-.3);scene.add(bdAmbient);
+    }
     // Label
     const bdLabel=document.createElement("canvas");bdLabel.width=280;bdLabel.height=50;
     const blc=bdLabel.getContext("2d")!;
@@ -2067,7 +2427,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.03,transparent:true,opacity:.25*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
     }
 
-    const camY=isExhibition?2.1:2.0;
+    const camY=isExhibition?2.1:EYE_HEIGHT; // dogma 5: the one shared eye height (2.0 through Wave 2)
     const camZ=initialCameraZ!=null?initialCameraZ:isExhibition?rL/2-4:rL/2-2.5;
     pos.current.set(0,camY,camZ);posT.current.set(0,camY,camZ);
     lookT.current={yaw:0,pitch:0};lookA.current={yaw:0,pitch:0};
@@ -2087,7 +2447,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // only opaque Standard/Physical direct scene children merge, so the
     // click/hover raycast (which raycasts ONLY memMeshes+hitAreaMeshes) is
     // untouched while draw calls collapse toward the ≤150 mobile budget.
-    if(W1){
+    // W2 (WS6-10) widens coverage: opaque un-mapped MeshBasicMaterial meshes
+    // (sky plane, window light planes, emissive tips) merge too.
+    if(W1||W2){
       try{
         const mergeSkip=new Set<THREE.Object3D>();
         memMeshes.current.forEach(o=>mergeSkip.add(o));
@@ -2104,7 +2466,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           if((mm as any).isInstancedMesh||(mm as any).isSkinnedMesh)continue;
           if(Array.isArray(mm.material))continue;
           const mat=mm.material as THREE.Material;
-          if(!mat||(mat.type!=="MeshStandardMaterial"&&mat.type!=="MeshPhysicalMaterial"))continue;
+          if(!mat||(mat.type!=="MeshStandardMaterial"&&mat.type!=="MeshPhysicalMaterial"&&!(W2&&mat.type==="MeshBasicMaterial"&&!(mat as any).map)))continue;
           if(mat.transparent)continue;
           const ud=mm.userData||{};
           if(ud.memory||ud.isStation||ud.isHitArea||ud.isBackDoor||ud.isUploadPainting||ud.isInlay)continue;
@@ -2144,6 +2506,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const clock=new THREE.Clock();
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
+    // W2 (WS6-10/WS7-14): one-shot staging budget assert after the salon mounts
+    // and the first real render — dev/staging only via the w1_assert flag.
+    let _w2AssertDone=!W2;
     let _cinStep=-1;
     // WS10-4 (W1): footsteps as procedural marble taps — fired from the walk
     // integrator on real position delta (playFootstep cadence-caps at ~340ms).
@@ -2228,12 +2593,52 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         }
         // Skip normal movement when in onboarding mode
       } else {
-      const spd=(keys.current["shift"]?7.5:2.5)*dt;_dir.current.set(0,0,0);
+      // ── W2 (WS6-7): manual input cancels focus BEFORE the authority check,
+      // so keys/joystick always regain the camera (dogma 5: any input cancels).
       const k=keys.current;
+      const manualInput=!!(k["w"]||k["a"]||k["s"]||k["d"]||k["arrowup"]||k["arrowdown"]||k["arrowleft"]||k["arrowright"]);
+      if(W2&&focus&&manualInput&&focus.state()!=="idle")focus.cancel();
+      // ── ONE camera authority (WS7-8 contract): while focus.update(dt) returns
+      // true the walk/autoWalk integrators do not run this frame.
+      const focusOwns=W2&&focus?focus.update(dt):false;
+      if(!focusOwns){
+      // ── W2 (WS8-6): autoWalk integrator — straight line with at most one
+      // collider detour, clamped to rW/rL bounds, MAX_WALK_SPEED with
+      // easeInOutCubic deceleration into arrival, yaw toward the artwork
+      // clamped to MAX_YAW_DEG_S; on arrival hands over to focus mode.
+      if(W2&&aw.active){
+        if(manualInput){aw.active=false;aw.target=null;}
+        else{
+        const wp=aw.detour||aw;
+        const adx=wp.x-posT.current.x,adz=wp.z-posT.current.z;
+        const dist=Math.sqrt(adx*adx+adz*adz);
+        if(dist>0.3){
+          const sp=Math.max(.4,MAX_WALK_SPEED*easeInOutCubic(Math.min(1,dist/2.5)))*dt;
+          posT.current.x+=(adx/dist)*sp;posT.current.z+=(adz/dist)*sp;
+          const targetYaw=Math.atan2(aw.fx-posT.current.x,-(aw.fz-posT.current.z));
+          let dyaw=targetYaw-lookT.current.yaw;dyaw=Math.atan2(Math.sin(dyaw),Math.cos(dyaw));
+          const maxYaw=MAX_YAW_DEG_S*(Math.PI/180)*dt;
+          lookT.current.yaw+=Math.max(-maxYaw,Math.min(maxYaw,dyaw*3.6*dt));
+          lookT.current.pitch+=(0-lookT.current.pitch)*Math.min(1,3*dt);
+        }else if(aw.detour){aw.detour=null;} // detour reached — head for the pose
+        else{
+          aw.active=false;
+          const tg=aw.target;aw.target=null;
+          if(tg&&focus)focus.start(tg); // dolly-to-frame takes the camera
+        }
+        }
+      }
+      // Manual walk — W2 (WS6-7 mercy kill): the hidden shift-7.5 sprint is
+      // deleted; full input equals the flat comfort cap.
+      const spd=(W2?MAX_WALK_SPEED:(keys.current["shift"]?7.5:2.5))*dt;_dir.current.set(0,0,0);
       if(k["w"]||k["arrowup"])_dir.current.z-=1;if(k["s"]||k["arrowdown"])_dir.current.z+=1;
       if(k["a"]||k["arrowleft"])_dir.current.x-=1;if(k["d"]||k["arrowright"])_dir.current.x+=1;
       if(_dir.current.length()>0){_dir.current.normalize().multiplyScalar(spd);_dir.current.applyAxisAngle(_yAxis.current,-lookA.current.yaw);posT.current.add(_dir.current);}
       posT.current.x=Math.max(-rW/2+1,Math.min(rW/2-1,posT.current.x));posT.current.z=Math.max(-rL/2+1,Math.min(rL/2-1.5,posT.current.z));
+      // W2 (WS6-8): AABB push-out after the wall clamp — no ghost-walking
+      // through the fireplace/sofa/tables/piano/impluvium props.
+      if(W2)resolveColliders(posT.current);
+      }
       }
       pos.current.lerp(posT.current,kPos);
       // WS10-4 (W1): marble footsteps while actually moving — per-frame position
@@ -2257,11 +2662,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         // Unified raycast — sorted by distance. Hit area boxes block distant items
         // but specific items inside a hit area (within 1 unit behind the face) take priority.
         if(allClickableRef.current.length!==memMeshes.current.length+hitAreaMeshes.current.length){allClickableRef.current=[...memMeshes.current,...hitAreaMeshes.current];}
-        const hoverHits=_rc.current.intersectObjects(allClickableRef.current).filter(h=>h.distance<4);
+        // W2 (WS6-7): the h.distance<4 dead-click gate is deleted — every
+        // artwork/door/station responds at ANY distance (dogma 5).
+        const hoverHits=_rc.current.intersectObjects(allClickableRef.current).filter(h=>W2||h.distance<4);
         let found=false;let hitAreaFallback: any=null;let hitAreaDist=Infinity;
         for(const hit of hoverHits){
           const ud=hit.object.userData;
           if(ud.isBackDoor){hovMem.current=ud;found=true;break;}
+          if(W2&&ud.isPlayAffordance&&hit.object.visible){hovMem.current=ud;found=true;break;}
           // Specific item (not a hit area) — always wins
           if((ud.memory||ud.isStation||ud.isUploadPainting)&&!ud.isHitArea){
             if(ud.isStation||ud.isUploadPainting)hovMem.current=ud;else hovMem.current=ud.memory;found=true;break;
@@ -2292,6 +2700,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           const cx=a.ctx,cw=a.w,ch=a.h,m=a.mem,ph=t*.5+a.phase;
           const vEl=a.videoEl?a.videoEl():null;
           if(vEl&&!vEl.muted){const vo=volOverride.current.video;vEl.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_screenPos.current.set(scrX,scrY,scrZ))/(isExhibition?20:10)));}
+          // W2 (WS7-8): VideoTexture live — the per-frame canvas blit stands down.
+          if((a as any).w2&&(a as any).w2.active)return;
           const sImg=a.screenImg?a.screenImg():null;
           let videoFrameChanged=false;
           if(vEl&&vEl.readyState>=2){
@@ -2356,32 +2766,72 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
       if(document.hidden)return;
       composer.render();
+      if(!_w2AssertDone&&_frameCount>=2){
+        _w2AssertDone=true;
+        try{
+          if(flag3d("w1_assert")){
+            const calls=ren.info.render.calls;
+            let lights=0;scene.traverse((o: any)=>{if(o.isLight)lights++;});
+            // Live artwork CanvasTextures at the tier's painting resolution (RGBA).
+            const texBytes=(salonTexs.length+artworks.length)*Q.paintingResWidth*Q.paintingResHeight*4;
+            const texCap=(Q.paintingResWidth>=512?64:Q.paintingResWidth>=256?16:4)*1024*1024;
+            if(isMobileGPU()&&calls>150)console.error(`[mp-w2-assert] draw calls ${calls} > 150 (mobile) after salon mount`);
+            if(lights>4)console.error(`[mp-w2-assert] ${lights} dynamic lights > 4 after salon mount (WS6-9 budget law)`);
+            if(texBytes>texCap)console.error(`[mp-w2-assert] artwork texture bytes ${texBytes} > tier cap ${texCap}`);
+            if(process.env.NODE_ENV!=="production")console.debug(`[mp-w2-assert] calls=${calls} lights=${lights} artworkTexBytes=${texBytes} (cap ${texCap})`);
+          }
+        }catch{}
+      }
       if(!readyFiredRef.current){readyFiredRef.current=true;try{onReadyRef.current?.();}catch{}}
     };animate();
 
     // Do NOT auto-open media bars — they are now driven by the MemoryPalace
     // top-side toggle buttons via useRoomMediaBarStore.
 
+    // ── W2 (WS6-7): tap-is-travel routing for artworks — far tap auto-walks to
+    // the museum viewing pose then hands to focus mode; near tap dollies
+    // directly; second tap on the focused piece opens the memory panel
+    // (onMemoryClick contract). Reduced-motion cuts (with fade) instead.
+    const routeMemoryTap=(m: any)=>{
+      const ft=W2&&focus&&m?focusTargets.get(String(m.id??m.title)):undefined;
+      if(!ft||!focus){onMemoryClickRef.current(m);return;}
+      const cur=focus.current();
+      if(focus.state()==="focused"&&cur&&cur.data===m){focus.handleTap(ft);return;} // second tap → open
+      aw.active=false;aw.target=null;
+      if(!RM2){
+        const pose=computeFocusPose(ft,layout.isExhibition?0.1:0);
+        const ddx=pose.position.x-posT.current.x,ddz=pose.position.z-posT.current.z;
+        if(Math.sqrt(ddx*ddx+ddz*ddz)>2.6){focus.cancel();startAutoWalk(ft);return;} // walk first, dolly on arrival
+      }
+      focus.handleTap(ft); // close by (or reduced motion): dolly/cut directly
+    };
+    const cancelFocusOnDrag=()=>{if(W2){aw.active=false;aw.target=null;focus?.cancel();}};
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.current.x,dy=e.clientY-prev.current.y;if(Math.abs(dx)>2||Math.abs(dy)>2)drag.current=true;
       // Drag-look: apply the look math and skip hover raycasting (cursor is grabbed)
-      if(e.buttons===1){lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.85,Math.min(.5,lookT.current.pitch+dy*.003));prev.current={x:e.clientX,y:e.clientY};return;}
+      if(e.buttons===1){if(drag.current)cancelFocusOnDrag();lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.85,Math.min(.5,lookT.current.pitch+dy*.003));prev.current={x:e.clientX,y:e.clientY};return;}
       // 3px movement guard (same as CorridorScene) — skip micro-movements
       const rdx=e.clientX-_lastRayPos.x,rdy=e.clientY-_lastRayPos.y;if(rdx*rdx+rdy*rdy<9)return;
       _lastRayPos.x=e.clientX;_lastRayPos.y=e.clientY;
       // Record the position — the raycast itself runs once per frame in animate()
       _hoverPt.x=e.clientX;_hoverPt.y=e.clientY;_hoverDirty=true;};
-    const onCk=()=>{if(!drag.current&&hovMem.current){
+    const onCk=()=>{if(drag.current)return;
+      if(!hovMem.current){
+        // W2: tap on empty space exits focus (undims) / cancels a pending walk
+        if(W2&&focus&&focus.state()!=="idle"){aw.active=false;aw.target=null;focus.handleTap(null);}
+        return;
+      }
       // During onboarding, only painting click is allowed
       if(onboardingModeRef.current){
         if(hovMem.current.isUploadPainting)onMemoryClickRef.current("__upload_painting__");
         return;
       }
       if(hovMem.current.isBackDoor)onMemoryClickRef.current("__back__");
+      else if(W2&&hovMem.current.isPlayAffordance){videoHandle?.play();} // WS7-8: user-gesture play
       else if(hovMem.current.isUploadPainting)onMemoryClickRef.current("__upload_painting__");
       else if(hovMem.current.isStation)onMemoryClickRef.current("__upload__");
-      else onMemoryClickRef.current(hovMem.current);
-    }};
+      else routeMemoryTap(hovMem.current);
+    };
     const _cMap:Record<string,string>={"KeyW":"w","KeyA":"a","KeyS":"s","KeyD":"d","ShiftLeft":"shift","ShiftRight":"shift","ArrowUp":"arrowup","ArrowDown":"arrowdown","ArrowLeft":"arrowleft","ArrowRight":"arrowright"};
     const _isFormField=(e: KeyboardEvent)=>{const el2=e.target as HTMLElement|null;return !!(el2&&(el2.tagName==="INPUT"||el2.tagName==="TEXTAREA"||el2.isContentEditable));};
     const onKD=(e: KeyboardEvent)=>{if(_isFormField(e))return;const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=true;if(k.startsWith("arrow"))e.preventDefault();};const onKU=(e: KeyboardEvent)=>{if(_isFormField(e))return;const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=false;};
@@ -2414,7 +2864,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           touchMoveDir2.x=Math.max(-1,Math.min(1,dx/maxR));touchMoveDir2.z=Math.max(-1,Math.min(1,dy/maxR));
         }else if(t.identifier===touchLookId2){
           const dx=t.clientX-prev.current.x,dy=t.clientY-prev.current.y;
-          if(Math.abs(dx)>10||Math.abs(dy)>10){drag.current=true;touchTap2=false;}
+          if(Math.abs(dx)>10||Math.abs(dy)>10){drag.current=true;touchTap2=false;cancelFocusOnDrag();}
           lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.85,Math.min(.5,lookT.current.pitch+dy*.003));
           prev.current={x:t.clientX,y:t.clientY};
         }
@@ -2430,7 +2880,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
             _rc.current.setFromCamera(_mouse.current,camera);
             // Unified raycast — specific items win over hit areas within 1 unit
             if(allClickableRef.current.length!==memMeshes.current.length+hitAreaMeshes.current.length){allClickableRef.current=[...memMeshes.current,...hitAreaMeshes.current];}
-            const hits=_rc.current.intersectObjects(allClickableRef.current).filter(h2=>h2.distance<4);
+            // W2 (WS6-7): no distance gate — taps travel from anywhere
+            const hits=_rc.current.intersectObjects(allClickableRef.current).filter(h2=>W2||h2.distance<4);
             let tapped=false;let tHitAreaFallback: any=null;let tHitAreaDist=Infinity;
             // During onboarding, only painting click is allowed
             if(onboardingModeRef.current){
@@ -2444,8 +2895,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
             for(const hit of hits){
               const ud=hit.object.userData;
               if(ud.isBackDoor){onMemoryClickRef.current("__back__");tapped=true;break;}
+              if(W2&&ud.isPlayAffordance&&hit.object.visible){videoHandle?.play();tapped=true;break;} // WS7-8: gesture play
               if((ud.memory||ud.isStation||ud.isUploadPainting)&&!ud.isHitArea){
-                if(ud.isUploadPainting)onMemoryClickRef.current("__upload_painting__");else if(ud.isStation)onMemoryClickRef.current("__upload__");else onMemoryClickRef.current(ud.memory);tapped=true;break;
+                if(ud.isUploadPainting)onMemoryClickRef.current("__upload_painting__");else if(ud.isStation)onMemoryClickRef.current("__upload__");else routeMemoryTap(ud.memory);tapped=true;break;
               }
               if(ud.isHitArea&&!tHitAreaFallback){tHitAreaFallback=ud;tHitAreaDist=hit.distance;continue;}
               if(tHitAreaFallback&&hit.distance>tHitAreaDist+1)break;
@@ -2453,8 +2905,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
             if(!tapped&&tHitAreaFallback){
               if(tHitAreaFallback.isUploadPainting)onMemoryClickRef.current("__upload_painting__");
               else if(tHitAreaFallback.isStation)onMemoryClickRef.current("__upload__");
-              else if(tHitAreaFallback.memory)onMemoryClickRef.current(tHitAreaFallback.memory);
+              else if(tHitAreaFallback.memory)routeMemoryTap(tHitAreaFallback.memory);
             }
+            // W2: tap on empty space exits focus / cancels a pending walk
+            if(W2&&!tapped&&!tHitAreaFallback&&focus&&focus.state()!=="idle"){aw.active=false;aw.target=null;focus.handleTap(null);}
             }
           }
           touchLookId2=null;
@@ -2487,6 +2941,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       animTex.forEach(a=>{if(a.type==="video"){const vEl=a.videoEl?a.videoEl():null;if(vEl){vEl.pause();vEl.src="";if(vEl.parentNode)vEl.parentNode.removeChild(vEl);}}});
       window.removeEventListener("resize",_refreshRect);
       _rectRO?.disconnect();
+      // W2: focus mode (undims), the VideoTexture handle (decoder release),
+      // salon mounts + their scene-owned paintTex textures, and the easel.
+      try{focus?.dispose();}catch{}
+      try{videoHandle?.dispose();}catch{}
+      salonMounts.forEach(m=>{try{m.dispose();}catch{}});
+      salonTexs.forEach(t2=>{try{t2.dispose();}catch{}});
+      try{salonEasel?.dispose();}catch{}
       // Dispose makeArtwork instances (frames/plaques/pool decals own their
       // geometries + canvas textures) before the generic scene sweep.
       artworks.forEach(a=>{try{a.dispose();}catch{}});
