@@ -1992,6 +1992,116 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // the entrance hall; onRoomClick contract untouched, just never fired here.
       if (W2) wingAnchors.push(ct); else clickTargets.push(ct);
     });
+
+    // ══ W2 — LE SETTE SORELLE (owner exterior-concept pick, 2026-08-06) ══
+    // Seven SQUARE San Gimignano casa-torre towers grown around the dome.
+    // Owner brief: "geen minaretten — het moet ÉCHT Toscaans aanvoelen".
+    // Hard form rules enforced here:
+    //  1. SQUARE plans only (Box shafts, footprints 3.2-4.5), massive
+    //     masonry — never cylindrical, never tapering toward a spire.
+    //  2. Tops: the two tall sisters (and low SE) are FLAT with a corbelled
+    //     crown cornice + 0.08 blocking lip (San Gimignano); the rest carry
+    //     a low coppo hip cap (4-seg cone rotated 45°, face slope ~15° ≤ 20°).
+    //     No spires, no domes, no tower finials — gold stays exclusive to
+    //     the dome lantern + tympanum (canon dogma).
+    //  3. Facades: canon plaster shafts (ochreWall) with travertine quoin
+    //     chains (M.trim, same read as the wing quoins), ONE pietra-serena
+    //     band per tower at a staggered height (INK-leaning dark), and ONE
+    //     glowing bifora per tower — two narrow round-arched lights + a
+    //     travertine colonnette — re-using the existing M.win emissive
+    //     (.16); zero new dynamic lights.
+    //  4. Family, not a ring: 4 of 7 rise OUT of the existing massing (the
+    //     two sisters from the block front corners / wing-2+3 root roofs,
+    //     one from the wing-0/tablinium roofs, one from the wing-1 root),
+    //     the other 3 stand tight against the block on stone plinths at
+    //     staggered radii — grown like a hill town, not designed. Feet sink
+    //     to y=-0.6 (plinths -0.7) so nothing floats and no face is
+    //     coplanar with roofs/terrain (sloped tile vs vertical plaster).
+    //  5. The dome stays the hero: the sisters top at 28.6/29.4 — just
+    //     above the dome shell apex (~25.8) but under the lantern's gold
+    //     finial (~30.4) — and an order slimmer than the 18.4-wide drum:
+    //     the silhouette reads as dome-with-watchers.
+    // Draw budget: ALL seven towers merge into 6 meshes total — shafts /
+    // trim (quoins+cornices+colonnettes) / serena (bands+bifora surrounds) /
+    // caps / bifora glass / plinths. Deterministic literals, no random.
+    // Shafts+caps cast the long golden-hour shadows (all towers sit at
+    // r<15, well inside the ±58 sun-shadow frustum). Never added to
+    // clickTargets or wingAnchors → entrance click, anchor highlights and
+    // the dolly pause-prompt raycasts are untouched; only the two sisters
+    // sit near entrClickRadius(12) and they visually ARE the entrance.
+    if (W2) {
+      const serenaMat = new THREE.MeshStandardMaterial({ color: "#4A463F", roughness: 0.86, metalness: 0, envMapIntensity: 0.3 });
+      extraDisposables.push(serenaMat);
+      const gShaft: THREE.BufferGeometry[] = [], gTrim: THREE.BufferGeometry[] = [], gSerena: THREE.BufferGeometry[] = [],
+            gCap: THREE.BufferGeometry[] = [], gWin: THREE.BufferGeometry[] = [], gPlinth: THREE.BufferGeometry[] = [];
+      // [x, z, footprint, topY, flatTop, serena-bandY, plinth, biforaYaw]
+      const SORELLE: [number, number, number, number, boolean, number, boolean, number][] = [
+        [ -7.9, -9.5, 3.6, 28.6, true,  17.8, false, 0],           // Sorella W — VAST: block front corner / wing-3 root roof
+        [  7.9, -9.0, 3.4, 29.4, true,  12.6, false, 0],           // Sorella E — VAST: block front corner / wing-2 root roof (taller + slimmer: asymmetric pair)
+        [  0.9, 14.8, 4.1, 21.8, false,  9.4, false, 0],           // mid rear — VAST: rises through wing-0/tablinium roofs
+        [-12.6, -4.1, 4.5, 20.9, false, 13.2, true,  0],           // mid W — free, tight against the block (r≈13.3)
+        [ 12.8,  4.2, 3.8, 15.6, false, 10.4, false, 0],           // low E — VAST: wing-1 root roof
+        [ 13.5, -4.3, 3.5, 14.1, true,   6.2, true,  0],           // low SE — free (r≈14.2), flat corbel top
+        [ -7.2, 10.8, 3.2, 11.3, false,  7.6, true,  Math.PI / 2], // piccolina NW — free (r≈13.0), bifora faces open west
+      ];
+      SORELLE.forEach(([tx, tz, fp, topY, flatTop, bandY, plinth, bYaw]) => {
+        const put = (arr: THREE.BufferGeometry[], g: THREE.BufferGeometry, dx: number, dy: number, dz: number) => {
+          g.translate(dx, 0, dz); if (bYaw) g.rotateY(bYaw); g.translate(tx, dy, tz); arr.push(g);
+        };
+        // Shaft — square casa-torre, foot sunk 0.6 below the palace plinth line
+        put(gShaft, new THREE.BoxGeometry(fp, topY + 0.6, fp), 0, (topY - 0.6) / 2, 0);
+        // Quoin chains on all 4 corners (0.15 proud on both faces, stop under the crown)
+        const qh = topY - 1.6;
+        for (const sx of [-1, 1]) for (const sz of [-1, 1])
+          put(gTrim, new THREE.BoxGeometry(0.3, qh, 0.3), sx * fp / 2, qh / 2 - 0.4, sz * fp / 2);
+        // Pietra-serena band — one per tower, staggered heights, 0.05 proud
+        put(gSerena, new THREE.BoxGeometry(fp + 0.1, 0.34, fp + 0.1), 0, bandY, 0);
+        // Crown — corbelled (uitkragende) cornice slabs; slabs interpenetrate
+        // 0.01 so no pair of faces is coplanar (z-fighting rule)
+        if (flatTop) {
+          put(gTrim, new THREE.BoxGeometry(fp + 0.34, 0.2, fp + 0.34), 0, topY - 0.34, 0);
+          put(gTrim, new THREE.BoxGeometry(fp + 0.56, 0.18, fp + 0.56), 0, topY - 0.17, 0);
+          // flat roof = the shaft's own top face, a 0.08 lip above the cap slab
+        } else {
+          put(gTrim, new THREE.BoxGeometry(fp + 0.34, 0.2, fp + 0.34), 0, topY + 0.1, 0);
+          put(gTrim, new THREE.BoxGeometry(fp + 0.56, 0.18, fp + 0.56), 0, topY + 0.27, 0);
+          // Low coppo hip cap: 4-seg cone rotated 45° = square pyramid.
+          // Face slope atan(.27)≈15° (≤ 20°); eave edge lands 0.02 beyond
+          // the top slab (overstek, geen vlak-op-vlak), base sunk 0.03 in.
+          const capH = 0.27 * (fp / 2 + 0.3);
+          const cap = new THREE.ConeGeometry((fp / 2 + 0.3) * Math.SQRT2, capH, 4);
+          cap.rotateY(Math.PI / 4);
+          cap.translate(tx, topY + 0.33 + capH / 2, tz);
+          gCap.push(cap);
+        }
+        // Bifora high in the shaft, facing the arrival side: two narrow
+        // round-arched lights + colonnette in a serena surround. Lights sit
+        // 0.10 proud / embedded 0.06 (never coplanar with the shaft face).
+        const biY = topY - 2.1, zF = -fp / 2;
+        put(gSerena, new THREE.BoxGeometry(1.18, 1.62, 0.12), 0, biY + 0.12, zF - 0.01);
+        for (const lx of [-0.27, 0.27]) {
+          put(gWin, new THREE.BoxGeometry(0.34, 0.92, 0.16), lx, biY, zF - 0.02);
+          const arch = new THREE.CylinderGeometry(0.17, 0.17, 0.16, 10, 1, false, 0, Math.PI);
+          arch.rotateX(Math.PI / 2); arch.rotateZ(Math.PI / 2);
+          put(gWin, arch, lx, biY + 0.46, zF - 0.02);
+        }
+        put(gTrim, new THREE.CylinderGeometry(0.06, 0.075, 0.95, 8), 0, biY - 0.02, zF - 0.06);
+        // Free-standing towers get a stone footing (sunk 0.7 into terrain)
+        if (plinth) put(gPlinth, new THREE.BoxGeometry(fp + 0.8, 1.7, fp + 0.8), 0, 0.15, 0);
+      });
+      ([[gShaft, ochreWall, true], [gTrim, M.trim, false], [gSerena, serenaMat, false],
+        [gCap, M.tile, true], [gWin, M.win, false], [gPlinth, M.stoneD, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
+        .forEach(([geos, mat, shadow]) => {
+          if (!geos.length) return;
+          const merged = mergeGeometries(geos);
+          geos.forEach(g => g.dispose());
+          if (!merged) return;
+          extraGeoDisposables.push(merged);
+          const mesh = new THREE.Mesh(merged, mat);
+          mesh.castShadow = shadow;
+          palace.add(mesh);
+        });
+    }
     } // end else (Roman castle)
 
     // ══════════════════════════════════════════
@@ -3393,7 +3503,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const SHOT=2.4,FADE=.5;
           const stills: [number,number,number][]=[
             [Math.PI*1.4987,Math.PI*0.4387,180],
-            [Math.PI*1.5,Math.PI*0.315,102], // grandeur: higher + wider so dome apex + name share the frame
+            [Math.PI*1.562,Math.PI*0.324,106], // grandeur/sorelle: matches the dolly name-beat — name framed between the two tall sisters, dome apex in frame
             [Math.PI*1.5,Math.PI*0.22,35],
           ];
           const si=Math.min(Math.floor(ot/SHOT),2);
@@ -3434,10 +3544,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // the raised dome — beats 2-4 ride slightly higher and a touch wider so
           // the lantern-crowned silhouette dominates the frame; the TYMPANUM BEAT
           // stays at ~7.5s (name legible), then the descent to the one door.
+          // Sette Sorelle (signature): the existing WP1→WP2 lateral swing to
+          // θ=1.66π sweeps the camera across the eastern towers (low-E, low-SE,
+          // Sorella E) so the seven verticals slide past each other as
+          // coulisses — free parallax, no extra waypoints; the ~7.5s beat is
+          // retuned (1.562π/.324π/106) to put the name between the two sisters.
           const WP: [number,number,number][] = W2 ? [
             [Math.PI*1.4987, Math.PI*0.4387, 185.0], // 0s: seamless from the WP1 hold
             [Math.PI*1.6600, Math.PI*0.4050, 152.0], // ~3.8s: swing sun-side, cypress contre-jour, dome crowning the ridge
-            [Math.PI*1.5750, Math.PI*0.3300, 104.0], // ~7.5s: TYMPANUM BEAT — name in frame, dome + lantern above it
+            [Math.PI*1.5620, Math.PI*0.3240, 106.0], // ~7.5s: TYMPANUM BEAT — name framed BETWEEN the two tall sisters (Sette Sorelle), dome + lantern above; slightly more frontal/wider/higher than the pre-sorelle 1.575/.33/104 so both towers stay in frame
             [Math.PI*1.5000, Math.PI*0.3100,  90.0], // ~11.3s: frontal hold — full stacked massing (stair → parapet → drum → dome)
             [Math.PI*1.5000, Math.PI*0.2650,  63.0], // 15s: descend toward the door
           ] : [
