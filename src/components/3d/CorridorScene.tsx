@@ -10,7 +10,7 @@ import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD, EMBER } from "@/lib/3d/canon";
 import { flag3d } from "@/lib/3d/flags3d";
-import { EYE_HEIGHT, MAX_WALK_SPEED, MAX_YAW_DEG_S, easeInOutCubic } from "@/lib/3d/cameraComfort";
+import { EYE_HEIGHT, MAX_WALK_SPEED, SPRINT_SPEED, MAX_YAW_DEG_S, easeInOutCubic } from "@/lib/3d/cameraComfort";
 import { computeSalonHang, mountSalonHang, type SalonHangMount, type SalonMemoryRef } from "@/lib/3d/salonHang";
 import { createFocusMode, type FocusMode, type FocusTarget } from "@/lib/3d/focusMode";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
@@ -748,50 +748,65 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const sSide = si % 2 === 0 ? -1 : 1;
       if (sSide === -1) sconceZsSideMinus.push(sz);
     }
-    // ── W2 (WS5-5/6): SALON-HANG BOTH WALLS — one salon section per door bay,
-    // centred in its W1 baked light band (the band IS the "spot" above the
-    // piece). Data source unchanged: corridorPaintings = ONE curated memory per
-    // room (CorridorGalleryPanel/localStorage) — a SELECTION, not all room
-    // memories. Sections hang OPPOSITE each bay's door, so pieces alternate
-    // across BOTH walls; the colonnade side stands as framed easels in front of
-    // the columns. No caps: overflow reports via layout.omitted (maxPieces tier
-    // budget 4 mobile / 8 desktop per section).
-    type W2Slot={key:string;secGroup:THREE.Group;side:number;secZ:number;wallX:number;easelX:number;wall:{width:number;height:number};seed:number;mount:SalonHangMount|null;appliedUrl:string|null;appliedTitle?:string;aspect:number;roomLabel:string};
+    // ── W2 (WS5-5/6): SALON-HANG — one salon section per door bay, centred in
+    // its W1 baked light band (the band IS the "spot" above the piece). Data
+    // source unchanged: corridorPaintings = ONE curated memory per room
+    // (CorridorGalleryPanel/localStorage) — a SELECTION, not all room memories.
+    // Owner feedback 2026-08-06 (#3): the corridor easels are GONE — every
+    // piece is a wall-hung painting on the SOLID wall (side=-1); window bays
+    // have no wall run there, so those bays are simply skipped (their piece
+    // stays omitted — no free-standing colonnade stands). No caps: overflow
+    // reports via layout.omitted (maxPieces tier budget 4 mobile / 8 desktop).
+    type W2Slot={key:string;secGroup:THREE.Group;side:number;secZ:number;wallX:number;wall:{width:number;height:number};seed:number;mount:SalonHangMount|null;empty:{group:THREE.Group;dispose():void}|null;appliedUrl:string|null;appliedTitle?:string;aspect:number;roomLabel:string};
     const w2Slots=new Map<string,W2Slot>();
     const w2FocusTargets=new Map<string,FocusTarget>();
     const w2Quality:"low"|"med"|"high"=isMobileGPU()?"med":"high";
-    // Basic-material builds (Fraunces labels, makeArtwork pieces, easels) are
-    // DEFERRED past optimizeMaterials: its fingerprint ignores a
+    // Basic-material builds (Fraunces labels, makeArtwork pieces, empty frames)
+    // are DEFERRED past optimizeMaterials: its fingerprint ignores a
     // MeshBasicMaterial's map, so mount-time dedupe would collapse every label/
     // photo/plaque onto one texture. Deferral keeps them out of that pass.
     const w2Deferred:(()=>void)[]=[];
-    let w2LegGeo:THREE.BoxGeometry|null=null,w2LegMat:THREE.MeshStandardMaterial|null=null;
     const w2TexAspect=(tex?:THREE.Texture)=>{const im=tex?.image as {width?:number;height?:number}|undefined;return im&&im.width&&im.height?im.width/im.height:0;};
+    // Owner feedback 2026-08-06 (#3): the empty state is WALL-MOUNTED — a
+    // subtle canon frame (gold + bare PLASTER liner, makeArtwork proportions)
+    // with the existing t("hangFirstMemory") small on a Fraunces plaque
+    // beneath it. Replaces makeSalonEmptyEasel here; tap contract unchanged —
+    // the persistent invisible hit box still routes the click.
+    const makeW2EmptyFrame=()=>{
+      const g=new THREE.Group();
+      const fw=1.0,fh=.75,cy=EYE_HEIGHT; // frame centre on the salon sightline
+      const frameGeo=new THREE.BoxGeometry(fw+.14,fh+.14,.05);
+      const frameMat=new THREE.MeshStandardMaterial({color:GOLD,roughness:.28,metalness:.6});
+      const frame=new THREE.Mesh(frameGeo,frameMat);frame.position.set(0,cy,.025);
+      const linerGeo=new THREE.PlaneGeometry(fw,fh);
+      const linerMat=new THREE.MeshStandardMaterial({color:PLASTER,roughness:.9});
+      const liner=new THREE.Mesh(linerGeo,linerMat);liner.position.set(0,cy,.052);
+      const plaque=makeFrauncesLabel(t("hangFirstMemory"),{width:.85,height:.2}) as THREE.Mesh;
+      plaque.position.set(0,cy-fh/2-.26,.04);
+      g.add(frame,liner,plaque);
+      return {group:g,dispose(){
+        g.parent?.remove(g);
+        frameGeo.dispose();frameMat.dispose();linerGeo.dispose();linerMat.dispose();
+        plaque.geometry.dispose();
+        const pm=plaque.material as THREE.MeshBasicMaterial;pm.map?.dispose();pm.dispose();
+      }};
+    };
     const w2Remount=(slot:W2Slot)=>{
       slot.mount?.dispose();slot.mount=null;
+      slot.empty?.dispose();slot.empty=null;
       w2FocusTargets.delete(slot.key);
-      slot.secGroup.position.x=slot.appliedUrl?slot.wallX:slot.easelX; // empty easel steps off the solid wall so its rear leg never pierces it
-      const mems:SalonMemoryRef[]=slot.appliedUrl?[{id:slot.key,aspect:slot.aspect,title:slot.appliedTitle||slot.roomLabel}]:[];
+      if(!slot.appliedUrl){
+        slot.empty=makeW2EmptyFrame();
+        slot.secGroup.add(slot.empty.group);
+        return;
+      }
+      const mems:SalonMemoryRef[]=[{id:slot.key,aspect:slot.aspect,title:slot.appliedTitle||slot.roomLabel}];
       const layout=computeSalonHang(mems,slot.wall,{seed:slot.seed,maxPieces:isMobileGPU()?4:8,maxPieceWidth:1.9});
       slot.mount=mountSalonHang(layout,{
         getTexture:()=>(slot.appliedUrl?paintingTextureCache.get(slot.appliedUrl):undefined)||getPaintingPlaceholderTex(),
         quality:w2Quality,
-        emptyText:t("hangFirstMemory"),
         onPiece:(art,p)=>{
           art.group.userData={memory:{id:slot.key,title:slot.appliedTitle,url:slot.appliedUrl}};
-          if(slot.side===1){
-            // Colonnade side (WS5-6): the piece stands as a framed easel — two
-            // ink legs behind the frame (shared geo/mat, disposed at cleanup)
-            if(!w2LegGeo){w2LegGeo=new THREE.BoxGeometry(.05,1,.05);w2LegMat=new THREE.MeshStandardMaterial({color:INK,roughness:.85});}
-            for(const lx of[-1,1]){
-              const legLen=p.y+p.height*.2;
-              const leg=new THREE.Mesh(w2LegGeo,w2LegMat!);
-              leg.scale.y=legLen;
-              leg.position.set(lx*p.width*.38,-p.y+legLen/2,-.05);
-              leg.rotation.z=lx*.05;
-              art.group.add(leg);
-            }
-          }
           // WS5-8 focus target — world frame (secGroup rotY maps wall-local x → ∓z)
           w2FocusTargets.set(slot.key,{
             position:new THREE.Vector3(slot.wallX,p.y,slot.secZ+(slot.side===-1?-p.x:p.x)),
@@ -805,26 +820,27 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     if(W2)for(let i=0;i<rooms.length;i++){
       const sBz=cL/2-5.5-i*C.sp-C.sp*.5;
       if(sBz>cL/2-3||sBz<-cL/2+3)continue;
-      // Opposite the bay's door → pieces alternate BOTH walls; window bays on
-      // the solid wall (where W1 skips the band too) flip to the colonnade row.
-      let s=i%2===0?1:-1;
-      if(s===-1&&validWinPositions.some(wz=>Math.abs(sBz-wz)<winHalfGap+1.6))s=1;
+      // Owner feedback 2026-08-06 (#3): every section hangs on the SOLID wall
+      // (side=-1) — no colonnade easels. A bay whose solid-wall run holds a
+      // window has no wall space (above/beside the arch there is none), so the
+      // bay is skipped and its piece stays omitted — no contrived stand-ins.
+      const s=-1;
+      if(validWinPositions.some(wz=>Math.abs(sBz-wz)<winHalfGap+1.6))continue;
       const slotKey=rooms[i]?.id||`corridor-${wingId}-painting-${i}`;
       const secRoom=rooms[i];
       const roomLabel=secRoom?(secRoom.nameKey?tWings(secRoom.nameKey):secRoom.name):"";
       const secGroup=new THREE.Group();
-      const wallX=s===-1?-(cW/2-.07):cW/2-.5;
-      const easelX=s===-1?-(cW/2-.45):cW/2-.5;
-      secGroup.position.set(easelX,0,sBz);
-      secGroup.rotation.y=s===-1?Math.PI/2:-Math.PI/2;
+      const wallX=-(cW/2-.07);
+      secGroup.position.set(wallX,0,sBz);
+      secGroup.rotation.y=Math.PI/2;
       scene.add(secGroup);
       let seed=0x811c9dc5;const seedStr=wingId+"|"+slotKey;
       for(let k=0;k<seedStr.length;k++){seed^=seedStr.charCodeAt(k);seed=Math.imul(seed,0x01000193);}
-      w2Slots.set(slotKey,{key:slotKey,secGroup,side:s,secZ:sBz,wallX,easelX,wall:{width:Math.min(C.sp-2.6,2.9),height:Math.min(cH-1,4.4)},seed:seed>>>0,mount:null,appliedUrl:null,aspect:4/3,roomLabel});
+      w2Slots.set(slotKey,{key:slotKey,secGroup,side:s,secZ:sBz,wallX,wall:{width:Math.min(C.sp-2.6,2.9),height:Math.min(cH-1,4.4)},seed:seed>>>0,mount:null,empty:null,appliedUrl:null,aspect:4/3,roomLabel});
       // Persistent invisible hit box — raycast contract preserved: stable mesh
       // identity in paintingClickMeshes across remounts, userData.isPaintingSlot.
       const hit=new THREE.Mesh(new THREE.BoxGeometry(.5,3.6,Math.min(C.sp-2.6,2.9)),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
-      hit.position.set(s===-1?-(cW/2-.3):cW/2-.55,2.1,sBz);
+      hit.position.set(-(cW/2-.3),2.1,sBz);
       hit.userData={isPaintingSlot:true,slotKey};
       scene.add(hit);
       paintingClickMeshes.push({mesh:hit,slotKey});
@@ -926,7 +942,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const w2ApplyToSlot=(slotKey: string,url: string|undefined,title: string|undefined)=>{
       const slot=w2Slots.get(slotKey);if(!slot)return;
       if(!url){
-        if(!slot.appliedUrl&&slot.mount)return;
+        if(!slot.appliedUrl&&(slot.mount||slot.empty))return; // already showing the empty wall frame
         slot.appliedUrl=null;slot.appliedTitle=undefined;
         w2Remount(slot);return;
       }
@@ -2056,12 +2072,15 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
       if(!awTarget){
       if(W1){
-        // WS8-1/2 mercy kills: sprint is deleted — full input equals MAX_WALK_SPEED;
-        // manual input cancels a pending tap-travel. Footsteps while actually walking.
+        // WS8-1/2 comfort caps + owner overrule 2026-08-06: sprint is BACK as
+        // an explicit Shift modifier (comfort-capped SPRINT_SPEED, not the
+        // legacy 9 — same pattern as the hall). Manual input cancels a pending
+        // tap-travel. Footsteps while actually walking.
+        const w1Spd=(keys["shift"]?SPRINT_SPEED:MAX_WALK_SPEED)*dt;
         _dir.set(0,0,0);
         if(keys.w||keys.arrowup)_dir.z-=1;if(keys.s||keys.arrowdown)_dir.z+=1;
         if(keys.a||keys.arrowleft)_dir.x-=1;if(keys.d||keys.arrowright)_dir.x+=1;
-        if(_dir.length()>0){awClick.id=null;w2Focus?.cancel();_dir.normalize().multiplyScalar(MAX_WALK_SPEED*dt);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);playFootstep();}
+        if(_dir.length()>0){awClick.id=null;w2Focus?.cancel();_dir.normalize().multiplyScalar(w1Spd);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);playFootstep();}
       }else{
       const spd=(keys["shift"]?9:3)*dt;_dir.set(0,0,0);
       if(keys.w||keys.arrowup)_dir.z-=1;if(keys.s||keys.arrowdown)_dir.z+=1;
@@ -2248,9 +2267,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // makeArtwork's shared (module-cached) frame/liner/glow materials are
       // detached from the scene and survive for other scenes/mounts.
       w2Focus?.dispose();
-      w2Slots.forEach(sl=>{sl.mount?.dispose();sl.mount=null;});
+      w2Slots.forEach(sl=>{sl.mount?.dispose();sl.mount=null;sl.empty?.dispose();sl.empty=null;});
       w2FocusTargets.clear();
-      w2LegGeo?.dispose();w2LegMat?.dispose();
       const _cachedSet=buildCachedTextureSet();
       const _cachedMats=buildCachedMaterialSet();
       scene.traverse((obj: any) => {
