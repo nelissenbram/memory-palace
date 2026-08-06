@@ -226,10 +226,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
     const envMapProc=createExteriorEnvMap(ren,{sunIntensity:0.9*dlPreset.sunIntensity,skyBrightness:0.7*dlPreset.envBrightness/0.45});
     scene.environment=envMapProc;
-    scene.environmentIntensity=0.6;
+    // Owner feedback 2026-08-06 #6A (contrast): under W1 the IBL fill comes down a
+    // step so shadow sides deepen — contrast lives in the light RATIO, never in a
+    // per-scene exposure tweak (the one-grade law stands).
+    const ENV_INT=W1?0.5:0.6, ENV_INT_HDRI=W1?0.55:0.7;
+    scene.environmentIntensity=ENV_INT;
     let envMapHDRI: THREE.Texture|null=null;
     let bgMapHDRI: THREE.Texture|null=null;
-    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_EXTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=0.6;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.7;}}).catch(()=>{});}
+    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_EXTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=ENV_INT;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=ENV_INT_HDRI;}}).catch(()=>{});}
     // Load Rolling Hills HDRI as background panorama — warm sunrise over dry grassy hilltops (Tuscan feel)
     // Skipped on mobile (6.5 MB) — the procedural sky sphere provides adequate background
     if(Q.loadBackgroundHDRI){loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});}
@@ -289,14 +293,24 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     };
 
     // Dramatic golden-hour lighting
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,0.6*dlPreset.ambientIntensity/0.5));
-    const sun=new THREE.DirectionalLight(dlPreset.sunColor,3.2*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
+    // ══ Owner feedback 2026-08-06 #6A — CONTRAST, inside the one-grade law ══
+    // The grade (NeutralToneMapping @ canon EXPOSURE in the shared EffectPass)
+    // is untouched. Contrast comes from the light RATIO instead: sun up ~35%,
+    // hemisphere/fill/bounce down ~45%, and a tighter shadow frustum (sharper
+    // shadow texels over the palace instead of a 160m blur). Lit faces stay
+    // golden; shadow sides finally fall away — the palace reads sculptural
+    // against the sky instead of bathing evenly in gold. W1-gated (staging
+    // iteration inside the wave); flag OFF keeps the legacy balance.
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?0.36:0.6)*dlPreset.ambientIntensity/0.5));
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,(W1?4.4:3.2)*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
+    const shadowExt=W1?58:80; // W1: frustum hugs palace+wings+courtyard — crisper, deeper shadows
     sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
-    sun.shadow.camera.left=-80;sun.shadow.camera.right=80;sun.shadow.camera.top=80;sun.shadow.camera.bottom=-80;sun.shadow.bias=-0.0003;scene.add(sun);
-    const fill=new THREE.DirectionalLight(dlPreset.fillColor,0.4*dlPreset.fillIntensity/0.35);fill.position.set(-25,20,-15);scene.add(fill);
-    if(!isMobileGPU()){const rim=new THREE.DirectionalLight(dlPreset.sunColor,0.8*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);}
-    // Warm uplight for drama
-    if(!isMobileGPU()){const uplight=new THREE.PointLight(dlPreset.fillColor,.4*dlPreset.fillIntensity/0.35,80);uplight.position.set(0,2,0);scene.add(uplight);}
+    sun.shadow.camera.left=-shadowExt;sun.shadow.camera.right=shadowExt;sun.shadow.camera.top=shadowExt;sun.shadow.camera.bottom=-shadowExt;sun.shadow.bias=-0.0003;scene.add(sun);
+    const fill=new THREE.DirectionalLight(dlPreset.fillColor,(W1?0.22:0.4)*dlPreset.fillIntensity/0.35);fill.position.set(-25,20,-15);scene.add(fill);
+    // Rim slightly up under W1: golden-hour edge on the dome/cornice silhouette
+    if(!isMobileGPU()){const rim=new THREE.DirectionalLight(dlPreset.sunColor,(W1?1.0:0.8)*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);}
+    // Warm uplight for drama — W1: halved so courtyard-facing shadow walls stay dim
+    if(!isMobileGPU()){const uplight=new THREE.PointLight(dlPreset.fillColor,(W1?.18:.4)*dlPreset.fillIntensity/0.35,80);uplight.position.set(0,2,0);scene.add(uplight);}
     if(!isMobileGPU()){const porticoWarm=new THREE.SpotLight("#FFE0A0",0.3,60,Math.PI*0.3);porticoWarm.position.set(0,2,-20);porticoWarm.target.position.set(0,5,0);scene.add(porticoWarm);scene.add(porticoWarm.target);}
 
     const M={
@@ -461,6 +475,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     scene.add(medallion);
 
     const palace=new THREE.Group(),clickTargets: THREE.Mesh[]=[];
+    // Owner feedback 2026-08-06 #6B: under W2 the exterior is no longer a click-hub.
+    // Wing hit-boxes move OUT of the raycast list into these anchors — they still
+    // feed targetWorldPos (walkthrough highlightDoor light keeps working) but no
+    // click target fires onRoomClick for a wing anymore; wings are reached through
+    // the entrance hall. The onRoomClick/onRoomHover props and contracts are unchanged.
+    const wingAnchors: THREE.Mesh[]=[];
     palace.position.y=HILL_Y+0.3; // Elevate palace slightly above terrain to prevent clipping
     // Track each section group for split/lift animation: {group, id, targetY, currentY, meshes}
     const sectionGroups: {group:THREE.Group,id:string,targetY:number,currentY:number,meshes:THREE.Mesh[],accent:string}[]=[];
@@ -854,6 +874,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.3, 0.15, vD + 0.3), M.trim, 0, vH + 1.3, 0));
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.3, 0.15, vD + 0.3), M.trim, 0, 1.3 + vH * 0.5, 0));
 
+    // ══ W2 grandeur pass (owner feedback 2026-08-06 #6B) — EAVE PARAPET RING ══
+    // Raises the cornice line of the central block: a plaster parapet with
+    // travertine cap and corner piers ringing the ROOF EAVE (outside the
+    // overhang, so it never cuts the hipped tile slopes — Villa Rotonda-style
+    // roof balustrade). The massing now steps: stair → facade → parapet ring →
+    // roof ridge → crossing attic → drum → dome → lantern.
+    // Shared canon materials, 12 static meshes, no new lights.
+    if (W2) {
+      const parX = vW / 2 + 1.45, parZ = vD / 2 + 1.15, parY = vH + 1.9; // eave line
+      for (const s of [-1, 1]) {
+        // Front/back parapet walls + caps
+        centralGroup.add(mk(new THREE.BoxGeometry(parX * 2 + 0.4, 0.8, 0.35), M.stoneL, 0, parY, s * parZ));
+        centralGroup.add(mk(new THREE.BoxGeometry(parX * 2 + 0.7, 0.14, 0.5), M.trim, 0, parY + 0.45, s * parZ));
+        // Side parapet walls + caps
+        centralGroup.add(mk(new THREE.BoxGeometry(0.35, 0.8, parZ * 2 + 0.4), M.stoneL, s * parX, parY, 0));
+        centralGroup.add(mk(new THREE.BoxGeometry(0.5, 0.14, parZ * 2 + 0.7), M.trim, s * parX, parY + 0.45, 0));
+      }
+      // Corner piers
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        centralGroup.add(mk(new THREE.BoxGeometry(0.7, 1.1, 0.7), M.trim, sx * parX, parY + 0.1, sz * parZ));
+      }
+    }
+
     // Arched windows on central domus walls (front and back)
     const waterStainMat = new THREE.MeshStandardMaterial({ color: "#8A7860", roughness: 0.95, transparent: true, opacity: 0.15 });
     for (let wi = 0; wi < 3; wi++) {
@@ -1085,6 +1128,23 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.2), M.trim,  2.8, 7.25, -(vD / 2 + 0.18)));
     // Threshold / entrance step
     centralGroup.add(mk(new THREE.BoxGeometry(5.5, 0.2, 1.5), M.marble, 0, 1.2, -(vD / 2 + 0.8)));
+
+    // ══ W2 grandeur pass (owner feedback 2026-08-06 #6B) — MONUMENTAL STAIR ══
+    // A widening marble cascade from the portico platform down to the courtyard:
+    // the royal approach to the ONE door. Widths are capped at 15 so the lowest
+    // tread clears the wing-2/3 gallery foundations that flank the forecourt
+    // (perp distance > 4.5 at every tread corner). Two travertine plinths with
+    // bronze urns flank the foot of the stair. Shared materials, 10 meshes.
+    if (W2) {
+      for (let si = 0; si < 4; si++) {
+        centralGroup.add(mk(new THREE.BoxGeometry(12 + si, 0.22, 1.5), M.marble, 0, 0.92 - si * 0.21, -(15.6 + si * 1.05)));
+      }
+      for (const s of [-1, 1]) {
+        centralGroup.add(mk(new THREE.BoxGeometry(1.7, 1.6, 1.7), M.trim, s * 9.4, 0.85, -21.2));
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.42, 0.62, 1.15, 10), M.bronze, s * 9.4, 2.25, -21.2));
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.55, 0.38, 0.35, 10), M.bronze, s * 9.4, 3.0, -21.2));
+      }
+    }
 
     // ── WALL SCONCES — central domus front face (-Z) ──
     for (const [x, y] of [[-8, vH * 0.4 + 1.3], [-3, vH * 0.4 + 1.3], [3, vH * 0.4 + 1.3], [8, vH * 0.4 + 1.3]] as [number, number][]) {
@@ -1444,10 +1504,21 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze,  (vW / 2 + 0.5), vH + 1.85, 0));
 
     // ── PANTHEON-STYLE DOME (critical for transition coherence) ──
-    const rDomeR = 8;
-    // Drum base (slightly wider, 3.5m tall)
-    const rDrumR = 8.5, rDrumH = 3.5;
-    const drumBaseY = vH + 1.8;
+    // ══ W2 grandeur pass (owner feedback 2026-08-06 #6B) — THE DOME IS THE HERO ══
+    // The entrance-hall dome must dominate the silhouette: under W2 it gains a
+    // square crossing attic that lifts the whole assembly ~3 units, a taller and
+    // wider drum (tamboer) with a full ring of tall windows, a larger dome shell
+    // and a proper lantern on top. "Slightly unreal" proportions are deliberate
+    // (owner brief); materials stay canon, geometry counts stay flat (same
+    // pilaster/window/rib loops at bigger dimensions).
+    const rDomeR = W2 ? 8.8 : 8;
+    const rDrumR = W2 ? 9.2 : 8.5, rDrumH = W2 ? 5.2 : 3.5;
+    const drumBaseY = W2 ? vH + 4.6 : vH + 1.8;
+    if (W2) {
+      // Square crossing attic carrying the raised drum (rises through the roof)
+      centralGroup.add(mk(new THREE.BoxGeometry(19, 3.4, 17.4), ochreWall, 0, vH + 3.0, 0));
+      centralGroup.add(mk(new THREE.BoxGeometry(19.8, 0.3, 18.2), M.trim, 0, vH + 4.55, 0));
+    }
     centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR, rDrumR + 0.3, rDrumH, 32), ochreWall, 0, drumBaseY + rDrumH / 2, 0));
     // Drum base cornice — wider band at bottom of drum
     centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR + 0.4, rDrumR + 0.6, 0.2, 32), M.trim, 0, drumBaseY + 0.1, 0));
@@ -1461,18 +1532,21 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       pilaster.rotation.y = pa;
       centralGroup.add(pilaster);
     }
-    // Drum windows — taller for elegant proportions (0.7×1.6)
+    // Drum windows — W2: a full tamboer window ring (1.05×2.9) so the golden-hour
+    // glass reads as a glowing band under the dome; legacy 0.7×1.6
     for (let dw = 0; dw < 12; dw++) {
       const da = (dw / 12) * Math.PI * 2;
-      centralGroup.add(mk(new THREE.BoxGeometry(0.7, 1.6, 0.12), M.win,
+      centralGroup.add(mk(new THREE.BoxGeometry(W2 ? 1.05 : 0.7, W2 ? 2.9 : 1.6, 0.12), M.win,
         Math.cos(da) * (rDrumR + 0.05), drumBaseY + rDrumH * 0.6, Math.sin(da) * (rDrumR + 0.05)));
     }
-    // Hemispherical dome — W1: verdigris teal is off-canon; aged sun-struck bronze instead
+    // Hemispherical dome — W1: verdigris teal is off-canon; aged sun-struck bronze instead.
+    // W2 grandeur: roughness down / env response up so the golden PMREM + rim light
+    // draw a bright golden-hour edge along the dome curvature (no new lights needed).
     const domeMat = new THREE.MeshStandardMaterial({
-      color: W1 ? '#8A6F52' : '#6B9A85', roughness: 0.65, metalness: W1 ? 0.45 : 0.35,
+      color: W1 ? '#8A6F52' : '#6B9A85', roughness: W2 ? 0.5 : 0.65, metalness: W1 ? 0.45 : 0.35,
       normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(1.2, 1.2),
       roughnessMap: clayPlasterTex.roughnessMap,
-      envMapIntensity: W1 ? 0.85 : 0.7,
+      envMapIntensity: W2 ? 1.15 : (W1 ? 0.85 : 0.7),
     });
     extraDisposables.push(domeMat);
     const rDome = new THREE.Mesh(
@@ -1490,7 +1564,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const phi = (seg / 5) * (Math.PI * 0.45); // equator toward apex
         const ribR = rDomeR * Math.cos(phi) * 0.95;
         const ribY = rDomeR * Math.sin(phi);
-        const rib = mk(new THREE.BoxGeometry(0.18, 0.12, 0.5), M.stoneD,
+        const rib = mk(new THREE.BoxGeometry(W2 ? 0.22 : 0.18, W2 ? 0.14 : 0.12, W2 ? 0.85 : 0.5), M.stoneD,
           Math.cos(ra) * ribR, domeOriginY + ribY, Math.sin(ra) * ribR);
         rib.rotation.y = ra;
         rib.rotation.z = -phi;
@@ -1501,16 +1575,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.CylinderGeometry(1.5, 1.5, 0.15, 24), M.stoneD, 0, drumBaseY + rDrumH + rDomeR + 0.1, 0));
     // Oculus rim — thicker tube for bold gold band
     centralGroup.add(mk(new THREE.TorusGeometry(1.5, 0.18, 8, 24), M.gold, 0, drumBaseY + rDrumH + rDomeR + 0.2, 0));
-    // Lantern above oculus — cylinder with 6 tiny windows, cone roof, gold finial
+    // Lantern above oculus — cylinder with 6 windows, cone roof, gold finial.
+    // W2 grandeur: a real lantaarn (wider, taller, bigger glass + finial) so the
+    // silhouette crowns properly at distance; same mesh count as legacy.
     const lanternY = drumBaseY + rDrumH + rDomeR + 0.35;
-    centralGroup.add(mk(new THREE.CylinderGeometry(0.8, 0.8, 1.5, 16), M.stoneL, 0, lanternY + 0.75, 0));
+    const lanR = W2 ? 1.3 : 0.8, lanH = W2 ? 2.6 : 1.5;
+    centralGroup.add(mk(new THREE.CylinderGeometry(lanR, lanR, lanH, 16), M.stoneL, 0, lanternY + lanH / 2, 0));
     for (let lw = 0; lw < 6; lw++) {
       const lwa = (lw / 6) * Math.PI * 2;
-      centralGroup.add(mk(new THREE.BoxGeometry(0.25, 0.55, 0.1), M.win,
-        Math.cos(lwa) * 0.82, lanternY + 0.75, Math.sin(lwa) * 0.82));
+      centralGroup.add(mk(new THREE.BoxGeometry(W2 ? 0.45 : 0.25, W2 ? 1.2 : 0.55, 0.1), M.win,
+        Math.cos(lwa) * (lanR + 0.02), lanternY + lanH / 2, Math.sin(lwa) * (lanR + 0.02)));
     }
-    centralGroup.add(mk(new THREE.ConeGeometry(0.6, 1.0, 16), M.trim, 0, lanternY + 1.5 + 0.5, 0));
-    centralGroup.add(mk(new THREE.SphereGeometry(0.18, 12, 8), M.goldBright, 0, lanternY + 2.05, 0));
+    centralGroup.add(mk(new THREE.ConeGeometry(W2 ? 1.15 : 0.6, W2 ? 1.7 : 1.0, 16), M.trim, 0, lanternY + lanH + (W2 ? 0.85 : 0.5), 0));
+    centralGroup.add(mk(new THREE.SphereGeometry(W2 ? 0.3 : 0.18, 12, 8), M.goldBright, 0, lanternY + lanH + (W2 ? 1.85 : 0.55), 0));
 
     // ── DISTANT ROMAN ELEMENTS ──
     // (Aqueduct moved to landscape section where atmosColor is available)
@@ -1543,7 +1620,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if (child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) centralBodyMeshes.push(child);
     });
     palace.add(centralGroup);
-    entrClickRadius = 12; entrClickHeight = vH + rDrumH + rDomeR + 4;
+    // W2 grandeur: the raised crossing lifts the dome ~3 units — the tap-is-travel
+    // cylinder grows with it so the whole silhouette stays one big entrance target.
+    entrClickRadius = 12; entrClickHeight = vH + rDrumH + rDomeR + (W2 ? 7 : 4);
 
     // ══════════════════════════════════════════
     // 5 ROMAN VILLA WINGS — colonnaded galleries with arched arcades & tower pavilions
@@ -1873,7 +1952,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       ct.position.set(0, eH / 2 + 2, -(tLen + 2) / 2);
       ct.userData = { roomId: def.room.id, wingMeshes, accent: def.room.accent };
       wg.add(ct);
-      clickTargets.push(ct);
+      // W2 grandeur pass (owner feedback 2026-08-06 #6B): wings are no longer
+      // clickable from the exterior — the hit-box becomes a position anchor only
+      // (targetWorldPos → walkthrough highlight light). Wings are entered via
+      // the entrance hall; onRoomClick contract untouched, just never fired here.
+      if (W2) wingAnchors.push(ct); else clickTargets.push(ct);
     });
     } // end else (Roman castle)
 
@@ -3050,7 +3133,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // it and the 12 idle per-wing PointLights. Replacement: ONE shared ember hover
     // light + ONE shared gold walkthrough light, repositioned on state CHANGE only.
     const targetWorldPos=new Map<string,THREE.Vector3>();
-    clickTargets.forEach((ct: any)=>{const pos=new THREE.Vector3();ct.getWorldPosition(pos);targetWorldPos.set(ct.userData.roomId,pos);});
+    [...clickTargets,...wingAnchors].forEach((ct: any)=>{const pos=new THREE.Vector3();ct.getWorldPosition(pos);targetWorldPos.set(ct.userData.roomId,pos);});
 
     // ══ W2 (WS3-10/11) — persistent travertine signposts in Fraunces ink ══
     // Always-visible wayfinding replacing the hover-only label: a travertine
@@ -3059,6 +3142,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // clickTargets under the same roomId — so a signpost tap runs the exact
     // wing/entrance tap contract, and the W1 ember hover light answers hover.
     // Unlit label (MeshBasicMaterial) + existing materials: zero new lights.
+    // ── Owner feedback 2026-08-06 #6B: the click-hub is retired. Per-wing
+    // signposts are DISABLED — the exterior has one goal, the monumental
+    // entrance; wings are reached through the entrance hall. The machinery is
+    // kept behind this const so the W2 wayfinding can be restored in one flip.
+    const WING_SIGNPOSTS_ENABLED=false;
     if(W2){
       const addSignpost=(id: string,label: string,sx: number,sz: number,ry: number)=>{
         const g=new THREE.Group();
@@ -3074,15 +3162,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         g.add(hit);clickTargets.push(hit);
         scene.add(g);
       };
-      WINGS.forEach((wing: Wing)=>{
-        const p=targetWorldPos.get(wing.id);if(!p)return;
-        const r0=Math.hypot(p.x,p.z)||1;
-        // Beside the wing (perpendicular offset clears the portico), facing the courtyard
-        const sx=p.x+(-p.z/r0)*6.5,sz=p.z+(p.x/r0)*6.5;
-        addSignpost(wing.id,wing.name,sx,sz,Math.atan2(-sx,-sz));
-      });
-      // Entrance signpost flanks the vestibule approach, facing the arrival path
-      addSignpost(entranceId,entranceHallLabelRef.current,5.2,-17,Math.PI);
+      if(WING_SIGNPOSTS_ENABLED){
+        WINGS.forEach((wing: Wing)=>{
+          const p=targetWorldPos.get(wing.id);if(!p)return;
+          const r0=Math.hypot(p.x,p.z)||1;
+          // Beside the wing (perpendicular offset clears the portico), facing the courtyard
+          const sx=p.x+(-p.z/r0)*6.5,sz=p.z+(p.x/r0)*6.5;
+          addSignpost(wing.id,wing.name,sx,sz,Math.atan2(-sx,-sz));
+        });
+      }
+      // Entrance signpost stays (tremor-friendly named tap target) — moved off
+      // the new monumental stair to the left flank of its foot, facing arrival.
+      addSignpost(entranceId,entranceHallLabelRef.current,-7.2,-20.4,Math.PI);
     }
     const hoverLights: {light:THREE.PointLight,targetIntensity:number,wingId:string}[]=[];
     let w1HoverLight: THREE.PointLight|null=null;
@@ -3260,7 +3351,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const SHOT=2.4,FADE=.5;
           const stills: [number,number,number][]=[
             [Math.PI*1.4987,Math.PI*0.4387,180],
-            [Math.PI*1.5,Math.PI*0.33,95],
+            [Math.PI*1.5,Math.PI*0.315,102], // grandeur: higher + wider so dome apex + name share the frame
             [Math.PI*1.5,Math.PI*0.22,35],
           ];
           const si=Math.min(Math.floor(ot/SHOT),2);
@@ -3297,12 +3388,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // door. Same Catmull-Rom machinery, same Skip/pause/resume contract;
           // yaw stays under the shared MAX_YAW_DEG_S clamp applied below.
           // Legacy (flag off): 5-waypoint flyover, 7s + 3.8s zoom.
+          // Grandeur retune (owner feedback 2026-08-06 #6B-4): the dolly now serves
+          // the raised dome — beats 2-4 ride slightly higher and a touch wider so
+          // the lantern-crowned silhouette dominates the frame; the TYMPANUM BEAT
+          // stays at ~7.5s (name legible), then the descent to the one door.
           const WP: [number,number,number][] = W2 ? [
             [Math.PI*1.4987, Math.PI*0.4387, 185.0], // 0s: seamless from the WP1 hold
-            [Math.PI*1.6600, Math.PI*0.4150, 150.0], // ~3.8s: swing sun-side, cypress contre-jour
-            [Math.PI*1.5750, Math.PI*0.3450, 100.0], // ~7.5s: TYMPANUM BEAT — name flares in frame
-            [Math.PI*1.5000, Math.PI*0.3200,  84.0], // ~11.3s: frontal hold on the name
-            [Math.PI*1.5000, Math.PI*0.2700,  62.0], // 15s: descend toward the door
+            [Math.PI*1.6600, Math.PI*0.4050, 152.0], // ~3.8s: swing sun-side, cypress contre-jour, dome crowning the ridge
+            [Math.PI*1.5750, Math.PI*0.3300, 104.0], // ~7.5s: TYMPANUM BEAT — name in frame, dome + lantern above it
+            [Math.PI*1.5000, Math.PI*0.3100,  90.0], // ~11.3s: frontal hold — full stacked massing (stair → parapet → drum → dome)
+            [Math.PI*1.5000, Math.PI*0.2650,  63.0], // 15s: descend toward the door
           ] : [
             [Math.PI*1.4987, Math.PI*0.4387, 180.0], // 1: wide establishing shot
             [Math.PI*1.6197, Math.PI*0.3967, 175.0], // 2: pan right & up
@@ -3370,7 +3465,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       camO.current.phi+=_dPh;
       const r=camD.current;
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
-      camera.lookAt(0,HILL_Y+8,0);
+      // W2 grandeur: look target rises 2 units with the raised dome so the
+      // silhouette (lantern included) sits properly in frame at every distance.
+      camera.lookAt(0,HILL_Y+(W2?10:8),0);
 
       // ── Camera debug overlay (activated via ?cam=debug) ──
       if(camDebugRef.current){
