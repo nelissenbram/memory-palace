@@ -286,7 +286,8 @@ function EntranceHallScene({
     const dlPreset = getLightingPreset();
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(dlPreset.fogColor);
-    scene.fog = new THREE.FogExp2(dlPreset.fogColor, 0.006 * dlPreset.fogDensity);
+    // Owner feedback r2 (2026-08-06): thinner golden haze — depth back, no "gouden melk".
+    scene.fog = new THREE.FogExp2(dlPreset.fogColor, (w1 ? 0.0042 : 0.006) * dlPreset.fogDensity);
 
     const Q = getQuality();
     let alive = true;
@@ -298,6 +299,8 @@ function EntranceHallScene({
     const W2 = w2;
     const reduceMotion = prefersReducedMotion();
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
+    // Owner feedback r2: env fill moderated under W1 (key-vs-ambient ratio up).
+    const ENV_INT = W1 ? 0.28 : 0.35;
     // Persistent hall owns its renderer (mirrors ExteriorScene); transient
     // corridor/interior keep borrowing the shared pool untouched.
     let _ownRenderer = false;
@@ -333,12 +336,12 @@ function EntranceHallScene({
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
     const envMapProc = createInteriorEnvMap(ren, { warmth: dlPreset.envWarmth, brightness: dlPreset.envBrightness });
     scene.environment = envMapProc;
-    scene.environmentIntensity = 0.35;
+    scene.environmentIntensity = ENV_INT;
     let envMapHDRI: THREE.Texture | null = null;
     if (Q.loadEnvHDRI) {
       loadHDRIProgressive(ren, HDRI_INTERIOR, {
-        onProcedural: (p) => { if (!alive) return; scene.environment = p; scene.environmentIntensity = 0.35; },
-        onFull: (hdr) => { if (!alive) { releaseEnvMap(hdr); return; } envMapHDRI = hdr; scene.environment = hdr; scene.environmentIntensity = 0.35; },
+        onProcedural: (p) => { if (!alive) return; scene.environment = p; scene.environmentIntensity = ENV_INT; },
+        onFull: (hdr) => { if (!alive) { releaseEnvMap(hdr); return; } envMapHDRI = hdr; scene.environment = hdr; scene.environmentIntensity = ENV_INT; },
       }).catch(() => {}); // keep procedural fallback
     }
 
@@ -361,7 +364,7 @@ function EntranceHallScene({
     // Archetype materials — module-cached so compiled shader programs survive scene
     // transitions. Parameter-keyed on the daylight-preset values used below (lightBeam);
     // the rest are constant. Per-door materials stay per-mount and are disposed normally.
-    const msKey = `entrance|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    const msKey = `entrance|zf1|${dlPreset.sunColor}|${dlPreset.sunIntensity}`; // zf1: floorAccent polygonOffset (cache-bust)
     const MS = acquireMaterialSet(msKey, () => ({
       marble: mkPhys(THREE,{ color: "#F5F0E8", roughness: 0.12, metalness: 0.0, envMapIntensity: 1.0, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.4, .4), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.3, clearcoatRoughness: 0.15, reflectivity: 0.7 }),
       marbleWarm: mkPhys(THREE,{ color: "#EDE5D8", roughness: 0.18, metalness: 0.0, envMapIntensity: 0.9, map: floorTileTex.map, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: floorTileTex.roughnessMap, aoMap: floorTileTex.aoMap, aoMapIntensity: 0.7, clearcoat: 0.2, clearcoatRoughness: 0.2 }),
@@ -376,7 +379,7 @@ function EntranceHallScene({
       domeGold: mkPhys(THREE,{ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
       floor: mkPhys(THREE,{ color: "#E8DDD0", roughness: 0.35, metalness: 0.02, envMapIntensity: 0.2, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.15, clearcoatRoughness: 0.4, reflectivity: 0.25 }),
       floorDark: mkPhys(THREE,{ color: "#C4B8A0", roughness: 0.4, metalness: 0.02, envMapIntensity: 0.18, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.2, .2), clearcoat: 0.1, clearcoatRoughness: 0.45, reflectivity: 0.2 }),
-      floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.9 }),
+      floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
       bust: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.7, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
       bronze: mkPhys(THREE,{ color: "#8A7050", roughness: 0.25, metalness: 0.8, envMapIntensity: 1.1, clearcoat: 0.2, clearcoatRoughness: 0.3 }),
       wall: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.2, .2), roughnessMap: wallTex.roughnessMap }),
@@ -430,7 +433,9 @@ function EntranceHallScene({
     // Warm sky + terracotta ground bounce (WS1-6): the near-black #1A0F05
     // ground and 0.15 intensity were a main cause of the "eerie" hall.
     // (W2/WS7-10: `hemi` is captured so focus mode can dim it 15% — same rig.)
-    const hemi = new THREE.HemisphereLight(dlPreset.ambientColor, dlPreset.groundBounceColor, (W1 ? 0.55 : 0.4) * dlPreset.ambientIntensity / 0.5);
+    // Owner feedback r2: hemi 0.55→0.34 — ambient down so the oculus key carves depth
+    // (same ratio shift the exterior just took: hemi 0.6→0.36).
+    const hemi = new THREE.HemisphereLight(dlPreset.ambientColor, dlPreset.groundBounceColor, (W1 ? 0.34 : 0.4) * dlPreset.ambientIntensity / 0.5);
     scene.add(hemi);
     const hemiBase = hemi.intensity;
     if (!W1) {
@@ -455,21 +460,23 @@ function EntranceHallScene({
     }
     // Oculus key spot — under w1_hall this is THE one shadow in the hall:
     // static 1024 map, normalBias 0.03, radius 6 (budget law; autoUpdate=false above).
-    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, (W1 ? 2.8 : 2.4) * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
+    // Owner feedback r2: key 2.8→3.9 (~exterior's zon 3.2→4.4) — the shaft reads again.
+    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, (W1 ? 3.9 : 2.4) * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
     oculusSpot.position.set(0, TOTAL_H - 1, 0);
     oculusSpot.target.position.set(0, 0, 0);
     oculusSpot.castShadow = true;
     if (W1) {
       oculusSpot.shadow.mapSize.set(1024, 1024);
       oculusSpot.shadow.normalBias = 0.03;
-      oculusSpot.shadow.radius = 6;
+      oculusSpot.shadow.radius = 4; // r2: crisper shadow edge now the key is stronger
     } else {
       oculusSpot.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
     }
     scene.add(oculusSpot);
     scene.add(oculusSpot.target);
     // Secondary warm fill from oculus (warm point 1 of max 2 under w1_hall)
-    const oculusFill = new THREE.PointLight(dlPreset.fillColor, (W1 ? 0.9 : 0.7) * dlPreset.sunIntensity, 40);
+    // Owner feedback r2: fill 0.9→0.55 — the flat gold wash came from here.
+    const oculusFill = new THREE.PointLight(dlPreset.fillColor, (W1 ? 0.55 : 0.7) * dlPreset.sunIntensity, 40);
     oculusFill.position.set(0, TOTAL_H - 2, 0);
     scene.add(oculusFill);
     const oculusFillBase = oculusFill.intensity;
@@ -481,22 +488,23 @@ function EntranceHallScene({
     floorMesh.receiveShadow = true;
     scene.add(floorMesh);
 
-    // Radial floor rings
+    // Radial floor rings — z-fight sweep r2: lifted (0.003→0.005) and the shared
+    // floorAccent material carries polygonOffset against the grazing-angle floor.
     for (let r = 2; r < RADIUS; r += 3) {
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(r, r + 0.15, 64),
         MS.floorAccent
       );
       ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.003;
+      ring.position.y = 0.005;
       ring.receiveShadow = true;
       scene.add(ring);
     }
-    // Radial spokes
+    // Radial spokes — r2: lifted above the ring plane (top 0.011 vs ring 0.005)
     for (let i = 0; i < 12; i++) {
       const angle = (i / 12) * Math.PI * 2;
       const spoke = mk(new THREE.BoxGeometry(0.1, 0.004, RADIUS - 2), MS.floorAccent,
-        Math.sin(angle) * (RADIUS / 2 - 1), 0.004, Math.cos(angle) * (RADIUS / 2 - 1));
+        Math.sin(angle) * (RADIUS / 2 - 1), 0.009, Math.cos(angle) * (RADIUS / 2 - 1));
       spoke.rotation.y = -angle;
       scene.add(spoke);
     }
@@ -838,8 +846,10 @@ function EntranceHallScene({
       gctx.fillRect(0, 0, 128, 128);
       const glowTex = new THREE.CanvasTexture(gc);
       glowTex.colorSpace = THREE.SRGBColorSpace;
-      w1GlowSpriteMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
-      w1PoolMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false });
+      // r2: baked compensation eases off (0.5→0.42 / 0.35→0.28) now the key is stronger;
+      // polygonOffset keeps the floor pool clear of the mosaic Greek-key tops (z-fight).
+      w1GlowSpriteMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false });
+      w1PoolMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
       w1PoolGeo = new THREE.PlaneGeometry(4.2, 4.2);
       w1InkCasingMat = new THREE.MeshStandardMaterial({ color: INK, roughness: 0.6, metalness: 0.0, envMapIntensity: 0.4 });
       // Ember hover outline plane — the ONLY interactive accent (dogma 3); moved to
@@ -853,10 +863,12 @@ function EntranceHallScene({
       // Gold walkthrough ring decal (no PointLight)
       w1HlRing = new THREE.Mesh(
         new THREE.RingGeometry(1.1, 1.45, 48),
-        new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0, depthWrite: false })
+        // z-fight sweep r2: offset + lifted above the floor decal stack (spokes 0.011)
+        new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })
       );
       w1HlRing.rotation.x = -Math.PI / 2;
-      w1HlRing.position.y = 0.02;
+      w1HlRing.position.y = 0.04;
+      w1HlRing.renderOrder = 1;
       scene.add(w1HlRing);
     }
 
@@ -1136,7 +1148,10 @@ function EntranceHallScene({
         if (w1PoolMat && w1PoolGeo) {
           const pool = new THREE.Mesh(w1PoolGeo, w1PoolMat);
           pool.rotation.x = -Math.PI / 2;
-          pool.position.set(dx + inN.x * 1.7, 0.012, dz + inN.z * 1.7);
+          // z-fight sweep r2: 0.012 tied the Greek-key border tops exactly (also 0.012);
+          // 0.024 clears the key (0.012) and stays under the threshold bottom (0.03).
+          pool.position.set(dx + inN.x * 1.7, 0.024, dz + inN.z * 1.7);
+          pool.renderOrder = 1; // deterministic order among stacked floor decals
           scene.add(pool);
         }
       }
@@ -1555,20 +1570,23 @@ function EntranceHallScene({
       if (W2) {
         w2CausticA = makeCausticsTexture(isMobileGPU() ? 128 : 256);
         const cGeo = new THREE.PlaneGeometry(implW - 0.4, implD - 0.4);
-        const mkCaustic = (tex: THREE.Texture, op: number, y: number) => {
+        // z-fight sweep r2: explicit renderOrder — the two caustic layers always
+        // draw AFTER the alpha-blended water surface (no distance-sort flicker).
+        const mkCaustic = (tex: THREE.Texture, op: number, y: number, order: number) => {
           const m = new THREE.Mesh(cGeo, new THREE.MeshBasicMaterial({
             map: tex, transparent: true, opacity: op,
             blending: THREE.AdditiveBlending, depthWrite: false,
           }));
           m.rotation.x = -Math.PI / 2;
           m.position.y = y;
+          m.renderOrder = order;
           scene.add(m);
         };
-        mkCaustic(w2CausticA, 0.3, -0.028);
+        mkCaustic(w2CausticA, 0.3, -0.028, 1);
         if (w2Anim) {
           w2CausticB = w2CausticA.clone();
           w2CausticB.needsUpdate = true;
-          mkCaustic(w2CausticB, 0.2, -0.022);
+          mkCaustic(w2CausticB, 0.2, -0.022, 2);
         }
       }
 
@@ -2070,13 +2088,17 @@ function EntranceHallScene({
       // rim). Slow texture-rotation drift on desktop; static on mobile.
       w2PoolTex = makeOculusPoolTexture(isMobileGPU() ? 128 : 256);
       const poolGeo = new THREE.PlaneGeometry(11.5, 9.5);
+      // r2: opacity 0.5→0.42 (stronger key carries it) + polygonOffset/lift off the
+      // mosaic tile tops (z-fight sweep) + explicit renderOrder above the w1 pools.
       const poolMat = new THREE.MeshBasicMaterial({
-        map: w2PoolTex, transparent: true, opacity: 0.5,
+        map: w2PoolTex, transparent: true, opacity: 0.42,
         blending: THREE.AdditiveBlending, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
       });
       const w2Pool = new THREE.Mesh(poolGeo, poolMat);
       w2Pool.rotation.x = -Math.PI / 2;
-      w2Pool.position.y = 0.016;
+      w2Pool.position.y = 0.035;
+      w2Pool.renderOrder = 2;
       scene.add(w2Pool);
 
       // ── WS7-10 focus mode: dolly-to-frame on the Ancestral Wall. ONE camera
@@ -2112,7 +2134,7 @@ function EntranceHallScene({
           const k = dimmed ? 1 - FOCUS_DIM : 1;
           hemi.intensity = hemiBase * k;
           oculusFill.intensity = oculusFillBase * k;
-          scene.environmentIntensity = 0.35 * k;
+          scene.environmentIntensity = ENV_INT * k;
         },
         openMemory: (tg) => {
           const mem = tg.data as Mem | undefined;
@@ -2264,7 +2286,7 @@ function EntranceHallScene({
     // (portalSpot deleted; the emissive portalGlow/sky planes carry the read).
     let portalLight: THREE.PointLight | null = null;
     if (W1) {
-      portalLight = new THREE.PointLight(dlPreset.sunColor, 1.0 * dlPreset.sunIntensity, 12);
+      portalLight = new THREE.PointLight(dlPreset.sunColor, 0.8 * dlPreset.sunIntensity, 12); // r2: fill down with the ratio shift
       portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
       scene.add(portalLight);
     } else {
@@ -2434,7 +2456,7 @@ function EntranceHallScene({
           const rm = w1HlRing.material as THREE.MeshBasicMaterial;
           const hlDoor = hlTarget ? doorMeshes.find(d => d.wingId === hlTarget) : undefined;
           if (hlDoor) {
-            w1HlRing.position.set(Math.cos(hlDoor.angle) * (RADIUS - 3), 0.02, Math.sin(hlDoor.angle) * (RADIUS - 3));
+            w1HlRing.position.set(Math.cos(hlDoor.angle) * (RADIUS - 3), 0.04, Math.sin(hlDoor.angle) * (RADIUS - 3));
             rm.opacity = 0.45 + Math.sin(t * 2.5) * 0.2;
           } else if (rm.opacity > 0.005) {
             rm.opacity += (0 - rm.opacity) * 0.08;

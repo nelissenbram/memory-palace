@@ -135,11 +135,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const dlPresetRaw=getLightingPreset();
     // Interior rooms have artificial lighting — enforce minimum brightness
     // so evening/night presets don't make rooms too dark to navigate.
+    // Owner feedback r2 (2026-08-06, W1): the old ambient/fill floors (0.4/0.25) held the
+    // fill artificially high — key-vs-ambient ratio shifts like the exterior did
+    // (zon 3.2→4.4, hemi 0.6→0.36): sun floor UP, ambient/fill floors DOWN.
     const dlPreset={...dlPresetRaw,
-      ambientIntensity:Math.max(dlPresetRaw.ambientIntensity,0.4),
-      sunIntensity:Math.max(dlPresetRaw.sunIntensity,0.6),
-      fillIntensity:Math.max(dlPresetRaw.fillIntensity,0.25),
-      envBrightness:Math.max(dlPresetRaw.envBrightness,0.35),
+      ambientIntensity:Math.max(dlPresetRaw.ambientIntensity,W1?0.26:0.4),
+      sunIntensity:Math.max(dlPresetRaw.sunIntensity,W1?0.85:0.6),
+      fillIntensity:Math.max(dlPresetRaw.fillIntensity,W1?0.14:0.25),
+      envBrightness:Math.max(dlPresetRaw.envBrightness,W1?0.3:0.35),
       exposure:Math.max(dlPresetRaw.exposure,0.9),
     };
     // Warm canon background at mount (MUSEO VIVO): golden sky for open-air
@@ -155,9 +158,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
     const envMapProc=createInteriorEnvMap(ren,{warmth:dlPreset.envWarmth,brightness:dlPreset.envBrightness});
     scene.environment=envMapProc;
-    scene.environmentIntensity=0.8;
+    // Owner feedback r2 (W1): env fill 0.8→0.55 — the omnidirectional golden wash
+    // flattened the rooms; the stronger sun below restores the depth.
+    const ENV_INT=W1?0.55:0.8, ENV_INT_PROC=W1?0.5:0.7;
+    scene.environmentIntensity=ENV_INT;
     let envMapHDRI: THREE.Texture|null=null;
-    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{if(!alive)return;scene.environment=p;scene.environmentIntensity=0.7;},onFull:(hdr)=>{if(!alive){releaseEnvMap(hdr);return;}envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.8;}}).catch(()=>{});}
+    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{if(!alive)return;scene.environment=p;scene.environmentIntensity=ENV_INT_PROC;},onFull:(hdr)=>{if(!alive){releaseEnvMap(hdr);return;}envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=ENV_INT;}}).catch(()=>{});}
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     const composer=createPostProcessing(ren,scene,camera,"interior",{ssao:false});
@@ -165,20 +171,25 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
     // ── ATMOSPHERIC FOG ──
     const isExhibition=!!layout.isExhibition;
-    const fogFar=isExhibition?65/dlPreset.fogDensity:22/dlPreset.fogDensity;
+    // Owner feedback r2 (W1): fogFar 22→30 / 65→85 — the dense golden haze read as
+    // "gouden melk"; a longer falloff gives the far wall its depth back.
+    const fogFar=isExhibition?(W1?85:65)/dlPreset.fogDensity:(W1?30:22)/dlPreset.fogDensity;
     scene.fog=new THREE.Fog(isExhibition?GOLDEN.skyColor:dlPreset.fogColor,isExhibition?8:3,fogFar);
 
     // Warm sky + terracotta ground bounce (WS1-6)
-    const hemi=new THREE.HemisphereLight(isExhibition?GOLDEN.skyColor:dlPreset.ambientColor,dlPreset.groundBounceColor,isExhibition?.7:.4*dlPreset.ambientIntensity/0.5);
+    // Owner feedback r2 (W1): hemi .7→.45 / .4→.26 and sun 1.1→1.55 — same ratio
+    // shift as the exterior; the key light carves the room instead of the wash.
+    const hemi=new THREE.HemisphereLight(isExhibition?GOLDEN.skyColor:dlPreset.ambientColor,dlPreset.groundBounceColor,isExhibition?(W1?.45:.7):(W1?.26:.4)*dlPreset.ambientIntensity/0.5);
     scene.add(hemi);
-    const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.1*dlPreset.sunIntensity);sun.position.set(isExhibition?18:10,isExhibition?20:14,-4);sun.castShadow=true;sun.shadow.mapSize.set(Math.min(Q.shadowMapSize,isExhibition?2048:1024),Math.min(Q.shadowMapSize,isExhibition?2048:1024));
-    const shCam=isExhibition?20:12;
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,(W1?1.55:1.1)*dlPreset.sunIntensity);sun.position.set(isExhibition?18:10,isExhibition?20:14,-4);sun.castShadow=true;sun.shadow.mapSize.set(Math.min(Q.shadowMapSize,isExhibition?2048:1024),Math.min(Q.shadowMapSize,isExhibition?2048:1024));
+    // r2 (W1): den shadow frustum shrink-wraps the room — more texels/m² = crisper shadows
+    const shCam=isExhibition?20:(W1?Math.min(12,Math.max(layout.rW,layout.rL)/2+2):12);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=isExhibition?60:30;sun.shadow.camera.left=-shCam;sun.shadow.camera.right=shCam;sun.shadow.camera.top=shCam;sun.shadow.camera.bottom=-shCam;
     scene.add(sun);
     // W2 (WS6-9 light budget law): the den runs hemi + sun + fire ONLY (≤4);
     // the point fill is deleted there (hemi covers it). Exhibition keeps its
     // fill as the one "≤1 more" light (hemi + sun + fill = 3).
-    const ambL=new THREE.PointLight(dlPreset.fillColor,.3*dlPreset.fillIntensity/0.35,isExhibition?30:15);ambL.position.set(0,isExhibition?6:4,0);if(!W2||isExhibition)scene.add(ambL);
+    const ambL=new THREE.PointLight(dlPreset.fillColor,(W1?.16:.3)*dlPreset.fillIntensity/0.35,isExhibition?30:15);ambL.position.set(0,isExhibition?6:4,0);if(!W2||isExhibition)scene.add(ambL); // r2 (W1): point fill .3→.16
     // ── W2 (WS7-8/WS6-7): dolly-to-frame focus mode — ONE camera authority.
     // The rig maps onto the scene's own posT/lookT targets so glides ride the
     // existing smoothing; setDimmed dims hemi/sun/env 15% (photos and plaques
@@ -399,7 +410,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       grad.addColorStop(0,"rgba(255,224,176,0.85)");grad.addColorStop(.55,"rgba(255,224,176,0.28)");grad.addColorStop(1,"rgba(255,224,176,0)");
       g2.fillStyle=grad;g2.fillRect(0,0,64,64);
       const gtex=new THREE.CanvasTexture(c);gtex.colorSpace=THREE.SRGBColorSpace;
-      glowCardMat=new THREE.MeshBasicMaterial({map:gtex,transparent:true,opacity:.55,blending:THREE.AdditiveBlending,depthWrite:false});
+      // r2: opacity .55→.45 (stronger key carries the read) + polygonOffset so the
+      // flat window floor-pool never fights the floor at grazing angles.
+      glowCardMat=new THREE.MeshBasicMaterial({map:gtex,transparent:true,opacity:.45,blending:THREE.AdditiveBlending,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
       return glowCardMat;
     };
     const addGlowCard=(x: number,y: number,z: number,size: number,rotY=0)=>{
@@ -446,13 +459,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         scene.add(mk(new THREE.BoxGeometry(rW,0.01,porticoD),stoneWarmMat,0,.005,s*(rL/2-porticoD/2)));
         scene.add(mk(new THREE.BoxGeometry(porticoD,0.01,rL-porticoD*2),stoneWarmMat,s*(rW/2-porticoD/2),.005,0));
       }
-      // Mosaic border around courtyard opening
+      // Mosaic border around courtyard opening — z-fight sweep r2: the dark band's
+      // top (0.012) tied the portico slab top (0.01) within 2mm; lifted clear.
       const courtInX=rW/2-porticoD, courtInZ=rL/2-porticoD;
       for(let s=-1;s<=1;s+=2){
-        scene.add(mk(new THREE.BoxGeometry(courtInX*2+0.4,0.008,0.25),mosaicDarkMat,0,.008,s*courtInZ));
-        scene.add(mk(new THREE.BoxGeometry(0.25,0.008,courtInZ*2),mosaicDarkMat,s*courtInX,.008,0));
-        scene.add(mk(new THREE.BoxGeometry(courtInX*2-0.2,0.009,0.12),mosaicLightMat,0,.009,s*(courtInZ-0.18)));
-        scene.add(mk(new THREE.BoxGeometry(0.12,0.009,courtInZ*2-0.2),mosaicLightMat,s*(courtInX-0.18),.009,0));
+        scene.add(mk(new THREE.BoxGeometry(courtInX*2+0.4,0.008,0.25),mosaicDarkMat,0,.014,s*courtInZ));
+        scene.add(mk(new THREE.BoxGeometry(0.25,0.008,courtInZ*2),mosaicDarkMat,s*courtInX,.014,0));
+        scene.add(mk(new THREE.BoxGeometry(courtInX*2-0.2,0.009,0.12),mosaicLightMat,0,.019,s*(courtInZ-0.18)));
+        scene.add(mk(new THREE.BoxGeometry(0.12,0.009,courtInZ*2-0.2),mosaicLightMat,s*(courtInX-0.18),.019,0));
       }
       // Decorative mosaic diamond pattern in courtyard center
       for(let dx=-3;dx<=3;dx++){
@@ -691,8 +705,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       }
     }else{
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(rW,rL),MS.floor);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
-    scene.add(mk(new THREE.BoxGeometry(rW-1.5,.003,rL-1.5),MS.floorL,0,.002,0));
-    for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.05,.004,rL-2),MS.dkW,s*(rW/2-.9),.003,0));scene.add(mk(new THREE.BoxGeometry(rW-2,.004,.05),MS.dkW,0,.003,s*(rL/2-.9)));}
+    // z-fight sweep r2: inlay lifted (was 0.5mm off the floor — shimmer at grazing
+    // angles) — floorL top now 5mm, border strips ride 2mm above that.
+    scene.add(mk(new THREE.BoxGeometry(rW-1.5,.003,rL-1.5),MS.floorL,0,.0035,0));
+    for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.05,.004,rL-2),MS.dkW,s*(rW/2-.9),.009,0));scene.add(mk(new THREE.BoxGeometry(rW-2,.004,.05),MS.dkW,0,.009,s*(rL/2-.9)));}
     const ce=new THREE.Mesh(new THREE.PlaneGeometry(rW,rL),MS.ceil);ce.rotation.x=Math.PI/2;ce.position.y=rH;scene.add(ce);
     for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.1,.14,rL),MS.gold,s*(rW/2-.05),rH-.07,0));scene.add(mk(new THREE.BoxGeometry(rW,.14,.1),MS.gold,0,rH-.07,s*(rL/2-.05)));}
     for(let s=-1;s<=1;s+=2){
@@ -1419,7 +1435,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // 4:3 canvas), canon gold frame, Fraunces brass plaque, baked art light.
       // The per-painting SpotLight is deleted (zero dynamic lights per artwork).
       const om=bigPaintMem;const t=paintTex(om);
-      mountArtwork(om,t,fpX,2.4,fpZ+.06,0,W2?2.0:1.7);
+      // z-fight sweep r2: +.06 put the makeArtwork glow plane (z −0.035) 5mm off the
+      // chimney-breast face (fpZ+.02) — shimmer; +.09 gives it real clearance.
+      mountArtwork(om,t,fpX,2.4,fpZ+.09,0,W2?2.0:1.7);
     }else if(bigPaintMem){
       // Frame only shown when there's actual content
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
@@ -1919,11 +1937,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     if(!isExhibition){
     const rugZ=(sofaZ+fpZ)/2+.2;
+    // z-fight sweep r2: rug bottom sat exactly on the floor inlay — lifted onto it.
     if(layout.rugStyle==="persian"){
-    scene.add(mk(new THREE.BoxGeometry(4,.012,3),MS.rug,0,.006,rugZ));
+    scene.add(mk(new THREE.BoxGeometry(4,.012,3),MS.rug,0,.012,rugZ));
     }else{
     const rr=Math.min(rW,rL)*0.2;
-    scene.add(mk(new THREE.CylinderGeometry(rr,rr,.012,24),MS.rug,0,.006,rugZ));
+    scene.add(mk(new THREE.CylinderGeometry(rr,rr,.012,24),MS.rug,0,.012,rugZ));
     }
     } // end !isExhibition rug
 
@@ -2031,7 +2050,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:dlPreset.fogColor}),winX,winH,winZ+wDir*.01));
       // Bright daylight glow overlay — W2 (WS6-9): the emissive window plane
       // brightens to compensate for the deleted window SpotLight
-      scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:W2?GOLDEN.sunColor:dlPreset.sunColor,transparent:true,opacity:(W2?.62:.45)*dlPreset.sunIntensity}),winX,winH,winZ+wDir*.015));
+      scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:W2?GOLDEN.sunColor:dlPreset.sunColor,transparent:true,opacity:(W2?.55:.45)*dlPreset.sunIntensity}),winX,winH,winZ+wDir*.015)); // r2: .62→.55
       // Window frame
       scene.add(mk(new THREE.BoxGeometry(1.5,.12,.12),MS.trim,winX,winH+.95,winZ+wDir*.04));// top
       scene.add(mk(new THREE.BoxGeometry(1.5,.12,.12),MS.trim,winX,winH-.95,winZ+wDir*.04));// bottom
@@ -2389,11 +2408,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const tranMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity});
     const transom=new THREE.Mesh(tranGeo,tranMat);
     transom.rotation.y=Math.PI;// face into room (towards -Z)
-    transom.position.set(0,3.02,bdZ-.02);scene.add(transom);
+    // z-fight sweep r2: −.02 sat inside the iron bar/cornice depth — pulled clear.
+    transom.position.set(0,3.02,bdZ-.12);scene.add(transom);
     // Warm light spilling from corridor — W2 brightens the static spill plane to
     // compensate for the deleted door lights
-    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:(W2?.09:.04)*dlPreset.sunIntensity}));
-    bdGlow.position.set(0,1.9,bdZ);scene.add(bdGlow);
+    // z-fight sweep r2: the spill plane at z=bdZ sliced straight through the door
+    // leaves (bdZ±.05) and panels — moved in front of the handles (−.148).
+    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:(W2?.09:.04)*dlPreset.sunIntensity,depthWrite:false}));
+    bdGlow.position.set(0,1.9,bdZ-.17);scene.add(bdGlow);
     // W1 KILL (WS6-4): the doorGlow pulse animation dies; the faint static warm
     // spill plane stays (zero per-frame cost, no throbbing glow).
     if(!W1)animTex.push({type:"doorGlow",mesh:bdGlow});
