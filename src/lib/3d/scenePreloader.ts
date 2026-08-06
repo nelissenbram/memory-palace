@@ -14,9 +14,17 @@
  * teardown, so the pooled renderer keeps their compiled programs across transitions).
  */
 
-type SceneId = "exterior" | "entrance" | "corridor" | "room";
+import { flag3d } from "@/lib/3d/flags3d";
+
+export type SceneId = "exterior" | "entrance" | "corridor" | "room";
 
 const preloaded = new Set<SceneId>();
+// ── MUSEO VIVO WS9-8/9 warmth bookkeeping ──
+// A hop is "warm" when the target's module is already in the webpack cache AND
+// that scene type has fired onReady once this session (so its shared textures/
+// archetype materials are primed). Cold targets keep the full loading card.
+const moduleWarm = new Set<SceneId>();
+const readyOnce = new Set<SceneId>();
 
 /** Map of which scenes to preload when a given scene is active. */
 const PRELOAD_MAP: Record<SceneId, SceneId[]> = {
@@ -25,6 +33,28 @@ const PRELOAD_MAP: Record<SceneId, SceneId[]> = {
   corridor: ["room"],
   room: [], // nothing to preload from the innermost scene
 };
+
+/** WS9-9 (flag w2_veil): completed preload map incl. back-paths, so return
+ *  hops (room→corridor, corridor→entrance, entrance→exterior) are warm too. */
+const PRELOAD_MAP_W2: Record<SceneId, SceneId[]> = {
+  exterior: ["entrance"],
+  entrance: ["corridor", "exterior"],
+  corridor: ["room", "entrance"],
+  room: ["corridor"],
+};
+
+/** Record that a scene type fired onReady this session (implies its module
+ *  is loaded). Called from MemoryPalace's onReady handlers. */
+export function markSceneReady(sceneId: SceneId): void {
+  moduleWarm.add(sceneId);
+  readyOnce.add(sceneId);
+}
+
+/** WS9-8: true when a transition to this scene can use the light golden veil
+ *  instead of the full loading card. */
+export function isWarm(sceneId: SceneId): boolean {
+  return moduleWarm.has(sceneId) && readyOnce.has(sceneId);
+}
 
 /** Dynamic import expressions for each scene module.
  *  These MUST match the exact import paths used in MemoryPalace.tsx and
@@ -46,7 +76,9 @@ const SCENE_IMPORTS: Record<SceneId, () => Promise<unknown>> = {
  * Safe to call multiple times — each scene is only preloaded once.
  */
 export function preloadNextScene(currentScene: SceneId): void {
-  const targets = PRELOAD_MAP[currentScene];
+  // Module-preload ONLY (no texture primes here — WS9-9 keeps mobile costs at
+  // zero bytes of GPU memory; asset warming stays in preloadSharedAssets).
+  const targets = (flag3d("w2_veil") ? PRELOAD_MAP_W2 : PRELOAD_MAP)[currentScene];
   if (!targets || targets.length === 0) return;
 
   const schedule = typeof requestIdleCallback === "function"
@@ -58,10 +90,12 @@ export function preloadNextScene(currentScene: SceneId): void {
       if (preloaded.has(target)) continue;
       preloaded.add(target);
       // Fire and forget — we only care about populating the module cache
-      SCENE_IMPORTS[target]().catch(() => {
-        // Import failed — that's fine, user will get normal lazy load
-        preloaded.delete(target);
-      });
+      SCENE_IMPORTS[target]()
+        .then(() => { moduleWarm.add(target); })
+        .catch(() => {
+          // Import failed — that's fine, user will get normal lazy load
+          preloaded.delete(target);
+        });
     }
   });
 }
@@ -73,9 +107,11 @@ export function preloadNextScene(currentScene: SceneId): void {
 export function preloadScene(sceneId: SceneId): void {
   if (preloaded.has(sceneId)) return;
   preloaded.add(sceneId);
-  SCENE_IMPORTS[sceneId]().catch(() => {
-    preloaded.delete(sceneId);
-  });
+  SCENE_IMPORTS[sceneId]()
+    .then(() => { moduleWarm.add(sceneId); })
+    .catch(() => {
+      preloaded.delete(sceneId);
+    });
 }
 
 /**

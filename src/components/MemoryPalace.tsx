@@ -115,6 +115,16 @@ import { isMobileGPU } from "@/lib/3d/mobilePerf";
 // Mounted in every return that keeps 3D scenes alive (warm portals included)
 // so the pooled renderer is observable across all modes and scene cycles.
 import PerfHud from "@/components/3d/PerfHud";
+// MUSEO VIVO Wave 2 (WS9-7/8/9 behind w2_veil, WS3-7 era retirement behind
+// w2_shell): warm-hop golden veil, onReady watchdog, completed preload map.
+import { flag3d } from "@/lib/3d/flags3d";
+import GoldenVeil from "@/components/ui/GoldenVeil";
+import { isWarm, markSceneReady, preloadNextScene, type SceneId } from "@/lib/3d/scenePreloader";
+
+/** Map a palaceStore view to the scenePreloader scene id. */
+function viewToSceneId(v: string): SceneId | null {
+  return v === "exterior" || v === "entrance" || v === "corridor" || v === "room" ? v : null;
+}
 
 // ── Delayed spinner fallback — avoids flash for fast lazy loads ──
 function DelayedFallback() {
@@ -149,6 +159,21 @@ export default function MemoryPalace(){
     update();
     mq.addEventListener?.("change", update);
     return () => mq.removeEventListener?.("change", update);
+  }, []);
+  // Ref mirror so effects/callbacks can read reduce-motion without widening
+  // their dependency lists (the loading-transition effect must ONLY re-run on
+  // view/navMode changes — its final branch hides the overlay).
+  const reduceMotionRef = useRef(false);
+  reduceMotionRef.current = reduceMotion;
+  // MUSEO VIVO Wave-2 flags, read once at mount (flags3d read-at-mount
+  // semantics; state instead of a render-time flag3d() call keeps SSR/first
+  // paint deterministic). w2_veil: golden veil + onReady hardening + preload
+  // map. w2_shell: era-kiezer retired, styleEra hard-coerced to "roman".
+  const [w2Veil, setW2Veil] = useState(false);
+  const [w2Shell, setW2Shell] = useState(false);
+  useEffect(() => {
+    setW2Veil(flag3d("w2_veil"));
+    setW2Shell(flag3d("w2_shell"));
   }, []);
   // Key fragment for scene remounting when daylight mode changes manually
   // Only remount scene when daylight is toggled on/off or mode changes — NOT on slider changes.
@@ -208,6 +233,19 @@ export default function MemoryPalace(){
   const setShowDirectory = useMemoryStore((s) => s.setShowDirectory);
   const setSearchQuery = useMemoryStore((s) => s.setSearchQuery);
   const setFilterType = useMemoryStore((s) => s.setFilterType);
+  // W2 (WS4-6): all memories flattened for the hall's Ancestral Wall — the
+  // scene itself applies the decision-4 selection (favorites → oldest, photos).
+  const userMemsMap = useMemoryStore((s) => s.userMems);
+  const allPhotoMems = useMemo(() => {
+    const seen = new Set<string>();
+    const out = [] as (typeof userMemsMap)[string];
+    for (const mems of Object.values(userMemsMap)) {
+      for (const m of mems) {
+        if (m?.id && !seen.has(m.id)) { seen.add(m.id); out.push(m); }
+      }
+    }
+    return out;
+  }, [userMemsMap]);
 
   const getWingRooms = useRoomStore((s) => s.getWingRooms);
   const customRooms = useRoomStore((s) => s.customRooms);
@@ -557,10 +595,16 @@ export default function MemoryPalace(){
     }).catch(() => {/* ignore — shared wings are optional */});
   }, []);
 
-  // Show era picker for existing users who haven't chosen a style
+  // Show era picker for existing users who haven't chosen a style.
+  // W2 (owner decision 2, Renaissance-kill, behind w2_shell): the picker is
+  // retired — never opened; scenes receive "roman" via effStyleEra below. The
+  // DB field and existing renaissance rows stay untouched (no migration).
   useEffect(() => {
+    if (flag3d("w2_shell")) return;
     if (onboarded && !styleEra && !profileLoading) setShowEraPicker(true);
   }, [onboarded, styleEra, profileLoading]);
+  // Effective era handed to every scene: hard "roman" under w2_shell.
+  const effStyleEra = w2Shell ? "roman" : (styleEra || "roman");
 
   // ── Scene loading overlay — shown on the VERY FIRST Palace visit,
   // when navigating from Library into a 3D corridor/room scene, AND
@@ -569,20 +613,71 @@ export default function MemoryPalace(){
   const firstPalaceVisitRef = useRef(true);
   const prevNavModeForLoadingRef = useRef(navMode);
   const prevViewForLoadingRef = useRef(view);
+  // ── WS9-8 golden veil (warm hops, flag w2_veil) ──
+  // veil.fading=false → veil covering the swap; true → crossfading out.
+  const [veil, setVeil] = useState<null | { dest?: string; fading: boolean }>(null);
+  const veilRef = useRef(false); // sync mirror: veil currently covering
+  const veilTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const veilFallbackRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // WS9-7 watchdog: a scene that never fires onReady (WebGL init failure,
+  // context loss mid-mount) must not strand the loading overlay forever.
+  const overlayWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Sync mirror of the desktop persistent-hall mode (declared later) so the
+  // transition effect above it can detect never-refiring persistent targets.
+  const persistHallRef = useRef(false);
+  // Destination name for the cold-load card (WS9-3 destination line).
+  const [overlayDest, setOverlayDest] = useState<string | undefined>(undefined);
+  const beginVeilFade = useCallback(() => {
+    if (!veilRef.current) return;
+    veilRef.current = false;
+    if (veilFallbackRef.current) { clearTimeout(veilFallbackRef.current); veilFallbackRef.current = null; }
+    setVeil((v) => (v ? { ...v, fading: true } : v));
+    if (veilTimerRef.current) clearTimeout(veilTimerRef.current);
+    veilTimerRef.current = setTimeout(() => setVeil(null), 500); // unmount after the 0.45s crossfade
+  }, []);
+  const showVeil = useCallback((dest?: string) => {
+    if (veilTimerRef.current) { clearTimeout(veilTimerRef.current); veilTimerRef.current = null; }
+    if (veilFallbackRef.current) clearTimeout(veilFallbackRef.current);
+    veilRef.current = true;
+    setVeil({ dest, fading: false });
+    // ≤1s contract: even if onReady is late, the veil crossfades out at 1s —
+    // the warm scene is mounting beneath it either way.
+    veilFallbackRef.current = setTimeout(beginVeilFade, 1000);
+  }, [beginVeilFade]);
   // Show/hide the loading overlay, keeping the sync ref mirror + fade
   // bookkeeping consistent (start time, accelerated-fade reset, ready timers).
-  const showSceneOverlay = useCallback(() => {
-    if (sceneReadyTimerRef.current) { clearTimeout(sceneReadyTimerRef.current); sceneReadyTimerRef.current = null; }
-    sceneLoadingRef.current = true;
-    sceneLoadStartRef.current = performance.now();
-    setSceneReadyFade(false);
-    setSceneLoading(true);
-  }, []);
   const hideSceneOverlay = useCallback(() => {
+    if (overlayWatchdogRef.current) { clearTimeout(overlayWatchdogRef.current); overlayWatchdogRef.current = null; }
     sceneLoadingRef.current = false;
     setSceneLoading(false);
     setSceneReadyFade(false);
   }, []);
+  const showSceneOverlay = useCallback((dest?: string) => {
+    // Cold load wins: retire any (pre-)veil so card + veil never stack.
+    veilRef.current = false;
+    if (veilTimerRef.current) { clearTimeout(veilTimerRef.current); veilTimerRef.current = null; }
+    if (veilFallbackRef.current) { clearTimeout(veilFallbackRef.current); veilFallbackRef.current = null; }
+    setVeil(null);
+    if (sceneReadyTimerRef.current) { clearTimeout(sceneReadyTimerRef.current); sceneReadyTimerRef.current = null; }
+    sceneLoadingRef.current = true;
+    sceneLoadStartRef.current = performance.now();
+    setSceneReadyFade(false);
+    setOverlayDest(dest);
+    setSceneLoading(true);
+    // WS9-7 onReady hardening (w2_veil): overlays lift via onReady; this 8s
+    // watchdog is the hard cap when a scene never signals ready.
+    if (flag3d("w2_veil")) {
+      if (overlayWatchdogRef.current) clearTimeout(overlayWatchdogRef.current);
+      overlayWatchdogRef.current = setTimeout(() => {
+        overlayWatchdogRef.current = null;
+        if (sceneLoadingRef.current) {
+          console.warn("[palace] scene never fired onReady within 8s — lifting the loading overlay (WS9-7)");
+          sceneLoadFromLibraryRef.current = false;
+          hideSceneOverlay();
+        }
+      }, 8000);
+    }
+  }, [hideSceneOverlay]);
   // Fired by EntranceHall/Corridor/Interior scenes after their FIRST rendered
   // frame (and synthetically for the warm ExteriorScene, which only fires
   // onReady once per app session). Dismisses the loading overlay via its
@@ -590,8 +685,13 @@ export default function MemoryPalace(){
   // with zero delay (0.4s opaque hold + 0.4s fade), which also guarantees the
   // ~300ms minimum overlay visibility for very fast mounts. The fixed timers
   // in the effect below remain as safety fallbacks if a scene never fires.
-  const handleSceneReady = useCallback(() => {
+  // `sceneId` (when known) feeds the WS9-9 warmth ledger + idle preload map.
+  const handleSceneReady = useCallback((sceneId?: SceneId) => {
+    if (sceneId) { markSceneReady(sceneId); preloadNextScene(sceneId); }
+    // Warm-hop veil path: the destination is ready — crossfade the veil out.
+    if (veilRef.current) beginVeilFade();
     if (!sceneLoadingRef.current) return; // no loading overlay showing
+    if (overlayWatchdogRef.current) { clearTimeout(overlayWatchdogRef.current); overlayWatchdogRef.current = null; }
     if (sceneReadyTimerRef.current) clearTimeout(sceneReadyTimerRef.current);
     const fadeDelayMs = sceneLoadFromLibraryRef.current ? 1200 : 800;
     const elapsed = performance.now() - sceneLoadStartRef.current;
@@ -604,8 +704,33 @@ export default function MemoryPalace(){
       // Natural fade already underway — let it finish, then unmount.
       sceneReadyTimerRef.current = setTimeout(clear, Math.max(50, fadeDelayMs + 850 - elapsed));
     }
+  }, [beginVeilFade]);
+  useEffect(() => () => {
+    if (sceneReadyTimerRef.current) clearTimeout(sceneReadyTimerRef.current);
+    if (veilTimerRef.current) clearTimeout(veilTimerRef.current);
+    if (veilFallbackRef.current) clearTimeout(veilFallbackRef.current);
+    if (overlayWatchdogRef.current) clearTimeout(overlayWatchdogRef.current);
   }, []);
-  useEffect(() => () => { if (sceneReadyTimerRef.current) clearTimeout(sceneReadyTimerRef.current); }, []);
+  // Localized destination names per target scene, mirrored into a ref so the
+  // transition effect below can label veils/cards without adding wingData /
+  // translation deps (its final branch hides the overlay whenever it re-runs).
+  const destNamesRef = useRef<Record<SceneId, string | undefined>>({ exterior: undefined, entrance: undefined, corridor: undefined, room: undefined });
+  destNamesRef.current = {
+    exterior: tPalace("palaceLabel"),
+    entrance: tPalace("entranceHallLabel"),
+    corridor: wingData ? (wingData.nameKey ? (tWings(wingData.nameKey) || wingData.name) : wingData.name) : undefined,
+    room: activeRoomData ? (activeRoomData.nameKey ? (tWings(activeRoomData.nameKey) || activeRoomData.name) : activeRoomData.name) : undefined,
+  };
+  // WS9-8: pre-cover the swap the moment a fade starts (portalAnim fires on
+  // EVERY scene hop, before the view flips) so warm hops never flash the full
+  // card. The transition effect below then either labels the veil (warm hop)
+  // or replaces it with the destination card (cold load) once the view is
+  // known. Reduced motion keeps the plain card crossfade.
+  useEffect(() => {
+    if (!portalAnim) return;
+    if (!flag3d("w2_veil") || reduceMotionRef.current || sceneLoadingRef.current) return;
+    showVeil(undefined);
+  }, [portalAnim, showVeil]);
   useEffect(() => {
     const cameFromLibrary = prevNavModeForLoadingRef.current === "library" && navMode === "3d";
     const prevView = prevViewForLoadingRef.current;
@@ -625,7 +750,16 @@ export default function MemoryPalace(){
       // right after (palaceStore fade). The ref guard in the fallthrough
       // prevents premature clearing. Fallback only — the mounted scene's
       // onReady dismisses the overlay earlier via handleSceneReady.
-      setTimeout(() => { sceneLoadFromLibraryRef.current = false; hideSceneOverlay(); }, 1800);
+      // Under w2_veil the overlay itself waits for onReady (8s watchdog cap);
+      // the timer then only releases the library-transition ref guard.
+      const w2 = flag3d("w2_veil");
+      setTimeout(() => { sceneLoadFromLibraryRef.current = false; if (!w2) hideSceneOverlay(); }, 1800);
+      // Persistent warm scenes (exterior; desktop hall) never re-fire onReady —
+      // signal readiness ourselves so the w2 overlay doesn't wait on the watchdog.
+      if (w2 && ((view === "exterior" && sceneReadyRef.current) || (view === "entrance" && persistHallRef.current && isWarm("entrance")))) {
+        const target = viewToSceneId(view);
+        setTimeout(() => handleSceneReady(target ?? undefined), 80);
+      }
       return;
     }
 
@@ -639,7 +773,8 @@ export default function MemoryPalace(){
         hideSceneOverlay();
         return;
       }
-      showSceneOverlay();
+      showSceneOverlay(destNamesRef.current.exterior);
+      if (flag3d("w2_veil")) return; // onReady lifts it; 8s watchdog is the cap
       // onReady from ExteriorScene will hide it precisely; 2.5s safety.
       const t = setTimeout(hideSceneOverlay, 2500);
       return () => clearTimeout(t);
@@ -660,15 +795,35 @@ export default function MemoryPalace(){
         (prevView === "exterior" && view === "corridor") ||
         (prevView === "room" && view === "entrance");
       if (needsLoading) {
-        showSceneOverlay();
+        const targetScene = viewToSceneId(view);
+        const dest = targetScene ? destNamesRef.current[targetScene] : undefined;
+        // WS9-8 (w2_veil): WARM hop — module cached + this scene type already
+        // fired onReady this session → ≤1s golden veil instead of the full
+        // card. Cold loads keep the canon destination card. Reduced motion
+        // keeps the plain overlay crossfade.
+        if (flag3d("w2_veil") && !reduceMotionRef.current && targetScene && isWarm(targetScene)) {
+          hideSceneOverlay(); // never stack card + veil
+          showVeil(dest);
+          // Persistent scenes (warm exterior; desktop persistent hall) never
+          // re-fire onReady — start the veil crossfade ourselves shortly after
+          // it has covered the swap. Remounting scenes fade via onReady.
+          const persistentTarget =
+            (view === "exterior" && sceneReadyRef.current) ||
+            (view === "entrance" && persistHallRef.current);
+          const rt = persistentTarget ? setTimeout(beginVeilFade, 250) : null;
+          return () => { if (rt) clearTimeout(rt); };
+        }
+        showSceneOverlay(dest);
         // The warm persistent ExteriorScene never re-fires onReady — when
         // returning to it, signal readiness ourselves once the overlay painted.
         const rt = (view === "exterior" && sceneReadyRef.current)
-          ? setTimeout(handleSceneReady, 50)
+          ? setTimeout(() => handleSceneReady("exterior"), 50)
           : null;
         // Safety fallback only — the mounted scene's onReady dismisses earlier.
-        const t = setTimeout(hideSceneOverlay, 2000);
-        return () => { if (rt) clearTimeout(rt); clearTimeout(t); };
+        // Under w2_veil the blind 2s hide is retired: onReady lifts the card
+        // (WS9-7 "lift only onto ready scenes"), the 8s watchdog is the cap.
+        const t = flag3d("w2_veil") ? null : setTimeout(hideSceneOverlay, 2000);
+        return () => { if (rt) clearTimeout(rt); if (t) clearTimeout(t); };
       }
     }
 
@@ -677,16 +832,16 @@ export default function MemoryPalace(){
     if (!sceneLoadFromLibraryRef.current) {
       hideSceneOverlay();
     }
-  }, [view, navMode, showSceneOverlay, hideSceneOverlay, handleSceneReady]);
+  }, [view, navMode, showSceneOverlay, hideSceneOverlay, handleSceneReady, showVeil, beginVeilFade]);
 
   // ── Scene preloading — when a scene is active, preload the NEXT scene's
-  //    JS module so React.lazy() resolves instantly on transition. ──
+  //    JS module so React.lazy() resolves instantly on transition. Under
+  //    w2_veil, handleSceneReady re-runs this after each onReady with the
+  //    completed back-path map (WS9-9); double calls are dedup-guarded. ──
   useEffect(() => {
     if (navMode !== "3d") return;
-    const sceneId = view === "exterior" ? "exterior" : view === "entrance" ? "entrance" : view === "corridor" ? "corridor" : view === "room" ? "room" : null;
-    if (sceneId) {
-      import("@/lib/3d/scenePreloader").then(({ preloadNextScene }) => preloadNextScene(sceneId));
-    }
+    const sceneId = viewToSceneId(view);
+    if (sceneId) preloadNextScene(sceneId);
   }, [view, navMode]);
 
   // ── Persistent Palace portal host — keeps ExteriorScene mounted across
@@ -851,7 +1006,9 @@ export default function MemoryPalace(){
     // ever misbehaves on a given desktop.
     let disabled = false;
     try { disabled = localStorage.getItem("mp_no_hall_persist") === "1"; } catch {}
-    setPersistHall(!isMobileGPU() && !disabled);
+    const persist = !isMobileGPU() && !disabled;
+    persistHallRef.current = persist;
+    setPersistHall(persist);
   }, []);
   const [hallHost, setHallHost] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -1198,7 +1355,7 @@ export default function MemoryPalace(){
     ? createPortal(
         <Suspense fallback={null}><ExteriorScene
           key={dlKey}
-          onReady={() => { sceneReadyRef.current = true; hideSceneOverlay(); }}
+          onReady={() => { sceneReadyRef.current = true; markSceneReady("exterior"); preloadNextScene("exterior"); beginVeilFade(); hideSceneOverlay(); }}
           onRoomHover={setHovWing}
           onRoomClick={(wingId: string) => {
             if (walkthroughActive && wingId !== "__entrance__") return;
@@ -1214,7 +1371,7 @@ export default function MemoryPalace(){
           hoveredRoom={hovWing}
           wings={allWings}
           highlightDoor={(walkthroughActive && walkthroughPhase === 0 ? "__entrance__" : null) || nudgeHL.entrance || null}
-          styleEra={styleEra || "roman"}
+          styleEra={effStyleEra}
           autoWalkTo={autoWalking && nudgeHL.entrance ? nudgeHL.entrance : undefined}
         /></Suspense>,
         palaceHost
@@ -1223,7 +1380,7 @@ export default function MemoryPalace(){
 
   // ── Entrance Hall node — mounted persistently (desktop) or inline (mobile) ──
   const hallSceneNode = (
-    <Suspense fallback={null}><EntranceHallScene key={dlKey} onReady={handleSceneReady} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>
+    <Suspense fallback={null}><EntranceHallScene key={dlKey} onReady={() => handleSceneReady("entrance")} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={effStyleEra} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} ancestralMemories={allPhotoMems} onAncestralMemoryClick={(m)=>setSelMem(m)} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>
   );
   // Desktop: keep it alive in its own portal; mobile falls back to inline mount.
   const warmHallScene = (persistHall && hallHost)
@@ -1343,8 +1500,8 @@ export default function MemoryPalace(){
         {warmPalaceScene}
         {warmHallScene}
         {!persistHall && view==="entrance" && hallSceneNode}
-        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} onReady={handleSceneReady} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+(styleEra||"roman")} wingId={activeWing} onReady={handleSceneReady} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
-        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} onReady={handleSceneReady} layoutOverride={roomLayouts[activeRoomId]} memories={effectiveRoomMems} onMemoryClick={handleMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
+        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
+        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+effStyleEra} roomId={activeWing} actualRoomId={activeRoomId} onReady={() => handleSceneReady("room")} layoutOverride={roomLayouts[activeRoomId]} memories={effectiveRoomMems} onMemoryClick={handleMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={effStyleEra}/></Suspense>}
       </div>
 
       <PerfHud />
@@ -1357,7 +1514,10 @@ export default function MemoryPalace(){
       {/* Scene loading overlay — fades out when the mounted scene fires onReady
           (sceneReadyFade restarts the fade with zero delay); the fixed fadeDelay
           values are the fallback pacing when no readiness signal arrives */}
-      {(sceneLoading||portalAnim)&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneReadyFade ? 0 : (sceneLoadFromLibraryRef.current ? 1.2 : 0.8)) : 0.2} />}
+      {(sceneLoading||(portalAnim&&!(w2Veil&&veil)))&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneReadyFade ? 0 : (sceneLoadFromLibraryRef.current ? 1.2 : 0.8)) : 0.2} destination={w2Veil && sceneLoading ? overlayDest : undefined} />}
+
+      {/* WS9-8 golden veil (w2_veil) — covers warm hops; cold loads keep the card */}
+      {w2Veil && veil && !sceneLoading && <GoldenVeil destination={veil.dest} fading={veil.fading} />}
 
       {/* TopBar hidden — replaced by PalaceSubNav */}
 
@@ -1630,8 +1790,9 @@ export default function MemoryPalace(){
         onDismiss={() => setShowDiscoveryMenu(false)}
       />}
 
-      {/* Era picker modal — for existing users who haven't chosen a style */}
-      {showEraPicker && <div style={{position:"absolute",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.6)",backdropFilter:"blur(0.375rem)"}} onClick={()=>setShowEraPicker(false)}>
+      {/* Era picker modal — for existing users who haven't chosen a style.
+          Retired under w2_shell (owner decision 2): never rendered, palace is Roman. */}
+      {showEraPicker && !w2Shell && <div style={{position:"absolute",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(64,59,54,.6)",backdropFilter:"blur(0.375rem)"}} onClick={()=>setShowEraPicker(false)}>
         <div ref={eraPickerTrap.containerRef} role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{eraPickerTrap.handleKeyDown(e);if(e.key==="Escape")setShowEraPicker(false);}} onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:"1.25rem",padding:isMobile?"1.75rem 1.25rem":"2.25rem 2.5rem",maxWidth:"30rem",width:"90%",textAlign:"center",boxShadow:SHADOW[2]}}>
           <h2 style={{fontFamily:T.font.display,fontSize:isMobile?"1.375rem":"1.625rem",fontWeight:500,color:T.color.ink,marginBottom:"0.5rem"}}>{tPalace("eraPickerTitle")}</h2>
           <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,marginBottom:"1.25rem"}}>{tPalace("eraPickerSubtitle")}</p>
