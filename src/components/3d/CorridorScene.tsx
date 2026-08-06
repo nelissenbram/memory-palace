@@ -38,10 +38,23 @@ function loadPaintingTexture(url: string): Promise<THREE.Texture> {
   if (cached) return Promise.resolve(cached);
   const pending = paintingTexturePending.get(url);
   if (pending) return pending;
+  // Owner bug 2026-08-06 (#5) ROOT CAUSE: uploaded Library photos carry
+  // `/api/media/…` dataUrls, and that route 302-redirects to a presigned
+  // cross-origin storage URL (R2/Supabase). Both fetch(mode:"cors") and the
+  // TextureLoader fallback (crossOrigin="anonymous") fail the CORS check on
+  // the redirect hop, the promise rejected silently, and the salon piece kept
+  // its 1×1 warm-cream placeholder forever — the "photo looks covered" frame.
+  // `?stream=1` is the app-wide contract (paintTex, RoomMediaPanel,
+  // InteriorScene video) that forces same-origin streaming: no redirect, no
+  // CORS, auth cookies included. Cache stays keyed on the ORIGINAL url — the
+  // applier's slot.appliedUrl fingerprint contract is untouched.
+  const fetchUrl = url.startsWith("/api/media/")
+    ? url + (url.includes("?") ? "&" : "?") + "stream=1"
+    : url;
   const p = (async () => {
     let tex: THREE.Texture;
     try {
-      const res = await fetch(url, { mode: "cors" });
+      const res = await fetch(fetchUrl, { mode: "cors", credentials: "same-origin" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       const bitmap = await createImageBitmap(blob, { imageOrientation: "flipY", premultiplyAlpha: "none" });
@@ -49,8 +62,9 @@ function loadPaintingTexture(url: string): Promise<THREE.Texture> {
       tex.flipY = false; // bitmap already flipped at decode
       tex.needsUpdate = true;
     } catch {
-      // Fallback (CORS/decoder edge cases): main-thread TextureLoader, default flipY
-      tex = await new THREE.TextureLoader().loadAsync(url);
+      // Fallback (decoder edge cases): main-thread TextureLoader on the same
+      // stream URL (same-origin, so its crossOrigin="anonymous" is harmless)
+      tex = await new THREE.TextureLoader().loadAsync(fetchUrl);
     }
     tex.colorSpace = THREE.SRGBColorSpace;
     paintingTextureCache.set(url, tex);
@@ -150,8 +164,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // dead — the corridor joins the one golden grade so the hall doorway is
     // continuous, not a jump cut.
     const scene=new THREE.Scene();scene.background=new THREE.Color(dlPreset.fogColor);
-    // Add atmospheric fog for depth
-    scene.fog=new THREE.FogExp2(dlPreset.fogColor,.008*dlPreset.fogDensity);
+    // Add atmospheric fog for depth — owner 2026-08-06 (#2): thinner under W1
+    // (.008→.0055) so the far end reads as DEPTH, not haze; canon fog color kept
+    scene.fog=new THREE.FogExp2(dlPreset.fogColor,(W1?.0055:.008)*dlPreset.fogDensity);
     const camera=new THREE.PerspectiveCamera(55,w/h,0.3,80);
     const Q=getQuality();
     const ren=borrowRenderer(w,h);
@@ -173,11 +188,15 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // Warm sky + terracotta ground bounce (WS1-6)
     // W1 (WS5-3/4): hemisphere carries the baked compensation for the killed
     // PointLight rows — budget is ≤4 lights (hemi + sun + fill + one portal point)
-    const hemiLight=new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?.7:.55)*dlPreset.ambientIntensity/0.5);scene.add(hemiLight);
-    const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.5*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);
+    // Owner 2026-08-06 (#2): golden hour read too flat indoors — raise the
+    // key-vs-ambient ratio (exterior precedent: sun ×1.375, hemi ×0.6). Under
+    // W1: sun 1.5→2.1, hemi factor .7→.42, fill 1.0→0.5. Grade law intact
+    // (no exposure/tone-mapping change), canon colors kept, legacy path untouched.
+    const hemiLight=new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?.42:.55)*dlPreset.ambientIntensity/0.5);scene.add(hemiLight);
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,(W1?2.1:1.5)*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=60;sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
     scene.add(sun);
-    const fill=new THREE.DirectionalLight(dlPreset.fillColor,.35*dlPreset.fillIntensity/0.35);fill.position.set(-6,10,4);scene.add(fill);
+    const fill=new THREE.DirectionalLight(dlPreset.fillColor,(W1?.5:1)*dlPreset.fillIntensity);fill.position.set(-6,10,4);scene.add(fill);
 
     // ── WING LAYOUTS: each wing is a different museum section ──
     // DRAMATICALLY HIGHER CEILINGS (+2m each)
@@ -509,8 +528,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       gctx.fillStyle=grad;gctx.fillRect(0,0,128,128);
       const glowTex=new THREE.CanvasTexture(gc);
       glowTex.colorSpace=THREE.SRGBColorSpace;
-      w1PoolMat=new THREE.MeshBasicMaterial({map:glowTex,transparent:true,opacity:.32,blending:THREE.AdditiveBlending,depthWrite:false});
-      w1BandMat=new THREE.MeshBasicMaterial({map:glowTex,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+      // Owner 2026-08-06 (#2): pools .32→.26, bands .28→.22 — baked warmth eases
+      // back now the directional key is stronger. (#6) polygonOffset pulls the
+      // near-coplanar decals toward the camera in depth so floor/wall geometry
+      // can never z-fight them at grazing angles (depthWrite already false).
+      w1PoolMat=new THREE.MeshBasicMaterial({map:glowTex,transparent:true,opacity:.26,blending:THREE.AdditiveBlending,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+      w1BandMat=new THREE.MeshBasicMaterial({map:glowTex,transparent:true,opacity:.22,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
       w1PoolGeo=new THREE.PlaneGeometry(3.4,3.4);
       w1BandGeo=new THREE.PlaneGeometry(1.5,3.4);
       // Rhythmic warm wall bands — one per door bay on both walls, clear of windows
@@ -521,12 +544,14 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         const band=new THREE.Mesh(w1BandGeo,w1BandMat);
         band.rotation.y=-s2*Math.PI/2;
         band.position.set(s2*(cW/2-.04),2.5,bz2);
+        band.renderOrder=1; // explicit transparent-stack order (#6)
         scene.add(band);
       }
       // Gold walkthrough ring decal (replaces the per-door PointLights below)
+      // (#6) polygonOffset: the ring floats 3cm over the floor + pattern inlays
       w1HlRing=new THREE.Mesh(
         new THREE.RingGeometry(.55,.75,40),
-        new THREE.MeshBasicMaterial({color:GOLD,transparent:true,opacity:0,depthWrite:false})
+        new THREE.MeshBasicMaterial({color:GOLD,transparent:true,opacity:0,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})
       );
       w1HlRing.rotation.x=-Math.PI/2;
       w1HlRing.position.y=.03;
@@ -538,6 +563,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       pool.rotation.x=-Math.PI/2;
       pool.position.set(px,.032,pz2); // above rug top (.026) — additive, depthWrite off
       pool.scale.setScalar(sc);
+      pool.renderOrder=1; // explicit transparent-stack order (#6)
       scene.add(pool);
     };
 
@@ -762,9 +788,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const w2FocusTargets=new Map<string,FocusTarget>();
     const w2Quality:"low"|"med"|"high"=isMobileGPU()?"med":"high";
     // Basic-material builds (Fraunces labels, makeArtwork pieces, empty frames)
-    // are DEFERRED past optimizeMaterials: its fingerprint ignores a
-    // MeshBasicMaterial's map, so mount-time dedupe would collapse every label/
-    // photo/plaque onto one texture. Deferral keeps them out of that pass.
+    // are DEFERRED past optimizeMaterials. (Comment corrected 2026-08-06: the
+    // fingerprint DOES include map.uuid — but before any photo decodes, every
+    // salon photo material would hold the SAME shared placeholder map, giving
+    // identical fingerprints, so mount-time dedupe would collapse them into ONE
+    // material and a later setTexture would repaint every piece at once.
+    // Deferral past that pass keeps each piece's material its own.)
     const w2Deferred:(()=>void)[]=[];
     const w2TexAspect=(tex?:THREE.Texture)=>{const im=tex?.image as {width?:number;height?:number}|undefined;return im&&im.width&&im.height?im.width/im.height:0;};
     // Owner feedback 2026-08-06 (#3): the empty state is WALL-MOUNTED — a
@@ -779,8 +808,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const frameMat=new THREE.MeshStandardMaterial({color:GOLD,roughness:.28,metalness:.6});
       const frame=new THREE.Mesh(frameGeo,frameMat);frame.position.set(0,cy,.025);
       const linerGeo=new THREE.PlaneGeometry(fw,fh);
-      const linerMat=new THREE.MeshStandardMaterial({color:PLASTER,roughness:.9});
-      const liner=new THREE.Mesh(linerGeo,linerMat);liner.position.set(0,cy,.052);
+      // (#6) liner sat 2mm over the frame's front face (.052 vs .05) — z-fight
+      // at distance; 8mm separation + polygonOffset keeps the plaster liner clean
+      const linerMat=new THREE.MeshStandardMaterial({color:PLASTER,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+      const liner=new THREE.Mesh(linerGeo,linerMat);liner.position.set(0,cy,.058);
       const plaque=makeFrauncesLabel(t("hangFirstMemory"),{width:.85,height:.2}) as THREE.Mesh;
       plaque.position.set(0,cy-fh/2-.26,.04);
       g.add(frame,liner,plaque);
@@ -1002,7 +1033,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         scene.add(mk(new THREE.BoxGeometry(.14,.34,dW+.5),MS.wain,wx-(side*.06),dH+.29,z));
         scene.add(mk(new THREE.BoxGeometry(.15,.06,dW+.5),MS.trim,wx-(side*.065),dH+.09,z));
         w2Deferred.push(()=>{ // Basic-material label — deferred past optimizeMaterials
-          const lp=makeFrauncesLabel(roomLabel,{width:1.7,height:.4});
+          const lp=makeFrauncesLabel(roomLabel,{width:1.7,height:.4}) as THREE.Mesh;
+          // (#6) lintel plaque sits 1cm proud of the travertine beam — polygonOffset
+          // guards the grazing-angle z-fight (per-label material, never module-shared)
+          const lpm=lp.material as THREE.MeshBasicMaterial;lpm.polygonOffset=true;lpm.polygonOffsetFactor=-1;lpm.polygonOffsetUnits=-1;
           lp.rotation.y=side*(-Math.PI/2);lp.position.set(wx-(side*.14),dH+.29,z);scene.add(lp);
         });
       }else{
@@ -1610,7 +1644,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // W2 (WS5-7): portal label joins the Fraunces canon — ink on cream with a
       // gold hairline rule (replaces the gold-gradient Georgia canvas).
       w2Deferred.push(()=>{
-        const pl=makeFrauncesLabel(t("backToEntrance"),{width:2.4,height:.45});
+        const pl=makeFrauncesLabel(t("backToEntrance"),{width:2.4,height:.45}) as THREE.Mesh;
+        const plm=pl.material as THREE.MeshBasicMaterial;plm.polygonOffset=true;plm.polygonOffsetFactor=-1;plm.polygonOffsetUnits=-1; // (#6)
         pl.position.set(0,pH+.95,portalZ);scene.add(pl);
       });
     }else{
@@ -1638,7 +1673,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // W2 (WS5-7): restrained Fraunces wing plaque — the Georgia fresco (wing-
       // wall gradient, accent swirls, off-canon hues) dies; ink on cream.
       w2Deferred.push(()=>{
-        const wf=makeFrauncesLabel(wingLabel,{width:cW*.6,height:cW*.12});
+        const wf=makeFrauncesLabel(wingLabel,{width:cW*.6,height:cW*.12}) as THREE.Mesh;
+        // (#6) wing plaque hangs 2cm off the end wall — offset beats far-plane precision
+        const wfm=wf.material as THREE.MeshBasicMaterial;wfm.polygonOffset=true;wfm.polygonOffsetFactor=-1;wfm.polygonOffsetUnits=-1;
         wf.position.set(0,cH*.5,-cL/2+.02);scene.add(wf);
       });
     }else{
