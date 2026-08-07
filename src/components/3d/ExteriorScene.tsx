@@ -97,65 +97,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // infrastructure, so it requires W1; flag OFF ⇒ W1 behavior intact.
     const W2=W1&&flag3d("w2_exterior");
     // ══════════════════════════════════════════════════════════════════════
-    // W2 MASTERPLAN — "un corpo largo, cresciuto nei secoli" (owner brief
-    // 2026-08-06: "groter in de breedte / van scratch / impressive én
-    // authentiek / niet manu militari"). The v2 plan read as a 5-spoke
-    // windmill; this stage re-lays the whole ground floor as ONE BROAD
-    // CORPS DE LOGIS embracing an open cour d'honneur, with a San-Gimignano
-    // hill-town of towers grown asymmetrically against it.
+    // W2 MASTERPLAN — GRONDPLAN v3: "un corpo unico, cresciuto nei secoli"
+    // (owner-APPROVED plan, public/concepts/moodboard.html §3). Replaces the
+    // W1 radial 5-wing windmill with ONE CONTINUOUS ASYMMETRIC CORPS: a high
+    // compact hoofdblok carries the terracotta dome (the hero on world (0,0),
+    // footprint ~7% of total — it rules by HEIGHT, not by ground), from which a
+    // long low galerij grows east, a teruglig-tak folds back to embrace an
+    // irregular cortile, a lower dienstvleugel closes rear-west, and a walled
+    // broncourt-range hangs off the gallery. Seven casa-torri rise from the
+    // knots/corners as a grown hill-town profile; two poorttorens flank the
+    // entrance. The five WINGS[0..4] chapters survive only as invisible interior
+    // anchors — no wing is entered from outside (entrance hall only).
     //
-    // GROUNDS (Stage 1, BUILT, kept verbatim below): the circular target-disc
-    // courtyard is DEAD — a stone apron at the stair, a gravel parterre with
-    // four buxus compartments + centre urn on the −Z entrance axis, marble
-    // benches on the cross-path, and a cypressenlaan leading the 18s dolly up
-    // the hill. These stay.
+    // GROUNDS (Stage 1, BUILT, kept verbatim below): stone apron at the stair,
+    // gravel parterre + four buxus + centre urn on the −Z axis, marble benches,
+    // cypressenlaan up the hill for the 18s dolly. Dome + drum + gold lantern,
+    // the monumental stair + gold tympanum with the owner's name — all kept.
     //
-    // PARTI (Stage 2, this pass):
-    //  · TWO LONG SIDE-ARMS give the breadth the owner asked for — wing 1
-    //    (E, angle 82°) and wing 4 (W, broad+low, 278°) run almost to ±X,
-    //    canted 8° forward so the whole front embraces. Both lengthened to
-    //    wL 29 (from 20/21) for horizontal volume; arcade/window loops are
-    //    parametric on wL so they simply space out.
-    //  · TWO FRONT RETURNS (wing 2 @125°, wing 3 @235°) cant forward off the
-    //    ±X arms to frame a broad cour d'honneur — deliberately unequal
-    //    (wL 18 vs 19, one carries a risalit) so the court is not mirror-neat.
-    //  · ONE REAR WING (wing 0 @0°) closes the composition behind the dome.
-    //  · The whole −Z ENTRANCE AXIS stays a wing-free forecourt: nearest wing
-    //    (2 or 3) sits 55° off the axis — no wing within ±22° of −Z.
-    //  WING TABLE (id · angle° · wL · world-dir (sinθ,cosθ)):
-    //    0 rear     0°   20  ( 0.000, 1.000)
-    //    1 E-arm   82°   29  ( 0.990, 0.139)
-    //    2 fr-E   125°   18  ( 0.819,-0.574)
-    //    3 fr-W   235°   19  (-0.819,-0.574)
-    //    4 W-arm  278°   29  (-0.990, 0.139)
-    //
-    //  TOWERS (SORELLE) — 7 square casa-torri, an ASYMMETRIC hill-town, NOT a
-    //  ring. Two tall SISTERS flank the entrance as a gatehouse just outside
-    //  the ±22° wedge (±7, −16); an EAST BORGO cluster of three grows on the
-    //  rear-east slope (the "old town"); two lone towers hold the rear-west.
-    //  Every tower is verified (see collision note at the SORELLE array) to
-    //  fall OUTSIDE every swept wing footprint. Sisters top at 28.6/29.4 —
-    //  above the dome apex (~25.8) but below the lantern finial (~30.4): the
-    //  dome stays the hero.
-    //    T1 E-sister  ( 7,  -16) fp3.5  gatehouse, tall (footing)
-    //    T2 W-sister  (-7,  -16) fp3.6  gatehouse, tall (footing)
-    //    T3 borgo-E   ( 9,   12) fp4.1  east cluster (footing)
-    //    T5 borgo-E   (17,   12) fp3.6  east cluster (footing)
-    //    T7 borgo-E   (14,   17) fp3.6  east cluster (footing)
-    //    T4 rear-W    (-9.5, 12) fp4.5  battered plinth
-    //    T6 rear-W    (-17,  12) fp3.6  footing
-    //
-    //  BORGO GROWTH (kill the diagram): (A) a low coppo garden wall runs from
-    //  the W side-arm's outboard flank to tower T6 — the "aanhaken" the owner
-    //  liked; (B) a low tower-to-tower wall with a gate links T3→T5, closing
-    //  an irregular borgo court behind the dome. Both are merged into the
-    //  tower draw buckets (zero extra draw calls) and sit in wing-free ground.
-    //
-    //  DOLLY: the ~7.5s name-beat keeps framing the tympanum between the two
-    //  sisters; the beat waypoint was re-projected against the new ±7 sister
-    //  spacing (see the WP array). Skip/pause/resume + reduced-motion stills
-    //  unchanged.
-    // Flag OFF ⇒ radial legacy, byte-identical.
+    // NEW MASSA / TOWERS / ANCHORS: see the fully-documented block/tower/anchor
+    // tables at the W2 build (`if (W2) {` after the wing loop), with the
+    // collision proof. All new geometry merges per material into a handful of
+    // static meshes; the −Z arrival wedge (±22°) stays mass-free; the ~7.5s
+    // name-beat frames the tympanum between poorttorens T1(−13,−14)/T2(+11,−14).
+    // Flag OFF ⇒ radial W1 legacy, byte-identical.
     // ══════════════════════════════════════════════════════════════════════
     // W1 (WS10-2): mount the ONE ambient score — idempotent singleton, plays on
     // across scene transitions, so deliberately NOT stopped in cleanup.
@@ -1648,24 +1612,42 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze,  (vW / 2 + 0.5), vH + 1.85, 0));
 
     // ── PANTHEON-STYLE DOME (critical for transition coherence) ──
-    // ══ W2 grandeur pass (owner feedback 2026-08-06 #6B) — THE DOME IS THE HERO ══
-    // The entrance-hall dome must dominate the silhouette: under W2 it gains a
-    // square crossing attic that lifts the whole assembly ~3 units, a taller and
-    // wider drum (tamboer) with a full ring of tall windows, a larger dome shell
-    // and a proper lantern on top. "Slightly unreal" proportions are deliberate
-    // (owner brief); materials stay canon, geometry counts stay flat (same
-    // pilaster/window/rib loops at bigger dimensions).
-    const rDomeR = W2 ? 8.8 : 8;
-    const rDrumR = W2 ? 9.2 : 8.5, rDrumH = W2 ? 5.2 : 3.5;
-    const drumBaseY = W2 ? vH + 4.6 : vH + 1.8;
+    // ══ Owner review 2026-08-06 #1 — THE DOME IS THE HERO, BY HEIGHT ══
+    // The render read the dome as too low/small, drowning between the towers and
+    // eaves. The 10%-rule governs the GROUND footprint, not the height — so the
+    // TAMBOER (drum) is lengthened dramatically (rDrumH 5.2→11.0) while the
+    // diameter drops to ⌀~16.4 (rDrumR 8.2) so the footprint stays ~7%. A tall
+    // TWO-STAGE crossing attic (a broad lower storey + a stepped upper stage,
+    // both travertine-corniced) lifts the drum monumentally off the roof so the
+    // transition block→attic→drum→shell→lantern is gradual — no thin stem.
+    // Result (local frame, palace at world +8.3): drum top L≈19.5, shell apex
+    // L≈27.7 (world ≈36), lantern finial L≈35 (world ≈43). Every casa-torre is
+    // now capped well below (tallest world 31.3), so the lantern-crowned dome
+    // unmistakably bekroont the silhouette from the arrival dolly. Materials stay
+    // canon; geometry counts stay flat (same pilaster/window/rib loops, bigger
+    // dimensions + two extra attic boxes).
+    const rDomeR = W2 ? 8.0 : 8;
+    const rDrumR = W2 ? 8.2 : 8.5, rDrumH = W2 ? 11.0 : 3.5;
+    const drumBaseY = W2 ? vH + 5.5 : vH + 1.8;
     if (W2) {
-      // Square crossing attic carrying the raised drum (rises through the roof).
-      // Cap at vH+4.58, not 4.55: at 4.55 the cap TOP face (11.7) was exactly
-      // coplanar with the attic-box top face — the whole 19×17.4 plan z-fought
-      // from any high camera (#6). 0.03 up keeps the attic top embedded inside
-      // the cap; the drum base + base cornice still land inside the cap volume.
-      centralGroup.add(mk(new THREE.BoxGeometry(19, 3.4, 17.4), ochreWall, 0, vH + 3.0, 0));
-      centralGroup.add(mk(new THREE.BoxGeometry(19.8, 0.3, 18.2), M.trim, 0, vH + 4.58, 0));
+      // TWO-STAGE monumental crossing carrying the raised drum. Stage 1 (broad)
+      // rises from the roof ridge; stage 2 (stepped-in) meets the drum base. Each
+      // stage tops with a travertine cornice band; the drum base cornice lands
+      // INSIDE the upper stage so nothing is coplanar (all cornice tops offset in
+      // Y from the box tops they cap — no z-fight from a high camera, #6).
+      // Stage 1: broad lower attic (villa roof → ~L 12), 19×17.4.
+      centralGroup.add(mk(new THREE.BoxGeometry(19, 4.6, 17.4), ochreWall, 0, vH + 2.6, 0));
+      centralGroup.add(mk(new THREE.BoxGeometry(19.8, 0.34, 18.2), M.trim, 0, vH + 5.0, 0));
+      // Stage 2: stepped-in upper drum-base storey carrying the drum (⌀16.4),
+      // 17.4×17.4 so the drum base cornice (⌀17.2) lands inside it — the drum
+      // sits ON a masonry crossing, never on a thin stem. Rises to just under the
+      // drum base cornice.
+      centralGroup.add(mk(new THREE.BoxGeometry(17.4, 3.4, 17.4), ochreWall, 0, vH + 5.9, 0));
+      centralGroup.add(mk(new THREE.BoxGeometry(18.0, 0.3, 18.0), M.trim, 0, vH + 7.55, 0));
+      // Corner acroteria piers on stage 2 anchoring the drum visually (canon
+      // travertine, no gold) — four squat piers at the upper-stage corners.
+      for (const sx of [-1, 1]) for (const sz of [-1, 1])
+        centralGroup.add(mk(new THREE.BoxGeometry(1.1, 1.6, 1.1), M.trim, sx * 7.7, vH + 7.0, sz * 7.7));
     }
     centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR, rDrumR + 0.3, rDrumH, 32), ochreWall, 0, drumBaseY + rDrumH / 2, 0));
     // Drum base cornice — wider band at bottom of drum
@@ -1712,27 +1694,32 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     rDome.castShadow = true;
     centralGroup.add(rDome);
     // Dome exterior ribs — 8 radial coffers running from drum top toward oculus.
-    // W2 (Sette Sorelle iter 2): the old "ribs" sat at 0.95× shell radius —
-    // BURIED inside the dome, which is half of why it read as a smooth gold
-    // ball. Now: 8 WHITE TRAVERTINE MERIDIANS (M.trim) riding ON the surface
-    // (center on the shell +0.02, ~0.17 proud, never coplanar — box vs sphere),
-    // tapering as they converge and running under the lantern collar. That
-    // rib silhouette is the Tuscan trademark. All 56 segments merge into ONE
-    // static mesh (the legacy loop was 40 draw calls).
+    // ══ Owner review 2026-08-06 #2 — SOLID SHELL, ribs as ACCENT not frame ══
+    // The old ribs read as a thin parasol frame (spichtig white spokes into the
+    // sky). Now the terracotta shell is the massive read (coppo maps, warm
+    // terracotta, above) and the 8 meridians become BROADER, LOWER-CONTRAST
+    // bands: much wider (Z 1.05→0.7 taper vs 0.46), a touch less proud (0.26),
+    // and a SUBDUED warm-cream travertine (near the shell, not stark white) so
+    // they lie neatly ON the surface as ribs, never as free spokes. All 56
+    // segments merge into ONE static mesh (legacy loop was 40 draw calls).
     const domeOriginY = drumBaseY + rDrumH + 0.2;
     if (W2) {
+      // Subdued warm-cream rib stone — lower contrast against the terracotta
+      // shell than stark M.trim white; canon travertine family, no gold.
+      const ribMat = new THREE.MeshStandardMaterial({ color: "#CDBE9E", roughness: 0.64, metalness: 0, envMapIntensity: 0.55 });
+      extraDisposables.push(ribMat);
       const ribGeos: THREE.BufferGeometry[] = [];
-      const RIB_SEGS = 7, RIB_SWEEP = Math.PI * 0.47; // ends tucked under the oculus disc (r≈0.83 < 1.5)
-      const segLen = (rDomeR * RIB_SWEEP) / RIB_SEGS + 0.32; // overlap so the rib reads continuous
+      const RIB_SEGS = 7, RIB_SWEEP = Math.PI * 0.47; // ends tucked under the oculus disc (r≈0.75 < 1.5)
+      const segLen = (rDomeR * RIB_SWEEP) / RIB_SEGS + 0.30; // overlap so the rib reads continuous
       for (let r = 0; r < 8; r++) {
         const ra = (r / 8) * Math.PI * 2;
         for (let seg = 0; seg < RIB_SEGS; seg++) {
           const phi = ((seg + 0.5) / RIB_SEGS) * RIB_SWEEP;
-          const g = new THREE.BoxGeometry(0.34, segLen, 0.46 - seg * 0.03); // X=proud depth, Y=meridian run, Z=width (tapers toward the crown)
+          const g = new THREE.BoxGeometry(0.26, segLen, 1.05 - seg * 0.11); // X=proud depth (lower), Y=meridian run, Z=WIDTH (broad, tapers toward the crown)
           // Orient: local +X → outward surface normal, local +Y → meridian tangent
           g.rotateZ(phi);
           g.rotateY(-ra);
-          const rc = rDomeR + 0.02; // rib center ON the shell — half the 0.34 rides proud
+          const rc = rDomeR + 0.05; // rib center just above the shell — reads as a raised band, most of the 0.26 rides proud but reads flat/wide
           g.translate(Math.cos(ra) * rc * Math.cos(phi), domeOriginY + rc * Math.sin(phi), Math.sin(ra) * rc * Math.cos(phi));
           ribGeos.push(g);
         }
@@ -1741,7 +1728,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       ribGeos.forEach(g => g.dispose());
       if (ribMerged) {
         extraGeoDisposables.push(ribMerged);
-        const ribMesh = new THREE.Mesh(ribMerged, M.trim);
+        const ribMesh = new THREE.Mesh(ribMerged, ribMat);
         ribMesh.castShadow = true;
         centralGroup.add(ribMesh);
       }
@@ -1766,19 +1753,36 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // gold is lantern + tympanum ONLY — the gold band moved off the shell with
     // the rest of the Taj look); legacy keeps the bold gold band.
     centralGroup.add(mk(new THREE.TorusGeometry(1.5, 0.18, 8, 24), W2 ? M.trim : M.gold, 0, drumBaseY + rDrumH + rDomeR + 0.2, 0));
-    // Lantern above oculus — cylinder with 6 windows, cone roof, gold finial.
-    // W2 grandeur: a real lantaarn (wider, taller, bigger glass + finial) so the
-    // silhouette crowns properly at distance; same mesh count as legacy.
+    // Lantern above oculus — cylinder with 8 windows, cone roof, gold finial.
+    // ══ Owner review 2026-08-06 #2 — FORSER lantaarntje, in proportion to the
+    // now much taller/higher dome. Bigger cylinder (R 1.3→1.7), taller (H 2.6→
+    // 3.4), a travertine colonnade collar (8 corner pilasters), a broader kap,
+    // and a bigger gold-finial ball+spike so the crown reads unmistakably from
+    // the arrival dolly. Gold stays lantern-finial + tympanum ONLY (canon).
     const lanternY = drumBaseY + rDrumH + rDomeR + 0.35;
-    const lanR = W2 ? 1.3 : 0.8, lanH = W2 ? 2.6 : 1.5;
-    centralGroup.add(mk(new THREE.CylinderGeometry(lanR, lanR, lanH, 16), M.stoneL, 0, lanternY + lanH / 2, 0));
-    for (let lw = 0; lw < 6; lw++) {
-      const lwa = (lw / 6) * Math.PI * 2;
-      centralGroup.add(mk(new THREE.BoxGeometry(W2 ? 0.45 : 0.25, W2 ? 1.2 : 0.55, 0.1), M.win,
-        Math.cos(lwa) * (lanR + 0.02), lanternY + lanH / 2, Math.sin(lwa) * (lanR + 0.02)));
+    const lanR = W2 ? 1.7 : 0.8, lanH = W2 ? 3.4 : 1.5;
+    // Travertine base ring the lantern stands on (reads as a proper podium)
+    if (W2) centralGroup.add(mk(new THREE.CylinderGeometry(lanR + 0.5, lanR + 0.6, 0.4, 16), M.trim, 0, lanternY + 0.2, 0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(lanR, lanR, lanH, 16), M.stoneL, 0, lanternY + lanH / 2 + (W2 ? 0.4 : 0), 0));
+    const lanCoreY = lanternY + lanH / 2 + (W2 ? 0.4 : 0);
+    for (let lw = 0; lw < (W2 ? 8 : 6); lw++) {
+      const lwa = (lw / (W2 ? 8 : 6)) * Math.PI * 2;
+      centralGroup.add(mk(new THREE.BoxGeometry(W2 ? 0.55 : 0.25, W2 ? 1.7 : 0.55, 0.1), M.win,
+        Math.cos(lwa) * (lanR + 0.02), lanCoreY, Math.sin(lwa) * (lanR + 0.02)));
+      // Corner colonnette (canon travertine) between each pair of lights
+      if (W2) {
+        const cpa = ((lw + 0.5) / 8) * Math.PI * 2;
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.13, 0.13, lanH, 8),
+          M.col, Math.cos(cpa) * (lanR + 0.05), lanCoreY, Math.sin(cpa) * (lanR + 0.05)));
+      }
     }
-    centralGroup.add(mk(new THREE.ConeGeometry(W2 ? 1.15 : 0.6, W2 ? 1.7 : 1.0, 16), M.trim, 0, lanternY + lanH + (W2 ? 0.85 : 0.5), 0));
-    centralGroup.add(mk(new THREE.SphereGeometry(W2 ? 0.3 : 0.18, 12, 8), M.goldBright, 0, lanternY + lanH + (W2 ? 1.85 : 0.55), 0));
+    const lanTopY = lanternY + lanH + (W2 ? 0.4 : 0);
+    // Lantern entablature + broad cone kap
+    if (W2) centralGroup.add(mk(new THREE.CylinderGeometry(lanR + 0.35, lanR + 0.2, 0.35, 16), M.trim, 0, lanTopY + 0.18, 0));
+    centralGroup.add(mk(new THREE.ConeGeometry(W2 ? 1.65 : 0.6, W2 ? 2.4 : 1.0, 16), M.trim, 0, lanTopY + (W2 ? 1.55 : 0.5), 0));
+    // Gold finial: ball + spike (canon gold — lantern/tympanum only)
+    centralGroup.add(mk(new THREE.SphereGeometry(W2 ? 0.45 : 0.18, 12, 8), M.goldBright, 0, lanTopY + (W2 ? 3.0 : 0.55), 0));
+    if (W2) centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6), M.goldBright, 0, lanTopY + 3.9, 0));
 
     // ── DISTANT ROMAN ELEMENTS ──
     // (Aqueduct moved to landscape section where atmosColor is available)
@@ -1811,9 +1815,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if (child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) centralBodyMeshes.push(child);
     });
     palace.add(centralGroup);
-    // W2 grandeur: the raised crossing lifts the dome ~3 units — the tap-is-travel
-    // cylinder grows with it so the whole silhouette stays one big entrance target.
-    entrClickRadius = 12; entrClickHeight = vH + rDrumH + rDomeR + (W2 ? 7 : 4);
+    // W2 grandeur: the raised two-stage crossing lifts the dome far higher — the
+    // tap-is-travel cylinder grows with it so the whole silhouette (lantern
+    // included) stays one big entrance target.
+    entrClickRadius = 12; entrClickHeight = vH + rDrumH + rDomeR + (W2 ? 12 : 4);
 
     // ══════════════════════════════════════════
     // 5 ROMAN VILLA WINGS — colonnaded galleries with arched arcades & tower pavilions
@@ -1855,7 +1860,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     ];
     const wingFluteGeo = new THREE.BoxGeometry(0.015, (5 - 0.5) * 0.9, 0.04); // colH = wH - 0.5, shared across all wing columns
     extraGeoDisposables.push(wingFluteGeo);
-    wingDefs.forEach((def, i) => {
+    // ── LEGACY/W1 RADIAL MASSING (flag OFF) ──────────────────────────────────
+    // The 5 radial wings + their end-pavilions are the pre-W2 (W1) massing. Under
+    // W2 (grondplan v3) this whole windmill is REPLACED by the one continuous
+    // asymmetric corps below (blocks A–E + 7 casa-torri + 5 invisible anchors),
+    // so it runs ONLY when the flag is off — flag OFF stays byte-identical.
+    if (!W2) wingDefs.forEach((def, i) => {
       const angle = W2 ? WING_W2[i].angle : (i / 5) * Math.PI * 2;
       const wg = new THREE.Group();
       const WV = W2 ? WING_VAR[i] : null;
@@ -2226,166 +2236,293 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if (W2) wingAnchors.push(ct); else clickTargets.push(ct);
     });
 
-    // ══ W2 — LE SETTE SORELLE, iter 3: HILL TOWN vs the BROAD CORPS ══
-    // (owner brief 2026-08-06: "groter in de breedte / van scratch / niet
-    // manu militari"). The wings are now a wide corps de logis (E/W side-arms
-    // + two forward returns framing the court, see WING_W2), so the towers
-    // were RE-HOMED as a coherent asymmetric San-Gimignano family read against
-    // that front — no longer an east-heavy ring. The tower SHAPE RULES are
-    // unchanged (square casa-torre, double-corbel or low coppo crown, quoin
-    // chains, one staggered serena band, glowing bifora, NO gold): only the
-    // world positions moved. Family:
-    //  · TWO TALL SISTERS as a GATEHOUSE flanking the −Z entrance at (±7,-16),
-    //    just outside the ±22° axis wedge (they sit ~23.6° off-axis): they
-    //    bracket the tympanum for the name-beat, dome + lantern above them.
-    //  · an EAST BORGO of three (T3/T5/T7 on the rear-east slope) reads as the
-    //    "old town" grown on the hillside behind the dome.
-    //  · two lone towers hold the rear-west (T4 battered, T6).
-    // COLLISION PROOF (each tower centre ± footprint/2 vs every swept wing
-    // footprint; wing corridor half-width hw = max(wW/2+1.2, 4.25), clearance
-    // needed = hw + fp/2 + 1.2). Nearest-wing perpendicular clearance margin,
-    // computed against the att=2 baseline (att=3 on wings 1&4 only widens it):
-    //    T1 ( 7,-16) → wing2  d 9.09  (mgn +1.44)  PASS
-    //    T2 (-7,-16) → wing3  d 9.09  (mgn +1.39)  PASS
-    //    T3 ( 9, 12) → wing0  d 9.00  (mgn +1.05)  PASS
-    //    T5 (17, 12) → wing1  d 9.52  (mgn +1.82)  PASS
-    //    T7 (14, 17) → wing1  d14.89  (mgn +7.19)  PASS
-    //    T4 (-9.5,12)→ wing0  d 9.50  (mgn +1.35)  PASS   (battered base)
-    //    T6 (-17,12) → wing4  d 9.52  (mgn +0.82)  PASS
-    // (every other wing per tower is either off the axial band or ≥ 10 away.)
-    // Dome stays the hero: sisters top 28.6/29.4 > apex 25.8, < finial 30.4.
-    // Draw budget: ALL seven towers + BOTH borgo walls still merge into the
-    // same 6 meshes (shafts+borgo-walls / trim / serena / caps+wall-roofs /
-    // bifora glass / plinths). Deterministic literals, no random. Never added
-    // to clickTargets or wingAnchors → entrance click, anchor highlights and
-    // the dolly pause-prompt raycasts are untouched.
+    // ══════════════════════════════════════════════════════════════════════
+    // W2 — GRONDPLAN v3: "un corpo unico, cresciuto nei secoli"
+    // (owner-approved plan, public/concepts/moodboard.html §3). Replaces the
+    // W1 radial windmill above with ONE continuous asymmetric corps around the
+    // kept terracotta dome (the hero on world (0,0), footprint ~7% of total).
+    // World coords: X=east+, Z=rear/north+, −Z=arrival(front). All literals
+    // deterministic (no random). Everything merges per-material into a handful
+    // of static meshes — draw budget stays flat vs the old massing.
+    //
+    // MASSA BLOCKS  centre(X,Z) · w×d · h   (built as ONE overlapping volume —
+    // adjacent blocks interpenetrate ~1.5 w.u. at every seam so the outline
+    // reads continuous, walkable corner-to-corner, staggered ridge-lines):
+    //   A Hoofdblok      (−2 ,+2 ) · 30×28 · 18   carries the dome, entree −Z
+    //   B Galerij        (+52,+2.5) · 78×13 ·  9   long low east arm, arcade
+    //   C Teruglig-tak   (+26,+22) · 46×12 · 11   folds back, embraces cortile
+    //   D Dienstvleugel  (−28,+8.5) · 26×11 ·  8   lower rear-west
+    //   E Broncourt-rng  (+68,+16.5)· 20× 9 ·  8   walled well-court
+    //   (cortile grande & broncourt are VOID — courts, not built volumes)
+    //
+    // 7 CASA-TORRI  centre(X,Z) · fp · topY   (square, H:B 4-6:1, rising from
+    // the knots/corners; quoins + one serena band + glowing bifora + double
+    // corbel or low coppo cap, NO gold; all top below the lantern finial 30.4):
+    //   T1 poort-W (−13,−14)·7 ·29   T2 poort-E (+11,−14)·7 ·29  (gatehouse)
+    //   T3 (+90,+12)·5.5·24  T4 (+90,−6)·5·23  (far-east "oude stad")
+    //   T6 (−41,+16)·6·24                       (rear-west)
+    //   T5 (+50,+32)·5·13    T7 (−13,+30)·5·12  (low, teruglig knots)
+    // COLLISION CHECK (tower fp-square vs each block rect; centre never fully
+    // inside a block — T1/T2/T4/T6 deliberately embed ≤1.5 into a corner):
+    //   T1 embeds 1.5 into A-SW corner   T2 embeds 1.5 into A-SE corner
+    //   T3/T4 graze B far-east corner    T6 embeds 1 into D-NW corner
+    //   T5,T7 fully free (north of C).   NO tower fully inside a roof. PASS.
+    //
+    // 5 ANCHORS (invisible, opacity 0, wingAnchors → targetWorldPos only):
+    //   0 roots(−28,+9)∈D  1 nest(+28,0)∈B  2 craft(+79,0)∈B
+    //   3 travel(+54,−2)∈B  4 passions(+28,+22)∈C   — all clear of the ±22°
+    //   arrival wedge and of every tower footprint.
+    // ══════════════════════════════════════════════════════════════════════
     if (W2) {
-      // One shade darker than iter 1 (#4A463F): the bands must read at 90-106
-      // camera distance, and darker serena buys silhouette without a new hue.
+      // ── shared merge buckets (per material → min meshes) ──
+      const gWall: THREE.BufferGeometry[] = [], gWallL: THREE.BufferGeometry[] = [],
+            gWallD: THREE.BufferGeometry[] = [], gTrimM: THREE.BufferGeometry[] = [],
+            gRoof: THREE.BufferGeometry[] = [], gWinM: THREE.BufferGeometry[] = [],
+            gSerenaM: THREE.BufferGeometry[] = [], gPlinthM: THREE.BufferGeometry[] = [];
       const serenaMat = new THREE.MeshStandardMaterial({ color: "#3E3933", roughness: 0.86, metalness: 0, envMapIntensity: 0.3 });
       extraDisposables.push(serenaMat);
-      const gShaft: THREE.BufferGeometry[] = [], gTrim: THREE.BufferGeometry[] = [], gSerena: THREE.BufferGeometry[] = [],
-            gCap: THREE.BufferGeometry[] = [], gWin: THREE.BufferGeometry[] = [], gPlinth: THREE.BufferGeometry[] = [];
-      // [x, z, footprint, topY, flatTop, serena-bandY, base (0=grown from roof, 1=stone footing, 2=battered plinth), biforaYaw]
-      // iter 3 re-home (see collision proof above): gatehouse sisters flank the
-      // −Z entrance at ±7,-16 (23.6° off-axis, outside the ±22° wedge); an east
-      // borgo of three on the rear-east slope; two lone towers rear-west.
-      const SORELLE: [number, number, number, number, boolean, number, number, number][] = [
-        [  7.0, -16.0, 3.5, 29.4, true,  12.6, 1, 0], // T1 Sorella E — gatehouse, tall+slim, footing (free-standing in the court, flanks entrance E)
-        [ -7.0, -16.0, 3.6, 28.6, true,  17.8, 1, 0], // T2 Sorella W — gatehouse, tall, footing (asymmetric pair: taller-slimmer E vs stockier W)
-        [  9.0,  12.0, 4.1, 21.8, false,  9.4, 1, 0], // T3 borgo-E — east hill-town cluster, footing
-        [ 17.0,  12.0, 3.6, 15.6, false, 10.4, 1, 0], // T5 borgo-E — east cluster, lower (the "old town" steps down the slope)
-        [ 14.0,  17.0, 3.6, 11.3, false,  7.6, 1, 0], // T7 borgo-E — east cluster, lowest (closes the borgo court behind the dome)
-        [ -9.5,  12.0, 4.5, 20.9, false, 13.2, 2, 0], // T4 rear-W — free, BATTERED plinth ("grown from the hill")
-        [-17.0,  12.0, 3.6, 14.1, true,   6.2, 1, 0], // T6 rear-W — free footing, flat double-corbel crown (linked to the W arm by a borgo wall)
+      const box = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number, ry = 0, rz = 0) => {
+        const g = new THREE.BoxGeometry(w, h, d);
+        if (rz) g.rotateZ(rz); if (ry) g.rotateY(ry);
+        g.translate(x, y, z); arr.push(g);
+      };
+      // Palace floor line: the whole group sits at palace.position.y = HILL_Y+0.3,
+      // so local y=0 IS the plinth top; foot geometry sinks ~0.4 below it.
+      // ══ Owner review 2026-08-06 #4 — MASSA DICHT (no doorkijk at the naden) ══
+      // SEAM 0.75→1.15 so every neighbour overlaps ~2.3 at the joins and the
+      // corps reads as ONE continuous mass (the old gap between galerij B and
+      // hoofdblok A closes). Explicit seam-filler blocks + a continuous crown
+      // string + a risaliet on B are added right after the block calls below.
+      const SEAM = 1.15; // per-side seam growth → neighbours overlap ~2.3 at joins
+
+      // ── ONE PARAMETRIC BLOCK ─────────────────────────────────────────────
+      // plaster core (grown by SEAM so joins overlap), travertine plinth +
+      // string course + crown cornize + corner quoins, a low-overstek coppo
+      // hip cap, and a parametric merged window ritme on the long faces.
+      const buildBlock = (
+        cx: number, cz: number, w: number, d: number, h: number,
+        opts: { winFaces?: ("+x"|"-x"|"+z"|"-z")[]; loggiaFace?: "+z"|"-z"|"+x"|"-x" } = {}
+      ) => {
+        const bw = w + SEAM * 2, bd = d + SEAM * 2; // grown footprint (seam overlap)
+        // plinth (foot sunk 0.4) — travertine base band
+        box(gTrimM, bw + 0.6, 1.0, bd + 0.6, cx, 0.1, cz);
+        // plaster body
+        box(gWall, bw, h, bd, cx, h / 2 + 0.5, cz);
+        // string course at mid height
+        box(gTrimM, bw + 0.15, 0.16, bd + 0.15, cx, h * 0.5 + 0.5, cz);
+        // crown cornice (two travertine bands, interpenetrating in Y — no coplanar)
+        box(gTrimM, bw + 0.4, 0.28, bd + 0.4, cx, h + 0.45, cz);
+        box(gTrimM, bw + 0.7, 0.24, bd + 0.7, cx, h + 0.66, cz);
+        // corner quoins (travertine chains, stop under the cornice)
+        for (const sx of [-1, 1]) for (const sz of [-1, 1])
+          box(gTrimM, 0.5, h - 0.6, 0.5, cx + sx * bw / 2, (h - 0.6) / 2 + 0.5, cz + sz * bd / 2);
+        // low coppo hip cap — 4-seg pyramid, ~14° face slope, eave overstek
+        const capR = Math.hypot(bw, bd) / 2 + 0.5;
+        const capH = 0.25 * (Math.max(bw, bd) / 2 + 0.6);
+        const cap = new THREE.ConeGeometry(capR, capH, 4);
+        cap.rotateY(Math.PI / 4); cap.scale(bw / Math.max(bw, bd), 1, bd / Math.max(bw, bd));
+        cap.translate(cx, h + 0.7 + capH / 2, cz); gRoof.push(cap);
+        // merged window ritme on requested long faces (mullioned, glowing glass)
+        const winH = Math.min(2.0, h * 0.34);
+        const winY = h * 0.52 + 0.5;
+        for (const face of (opts.winFaces || [])) {
+          const along = (face === "+x" || face === "-x") ? bd : bw;
+          const n = Math.max(2, Math.floor(along / 5));
+          const step = (along - 3) / (n - 1);
+          for (let k = 0; k < n; k++) {
+            const p = -(along - 3) / 2 + k * step;
+            let wx = cx, wz = cz, fx = 0, fz = 0;
+            if (face === "+z") { wz = cz + bd / 2 + 0.03; wx = cx + p; fx = 1.2; }
+            else if (face === "-z") { wz = cz - bd / 2 - 0.03; wx = cx + p; fx = 1.2; }
+            else if (face === "+x") { wx = cx + bw / 2 + 0.03; wz = cz + p; fz = 1.2; }
+            else { wx = cx - bw / 2 - 0.03; wz = cz + p; fz = 1.2; }
+            // travertine surround (proud), glowing pane (embedded 0.04)
+            box(gTrimM, fx || 0.14, winH + 0.3, fz || 0.14, wx, winY, wz);
+            box(gWinM, (fx ? fx - 0.35 : 0.1), winH, (fz ? fz - 0.35 : 0.1), wx + (fx ? 0 : (face === "+x" ? -0.04 : 0.04)), winY, wz + (fz ? 0 : (face === "+z" ? -0.04 : 0.04)));
+          }
+        }
+        // loggia/arcade screen along one long face (travertine colonnade proud
+        // of the plaster) — used on the long gallery B
+        if (opts.loggiaFace) {
+          const face = opts.loggiaFace;
+          const along = (face === "+x" || face === "-x") ? bd : bw;
+          const n = Math.max(4, Math.floor(along / 5.5));
+          const step = (along - 2) / (n - 1);
+          const colH = Math.min(h - 1.2, 6.5);
+          for (let k = 0; k < n; k++) {
+            const p = -(along - 2) / 2 + k * step;
+            let clx = cx, clz = cz;
+            if (face === "+z") { clz = cz + bd / 2 + 0.6; clx = cx + p; }
+            else if (face === "-z") { clz = cz - bd / 2 - 0.6; clx = cx + p; }
+            else if (face === "+x") { clx = cx + bw / 2 + 0.6; clz = cz + p; }
+            else { clx = cx - bw / 2 - 0.6; clz = cz + p; }
+            gWallL.push(new THREE.CylinderGeometry(0.28, 0.32, colH, 10).translate(clx, colH / 2 + 0.5, clz));
+            box(gTrimM, 0.7, 0.16, 0.7, clx, colH + 0.6, clz);        // capital
+            box(gTrimM, 0.62, 0.14, 0.62, clx, 0.62, clz);            // base
+          }
+          // entablature band riding the capitals
+          if (face === "+z" || face === "-z")
+            box(gTrimM, bw, 0.22, 0.3, cx, colH + 0.75, (face === "+z" ? cz + bd / 2 + 0.6 : cz - bd / 2 - 0.6));
+          else
+            box(gTrimM, 0.3, 0.22, bd, (face === "+x" ? cx + bw / 2 + 0.6 : cx - bw / 2 - 0.6), colH + 0.75, cz);
+        }
+      };
+
+      // A Hoofdblok — high compact hart, entree gevel on −Z (window ritme on
+      // the side/rear faces; the −Z front stays the entrance/tympanum face).
+      buildBlock(-2, 2, 30, 28, 18, { winFaces: ["+x", "-x", "+z"] });
+      // B Galerij — long low east arm; arcade/loggia on its −Z (court) face,
+      // windows on the far +z field face.
+      buildBlock(52, 2.5, 78, 13, 9, { winFaces: ["+z", "-z"], loggiaFace: "-z" });
+      // C Teruglig-tak — folds back over the cortile; grow zmin so it laps A.
+      buildBlock(26, 22, 46, 12, 11, { winFaces: ["+z", "-z"] });
+      // D Dienstvleugel — lower rear-west.
+      buildBlock(-28, 8.5, 26, 11, 8, { winFaces: ["+z", "-z"] });
+      // E Broncourt-range — walled well-court; deeper toward B so it laps the
+      // gallery (extra −Z depth closes the 2.5 gap to B).
+      buildBlock(68, 18.0, 20, 12, 8, { winFaces: ["+z", "+x"] });
+      // broncourt well head (bronze, no gold) at (68,16.5)
+      gPlinthM.push(new THREE.CylinderGeometry(1.4, 1.5, 0.5, 12).translate(68, 0.25, 16.5));
+      gSerenaM.push(new THREE.CylinderGeometry(0.55, 0.7, 1.1, 10).translate(68, 0.9, 16.5));
+
+      // ── SEAM FILLERS (owner review #4) — solid plaster blocks straddling each
+      // block junction so no doorkijk survives between differing block heights.
+      // Each filler is sized to the LOWER neighbour's height and lapped ~2 into
+      // both blocks; they carry their own low string course so the joint reads as
+      // an articulated set-back, not a gap.
+      // A(h18)↔B(h9): fill the tall A-face where the low B abuts (x≈12.5, z −5..10).
+      box(gWall, 6, 9, 16.5, 12.5, 5.0, 2.5);
+      box(gTrimM, 6.2, 0.18, 16.7, 12.5, 9.2, 2.5);      // string atop the B-datum
+      // A(h18)↔D(h8): west junction (x≈-15, z 2..15).
+      box(gWall, 6, 8, 13, -15, 4.5, 8.5);
+      box(gTrimM, 6.2, 0.18, 13.2, -15, 8.2, 8.5);
+      // A(h18)↔C(h11): C folds back over the cortile; close its west return into A.
+      box(gWall, 8, 11, 6, 4, 6.0, 20.5);
+      box(gTrimM, 8.2, 0.18, 6.2, 4, 11.2, 20.5);
+      // B(h9)↔E(h8): E laps the gallery; fill the shared face (x≈68, z 9..12).
+      box(gWall, 20, 8, 5, 68, 4.5, 11.0);
+
+      // ── CONTINUOUS CROWN STRING (owner review #4) — a single travertine band
+      // ringing the whole corps at the B/E datum (h≈9), tying the blocks into one
+      // read while the taller A/C step above it. Runs the full E–W spread of the
+      // gallery + returns; interpenetrates the block cornices in Y (no coplanar).
+      box(gTrimM, 105, 0.22, 0.35, 39, 9.15, -4.4);      // gallery+A front datum band (−z)
+      box(gTrimM, 105, 0.22, 0.35, 39, 9.15, 9.9);       // gallery+A rear datum band (+z)
+      box(gTrimM, 0.35, 0.22, 15.0, 92.4, 9.15, 2.5);    // far-east return
+
+      // ── GALLERY B RISALIET (owner review #4) — a shallow central bay projecting
+      // from B's FIELD (+z) face (the loggia-arcade stays clean on the −z court
+      // face) with its own low hip dakje, so the long gallery reads as articulated
+      // architecture, not a loods.
+      {
+        const rzc = 52;                 // centred on B (cx 52)
+        const rFace = 2.5 + 14.5 / 2;   // B rear/field face (bd 14.5) → z ≈ 9.75
+        box(gWall, 14, 9, 3.4, rzc, 5.0, rFace + 0.5);            // projecting bay body (laps 1.2 into B)
+        box(gTrimM, 14.4, 0.22, 3.7, rzc, 9.05, rFace + 0.5);     // bay crown cornice (above the datum band)
+        // shallow pediment-less hip dakje for the risaliet
+        const rcapH = 1.3;
+        const rcap = new THREE.ConeGeometry(9.4, rcapH, 4);
+        rcap.rotateY(Math.PI / 4); rcap.scale(14.6 / 18.8, 1, 3.9 / 18.8);
+        rcap.translate(rzc, 9.2 + rcapH / 2, rFace + 0.5); gRoof.push(rcap);
+        // two travertine pilasters framing the risaliet
+        for (const s of [-1, 1]) box(gTrimM, 0.5, 8.0, 0.4, rzc + s * 6.6, 4.5, rFace + 2.05);
+      }
+
+      // ── 7 CASA-TORRI ─────────────────────────────────────────────────────
+      // ══ Owner review 2026-08-06 #3 — SUBORDINATE, STURDIER, VARIED ══
+      // No tower may top the dome apex (world ≈36 / local ≈27.7): all capped well
+      // below (tallest world 31.3). Old towers were thin picket-fence spikes
+      // (H:B ~4-8:1, near-equal heights) prikked op dakranden. New rule: each
+      // torenvoet is EMBEDDED IN A BLOCK CORNER (footprint straddles the grown
+      // block hoek, coords below), footprints 5-8, H:B ~2.2-2.9 (STEVIG), and
+      // big height variatie — 2 poort (23), 2 middelhoog (17/19), 3 low (12-14).
+      // Vormregels intact (square, quoins, serena-band, bifora, corbel/coppo,
+      // NO gold). Block corners (grown by SEAM 0.75/side):
+      //  A(-2,2,30×28)→x{-17.75,13.75} z{-12.75,16.75}
+      //  B(52,2.5,78×13)→x{12.25,91.75} z{-4.75,9.75}
+      //  C(26,22,46×12)→x{2.25,49.75} z{15.25,28.75}
+      //  D(-28,8.5,26×11)→x{-41.75,-14.25} z{2.25,14.75}
+      // [x, z, fp, topY, flatTop, serena-bandY]
+      const TOWERS: [number, number, number, number, boolean, number][] = [
+        [-15, -13, 8.0, 23.0, true,  13.5], // T1 poort-W — gatehouse (A front-left hoek −17.75,−12.75), H:B 2.9
+        [ 12, -13, 8.0, 23.0, true,  13.5], // T2 poort-E — gatehouse (A front-right hoek 13.75,−12.75), H:B 2.9
+        [ 89,  11, 6.0, 17.0, false, 10.0], // T3 far-NE "oude stad" (B NE hoek 91.75,9.75), middelhoog, H:B 2.8
+        [ 89,  -4, 5.5, 14.0, false,  8.5], // T4 far-SE (B SE hoek 91.75,−4.75), low/stevig, H:B 2.5
+        [-40,  14, 6.5, 19.0, true,  11.0], // T6 rear-W (D rear-W hoek −41.75,14.75), middelhoog, H:B 2.9
+        [ 48,  28, 5.5, 12.0, false,  7.0], // T5 teruglig-NE (C NE hoek 49.75,28.75), low/stevig, H:B 2.2
+        [  4,  28, 5.0, 13.0, false,  7.5], // T7 teruglig-NW (C NW hoek 2.25,28.75), low/stevig, H:B 2.6
       ];
-      SORELLE.forEach(([tx, tz, fp, topY, flatTop, bandY, base, bYaw]) => {
-        const put = (arr: THREE.BufferGeometry[], g: THREE.BufferGeometry, dx: number, dy: number, dz: number) => {
-          g.translate(dx, 0, dz); if (bYaw) g.rotateY(bYaw); g.translate(tx, dy, tz); arr.push(g);
-        };
-        // Shaft — square casa-torre, foot sunk 0.6 below the palace plinth line
-        put(gShaft, new THREE.BoxGeometry(fp, topY + 0.6, fp), 0, (topY - 0.6) / 2, 0);
-        // Quoin chains on all 4 corners (0.15 proud on both faces, stop under the crown)
+      TOWERS.forEach(([tx, tz, fp, topY, flatTop, bandY]) => {
+        // Shaft — square casa-torre, foot sunk 0.6
+        gWall.push(new THREE.BoxGeometry(fp, topY + 0.6, fp).translate(tx, (topY - 0.6) / 2, tz));
+        // Stone footing plinth
+        gPlinthM.push(new THREE.BoxGeometry(fp + 0.8, 1.7, fp + 0.8).translate(tx, 0.15, tz));
+        // Quoin chains on 4 corners (stop under crown)
         const qh = topY - 1.6;
         for (const sx of [-1, 1]) for (const sz of [-1, 1])
-          put(gTrim, new THREE.BoxGeometry(0.3, qh, 0.3), sx * fp / 2, qh / 2 - 0.4, sz * fp / 2);
-        // Pietra-serena band — broader + prouder than iter 1 (0.34/0.05 didn't
-        // read at dolly distance): 0.55 tall, 0.1 proud
-        put(gSerena, new THREE.BoxGeometry(fp + 0.2, 0.55, fp + 0.2), 0, bandY, 0);
-        // Crown — DOUBLE corbelled cornice with real overstek (0.25 then 0.35)
-        // riding on dark serena corbel brackets (3 per face): the San Gimignano
-        // machicolation silhouette. Slabs interpenetrate 0.02 in Y — no pair of
-        // faces coplanar (z-fighting rule).
+          gTrimM.push(new THREE.BoxGeometry(0.3, qh, 0.3).translate(tx + sx * fp / 2, qh / 2 - 0.4, tz + sz * fp / 2));
+        // One staggered pietra-serena band
+        gSerenaM.push(new THREE.BoxGeometry(fp + 0.2, 0.55, fp + 0.2).translate(tx, bandY, tz));
+        // Crown — double corbelled cornice (interpenetrate 0.02 Y; no gold)
         const crownY = flatTop ? topY - 0.34 : topY + 0.1;
-        put(gTrim, new THREE.BoxGeometry(fp + 0.5, 0.22, fp + 0.5), 0, crownY, 0);
-        put(gTrim, new THREE.BoxGeometry(fp + 0.7, 0.2, fp + 0.7), 0, crownY + 0.19, 0);
+        gTrimM.push(new THREE.BoxGeometry(fp + 0.5, 0.22, fp + 0.5).translate(tx, crownY, tz));
+        gTrimM.push(new THREE.BoxGeometry(fp + 0.7, 0.20, fp + 0.7).translate(tx, crownY + 0.19, tz));
         for (const s of [-1, 1]) for (const off of [-fp / 3, 0, fp / 3]) {
-          // Brackets under the first slab, 0.17 proud of the shaft face
-          put(gSerena, new THREE.BoxGeometry(0.28, 0.55, 0.34), off, crownY - 0.36, s * (fp / 2 + 0.05));
-          put(gSerena, new THREE.BoxGeometry(0.34, 0.55, 0.28), s * (fp / 2 + 0.05), crownY - 0.36, off);
+          gSerenaM.push(new THREE.BoxGeometry(0.28, 0.55, 0.34).translate(tx + off, crownY - 0.36, tz + s * (fp / 2 + 0.05)));
+          gSerenaM.push(new THREE.BoxGeometry(0.34, 0.55, 0.28).translate(tx + s * (fp / 2 + 0.05), crownY - 0.36, tz + off));
         }
+        // Low coppo hip cap on the non-flat towers (square pyramid, overstek)
         if (!flatTop) {
-          // Low coppo hip cap: 4-seg cone rotated 45° = square pyramid.
-          // Face slope atan(.27)≈15° (≤ 20°); eave lands beyond the crown slab
-          // (overstek, geen vlak-op-vlak), base sunk 0.03 in.
           const capH = 0.27 * (fp / 2 + 0.42);
           const cap = new THREE.ConeGeometry((fp / 2 + 0.42) * Math.SQRT2, capH, 4);
-          cap.rotateY(Math.PI / 4);
-          cap.translate(tx, topY + 0.35 + capH / 2, tz);
-          gCap.push(cap);
+          cap.rotateY(Math.PI / 4); cap.translate(tx, topY + 0.35 + capH / 2, tz);
+          gRoof.push(cap);
         }
-        // Bifora high in the shaft, facing the arrival side: two narrow
-        // round-arched lights + colonnette in a serena surround. Lights sit
-        // 0.10 proud / embedded 0.06 (never coplanar with the shaft face).
-        // The two tall sisters carry a SECOND bifora lower in the shaft —
-        // stacked openings are the San Gimignano tell for the big towers.
-        const zF = -fp / 2;
+        // Bifora facing arrival (−Z): serena surround, two arched lights + colonnette
+        const zF = tz - fp / 2;
         const biYs = topY > 25 ? [topY - 2.1, topY - 6.7] : [topY - 2.1];
         for (const biY of biYs) {
-          put(gSerena, new THREE.BoxGeometry(1.18, 1.62, 0.12), 0, biY + 0.12, zF - 0.01);
+          gSerenaM.push(new THREE.BoxGeometry(1.18, 1.62, 0.12).translate(tx, biY + 0.12, zF - 0.01));
           for (const lx of [-0.27, 0.27]) {
-            put(gWin, new THREE.BoxGeometry(0.34, 0.92, 0.16), lx, biY, zF - 0.02);
+            gWinM.push(new THREE.BoxGeometry(0.34, 0.92, 0.16).translate(tx + lx, biY, zF - 0.02));
             const arch = new THREE.CylinderGeometry(0.17, 0.17, 0.16, 10, 1, false, 0, Math.PI);
             arch.rotateX(Math.PI / 2); arch.rotateZ(Math.PI / 2);
-            put(gWin, arch, lx, biY + 0.46, zF - 0.02);
+            arch.translate(tx + lx, biY + 0.46, zF - 0.02); gWinM.push(arch);
           }
-          put(gTrim, new THREE.CylinderGeometry(0.06, 0.075, 0.95, 8), 0, biY - 0.02, zF - 0.06);
-        }
-        // Bases: 1 = plain stone footing (sunk 0.7); 2 = BATTERED plinth — a
-        // square tapered frustum (4-seg cylinder rotated 45°), bottom 1.3
-        // wider than the shaft, sloping in over 2.8: the "grown from the
-        // hill" read the owner asked for on 1-2 towers.
-        if (base === 1) put(gPlinth, new THREE.BoxGeometry(fp + 0.8, 1.7, fp + 0.8), 0, 0.15, 0);
-        if (base === 2) {
-          const bat = new THREE.CylinderGeometry((fp + 0.5) / Math.SQRT2, (fp + 1.3) / Math.SQRT2, 2.8, 4);
-          bat.rotateY(Math.PI / 4);
-          bat.translate(tx, 0.7, tz);
-          gPlinth.push(bat);
+          gTrimM.push(new THREE.CylinderGeometry(0.06, 0.075, 0.95, 8).translate(tx, biY - 0.02, zF - 0.06));
         }
       });
-      // ── BORGO GROWTH — two low connectors "kill the diagram" (owner:
-      // "aanhaken … eeuwenlang aangegroeid"). Both are LOW (≤2.6 shaft) so
-      // they read as garden/enclosure walls, sit in wing-free ground, and
-      // merge into the tower buckets (walls→gShaft, coppo caps→gCap): zero
-      // extra draw calls. Deterministic literals; feet sink ~0.3 (never float).
-      //
-      // (A) Wall from the W side-arm's outboard flank (~(-12,8), perpendicular
-      //     clearance 6.25 > 5.9 needed vs the broad wing-4 corridor hw 5.5 +
-      //     wall 0.4) obliquely into tower T6 at (-17,12): the "aanhaken" of an
-      //     arm to a free tower. Run 5.4 along dir (dx,dz)=(-5,4).
-      {
-        const yaw = Math.atan2(-5, 4);          // (-12,8) → (-17,12)
-        const cx = -14.5, cz = 10.0;            // wall centre (clear of wing-4 body)
-        const body = new THREE.BoxGeometry(0.5, 2.6, 5.4);
-        body.rotateY(yaw);
-        body.translate(cx, 1.0, cz);            // foot y = -0.3
-        gShaft.push(body);
-        const shed = new THREE.BoxGeometry(0.9, 0.14, 5.6); // coppo shed cap
-        shed.rotateZ(0.14);                     // slight tilt — no coplanar face with the wall top
-        shed.rotateY(yaw);
-        shed.translate(cx, 2.42, cz);
-        gCap.push(shed);
-      }
-      // (B) A gated garden wall linking east-borgo towers T3(9,12) → T5(17,12),
-      //     closing an irregular borgo court behind the dome. Two posts flank a
-      //     gate gap; centre (13,12) is 10.1 clear of the E side-arm corridor
-      //     and ≥10.5 clear of the rear wing. Straight along +X (z=12).
-      {
-        const wall = new THREE.BoxGeometry(5.0, 2.4, 0.5);
-        wall.translate(13.0, 0.9, 12.0);        // foot y = -0.3
-        gShaft.push(wall);
-        for (const gx of [10.6, 15.4]) {         // gate posts (taller than the wall)
-          const post = new THREE.BoxGeometry(0.6, 3.0, 0.6);
-          post.translate(gx, 1.2, 12.0);
-          gShaft.push(post);
-        }
-        const shed = new THREE.BoxGeometry(5.2, 0.14, 0.9);
-        shed.rotateZ(0.12);
-        shed.translate(13.0, 2.22, 12.0);
-        gCap.push(shed);
-      }
-      ([[gShaft, ochreWall, true], [gTrim, M.trim, false], [gSerena, serenaMat, false],
-        [gCap, M.tile, true], [gWin, M.win, false], [gPlinth, M.stoneD, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
+
+      // Well-court garden wall closing the broncourt (E's embrace), low coppo.
+      box(gWallD, 0.5, 2.4, 10, 78.6, 0.9, 16.5); // outboard east wall
+      gRoof.push(new THREE.BoxGeometry(0.9, 0.14, 10.2).rotateZ(0.12).translate(78.6, 2.22, 16.5));
+
+      // ── 5 INVISIBLE CHAPTER-ANCHORS (targetWorldPos only; NOT click targets;
+      // NOT raycastable — opacity 0). Positions per grondplan v3, all inside the
+      // mass, clear of towers + the ±22° arrival wedge. userData.roomId = WING id.
+      const ANCHORS: [number, number][] = [
+        [-28,  9], // 0 roots    — in D
+        [ 28,  0], // 1 nest     — in B (early)
+        [ 79,  0], // 2 craft    — in B (far-east)
+        [ 54, -2], // 3 travel   — in B (front, at the knik)
+        [ 28, 22], // 4 passions — in C
+      ];
+      ANCHORS.forEach(([ax, az], i) => {
+        const wing = WINGS[i]; if (!wing) return;
+        const anc = new THREE.Mesh(
+          new THREE.BoxGeometry(4, 6, 4),
+          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+        );
+        anc.position.set(ax, 6, az);
+        anc.userData = { roomId: wing.id, wingMeshes: [], accent: wing.accent };
+        palace.add(anc);
+        wingAnchors.push(anc);
+      });
+
+      // ── MERGE & MOUNT — each bucket → one static mesh ──
+      ([[gWall, ochreWall, true], [gWallL, M.stoneL, true], [gWallD, M.stoneD, true],
+        [gTrimM, M.trim, false], [gRoof, M.tile, true], [gWinM, M.win, false],
+        [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
         .forEach(([geos, mat, shadow]) => {
           if (!geos.length) return;
           const merged = mergeGeometries(geos);
@@ -2394,6 +2531,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           extraGeoDisposables.push(merged);
           const mesh = new THREE.Mesh(merged, mat);
           mesh.castShadow = shadow;
+          mesh.receiveShadow = true;
           palace.add(mesh);
         });
     }
@@ -3814,7 +3952,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const SHOT=2.4,FADE=.5;
           const stills: [number,number,number][]=[
             [Math.PI*1.4987,Math.PI*0.4387,180],
-            [Math.PI*1.556,Math.PI*0.322,104], // iter-3 name-beat: sisters now ±7,-16 (tighter gatehouse) → slightly more frontal + closer so BOTH bracket the tympanum, dome ribs clear
+            [Math.PI*1.5480,Math.PI*0.3060,118], // name-beat (owner review #1): matches the dolly beat — poorttorens ±~13,−13, tall lantern-crowned dome bekroont above
             [Math.PI*1.5,Math.PI*0.22,35],
           ];
           const si=Math.min(Math.floor(ot/SHOT),2);
@@ -3855,21 +3993,23 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // the raised dome — beats 2-4 ride slightly higher and a touch wider so
           // the lantern-crowned silhouette dominates the frame; the TYMPANUM BEAT
           // stays at ~7.5s (name legible), then the descent to the one door.
-          // Sette Sorelle (signature): the WP1→WP2 lateral swing to θ=1.66π
-          // sweeps the camera sun-side across the E gatehouse sister and the
-          // broad E side-arm/return so verticals slide past each other as
-          // coulisses — free parallax, no extra waypoints. Iter-3 re-home:
-          // the gatehouse sisters moved to ±7,-16 (tighter, forward), so the
-          // ~7.5s TYMPANUM BEAT was re-projected slightly MORE FRONTAL + a
-          // touch CLOSER (1.556π/.322π/104, was 1.562/.324/106) so both
-          // symmetric sisters bracket the x=0 tympanum equally and the dome
-          // ribs stay clear above them; the rest of the path is unchanged.
+          // Grondplan v3 (signature): the WP1→WP2 lateral swing to θ=1.66π sweeps
+          // the camera sun-side across the E poorttoren and the long broad galerij
+          // (B, reaching x≈+92) so the verticals of the wide corps slide past each
+          // other as coulisses — free parallax, no extra waypoints.
+          // ══ Owner review 2026-08-06 #1 retune — the dome is now much HIGHER
+          // (shell apex world ≈36, lantern finial ≈43) and the poorttorens moved
+          // slightly wider ((−15,−13)/(+12,−13), fp8). The whole path is pulled a
+          // touch HIGHER (phi ↑) and the name-beat a touch further + wider so BOTH
+          // widened poorttorens bracket the x=0 tympanum AND the tall lantern-
+          // crowned dome bekroont the frame in one read at ~7.5s. The lookAt
+          // target also rises (below) so the crowning lantern stays in frame.
           const WP: [number,number,number][] = W2 ? [
             [Math.PI*1.4987, Math.PI*0.4387, 185.0], // 0s: seamless from the WP1 hold
-            [Math.PI*1.6600, Math.PI*0.4050, 152.0], // ~3.8s: swing sun-side, cypress contre-jour, dome crowning the ridge
-            [Math.PI*1.5560, Math.PI*0.3220, 104.0], // ~7.5s: TYMPANUM BEAT — name framed BETWEEN the two tall sisters (now ±7,-16), dome + lantern above; frontal enough that both bracket the axis
-            [Math.PI*1.5000, Math.PI*0.3100,  90.0], // ~11.3s: frontal hold — full stacked massing (stair → parapet → drum → dome)
-            [Math.PI*1.5000, Math.PI*0.2650,  63.0], // 15s: descend toward the door
+            [Math.PI*1.6600, Math.PI*0.3980, 158.0], // ~3.8s: swing sun-side, cypress contre-jour, tall dome crowning the broad ridge, long galerij sweeping east
+            [Math.PI*1.5480, Math.PI*0.3060, 118.0], // ~7.5s: TYMPANUM BEAT — name framed BETWEEN the two poorttorens (±~13,−13), the high lantern-crowned dome bekroont above; wider + further so both bracket the axis and the tall crown reads in one frame
+            [Math.PI*1.5000, Math.PI*0.2960,  96.0], // ~11.3s: frontal hold — full stacked massing (stair → parapet → two-stage crossing → tall drum → dome → lantern), galerij spread wide
+            [Math.PI*1.5000, Math.PI*0.2620,  63.0], // 15s: descend toward the door
           ] : [
             [Math.PI*1.4987, Math.PI*0.4387, 180.0], // 1: wide establishing shot
             [Math.PI*1.6197, Math.PI*0.3967, 175.0], // 2: pan right & up
@@ -3937,9 +4077,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       camO.current.phi+=_dPh;
       const r=camD.current;
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
-      // W2 grandeur: look target rises 2 units with the raised dome so the
-      // silhouette (lantern included) sits properly in frame at every distance.
-      camera.lookAt(0,HILL_Y+(W2?10:8),0);
+      // W2 grandeur (owner review #1): look target rises with the now much higher
+      // dome (shell apex world ≈36, lantern finial ≈43) so the lantern-crowned
+      // silhouette bekroont the frame at every distance.
+      camera.lookAt(0,HILL_Y+(W2?13:8),0);
 
       // ── Camera debug overlay (activated via ?cam=debug) ──
       if(camDebugRef.current){
