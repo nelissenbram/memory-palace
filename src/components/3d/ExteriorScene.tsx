@@ -554,6 +554,69 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         scene.add(mk(new THREE.BoxGeometry(2.5, 0.35, 0.7), M.marbleVein, bx, HILL_Y + 0.52, -35));
         for (const s of [-0.9, 0.9]) scene.add(mk(new THREE.BoxGeometry(0.4, 0.35, 0.7), M.stoneD, bx + s, HILL_Y + 0.5, -35));
       }
+
+      // ══ Owner review 2026-08-07 #4 (MOST IMPORTANT) — BUILT ON A HILL, TERRACED ══
+      // A monumental cascade of garden terraces descends the slope in front of the
+      // palace. The parterre forecourt is retained as terrace 1; below it two more
+      // balustraded terraces step DOWN the hillside, linked by a grand central
+      // stair on the −Z axis. Big retained bodies bury into the falling terrain so
+      // the whole palace reads as a hilltop villa on multiple levels. All merged.
+      {
+        const gPave: THREE.BufferGeometry[] = [], gWallR: THREE.BufferGeometry[] = [],
+              gTrimR: THREE.BufferGeometry[] = [], gGrassR: THREE.BufferGeometry[] = [];
+        const B = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number) =>
+          arr.push(new THREE.BoxGeometry(w, h, d).translate(x, y, z));
+        // Rusticated retaining-wall face (proud ashlar courses) on a downhill edge.
+        const retainX = (halfX: number, z: number, yTop: number, drop: number) => {
+          B(gWallR, halfX * 2 + 0.4, drop + 0.6, 1.2, 0, yTop - drop / 2, z);       // wall body
+          for (let ry = yTop - 0.3; ry > yTop - drop; ry -= 0.9)
+            B(gTrimR, halfX * 2 + 0.7, 0.5, 0.4, 0, ry, z - 0.55);                  // proud courses
+        };
+        // Balustrade along X at (z), coping at yTop; central gap for the stair.
+        const baluX = (halfX: number, z: number, yTop: number, gap: boolean) => {
+          B(gTrimR, halfX * 2, 0.28, 0.7, 0, yTop + 0.15, z);                        // plinth rail
+          B(gTrimR, halfX * 2, 0.24, 0.85, 0, yTop + 1.5, z);                        // coping
+          for (let bx = -halfX + 0.7; bx <= halfX - 0.7; bx += 0.9) {
+            if (gap && Math.abs(bx) < 7) continue;
+            gTrimR.push(new THREE.CylinderGeometry(0.17, 0.21, 1.1, 8).translate(bx, yTop + 0.85, z));
+          }
+        };
+        const baluZ = (x: number, z0: number, z1: number, yTop: number) => {
+          B(gTrimR, 0.7, 0.28, z1 - z0, x, yTop + 0.15, (z0 + z1) / 2);
+          B(gTrimR, 0.85, 0.24, z1 - z0, x, yTop + 1.5, (z0 + z1) / 2);
+          for (let bz = z0 + 0.7; bz <= z1 - 0.7; bz += 0.9)
+            gTrimR.push(new THREE.CylinderGeometry(0.17, 0.21, 1.1, 8).translate(x, yTop + 0.85, bz));
+        };
+        // Terrace 1 = the parterre forecourt (top ≈ HILL_Y+0.3): retain its front
+        // (z −47) and flanks so it reads as a raised terrace, not flat ground.
+        const t1 = HILL_Y + 0.3;
+        retainX(40, -47, t1, 3.2);
+        baluX(40, -47, t1, true);
+        for (const sx of [-1, 1]) { B(gWallR, 1.2, 3.8, 31, sx * 40, t1 - 1.9, -31.5); baluZ(sx * 40, -47, -16, t1); }
+        // Terraces 2 & 3 — full platforms stepping down, retained + balustraded.
+        const terr: [number, number, number, number][] = [
+          [HILL_Y - 3.0, -63, -47, 34], // T2
+          [HILL_Y - 6.4, -79, -63, 28], // T3
+        ];
+        for (const [topY, zF, zB, hx] of terr) {
+          const dep = zB - zF;
+          B(gPave, hx * 2, 0.5, dep, 0, topY + 0.2, (zF + zB) / 2);         // paving deck
+          B(gWallR, hx * 2, 14, dep, 0, topY - 7, (zF + zB) / 2);           // massive retained body (buried)
+          retainX(hx, zF, topY, 3.4);
+          baluX(hx, zF, topY, true);
+          for (const sx of [-1, 1]) baluZ(sx * hx, zF, zB, topY);
+          for (const sx of [-1, 1]) B(gGrassR, hx - 7, 0.16, dep - 5, sx * (hx * 0.48), topY + 0.46, (zF + zB) / 2);
+        }
+        // GRAND CENTRAL STAIR — cascades T1 → T2 → T3 on the −Z axis.
+        { let y = t1 - 0.1, z = -47.4; for (let s = 0; s < 34; s++) { B(gPave, 13, 0.34, 1.3, 0, y, z); y -= 0.30; z -= 1.15; } }
+        ([[gPave, courtyardMat, false], [gWallR, M.stoneD, true], [gTrimR, M.trim, true], [gGrassR, M.grassRich, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
+          .forEach(([geos, mat, sh]) => {
+            if (!geos.length) return;
+            const m = mergeGeometries(geos); geos.forEach(g => g.dispose());
+            if (!m) return;
+            const mesh = new THREE.Mesh(m, mat); mesh.castShadow = sh; mesh.receiveShadow = true; scene.add(mesh);
+          });
+      }
     }
 
     const palace=new THREE.Group(),clickTargets: THREE.Mesh[]=[];
@@ -2413,9 +2476,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         box(gTrimM, bw + 0.6, 1.0, bd + 0.6, cx, 0.1, cz);
         // plaster body
         box(gWall, bw, h, bd, cx, h / 2 + 0.5, cz);
+        // ── RUSTICATED GROUND FLOOR (owner review 2026-08-07 #1 — no blank walls):
+        // proud travertine ashlar courses wrapping the lower storey give the base
+        // texture + weight and read as the ground floor of a multi-storey palazzo.
+        const rustTop = twoStorey ? h * 0.30 + 0.5 : h * 0.42 + 0.5;
+        for (let ry = 1.7; ry < rustTop; ry += 1.15)
+          box(gTrimM, bw + 0.14, 0.5, bd + 0.14, cx, ry, cz);
         // floor string courses — one datum per storey so the mass reads as levels
         const floorYs = twoStorey ? [h * 0.34 + 0.5, h * 0.66 + 0.5] : [h * 0.5 + 0.5];
-        for (const fy of floorYs) box(gTrimM, bw + 0.16, 0.18, bd + 0.16, cx, fy, cz);
+        for (const fy of floorYs) box(gTrimM, bw + 0.22, 0.22, bd + 0.22, cx, fy, cz);
         // crown cornice (two travertine bands, interpenetrating in Y — no coplanar)
         box(gTrimM, bw + 0.4, 0.28, bd + 0.4, cx, h + 0.45, cz);
         box(gTrimM, bw + 0.7, 0.24, bd + 0.7, cx, h + 0.66, cz);
@@ -2429,14 +2498,44 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // Block A: flat tiled deck (dome + parapet crown it) — no competing hip.
           box(gRoof, bw + 1.0, 0.2, bd + 1.0, cx, h + 1.0, cz);
         } else {
-          // real Tuscan hip roof: ~28° pitch, capped rise, generous overhang
-          const riseH = Math.min(Math.min(bw, bd) * 0.30, 5.4);
-          hipRoof(cx, cz, bw, bd, h + 0.95, riseH, 0.95);
+          // real Tuscan hip roof: ~24° pitch (lower so it reads as roof, not tent),
+          // capped rise, generous overhang.
+          const eaveY = h + 0.95;
+          const riseH = Math.min(Math.min(bw, bd) * 0.26, 4.3);
+          hipRoof(cx, cz, bw, bd, eaveY, riseH, 0.95);
           // ridge cresting tile for the long wings
+          const longAxisX = bw >= bd;
           if (Math.abs(bw - bd) > 6) {
-            const along = bw >= bd ? bw : bd, rl = along - Math.min(bw, bd);
-            if (bw >= bd) box(gRoof, rl, 0.22, 0.32, cx, h + 0.95 + riseH, cz);
-            else box(gRoof, 0.32, 0.22, rl, cx, h + 0.95 + riseH, cz);
+            const along = longAxisX ? bw : bd, rl = along - Math.min(bw, bd);
+            if (longAxisX) box(gRoof, rl, 0.22, 0.32, cx, eaveY + riseH, cz);
+            else box(gRoof, 0.32, 0.22, rl, cx, eaveY + riseH, cz);
+          }
+          // ── DORMERS + CHIMNEYS (owner review #2 — roofs must read, not blank
+          // brown slabs). Dormers march along the front (−z / −x) slope; slim
+          // rusticated chimney stacks rise near the ridge ends.
+          const longDim = longAxisX ? bw : bd;
+          if (longDim > 22) {
+            const nd = Math.floor(longDim / 11);
+            const dstep = (longDim - 8) / Math.max(1, nd - 1);
+            for (let di = 0; di < nd; di++) {
+              const q = -(longDim - 8) / 2 + di * dstep;
+              const dx = longAxisX ? cx + q : cx - bw / 2 + 0.9;
+              const dz = longAxisX ? cz - bd / 2 + 0.9 : cz + q;
+              const dY = eaveY + 1.0;
+              box(gWall, 1.5, 1.7, 1.4, dx, dY, dz);                 // dormer cheek
+              box(gTrimM, 1.7, 0.16, 1.5, dx, dY + 0.9, dz);         // dormer cornice
+              if (longAxisX) box(gWinM, 0.8, 1.0, 0.12, dx, dY + 0.05, dz - 0.72);
+              else box(gWinM, 0.12, 1.0, 0.8, dx - 0.72, dY + 0.05, dz);
+              hipRoof(dx, dz, 1.7, 1.6, dY + 0.98, 0.7, 0.18);       // little dormer hip
+            }
+            // chimneys near the two ridge ends
+            for (const cs of [-1, 1]) {
+              const chx = longAxisX ? cx + cs * longDim * 0.32 : cx;
+              const chz = longAxisX ? cz : cz + cs * longDim * 0.32;
+              box(gWall, 1.0, 3.4, 1.0, chx, eaveY + riseH * 0.5 + 1.7, chz);
+              box(gTrimM, 1.0, 0.4, 1.0, chx, eaveY + riseH * 0.5 + 1.7, chz);       // banding
+              box(gTrimM, 1.35, 0.34, 1.35, chx, eaveY + riseH * 0.5 + 3.45, chz);   // cap
+            }
           }
         }
         // ── TWO-STOREY RICH WINDOW RITME ────────────────────────────────────
@@ -2458,6 +2557,24 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
               else { wx = cx - bw / 2; wz = cz + p; }
               richWindow(face, wx, row.y, wz, 1.5, row.hh, row.ped);
             }
+          }
+          // ── GIANT-ORDER PILASTERS between the bays (owner review #1) — travertine
+          // strips from the plinth to the cornice with a base + capital, breaking
+          // the plaster field into a rhythmic order (no more big blank surface).
+          const pilBot = 1.6, pilTop = h + 0.3, pilMid = (pilBot + pilTop) / 2, pilH = pilTop - pilBot;
+          const np = n + 1, pstep = (along - 1.2) / (np - 1);
+          for (let j = 0; j < np; j++) {
+            const p = -(along - 1.2) / 2 + j * pstep;
+            let px = cx, pz = cz;
+            const onX = face === "+x" || face === "-x";
+            if (face === "+z") { pz = cz + bd / 2 + 0.18; px = cx + p; }
+            else if (face === "-z") { pz = cz - bd / 2 - 0.18; px = cx + p; }
+            else if (face === "+x") { px = cx + bw / 2 + 0.18; pz = cz + p; }
+            else { px = cx - bw / 2 - 0.18; pz = cz + p; }
+            const ww = onX ? 0.34 : 0.72, dd = onX ? 0.72 : 0.34;
+            box(gTrimM, ww, pilH, dd, px, pilMid, pz);                              // shaft
+            box(gTrimM, ww + 0.28, 0.28, dd + 0.28, px, pilTop - 0.1, pz);          // capital
+            box(gTrimM, ww + 0.22, 0.22, dd + 0.22, px, pilBot + 0.1, pz);          // base
           }
         }
         // loggia/arcade screen along one long face (travertine colonnade proud
@@ -2487,67 +2604,60 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       };
 
-      // A Hoofdblok — high compact hart, entree gevel on −Z (window ritme on
-      // the side/rear faces; the −Z front stays the entrance/tympanum face).
-      // flatRoof: the parapet ring + dome crown block A — no competing hip.
+      // ══ Owner review 2026-08-07 #3 — BALANCE: LEFT = RIGHT of the dome ══
+      // The dome (block A on world 0,0) is the pivot. Two wings of EQUAL length &
+      // height flank it — but filled DIFFERENTLY: the EAST wing is an arcaded
+      // gallery (open loggia on the court face), the WEST wing is a solid
+      // pilastered palazzo (windows both faces). Both two-storey (multiple floors).
+      // A centred rear range closes the cortile behind the dome. The old
+      // asymmetric broncourt (E) is retired. All symmetric about x=−2.
+      const WING_CX_E = 52, WING_CX_W = -56; // mirror about A centre (−2)
+      // A Hoofdblok — high compact hart; flatRoof so the parapet + dome crown it.
       buildBlock(-2, 2, 30, 28, 18, { winFaces: ["+x", "-x", "+z"], flatRoof: true });
-      // B Galerij — long low east arm; arcade/loggia on its −Z (court) face,
-      // windows on the far +z field face.
-      buildBlock(52, 2.5, 78, 13, 9, { winFaces: ["+z", "-z"], loggiaFace: "-z" });
-      // C Teruglig-tak — folds back over the cortile; grow zmin so it laps A.
-      buildBlock(26, 22, 46, 12, 11, { winFaces: ["+z", "-z"] });
-      // D Dienstvleugel — rear-west. Owner review 2026-08-07 #1 (balance): raised
-      // 8→12 & widened so the WEST carries real weight against the long east
-      // gallery B (asymmetric but balanced); now two-storey with the west campanile.
-      buildBlock(-30, 8.5, 30, 12, 12, { winFaces: ["+z", "-z", "-x"] });
-      // E Broncourt-range — walled well-court; deeper toward B so it laps the
-      // gallery (extra −Z depth closes the 2.5 gap to B).
-      buildBlock(68, 18.0, 20, 12, 8, { winFaces: ["+z", "+x"] });
-      // broncourt well head (bronze, no gold) at (68,16.5)
-      gPlinthM.push(new THREE.CylinderGeometry(1.4, 1.5, 0.5, 12).translate(68, 0.25, 16.5));
-      gSerenaM.push(new THREE.CylinderGeometry(0.55, 0.7, 1.1, 10).translate(68, 0.9, 16.5));
+      // B EAST GALLERY — arcaded loggia on the −z court face, windows on the field.
+      buildBlock(WING_CX_E, 2.5, 78, 13, 11, { winFaces: ["+z"], loggiaFace: "-z" });
+      // B′ WEST PALAZZO — same size, DIFFERENTLY FILLED: solid, pilastered, windows
+      // on both faces + the west return (no loggia).
+      buildBlock(WING_CX_W, 2.5, 78, 13, 11, { winFaces: ["+z", "-z", "-x"] });
+      // C CENTRED REAR RANGE — closes the cortile behind the dome (symmetric).
+      buildBlock(-2, 25, 60, 12, 13, { winFaces: ["+z", "-z"] });
 
-      // ── SEAM FILLERS (owner review #4) — solid plaster blocks straddling each
-      // block junction so no doorkijk survives between differing block heights.
-      // Each filler is sized to the LOWER neighbour's height and lapped ~2 into
-      // both blocks; they carry their own low string course so the joint reads as
-      // an articulated set-back, not a gap.
-      // A(h18)↔B(h9): fill the tall A-face where the low B abuts (x≈12.5, z −5..10).
-      box(gWall, 6, 9, 16.5, 12.5, 5.0, 2.5);
-      box(gTrimM, 6.2, 0.18, 16.7, 12.5, 9.2, 2.5);      // string atop the B-datum
-      // A(h18)↔D(h8): west junction (x≈-15, z 2..15).
-      box(gWall, 6, 8, 13, -15, 4.5, 8.5);
-      box(gTrimM, 6.2, 0.18, 13.2, -15, 8.2, 8.5);
-      // A(h18)↔C(h11): C folds back over the cortile; close its west return into A.
-      box(gWall, 8, 11, 6, 4, 6.0, 20.5);
-      box(gTrimM, 8.2, 0.18, 6.2, 4, 11.2, 20.5);
-      // B(h9)↔E(h8): E laps the gallery; fill the shared face (x≈68, z 9..12).
-      box(gWall, 20, 8, 5, 68, 4.5, 11.0);
+      // ── SEAM FILLERS — solid plaster straddling each junction so no doorkijk
+      // survives between the tall A and the lower wings (symmetric pair + rear).
+      box(gWall, 7, 11, 16, 13, 6.0, 2.5);   box(gTrimM, 7.2, 0.18, 16.2, 13, 11.2, 2.5);   // A↔B east
+      box(gWall, 7, 11, 16, -17, 6.0, 2.5);  box(gTrimM, 7.2, 0.18, 16.2, -17, 11.2, 2.5);  // A↔B′ west
+      box(gWall, 12, 13, 5, -2, 7.0, 18.5);  box(gTrimM, 12.2, 0.18, 5.2, -2, 13.2, 18.5);  // A↔C rear
 
-      // ── CONTINUOUS CROWN STRING (owner review #4) — a single travertine band
-      // ringing the whole corps at the B/E datum (h≈9), tying the blocks into one
-      // read while the taller A/C step above it. Runs the full E–W spread of the
-      // gallery + returns; interpenetrates the block cornices in Y (no coplanar).
-      box(gTrimM, 105, 0.22, 0.35, 39, 9.15, -4.4);      // gallery+A front datum band (−z)
-      box(gTrimM, 105, 0.22, 0.35, 39, 9.15, 9.9);       // gallery+A rear datum band (+z)
-      box(gTrimM, 0.35, 0.22, 15.0, 92.4, 9.15, 2.5);    // far-east return
+      // ── CONTINUOUS CROWN STRING — one travertine band ringing both wings at the
+      // h11 datum, tying the corps into one read while the taller A/C step above.
+      box(gTrimM, 190, 0.22, 0.35, -2, 11.15, -4.6);   // wings front datum band (−z)
+      box(gTrimM, 190, 0.22, 0.35, -2, 11.15, 9.7);    // wings rear datum band (+z)
 
-      // ── GALLERY B RISALIET (owner review #4) — a shallow central bay projecting
-      // from B's FIELD (+z) face (the loggia-arcade stays clean on the −z court
-      // face) with its own low hip dakje, so the long gallery reads as articulated
-      // architecture, not a loods.
+      // ── WING RISALIETS — a shallow central bay projecting from each wing's FIELD
+      // (+z) face with its own low hip dakje, so neither long wing reads as a shed.
+      for (const rzc of [WING_CX_E, WING_CX_W]) {
+        const rFace = 2.5 + 15.3 / 2;                                // wing field face (+z)
+        box(gWall, 15, 11, 3.4, rzc, 6.0, rFace + 0.5);              // projecting bay body
+        box(gTrimM, 15.4, 0.24, 3.7, rzc, 11.15, rzc === WING_CX_E ? rFace + 0.5 : rFace + 0.5); // bay cornice
+        hipRoof(rzc, rFace + 0.5, 15.4, 4.0, 11.3, 1.5, 0.3);        // risaliet hip
+        for (const s of [-1, 1]) box(gTrimM, 0.6, 10.0, 0.5, rzc + s * 7.0, 5.5, rFace + 2.1); // framing pilasters
+      }
+
+      // ── BLOCK A FRONT (−z) ARTICULATION (owner review #1) — the wall below the
+      // dome was blank. Two windows flank the entrance in the clear bays between
+      // the portico and the gate towers (T gate-W x<−12.75, gate-E x>8.75); a pair
+      // of giant pilasters frames the central pediment bay.
       {
-        const rzc = 52;                 // centred on B (cx 52)
-        const rFace = 2.5 + 14.5 / 2;   // B rear/field face (bd 14.5) → z ≈ 9.75
-        box(gWall, 14, 9, 3.4, rzc, 5.0, rFace + 0.5);            // projecting bay body (laps 1.2 into B)
-        box(gTrimM, 14.4, 0.22, 3.7, rzc, 9.05, rFace + 0.5);     // bay crown cornice (above the datum band)
-        // shallow pediment-less hip dakje for the risaliet
-        const rcapH = 1.3;
-        const rcap = new THREE.ConeGeometry(9.4, rcapH, 4);
-        rcap.rotateY(Math.PI / 4); rcap.scale(14.6 / 18.8, 1, 3.9 / 18.8);
-        rcap.translate(rzc, 9.2 + rcapH / 2, rFace + 0.5); gRoof.push(rcap);
-        // two travertine pilasters framing the risaliet
-        for (const s of [-1, 1]) box(gTrimM, 0.5, 8.0, 0.4, rzc + s * 6.6, 4.5, rFace + 2.05);
+        const aFz = 2 - 30.3 / 2; // block A grown front face z ≈ −13.15
+        for (const wx of [-9.3, 6.6]) {
+          richWindow("-z", wx, 12.2, aFz, 1.4, 2.1, true);
+          richWindow("-z", wx, 7.8, aFz, 1.4, 1.6, false);
+        }
+        for (const px of [-7.4, 4.6]) {  // pilasters framing the central entrance bay
+          box(gTrimM, 0.7, 15.0, 0.34, px, 8.3, aFz - 0.18);
+          box(gTrimM, 1.02, 0.3, 0.5, px, 15.55, aFz - 0.18);
+          box(gTrimM, 0.94, 0.24, 0.45, px, 1.5, aFz - 0.18);
+        }
       }
 
       // ── 7 CASA-TORRI ─────────────────────────────────────────────────────
@@ -2572,15 +2682,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // #4 ROOFS: every tower gets a proper steep pyramidal roof with an
       //    overhanging eave + a finial (kills the childish flat/thin caps).
       // kind: "campanile" | "tower". All caps stay below the dome apex (local 27.7).
+      // SYMMETRIC PAIRS about x=−2 (owner review #3): a gate pair flanking the
+      // entrance (west = clock campanile, east = same height, plain — differently
+      // filled), a wing-end pair marking the far ends, and a rear pair on C.
       // [x, z, fp, topY, kind, serena-bandY]
       const TOWERS: [number, number, number, number, "campanile"|"tower", number][] = [
-        [-16, -13, 6.5, 21.5, "campanile", 12.5], // T1 poort-W — WEST CLOCK CAMPANILE (balance accent)
-        [ 12, -13, 7.0, 15.0, "tower",      9.0], // T2 poort-E — demoted below A(18) so the dome clears
-        [ 89,  11, 6.0, 18.0, "tower",     10.5], // T3 far-NE "oude stad"
-        [ 89,  -4, 5.5, 14.0, "tower",      8.5], // T4 far-SE, low/stevig
-        [-42,  14, 6.5, 17.0, "tower",     10.0], // T6 rear-W (D NW hoek) — adds west height
-        [ 48,  28, 5.5, 12.0, "tower",      7.0], // T5 teruglig-NE, low/stevig
-        [  4,  28, 5.0, 13.0, "tower",      7.5], // T7 teruglig-NW, low/stevig
+        [-16, -13, 6.5, 20.5, "campanile", 12.0], // gate-W — CLOCK CAMPANILE (west vertical)
+        [ 12, -13, 6.5, 18.0, "tower",     11.0], // gate-E — same footprint, plain pyramid (mirror)
+        [-95, 2.5, 6.0, 16.0, "tower",     10.0], // west-wing far end
+        [ 91, 2.5, 6.0, 16.0, "tower",     10.0], // east-wing far end
+        [-32,  31, 5.5, 13.0, "tower",      7.5], // rear-west (C corner)
+        [ 28,  31, 5.5, 13.0, "tower",      7.5], // rear-east (C corner)
       ];
       TOWERS.forEach(([tx, tz, fp, topY, kind, bandY]) => {
         // Shaft — square casa-torre, foot sunk 0.6
@@ -2651,19 +2763,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       });
 
-      // Well-court garden wall closing the broncourt (E's embrace), low coppo.
-      box(gWallD, 0.5, 2.4, 10, 78.6, 0.9, 16.5); // outboard east wall
-      gRoof.push(new THREE.BoxGeometry(0.9, 0.14, 10.2).rotateZ(0.12).translate(78.6, 2.22, 16.5));
-
       // ── 5 INVISIBLE CHAPTER-ANCHORS (targetWorldPos only; NOT click targets;
-      // NOT raycastable — opacity 0). Positions per grondplan v3, all inside the
-      // mass, clear of towers + the ±22° arrival wedge. userData.roomId = WING id.
+      // NOT raycastable — opacity 0). Redistributed over the balanced wings, all
+      // inside the mass, clear of towers + the ±22° arrival wedge. roomId = WING id.
       const ANCHORS: [number, number][] = [
-        [-28,  9], // 0 roots    — in D
-        [ 28,  0], // 1 nest     — in B (early)
-        [ 79,  0], // 2 craft    — in B (far-east)
-        [ 54, -2], // 3 travel   — in B (front, at the knik)
-        [ 28, 22], // 4 passions — in C
+        [-70,  2], // 0 roots    — west wing (far)
+        [ 30,  2], // 1 nest     — east wing (near dome)
+        [ 74,  2], // 2 craft    — east wing (far)
+        [-30,  2], // 3 travel   — west wing (near dome)
+        [ -2, 25], // 4 passions — centred rear range C
       ];
       ANCHORS.forEach(([ax, az], i) => {
         const wing = WINGS[i]; if (!wing) return;
