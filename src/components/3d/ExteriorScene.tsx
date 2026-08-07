@@ -1023,6 +1023,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── ENTRANCE VESTIBULUM (Front — 6 Corinthian columns) ──
     const vestZ = -(vD / 2 + 3);
+    // ══ Owner review 2026-08-07 #3 — the entrance must read as the app LOGO:
+    // a temple-front (columns + pediment) on a 3-STEP STYLOBATE. The steps nest
+    // directly under the colonnade (the grand cascade continues down in front),
+    // widening toward the ground exactly like the logo's crepidoma.
+    if (W2) {
+      centralGroup.add(mk(new THREE.BoxGeometry(15.6, 0.36, 8.2), M.marble, 0, 0.18, vestZ));
+      centralGroup.add(mk(new THREE.BoxGeometry(14.0, 0.36, 7.4), M.marble, 0, 0.54, vestZ));
+      centralGroup.add(mk(new THREE.BoxGeometry(12.6, 0.36, 6.8), M.marble, 0, 0.90, vestZ));
+    }
     // Portico platform
     centralGroup.add(mk(new THREE.BoxGeometry(12, 0.4, 7), M.marble, 0, 1.12, vestZ));
 
@@ -1034,18 +1043,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     extraGeoDisposables.push(centralFluteGeo);
     for (let ci = 0; ci < 6; ci++) {
       const cx = -5 + ci * 2;
-      // Column shaft — thicker radius 0.55
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.55, 0.55, 5.5, 16), M.col, cx, 4.3, vestZ));
+      // Column shaft — thicker radius 0.65 (owner review #3: columns must read)
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.65, 0.7, 5.5, 18), M.col, cx, 4.3, vestZ));
       // Column fluting — 8 thin dark vertical stripes around circumference
       for (let fl = 0; fl < 8; fl++) {
         const fa = (fl / 8) * Math.PI * 2;
         const stripe = mk(centralFluteGeo, fluteMat,
-          cx + Math.cos(fa) * 0.56, 4.3, vestZ + Math.sin(fa) * 0.56);
+          cx + Math.cos(fa) * 0.67, 4.3, vestZ + Math.sin(fa) * 0.67);
         stripe.rotation.y = fa;
         centralGroup.add(stripe);
       }
       // Echinus — small cylinder below capital for abacus/echinus effect
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.6, 0.55, 0.15, 16), M.trim, cx, 6.775, vestZ));
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.65, 0.15, 16), M.trim, cx, 6.775, vestZ));
       // Flared capital — wider box + transitional cylinder
       centralGroup.add(mk(new THREE.BoxGeometry(1.4, 0.3, 1.4), M.trim, cx, 7.15, vestZ));
       centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.6, 0.3, 16), M.trim, cx, 6.95, vestZ));
@@ -2295,50 +2304,160 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // string + a risaliet on B are added right after the block calls below.
       const SEAM = 1.15; // per-side seam growth → neighbours overlap ~2.3 at joins
 
+      // ══ Owner review 2026-08-07 (screenshot palace design5) ═══════════════════
+      // 1) balance L/R  2) meerdere niveau's  3) detail↑ (ramen/klok/ingang+zuilen
+      //    = app-logo temple-front)  4) puntdaken minder kinderachtig.
+      // The helpers below carry those: a REAL Tuscan hip roof (ridge + overhang),
+      // a richly-moulded arched window, and a two-storey window ritme.
+
+      // ── REAL HIP ROOF — ridge along the longer plan axis + 4 slopes + eave
+      // overhang. One BufferGeometry per roof, pushed to the DoubleSide roof
+      // bucket so a stray winding can never drop a slope (replaces the childish
+      // 4-seg pyramid cone). Near-square blocks collapse to a proper pyramid.
+      const gRoofDS: THREE.BufferGeometry[] = [];
+      const roofMatDS = (M.tile as THREE.Material).clone();
+      (roofMatDS as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+      extraDisposables.push(roofMatDS);
+      const hipRoof = (cx: number, cz: number, bw: number, bd: number, eaveY: number, riseH: number, ov: number) => {
+        const ex = bw / 2 + ov, ez = bd / 2 + ov, ry = eaveY + riseH;
+        const P: number[] = [];
+        const tri = (a: number[], b: number[], c: number[]) => { P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); };
+        const e0 = [-ex, eaveY, -ez], e1 = [ex, eaveY, -ez], e2 = [ex, eaveY, ez], e3 = [-ex, eaveY, ez];
+        if (bw >= bd) {
+          const rx = Math.max(0.001, ex - ez);
+          const R0 = [-rx, ry, 0], R1 = [rx, ry, 0];
+          tri(e0, e1, R1); tri(e0, R1, R0);   // -z slope
+          tri(e2, e3, R0); tri(e2, R0, R1);   // +z slope
+          tri(e0, R0, e3);                      // -x hip
+          tri(e1, e2, R1);                      // +x hip
+        } else {
+          const rz = Math.max(0.001, ez - ex);
+          const R0 = [0, ry, -rz], R1 = [0, ry, rz];
+          tri(e1, e2, R1); tri(e1, R1, R0);   // +x slope
+          tri(e3, e0, R0); tri(e3, R0, R1);   // -x slope
+          tri(e0, e1, R0);                      // -z hip
+          tri(e2, e3, R1);                      // +z hip
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+        g.computeVertexNormals();
+        g.translate(cx, 0, cz);
+        gRoofDS.push(g);
+      };
+
+      // ── RICH ARCHED WINDOW (merged) — deep reveal + glowing pane, moulded
+      // travertine surround, keystone, sill on two corbels, a semicircular arch,
+      // and (piano-nobile only) a projecting cornice on brackets. `face` gives the
+      // outward wall normal; wx/wy/wz = opening centre; ww/wh = light size.
+      const richWindow = (face: "+x"|"-x"|"+z"|"-z", wx: number, wy: number, wz: number, ww: number, wh: number, ped: boolean) => {
+        const onX = face === "+x" || face === "-x";
+        const nx = face === "+x" ? 1 : face === "-x" ? -1 : 0;
+        const nz = face === "+z" ? 1 : face === "-z" ? -1 : 0;
+        const aR = ww / 2;                       // arch radius
+        const jamb = 0.16, deep = 0.34;
+        // deep dark reveal
+        if (onX) box(gWallD, deep, wh + aR, ww, wx + nx * (deep / 2 - 0.02), wy + aR * 0.2, wz);
+        else     box(gWallD, ww, wh + aR, deep, wx, wy + aR * 0.2, wz + nz * (deep / 2 - 0.02));
+        // glowing pane, set into the reveal
+        if (onX) box(gWinM, 0.10, wh, ww - 0.08, wx + nx * 0.14, wy, wz);
+        else     box(gWinM, ww - 0.08, wh, 0.10, wx, wy, wz + nz * 0.14);
+        // arch fill (half-disc glass) + arch ring
+        const archFill = new THREE.CylinderGeometry(aR - 0.05, aR - 0.05, 0.10, 12, 1, false, 0, Math.PI);
+        archFill.rotateZ(Math.PI); // opening downward → upper half
+        if (onX) { archFill.rotateY(Math.PI / 2); archFill.translate(wx + nx * 0.14, wy + wh / 2, wz); }
+        else archFill.translate(wx, wy + wh / 2, wz + nz * 0.14);
+        gWinM.push(archFill);
+        const archRing = new THREE.TorusGeometry(aR, 0.09, 6, 14, Math.PI);
+        if (onX) { archRing.rotateY(Math.PI / 2); archRing.translate(wx + nx * 0.24, wy + wh / 2, wz); }
+        else archRing.translate(wx, wy + wh / 2, wz + nz * 0.24);
+        gTrimM.push(archRing);
+        // moulded surround — two jambs + a proud outer frame
+        for (const s of [-1, 1]) {
+          if (onX) box(gTrimM, 0.22, wh + 0.2, jamb, wx + nx * 0.20, wy, wz + s * (ww / 2 + jamb / 2));
+          else     box(gTrimM, jamb, wh + 0.2, 0.22, wx + s * (ww / 2 + jamb / 2), wy, wz + nz * 0.20);
+        }
+        // keystone at the crown
+        if (onX) box(gTrimM, 0.34, 0.42, 0.28, wx + nx * 0.26, wy + wh / 2 + aR - 0.05, wz);
+        else     box(gTrimM, 0.28, 0.42, 0.34, wx, wy + wh / 2 + aR - 0.05, wz + nz * 0.26);
+        // sill + two corbels
+        if (onX) box(gTrimM, 0.30, 0.14, ww + 0.5, wx + nx * 0.22, wy - wh / 2 - 0.10, wz);
+        else     box(gTrimM, ww + 0.5, 0.14, 0.30, wx, wy - wh / 2 - 0.10, wz + nz * 0.22);
+        for (const s of [-1, 1]) {
+          if (onX) box(gSerenaM, 0.18, 0.22, 0.16, wx + nx * 0.18, wy - wh / 2 - 0.24, wz + s * ww * 0.32);
+          else     box(gSerenaM, 0.16, 0.22, 0.18, wx + s * ww * 0.32, wy - wh / 2 - 0.24, wz + nz * 0.18);
+        }
+        // piano-nobile cornice on two little brackets
+        if (ped) {
+          const cy = wy + wh / 2 + aR + 0.34;
+          if (onX) box(gTrimM, 0.30, 0.16, ww + 0.9, wx + nx * 0.26, cy, wz);
+          else     box(gTrimM, ww + 0.9, 0.16, 0.30, wx, cy, wz + nz * 0.26);
+          for (const s of [-1, 1]) {
+            if (onX) box(gSerenaM, 0.20, 0.30, 0.16, wx + nx * 0.20, cy - 0.22, wz + s * (ww / 2 + 0.1));
+            else     box(gSerenaM, 0.16, 0.30, 0.20, wx + s * (ww / 2 + 0.1), cy - 0.22, wz + nz * 0.20);
+          }
+        }
+      };
+
       // ── ONE PARAMETRIC BLOCK ─────────────────────────────────────────────
-      // plaster core (grown by SEAM so joins overlap), travertine plinth +
-      // string course + crown cornize + corner quoins, a low-overstek coppo
-      // hip cap, and a parametric merged window ritme on the long faces.
+      // plaster core (grown by SEAM so joins overlap), travertine plinth + floor
+      // string courses (one per storey → reads as levels), crown cornice + corner
+      // quoins, a projecting eave, a REAL hip roof (flat-topped for the dome block
+      // A so the cupola stays the hero), and a two-storey rich window ritme.
       const buildBlock = (
         cx: number, cz: number, w: number, d: number, h: number,
-        opts: { winFaces?: ("+x"|"-x"|"+z"|"-z")[]; loggiaFace?: "+z"|"-z"|"+x"|"-x" } = {}
+        opts: { winFaces?: ("+x"|"-x"|"+z"|"-z")[]; loggiaFace?: "+z"|"-z"|"+x"|"-x"; flatRoof?: boolean } = {}
       ) => {
         const bw = w + SEAM * 2, bd = d + SEAM * 2; // grown footprint (seam overlap)
+        const twoStorey = h >= 11;                   // tall blocks read as two floors
         // plinth (foot sunk 0.4) — travertine base band
         box(gTrimM, bw + 0.6, 1.0, bd + 0.6, cx, 0.1, cz);
         // plaster body
         box(gWall, bw, h, bd, cx, h / 2 + 0.5, cz);
-        // string course at mid height
-        box(gTrimM, bw + 0.15, 0.16, bd + 0.15, cx, h * 0.5 + 0.5, cz);
+        // floor string courses — one datum per storey so the mass reads as levels
+        const floorYs = twoStorey ? [h * 0.34 + 0.5, h * 0.66 + 0.5] : [h * 0.5 + 0.5];
+        for (const fy of floorYs) box(gTrimM, bw + 0.16, 0.18, bd + 0.16, cx, fy, cz);
         // crown cornice (two travertine bands, interpenetrating in Y — no coplanar)
         box(gTrimM, bw + 0.4, 0.28, bd + 0.4, cx, h + 0.45, cz);
         box(gTrimM, bw + 0.7, 0.24, bd + 0.7, cx, h + 0.66, cz);
+        // projecting eave fascia (shadow line under the roof overhang)
+        box(gTrimM, bw + 1.4, 0.22, bd + 1.4, cx, h + 0.86, cz);
         // corner quoins (travertine chains, stop under the cornice)
         for (const sx of [-1, 1]) for (const sz of [-1, 1])
           box(gTrimM, 0.5, h - 0.6, 0.5, cx + sx * bw / 2, (h - 0.6) / 2 + 0.5, cz + sz * bd / 2);
-        // low coppo hip cap — 4-seg pyramid, ~14° face slope, eave overstek
-        const capR = Math.hypot(bw, bd) / 2 + 0.5;
-        const capH = 0.25 * (Math.max(bw, bd) / 2 + 0.6);
-        const cap = new THREE.ConeGeometry(capR, capH, 4);
-        cap.rotateY(Math.PI / 4); cap.scale(bw / Math.max(bw, bd), 1, bd / Math.max(bw, bd));
-        cap.translate(cx, h + 0.7 + capH / 2, cz); gRoof.push(cap);
-        // merged window ritme on requested long faces (mullioned, glowing glass)
-        const winH = Math.min(2.0, h * 0.34);
-        const winY = h * 0.52 + 0.5;
+        // ── ROOF ──────────────────────────────────────────────────────────
+        if (opts.flatRoof) {
+          // Block A: flat tiled deck (dome + parapet crown it) — no competing hip.
+          box(gRoof, bw + 1.0, 0.2, bd + 1.0, cx, h + 1.0, cz);
+        } else {
+          // real Tuscan hip roof: ~28° pitch, capped rise, generous overhang
+          const riseH = Math.min(Math.min(bw, bd) * 0.30, 5.4);
+          hipRoof(cx, cz, bw, bd, h + 0.95, riseH, 0.95);
+          // ridge cresting tile for the long wings
+          if (Math.abs(bw - bd) > 6) {
+            const along = bw >= bd ? bw : bd, rl = along - Math.min(bw, bd);
+            if (bw >= bd) box(gRoof, rl, 0.22, 0.32, cx, h + 0.95 + riseH, cz);
+            else box(gRoof, 0.32, 0.22, rl, cx, h + 0.95 + riseH, cz);
+          }
+        }
+        // ── TWO-STOREY RICH WINDOW RITME ────────────────────────────────────
+        const rows = twoStorey
+          ? [{ y: h * 0.32 + 0.5, hh: Math.min(1.7, h * 0.24), ped: false },   // ground
+             { y: h * 0.68 + 0.5, hh: Math.min(2.1, h * 0.30), ped: true }]    // piano nobile
+          : [{ y: h * 0.55 + 0.5, hh: Math.min(2.0, h * 0.36), ped: false }];
         for (const face of (opts.winFaces || [])) {
           const along = (face === "+x" || face === "-x") ? bd : bw;
-          const n = Math.max(2, Math.floor(along / 5));
-          const step = (along - 3) / (n - 1);
+          const n = Math.max(2, Math.floor(along / 6));
+          const step = (along - 3.4) / (n - 1);
           for (let k = 0; k < n; k++) {
-            const p = -(along - 3) / 2 + k * step;
-            let wx = cx, wz = cz, fx = 0, fz = 0;
-            if (face === "+z") { wz = cz + bd / 2 + 0.03; wx = cx + p; fx = 1.2; }
-            else if (face === "-z") { wz = cz - bd / 2 - 0.03; wx = cx + p; fx = 1.2; }
-            else if (face === "+x") { wx = cx + bw / 2 + 0.03; wz = cz + p; fz = 1.2; }
-            else { wx = cx - bw / 2 - 0.03; wz = cz + p; fz = 1.2; }
-            // travertine surround (proud), glowing pane (embedded 0.04)
-            box(gTrimM, fx || 0.14, winH + 0.3, fz || 0.14, wx, winY, wz);
-            box(gWinM, (fx ? fx - 0.35 : 0.1), winH, (fz ? fz - 0.35 : 0.1), wx + (fx ? 0 : (face === "+x" ? -0.04 : 0.04)), winY, wz + (fz ? 0 : (face === "+z" ? -0.04 : 0.04)));
+            const p = -(along - 3.4) / 2 + k * step;
+            for (const row of rows) {
+              let wx = cx, wz = cz;
+              if (face === "+z") { wz = cz + bd / 2; wx = cx + p; }
+              else if (face === "-z") { wz = cz - bd / 2; wx = cx + p; }
+              else if (face === "+x") { wx = cx + bw / 2; wz = cz + p; }
+              else { wx = cx - bw / 2; wz = cz + p; }
+              richWindow(face, wx, row.y, wz, 1.5, row.hh, row.ped);
+            }
           }
         }
         // loggia/arcade screen along one long face (travertine colonnade proud
@@ -2370,14 +2489,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
       // A Hoofdblok — high compact hart, entree gevel on −Z (window ritme on
       // the side/rear faces; the −Z front stays the entrance/tympanum face).
-      buildBlock(-2, 2, 30, 28, 18, { winFaces: ["+x", "-x", "+z"] });
+      // flatRoof: the parapet ring + dome crown block A — no competing hip.
+      buildBlock(-2, 2, 30, 28, 18, { winFaces: ["+x", "-x", "+z"], flatRoof: true });
       // B Galerij — long low east arm; arcade/loggia on its −Z (court) face,
       // windows on the far +z field face.
       buildBlock(52, 2.5, 78, 13, 9, { winFaces: ["+z", "-z"], loggiaFace: "-z" });
       // C Teruglig-tak — folds back over the cortile; grow zmin so it laps A.
       buildBlock(26, 22, 46, 12, 11, { winFaces: ["+z", "-z"] });
-      // D Dienstvleugel — lower rear-west.
-      buildBlock(-28, 8.5, 26, 11, 8, { winFaces: ["+z", "-z"] });
+      // D Dienstvleugel — rear-west. Owner review 2026-08-07 #1 (balance): raised
+      // 8→12 & widened so the WEST carries real weight against the long east
+      // gallery B (asymmetric but balanced); now two-storey with the west campanile.
+      buildBlock(-30, 8.5, 30, 12, 12, { winFaces: ["+z", "-z", "-x"] });
       // E Broncourt-range — walled well-court; deeper toward B so it laps the
       // gallery (extra −Z depth closes the 2.5 gap to B).
       buildBlock(68, 18.0, 20, 12, 8, { winFaces: ["+z", "+x"] });
@@ -2442,17 +2564,25 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       //  B(52,2.5,78×13)→x{12.25,91.75} z{-4.75,9.75}
       //  C(26,22,46×12)→x{2.25,49.75} z{15.25,28.75}
       //  D(-28,8.5,26×11)→x{-41.75,-14.25} z{2.25,14.75}
-      // [x, z, fp, topY, flatTop, serena-bandY]
-      const TOWERS: [number, number, number, number, boolean, number][] = [
-        [-15, -13, 8.0, 23.0, true,  13.5], // T1 poort-W — gatehouse (A front-left hoek −17.75,−12.75), H:B 2.9
-        [ 12, -13, 8.0, 23.0, true,  13.5], // T2 poort-E — gatehouse (A front-right hoek 13.75,−12.75), H:B 2.9
-        [ 89,  11, 6.0, 17.0, false, 10.0], // T3 far-NE "oude stad" (B NE hoek 91.75,9.75), middelhoog, H:B 2.8
-        [ 89,  -4, 5.5, 14.0, false,  8.5], // T4 far-SE (B SE hoek 91.75,−4.75), low/stevig, H:B 2.5
-        [-40,  14, 6.5, 19.0, true,  11.0], // T6 rear-W (D rear-W hoek −41.75,14.75), middelhoog, H:B 2.9
-        [ 48,  28, 5.5, 12.0, false,  7.0], // T5 teruglig-NE (C NE hoek 49.75,28.75), low/stevig, H:B 2.2
-        [  4,  28, 5.0, 13.0, false,  7.5], // T7 teruglig-NW (C NW hoek 2.25,28.75), low/stevig, H:B 2.6
+      // ══ Owner review 2026-08-07 #1/#3/#4 ══
+      // #1 BALANCE: the WEST gate-tower becomes a tall CLOCK CAMPANILE (belfry +
+      //    clock face + cupola) — a strong west vertical that counter-weights the
+      //    long east gallery; the EAST gate-tower is demoted below block A (18) so
+      //    the dome reads as the hero (no more "chimneys hiding the cupola").
+      // #4 ROOFS: every tower gets a proper steep pyramidal roof with an
+      //    overhanging eave + a finial (kills the childish flat/thin caps).
+      // kind: "campanile" | "tower". All caps stay below the dome apex (local 27.7).
+      // [x, z, fp, topY, kind, serena-bandY]
+      const TOWERS: [number, number, number, number, "campanile"|"tower", number][] = [
+        [-16, -13, 6.5, 21.5, "campanile", 12.5], // T1 poort-W — WEST CLOCK CAMPANILE (balance accent)
+        [ 12, -13, 7.0, 15.0, "tower",      9.0], // T2 poort-E — demoted below A(18) so the dome clears
+        [ 89,  11, 6.0, 18.0, "tower",     10.5], // T3 far-NE "oude stad"
+        [ 89,  -4, 5.5, 14.0, "tower",      8.5], // T4 far-SE, low/stevig
+        [-42,  14, 6.5, 17.0, "tower",     10.0], // T6 rear-W (D NW hoek) — adds west height
+        [ 48,  28, 5.5, 12.0, "tower",      7.0], // T5 teruglig-NE, low/stevig
+        [  4,  28, 5.0, 13.0, "tower",      7.5], // T7 teruglig-NW, low/stevig
       ];
-      TOWERS.forEach(([tx, tz, fp, topY, flatTop, bandY]) => {
+      TOWERS.forEach(([tx, tz, fp, topY, kind, bandY]) => {
         // Shaft — square casa-torre, foot sunk 0.6
         gWall.push(new THREE.BoxGeometry(fp, topY + 0.6, fp).translate(tx, (topY - 0.6) / 2, tz));
         // Stone footing plinth
@@ -2461,35 +2591,63 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const qh = topY - 1.6;
         for (const sx of [-1, 1]) for (const sz of [-1, 1])
           gTrimM.push(new THREE.BoxGeometry(0.3, qh, 0.3).translate(tx + sx * fp / 2, qh / 2 - 0.4, tz + sz * fp / 2));
-        // One staggered pietra-serena band
-        gSerenaM.push(new THREE.BoxGeometry(fp + 0.2, 0.55, fp + 0.2).translate(tx, bandY, tz));
+        // Two staggered pietra-serena bands (floor lines → the tower reads leveled)
+        gSerenaM.push(new THREE.BoxGeometry(fp + 0.2, 0.5, fp + 0.2).translate(tx, bandY, tz));
+        gSerenaM.push(new THREE.BoxGeometry(fp + 0.2, 0.5, fp + 0.2).translate(tx, bandY * 0.55, tz));
         // Crown — double corbelled cornice (interpenetrate 0.02 Y; no gold)
-        const crownY = flatTop ? topY - 0.34 : topY + 0.1;
+        const crownY = topY + 0.1;
         gTrimM.push(new THREE.BoxGeometry(fp + 0.5, 0.22, fp + 0.5).translate(tx, crownY, tz));
         gTrimM.push(new THREE.BoxGeometry(fp + 0.7, 0.20, fp + 0.7).translate(tx, crownY + 0.19, tz));
         for (const s of [-1, 1]) for (const off of [-fp / 3, 0, fp / 3]) {
           gSerenaM.push(new THREE.BoxGeometry(0.28, 0.55, 0.34).translate(tx + off, crownY - 0.36, tz + s * (fp / 2 + 0.05)));
           gSerenaM.push(new THREE.BoxGeometry(0.34, 0.55, 0.28).translate(tx + s * (fp / 2 + 0.05), crownY - 0.36, tz + off));
         }
-        // Low coppo hip cap on the non-flat towers (square pyramid, overstek)
-        if (!flatTop) {
-          const capH = 0.27 * (fp / 2 + 0.42);
-          const cap = new THREE.ConeGeometry((fp / 2 + 0.42) * Math.SQRT2, capH, 4);
-          cap.rotateY(Math.PI / 4); cap.translate(tx, topY + 0.35 + capH / 2, tz);
-          gRoof.push(cap);
-        }
-        // Bifora facing arrival (−Z): serena surround, two arched lights + colonnette
-        const zF = tz - fp / 2;
-        const biYs = topY > 25 ? [topY - 2.1, topY - 6.7] : [topY - 2.1];
-        for (const biY of biYs) {
-          gSerenaM.push(new THREE.BoxGeometry(1.18, 1.62, 0.12).translate(tx, biY + 0.12, zF - 0.01));
-          for (const lx of [-0.27, 0.27]) {
-            gWinM.push(new THREE.BoxGeometry(0.34, 0.92, 0.16).translate(tx + lx, biY, zF - 0.02));
-            const arch = new THREE.CylinderGeometry(0.17, 0.17, 0.16, 10, 1, false, 0, Math.PI);
-            arch.rotateX(Math.PI / 2); arch.rotateZ(Math.PI / 2);
-            arch.translate(tx + lx, biY + 0.46, zF - 0.02); gWinM.push(arch);
+        const zF = tz - fp / 2; // arrival (−Z) face
+
+        if (kind === "campanile") {
+          // ── OPEN BELFRY STAGE — 4 corner piers + a tall arched opening per face,
+          // then an entablature; a cupola pyramid + finial crowns it.
+          const belfryY0 = crownY + 0.4, belfryH = 3.2, belfryTop = belfryY0 + belfryH;
+          for (const sx of [-1, 1]) for (const sz of [-1, 1])
+            gTrimM.push(new THREE.BoxGeometry(0.7, belfryH, 0.7).translate(tx + sx * (fp / 2 - 0.35), belfryY0 + belfryH / 2, tz + sz * (fp / 2 - 0.35)));
+          // arched belfry openings on all 4 faces (dark recess + arch ring)
+          for (const [ox, oz, ry] of [[0, -fp / 2, 0], [0, fp / 2, 0], [-fp / 2, 0, Math.PI / 2], [fp / 2, 0, Math.PI / 2]] as [number, number, number][]) {
+            box(gWallD, ry ? 0.3 : fp - 1.4, belfryH - 0.9, ry ? fp - 1.4 : 0.3, tx + ox, belfryY0 + belfryH / 2 - 0.2, tz + oz);
+            const arch = new THREE.TorusGeometry((fp - 1.4) / 2, 0.10, 6, 14, Math.PI);
+            if (ry) arch.rotateY(Math.PI / 2);
+            arch.translate(tx + ox, belfryY0 + belfryH - 0.9, tz + oz);
+            gTrimM.push(arch);
           }
-          gTrimM.push(new THREE.CylinderGeometry(0.06, 0.075, 0.95, 8).translate(tx, biY - 0.02, zF - 0.06));
+          // belfry entablature
+          gTrimM.push(new THREE.BoxGeometry(fp + 0.5, 0.4, fp + 0.5).translate(tx, belfryTop + 0.1, tz));
+          // cupola — steep pyramid + finial, apex kept below the dome (local 27.7)
+          hipRoof(tx, tz, fp * 0.9, fp * 0.9, belfryTop + 0.3, fp * 0.55, 0.35);
+          gTrimM.push(new THREE.CylinderGeometry(0.08, 0.1, 0.9, 8).translate(tx, belfryTop + 0.3 + fp * 0.55 + 0.45, tz));
+          gSerenaM.push(new THREE.SphereGeometry(0.22, 8, 6).translate(tx, belfryTop + 0.3 + fp * 0.55 + 1.0, tz));
+          // ── CLOCK FACE on the −Z shaft face (serena bezel, pale dial, two hands)
+          const ckY = topY - 3.4, ck = 1.15;
+          gSerenaM.push(new THREE.CylinderGeometry(ck, ck, 0.18, 16).rotateX(Math.PI / 2).translate(tx, ckY, zF - 0.06));
+          gWinM.push(new THREE.CylinderGeometry(ck - 0.22, ck - 0.22, 0.16, 16).rotateX(Math.PI / 2).translate(tx, ckY, zF - 0.10));
+          for (let hh = 0; hh < 12; hh++) { const a = hh / 12 * Math.PI * 2; gSerenaM.push(new THREE.BoxGeometry(0.09, 0.09, 0.06).translate(tx + Math.cos(a) * (ck - 0.32), ckY + Math.sin(a) * (ck - 0.32), zF - 0.14)); }
+          box(gSerenaM, 0.10, ck - 0.45, 0.05, tx, ckY + (ck - 0.45) / 2 - 0.05, zF - 0.15, 0, 0.5);   // hour hand
+          box(gSerenaM, 0.07, ck - 0.15, 0.05, tx, ckY + (ck - 0.15) / 2 - 0.02, zF - 0.15, 0, -0.9);  // minute hand
+        } else {
+          // ── STEEP PYRAMID ROOF (overhang) + finial — no more childish flat caps
+          hipRoof(tx, tz, fp, fp, topY + 0.35, fp * 0.62, 0.55);
+          gTrimM.push(new THREE.CylinderGeometry(0.07, 0.09, 0.7, 8).translate(tx, topY + 0.35 + fp * 0.62 + 0.35, tz));
+          gSerenaM.push(new THREE.SphereGeometry(0.18, 8, 6).translate(tx, topY + 0.35 + fp * 0.62 + 0.75, tz));
+          // Bifora facing arrival (−Z): serena surround, two arched lights + colonnette
+          const biYs = topY > 16 ? [topY - 2.1, topY - 6.0] : [topY - 2.1];
+          for (const biY of biYs) {
+            gSerenaM.push(new THREE.BoxGeometry(1.18, 1.62, 0.12).translate(tx, biY + 0.12, zF - 0.01));
+            for (const lx of [-0.27, 0.27]) {
+              gWinM.push(new THREE.BoxGeometry(0.34, 0.92, 0.16).translate(tx + lx, biY, zF - 0.02));
+              const arch = new THREE.CylinderGeometry(0.17, 0.17, 0.16, 10, 1, false, 0, Math.PI);
+              arch.rotateX(Math.PI / 2); arch.rotateZ(Math.PI / 2);
+              arch.translate(tx + lx, biY + 0.46, zF - 0.02); gWinM.push(arch);
+            }
+            gTrimM.push(new THREE.CylinderGeometry(0.06, 0.075, 0.95, 8).translate(tx, biY - 0.02, zF - 0.06));
+          }
         }
       });
 
@@ -2521,7 +2679,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
       // ── MERGE & MOUNT — each bucket → one static mesh ──
       ([[gWall, ochreWall, true], [gWallL, M.stoneL, true], [gWallD, M.stoneD, true],
-        [gTrimM, M.trim, false], [gRoof, M.tile, true], [gWinM, M.win, false],
+        [gTrimM, M.trim, false], [gRoof, M.tile, true], [gRoofDS, roofMatDS, true], [gWinM, M.win, false],
         [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
         .forEach(([geos, mat, shadow]) => {
           if (!geos.length) return;
