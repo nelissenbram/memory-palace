@@ -407,7 +407,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       M.roof.color.set("#B08262");M.roof.envMapIntensity=.5;
       M.roofD.color.set("#8C6F5C");M.roofD.envMapIntensity=.35;
       M.roofSlate.color.set("#8A7A66");M.roofSlate.metalness=.1;
-      M.tile.color.set("#B88566");
+      // Owner r7 #1: roofs read too shiny + too white — darken the coppo to a muted
+      // aged terracotta and kill the specular (envMap 1.0→.22, rougher).
+      M.tile.color.set("#96684A");M.tile.envMapIntensity=.22;M.tile.roughness=.9;
+      M.roof.color.set("#9A6B50");M.roof.envMapIntensity=.22;
+      // Owner r7 #1: the palace reads too white/shiny overall — warm-down the near-
+      // white travertine trim + marble and drop their specular so the stone reads matte.
+      M.trim.color.set("#DBCDB0");M.trim.envMapIntensity=.3;M.trim.roughness=.72;
+      M.marble.color.set("#D6CBB4");M.marble.envMapIntensity=.14;M.marble.roughness=.66;
+      M.marbleVein.color.set("#CEC3AC");M.marbleVein.envMapIntensity=.14;
+      M.col.roughness=.62;
       // Windows: warm glass, emissive down .25→.16 so panes never bloom at 1.15
       M.win.emissive.set("#FFC488");M.win.emissiveIntensity=.16;
       M.winBlue.color.set("#F2ECDC");M.winBlue.emissive.set("#FFD8A0");M.winBlue.emissiveIntensity=.06;
@@ -418,8 +427,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Vegetation: cool greens → sun-dried olive family
       M.grass.color.set("#7A7E48");M.grassL.color.set("#8A8C54");M.grassD.color.set("#6A7040");M.grassRich.color.set("#6E7242");
       M.hedge.color.set("#44502E");M.hedgeL.color.set("#525E38");M.ivy.color.set("#4E5C38");
-      // Travertine columns catch a touch more of the golden env
-      M.col.envMapIntensity=.9;
+      // Travertine columns — modest golden env (owner r7 #1: dial back the shine)
+      M.col.envMapIntensity=.5;
     }
 
     // Helper to build a tower with conical roof
@@ -532,13 +541,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // gravel bed; potted lemon trees line the walks and a stone fountain sits on
       // the cross-axis. Everything merges per material → a handful of draw calls.
       {
-        const lavMat  = new THREE.MeshStandardMaterial({ color: "#8471A6", roughness: 0.82 });
-        const roseMat = new THREE.MeshStandardMaterial({ color: "#C07E86", roughness: 0.8 });
-        const saffMat = new THREE.MeshStandardMaterial({ color: "#D7A63E", roughness: 0.8 });
-        const lemonFruitMat = new THREE.MeshStandardMaterial({ color: "#E8C23A", roughness: 0.6 });
+        // Owner r7 #2: keep the forecourt SOBER — clipped-green box parterre on
+        // gravel, muted santolina/sage infill (no bright flower blocks), green
+        // potted bays (no yellow lemons). Restrained giardino, not a flower show.
+        const sageMat = new THREE.MeshStandardMaterial({ color: "#7E8A5E", roughness: 0.88 });
+        const santoMat = new THREE.MeshStandardMaterial({ color: "#94997A", roughness: 0.9 });
         const gHedge: THREE.BufferGeometry[] = [], gBed: THREE.BufferGeometry[] = [],
-              gTopi: THREE.BufferGeometry[] = [], gLav: THREE.BufferGeometry[] = [],
-              gRose: THREE.BufferGeometry[] = [], gSaff: THREE.BufferGeometry[] = [];
+              gTopi: THREE.BufferGeometry[] = [], gSage: THREE.BufferGeometry[] = [],
+              gSanto: THREE.BufferGeometry[] = [];
         const B = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number) =>
           arr.push(new THREE.BoxGeometry(w, h, d).translate(x, y, z));
         const y0 = HILL_Y + 0.42;
@@ -546,19 +556,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           B(gBed, 8.2, 0.14, 8.0, px, y0, pz);                                           // gravel bed
           for (const s of [-1, 1]) { B(gHedge, 8.2, 0.6, 0.5, px, y0 + 0.3, pz + s * 3.75); B(gHedge, 0.5, 0.6, 8.0, px + s * 3.85, y0 + 0.3, pz); } // clipped border
           B(gHedge, 7.0, 0.44, 0.34, px, y0 + 0.24, pz); B(gHedge, 0.34, 0.44, 7.0, px, y0 + 0.24, pz); // broderie cross
-          const fm = [gLav, gRose, gSaff, gRose]; let qi = 0;
-          for (const sz of [-1, 1]) for (const sx of [-1, 1]) B(fm[qi++], 2.5, 0.2, 2.5, px + sx * 1.9, y0 + 0.13, pz + sz * 1.9); // flower quadrants
+          const fm = [gSage, gSanto, gSanto, gSage]; let qi = 0;
+          for (const sz of [-1, 1]) for (const sx of [-1, 1]) B(fm[qi++], 2.5, 0.16, 2.5, px + sx * 1.9, y0 + 0.11, pz + sz * 1.9); // low muted infill
           for (const sz of [-1, 1]) for (const sx of [-1, 1]) gTopi.push(new THREE.SphereGeometry(0.46, 8, 6).translate(px + sx * 3.4, y0 + 0.55, pz + sz * 3.4)); // corner topiary
           gTopi.push(new THREE.ConeGeometry(0.62, 2.1, 8).translate(px, y0 + 1.15, pz)); // central cone
         }
-        ([[gBed, parterreGravelMat], [gHedge, M.hedge], [gTopi, M.hedgeL], [gLav, lavMat], [gRose, roseMat], [gSaff, saffMat]] as [THREE.BufferGeometry[], THREE.Material][])
+        ([[gBed, parterreGravelMat], [gHedge, M.hedge], [gTopi, M.hedgeL], [gSage, sageMat], [gSanto, santoMat]] as [THREE.BufferGeometry[], THREE.Material][])
           .forEach(([geos, mat]) => { if (!geos.length) return; const m = mergeGeometries(geos); geos.forEach(g => g.dispose()); if (m) { const mesh = new THREE.Mesh(m, mat); mesh.receiveShadow = true; mesh.castShadow = true; scene.add(mesh); } });
-        // Potted lemon trees along the walks (terracotta pot + clipped ball + fruit)
-        for (const [lx, lz] of [[-18, -29], [18, -29], [-18, -41], [18, -41], [-18, -35], [18, -35]] as [number, number][]) {
+        // Potted clipped bays along the walks (terracotta pot + green ball) — a
+        // sober pair flanking the cross-axis, not a row of fruit trees.
+        for (const [lx, lz] of [[-18, -35], [18, -35]] as [number, number][]) {
           scene.add(mk(new THREE.CylinderGeometry(0.6, 0.42, 1.0, 10), M.tile, lx, HILL_Y + 0.9, lz));
           scene.add(mk(new THREE.CylinderGeometry(0.66, 0.6, 0.18, 10), M.trim, lx, HILL_Y + 1.42, lz));
-          const ball = mk(new THREE.SphereGeometry(1.05, 10, 8), M.hedgeL, lx, HILL_Y + 2.5, lz); ball.castShadow = true; scene.add(ball);
-          for (let fi = 0; fi < 6; fi++) { const fa = fi / 6 * Math.PI * 2; scene.add(mk(new THREE.SphereGeometry(0.12, 6, 5), lemonFruitMat, lx + Math.cos(fa) * 0.95, HILL_Y + 2.5 + Math.sin(fi * 2.1) * 0.5, lz + Math.sin(fa) * 0.95)); }
+          const ball = mk(new THREE.SphereGeometry(1.0, 10, 8), M.hedge, lx, HILL_Y + 2.45, lz); ball.castShadow = true; scene.add(ball);
         }
         // Stone fountain on the cross-axis (0,-35): basin + water + tazza + finial
         const fountainWater = new THREE.MeshStandardMaterial({ color: "#5E7E86", roughness: 0.24, metalness: 0.1, transparent: true, opacity: 0.85, envMapIntensity: 0.6 });
@@ -2395,11 +2405,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const gWood: THREE.BufferGeometry[] = [], gIron: THREE.BufferGeometry[] = [],
             gIvy: THREE.BufferGeometry[] = [], gStain: THREE.BufferGeometry[] = [],
             gMoss: THREE.BufferGeometry[] = [], gMun: THREE.BufferGeometry[] = [],
-            gIvy2: THREE.BufferGeometry[] = [], gIvy3: THREE.BufferGeometry[] = [];
+            gIvy2: THREE.BufferGeometry[] = [], gIvy3: THREE.BufferGeometry[] = [],
+            gGlass: THREE.BufferGeometry[] = [];
       const HI = !isMobileGPU();
+      // Dark recessed window glass (owner r7 #3: the windows read as a bright card
+      // stuck on the wall — "karton voorgeplakt"). Real glass reads DARK from
+      // outside; a deep-slate, faintly reflective pane set back in the reveal lets
+      // the bold pale-stone cross in front read unmistakably as a kruisraam.
+      const glassMat = new THREE.MeshStandardMaterial({ color: "#2B333A", roughness: 0.22, metalness: 0.15, envMapIntensity: 0.7, emissive: "#241A0E", emissiveIntensity: 0.12 });
       // Muntin lattice — very dark, near-matte (owner r5: "kruislatten, donker").
       // Kept off the iron bucket so it reads darker than the semi-metallic railings.
       const munMat = new THREE.MeshStandardMaterial({ color: "#14110D", roughness: 0.9, metalness: 0.15, envMapIntensity: 0.15 });
+      extraDisposables.push(glassMat);
       const serenaMat = new THREE.MeshStandardMaterial({ color: "#3E3933", roughness: 0.86, metalness: 0, envMapIntensity: 0.3 });
       const woodMat = new THREE.MeshStandardMaterial({ color: "#5A4630", roughness: 0.82, metalness: 0, envMapIntensity: 0.2 });
       const ironMat = new THREE.MeshStandardMaterial({ color: "#2B2723", roughness: 0.6, metalness: 0.5, envMapIntensity: 0.5 });
@@ -2412,16 +2429,37 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       extraDisposables.push(serenaMat, woodMat, ironMat, ivyMat, stainMat, mossMat, munMat, ivyMat2, ivyMat3);
       // A rough climbing-ivy patch: a cluster of small leaf quads scattered up a
       // wall corner/pier (deterministic jitter via index; NO Math.random).
+      // ── IVY LEAF template (owner r7 #5: the ivy read as post-its — flat squares).
+      // A small rounded three-lobe ivy leaf, cloned + jittered per leaf so patches
+      // read as a dense leafy mat instead of stuck-on cards.
+      const ivyLeafShape = new THREE.Shape();
+      ivyLeafShape.moveTo(0, 0.55);
+      ivyLeafShape.bezierCurveTo(0.30, 0.50, 0.52, 0.20, 0.44, -0.04);
+      ivyLeafShape.bezierCurveTo(0.54, -0.02, 0.56, -0.20, 0.40, -0.28);
+      ivyLeafShape.bezierCurveTo(0.26, -0.34, 0.12, -0.44, 0, -0.5);
+      ivyLeafShape.bezierCurveTo(-0.12, -0.44, -0.26, -0.34, -0.40, -0.28);
+      ivyLeafShape.bezierCurveTo(-0.56, -0.20, -0.54, -0.02, -0.44, -0.04);
+      ivyLeafShape.bezierCurveTo(-0.52, 0.20, -0.30, 0.50, 0, 0.55);
+      const ivyLeafGeo = new THREE.ShapeGeometry(ivyLeafShape);
+      ivyLeafGeo.translate(0, -0.05, 0);
+      extraGeoDisposables.push(ivyLeafGeo);
       const ivyPatch = (x: number, y: number, z: number, up: number, wide: number, faceX: boolean, n: number, bucket: THREE.BufferGeometry[] = gIvy) => {
         for (let i = 0; i < n; i++) {
-          const t = i / n, jx = ((i * 37) % 11 / 11 - 0.5) * wide, jy = t * up + ((i * 53) % 7 / 7 - 0.5) * 0.6;
-          const jz = ((i * 29) % 13 / 13 - 0.5) * wide, s = 0.28 + ((i * 17) % 5) / 5 * 0.34;
-          const g = new THREE.PlaneGeometry(s, s);
-          g.rotateY(faceX ? Math.PI / 2 : 0); g.rotateZ(((i * 41) % 9 / 9 - 0.5) * 1.2);
-          g.translate(faceX ? x : x + jx, y + jy, faceX ? z + jz : z);
-          // scatter a minority of leaves into the accent-colour buckets so each
-          // patch reads as mixed foliage (mostly base green, some fresh, some russet)
-          (bucket === gIvy ? (i % 5 === 0 ? gIvy2 : i % 7 === 0 ? gIvy3 : gIvy) : bucket).push(g);
+          const t = i / n;
+          // leaves cluster along a meandering vine climbing the wall
+          const spread = Math.sin(t * 6.3 + x + i) * wide * 0.35 + ((i * 29) % 13 / 13 - 0.5) * wide;
+          const py = y + t * up + ((i * 53) % 7 / 7 - 0.5) * 0.5;
+          const depth = 0.06 + ((i * 17) % 5) / 5 * 0.16;    // sit slightly proud of the wall
+          const s = 0.20 + ((i * 13) % 6) / 6 * 0.22;        // SMALL varied leaves (0.20–0.42), not slabs
+          const g = ivyLeafGeo.clone();
+          g.scale(s, s, s);
+          // random 3D orientation so each leaf catches the light differently
+          g.rotateX(((i * 41) % 9 / 9 - 0.5) * 1.7);
+          g.rotateZ(((i * 61) % 11 / 11 - 0.5) * 2.0);
+          g.rotateY((faceX ? Math.PI / 2 : 0) + ((i * 23) % 7 / 7 - 0.5) * 1.3);
+          g.translate(faceX ? x + depth : x + spread, py, faceX ? z + spread : z + depth);
+          // mixed foliage: mostly base green, some fresh green, some autumnal russet
+          (bucket === gIvy ? (i % 4 === 0 ? gIvy2 : i % 6 === 0 ? gIvy3 : gIvy) : bucket).push(g);
         }
       };
       const box = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number, ry = 0, rz = 0) => {
@@ -2492,15 +2530,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // deep dark reveal
         if (onX) box(gWallD, deep, wh + aR, ww, wx + nx * (deep / 2 - 0.02), wy + aR * 0.2, wz);
         else     box(gWallD, ww, wh + aR, deep, wx, wy + aR * 0.2, wz + nz * (deep / 2 - 0.02));
-        // glowing pane, set into the reveal
-        if (onX) box(gWinM, 0.10, wh, ww - 0.08, wx + nx * 0.14, wy, wz);
-        else     box(gWinM, ww - 0.08, wh, 0.10, wx, wy, wz + nz * 0.14);
-        // arch fill (half-disc glass) + arch ring
+        // DARK glass pane, RECESSED at the wall face (behind the proud stone frame +
+        // cross below) so the opening reads as a real recessed window, not a card.
+        if (onX) box(gGlass, 0.10, wh, ww - 0.08, wx + nx * 0.03, wy, wz);
+        else     box(gGlass, ww - 0.08, wh, 0.10, wx, wy, wz + nz * 0.03);
+        // arch fill (half-disc dark glass) + arch ring
         const archFill = new THREE.CylinderGeometry(aR - 0.05, aR - 0.05, 0.10, 12, 1, false, 0, Math.PI);
         archFill.rotateZ(Math.PI); // opening downward → upper half
-        if (onX) { archFill.rotateY(Math.PI / 2); archFill.translate(wx + nx * 0.14, wy + wh / 2, wz); }
-        else archFill.translate(wx, wy + wh / 2, wz + nz * 0.14);
-        gWinM.push(archFill);
+        if (onX) { archFill.rotateY(Math.PI / 2); archFill.translate(wx + nx * 0.03, wy + wh / 2, wz); }
+        else archFill.translate(wx, wy + wh / 2, wz + nz * 0.03);
+        gGlass.push(archFill);
         const archRing = new THREE.TorusGeometry(aR, 0.09, 6, 14, Math.PI);
         if (onX) { archRing.rotateY(Math.PI / 2); archRing.translate(wx + nx * 0.24, wy + wh / 2, wz); }
         else archRing.translate(wx, wy + wh / 2, wz + nz * 0.24);
@@ -2533,28 +2572,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // ── r4 fine detail: iron muntins, wood shutters, iron balcony, weather
         // streak below the sill. Gated to HI-detail GPUs (dense per-window geo).
         if (HI) {
-          const po = onX ? nx * 0.19 : nz * 0.19;   // proud offset from the pane
-          // ── KRUISRAAM (owner r6 #1: "~kruisramen") — a proper cross-window: a
-          //    BOLD pale-stone mullion (vertical) + transom (horizontal) form the
-          //    structural cross dividing the light into four; each quadrant then
-          //    carries fine near-black leaded glazing bars. Reads unmistakably as a
-          //    stone cross-window instead of the earlier faint lattice.
-          const mw = 0.16;                       // mullion / transom thickness (bold)
-          const tY = wy + wh * 0.06;             // transom just above centre
-          const bt = 0.05;                       // fine leaded bar thickness
+          // ── KRUISRAAM (owner r7 #3 — the cross must READ) — a BOLD pale-stone
+          //    mullion (vertical) + transom (horizontal) stand well PROUD of the
+          //    recessed dark glass, forming an unmistakable stone cross in the middle
+          //    of every light; fine dark leaded bars subdivide each of the four
+          //    panes. Depth (proud stone cross over recessed dark glass) kills the
+          //    "cardboard stuck on the wall" read.
+          const po = onX ? nx * 0.17 : nz * 0.17;   // cross stands ~0.14 proud of the glass
+          const mw = 0.22;                          // mullion / transom thickness (bold, reads at distance)
+          const tY = wy + wh * 0.05;                // transom just above centre
+          const bt = 0.05, bo = onX ? nx * 0.10 : nz * 0.10; // fine leaded bars, over the glass
           if (onX) {
-            box(gTrimM, 0.18, wh + aR + 0.1, mw, wx + po, wy + aR * 0.2, wz);           // vertical stone mullion (runs up into the arch)
-            box(gTrimM, 0.18, mw, ww + 0.1, wx + po, tY, wz);                            // horizontal stone transom
-            for (const sz of [-ww * 0.26, ww * 0.26]) {                                  // one fine leaded bar per side, both storeys
-              box(gMun, bt, (tY - (wy - wh / 2)) - 0.06, bt, wx + po, (tY + wy - wh / 2) / 2, wz + sz);
-              box(gMun, bt, (wy + wh / 2 - tY) - 0.06, bt, wx + po, (tY + wy + wh / 2) / 2, wz + sz);
+            box(gTrimM, 0.26, wh + aR + 0.1, mw, wx + po, wy + aR * 0.2, wz);           // vertical stone mullion (into the arch)
+            box(gTrimM, 0.26, mw, ww + 0.14, wx + po, tY, wz);                           // horizontal stone transom
+            for (const sz of [-ww * 0.26, ww * 0.26]) {
+              box(gMun, bt, (tY - (wy - wh / 2)) - 0.06, bt, wx + bo, (tY + wy - wh / 2) / 2, wz + sz);
+              box(gMun, bt, (wy + wh / 2 - tY) - 0.06, bt, wx + bo, (tY + wy + wh / 2) / 2, wz + sz);
             }
           } else {
-            box(gTrimM, mw, wh + aR + 0.1, 0.18, wx, wy + aR * 0.2, wz + po);
-            box(gTrimM, ww + 0.1, mw, 0.18, wx, tY, wz + po);
+            box(gTrimM, mw, wh + aR + 0.1, 0.26, wx, wy + aR * 0.2, wz + po);
+            box(gTrimM, ww + 0.14, mw, 0.26, wx, tY, wz + po);
             for (const sx of [-ww * 0.26, ww * 0.26]) {
-              box(gMun, bt, (tY - (wy - wh / 2)) - 0.06, bt, wx + sx, (tY + wy - wh / 2) / 2, wz + po);
-              box(gMun, bt, (wy + wh / 2 - tY) - 0.06, bt, wx + sx, (tY + wy + wh / 2) / 2, wz + po);
+              box(gMun, bt, (tY - (wy - wh / 2)) - 0.06, bt, wx + sx, (tY + wy - wh / 2) / 2, wz + bo);
+              box(gMun, bt, (wy + wh / 2 - tY) - 0.06, bt, wx + sx, (tY + wy + wh / 2) / 2, wz + bo);
             }
           }
           // shutters — a weathered wood leaf on each side, slightly open
@@ -2617,8 +2657,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // crown cornice (two travertine bands, interpenetrating in Y — no coplanar)
         box(gTrimM, bw + 0.4, 0.28, bd + 0.4, cx, h + 0.45, cz);
         box(gTrimM, bw + 0.7, 0.24, bd + 0.7, cx, h + 0.66, cz);
-        // projecting eave fascia (shadow line under the roof overhang)
-        box(gTrimM, bw + 1.4, 0.22, bd + 1.4, cx, h + 0.86, cz);
+        // projecting eave fascia (shadow line under the roof overhang) — owner r7
+        // #4: trimmed the overhang (1.4→0.9) so no thin fascia tab projects over the
+        // gaps between blocks and reads as a floating bar.
+        box(gTrimM, bw + 0.9, 0.22, bd + 0.9, cx, h + 0.86, cz);
         // corner quoins (travertine chains, stop under the cornice)
         for (const sx of [-1, 1]) for (const sz of [-1, 1])
           box(gTrimM, 0.5, h - 0.6, 0.5, cx + sx * bw / 2, (h - 0.6) / 2 + 0.5, cz + sz * bd / 2);
@@ -2636,8 +2678,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const longAxisX = bw >= bd;
           if (Math.abs(bw - bd) > 6) {
             const along = longAxisX ? bw : bd, rl = along - Math.min(bw, bd);
-            if (longAxisX) box(gRoof, rl, 0.22, 0.32, cx, eaveY + riseH, cz);
-            else box(gRoof, 0.32, 0.22, rl, cx, eaveY + riseH, cz);
+            if (longAxisX) box(gRoof, rl, 0.3, 0.4, cx, eaveY + riseH - 0.12, cz);   // embedded onto the ridge (owner r7 #4)
+            else box(gRoof, 0.4, 0.3, rl, cx, eaveY + riseH - 0.12, cz);
           }
           // ── DORMERS + CHIMNEYS (owner review #2 — roofs must read, not blank
           // brown slabs). Dormers march along the front (−z / −x) slope; slim
@@ -2946,10 +2988,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
               gTrimM.push(arch);
             }
           }
-          // BRONZE BELL on a headstock beam, hung in the belfry
-          gSerenaM.push(new THREE.CylinderGeometry(0.34, 0.6, 0.82, 10).translate(tx, belfryY0 + belfryH - 1.55, tz));
-          gSerenaM.push(new THREE.SphereGeometry(0.36, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5).translate(tx, belfryY0 + belfryH - 1.14, tz));
-          gTrimM.push(new THREE.BoxGeometry(fp - 1.6, 0.16, 0.16).translate(tx, belfryY0 + belfryH - 0.85, tz));
+          // BRONZE BELL hung compactly from a SHORT yoke tucked right under the
+          // belfry entablature (owner r7 #4: the old full-width headstock beam
+          // silhouetted through the open belfry as a floating horizontal bar). The
+          // short yoke stays behind the piers so nothing reads as a floating stick.
+          gSerenaM.push(new THREE.CylinderGeometry(0.34, 0.58, 0.78, 10).translate(tx, belfryY0 + belfryH - 1.35, tz));
+          gSerenaM.push(new THREE.SphereGeometry(0.34, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5).translate(tx, belfryY0 + belfryH - 0.98, tz));
+          gTrimM.push(new THREE.BoxGeometry(1.0, 0.16, 0.16).translate(tx, belfryY0 + belfryH - 0.72, tz)); // short yoke
           // belfry entablature
           gTrimM.push(new THREE.BoxGeometry(fp + 0.6, 0.44, fp + 0.6).translate(tx, belfryTop + 0.12, tz));
           // FOUR CORNER PINNACLE SPIRELETS
@@ -2959,14 +3004,20 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             gSerenaM.push(new THREE.ConeGeometry(0.28, 1.1, 4).translate(pcx2, belfryTop + 1.35, pcz2));
             gSerenaM.push(new THREE.SphereGeometry(0.1, 8, 6).translate(pcx2, belfryTop + 2.0, pcz2));
           }
-          // OCTAGONAL DRUM + COPPO CUPOLA + LANTERN FINIAL
+          // OCTAGONAL DRUM + COPPO CUPOLA + LANTERN FINIAL. Owner r7 #4: the lantern
+          // read as FLOATING above the campanile — the thin pyramid apex vanished at
+          // distance, leaving sky between cupola and lantern. Fix: a squatter cupola,
+          // a SOLID neck bridging the apex, and a lantern drum that overlaps DOWN into
+          // it, so the crown reads as one continuous mass.
           gWall.push(new THREE.CylinderGeometry(fp * 0.4, fp * 0.44, 0.9, 8).translate(tx, belfryTop + 0.8, tz));
           gTrimM.push(new THREE.CylinderGeometry(fp * 0.46, fp * 0.46, 0.2, 8).translate(tx, belfryTop + 1.3, tz));
-          hipRoof(tx, tz, fp * 0.82, fp * 0.82, belfryTop + 1.35, fp * 0.38, 0.3);
-          const cuApex = belfryTop + 1.35 + fp * 0.38;
-          gTrimM.push(new THREE.CylinderGeometry(0.2, 0.26, 0.7, 8).translate(tx, cuApex + 0.35, tz));
-          gTrimM.push(new THREE.SphereGeometry(0.2, 10, 8).translate(tx, cuApex + 0.82, tz));
-          gTrimM.push(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 6).translate(tx, cuApex + 1.2, tz));
+          const cuRise = fp * 0.30;
+          hipRoof(tx, tz, fp * 0.82, fp * 0.82, belfryTop + 1.35, cuRise, 0.3);
+          const cuApex = belfryTop + 1.35 + cuRise;
+          gTrimM.push(new THREE.CylinderGeometry(0.32, 0.6, cuRise * 0.85, 8).translate(tx, cuApex - cuRise * 0.35, tz)); // solid neck into the apex
+          gTrimM.push(new THREE.CylinderGeometry(0.26, 0.36, 1.0, 8).translate(tx, cuApex + 0.1, tz));                     // lantern drum, overlaps down
+          gTrimM.push(new THREE.SphereGeometry(0.22, 10, 8).translate(tx, cuApex + 0.78, tz));
+          gTrimM.push(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 6).translate(tx, cuApex + 1.18, tz));
           // ── CLOCK AEDICULE on the −Z shaft face: moulded bezel, pale dial, dark
           //    hands/markers (munMat), and a semicircular hood-mould over it.
           const ckY = topY - 3.4, ck = 1.2;
@@ -2996,10 +3047,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
               gRoofDS.push(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 6).rotateX(Math.PI / 2).translate(px2, eY + 0.13, pz2));
             }
           }
-          // finial: drum + ball + spike
-          gSerenaM.push(new THREE.CylinderGeometry(0.24, 0.3, 0.5, 8).translate(tx, apexY + 0.2, tz));
-          gTrimM.push(new THREE.SphereGeometry(0.2, 10, 8).translate(tx, apexY + 0.6, tz));
-          gTrimM.push(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6).translate(tx, apexY + 1.05, tz));
+          // finial: drum + ball + spike — owner r7 #4: the drum overlaps DOWN into the
+          // pyramid apex (bottom well below apexY) so the finial never reads as
+          // floating above the thin roof point.
+          gSerenaM.push(new THREE.CylinderGeometry(0.28, 0.44, 1.0, 8).translate(tx, apexY - 0.1, tz)); // bottom apexY-0.6, into the pyramid
+          gTrimM.push(new THREE.SphereGeometry(0.2, 10, 8).translate(tx, apexY + 0.5, tz));
+          gTrimM.push(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6).translate(tx, apexY + 0.95, tz));
           // Bifora facing arrival (−Z): serena surround, two arched lights + colonnette
           const biYs = topY > 16 ? [topY - 2.1, topY - 6.0] : [topY - 2.1];
           for (const biY of biYs) {
@@ -3021,17 +3074,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if (HI) {
         // owner r6 #3: MORE ivy, in varied colours (the mixed-bucket scatter in
         // ivyPatch gives each patch base-green + fresh-green + russet leaves).
-        for (let i = 0; i < 9; i += 2) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; ivyPatch(ax, -2.5, -27.5, 5.2, 1.6, false, 24); }
-        for (const [tx, tz] of [[-38, -24], [-26, 37], [22, 37], [46, 16], [-50, 16]] as [number, number][]) ivyPatch(tx, 0.5, tz - 3.4, 7.5, 1.8, false, 28);
+        for (let i = 0; i < 9; i += 2) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; ivyPatch(ax, -2.5, -27.5, 5.2, 1.7, false, 46); }
+        for (const [tx, tz] of [[-38, -24], [-26, 37], [22, 37], [46, 16], [-50, 16]] as [number, number][]) ivyPatch(tx, 0.5, tz - 3.4, 7.5, 1.9, false, 52);
         // both long side faces climb higher, alternating fresh + russet accents
-        ivyPatch(-40, 0.5, -25, 9, 1.5, false, 26);
-        ivyPatch(40, 0.5, -25, 9, 1.5, false, 26);
-        ivyPatch(-49, 4, 6, 8, 1.6, true, 24, gIvy2);   // west palazzo flank — fresh green
-        ivyPatch(45, 4, 6, 8, 1.6, true, 24, gIvy3);    // east gallery flank — russet
+        ivyPatch(-40, 0.5, -25, 9, 1.6, false, 48);
+        ivyPatch(40, 0.5, -25, 9, 1.6, false, 48);
+        ivyPatch(-49, 4, 6, 8, 1.7, true, 44, gIvy2);   // west palazzo flank — fresh green
+        ivyPatch(45, 4, 6, 8, 1.7, true, 44, gIvy3);    // east gallery flank — russet
         // a curtain spilling down each front-pavilion corner
-        for (const [px, pz] of [[-26, -25.5], [24, -25.5]] as [number, number][]) ivyPatch(px, 1, pz, 9, 2.0, false, 30);
+        for (const [px, pz] of [[-26, -25.5], [24, -25.5]] as [number, number][]) ivyPatch(px, 1, pz, 9, 2.1, false, 54);
         // ivy creeping onto the campanile & rear-tower bases
-        for (const [tx, tz] of [[36, -24], [22, 37]] as [number, number][]) ivyPatch(tx, 2, tz - 3.4, 10, 1.4, false, 22, gIvy2);
+        for (const [tx, tz] of [[36, -24], [22, 37]] as [number, number][]) ivyPatch(tx, 2, tz - 3.4, 10, 1.5, false, 40, gIvy2);
       }
       // damp moss skirt along the front bases (subtle, all GPUs)
       for (let i = 0; i < 9; i++) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; box(gMoss, aw - 0.4, 1.0, 0.12, ax, 0.6, -27.6); }
@@ -3079,7 +3132,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         [gTrimM, M.trim, false], [gRoof, M.tile, true], [gRoofDS, roofMatDS, true], [gWinM, M.win, false],
         [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false],
         [gWood, woodMat, true], [gIron, ironMat, true], [gIvy, ivyMat, false],
-        [gIvy2, ivyMat2, false], [gIvy3, ivyMat3, false],
+        [gIvy2, ivyMat2, false], [gIvy3, ivyMat3, false], [gGlass, glassMat, false],
         [gStain, stainMat, false], [gMoss, mossMat, false], [gMun, munMat, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
         .forEach(([geos, mat, shadow]) => {
           if (!geos.length) return;
