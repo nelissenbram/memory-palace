@@ -2351,8 +2351,34 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             gWallD: THREE.BufferGeometry[] = [], gTrimM: THREE.BufferGeometry[] = [],
             gRoof: THREE.BufferGeometry[] = [], gWinM: THREE.BufferGeometry[] = [],
             gSerenaM: THREE.BufferGeometry[] = [], gPlinthM: THREE.BufferGeometry[] = [];
+      // Owner review 2026-08-07 r4 — DETAIL/RUSTIC pass: wood joinery (shutters,
+      // muntins, doors), wrought iron (railings, muntin bars), climbing ivy, and
+      // weathering (water-stain streaks + damp/discolour patches). Own buckets so
+      // draw calls stay flat. HI-detail (muntins/shutters/balconies/ivy) is gated
+      // off the weakest GPUs.
+      const gWood: THREE.BufferGeometry[] = [], gIron: THREE.BufferGeometry[] = [],
+            gIvy: THREE.BufferGeometry[] = [], gStain: THREE.BufferGeometry[] = [],
+            gMoss: THREE.BufferGeometry[] = [];
+      const HI = !isMobileGPU();
       const serenaMat = new THREE.MeshStandardMaterial({ color: "#3E3933", roughness: 0.86, metalness: 0, envMapIntensity: 0.3 });
-      extraDisposables.push(serenaMat);
+      const woodMat = new THREE.MeshStandardMaterial({ color: "#5A4630", roughness: 0.82, metalness: 0, envMapIntensity: 0.2 });
+      const ironMat = new THREE.MeshStandardMaterial({ color: "#2B2723", roughness: 0.6, metalness: 0.5, envMapIntensity: 0.5 });
+      const ivyMat = new THREE.MeshStandardMaterial({ color: "#4A5C34", roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+      const stainMat = new THREE.MeshStandardMaterial({ color: "#6B5B45", roughness: 0.96, transparent: true, opacity: 0.22, depthWrite: false });
+      const mossMat = new THREE.MeshStandardMaterial({ color: "#6E7248", roughness: 0.98, transparent: true, opacity: 0.3, depthWrite: false });
+      extraDisposables.push(serenaMat, woodMat, ironMat, ivyMat, stainMat, mossMat);
+      // A rough climbing-ivy patch: a cluster of small leaf quads scattered up a
+      // wall corner/pier (deterministic jitter via index; NO Math.random).
+      const ivyPatch = (x: number, y: number, z: number, up: number, wide: number, faceX: boolean, n: number) => {
+        for (let i = 0; i < n; i++) {
+          const t = i / n, jx = ((i * 37) % 11 / 11 - 0.5) * wide, jy = t * up + ((i * 53) % 7 / 7 - 0.5) * 0.6;
+          const jz = ((i * 29) % 13 / 13 - 0.5) * wide, s = 0.28 + ((i * 17) % 5) / 5 * 0.34;
+          const g = new THREE.PlaneGeometry(s, s);
+          g.rotateY(faceX ? Math.PI / 2 : 0); g.rotateZ(((i * 41) % 9 / 9 - 0.5) * 1.2);
+          g.translate(faceX ? x : x + jx, y + jy, faceX ? z + jz : z);
+          gIvy.push(g);
+        }
+      };
       const box = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number, ry = 0, rz = 0) => {
         const g = new THREE.BoxGeometry(w, h, d);
         if (rz) g.rotateZ(rz); if (ry) g.rotateY(ry);
@@ -2458,6 +2484,38 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             if (onX) box(gSerenaM, 0.20, 0.30, 0.16, wx + nx * 0.20, cy - 0.22, wz + s * (ww / 2 + 0.1));
             else     box(gSerenaM, 0.16, 0.30, 0.20, wx + s * (ww / 2 + 0.1), cy - 0.22, wz + nz * 0.20);
           }
+        }
+        // ── r4 fine detail: iron muntins, wood shutters, iron balcony, weather
+        // streak below the sill. Gated to HI-detail GPUs (dense per-window geo).
+        if (HI) {
+          const po = onX ? nx * 0.19 : nz * 0.19;   // proud offset from the pane
+          // muntins — 1 vertical + 2 horizontal iron bars dividing the light
+          if (onX) {
+            box(gIron, 0.05, wh, 0.04, wx + po, wy, wz);
+            for (const hy of [wy - wh / 4, wy + wh / 4]) box(gIron, 0.05, 0.04, ww - 0.1, wx + po, hy, wz);
+          } else {
+            box(gIron, 0.04, wh, 0.05, wx, wy, wz + po);
+            for (const hy of [wy - wh / 4, wy + wh / 4]) box(gIron, ww - 0.1, 0.04, 0.05, wx, hy, wz + po);
+          }
+          // shutters — a weathered wood leaf on each side, slightly open
+          const shW = ww * 0.52, shH = wh + 0.1, shPo = onX ? nx * 0.12 : nz * 0.12;
+          for (const s of [-1, 1]) {
+            if (onX) box(gWood, 0.06, shH, shW, wx + shPo, wy, wz + s * (ww / 2 + shW * 0.42), s * 0.3);
+            else     box(gWood, shW, shH, 0.06, wx + s * (ww / 2 + shW * 0.42), wy, wz + shPo, -s * 0.3);
+          }
+          // piano-nobile: a small iron-railed balcony on a corbelled slab
+          if (ped) {
+            const by = wy - wh / 2 - 0.16, bw2 = ww + 0.8, bd2 = 0.7;
+            if (onX) box(gTrimM, bd2, 0.14, bw2, wx + nx * (bd2 / 2 + 0.1), by, wz);
+            else     box(gTrimM, bw2, 0.14, bd2, wx, by, wz + nz * (bd2 / 2 + 0.1));
+            // rail: top bar + uprights
+            const ry2 = by + 0.62;
+            if (onX) { box(gIron, 0.06, 0.06, bw2, wx + nx * (bd2 + 0.05), ry2, wz); for (let u = -bw2 / 2; u <= bw2 / 2; u += 0.32) box(gIron, 0.05, 0.62, 0.05, wx + nx * (bd2 + 0.05), by + 0.31, wz + u); }
+            else { box(gIron, bw2, 0.06, 0.06, wx, ry2, wz + nz * (bd2 + 0.05)); for (let u = -bw2 / 2; u <= bw2 / 2; u += 0.32) box(gIron, 0.05, 0.62, 0.05, wx + u, by + 0.31, wz + nz * (bd2 + 0.05)); }
+          }
+          // weather streak below the sill (translucent damp stain)
+          if (onX) box(gStain, 0.02, wh * 0.9, ww * 0.5, wx + nx * 0.24, wy - wh - 0.3, wz);
+          else     box(gStain, ww * 0.5, wh * 0.9, 0.02, wx, wy - wh - 0.3, wz + nz * 0.24);
         }
       };
 
@@ -2684,13 +2742,25 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           box(gTrimM, 0.6, 1.05, pd + 0.6, px0 - 0.1, ry, pcz);
           box(gTrimM, 0.6, 1.05, pd + 0.6, px1 + 0.1, ry, pcz);
         }
-        // blind arcade on the downhill (−z) face — big rusticated arches
+        // arcade on the downhill (−z) face — big rusticated arches; the central
+        // ones hold studded wood doors (owner r4: "meer detail in deuren"), the
+        // rest read as deep shadowed openings with a keystone.
         const na = 9;
         for (let i = 0; i < na; i++) {
           const ax = px0 + (i + 0.5) * (pw / na), aw = pw / na - 1.4;
           box(gWallD, aw, 3.4, 0.6, ax, -2.1, pz0 - 0.2);
           const arch = new THREE.CylinderGeometry(aw / 2, aw / 2, 0.6, 12, 1, false, 0, Math.PI);
           arch.rotateZ(Math.PI); arch.translate(ax, -0.4, pz0 - 0.2); gWallD.push(arch);
+          box(gTrimM, 0.5, 0.6, 0.7, ax, -0.5 + aw / 2, pz0 - 0.35);   // keystone
+          if (i >= 3 && i <= 5) {
+            // studded double doors set into the arch
+            for (const s of [-1, 1]) {
+              box(gWood, aw / 2 - 0.12, 3.0, 0.16, ax + s * aw / 4, -2.3, pz0 - 0.42);
+              for (let py = -3.4; py < -1.3; py += 0.5) for (let pxo = -1; pxo <= 1; pxo += 1) // bronze studs
+                gIron.push(new THREE.SphereGeometry(0.05, 6, 4).translate(ax + s * aw / 4 + pxo * (aw / 8), py, pz0 - 0.5));
+            }
+            box(gIron, 0.1, 3.0, 0.1, ax, -2.3, pz0 - 0.5);           // meeting stile
+          }
         }
         // heavy cornice capping the podium (the terrace-floor edge)
         box(gTrimM, pw + 1.2, 0.55, pd + 1.2, pcx, 0.35, pcz);
@@ -2799,6 +2869,22 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       });
 
+      // ── r4: CLIMBING IVY + WEATHERING (owner: klimop op bepaalde plekken +
+      // verkleuring). Ivy climbs a few piers / tower-bases / pavilion corners;
+      // a damp moss skirt + broad discolour patches break the flat plaster.
+      if (HI) {
+        for (let i = 0; i < 9; i += 2) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; ivyPatch(ax, -2.5, -27.5, 4.4, 1.3, false, 16); }
+        for (const [tx, tz] of [[-38, -24], [-26, 37], [22, 37]] as [number, number][]) ivyPatch(tx, 0.5, tz - 3.4, 6.0, 1.6, false, 20);
+        ivyPatch(-40, 0.5, -25, 7, 1.2, false, 18);
+        ivyPatch(40, 0.5, -25, 7, 1.2, false, 18);
+      }
+      // damp moss skirt along the front bases (subtle, all GPUs)
+      for (let i = 0; i < 9; i++) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; box(gMoss, aw - 0.4, 1.0, 0.12, ax, 0.6, -27.6); }
+      for (const [sx, sz] of [[-28, -25.3], [24, -25.3]] as [number, number][]) box(gMoss, 20, 0.9, 0.12, sx, 0.7, sz);
+      // broad soft discolour patches on the big front faces ("verkleuring")
+      for (const [sx, sy, sz, sw, sh2] of [[-28, 7, -25.3, 11, 8], [24, 7, -25.3, 11, 8], [-2, 9, -10.4, 10, 10], [-49, 6, -0.5, 8, 8], [45, 6, -0.5, 8, 8]] as [number, number, number, number, number][])
+        box(gStain, sw, sh2, 0.05, sx, sy, sz);
+
       // ── 5 INVISIBLE CHAPTER-ANCHORS (targetWorldPos only; NOT click targets;
       // NOT raycastable — opacity 0). Redistributed over the balanced wings, all
       // inside the mass, clear of towers + the ±22° arrival wedge. roomId = WING id.
@@ -2824,7 +2910,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // ── MERGE & MOUNT — each bucket → one static mesh ──
       ([[gWall, ochreWall, true], [gWallL, M.stoneL, true], [gWallD, M.stoneD, true],
         [gTrimM, M.trim, false], [gRoof, M.tile, true], [gRoofDS, roofMatDS, true], [gWinM, M.win, false],
-        [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
+        [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false],
+        [gWood, woodMat, true], [gIron, ironMat, true], [gIvy, ivyMat, false],
+        [gStain, stainMat, false], [gMoss, mossMat, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
         .forEach(([geos, mat, shadow]) => {
           if (!geos.length) return;
           const merged = mergeGeometries(geos);
