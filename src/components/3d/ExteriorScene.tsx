@@ -2358,15 +2358,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // off the weakest GPUs.
       const gWood: THREE.BufferGeometry[] = [], gIron: THREE.BufferGeometry[] = [],
             gIvy: THREE.BufferGeometry[] = [], gStain: THREE.BufferGeometry[] = [],
-            gMoss: THREE.BufferGeometry[] = [];
+            gMoss: THREE.BufferGeometry[] = [], gMun: THREE.BufferGeometry[] = [];
       const HI = !isMobileGPU();
+      // Muntin lattice — very dark, near-matte (owner r5: "kruislatten, donker").
+      // Kept off the iron bucket so it reads darker than the semi-metallic railings.
+      const munMat = new THREE.MeshStandardMaterial({ color: "#14110D", roughness: 0.9, metalness: 0.15, envMapIntensity: 0.15 });
       const serenaMat = new THREE.MeshStandardMaterial({ color: "#3E3933", roughness: 0.86, metalness: 0, envMapIntensity: 0.3 });
       const woodMat = new THREE.MeshStandardMaterial({ color: "#5A4630", roughness: 0.82, metalness: 0, envMapIntensity: 0.2 });
       const ironMat = new THREE.MeshStandardMaterial({ color: "#2B2723", roughness: 0.6, metalness: 0.5, envMapIntensity: 0.5 });
       const ivyMat = new THREE.MeshStandardMaterial({ color: "#4A5C34", roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
       const stainMat = new THREE.MeshStandardMaterial({ color: "#6B5B45", roughness: 0.96, transparent: true, opacity: 0.22, depthWrite: false });
       const mossMat = new THREE.MeshStandardMaterial({ color: "#6E7248", roughness: 0.98, transparent: true, opacity: 0.3, depthWrite: false });
-      extraDisposables.push(serenaMat, woodMat, ironMat, ivyMat, stainMat, mossMat);
+      extraDisposables.push(serenaMat, woodMat, ironMat, ivyMat, stainMat, mossMat, munMat);
       // A rough climbing-ivy patch: a cluster of small leaf quads scattered up a
       // wall corner/pier (deterministic jitter via index; NO Math.random).
       const ivyPatch = (x: number, y: number, z: number, up: number, wide: number, faceX: boolean, n: number) => {
@@ -2489,13 +2492,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // streak below the sill. Gated to HI-detail GPUs (dense per-window geo).
         if (HI) {
           const po = onX ? nx * 0.19 : nz * 0.19;   // proud offset from the pane
-          // muntins — 1 vertical + 2 horizontal iron bars dividing the light
+          // muntins — a DARK cross-lattice (owner r5 #2: "kruislatten in de ramen,
+          // donker") dividing the light into panes: 2 verticals × 3 horizontals in
+          // the near-matte munMat so they read as dark leaded bars, plus a fine
+          // meeting-cross in the arched head so the whole light is glazed with lead.
+          const bt = 0.06; // bar thickness
           if (onX) {
-            box(gIron, 0.05, wh, 0.04, wx + po, wy, wz);
-            for (const hy of [wy - wh / 4, wy + wh / 4]) box(gIron, 0.05, 0.04, ww - 0.1, wx + po, hy, wz);
+            for (const vz of [-ww * 0.25, ww * 0.25]) box(gMun, bt, wh + 0.02, bt, wx + po, wy, wz + vz);
+            for (const hy of [wy - wh * 0.3, wy, wy + wh * 0.3]) box(gMun, bt, bt, ww - 0.08, wx + po, hy, wz);
+            box(gMun, bt, aR * 0.9, bt, wx + po, wy + wh / 2 + aR * 0.35, wz);          // radial bar into the arch head
           } else {
-            box(gIron, 0.04, wh, 0.05, wx, wy, wz + po);
-            for (const hy of [wy - wh / 4, wy + wh / 4]) box(gIron, ww - 0.1, 0.04, 0.05, wx, hy, wz + po);
+            for (const vx of [-ww * 0.25, ww * 0.25]) box(gMun, bt, wh + 0.02, bt, wx + vx, wy, wz + po);
+            for (const hy of [wy - wh * 0.3, wy, wy + wh * 0.3]) box(gMun, ww - 0.08, bt, bt, wx, hy, wz + po);
+            box(gMun, bt, aR * 0.9, bt, wx, wy + wh / 2 + aR * 0.35, wz + po);          // radial bar into the arch head
           }
           // shutters — a weathered wood leaf on each side, slightly open
           const shW = ww * 0.52, shH = wh + 0.1, shPo = onX ? nx * 0.12 : nz * 0.12;
@@ -2689,6 +2698,35 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           else
             box(gTrimM, 0.3, 0.22, bd, (face === "+x" ? cx + bw / 2 + 0.6 : cx - bw / 2 - 0.6), colH + 0.75, cz);
         }
+        // ── r5 #1 RUSTIC HARDWARE (owner: "nog meer detail / rustiekheid") ──
+        // Wrought-iron tie-rod plates (capochiave) march along the floor string
+        // course between the bays; a downpipe drops at each rear corner; a couple
+        // of thin damp weather-streaks bleed down the plaster. All merged, all-GPU.
+        for (const face of (opts.winFaces || [])) {
+          const onX = face === "+x" || face === "-x";
+          const along = onX ? bd : bw;
+          const nBays = Math.max(2, Math.floor(along / 6));
+          const nx2 = face === "+x" ? 1 : face === "-x" ? -1 : 0;
+          const nz2 = face === "+z" ? 1 : face === "-z" ? -1 : 0;
+          const fx = cx + nx2 * (bw / 2 + 0.1), fz = cz + nz2 * (bd / 2 + 0.1);
+          for (const fy of floorYs) for (let k = 0; k <= nBays; k++) {
+            const p = -along / 2 + (k / nBays) * along;
+            const tx2 = onX ? fx : cx + p, tz2 = onX ? cz + p : fz;
+            box(gIron, onX ? 0.08 : 0.44, 0.44, onX ? 0.44 : 0.08, tx2, fy, tz2, 0, Math.PI / 4); // lozenge plate
+            gIron.push(new THREE.SphereGeometry(0.10, 8, 6).translate(tx2 + nx2 * 0.06, fy, tz2 + nz2 * 0.06)); // boss
+          }
+          // damp weather-streaks under the string course (thin, translucent)
+          for (const p of [-along * 0.28, along * 0.34]) {
+            const tx2 = onX ? fx : cx + p, tz2 = onX ? cz + p : fz;
+            box(gStain, onX ? 0.02 : 0.5, floorYs[0] * 0.8, onX ? 0.5 : 0.02, tx2, floorYs[0] * 0.5, tz2);
+          }
+        }
+        // downpipes at the two rear (+z) corners — iron pipe + collar brackets
+        for (const sx of [-1, 1]) {
+          const dpx = cx + sx * (bw / 2 - 0.35), dpz = cz + bd / 2 + 0.22;
+          gIron.push(new THREE.CylinderGeometry(0.12, 0.12, h - 0.4, 8).translate(dpx, (h - 0.4) / 2 + 0.5, dpz));
+          for (const cy2 of [h * 0.3, h * 0.6]) gIron.push(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 8).translate(dpx, cy2, dpz));
+        }
       };
 
       // ══ Owner review 2026-08-07 r2 — "RUSTIEK MASTODONTISCH": deeper not wider ══
@@ -2823,37 +2861,89 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const zF = tz - fp / 2; // arrival (−Z) face
 
         if (kind === "campanile") {
-          // ── OPEN BELFRY STAGE — 4 corner piers + a tall arched opening per face,
-          // then an entablature; a cupola pyramid + finial crowns it.
-          const belfryY0 = crownY + 0.4, belfryH = 3.2, belfryTop = belfryY0 + belfryH;
-          for (const sx of [-1, 1]) for (const sz of [-1, 1])
-            gTrimM.push(new THREE.BoxGeometry(0.7, belfryH, 0.7).translate(tx + sx * (fp / 2 - 0.35), belfryY0 + belfryH / 2, tz + sz * (fp / 2 - 0.35)));
-          // arched belfry openings on all 4 faces (dark recess + arch ring)
-          for (const [ox, oz, ry] of [[0, -fp / 2, 0], [0, fp / 2, 0], [-fp / 2, 0, Math.PI / 2], [fp / 2, 0, Math.PI / 2]] as [number, number, number][]) {
-            box(gWallD, ry ? 0.3 : fp - 1.4, belfryH - 0.9, ry ? fp - 1.4 : 0.3, tx + ox, belfryY0 + belfryH / 2 - 0.2, tz + oz);
-            const arch = new THREE.TorusGeometry((fp - 1.4) / 2, 0.10, 6, 14, Math.PI);
-            if (ry) arch.rotateY(Math.PI / 2);
-            arch.translate(tx + ox, belfryY0 + belfryH - 0.9, tz + oz);
-            gTrimM.push(arch);
+          // ══ Owner review 2026-08-08 r5 #3 — "bell-tower mag veel beter zijn" ══
+          // A properly-articulated Tuscan campanile: a bifora belfry (twin arches +
+          // colonnette per face) framed by pier-pilasters, a bronze bell hung on a
+          // headstock, four corner pinnacle spirelets, an octagonal drum + coppo
+          // cupola + lantern finial, and a pedimented clock aedicule on the shaft.
+          const belfryY0 = crownY + 0.4, belfryH = 3.4, belfryTop = belfryY0 + belfryH;
+          // corner pier-pilasters with caps
+          for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+            gTrimM.push(new THREE.BoxGeometry(0.78, belfryH, 0.78).translate(tx + sx * (fp / 2 - 0.39), belfryY0 + belfryH / 2, tz + sz * (fp / 2 - 0.39)));
+            gSerenaM.push(new THREE.BoxGeometry(0.98, 0.26, 0.98).translate(tx + sx * (fp / 2 - 0.39), belfryTop - 0.13, tz + sz * (fp / 2 - 0.39)));
           }
+          // belfry-floor parapet band
+          gTrimM.push(new THREE.BoxGeometry(fp + 0.3, 0.4, fp + 0.3).translate(tx, belfryY0 + 0.05, tz));
+          // BIFORA per face: dark recess, central colonnette, twin arched lights
+          for (const [ox, oz, ry] of [[0, -fp / 2, 0], [0, fp / 2, 0], [-fp / 2, 0, Math.PI / 2], [fp / 2, 0, Math.PI / 2]] as [number, number, number][]) {
+            const span = fp - 1.7;
+            box(gWallD, ry ? 0.34 : span, belfryH - 1.0, ry ? span : 0.34, tx + ox, belfryY0 + belfryH / 2 - 0.15, tz + oz);
+            // central colonnette
+            gSerenaM.push(new THREE.CylinderGeometry(0.13, 0.15, belfryH - 1.9, 8).translate(tx + ox, belfryY0 + 0.4 + (belfryH - 1.9) / 2, tz + oz));
+            gSerenaM.push(new THREE.BoxGeometry(0.34, 0.2, 0.34).translate(tx + ox, belfryY0 + belfryH - 1.35, tz + oz)); // capital
+            // twin arches
+            for (const s of [-1, 1]) {
+              const q = s * span / 4;
+              const arch = new THREE.TorusGeometry(span / 4 - 0.04, 0.09, 6, 12, Math.PI);
+              if (ry) { arch.rotateY(Math.PI / 2); arch.translate(tx + ox, belfryY0 + belfryH - 1.2, tz + oz + q); }
+              else arch.translate(tx + ox + q, belfryY0 + belfryH - 1.2, tz + oz);
+              gTrimM.push(arch);
+            }
+          }
+          // BRONZE BELL on a headstock beam, hung in the belfry
+          gSerenaM.push(new THREE.CylinderGeometry(0.34, 0.6, 0.82, 10).translate(tx, belfryY0 + belfryH - 1.55, tz));
+          gSerenaM.push(new THREE.SphereGeometry(0.36, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5).translate(tx, belfryY0 + belfryH - 1.14, tz));
+          gTrimM.push(new THREE.BoxGeometry(fp - 1.6, 0.16, 0.16).translate(tx, belfryY0 + belfryH - 0.85, tz));
           // belfry entablature
-          gTrimM.push(new THREE.BoxGeometry(fp + 0.5, 0.4, fp + 0.5).translate(tx, belfryTop + 0.1, tz));
-          // cupola — steep pyramid + finial, apex kept below the dome (local 27.7)
-          hipRoof(tx, tz, fp * 0.9, fp * 0.9, belfryTop + 0.3, fp * 0.55, 0.35);
-          gTrimM.push(new THREE.CylinderGeometry(0.08, 0.1, 0.9, 8).translate(tx, belfryTop + 0.3 + fp * 0.55 + 0.45, tz));
-          gSerenaM.push(new THREE.SphereGeometry(0.22, 8, 6).translate(tx, belfryTop + 0.3 + fp * 0.55 + 1.0, tz));
-          // ── CLOCK FACE on the −Z shaft face (serena bezel, pale dial, two hands)
-          const ckY = topY - 3.4, ck = 1.15;
-          gSerenaM.push(new THREE.CylinderGeometry(ck, ck, 0.18, 16).rotateX(Math.PI / 2).translate(tx, ckY, zF - 0.06));
-          gWinM.push(new THREE.CylinderGeometry(ck - 0.22, ck - 0.22, 0.16, 16).rotateX(Math.PI / 2).translate(tx, ckY, zF - 0.10));
-          for (let hh = 0; hh < 12; hh++) { const a = hh / 12 * Math.PI * 2; gSerenaM.push(new THREE.BoxGeometry(0.09, 0.09, 0.06).translate(tx + Math.cos(a) * (ck - 0.32), ckY + Math.sin(a) * (ck - 0.32), zF - 0.14)); }
-          box(gSerenaM, 0.10, ck - 0.45, 0.05, tx, ckY + (ck - 0.45) / 2 - 0.05, zF - 0.15, 0, 0.5);   // hour hand
-          box(gSerenaM, 0.07, ck - 0.15, 0.05, tx, ckY + (ck - 0.15) / 2 - 0.02, zF - 0.15, 0, -0.9);  // minute hand
+          gTrimM.push(new THREE.BoxGeometry(fp + 0.6, 0.44, fp + 0.6).translate(tx, belfryTop + 0.12, tz));
+          // FOUR CORNER PINNACLE SPIRELETS
+          for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+            const pcx2 = tx + sx * (fp / 2 - 0.02), pcz2 = tz + sz * (fp / 2 - 0.02);
+            gSerenaM.push(new THREE.BoxGeometry(0.5, 0.62, 0.5).translate(pcx2, belfryTop + 0.5, pcz2));
+            gSerenaM.push(new THREE.ConeGeometry(0.28, 1.1, 4).translate(pcx2, belfryTop + 1.35, pcz2));
+            gSerenaM.push(new THREE.SphereGeometry(0.1, 8, 6).translate(pcx2, belfryTop + 2.0, pcz2));
+          }
+          // OCTAGONAL DRUM + COPPO CUPOLA + LANTERN FINIAL
+          gWall.push(new THREE.CylinderGeometry(fp * 0.4, fp * 0.44, 0.9, 8).translate(tx, belfryTop + 0.8, tz));
+          gTrimM.push(new THREE.CylinderGeometry(fp * 0.46, fp * 0.46, 0.2, 8).translate(tx, belfryTop + 1.3, tz));
+          hipRoof(tx, tz, fp * 0.82, fp * 0.82, belfryTop + 1.35, fp * 0.38, 0.3);
+          const cuApex = belfryTop + 1.35 + fp * 0.38;
+          gTrimM.push(new THREE.CylinderGeometry(0.2, 0.26, 0.7, 8).translate(tx, cuApex + 0.35, tz));
+          gTrimM.push(new THREE.SphereGeometry(0.2, 10, 8).translate(tx, cuApex + 0.82, tz));
+          gTrimM.push(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 6).translate(tx, cuApex + 1.2, tz));
+          // ── CLOCK AEDICULE on the −Z shaft face: moulded bezel, pale dial, dark
+          //    hands/markers (munMat), and a semicircular hood-mould over it.
+          const ckY = topY - 3.4, ck = 1.2;
+          gSerenaM.push(new THREE.BoxGeometry(ck * 2 + 0.7, ck * 2 + 0.7, 0.16).translate(tx, ckY, zF - 0.02)); // stone panel
+          gSerenaM.push(new THREE.CylinderGeometry(ck + 0.14, ck + 0.14, 0.14, 20).rotateX(Math.PI / 2).translate(tx, ckY, zF - 0.10)); // bezel
+          gWinM.push(new THREE.CylinderGeometry(ck, ck, 0.14, 20).rotateX(Math.PI / 2).translate(tx, ckY, zF - 0.14)); // pale dial
+          const hood = new THREE.TorusGeometry(ck + 0.32, 0.11, 6, 16, Math.PI); hood.translate(tx, ckY, zF - 0.12); gTrimM.push(hood);
+          for (let hh = 0; hh < 12; hh++) { const a = hh / 12 * Math.PI * 2; gMun.push(new THREE.BoxGeometry(0.1, 0.1, 0.05).translate(tx + Math.cos(a) * (ck - 0.28), ckY + Math.sin(a) * (ck - 0.28), zF - 0.19)); }
+          box(gMun, 0.11, ck - 0.45, 0.05, tx, ckY + (ck - 0.45) / 2 - 0.05, zF - 0.2, 0, 0.5);   // hour hand
+          box(gMun, 0.08, ck - 0.15, 0.05, tx, ckY + (ck - 0.15) / 2 - 0.02, zF - 0.2, 0, -0.9);  // minute hand
         } else {
-          // ── STEEP PYRAMID ROOF (overhang) + finial — no more childish flat caps
-          hipRoof(tx, tz, fp, fp, topY + 0.35, fp * 0.62, 0.55);
-          gTrimM.push(new THREE.CylinderGeometry(0.07, 0.09, 0.7, 8).translate(tx, topY + 0.35 + fp * 0.62 + 0.35, tz));
-          gSerenaM.push(new THREE.SphereGeometry(0.18, 8, 6).translate(tx, topY + 0.35 + fp * 0.62 + 0.75, tz));
+          // ══ Owner review 2026-08-08 r5 #4 — "puntdaken beter afgewerkt" ══
+          // A moulded two-band stone eave cornice, a terracotta coppo pyramid with
+          // an antefix roll-tile course ringing the eave, and a real drum+ball+spike
+          // finial (no more bare cone poking a naked sphere).
+          gTrimM.push(new THREE.BoxGeometry(fp + 1.0, 0.3, fp + 1.0).translate(tx, topY + 0.2, tz));
+          gTrimM.push(new THREE.BoxGeometry(fp + 0.6, 0.22, fp + 0.6).translate(tx, topY + 0.42, tz));
+          const eY = topY + 0.55, rH = fp * 0.66, apexY = eY + rH;
+          hipRoof(tx, tz, fp + 0.3, fp + 0.3, eY, rH, 0.45);
+          // antefix coppo roll-tiles ringing the eave
+          const ne = Math.max(3, Math.round(fp));
+          for (const [ex, ez, along] of [[0, -1, 1], [0, 1, 1], [-1, 0, 0], [1, 0, 0]] as [number, number, number][]) {
+            for (let e = 0; e < ne; e++) {
+              const q = -fp / 2 + 0.4 + (e / (ne - 1)) * (fp - 0.8);
+              const px2 = along ? tx + q : tx + ex * (fp / 2 + 0.28);
+              const pz2 = along ? tz + ez * (fp / 2 + 0.28) : tz + q;
+              gRoofDS.push(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 6).rotateX(Math.PI / 2).translate(px2, eY + 0.13, pz2));
+            }
+          }
+          // finial: drum + ball + spike
+          gSerenaM.push(new THREE.CylinderGeometry(0.24, 0.3, 0.5, 8).translate(tx, apexY + 0.2, tz));
+          gTrimM.push(new THREE.SphereGeometry(0.2, 10, 8).translate(tx, apexY + 0.6, tz));
+          gTrimM.push(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6).translate(tx, apexY + 1.05, tz));
           // Bifora facing arrival (−Z): serena surround, two arched lights + colonnette
           const biYs = topY > 16 ? [topY - 2.1, topY - 6.0] : [topY - 2.1];
           for (const biY of biYs) {
@@ -2895,6 +2985,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         [-28, -14], // 3 travel   — west front pavilion
         [ -2, 30],  // 4 passions — deep rear range
       ];
+      // ══ Owner review 2026-08-08 r5 #5 — "de koepel moet centraal van het gebouw
+      // staan waar het op staat". The WHOLE arrival axis (dome+entrance in
+      // centralGroup, the stair, parterre, terraces, cypress avenue and the camera)
+      // lives on world x=0, but the built MASS (blocks + towers + substructure) is
+      // symmetric about x=−2 — so the dome reads ~2u off-centre over block A. Fix:
+      // mount every mass mesh + anchor in a group shifted +2 so the mass centres on
+      // the x=0 axis (block A now sits directly under the dome). centralGroup and
+      // the landscape are untouched → dolly/name-beat need no retune.
+      const massGroup = new THREE.Group();
+      massGroup.position.x = 2;
+      palace.add(massGroup);
+
       ANCHORS.forEach(([ax, az], i) => {
         const wing = WINGS[i]; if (!wing) return;
         const anc = new THREE.Mesh(
@@ -2903,7 +3005,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         );
         anc.position.set(ax, 6, az);
         anc.userData = { roomId: wing.id, wingMeshes: [], accent: wing.accent };
-        palace.add(anc);
+        massGroup.add(anc);
         wingAnchors.push(anc);
       });
 
@@ -2912,7 +3014,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         [gTrimM, M.trim, false], [gRoof, M.tile, true], [gRoofDS, roofMatDS, true], [gWinM, M.win, false],
         [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false],
         [gWood, woodMat, true], [gIron, ironMat, true], [gIvy, ivyMat, false],
-        [gStain, stainMat, false], [gMoss, mossMat, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
+        [gStain, stainMat, false], [gMoss, mossMat, false], [gMun, munMat, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
         .forEach(([geos, mat, shadow]) => {
           if (!geos.length) return;
           const merged = mergeGeometries(geos);
@@ -2922,7 +3024,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const mesh = new THREE.Mesh(merged, mat);
           mesh.castShadow = shadow;
           mesh.receiveShadow = true;
-          palace.add(mesh);
+          massGroup.add(mesh);
         });
     }
     } // end else (Roman castle)
