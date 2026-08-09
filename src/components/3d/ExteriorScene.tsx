@@ -3350,14 +3350,27 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         gBlockHip.forEach(g => g.dispose());
         if (mergedHip) {
           extraGeoDisposables.push(mergedHip);
-          const hipMesh = new THREE.Mesh(mergedHip, roofMatDS);
+          // Under W3 this solid hip stays visible to BACK the coppi GLB (which is
+          // only proud half-pipe tile columns with open valleys + apex gaps). But
+          // the coppi carry per-tile terracotta in VERTEX COLOURS and no texture,
+          // so the textured tile material read as a different palette in the
+          // valleys. Back them with a FLAT terracotta matching the coppi's
+          // typical exposed-tile colour. !W3 keeps the textured tile material.
+          let hipMat: THREE.Material = roofMatDS;
+          if (W3) {
+            const bm = (roofMatDS as THREE.MeshStandardMaterial).clone();
+            bm.map = null; bm.normalMap = null; bm.roughnessMap = null; bm.aoMap = null;
+            bm.vertexColors = false;
+            bm.color.setRGB(0.273, 0.133, 0.069, THREE.LinearSRGBColorSpace); // ≈ coppi bright-tile terracotta
+            bm.roughness = 0.9; bm.envMapIntensity = 0.55;
+            bm.needsUpdate = true;
+            extraDisposables.push(bm);
+            hipMat = bm;
+          }
+          const hipMesh = new THREE.Mesh(mergedHip, hipMat);
           hipMesh.castShadow = true; hipMesh.receiveShadow = true;
-          // Keep this solid hip surface visible even under W3: the coppi GLB
-          // provides only proud half-pipe tile columns with open valleys between
-          // them and a gap where they stop short of each pyramid apex. This
-          // matched-footprint solid hip backs the coppi — closing the slopes and
-          // letting each procedural apex point fill the tip. Coppi sit proud of
-          // the slope plane, so there is no z-fight. Flag off ⇒ identical.
+          // Coppi sit proud of the slope plane, so this backing never z-fights;
+          // each procedural apex point also fills the tip the coppi stop short of.
           hipMesh.visible = true;
           massGroup.add(hipMesh);
         }
