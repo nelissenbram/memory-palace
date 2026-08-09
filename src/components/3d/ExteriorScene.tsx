@@ -3177,10 +3177,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           }
           // belfry-floor parapet band
           gTrimM.push(new THREE.BoxGeometry(fp + 0.3, 0.4, fp + 0.3).translate(tx, belfryY0 + 0.05, tz));
-          // BIFORA per face: dark recess, central colonnette, twin arched lights
+          // BIFORA per face: OPEN twin arched lights (no dark backing panel — the
+          // belfry reads through to the bell inside and out the far side, as a real
+          // open campanile should; the old recess box read as a solid black plank).
           for (const [ox, oz, ry] of [[0, -fp / 2, 0], [0, fp / 2, 0], [-fp / 2, 0, Math.PI / 2], [fp / 2, 0, Math.PI / 2]] as [number, number, number][]) {
             const span = fp - 1.7;
-            box(gWallD, ry ? 0.34 : span, belfryH - 1.0, ry ? span : 0.34, tx + ox, belfryY0 + belfryH / 2 - 0.15, tz + oz);
             // central colonnette
             gSerenaM.push(new THREE.CylinderGeometry(0.13, 0.15, belfryH - 1.9, 8).translate(tx + ox, belfryY0 + 0.4 + (belfryH - 1.9) / 2, tz + oz));
             gSerenaM.push(new THREE.BoxGeometry(0.34, 0.2, 0.34).translate(tx + ox, belfryY0 + belfryH - 1.35, tz + oz)); // capital
