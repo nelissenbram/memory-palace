@@ -3352,7 +3352,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           extraGeoDisposables.push(mergedHip);
           const hipMesh = new THREE.Mesh(mergedHip, roofMatDS);
           hipMesh.castShadow = true; hipMesh.receiveShadow = true;
-          hipMesh.visible = !W3;
+          // Keep this solid hip surface visible even under W3: the coppi GLB
+          // provides only proud half-pipe tile columns with open valleys between
+          // them and a gap where they stop short of each pyramid apex. This
+          // matched-footprint solid hip backs the coppi — closing the slopes and
+          // letting each procedural apex point fill the tip. Coppi sit proud of
+          // the slope plane, so there is no z-fight. Flag off ⇒ identical.
+          hipMesh.visible = true;
           massGroup.add(hipMesh);
         }
       }
