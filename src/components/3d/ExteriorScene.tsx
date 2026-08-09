@@ -21,6 +21,7 @@ import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
+import { loadModel, warmDracoDecoder } from "@/lib/3d/modelLoader";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { hapticLight } from "@/lib/native/haptics";
 
@@ -96,6 +97,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // 18s establishing dolly, tap-is-travel entrance. W2 builds on the W1
     // infrastructure, so it requires W1; flag OFF ⇒ W1 behavior intact.
     const W2=W1&&flag3d("w2_exterior");
+    // MUSEO VIVO Wave-3 (Blender-authored hero assets, docs/BLENDER_EXTERIOR_MASTERPLAN.md).
+    // W3 = W2 && flag; staging ON / prod OFF automatically. First deliverable is
+    // the dome-shell pipeline canary: a DRACO-compressed GLB with baked AO on UV0
+    // streamed through modelLoader, replacing the procedural terracotta shell +
+    // ribs. Additive-safe: any load failure keeps the procedural dome (fallback).
+    const W3=W2&&flag3d("w3_exterior");
     // ══════════════════════════════════════════════════════════════════════
     // W2 MASTERPLAN — GRONDPLAN v3: "un corpo unico, cresciuto nei secoli"
     // (owner-APPROVED plan, public/concepts/moodboard.html §3). Replaces the
@@ -674,6 +681,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Collect standalone materials/geometries for explicit cleanup
     const extraDisposables: THREE.Material[] = [];
     const extraGeoDisposables: THREE.BufferGeometry[] = [];
+    // W3 canary handles (see the dome-load block below): the loaded GLB group,
+    // the procedural rib mesh (to re-show on load failure), and an unmount guard.
+    let w3DomeCanary: THREE.Group | null = null;
+    let w3EntranceCaps: THREE.Group | null = null;
+    let w3Roofs: THREE.Group | null = null;
+    let w3RibMesh: THREE.Mesh | null = null;
+    let w3Disposed = false;
 
     // ═══ RENAISSANCE PALAZZO — alternative to castle when era is "renaissance" ═══
     if (isRenaissance) {
@@ -1152,11 +1166,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         stripe.rotation.y = fa;
         centralGroup.add(stripe);
       }
+      // Echinus + flared box-capital — W3 replaces these with a scanned
+      // Corinthian capital GLB (entrance_w3.glb), so skip when the flag is on.
+      if (!W3) {
       // Echinus — small cylinder below capital for abacus/echinus effect
       centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.65, 0.15, 16), serenaOrder, cx, 6.775, vestZ));
       // Flared capital — wider box + transitional cylinder
       centralGroup.add(mk(new THREE.BoxGeometry(1.4, 0.3, 1.4), serenaOrder, cx, 7.15, vestZ));
       centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.6, 0.3, 16), serenaOrder, cx, 6.95, vestZ));
+      }
       // Attic base
       centralGroup.add(mk(new THREE.CylinderGeometry(0.6, 0.65, 0.2, 16), M.stoneD, cx, 1.4, vestZ));
       centralGroup.add(mk(new THREE.BoxGeometry(0.9, 0.12, 0.9), M.stoneD, cx, 1.24, vestZ));
@@ -1358,7 +1376,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // tread clears the wing-2/3 gallery foundations that flank the forecourt
     // (perp distance > 4.5 at every tread corner). Two travertine plinths with
     // bronze urns flank the foot of the stair. Shared materials, 10 meshes.
-    if (W2) {
+    if (W2 && !W3) { // W3 replaces the cascade + urns with entrance_w3.glb (grander stair, parapets, scanned urns)
       for (let si = 0; si < 4; si++) {
         centralGroup.add(mk(new THREE.BoxGeometry(12 + si, 0.22, 1.5), M.marble, 0, 0.92 - si * 0.21, -(15.6 + si * 1.05)));
       }
@@ -1781,8 +1799,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       centralGroup.add(pilaster);
     }
     // Drum windows — W2: a full tamboer window ring (1.05×2.9) so the golden-hour
-    // glass reads as a glowing band under the dome; legacy 0.7×1.6
-    for (let dw = 0; dw < 12; dw++) {
+    // glass reads as a glowing band under the dome; legacy 0.7×1.6.
+    // W3 replaces these flat stickers with modeled arched thermal-bay aediculae.
+    if (!W3) for (let dw = 0; dw < 12; dw++) {
       const da = (dw / 12) * Math.PI * 2;
       centralGroup.add(mk(new THREE.BoxGeometry(W2 ? 1.05 : 0.7, W2 ? 2.9 : 1.6, 0.12), M.win,
         Math.cos(da) * (rDrumR + 0.05), drumBaseY + rDrumH * 0.6, Math.sin(da) * (rDrumR + 0.05)));
@@ -1810,6 +1829,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     );
     rDome.position.set(0, drumBaseY + rDrumH + 0.2, 0);
     rDome.castShadow = true;
+    rDome.visible = !W3; // W3 canary: Blender dome-shell GLB replaces this
     centralGroup.add(rDome);
     // Dome exterior ribs — 8 radial coffers running from drum top toward oculus.
     // ══ Owner review 2026-08-06 #2 — SOLID SHELL, ribs as ACCENT not frame ══
@@ -1848,6 +1868,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         extraGeoDisposables.push(ribMerged);
         const ribMesh = new THREE.Mesh(ribMerged, ribMat);
         ribMesh.castShadow = true;
+        ribMesh.visible = !W3; // W3 canary: rib geometry is baked into the GLB
+        w3RibMesh = ribMesh; // handle for the W3 fallback path
         centralGroup.add(ribMesh);
       }
     } else {
@@ -1865,6 +1887,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       }
     }
+    // Oculus + lantern — W3 bakes these into the hero-crown GLB (colonnaded
+    // lantern with an emissive gold finial), so skip the procedural build when on.
+    if (!W3) {
     // Oculus opening (dark circle at apex)
     centralGroup.add(mk(new THREE.CylinderGeometry(1.5, 1.5, 0.15, 24), M.stoneD, 0, drumBaseY + rDrumH + rDomeR + 0.1, 0));
     // Oculus rim — W2: travertine collar the eight meridians die into (canon:
@@ -1901,6 +1926,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Gold finial: ball + spike (canon gold — lantern/tympanum only)
     centralGroup.add(mk(new THREE.SphereGeometry(W2 ? 0.45 : 0.18, 12, 8), M.goldBright, 0, lanTopY + (W2 ? 3.0 : 0.55), 0));
     if (W2) centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6), M.goldBright, 0, lanTopY + 3.9, 0));
+    } // end !W3 — procedural oculus + lantern (replaced by the W3 crown GLB)
 
     // ── DISTANT ROMAN ELEMENTS ──
     // (Aqueduct moved to landscape section where atmosColor is available)
@@ -1933,6 +1959,114 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if (child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) centralBodyMeshes.push(child);
     });
     palace.add(centralGroup);
+    // ══ W3 CANARY — Blender dome-shell GLB (docs/BLENDER_EXTERIOR_MASTERPLAN.md,
+    // Wave 0 pipeline canary). Streams a Blender-authored dome shell (terracotta
+    // coppo + travertine meridian ribs, baked AO on UV0) through the production
+    // modelLoader, dropping it onto the exact procedural dome origin and hiding
+    // the procedural shell/ribs. try/catch: any failure silently keeps the
+    // (re-shown) procedural dome. Material is CLONED before mutation so the
+    // shared cache master is never poisoned; the clone is only removed — never
+    // disposed — at unmount (loadModel returns a geometry/material-sharing clone).
+    //
+    // Wave-1 hero crown: an ogival ribbed terracotta shell + 12 arched drum
+    // thermal-bay aediculae (dark glass + keystone) replacing the procedural dome,
+    // ribs and flat drum-window stickers. DRACO-compressed GLB with AO baked on
+    // UV0 (CSP allows the decoder worker + embedded textures: next.config.ts
+    // worker-src/connect-src blob:). The crown is authored at absolute
+    // centralGroup heights, so it drops in at the origin. A decimated LOD1
+    // (~4.4k tris) serves mobile GPUs. try/catch keeps the procedural crown.
+    if (W3) {
+      warmDracoDecoder(); // pre-warm the decoder worker so the first load doesn't stall the dolly
+      const domeOrigin = new THREE.Vector3(0, 0, 0);
+      // 3 baked LODs by GPU tier (maxEagerTextureSets: desktop 20 / mobile 4 / potato 2)
+      const _q = getQuality();
+      const _domeV = "?v=22"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust)
+      const domePath = (_q.maxEagerTextureSets >= 12
+        ? "/models/exterior/dome_w3.glb"         // desktop — full stepped courses
+        : _q.maxEagerTextureSets <= 3
+        ? "/models/exterior/dome_w3_lod2.glb"    // potato
+        : "/models/exterior/dome_w3_lod1.glb")   // mobile
+        + _domeV;
+      loadModel(domePath).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const mat = (m.material as THREE.MeshStandardMaterial).clone(); // don't poison the cache master
+          if (mat.aoMap) { mat.aoMap.channel = 0; mat.aoMapIntensity = 0.5; } // AO on UV0, softened so tiles/stone read brighter
+          mat.envMapIntensity = 0.7; // brighter ambient for the tiled terracotta + cream stone
+          // Terracotta now carries its colour in per-tile vertex colours (same
+          // palette as the roofs); white base + matched envMap so the dome and
+          // the roofs share the exact same colour combination + lighting response.
+          if (mat.name.includes("clay")) { mat.color.setHex(0xFFFFFF); mat.vertexColors = true; mat.envMapIntensity = 0.55; mat.roughness = 0.9; }
+          mat.needsUpdate = true;
+          m.material = mat;
+          m.castShadow = true;
+          m.receiveShadow = true;
+        });
+        g.position.copy(domeOrigin);
+        g.name = "w3_dome_canary";
+        if (w3Disposed) return;
+        centralGroup.add(g);
+        w3DomeCanary = g;
+      }).catch((err) => {
+        // Fallback: re-show the procedural dome/ribs the flag had hidden.
+        rDome.visible = true;
+        if (w3RibMesh) w3RibMesh.visible = true;
+        console.warn("[W3] dome canary load failed, using procedural dome", err);
+      });
+      // Wave-2 hero: scanned Corinthian capitals (Sketchfab, CC-BY — credit
+      // "fts_ltx") on the 6 entrance columns, replacing the procedural box-caps.
+      loadModel("/models/exterior/entrance_w3.glb" + _domeV).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const mat = (m.material as THREE.MeshStandardMaterial).clone();
+          mat.envMapIntensity = 0.6;
+          mat.needsUpdate = true;
+          m.material = mat;
+          m.castShadow = true; m.receiveShadow = true;
+        });
+        g.name = "w3_entrance_caps";
+        if (w3Disposed) return;
+        centralGroup.add(g);
+        w3EntranceCaps = g;
+      }).catch(() => { /* columns simply keep no ornate cap on load failure */ });
+      // Wave-3 roofs (proof): modeled Tuscan coppi hip-roofs over the two front
+      // pavilions, laid ADDITIVELY over the procedural roof slabs (the corps roofs
+      // live in a merged bucket that can't be hidden without a step-0 un-merge).
+      const roofPath = _q.maxEagerTextureSets >= 12
+        ? "/models/exterior/roofs_w3.glb"        // desktop — full coppi
+        : _q.maxEagerTextureSets <= 3
+        ? "/models/exterior/roofs_w3_lod2.glb"   // potato
+        : "/models/exterior/roofs_w3_lod1.glb";  // mobile
+      loadModel(roofPath + _domeV).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const mat = (m.material as THREE.MeshStandardMaterial).clone();
+          // Per-tile terracotta lives in the GLB vertex colours (like the dome);
+          // white base + DoubleSide so no coppo is culled from any angle.
+          mat.color.setHex(0xFFFFFF);
+          mat.vertexColors = true;
+          mat.side = THREE.DoubleSide;
+          mat.roughness = 0.9;
+          mat.envMapIntensity = 0.55;
+          mat.needsUpdate = true;
+          m.material = mat;
+          m.castShadow = true; m.receiveShadow = true;
+        });
+        g.name = "w3_roofs";
+        // The corps blocks live in massGroup (position.x = 2); these roofs are
+        // authored in raw block coords, so shift +2 in X to seat on their walls.
+        g.position.x = 2;
+        if (w3Disposed) return;
+        centralGroup.add(g);
+        w3Roofs = g;
+      }).catch(() => {});
+    }
     // W2 grandeur: the raised two-stage crossing lifts the dome far higher — the
     // tap-is-travel cylinder grows with it so the whole silhouette (lantern
     // included) stays one big entrance target.
@@ -2487,10 +2621,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // bucket so a stray winding can never drop a slope (replaces the childish
       // 4-seg pyramid cone). Near-square blocks collapse to a proper pyramid.
       const gRoofDS: THREE.BufferGeometry[] = [];
+      // W3 un-merge: the MAIN block hip-roof slabs go in their own bucket so they
+      // merge into a separate, individually-hideable mesh (w3BlockHipMesh). W3
+      // hides it and streams modeled coppi hip-roofs in its place; the small
+      // dormer hips stay in gRoofDS. Flag off ⇒ both buckets render as before.
+      const gBlockHip: THREE.BufferGeometry[] = [];
       const roofMatDS = (M.tile as THREE.Material).clone();
       (roofMatDS as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
       extraDisposables.push(roofMatDS);
-      const hipRoof = (cx: number, cz: number, bw: number, bd: number, eaveY: number, riseH: number, ov: number) => {
+      const hipRoof = (cx: number, cz: number, bw: number, bd: number, eaveY: number, riseH: number, ov: number, mainHip = false) => {
+        const bucket = mainHip ? gBlockHip : gRoofDS;
         const ex = bw / 2 + ov, ez = bd / 2 + ov, ry = eaveY + riseH;
         const P: number[] = [];
         const tri = (a: number[], b: number[], c: number[]) => { P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); };
@@ -2514,7 +2654,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
         g.computeVertexNormals();
         g.translate(cx, 0, cz);
-        gRoofDS.push(g);
+        bucket.push(g);
       };
 
       // ── RICH ARCHED WINDOW (merged) — deep reveal + glowing pane, moulded
@@ -2567,6 +2707,35 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           for (const s of [-1, 1]) {
             if (onX) box(gSerenaM, 0.20, 0.30, 0.16, wx + nx * 0.20, cy - 0.22, wz + s * (ww / 2 + 0.1));
             else     box(gSerenaM, 0.16, 0.30, 0.20, wx + s * (ww / 2 + 0.1), cy - 0.22, wz + nz * 0.20);
+          }
+          // ── W3 AEDICULA CROWN — a true classical pediment over the cornice.
+          // Alternating triangular / segmental (deterministic by bay position) as
+          // on a Renaissance piano nobile. Raking cornices via rz-rotated trim on
+          // the front (-z/+z) faces; a shallow segmental arch on the side faces.
+          if (W3) {
+            const span = ww + 1.1, hs = span / 2, rise = hs * 0.52;
+            const seg = (Math.round(wx + wz) % 2 === 0); // ~half segmental, half triangular
+            const py = cy + 0.14;
+            if (seg) {
+              // segmental: a shallow curved cornice (torus arc) hugging the cornice
+              const arc = new THREE.TorusGeometry(hs + 0.1, 0.13, 6, 16, Math.PI * 0.62);
+              arc.rotateZ(Math.PI * 0.5 - Math.PI * 0.31); // centre the 0.62π arc over the top
+              if (onX) { arc.rotateY(Math.PI / 2); arc.translate(wx + nx * 0.28, py + rise * 0.3, wz); }
+              else arc.translate(wx, py + rise * 0.3, wz + nz * 0.28);
+              gTrimM.push(arc);
+            } else if (!onX) {
+              // triangular: two raking cornices meeting at the apex + tympanum panel
+              const rake = Math.hypot(hs, rise) + 0.12, ang = Math.atan2(rise, hs);
+              box(gTrimM, rake, 0.15, 0.30, wx - hs / 2, py + rise / 2, wz + nz * 0.26, 0, ang);
+              box(gTrimM, rake, 0.15, 0.30, wx + hs / 2, py + rise / 2, wz + nz * 0.26, 0, -ang);
+              box(gWallD, span - 0.3, rise * 0.7, 0.14, wx, py + rise * 0.34, wz + nz * 0.19); // recessed tympanum
+              box(gTrimM, 0.34, 0.34, 0.34, wx, py + rise + 0.06, wz + nz * 0.28);            // apex acroterion
+            } else {
+              // side faces: a shallow segmental arc (triangular rake needs rotateX)
+              const arc = new THREE.TorusGeometry(hs + 0.1, 0.13, 6, 16, Math.PI * 0.62);
+              arc.rotateZ(Math.PI * 0.5 - Math.PI * 0.31); arc.rotateY(Math.PI / 2);
+              arc.translate(wx + nx * 0.28, py + rise * 0.3, wz); gTrimM.push(arc);
+            }
           }
         }
         // ── r4 fine detail: iron muntins, wood shutters, iron balcony, weather
@@ -2673,7 +2842,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // capped rise, generous overhang.
           const eaveY = h + 0.95;
           const riseH = Math.min(Math.min(bw, bd) * 0.26, 4.3);
-          hipRoof(cx, cz, bw, bd, eaveY, riseH, 0.95);
+          hipRoof(cx, cz, bw, bd, eaveY, riseH, 0.95, true); // main block hip → hideable W3 bucket
           // ridge cresting tile for the long wings
           const longAxisX = bw >= bd;
           if (Math.abs(bw - bd) > 6) {
@@ -3012,7 +3181,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           gWall.push(new THREE.CylinderGeometry(fp * 0.4, fp * 0.44, 0.9, 8).translate(tx, belfryTop + 0.8, tz));
           gTrimM.push(new THREE.CylinderGeometry(fp * 0.46, fp * 0.46, 0.2, 8).translate(tx, belfryTop + 1.3, tz));
           const cuRise = fp * 0.30;
-          hipRoof(tx, tz, fp * 0.82, fp * 0.82, belfryTop + 1.35, cuRise, 0.3);
+          hipRoof(tx, tz, fp * 0.82, fp * 0.82, belfryTop + 1.35, cuRise, 0.3, true); // W3 hides → coppi cupola cap
           const cuApex = belfryTop + 1.35 + cuRise;
           gTrimM.push(new THREE.CylinderGeometry(0.32, 0.6, cuRise * 0.85, 8).translate(tx, cuApex - cuRise * 0.35, tz)); // solid neck into the apex
           gTrimM.push(new THREE.CylinderGeometry(0.26, 0.36, 1.0, 8).translate(tx, cuApex + 0.1, tz));                     // lantern drum, overlaps down
@@ -3036,7 +3205,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           gTrimM.push(new THREE.BoxGeometry(fp + 1.0, 0.3, fp + 1.0).translate(tx, topY + 0.2, tz));
           gTrimM.push(new THREE.BoxGeometry(fp + 0.6, 0.22, fp + 0.6).translate(tx, topY + 0.42, tz));
           const eY = topY + 0.55, rH = fp * 0.66, apexY = eY + rH;
-          hipRoof(tx, tz, fp + 0.3, fp + 0.3, eY, rH, 0.45);
+          hipRoof(tx, tz, fp + 0.3, fp + 0.3, eY, rH, 0.45, true); // W3 hides this → coppi tower cap
           // antefix coppo roll-tiles ringing the eave
           const ne = Math.max(3, Math.round(fp));
           for (const [ex, ez, along] of [[0, -1, 1], [0, 1, 1], [-1, 0, 0], [1, 0, 0]] as [number, number, number][]) {
@@ -3145,6 +3314,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           mesh.receiveShadow = true;
           massGroup.add(mesh);
         });
+      // W3 un-merge: main block hip-roofs as their OWN mesh, hidden when W3 streams
+      // modeled coppi roofs in their place. Flag off ⇒ renders identically.
+      if (gBlockHip.length) {
+        const mergedHip = mergeGeometries(gBlockHip);
+        gBlockHip.forEach(g => g.dispose());
+        if (mergedHip) {
+          extraGeoDisposables.push(mergedHip);
+          const hipMesh = new THREE.Mesh(mergedHip, roofMatDS);
+          hipMesh.castShadow = true; hipMesh.receiveShadow = true;
+          hipMesh.visible = !W3;
+          massGroup.add(hipMesh);
+        }
+      }
     }
     } // end else (Roman castle)
 
@@ -4901,7 +5083,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     };
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
 
-    return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
+    return()=>{w3Disposed=true;if(w3DomeCanary){w3DomeCanary.removeFromParent();w3DomeCanary=null;}if(w3EntranceCaps){w3EntranceCaps.removeFromParent();w3EntranceCaps=null;}if(w3Roofs){w3Roofs.removeFromParent();w3Roofs=null;}/* remove only — clone shares geometry/material with the modelLoader cache master, never dispose here */if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       if(hovLabel&&el.contains(hovLabel))el.removeChild(hovLabel);
       if(rmVeil&&el.contains(rmVeil))el.removeChild(rmVeil);

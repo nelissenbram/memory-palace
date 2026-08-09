@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/passcode", "/legacy", "/security", "/privacy", "/terms", "/help", "/data-deletion", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/passcode", "/legacy", "/security", "/privacy", "/terms", "/help", "/data-deletion", "/credits", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/flythrough", "/explore", "/u", "/visit", "/api/og"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -99,10 +99,13 @@ export async function middleware(request: NextRequest) {
   const isPricingPage = path.startsWith("/pricing");
   // /data-deletion is a public GDPR/App-Store page; a logged-in user requesting
   // deletion must be able to reach it instead of redirecting to /atrium.
-  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security") || path.startsWith("/help") || path.startsWith("/data-deletion");
+  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security") || path.startsWith("/help") || path.startsWith("/data-deletion") || path.startsWith("/credits");
   const isBlogPage = path.startsWith("/blog");
   const isSocialPage = path.startsWith("/explore") || path.startsWith("/u/") || path.startsWith("/visit/");
-  if (fullyAuthed && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage) {
+  // /flythrough is the dev-only 3D preview; let authed users reach it too (don't
+  // bounce them to /atrium) so it can be watched without logging in/out.
+  const isFlythrough = path.startsWith("/flythrough") || path.startsWith("/test-palazzo");
+  if (fullyAuthed && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage && !isFlythrough) {
     return redirectWith("/atrium", request, response);
   }
 
