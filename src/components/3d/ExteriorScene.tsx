@@ -602,6 +602,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       {
         const gPave: THREE.BufferGeometry[] = [], gWallR: THREE.BufferGeometry[] = [],
               gTrimR: THREE.BufferGeometry[] = [], gGrassR: THREE.BufferGeometry[] = [];
+        // W3 exterior: instead of merging ~311 crude 8-gon cylinder balusters into
+        // gTrimR (flat, and un-replaceable), collect their world centres here and
+        // draw them as ONE InstancedMesh of a properly turned lathe baluster — one
+        // draw call, shared geometry, GPU-tier radial LOD. !W3 keeps the cylinders.
+        const baluInst: { x: number; y: number; z: number }[] = [];
         const B = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number) =>
           arr.push(new THREE.BoxGeometry(w, h, d).translate(x, y, z));
         // Rusticated retaining-wall face (proud ashlar courses) on a downhill edge.
@@ -616,14 +621,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           B(gTrimR, halfX * 2, 0.24, 0.85, 0, yTop + 1.5, z);                        // coping
           for (let bx = -halfX + 0.7; bx <= halfX - 0.7; bx += 0.9) {
             if (gap && Math.abs(bx) < 7) continue;
-            gTrimR.push(new THREE.CylinderGeometry(0.17, 0.21, 1.1, 8).translate(bx, yTop + 0.85, z));
+            if (W3) baluInst.push({ x: bx, y: yTop + 0.85, z });
+            else gTrimR.push(new THREE.CylinderGeometry(0.17, 0.21, 1.1, 8).translate(bx, yTop + 0.85, z));
           }
         };
         const baluZ = (x: number, z0: number, z1: number, yTop: number) => {
           B(gTrimR, 0.7, 0.28, z1 - z0, x, yTop + 0.15, (z0 + z1) / 2);
           B(gTrimR, 0.85, 0.24, z1 - z0, x, yTop + 1.5, (z0 + z1) / 2);
-          for (let bz = z0 + 0.7; bz <= z1 - 0.7; bz += 0.9)
-            gTrimR.push(new THREE.CylinderGeometry(0.17, 0.21, 1.1, 8).translate(x, yTop + 0.85, bz));
+          for (let bz = z0 + 0.7; bz <= z1 - 0.7; bz += 0.9) {
+            if (W3) baluInst.push({ x, y: yTop + 0.85, z: bz });
+            else gTrimR.push(new THREE.CylinderGeometry(0.17, 0.21, 1.1, 8).translate(x, yTop + 0.85, bz));
+          }
         };
         // Terrace 1 = the parterre forecourt (top ≈ HILL_Y+0.3): retain its front
         // (z −47) and flanks so it reads as a raised terrace, not flat ground.
@@ -654,6 +662,27 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             if (!m) return;
             const mesh = new THREE.Mesh(m, mat); mesh.castShadow = sh; mesh.receiveShadow = true; scene.add(mesh);
           });
+        // W3 turned balusters — one InstancedMesh for all terrace runs.
+        if (W3 && baluInst.length) {
+          const seg = isMobileQ ? 6 : 10;                       // radial LOD by GPU tier
+          // Classical turned profile (radius,height) over a 1.1-tall baluster:
+          // capped foot → lower vase belly → neck → upper vase → capped top.
+          const P = (y: number, r: number) => new THREE.Vector2(r, y);
+          const prof = [
+            P(0.00, 0.00), P(0.00, 0.20), P(0.06, 0.20), P(0.10, 0.15),   // foot
+            P(0.17, 0.19), P(0.25, 0.215), P(0.33, 0.185), P(0.42, 0.125), // lower vase
+            P(0.52, 0.095),                                                 // neck
+            P(0.60, 0.115), P(0.70, 0.155), P(0.78, 0.135), P(0.86, 0.10),  // upper vase
+            P(0.95, 0.115), P(1.00, 0.19), P(1.06, 0.19), P(1.10, 0.00),    // top
+          ];
+          const baluGeo = new THREE.LatheGeometry(prof, seg).translate(0, -0.55, 0); // centre on origin → place at yTop+0.85
+          const im = new THREE.InstancedMesh(baluGeo, M.trim, baluInst.length);
+          im.castShadow = true; im.receiveShadow = true;
+          const m4 = new THREE.Matrix4();
+          baluInst.forEach((p, i) => { m4.makeTranslation(p.x, p.y, p.z); im.setMatrixAt(i, m4); });
+          im.instanceMatrix.needsUpdate = true;
+          scene.add(im);
+        }
       }
     }
 
