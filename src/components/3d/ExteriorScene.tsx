@@ -715,6 +715,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     let w3DomeCanary: THREE.Group | null = null;
     let w3EntranceCaps: THREE.Group | null = null;
     let w3Roofs: THREE.Group | null = null;
+    let w3Statuary: THREE.Group | null = null;
     let w3RibMesh: THREE.Mesh | null = null;
     let w3Disposed = false;
 
@@ -2009,7 +2010,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const domeOrigin = new THREE.Vector3(0, 0, 0);
       // 3 baked LODs by GPU tier (maxEagerTextureSets: desktop 20 / mobile 4 / potato 2)
       const _q = getQuality();
-      const _domeV = "?v=22"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust)
+      const _domeV = "?v=23"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust)
       const domePath = (_q.maxEagerTextureSets >= 12
         ? "/models/exterior/dome_w3.glb"         // desktop — full stepped courses
         : _q.maxEagerTextureSets <= 3
@@ -2094,6 +2095,42 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (w3Disposed) return;
         centralGroup.add(g);
         w3Roofs = g;
+      }).catch(() => {});
+      // Rooftop statuary — travertine urns along the central roof balustrade and
+      // robed acroteria-figures on its four corner piers, ringing the base of the
+      // drum against the sky. Two GLB pieces (Urn, Statue), each drawn as ONE
+      // InstancedMesh so all ~18 pieces cost just two draw calls.
+      loadModel("/models/exterior/statuary_w3.glb" + _domeV).then((g) => {
+        if (w3Disposed) return;
+        let urnGeo: THREE.BufferGeometry | null = null, statueGeo: THREE.BufferGeometry | null = null;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          if (/urn/i.test(m.name)) urnGeo = m.geometry;
+          else if (/statue/i.test(m.name)) statueGeo = m.geometry;
+        });
+        // Parapet ring geometry (matches the Villa-Rotonda roof balustrade above):
+        // parX = vW/2+1.45, parZ = vD/2+1.15, cap top ≈ vH+1.9+0.52, pier top ≈ +0.65.
+        const parX = 11.45, parZ = 10.15, capY = 9.42, pierY = 9.55;
+        const grp = new THREE.Group();
+        const place = (geo: THREE.BufferGeometry | null, pos: [number, number][], y: number) => {
+          if (!geo || !pos.length) return;
+          const im = new THREE.InstancedMesh(geo, M.trim, pos.length);
+          im.castShadow = true; im.receiveShadow = true;
+          const m4 = new THREE.Matrix4();
+          pos.forEach((p, i) => { m4.makeTranslation(p[0], y, p[1]); im.setMatrixAt(i, m4); });
+          im.instanceMatrix.needsUpdate = true;
+          grp.add(im);
+        };
+        place(statueGeo, [[-parX, -parZ], [-parX, parZ], [parX, -parZ], [parX, parZ]], pierY);
+        const urnPos: [number, number][] = [];
+        for (const x of [-8, -3, 3, 8]) { urnPos.push([x, -parZ], [x, parZ]); }
+        for (const z of [-5, 0, 5]) { urnPos.push([-parX, z], [parX, z]); }
+        place(urnGeo, urnPos, capY);
+        grp.name = "w3_statuary";
+        if (w3Disposed) return;
+        centralGroup.add(grp);
+        w3Statuary = grp;
       }).catch(() => {});
     }
     // W2 grandeur: the raised two-stage crossing lifts the dome far higher — the
@@ -5139,7 +5176,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     };
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
 
-    return()=>{w3Disposed=true;if(w3DomeCanary){w3DomeCanary.removeFromParent();w3DomeCanary=null;}if(w3EntranceCaps){w3EntranceCaps.removeFromParent();w3EntranceCaps=null;}if(w3Roofs){w3Roofs.removeFromParent();w3Roofs=null;}/* remove only — clone shares geometry/material with the modelLoader cache master, never dispose here */if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
+    return()=>{w3Disposed=true;if(w3DomeCanary){w3DomeCanary.removeFromParent();w3DomeCanary=null;}if(w3EntranceCaps){w3EntranceCaps.removeFromParent();w3EntranceCaps=null;}if(w3Roofs){w3Roofs.removeFromParent();w3Roofs=null;}if(w3Statuary){w3Statuary.removeFromParent();w3Statuary=null;}/* remove only — clone shares geometry/material with the modelLoader cache master, never dispose here */if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       if(hovLabel&&el.contains(hovLabel))el.removeChild(hovLabel);
       if(rmVeil&&el.contains(rmVeil))el.removeChild(rmVeil);
