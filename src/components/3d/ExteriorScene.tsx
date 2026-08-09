@@ -2580,6 +2580,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Kept off the iron bucket so it reads darker than the semi-metallic railings.
       const munMat = new THREE.MeshStandardMaterial({ color: "#14110D", roughness: 0.9, metalness: 0.15, envMapIntensity: 0.15 });
       extraDisposables.push(glassMat);
+      // Deep recess/reveal — window & belfry openings, rusticated joints, arch soffits
+      // (the gWallD bucket). It was mis-assigned to M.stoneD (beige PLASTER), so every
+      // "dark reveal" read as a flat beige panel: window mullions vanished into it and
+      // the belfry bifora looked boarded up. A genuinely dark, low-env material makes
+      // the recesses read as depth/openings and lets the pale stone cross pop.
+      const recessDark = new THREE.MeshStandardMaterial({ color: "#26201A", roughness: 0.95, metalness: 0, envMapIntensity: 0.18 });
+      extraDisposables.push(recessDark);
       const serenaMat = new THREE.MeshStandardMaterial({ color: "#3E3933", roughness: 0.86, metalness: 0, envMapIntensity: 0.3 });
       const woodMat = new THREE.MeshStandardMaterial({ color: "#5A4630", roughness: 0.82, metalness: 0, envMapIntensity: 0.2 });
       const ironMat = new THREE.MeshStandardMaterial({ color: "#2B2723", roughness: 0.6, metalness: 0.5, envMapIntensity: 0.5 });
@@ -3326,7 +3333,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       });
 
       // ── MERGE & MOUNT — each bucket → one static mesh ──
-      ([[gWall, ochreWall, true], [gWallL, M.stoneL, true], [gWallD, M.stoneD, true],
+      ([[gWall, ochreWall, true], [gWallL, M.stoneL, true], [gWallD, recessDark, true],
         [gTrimM, M.trim, false], [gRoof, M.tile, true], [gRoofDS, roofMatDS, true], [gWinM, M.win, false],
         [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false],
         [gWood, woodMat, true], [gIron, ironMat, true], [gIvy, ivyMat, false],
