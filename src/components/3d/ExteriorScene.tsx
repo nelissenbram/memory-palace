@@ -2703,9 +2703,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const nz = face === "+z" ? 1 : face === "-z" ? -1 : 0;
         const aR = ww / 2;                       // arch radius
         const jamb = 0.16, deep = 0.34;
-        // deep dark reveal
-        if (onX) box(gWallD, deep, wh + aR, ww, wx + nx * (deep / 2 - 0.02), wy + aR * 0.2, wz);
-        else     box(gWallD, ww, wh + aR, deep, wx, wy + aR * 0.2, wz + nz * (deep / 2 - 0.02));
+        // No solid reveal box behind the light — it read as a black/beige plank
+        // covering the opening. The reflective dark-glass pane below IS the window;
+        // the proud stone frame + cross stand in front of it.
         // DARK glass pane, RECESSED at the wall face (behind the proud stone frame +
         // cross below) so the opening reads as a real recessed window, not a card.
         if (onX) box(gGlass, 0.10, wh, ww - 0.08, wx + nx * 0.03, wy, wz);
