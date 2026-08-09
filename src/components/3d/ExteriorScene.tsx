@@ -2585,7 +2585,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // "dark reveal" read as a flat beige panel: window mullions vanished into it and
       // the belfry bifora looked boarded up. A genuinely dark, low-env material makes
       // the recesses read as depth/openings and lets the pale stone cross pop.
-      const recessDark = new THREE.MeshStandardMaterial({ color: "#26201A", roughness: 0.95, metalness: 0, envMapIntensity: 0.18 });
+      const recessDark = new THREE.MeshStandardMaterial({ color: "#141009", roughness: 1.0, metalness: 0, envMapIntensity: 0.04 });
       extraDisposables.push(recessDark);
       const serenaMat = new THREE.MeshStandardMaterial({ color: "#3E3933", roughness: 0.86, metalness: 0, envMapIntensity: 0.3 });
       const woodMat = new THREE.MeshStandardMaterial({ color: "#5A4630", roughness: 0.82, metalness: 0, envMapIntensity: 0.2 });
