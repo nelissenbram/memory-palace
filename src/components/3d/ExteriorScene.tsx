@@ -4533,16 +4533,38 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         mesh.instanceMatrix.needsUpdate=true;
         scene.add(mesh);
       };
-      for(let b=0;b<3;b++){
-        const items=cypressNear.filter(c=>Math.abs(Math.floor(c.seed*7))%3===b);
-        if(!items.length)continue;
-        const im=new THREE.InstancedMesh(nearFoliageGeo,cypressFoliageMats[b],items.length);
-        im.castShadow=true;
-        setInstances(im,items,true);
+      if(!W3){
+        for(let b=0;b<3;b++){
+          const items=cypressNear.filter(c=>Math.abs(Math.floor(c.seed*7))%3===b);
+          if(!items.length)continue;
+          const im=new THREE.InstancedMesh(nearFoliageGeo,cypressFoliageMats[b],items.length);
+          im.castShadow=true;
+          setInstances(im,items,true);
+        }
+        if(cypressNear.length){
+          setInstances(new THREE.InstancedMesh(nearTrunkGeo,M.barkD,cypressNear.length),cypressNear,false);
+        }else{nearFoliageGeo.dispose();nearTrunkGeo.dispose();}
+      }else{
+        // W3: realistic Sketchfab Italian cypress (CC-BY guillemvilah? — smaugthedeceiver,
+        // alpha-cut foliage) for every NEAR tree, one InstancedMesh scaled per tree
+        // (GLB is 3 m tall). Far trees stay the cheap procedural columns below.
+        nearFoliageGeo.dispose();nearTrunkGeo.dispose();
+        loadModel("/models/exterior/cypress_w3.glb?v=24").then((g)=>{
+          if(w3Disposed||!cypressNear.length)return;
+          let geo:THREE.BufferGeometry|null=null,mat:THREE.Material|null=null;
+          g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){geo=m.geometry;mat=m.material as THREE.Material;}});
+          if(!geo||!mat)return;
+          const fm=mat as THREE.MeshStandardMaterial;fm.alphaTest=0.5;fm.transparent=false;fm.side=THREE.DoubleSide;fm.needsUpdate=true;
+          const im=new THREE.InstancedMesh(geo,mat,cypressNear.length);im.castShadow=true;
+          const d4=new THREE.Object3D();
+          cypressNear.forEach((c,i)=>{
+            const s=1+Math.sin(c.seed*1.3)*.1,sc=c.h/3.0;
+            d4.position.set(c.px,c.baseY,c.pz);d4.rotation.set(0,c.seed,0);d4.scale.set(s*sc,sc,s*sc);
+            d4.updateMatrix();im.setMatrixAt(i,d4.matrix);
+          });
+          im.instanceMatrix.needsUpdate=true;im.name="w3_cypress";scene.add(im);
+        }).catch(()=>{});
       }
-      if(cypressNear.length){
-        setInstances(new THREE.InstancedMesh(nearTrunkGeo,M.barkD,cypressNear.length),cypressNear,false);
-      }else{nearFoliageGeo.dispose();nearTrunkGeo.dispose();}
       for(let b=0;b<3;b++){
         const items=cypressFar.filter(c=>c.band===b);
         if(!items.length)continue;

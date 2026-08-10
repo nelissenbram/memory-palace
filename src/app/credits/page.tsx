@@ -41,6 +41,13 @@ const CC_BY: Asset[] = [
     licence: "CC BY 4.0",
     licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
   },
+  {
+    title: "Cypress Tree",
+    author: "smaugthedeceiver",
+    source: "https://sketchfab.com/3d-models/cypress-tree-a81126aa966b4664bb6185134e53415b",
+    licence: "CC BY 4.0",
+    licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+  },
 ];
 
 const CC0: Asset[] = [
