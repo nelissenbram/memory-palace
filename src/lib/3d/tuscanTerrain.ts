@@ -14,20 +14,26 @@ export function getHeightAt(x: number, z: number): number {
   const r = Math.sqrt(x * x + z * z);
 
   // Rolling hills from layered sine/cosine (suppressed near palace)
-  const noiseMask = Math.min(1, Math.max(0, (r - 52) / 28)); // 0 inside r<52, ramps to 1 by r=80 (rolling hills reach closer)
+  // Rolling hills only WELL BEYOND the palace, and kept below the hilltop so the
+  // villa always crowns the scene (Gladiator height variation lives out in the fields).
+  const noiseMask = Math.min(1, Math.max(0, (r - 78) / 55));
   let hills = 0;
-  hills += Math.sin(x * 0.008) * Math.cos(z * 0.006) * 18;   // deeper rolling Tuscan hills (Gladiator)
-  hills += Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.014 + 0.7) * 7;
-  hills += Math.sin(x * 0.035 + 2.1) * Math.cos(z * 0.028 + 1.4) * 3;
-  hills += Math.sin(x * 0.07 + 0.5) * Math.cos(z * 0.06 + 3.0) * 1.2;
+  hills += Math.sin(x * 0.008) * Math.cos(z * 0.006) * 14;   // deep rolling Tuscan hills
+  hills += Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.014 + 0.7) * 6;
+  hills += Math.sin(x * 0.035 + 2.1) * Math.cos(z * 0.028 + 1.4) * 2.5;
+  hills += Math.sin(x * 0.07 + 0.5) * Math.cos(z * 0.06 + 3.0) * 1;
   hills *= noiseMask;
 
   // Central plateau — flat at HILL_Y, smooth falloff (wider sigma for larger flat area)
   const sigma = 70;
   const plateau = HILL_Y * Math.exp(-(r * r) / (2 * sigma * sigma));
 
-  // Combine: plateau dominates near center, hills dominate far away
-  let h = plateau + hills;
+  // The villa CROWNS the hill: the surrounding land falls away BELOW HILL_Y as it
+  // goes out, so the palace sits on top instead of in a bowl of higher hills.
+  const descent = Math.min(1, Math.max(0, (r - 42) / 120)) * 16;
+
+  // Combine: plateau + hilltop crown near centre, land descends + rolls far away
+  let h = plateau + hills - descent;
 
   // Hard clamp: terrain is exactly HILL_Y inside courtyard radius (r < 42)
   // Smooth blend between hard clamp and natural terrain from r=42 to r=55
