@@ -35,9 +35,9 @@ const CC_BY: Asset[] = [
     licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
   },
   {
-    title: "Fountain",
-    author: "yorre.detavernier",
-    source: "https://sketchfab.com/3d-models/fountain-8580500134194ba5be3f6df7593049f2",
+    title: "Valencia Fountain",
+    author: "guillemvilah",
+    source: "https://sketchfab.com/3d-models/valencia-fountain-0198556e1b6648289693b0bac4fe496d",
     licence: "CC BY 4.0",
     licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
   },

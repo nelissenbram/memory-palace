@@ -581,8 +581,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // structure is procedural under !W3, and replaced under W3 by a modeled
         // CC-BY fountain GLB (yorre.detavernier) for a richer cortile centrepiece.
         const fountainWater = new THREE.MeshStandardMaterial({ color: "#5E7E86", roughness: 0.24, metalness: 0.1, transparent: true, opacity: 0.85, envMapIntensity: 0.6 });
-        scene.add(mk(new THREE.CylinderGeometry(2.7, 2.7, 0.45, 20), fountainWater, 0, HILL_Y + 0.62, -35)); // water
         if (!W3) {
+          scene.add(mk(new THREE.CylinderGeometry(2.7, 2.7, 0.45, 20), fountainWater, 0, HILL_Y + 0.62, -35)); // water (W3 model brings its own)
           scene.add(mk(new THREE.CylinderGeometry(3.1, 3.3, 0.8, 20), M.trim, 0, HILL_Y + 0.4, -35));        // basin wall
           scene.add(mk(new THREE.CylinderGeometry(0.5, 0.75, 1.3, 12), M.trim, 0, HILL_Y + 1.1, -35));       // pedestal
           scene.add(mk(new THREE.CylinderGeometry(1.3, 0.5, 0.35, 16), M.trim, 0, HILL_Y + 1.85, -35));      // upper tazza
@@ -2015,7 +2015,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const domeOrigin = new THREE.Vector3(0, 0, 0);
       // 3 baked LODs by GPU tier (maxEagerTextureSets: desktop 20 / mobile 4 / potato 2)
       const _q = getQuality();
-      const _domeV = "?v=23"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust)
+      const _domeV = "?v=24"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust)
       const domePath = (_q.maxEagerTextureSets >= 12
         ? "/models/exterior/dome_w3.glb"         // desktop — full stepped courses
         : _q.maxEagerTextureSets <= 3
@@ -2116,7 +2116,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         });
         // Parapet ring geometry (matches the Villa-Rotonda roof balustrade above):
         // parX = vW/2+1.45, parZ = vD/2+1.15, cap top ≈ vH+1.9+0.52, pier top ≈ +0.65.
-        const parX = 11.45, parZ = 10.15, capY = 9.42, pierY = 9.55;
+        const parX = 11.45, parZ = 10.15, capY = 9.28, pierY = 9.45; // seat plinths into the cap/piers (no float)
         const grp = new THREE.Group();
         const place = (geo: THREE.BufferGeometry | null, pos: [number, number][], y: number) => {
           if (!geo || !pos.length) return;
@@ -2145,13 +2145,20 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         g.traverse((c) => {
           const m = c as THREE.Mesh;
           if (!m.isMesh) return;
-          m.material = M.trim; // clean travertine, matches the palace stone
+          const src = m.material as THREE.MeshStandardMaterial;
+          if (src.transparent) { // the basin water pane (own to the model)
+            const w = src.clone(); w.opacity = 0.85; w.roughness = 0.15; w.metalness = 0.1; w.envMapIntensity = 0.7; w.needsUpdate = true;
+            m.material = w;
+          } else {
+            m.material = M.trim; // palace travertine for the carved stone
+          }
           m.castShadow = true; m.receiveShadow = true;
         });
         g.position.set(0, HILL_Y, -35);
+        g.scale.setScalar(1.15); // grander cortile centrepiece
         g.name = "w3_fountain";
         if (w3Disposed) return;
-        scene.add(g); // WORLD coords — matches the procedural garden/water disc, not the palace group
+        scene.add(g); // WORLD coords — matches the procedural garden, not the palace group
         w3Fountain = g;
       }).catch(() => {});
     }
