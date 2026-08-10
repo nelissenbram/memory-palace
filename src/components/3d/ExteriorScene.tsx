@@ -4013,6 +4013,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── CYPRESS TREES: dense Tuscan signature ──
     // Mobile: ~75% fewer trees (only road avenue + 8 hilltop clusters)
+    // W3: keep the Gladiator approach corridor clear of stray random scenery
+    // (nothing lands on the dusty road / avenue).
+    const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
     const cypressPositions: number[][]=[];
     // Along winding road — dense avenue
     // W3 (owner): drop this second winding cypress avenue — the Gladiator approach
@@ -4048,6 +4051,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
     cypressPositions.forEach(([cx2,cz])=>{
       if(Math.sqrt(cx2*cx2+cz*cz)<50)return;
+      if(inApproach(cx2,cz))return;
       const d=Math.sqrt(cx2*cx2+cz*cz);
       const ch=5+Math.random()*6;
       const cyBaseY=getHeightAt(cx2,cz);
@@ -4091,7 +4095,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const APPROACH_N = 35;
       const apX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
       const apZ = (a: number) => -48 - a * 7;               // z -48 (just below the parterre) → -286
-      const roadMat = new THREE.MeshStandardMaterial({ color: "#EAE1CD", roughness: 1, envMapIntensity: 0.08 }); // white sun-bleached dust (Gladiator)
+      const roadMat = new THREE.MeshStandardMaterial({ color: "#F2EBDA", roughness: 1, envMapIntensity: 0.05 }); // white sun-bleached dust (Gladiator)
       extraDisposables.push(roadMat);
       for (let a = 0; a < APPROACH_N; a++) {
         const x = apX(a), z = apZ(a);
@@ -4131,6 +4135,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const angle=Math.random()*Math.PI*2,dist=38+Math.random()*120;
       const ox=Math.cos(angle)*dist,oz=Math.sin(angle)*dist-20;
       if(Math.sqrt(ox*ox+oz*oz)<48)continue;
+      if(inApproach(ox,oz))continue;
       const d=Math.sqrt(ox*ox+oz*oz);
       const oCol=atmosColor(`hsl(${102+Math.random()*18},${22+Math.random()*18}%,${36+Math.random()*12}%)`,d);
       const olBaseY=getHeightAt(ox,oz);
@@ -4145,13 +4150,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const angle=Math.random()*Math.PI*2,dist=70+Math.random()*200;
       const px=Math.cos(angle)*dist,pz=Math.sin(angle)*dist-50;
       if(Math.sqrt(px*px+(pz+50)*(pz+50))<55)continue;
+      if(inApproach(px,pz))continue;
       const d=Math.sqrt(px*px+pz*pz);
       const ph=5+Math.random()*4;
       const pCol=atmosColor("#3A6830",d);
       const pnBaseY=getHeightAt(px,pz);
       scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,pnBaseY+ph/2,pz));
       const canopy=new THREE.Mesh(new THREE.SphereGeometry(2.5+Math.random()*1.2,10,8),new THREE.MeshStandardMaterial({color:pCol,roughness:.82}));
-      canopy.position.set(px,pnBaseY+ph+.8,pz);canopy.scale.set(1,.28,1);canopy.castShadow=d<130;scene.add(canopy);
+      canopy.position.set(px,pnBaseY+ph+(W3?1.4:.8),pz);canopy.scale.set(1,W3?0.6:.28,1);canopy.castShadow=d<130;scene.add(canopy); // W3: rounded umbrella, not a flat disc
     }
 
     // ── FARMHOUSES & VILLAS: warm stone, terracotta roofs, shutters ──
@@ -4704,6 +4710,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const angle=Math.random()*Math.PI*2,dist=60+Math.random()*200;
       const wx=Math.cos(angle)*dist,wz=Math.sin(angle)*dist-40;
       if(Math.sqrt(wx*wx+(wz+40)*(wz+40))<70)continue;
+      if(inApproach(wx,wz))continue;
       const wLen=8+Math.random()*20,wAng=Math.random()*Math.PI;
       const d=Math.sqrt(wx*wx+wz*wz);
       const wCol=atmosColor("#B0A888",d);
