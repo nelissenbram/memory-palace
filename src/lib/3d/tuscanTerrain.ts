@@ -14,12 +14,12 @@ export function getHeightAt(x: number, z: number): number {
   const r = Math.sqrt(x * x + z * z);
 
   // Rolling hills from layered sine/cosine (suppressed near palace)
-  const noiseMask = Math.min(1, Math.max(0, (r - 55) / 40)); // 0 inside r<55, ramps to 1 by r=95
+  const noiseMask = Math.min(1, Math.max(0, (r - 52) / 28)); // 0 inside r<52, ramps to 1 by r=80 (rolling hills reach closer)
   let hills = 0;
-  hills += Math.sin(x * 0.008) * Math.cos(z * 0.006) * 10;
-  hills += Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.014 + 0.7) * 4;
-  hills += Math.sin(x * 0.035 + 2.1) * Math.cos(z * 0.028 + 1.4) * 2;
-  hills += Math.sin(x * 0.07 + 0.5) * Math.cos(z * 0.06 + 3.0) * 0.8;
+  hills += Math.sin(x * 0.008) * Math.cos(z * 0.006) * 18;   // deeper rolling Tuscan hills (Gladiator)
+  hills += Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.014 + 0.7) * 7;
+  hills += Math.sin(x * 0.035 + 2.1) * Math.cos(z * 0.028 + 1.4) * 3;
+  hills += Math.sin(x * 0.07 + 0.5) * Math.cos(z * 0.06 + 3.0) * 1.2;
   hills *= noiseMask;
 
   // Central plateau — flat at HILL_Y, smooth falloff (wider sigma for larger flat area)

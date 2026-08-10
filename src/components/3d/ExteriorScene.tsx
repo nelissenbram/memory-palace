@@ -4086,7 +4086,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const APPROACH_N = 34;
       const apX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
       const apZ = (a: number) => -52 - a * 7;               // z -52 → -283
-      const roadMat = new THREE.MeshStandardMaterial({ color: "#9A7D56", roughness: 1 });
+      const roadMat = new THREE.MeshStandardMaterial({ color: "#5E4A32", roughness: 1, envMapIntensity: 0.15 }); // dark beaten earth, not pale/dusty
       extraDisposables.push(roadMat);
       for (let a = 0; a < APPROACH_N; a++) {
         const x = apX(a), z = apZ(a);
@@ -4661,11 +4661,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const W1_WHEAT_STALK_H=1.7;
     const sharedWheatMat=W1?createSharedWheatMaterial(W1_WHEAT_STALK_H):null;
     if(sharedWheatMat)extraDisposables.push(sharedWheatMat);
-    wheatSubset.forEach(([wx, wz, ww, wd], i) => {
-      const isFar = i >= 16;
-      const baseCount=isFar ? 600 : (1500 + Math.floor(Math.random() * 1000));
+    wheatSubset.forEach(([wx, wz, ww, wd]) => {
+      const isFar = Math.hypot(wx, wz + 60) > 165;
+      const baseCount=isFar ? 800 : (2600 + Math.floor(Math.random() * 1000));
       wheatFields.push(createWheatField(scene, {
-        count: Math.round(baseCount*Q.vegetationDensity),
+        count: Math.round(baseCount*Q.vegetationDensity*(W3?1.6:1)),
         centerX: wx, centerZ: wz, width: ww, depth: wd,
         stalkHeight: sharedWheatMat ? W1_WHEAT_STALK_H : 1.4 + Math.random() * 0.9,
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
@@ -4953,7 +4953,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (cinematicResumeTimeRef.current === null) {
           camOT.current.theta = Math.PI * 1.4987;
           camOT.current.phi   = Math.PI * 0.4387;
-          camD.current += (180 - camD.current) * _sm(3.0776); // f=.05 @60fps
+          camD.current += (210 - camD.current) * _sm(3.0776); // f=.05 @60fps — hold at the far end of the approach
           if (rawT >= HOLD_DUR && !cinematicPauseFiredRef.current) {
             cinematicPauseFiredRef.current = true;
             if (onCinematicPauseRef.current) onCinematicPauseRef.current();
@@ -4965,7 +4965,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const ot = rawT - cinematicResumeTimeRef.current;
           const SHOT=2.4,FADE=.5;
           const stills: [number,number,number][]=[
-            [Math.PI*1.4987,Math.PI*0.4387,180],
+            [Math.PI*1.4987,Math.PI*0.4387,210],
             [Math.PI*1.5480,Math.PI*0.3060,118], // name-beat (owner review #1): matches the dolly beat — poorttorens ±~13,−13, tall lantern-crowned dome bekroont above
             [Math.PI*1.5,Math.PI*0.22,35],
           ];
@@ -5019,7 +5019,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // crowned dome bekroont the frame in one read at ~7.5s. The lookAt
           // target also rises (below) so the crowning lantern stays in frame.
           const WP: [number,number,number][] = W2 ? [
-            [Math.PI*1.4987, Math.PI*0.4387, 185.0], // 0s: seamless from the WP1 hold
+            [Math.PI*1.4987, Math.PI*0.4387, 215.0], // 0s: seamless from the WP1 hold — starts at the far end of the cypress approach (flies the full avenue in)
             [Math.PI*1.6600, Math.PI*0.3980, 158.0], // ~3.8s: swing sun-side, cypress contre-jour, tall dome crowning the broad ridge, long galerij sweeping east
             [Math.PI*1.5480, Math.PI*0.3060, 118.0], // ~7.5s: TYMPANUM BEAT — name framed BETWEEN the two poorttorens (±~13,−13), the high lantern-crowned dome bekroont above; wider + further so both bracket the axis and the tall crown reads in one frame
             [Math.PI*1.5000, Math.PI*0.2960,  96.0], // ~11.3s: frontal hold — full stacked massing (stair → parapet → two-stage crossing → tall drum → dome → lantern), galerij spread wide
