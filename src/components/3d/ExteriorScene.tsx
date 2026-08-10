@@ -4098,12 +4098,26 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const ax = 5.2 + a * 0.06;                          // avenue half-width (slight splay)
         const ah = Math.max(4.2, 8.8 - a * 0.11);           // tall near → tapering into haze
         for (const sx of [-ax, ax]) buildCypress(x + sx, z, ah, getHeightAt(x + sx, z));
-        if (a < APPROACH_N - 1) {                            // beaten-earth road segment
-          const x1 = apX(a + 1), z1 = apZ(a + 1);
-          const mx = (x + x1) / 2, mz = (z + z1) / 2, len = Math.hypot(x1 - x, z1 - z);
-          const seg = mk(new THREE.BoxGeometry(4.6, 0.12, len + 0.4), roadMat, mx, getHeightAt(mx, mz) + 0.07, mz);
-          seg.rotation.y = Math.atan2(x1 - x, z1 - z); seg.receiveShadow = true; scene.add(seg);
+      }
+      // ONE continuous dusty-road ribbon draped over the terrain — no stepped
+      // segments (those read as treden on the slope).
+      {
+        const roadHalf = 2.4, rPos: number[] = [], rIdx: number[] = [];
+        for (let a = 0; a < APPROACH_N; a++) {
+          const pax = apX(Math.max(0, a - 1)), paz = apZ(Math.max(0, a - 1));
+          const pbx = apX(Math.min(APPROACH_N - 1, a + 1)), pbz = apZ(Math.min(APPROACH_N - 1, a + 1));
+          const dx = pbx - pax, dz = pbz - paz, dl = Math.hypot(dx, dz) || 1;
+          const nx = -dz / dl, nz = dx / dl;                 // XZ perpendicular
+          const cxx = apX(a), czz = apZ(a);
+          const lx = cxx + nx * roadHalf, lz = czz + nz * roadHalf;
+          const rx = cxx - nx * roadHalf, rz = czz - nz * roadHalf;
+          rPos.push(lx, getHeightAt(lx, lz) + 0.06, lz, rx, getHeightAt(rx, rz) + 0.06, rz);
+          if (a < APPROACH_N - 1) { const b = a * 2; rIdx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
         }
+        const rg = new THREE.BufferGeometry();
+        rg.setAttribute("position", new THREE.Float32BufferAttribute(rPos, 3));
+        rg.setIndex(rIdx); rg.computeVertexNormals();
+        const roadMesh = new THREE.Mesh(rg, roadMat); roadMesh.receiveShadow = true; scene.add(roadMesh);
       }
     }
 
