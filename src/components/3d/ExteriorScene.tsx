@@ -3221,8 +3221,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         [ 34, -24, 6.5, 18.5, "tower",     11.0], // front-E — plain (mirror)
         [-50,  16, 6.0, 16.0, "tower",     10.0], // west-wing outer corner
         [ 46,  16, 6.0, 16.0, "tower",     10.0], // east-wing outer corner
-        [-26,  37, 5.5, 14.0, "tower",      8.0], // rear-west (C corner)
-        [ 22,  37, 5.5, 14.0, "tower",      8.0], // rear-east (C corner)
+        [-28,  38, 5.5, 18.5, "tower",     11.0], // rear-west (C corner) — raised above the rear range (h15) so it isn't buried
+        [ 26,  38, 5.5, 18.5, "tower",     11.0], // rear-east (C corner) — raised above the rear range (h15) so it isn't buried
       ];
       TOWERS.forEach(([tx, tz, fp, topY, kind, bandY]) => {
         // Shaft — square casa-torre, foot sunk 0.6
