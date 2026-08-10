@@ -2940,7 +2940,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           }
         }
         // floor string courses — one datum per storey so the mass reads as levels
-        const floorYs = twoStorey ? [h * 0.34 + 0.5, h * 0.66 + 0.5] : [h * 0.5 + 0.5];
+        // ONE string course between the two storeys (was two bands at h*0.34/0.66,
+        // which sat right on the window rows at h*0.32/0.68 and cut through them).
+        const floorYs = twoStorey ? [h * 0.50 + 0.5] : [h * 0.5 + 0.5];
         for (const fy of floorYs) box(gTrimM, bw + 0.22, 0.22, bd + 0.22, cx, fy, cz);
         // crown cornice (two travertine bands, interpenetrating in Y — no coplanar)
         box(gTrimM, bw + 0.4, 0.28, bd + 0.4, cx, h + 0.45, cz);
@@ -3094,18 +3096,21 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         for (const face of (opts.winFaces || [])) {
           const onX = face === "+x" || face === "-x";
           const along = onX ? bd : bw;
-          const nBays = Math.max(2, Math.floor(along / 6));
+          // Same bay grid as the windows/pilasters, inset from the corners — the
+          // capochiave plates now line up on the string course, none float at a corner.
+          const nBays = Math.max(2, Math.round(along / 6));
+          const inset = 1.5, first = -along / 2 + inset, pStep = (along - inset * 2) / nBays;
           const nx2 = face === "+x" ? 1 : face === "-x" ? -1 : 0;
           const nz2 = face === "+z" ? 1 : face === "-z" ? -1 : 0;
           const fx = cx + nx2 * (bw / 2 + 0.1), fz = cz + nz2 * (bd / 2 + 0.1);
           for (const fy of floorYs) for (let k = 0; k <= nBays; k++) {
-            const p = -along / 2 + (k / nBays) * along;
+            const p = first + k * pStep;
             const tx2 = onX ? fx : cx + p, tz2 = onX ? cz + p : fz;
             box(gIron, onX ? 0.08 : 0.44, 0.44, onX ? 0.44 : 0.08, tx2, fy, tz2, 0, Math.PI / 4); // lozenge plate
             gIron.push(new THREE.SphereGeometry(0.10, 8, 6).translate(tx2 + nx2 * 0.06, fy, tz2 + nz2 * 0.06)); // boss
           }
-          // damp weather-streaks under the string course (thin, translucent)
-          for (const p of [-along * 0.28, along * 0.34]) {
+          // damp weather-streaks near the corners (thin, translucent) — off the windows
+          for (const p of [-along * 0.42, along * 0.42]) {
             const tx2 = onX ? fx : cx + p, tz2 = onX ? cz + p : fz;
             box(gStain, onX ? 0.02 : 0.5, floorYs[0] * 0.8, onX ? 0.5 : 0.02, tx2, floorYs[0] * 0.5, tz2);
           }
@@ -3367,7 +3372,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // owner r6 #3: MORE ivy, in varied colours (the mixed-bucket scatter in
         // ivyPatch gives each patch base-green + fresh-green + russet leaves).
         for (let i = 0; i < 9; i += 2) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; ivyPatch(ax, -2.5, -27.5, 5.2, 1.7, false, 46); }
-        for (const [tx, tz] of [[-38, -24], [-26, 37], [22, 37], [46, 16], [-50, 16]] as [number, number][]) ivyPatch(tx, 0.5, tz - 3.4, 7.5, 1.9, false, 52);
+        for (const [tx, tz] of [[-38, -24], [-28, 38], [26, 38], [46, 16], [-50, 16]] as [number, number][]) ivyPatch(tx, 0.5, tz - 3.4, 7.5, 1.9, false, 52);
         // both long side faces climb higher, alternating fresh + russet accents
         ivyPatch(-40, 0.5, -25, 9, 1.6, false, 48);
         ivyPatch(40, 0.5, -25, 9, 1.6, false, 48);
