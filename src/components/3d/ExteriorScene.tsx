@@ -59,7 +59,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
   const onCinematicPauseRef = useRef(onCinematicPause);
   useEffect(() => { onCinematicPauseRef.current = onCinematicPause; }, [onCinematicPause]);
   // Camera starts at waypoint 1 of the cinematic trajectory
-  const camO=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camOT=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camD=useRef(180);
+  const camO=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camOT=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camD=useRef(220);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);
@@ -640,7 +640,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // Terrace 1 = the parterre forecourt (top ≈ HILL_Y+0.3): retain its front
         // (z −47) and flanks so it reads as a raised terrace, not flat ground.
         const t1 = HILL_Y + 0.3;
-        if (!W3) { retainX(40, -47, t1, 3.2); baluX(40, -47, t1, true); } // W3: open the forecourt front for the dusty approach road
+        retainX(40, -47, t1, 3.2); baluX(40, -47, t1, true); // first terrace back (owner) — balustrade keeps its central gap for the approach
         for (const sx of [-1, 1]) { B(gWallR, 1.2, 3.8, 31, sx * 40, t1 - 1.9, -31.5); baluZ(sx * 40, -47, -16, t1); }
         // Terraces 2 & 3 + the grand central stair — the formal stepped descent.
         // W3 (owner): drop them — the approach is a plain dusty road up the hill,
@@ -4091,7 +4091,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const APPROACH_N = 35;
       const apX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
       const apZ = (a: number) => -48 - a * 7;               // z -48 (just below the parterre) → -286
-      const roadMat = new THREE.MeshStandardMaterial({ color: "#D8CDB4", roughness: 1, envMapIntensity: 0.1 }); // pale sun-bleached dust (Gladiator)
+      const roadMat = new THREE.MeshStandardMaterial({ color: "#EAE1CD", roughness: 1, envMapIntensity: 0.08 }); // white sun-bleached dust (Gladiator)
       extraDisposables.push(roadMat);
       for (let a = 0; a < APPROACH_N; a++) {
         const x = apX(a), z = apZ(a);
@@ -4099,26 +4099,30 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const ah = Math.max(4.2, 8.8 - a * 0.11);           // tall near → tapering into haze
         for (const sx of [-ax, ax]) buildCypress(x + sx, z, ah, getHeightAt(x + sx, z));
       }
-      // ONE continuous dusty-road ribbon draped over the terrain — no stepped
-      // segments (those read as treden on the slope).
-      {
-        const roadHalf = 2.4, rPos: number[] = [], rIdx: number[] = [];
+      // Continuous dusty-road ribbon(s) draped over the terrain — no stepped
+      // segments (those read as treden). Road bed + two darker wheel ruts.
+      const ribbon = (offset: number, half: number, mat: THREE.Material, yBias: number) => {
+        const pos: number[] = [], idx: number[] = [];
         for (let a = 0; a < APPROACH_N; a++) {
           const pax = apX(Math.max(0, a - 1)), paz = apZ(Math.max(0, a - 1));
           const pbx = apX(Math.min(APPROACH_N - 1, a + 1)), pbz = apZ(Math.min(APPROACH_N - 1, a + 1));
           const dx = pbx - pax, dz = pbz - paz, dl = Math.hypot(dx, dz) || 1;
           const nx = -dz / dl, nz = dx / dl;                 // XZ perpendicular
-          const cxx = apX(a), czz = apZ(a);
-          const lx = cxx + nx * roadHalf, lz = czz + nz * roadHalf;
-          const rx = cxx - nx * roadHalf, rz = czz - nz * roadHalf;
-          rPos.push(lx, getHeightAt(lx, lz) + 0.06, lz, rx, getHeightAt(rx, rz) + 0.06, rz);
-          if (a < APPROACH_N - 1) { const b = a * 2; rIdx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+          const cxx = apX(a) + nx * offset, czz = apZ(a) + nz * offset;
+          const lx = cxx + nx * half, lz = czz + nz * half, rx = cxx - nx * half, rz = czz - nz * half;
+          pos.push(lx, getHeightAt(lx, lz) + yBias, lz, rx, getHeightAt(rx, rz) + yBias, rz);
+          if (a < APPROACH_N - 1) { const b = a * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
         }
-        const rg = new THREE.BufferGeometry();
-        rg.setAttribute("position", new THREE.Float32BufferAttribute(rPos, 3));
-        rg.setIndex(rIdx); rg.computeVertexNormals();
-        const roadMesh = new THREE.Mesh(rg, roadMat); roadMesh.receiveShadow = true; scene.add(roadMesh);
-      }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        g.setIndex(idx); g.computeVertexNormals();
+        const m = new THREE.Mesh(g, mat); m.receiveShadow = true; scene.add(m);
+      };
+      const rutMat = new THREE.MeshStandardMaterial({ color: "#CBBD9A", roughness: 1, envMapIntensity: 0.06 });
+      extraDisposables.push(rutMat);
+      ribbon(0, 2.5, roadMat, 0.06);      // white dusty road bed
+      ribbon(-0.85, 0.22, rutMat, 0.08);  // left wheel rut
+      ribbon(0.85, 0.22, rutMat, 0.08);   // right wheel rut
     }
 
     // ── OLIVE GROVES: silver-green, gnarled ──
@@ -4132,7 +4136,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const olBaseY=getHeightAt(ox,oz);
       scene.add(mk(new THREE.CylinderGeometry(.12,.2,2,5),M.bark,ox,olBaseY+1,oz));
       const cn=new THREE.Mesh(new THREE.SphereGeometry(1.8+Math.random()*.8,8,7),new THREE.MeshStandardMaterial({color:oCol,roughness:.84}));
-      cn.position.set(ox,olBaseY+2.8+Math.random()*.3,oz);cn.scale.set(1,.4,1);cn.castShadow=d<120;scene.add(cn);
+      cn.position.set(ox,olBaseY+(W3?2.4:2.8)+Math.random()*.3,oz);cn.scale.set(1,W3?0.75:0.4,1);cn.castShadow=d<120;scene.add(cn); // W3: rounded canopy, not a flat disc
     }
 
     // ── STONE PINES (umbrella pines) ──
@@ -5283,7 +5287,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // reduced-motion keeps the direct enter.
       if(W2&&hitId==="__entrance__"&&camD.current>45&&!prefersReducedMotion()){autoWalkToRef.current="__entrance__";return;}
       onRoomClickRef.current(hitId);}};
-    const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
+    const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(280,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=aspect<1?115:140;};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
 
@@ -5300,7 +5304,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:t.clientX,y:t.clientY};
       }
       if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
-        const dist=Math.hypot(dx,dy);if(touchStartDist>0){camD.current=Math.max(40,Math.min(180,touchStartCamD*(touchStartDist/dist)));}
+        const dist=Math.hypot(dx,dy);if(touchStartDist>0){camD.current=Math.max(40,Math.min(280,touchStartCamD*(touchStartDist/dist)));}
       }
     };
     // Single-tap model: tap shows glow + calls onRoomClick (parent decides

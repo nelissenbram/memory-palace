@@ -85,10 +85,11 @@ export function createTuscanTerrain(
   // Warm variant (MUSEO VIVO): valleys shift from cool green to sun-dried olive so
   // every terrain hue stays in the golden-hour earth family.
   const warm = !!opts?.warm;
-  const colPeak = new THREE.Color(warm ? "#CCAA54" : "#C8A850"); // golden wheat
-  const colValley = new THREE.Color(warm ? "#8A8A4C" : "#7A8A48"); // valley (olive when warm)
-  const colEdge = new THREE.Color(warm ? "#DCC896" : "#D8C890"); // warm haze at edges
-  const colPlateau = new THREE.Color(warm ? "#AC9A5E" : "#A8985A"); // warm golden for hilltop
+  // Owner: the ground reads WHITE — sun-bleached pale dusty Tuscan summer earth.
+  const colPeak = new THREE.Color(warm ? "#E6DBC2" : "#E4D8BE");
+  const colValley = new THREE.Color(warm ? "#D8CEB2" : "#D4CBAE");
+  const colEdge = new THREE.Color(warm ? "#EEE6D4" : "#ECE3CE");
+  const colPlateau = new THREE.Color(warm ? "#E2D8BE" : "#E0D4B8");
   const tmpColor = new THREE.Color();
 
   for (let i = 0; i < pos.count; i++) {
@@ -116,9 +117,9 @@ export function createTuscanTerrain(
     tmpColor.copy(colValley).lerp(colPeak, normalizedH);
     tmpColor.lerp(colPlateau, plateauBlend * 0.6);
 
-    // Darken the plateau center so it doesn't glow
+    // Keep the plateau pale too (owner: white ground) — only a faint darken.
     if (dist < 50) {
-      const darken = Math.max(0, 1 - dist / 50) * 0.3;
+      const darken = Math.max(0, 1 - dist / 50) * 0.06;
       tmpColor.r *= (1 - darken);
       tmpColor.g *= (1 - darken);
       tmpColor.b *= (1 - darken);
