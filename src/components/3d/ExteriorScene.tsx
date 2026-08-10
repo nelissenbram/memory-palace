@@ -3021,42 +3021,45 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           for (const sx of [-1, 1]) for (const sz of [-1, 1]) urn(cx + sx * (bw / 2 + 0.2), h + 0.9, cz + sz * (bd / 2 + 0.2), 1.15);
         }
         // ── TWO-STOREY RICH WINDOW RITME ────────────────────────────────────
+        const cl = THREE.MathUtils.clamp;
+        // Window height scales with the storey so tall blocks get taller lights
+        // (no fixed squat windows on high walls); width follows for a classic
+        // ~1:1.7 aspect.
         const rows = twoStorey
-          ? [{ y: h * 0.32 + 0.5, hh: Math.min(1.7, h * 0.24), ped: false },   // ground
-             { y: h * 0.68 + 0.5, hh: Math.min(2.1, h * 0.30), ped: true }]    // piano nobile
-          : [{ y: h * 0.55 + 0.5, hh: Math.min(2.0, h * 0.36), ped: false }];
+          ? [{ y: h * 0.32 + 0.5, hh: cl(h * 0.145, 1.5, 2.2), ped: false },   // ground
+             { y: h * 0.68 + 0.5, hh: cl(h * 0.175, 1.7, 2.6), ped: true }]    // piano nobile
+          : [{ y: h * 0.55 + 0.5, hh: cl(h * 0.20, 1.6, 2.4), ped: false }];
         for (const face of (opts.winFaces || [])) {
-          const along = (face === "+x" || face === "-x") ? bd : bw;
-          const n = Math.max(2, Math.floor(along / 6));
-          const step = (along - 3.4) / (n - 1);
-          for (let k = 0; k < n; k++) {
-            const p = -(along - 3.4) / 2 + k * step;
+          const onX = face === "+x" || face === "-x";
+          const along = onX ? bd : bw;
+          // ONE shared bay grid: n bays between n+1 pilasters, one window centred
+          // in each bay — windows and the giant order now line up as a rhythm.
+          const nBays = Math.max(2, Math.round(along / 6));
+          const inset = 1.5, first = -along / 2 + inset, pStep = (along - inset * 2) / nBays;
+          const at = (p: number): [number, number] =>
+            face === "+z" ? [cx + p, cz + bd / 2] :
+            face === "-z" ? [cx + p, cz - bd / 2] :
+            face === "+x" ? [cx + bw / 2, cz + p] : [cx - bw / 2, cz + p];
+          // windows at the bay centres
+          for (let k = 0; k < nBays; k++) {
+            const [wx, wz] = at(first + (k + 0.5) * pStep);
             for (const row of rows) {
-              let wx = cx, wz = cz;
-              if (face === "+z") { wz = cz + bd / 2; wx = cx + p; }
-              else if (face === "-z") { wz = cz - bd / 2; wx = cx + p; }
-              else if (face === "+x") { wx = cx + bw / 2; wz = cz + p; }
-              else { wx = cx - bw / 2; wz = cz + p; }
-              richWindow(face, wx, row.y, wz, 1.5, row.hh, row.ped);
+              const ww = cl(row.hh * 0.72, 1.4, 1.8);
+              richWindow(face, wx, row.y, wz, ww, row.hh, row.ped);
             }
           }
-          // ── GIANT-ORDER PILASTERS between the bays (owner review #1) — travertine
-          // strips from the plinth to the cornice with a base + capital, breaking
-          // the plaster field into a rhythmic order (no more big blank surface).
+          // ── GIANT-ORDER PILASTERS at the bay edges (owner review #1) — travertine
+          // strips from the plinth to the cornice, framing each window bay.
           const pilBot = 1.6, pilTop = h + 0.3, pilMid = (pilBot + pilTop) / 2, pilH = pilTop - pilBot;
-          const np = n + 1, pstep = (along - 1.2) / (np - 1);
-          for (let j = 0; j < np; j++) {
-            const p = -(along - 1.2) / 2 + j * pstep;
-            let px = cx, pz = cz;
-            const onX = face === "+x" || face === "-x";
-            if (face === "+z") { pz = cz + bd / 2 + 0.18; px = cx + p; }
-            else if (face === "-z") { pz = cz - bd / 2 - 0.18; px = cx + p; }
-            else if (face === "+x") { px = cx + bw / 2 + 0.18; pz = cz + p; }
-            else { px = cx - bw / 2 - 0.18; pz = cz + p; }
-            const ww = onX ? 0.34 : 0.72, dd = onX ? 0.72 : 0.34;
-            box(gTrimM, ww, pilH, dd, px, pilMid, pz);                              // shaft
-            box(gTrimM, ww + 0.28, 0.28, dd + 0.28, px, pilTop - 0.1, pz);          // capital
-            box(gTrimM, ww + 0.22, 0.22, dd + 0.22, px, pilBot + 0.1, pz);          // base
+          const proud = 0.18;
+          for (let j = 0; j <= nBays; j++) {
+            const [bx, bz] = at(first + j * pStep);
+            const px = bx + (onX ? (face === "+x" ? proud : -proud) : 0);
+            const pz = bz + (!onX ? (face === "+z" ? proud : -proud) : 0);
+            const pw = onX ? 0.34 : 0.72, pd = onX ? 0.72 : 0.34;
+            box(gTrimM, pw, pilH, pd, px, pilMid, pz);                              // shaft
+            box(gTrimM, pw + 0.28, 0.28, pd + 0.28, px, pilTop - 0.1, pz);          // capital
+            box(gTrimM, pw + 0.22, 0.22, pd + 0.22, px, pilBot + 0.1, pz);          // base
           }
         }
         // loggia/arcade screen along one long face (travertine colonnade proud
