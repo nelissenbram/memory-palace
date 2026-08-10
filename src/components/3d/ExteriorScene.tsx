@@ -3592,6 +3592,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── COURTYARD OLIVE TREES — gnarled, silver-green Mediterranean olives ──
     const oliveCourtPositions = [[-18, -15], [18, -15], [-18, 15], [18, 15], [-25, 0], [25, 0]];
+    const oliveMats = [
+      new THREE.MeshStandardMaterial({ color: "#7A8A5A", roughness: 0.85 }),
+      new THREE.MeshStandardMaterial({ color: "#8A9A68", roughness: 0.82 }),
+      new THREE.MeshStandardMaterial({ color: "#6E7C4E", roughness: 0.85 }),
+    ];
     oliveCourtPositions.filter(([ox, oz]) => !isInWingZone(ox, oz, 4)).forEach(([ox, oz]) => {
       // Gnarled trunk — thicker, with visible twist
       const trunk = mk(new THREE.CylinderGeometry(0.2, 0.35, 3, 8), M.bark, ox, 1.5, oz);
@@ -3601,15 +3606,24 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const branch = mk(new THREE.CylinderGeometry(0.06, 0.15, 2, 6), M.bark, ox + 0.4, 2.8, oz + 0.2);
       branch.rotation.z = 0.3;
       cAdd(branch);
-      // Wide spreading canopy — flattened, silver-green
-      const canopy1 = mk(new THREE.SphereGeometry(2.5, 10, 8), new THREE.MeshStandardMaterial({ color: "#7A8A5A", roughness: 0.85 }), ox, 4.0, oz);
-      canopy1.scale.set(1.2, 0.35, 1.1);
-      canopy1.castShadow = true;
-      cAdd(canopy1);
-      // Secondary canopy lobe
-      const canopy2 = mk(new THREE.SphereGeometry(1.8, 8, 6), new THREE.MeshStandardMaterial({ color: "#8A9A68", roughness: 0.82 }), ox + 1.2, 3.8, oz - 0.5);
-      canopy2.scale.set(1, 0.3, 0.9);
-      cAdd(canopy2);
+      if (W3) {
+        // Bushy, irregular silver-green olive canopy — overlapping rounded clumps
+        // read as a real tree, not a flat disc.
+        const clumps: [number, number, number, number][] = [
+          [0, 4.3, 0, 2.0], [1.4, 3.9, -0.4, 1.5], [-1.2, 4.0, 0.6, 1.4],
+          [0.5, 5.1, 0.2, 1.35], [-0.5, 4.7, -0.8, 1.25], [1.0, 4.6, 0.8, 1.2],
+        ];
+        clumps.forEach(([dx, dy, dz, r], i) => {
+          const c = mk(new THREE.SphereGeometry(r, 9, 7), oliveMats[i % 3], ox + dx, dy, oz + dz);
+          c.scale.set(1, 0.82, 1); c.castShadow = true; cAdd(c);
+        });
+      } else {
+        // Wide spreading canopy — flattened, silver-green (flag off ⇒ identical)
+        const canopy1 = mk(new THREE.SphereGeometry(2.5, 10, 8), oliveMats[0], ox, 4.0, oz);
+        canopy1.scale.set(1.2, 0.35, 1.1); canopy1.castShadow = true; cAdd(canopy1);
+        const canopy2 = mk(new THREE.SphereGeometry(1.8, 8, 6), oliveMats[1], ox + 1.2, 3.8, oz - 0.5);
+        canopy2.scale.set(1, 0.3, 0.9); cAdd(canopy2);
+      }
       // Dappled shadow disc on ground — 0.09 up (courtyard disc sits at +0.05
       // in this group's frame; 0.06 left only 0.01 clearance) and no depth
       // write: a transparent ground decal must never depth-spar with the
