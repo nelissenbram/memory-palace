@@ -721,6 +721,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     let w3Roofs: THREE.Group | null = null;
     let w3Statuary: THREE.Group | null = null;
     let w3Fountain: THREE.Group | null = null;
+    let w3Obelisks: THREE.Group | null = null;
     let w3RibMesh: THREE.Mesh | null = null;
     let w3Disposed = false;
 
@@ -2160,6 +2161,22 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (w3Disposed) return;
         scene.add(g); // WORLD coords — matches the procedural garden, not the palace group
         w3Fountain = g;
+      }).catch(() => {});
+      // A pair of stone obelisks on pedestals flanking the cortile approach — a
+      // classic Italian-villa vertical accent framing the axis to the entrance.
+      loadModel("/models/exterior/obelisk_w3.glb" + _domeV).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          m.material = M.trim; m.castShadow = true; m.receiveShadow = true;
+        });
+        const grp = new THREE.Group();
+        for (const gx of [-10, 10]) { const o = g.clone(); o.position.set(gx, HILL_Y, -24); grp.add(o); }
+        grp.name = "w3_obelisks";
+        if (w3Disposed) return;
+        scene.add(grp); // WORLD coords — flanks the garden approach
+        w3Obelisks = grp;
       }).catch(() => {});
     }
     // W2 grandeur: the raised two-stage crossing lifts the dome far higher — the
@@ -5205,7 +5222,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     };
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
 
-    return()=>{w3Disposed=true;if(w3DomeCanary){w3DomeCanary.removeFromParent();w3DomeCanary=null;}if(w3EntranceCaps){w3EntranceCaps.removeFromParent();w3EntranceCaps=null;}if(w3Roofs){w3Roofs.removeFromParent();w3Roofs=null;}if(w3Statuary){w3Statuary.removeFromParent();w3Statuary=null;}if(w3Fountain){w3Fountain.removeFromParent();w3Fountain=null;}/* remove only — clone shares geometry/material with the modelLoader cache master, never dispose here */if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
+    return()=>{w3Disposed=true;if(w3DomeCanary){w3DomeCanary.removeFromParent();w3DomeCanary=null;}if(w3EntranceCaps){w3EntranceCaps.removeFromParent();w3EntranceCaps=null;}if(w3Roofs){w3Roofs.removeFromParent();w3Roofs=null;}if(w3Statuary){w3Statuary.removeFromParent();w3Statuary=null;}if(w3Fountain){w3Fountain.removeFromParent();w3Fountain=null;}if(w3Obelisks){w3Obelisks.removeFromParent();w3Obelisks=null;}/* remove only — clone shares geometry/material with the modelLoader cache master, never dispose here */if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       if(hovLabel&&el.contains(hovLabel))el.removeChild(hovLabel);
       if(rmVeil&&el.contains(rmVeil))el.removeChild(rmVeil);
