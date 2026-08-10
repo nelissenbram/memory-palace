@@ -640,25 +640,28 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // Terrace 1 = the parterre forecourt (top ≈ HILL_Y+0.3): retain its front
         // (z −47) and flanks so it reads as a raised terrace, not flat ground.
         const t1 = HILL_Y + 0.3;
-        retainX(40, -47, t1, 3.2);
-        baluX(40, -47, t1, true);
+        if (!W3) { retainX(40, -47, t1, 3.2); baluX(40, -47, t1, true); } // W3: open the forecourt front for the dusty approach road
         for (const sx of [-1, 1]) { B(gWallR, 1.2, 3.8, 31, sx * 40, t1 - 1.9, -31.5); baluZ(sx * 40, -47, -16, t1); }
-        // Terraces 2 & 3 — full platforms stepping down, retained + balustraded.
-        const terr: [number, number, number, number][] = [
-          [HILL_Y - 3.0, -63, -47, 34], // T2
-          [HILL_Y - 6.4, -79, -63, 28], // T3
-        ];
-        for (const [topY, zF, zB, hx] of terr) {
-          const dep = zB - zF;
-          B(gPave, hx * 2, 0.5, dep, 0, topY + 0.2, (zF + zB) / 2);         // paving deck
-          B(gWallR, hx * 2, 14, dep, 0, topY - 7, (zF + zB) / 2);           // massive retained body (buried)
-          retainX(hx, zF, topY, 3.4);
-          baluX(hx, zF, topY, true);
-          for (const sx of [-1, 1]) baluZ(sx * hx, zF, zB, topY);
-          for (const sx of [-1, 1]) B(gGrassR, hx - 7, 0.16, dep - 5, sx * (hx * 0.48), topY + 0.46, (zF + zB) / 2);
+        // Terraces 2 & 3 + the grand central stair — the formal stepped descent.
+        // W3 (owner): drop them — the approach is a plain dusty road up the hill,
+        // no extra terraces and no steps. !W3 keeps the full cascade.
+        if (!W3) {
+          const terr: [number, number, number, number][] = [
+            [HILL_Y - 3.0, -63, -47, 34], // T2
+            [HILL_Y - 6.4, -79, -63, 28], // T3
+          ];
+          for (const [topY, zF, zB, hx] of terr) {
+            const dep = zB - zF;
+            B(gPave, hx * 2, 0.5, dep, 0, topY + 0.2, (zF + zB) / 2);         // paving deck
+            B(gWallR, hx * 2, 14, dep, 0, topY - 7, (zF + zB) / 2);           // massive retained body (buried)
+            retainX(hx, zF, topY, 3.4);
+            baluX(hx, zF, topY, true);
+            for (const sx of [-1, 1]) baluZ(sx * hx, zF, zB, topY);
+            for (const sx of [-1, 1]) B(gGrassR, hx - 7, 0.16, dep - 5, sx * (hx * 0.48), topY + 0.46, (zF + zB) / 2);
+          }
+          // GRAND CENTRAL STAIR — cascades T1 → T2 → T3 on the −Z axis.
+          { let y = t1 - 0.1, z = -47.4; for (let s = 0; s < 34; s++) { B(gPave, 13, 0.34, 1.3, 0, y, z); y -= 0.30; z -= 1.15; } }
         }
-        // GRAND CENTRAL STAIR — cascades T1 → T2 → T3 on the −Z axis.
-        { let y = t1 - 0.1, z = -47.4; for (let s = 0; s < 34; s++) { B(gPave, 13, 0.34, 1.3, 0, y, z); y -= 0.30; z -= 1.15; } }
         ([[gPave, courtyardMat, false], [gWallR, M.stoneD, true], [gTrimR, M.trim, true], [gGrassR, M.grassRich, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
           .forEach(([geos, mat, sh]) => {
             if (!geos.length) return;
@@ -4012,7 +4015,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Mobile: ~75% fewer trees (only road avenue + 8 hilltop clusters)
     const cypressPositions: number[][]=[];
     // Along winding road — dense avenue
-    const roadCypressCount=isMobileQ?15:50;
+    // W3 (owner): drop this second winding cypress avenue — the Gladiator approach
+    // is ONE clean cypress road on the axis. !W3 keeps it.
+    const roadCypressCount=W3?0:(isMobileQ?15:50);
     for(let ri=0;ri<roadCypressCount;ri++){
       const rz=-45-ri*7;const rx=Math.sin(ri*.22)*28;
       if(Math.random()>.3)cypressPositions.push([rx-4.5+Math.random()*1.5,rz+Math.random()*2]);
@@ -4083,10 +4088,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // the ripe wheat to the palace (owner: "exactly like the Gladiator scene").
       // Straight & on-axis near the stair (frames the dolly), winding into the
       // distance. Flanking wheat is added to the wheat fields below.
-      const APPROACH_N = 34;
+      const APPROACH_N = 35;
       const apX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
-      const apZ = (a: number) => -52 - a * 7;               // z -52 → -283
-      const roadMat = new THREE.MeshStandardMaterial({ color: "#5E4A32", roughness: 1, envMapIntensity: 0.15 }); // dark beaten earth, not pale/dusty
+      const apZ = (a: number) => -48 - a * 7;               // z -48 (just below the parterre) → -286
+      const roadMat = new THREE.MeshStandardMaterial({ color: "#D8CDB4", roughness: 1, envMapIntensity: 0.1 }); // pale sun-bleached dust (Gladiator)
       extraDisposables.push(roadMat);
       for (let a = 0; a < APPROACH_N; a++) {
         const x = apX(a), z = apZ(a);
@@ -4648,8 +4653,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // ── GLADIATOR APPROACH — dense ripe wheat hugging both sides of the cypress
     // avenue all the way up to the palace (same curve as the road above).
     if (W3) {
-      for (let a = 1; a < 34; a += 2) {
-        const x = Math.sin(a * 0.16) * (a * 0.55), z = -52 - a * 7;
+      for (let a = 1; a < 35; a += 2) {
+        const x = Math.sin(a * 0.16) * (a * 0.55), z = -48 - a * 7;
         // big overlapping fields both sides → a continuous golden sea up to the road
         for (const sx of [-1, 1]) wheatPositions.unshift([x + sx * 17, z, 28, 20]);
       }
