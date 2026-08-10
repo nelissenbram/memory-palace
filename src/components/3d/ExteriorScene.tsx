@@ -4071,12 +4071,34 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // they join the instanced buckets via buildCypress → cypressNear.
     // Placed south of the parterre (which ends at z≈-47), clear of every wing,
     // tower and the cross-axis path.
-    if (W2) {
+    if (W2 && !W3) {
       for (let a = 0; a < 11; a++) {
         const az = -50 - a * 6;      // z -50 → -110 down the descending slope
         const ax = 6 + a * 0.18;     // splay outward very slightly with distance
         const ah = 8.6 - a * 0.16;   // tall near, tapering into the haze
         for (const sx of [-ax, ax]) buildCypress(sx, az, ah, getHeightAt(sx, az));
+      }
+    } else if (W3) {
+      // ── GLADIATOR APPROACH — a long cypress-lined dirt road winding up through
+      // the ripe wheat to the palace (owner: "exactly like the Gladiator scene").
+      // Straight & on-axis near the stair (frames the dolly), winding into the
+      // distance. Flanking wheat is added to the wheat fields below.
+      const APPROACH_N = 34;
+      const apX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
+      const apZ = (a: number) => -52 - a * 7;               // z -52 → -283
+      const roadMat = new THREE.MeshStandardMaterial({ color: "#9A7D56", roughness: 1 });
+      extraDisposables.push(roadMat);
+      for (let a = 0; a < APPROACH_N; a++) {
+        const x = apX(a), z = apZ(a);
+        const ax = 5.2 + a * 0.06;                          // avenue half-width (slight splay)
+        const ah = Math.max(4.2, 8.8 - a * 0.11);           // tall near → tapering into haze
+        for (const sx of [-ax, ax]) buildCypress(x + sx, z, ah, getHeightAt(x + sx, z));
+        if (a < APPROACH_N - 1) {                            // beaten-earth road segment
+          const x1 = apX(a + 1), z1 = apZ(a + 1);
+          const mx = (x + x1) / 2, mz = (z + z1) / 2, len = Math.hypot(x1 - x, z1 - z);
+          const seg = mk(new THREE.BoxGeometry(4.6, 0.12, len + 0.4), roadMat, mx, getHeightAt(mx, mz) + 0.07, mz);
+          seg.rotation.y = Math.atan2(x1 - x, z1 - z); seg.receiveShadow = true; scene.add(seg);
+        }
       }
     }
 
@@ -4622,6 +4644,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const wz2=Math.sin(angle)*dist-60;
       if(Math.sqrt(wx2*wx2+(wz2+60)*(wz2+60))<90)continue;
       wheatPositions.push([wx2,wz2,30+Math.random()*25,20+Math.random()*18]);
+    }
+    // ── GLADIATOR APPROACH — dense ripe wheat hugging both sides of the cypress
+    // avenue all the way up to the palace (same curve as the road above).
+    if (W3) {
+      for (let a = 1; a < 34; a += 2) {
+        const x = Math.sin(a * 0.16) * (a * 0.55), z = -52 - a * 7;
+        // big overlapping fields both sides → a continuous golden sea up to the road
+        for (const sx of [-1, 1]) wheatPositions.unshift([x + sx * 17, z, 28, 20]);
+      }
     }
     // On mobile, skip far wheat fields entirely and reduce near-field density
     const wheatSubset=isMobileQ?wheatPositions.slice(0,8):wheatPositions;
