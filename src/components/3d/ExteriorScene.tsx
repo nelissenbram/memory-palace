@@ -577,14 +577,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           scene.add(mk(new THREE.CylinderGeometry(0.66, 0.6, 0.18, 10), M.trim, lx, HILL_Y + 1.42, lz));
           const ball = mk(new THREE.SphereGeometry(1.0, 10, 8), M.hedge, lx, HILL_Y + 2.45, lz); ball.castShadow = true; scene.add(ball);
         }
-        // Stone fountain on the cross-axis (0,-35): basin + water + tazza + finial
+        // Stone fountain on the cross-axis (0,-35): water disc always; the stone
+        // structure is procedural under !W3, and replaced under W3 by a modeled
+        // CC-BY fountain GLB (yorre.detavernier) for a richer cortile centrepiece.
         const fountainWater = new THREE.MeshStandardMaterial({ color: "#5E7E86", roughness: 0.24, metalness: 0.1, transparent: true, opacity: 0.85, envMapIntensity: 0.6 });
-        scene.add(mk(new THREE.CylinderGeometry(3.1, 3.3, 0.8, 20), M.trim, 0, HILL_Y + 0.4, -35));        // basin wall
         scene.add(mk(new THREE.CylinderGeometry(2.7, 2.7, 0.45, 20), fountainWater, 0, HILL_Y + 0.62, -35)); // water
-        scene.add(mk(new THREE.CylinderGeometry(0.5, 0.75, 1.3, 12), M.trim, 0, HILL_Y + 1.1, -35));       // pedestal
-        scene.add(mk(new THREE.CylinderGeometry(1.3, 0.5, 0.35, 16), M.trim, 0, HILL_Y + 1.85, -35));      // upper tazza
-        scene.add(mk(new THREE.CylinderGeometry(0.18, 0.28, 0.7, 10), M.trim, 0, HILL_Y + 2.3, -35));      // stem
-        scene.add(mk(new THREE.SphereGeometry(0.26, 10, 8), M.bronze, 0, HILL_Y + 2.75, -35));             // finial
+        if (!W3) {
+          scene.add(mk(new THREE.CylinderGeometry(3.1, 3.3, 0.8, 20), M.trim, 0, HILL_Y + 0.4, -35));        // basin wall
+          scene.add(mk(new THREE.CylinderGeometry(0.5, 0.75, 1.3, 12), M.trim, 0, HILL_Y + 1.1, -35));       // pedestal
+          scene.add(mk(new THREE.CylinderGeometry(1.3, 0.5, 0.35, 16), M.trim, 0, HILL_Y + 1.85, -35));      // upper tazza
+          scene.add(mk(new THREE.CylinderGeometry(0.18, 0.28, 0.7, 10), M.trim, 0, HILL_Y + 2.3, -35));      // stem
+          scene.add(mk(new THREE.SphereGeometry(0.26, 10, 8), M.bronze, 0, HILL_Y + 2.75, -35));             // finial
+        }
       }
       // Two marble benches on the cross path (z -35 gap between hedge rows)
       for (const bx of [-13, 13]) {
@@ -716,6 +720,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     let w3EntranceCaps: THREE.Group | null = null;
     let w3Roofs: THREE.Group | null = null;
     let w3Statuary: THREE.Group | null = null;
+    let w3Fountain: THREE.Group | null = null;
     let w3RibMesh: THREE.Mesh | null = null;
     let w3Disposed = false;
 
@@ -2131,6 +2136,23 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (w3Disposed) return;
         centralGroup.add(grp);
         w3Statuary = grp;
+      }).catch(() => {});
+      // Cortile fountain — modeled CC-BY fountain (Sketchfab, credit
+      // "yorre.detavernier") replacing the simple procedural basin/tazza, seated
+      // on the cross-axis over the kept procedural water disc.
+      loadModel("/models/exterior/fountain_w3.glb" + _domeV).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          m.material = M.trim; // clean travertine, matches the palace stone
+          m.castShadow = true; m.receiveShadow = true;
+        });
+        g.position.set(0, HILL_Y, -35);
+        g.name = "w3_fountain";
+        if (w3Disposed) return;
+        scene.add(g); // WORLD coords — matches the procedural garden/water disc, not the palace group
+        w3Fountain = g;
       }).catch(() => {});
     }
     // W2 grandeur: the raised two-stage crossing lifts the dome far higher — the
@@ -5176,7 +5198,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     };
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
 
-    return()=>{w3Disposed=true;if(w3DomeCanary){w3DomeCanary.removeFromParent();w3DomeCanary=null;}if(w3EntranceCaps){w3EntranceCaps.removeFromParent();w3EntranceCaps=null;}if(w3Roofs){w3Roofs.removeFromParent();w3Roofs=null;}if(w3Statuary){w3Statuary.removeFromParent();w3Statuary=null;}/* remove only — clone shares geometry/material with the modelLoader cache master, never dispose here */if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
+    return()=>{w3Disposed=true;if(w3DomeCanary){w3DomeCanary.removeFromParent();w3DomeCanary=null;}if(w3EntranceCaps){w3EntranceCaps.removeFromParent();w3EntranceCaps=null;}if(w3Roofs){w3Roofs.removeFromParent();w3Roofs=null;}if(w3Statuary){w3Statuary.removeFromParent();w3Statuary=null;}if(w3Fountain){w3Fountain.removeFromParent();w3Fountain=null;}/* remove only — clone shares geometry/material with the modelLoader cache master, never dispose here */if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       if(hovLabel&&el.contains(hovLabel))el.removeChild(hovLabel);
       if(rmVeil&&el.contains(rmVeil))el.removeChild(rmVeil);

@@ -34,6 +34,13 @@ const CC_BY: Asset[] = [
     licence: "CC BY 4.0",
     licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
   },
+  {
+    title: "Fountain",
+    author: "yorre.detavernier",
+    source: "https://sketchfab.com/3d-models/fountain-8580500134194ba5be3f6df7593049f2",
+    licence: "CC BY 4.0",
+    licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+  },
 ];
 
 const CC0: Asset[] = [
