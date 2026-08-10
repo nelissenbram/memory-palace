@@ -2835,25 +2835,32 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             const span = ww + 1.1, hs = span / 2, rise = hs * 0.52;
             const seg = (Math.round(wx + wz) % 2 === 0); // ~half segmental, half triangular
             const py = cy + 0.14;
-            if (seg) {
-              // segmental: a shallow curved cornice (torus arc) hugging the cornice
-              const arc = new THREE.TorusGeometry(hs + 0.1, 0.13, 6, 16, Math.PI * 0.62);
-              arc.rotateZ(Math.PI * 0.5 - Math.PI * 0.31); // centre the 0.62π arc over the top
-              if (onX) { arc.rotateY(Math.PI / 2); arc.translate(wx + nx * 0.28, py + rise * 0.3, wz); }
-              else arc.translate(wx, py + rise * 0.3, wz + nz * 0.28);
-              gTrimM.push(arc);
-            } else if (!onX) {
-              // triangular: two raking cornices meeting at the apex + tympanum panel
+            if (!seg && !onX) {
+              // TRIANGULAR (front/back faces) — solid: two raking cornices meeting
+              // at the apex + recessed tympanum + apex acroterion.
               const rake = Math.hypot(hs, rise) + 0.12, ang = Math.atan2(rise, hs);
               box(gTrimM, rake, 0.15, 0.30, wx - hs / 2, py + rise / 2, wz + nz * 0.26, 0, ang);
               box(gTrimM, rake, 0.15, 0.30, wx + hs / 2, py + rise / 2, wz + nz * 0.26, 0, -ang);
               box(gWallD, span - 0.3, rise * 0.7, 0.14, wx, py + rise * 0.34, wz + nz * 0.19); // recessed tympanum
               box(gTrimM, 0.34, 0.34, 0.34, wx, py + rise + 0.06, wz + nz * 0.28);            // apex acroterion
             } else {
-              // side faces: a shallow segmental arc (triangular rake needs rotateX)
-              const arc = new THREE.TorusGeometry(hs + 0.1, 0.13, 6, 16, Math.PI * 0.62);
-              arc.rotateZ(Math.PI * 0.5 - Math.PI * 0.31); arc.rotateY(Math.PI / 2);
-              arc.translate(wx + nx * 0.28, py + rise * 0.3, wz); gTrimM.push(arc);
+              // SEGMENTAL (both faces) — now FILLED so it reads as a solid crown, not
+              // a thin floating arc: base cornice + recessed tympanum + curved cornice
+              // moulding + apex acroterion (same visual weight as the triangular).
+              const arc = new THREE.TorusGeometry(hs + 0.06, 0.15, 6, 20, Math.PI * 0.6);
+              arc.rotateZ(Math.PI * 0.5 - Math.PI * 0.30);
+              if (onX) {
+                box(gTrimM, 0.30, 0.14, span, wx + nx * 0.26, py, wz);                          // base cornice
+                box(gWallD, 0.14, rise * 0.6, span - 0.5, wx + nx * 0.19, py + rise * 0.28, wz); // tympanum
+                arc.rotateY(Math.PI / 2); arc.translate(wx + nx * 0.28, py + rise * 0.26, wz);
+                box(gTrimM, 0.30, 0.30, 0.30, wx + nx * 0.30, py + rise * 0.55, wz);             // acroterion
+              } else {
+                box(gTrimM, span, 0.14, 0.30, wx, py, wz + nz * 0.26);                           // base cornice
+                box(gWallD, span - 0.5, rise * 0.6, 0.14, wx, py + rise * 0.28, wz + nz * 0.19); // tympanum
+                arc.translate(wx, py + rise * 0.26, wz + nz * 0.28);
+                box(gTrimM, 0.30, 0.30, 0.30, wx, py + rise * 0.55, wz + nz * 0.30);             // acroterion
+              }
+              gTrimM.push(arc);
             }
           }
         }
