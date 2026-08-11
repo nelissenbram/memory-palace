@@ -72,6 +72,8 @@ export function createTuscanTerrain(
     anisotropy?: number;
     /** Golden-hour vertex-tint variant (MUSEO VIVO WS3-4: warm field tints, no cold greens). */
     warm?: boolean;
+    /** W3: lift the material past the dark crop map — sun-bleached pale ground. */
+    bright?: boolean;
   }
 ) {
   const segments = getQuality().terrainSegments;
@@ -86,10 +88,12 @@ export function createTuscanTerrain(
   // every terrain hue stays in the golden-hour earth family.
   const warm = !!opts?.warm;
   // Owner: the ground reads WHITE — sun-bleached pale dusty Tuscan summer earth.
-  const colPeak = new THREE.Color(warm ? "#E6DBC2" : "#E4D8BE");
-  const colValley = new THREE.Color(warm ? "#D8CEB2" : "#D4CBAE");
-  const colEdge = new THREE.Color(warm ? "#EEE6D4" : "#ECE3CE");
-  const colPlateau = new THREE.Color(warm ? "#E2D8BE" : "#E0D4B8");
+  // (Second lighten pass: the crop texture map multiplies these down, so the
+  // vertex palette sits near-white to compensate.)
+  const colPeak = new THREE.Color(warm ? "#F4ECD8" : "#F2EAD4");
+  const colValley = new THREE.Color(warm ? "#EAE2CA" : "#E8DFC6");
+  const colEdge = new THREE.Color(warm ? "#F8F2E4" : "#F6F0E0");
+  const colPlateau = new THREE.Color(warm ? "#F0E8D2" : "#EEE4CC");
   const tmpColor = new THREE.Color();
 
   for (let i = 0; i < pos.count; i++) {
@@ -117,9 +121,9 @@ export function createTuscanTerrain(
     tmpColor.copy(colValley).lerp(colPeak, normalizedH);
     tmpColor.lerp(colPlateau, plateauBlend * 0.6);
 
-    // Keep the plateau pale too (owner: white ground) — only a faint darken.
+    // Keep the plateau pale too (owner: white ground) — no darken at all.
     if (dist < 50) {
-      const darken = Math.max(0, 1 - dist / 50) * 0.06;
+      const darken = 0;
       tmpColor.r *= (1 - darken);
       tmpColor.g *= (1 - darken);
       tmpColor.b *= (1 - darken);
@@ -158,6 +162,12 @@ export function createTuscanTerrain(
     aoMap: textures.cropAO || null,
     aoMapIntensity: textures.cropAO ? 0.35 : 1,
   });
+  if (opts?.bright) {
+    // The crop map multiplies the pale vertex palette back down to amber-brown;
+    // an over-unity material colour lifts it to sun-bleached pale ground.
+    mat.color.setRGB(1.35, 1.30, 1.18);
+    mat.aoMapIntensity = 0.15;
+  }
 
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;

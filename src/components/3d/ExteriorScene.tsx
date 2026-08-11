@@ -103,6 +103,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // streamed through modelLoader, replacing the procedural terracotta shell +
     // ribs. Additive-safe: any load failure keeps the procedural dome (fallback).
     const W3=W2&&flag3d("w3_exterior");
+    // W3 (owner): the view opens from the BOTTOM of the hill — low, far, looking
+    // up the cypress road at the palace crowning the ridge (Gladiator arrival).
+    if(W3){camO.current.phi=camOT.current.phi=Math.PI*0.484;camD.current=252;}
     // ══════════════════════════════════════════════════════════════════════
     // W2 MASTERPLAN — GRONDPLAN v3: "un corpo unico, cresciuto nei secoli"
     // (owner-APPROVED plan, public/concepts/moodboard.html §3). Replaces the
@@ -494,10 +497,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const terrain = W1
       ? createTuscanTerrain(scene, {
           cropMap: terrainTex!.map, cropNormal: terrainTex!.normalMap, cropRoughness: terrainTex!.roughnessMap, cropAO: terrainTex!.aoMap,
-        }, { anisotropy: aniso, warm: true })
+        }, { anisotropy: aniso, warm: true, bright: W3 })
       : createTuscanTerrain(scene, {
           cropMap: cropTex.map, cropNormal: cropTex.normalMap, cropRoughness: cropTex.roughnessMap,
-        });
+        }, { bright: W3 });
     // Cobblestone courtyard — completely matte to avoid specular glare.
     // W1: real sandstone maps (WS2-3) instead of the tinted plaster stand-in.
     const courtyardGroundTex = W1 ? terrainTex! : groundTex;
@@ -640,7 +643,42 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // Terrace 1 = the parterre forecourt (top ≈ HILL_Y+0.3): retain its front
         // (z −47) and flanks so it reads as a raised terrace, not flat ground.
         const t1 = HILL_Y + 0.3;
-        retainX(40, -47, t1, 3.2); baluX(40, -47, t1, true); // first terrace back (owner) — balustrade keeps its central gap for the approach
+        if (W3) {
+          // ── CENTRAL OPENING (owner: the road must reach the entrance) ──
+          // The front retaining wall + rails split into two halves around a
+          // 9.6-wide gateway on the axis; a dusty ramp carries the road up
+          // through it onto the forecourt. Balusters flank the opening.
+          const GAP = 4.8, half = (40 - GAP) / 2;
+          for (const side of [-1, 1]) {
+            const cx = side * (GAP + half);
+            B(gWallR, half * 2, 3.8, 1.2, cx, t1 - 1.6, -47);                    // retaining wall half
+            for (let ry = t1 - 0.3; ry > t1 - 3.2; ry -= 0.9) B(gTrimR, half * 2 + 0.3, 0.5, 0.4, cx, ry, -47.55); // proud courses
+            B(gTrimR, half * 2, 0.28, 0.7, cx, t1 + 0.15, -47);                  // plinth rail
+            B(gTrimR, half * 2, 0.24, 0.85, cx, t1 + 1.5, -47);                  // coping
+            // gate piers framing the opening
+            B(gTrimR, 1.0, 2.4, 1.0, side * (GAP + 0.5), t1 + 1.0, -47);
+            for (let bx = side * (GAP + 1.6); Math.abs(bx) <= 39.3; bx += side * 0.9) baluInst.push({ x: bx, y: t1 + 0.85, z: -47 });
+          }
+          // dusty ramp: road level (z −55.5) → forecourt deck (z −45.8)
+          {
+            const rampMat = M.trim; // shared pale travertine — reads as the dusty road continuing up
+            const segs = 10, pos: number[] = [], nrm: number[] = [], idx: number[] = [];
+            for (let i = 0; i <= segs; i++) {
+              const u = i / segs, z = -55.5 + u * 9.7;
+              const yLow = getHeightAt(0, -55.5) + 0.3, s = u * u * (3 - 2 * u);
+              const y = yLow + (t1 + 0.16 - yLow) * s;
+              pos.push(-3.6, y, z, 3.6, y, z); nrm.push(0, 1, 0, 0, 1, 0);
+              if (i < segs) { const b = i * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); } // wound UP (see road ribbon)
+            }
+            const rg = new THREE.BufferGeometry();
+            rg.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+            rg.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
+            rg.setIndex(idx);
+            const rm2 = new THREE.Mesh(rg, rampMat); rm2.receiveShadow = false; scene.add(rm2); // same clean sunlit read as the road
+          }
+        } else {
+          retainX(40, -47, t1, 3.2); baluX(40, -47, t1, true);
+        }
         for (const sx of [-1, 1]) { B(gWallR, 1.2, 3.8, 31, sx * 40, t1 - 1.9, -31.5); baluZ(sx * 40, -47, -16, t1); }
         // Terraces 2 & 3 + the grand central stair — the formal stepped descent.
         // W3 (owner): drop them — the approach is a plain dusty road up the hill,
@@ -1374,6 +1412,34 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     //    that draws the eye (dark void + grey stone frame against cream walls).
     const portalDark = new THREE.MeshStandardMaterial({ color: "#17120C", roughness: 0.95, metalness: 0 });
     extraDisposables.push(portalDark);
+    if (W3) {
+      // ══ OPEN GATE (owner: "behind the pillar entrance there is a wall") ══
+      // A wide, DEEP arched portal that reads as a real opening from the axis:
+      // dark tunnel into block A, both door leaves swung OPEN against the
+      // reveal, warm interior glow spilling out.
+      const pz = -(vD / 2);
+      // deep dark tunnel (recedes 2.4 into the block)
+      centralGroup.add(mk(new THREE.BoxGeometry(5.6, 7.0, 2.4), portalDark, 0, 4.7, pz + 1.35));
+      // serena surround — jambs + lintel + projecting hood
+      for (const s of [-1, 1]) centralGroup.add(mk(new THREE.BoxGeometry(0.6, 7.4, 0.5), serenaOrder, s * 3.05, 4.8, pz - 0.12));
+      centralGroup.add(mk(new THREE.BoxGeometry(6.7, 0.6, 0.5), serenaOrder, 0, 8.35, pz - 0.12));
+      centralGroup.add(mk(new THREE.BoxGeometry(7.4, 0.42, 0.75), serenaOrder, 0, 8.85, pz - 0.2));
+      // door leaves swung OPEN, standing against the inner reveal walls
+      for (const s of [-1, 1]) {
+        const leaf = mk(new THREE.BoxGeometry(2.5, 6.2, 0.18), M.doorRich, 0, 0, 0);
+        leaf.position.set(s * 2.55, 4.1, pz + 0.9);
+        leaf.rotation.y = s * 1.25; // ~72° open into the tunnel
+        centralGroup.add(leaf);
+      }
+      // warm interior glow spilling from the opening
+      if (!isMobileGPU()) {
+        const glow = new THREE.PointLight("#FFC878", 0.85, 14);
+        glow.position.set(0, 4.2, pz + 1.1);
+        centralGroup.add(glow);
+      }
+      // threshold slab through the opening
+      centralGroup.add(mk(new THREE.BoxGeometry(5.6, 0.16, 2.8), M.marble, 0, 1.22, pz + 0.6));
+    } else {
     centralGroup.add(mk(new THREE.BoxGeometry(4.9, 6.0, 0.5), portalDark, 0, 4.5, -(vD / 2 - 0.15)));   // dark reveal behind the doors
     // bold serena architrave frame (proud), + jambs, + hood cornice
     centralGroup.add(mk(new THREE.BoxGeometry(5.5, 0.55, 0.45), serenaOrder, 0, 7.7, -(vD / 2 + 0.12)));  // lintel/architrave head
@@ -1405,6 +1471,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           centralGroup.add(stud);
         }
       }
+    }
     }
     // Semicircular transom window above grand entrance
     const transomGeo = new THREE.CylinderGeometry(2.0, 2.0, 0.08, 16, 1, false, 0, Math.PI);
@@ -3406,17 +3473,21 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if (HI) {
         // owner r6 #3: MORE ivy, in varied colours (the mixed-bucket scatter in
         // ivyPatch gives each patch base-green + fresh-green + russet leaves).
-        for (let i = 0; i < 9; i += 2) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; ivyPatch(ax, -2.5, -27.5, 5.2, 1.7, false, 46); }
+        // W3 keeps ONLY wall-pinned ivy (owner: floating klimop all over). The
+        // substructure-arcade row and the terrace-flank rows anchored to faces
+        // below the plateau hang in mid-air on the new terrain — dropped.
+        if (!W3) {
+          for (let i = 0; i < 9; i += 2) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; ivyPatch(ax, -2.5, -27.5, 5.2, 1.7, false, 46); }
+          ivyPatch(-40, 0.5, -25, 9, 1.6, false, 48);
+          ivyPatch(40, 0.5, -25, 9, 1.6, false, 48);
+        }
         for (const [tx, tz] of [[-38, -24], [-28, 38], [26, 38], [46, 16], [-50, 16]] as [number, number][]) ivyPatch(tx, 0.5, tz - 3.4, 7.5, 1.9, false, 52);
-        // both long side faces climb higher, alternating fresh + russet accents
-        ivyPatch(-40, 0.5, -25, 9, 1.6, false, 48);
-        ivyPatch(40, 0.5, -25, 9, 1.6, false, 48);
         ivyPatch(-49, 4, 6, 8, 1.7, true, 44, gIvy2);   // west palazzo flank — fresh green
         ivyPatch(45, 4, 6, 8, 1.7, true, 44, gIvy3);    // east gallery flank — russet
         // a curtain spilling down each front-pavilion corner
         for (const [px, pz] of [[-26, -25.5], [24, -25.5]] as [number, number][]) ivyPatch(px, 1, pz, 9, 2.1, false, 54);
         // ivy creeping onto the campanile & rear-tower bases
-        for (const [tx, tz] of [[36, -24], [22, 37]] as [number, number][]) ivyPatch(tx, 2, tz - 3.4, 10, 1.5, false, 40, gIvy2);
+        for (const [tx, tz] of (W3 ? [[34, -24], [26, 38]] : [[36, -24], [22, 37]]) as [number, number][]) ivyPatch(tx, 2, tz - 3.4, 10, 1.5, false, 40, gIvy2);
       }
       // damp moss skirt along the front bases (subtle, all GPUs)
       for (let i = 0; i < 9; i++) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; box(gMoss, aw - 0.4, 1.0, 0.12, ax, 0.6, -27.6); }
@@ -3727,20 +3798,23 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       for(const s of[-.9,.9])cAdd(mk(new THREE.BoxGeometry(.4,.35,.7),M.stoneD,bx+s,.18+.17,bz));
     }
 
-    // Main gravel path — wide avenue from entrance gate south to hilltop edge (skip wing zones)
-    for(let pi=0;pi<18;pi++){
-      const pz=-14-pi*1.6;
-      if(!isInWingZone(0,pz,4))cAdd(mk(new THREE.BoxGeometry(5.5,.05,2.2),M.pathD,0,.04,pz));
-    }
-    // Radiating side paths (skip wing zones) — y .05 not .03: these stones lie
-    // ON the courtyard disc (world 8.35) and at .03 their top faces landed
-    // exactly coplanar with it (z-fighting sweep #6); .05 puts them 0.02 proud
-    for(let ri=0;ri<6;ri++){
-      const pa=(ri/6)*Math.PI*2;if(Math.abs(Math.sin(pa))<.3&&Math.cos(pa)<0)continue;
-      for(let s=0;s<6;s++){
-        const pd=22+s*3;
-        const px=Math.cos(pa)*pd,pz=Math.sin(pa)*pd;
-        if(!isInWingZone(px,pz,2))cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.05,pz));
+    // Main gravel path + radiating side paths — W3 drops them ALL: the slab
+    // ladder sat exactly under the new dusty road (reading as loose wooden
+    // boards) and the radial spurs read as roads where no road belongs.
+    if(!W3){
+      for(let pi=0;pi<18;pi++){
+        const pz=-14-pi*1.6;
+        if(!isInWingZone(0,pz,4))cAdd(mk(new THREE.BoxGeometry(5.5,.05,2.2),M.pathD,0,.04,pz));
+      }
+      // y .05 not .03: these stones lie ON the courtyard disc (world 8.35) and
+      // at .03 their top faces landed exactly coplanar with it (sweep #6)
+      for(let ri=0;ri<6;ri++){
+        const pa=(ri/6)*Math.PI*2;if(Math.abs(Math.sin(pa))<.3&&Math.cos(pa)<0)continue;
+        for(let s=0;s<6;s++){
+          const pd=22+s*3;
+          const px=Math.cos(pa)*pd,pz=Math.sin(pa)*pd;
+          if(!isInWingZone(px,pz,2))cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.05,pz));
+        }
       }
     }
 
@@ -3756,8 +3830,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         hm.scale.set(1,.4,1);cAdd(hm);
       }
     }
-    // Aged stone path segments radiating from courtyard (skip wing zones)
-    for(let r=0;r<6;r++){
+    // Aged stone path segments radiating from courtyard — W3 drops them (stray
+    // "roads" across the hillsides; several radials crossed the approach axis)
+    if(!W3)for(let r=0;r<6;r++){
       const pa=(r/6)*Math.PI*2;
       for(let s=0;s<8;s++){
         const pd=42+s*3;
@@ -3992,11 +4067,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if(fieldBuckets){
         const frz=Math.random()*.5-.25;
         if(W3){
-          // Drape onto the terrain — flat centre-height planes floated off the hills
-          if(inApproach(fx,fz)){/* keep the white road clear */}
-          else if(fieldType<0.90)drapeTinted(fieldBuckets.wheat,fw,fl,atmosColor(wheatTints[fi%wheatTints.length],d),fx,fz,frz);
-          else if(fieldType<0.96)drapeTinted(fieldBuckets.green,fw,fl,atmosColor(greenTints[fi%greenTints.length],d),fx,fz,frz);
-          else drapeTinted(fieldBuckets.earth,fw,fl,atmosColor(earthTints[fi%earthTints.length],d),fx,fz,frz);
+          // Drape onto the terrain — flat centre-height planes floated off the hills.
+          // ALL patches stay in the golden-wheat family (the pale earth/green
+          // variants read as random "roads" criss-crossing the hills), lightened
+          // toward sun-bleached gold (owner: ground too dark).
+          // skip any patch whose FOOTPRINT can reach the road corridor (centre-only
+          // tests let wide patches poke through the ribbon as regular "planks")
+          const reach=14+(fw+fl)/2;
+          if(!(Math.abs(fx)<reach&&fz<-30&&fz>-300)){
+            const tint=atmosColor(wheatTints[fi%wheatTints.length],d).lerp(new THREE.Color("#F0E6C8"),0.35);
+            drapeTinted(fieldBuckets.wheat,fw,fl,tint,fx,fz,frz);
+          }
           continue;
         }
         const geo=new THREE.PlaneGeometry(fw,fl,16,16);
@@ -4147,7 +4228,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const APPROACH_N = 35;
       const apX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
       const apZ = (a: number) => -48 - a * 7;               // z -48 (just below the parterre) → -286
-      const roadMat = new THREE.MeshStandardMaterial({ color: "#F2EBDA", roughness: 1, envMapIntensity: 0.05 }); // white sun-bleached dust (Gladiator)
+      const roadMat = new THREE.MeshStandardMaterial({ color: "#F2EBDA", roughness: 1, envMapIntensity: 0.05, side: THREE.DoubleSide }); // white sun-bleached dust (Gladiator)
       extraDisposables.push(roadMat);
       for (let a = 0; a < APPROACH_N; a++) {
         const x = apX(a), z = apZ(a);
@@ -4160,7 +4241,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const ribbon = (offset: number, half: number, mat: THREE.Material, yBias: number) => {
         // Sub-sampled (4× per avenue segment) + normals forced straight UP: the
         // coarse per-segment facets shaded as visible banding down the slope.
-        const SUB = 4, N = (APPROACH_N - 1) * SUB + 1;
+        const SUB = 8, N = (APPROACH_N - 1) * SUB + 1;
         const pos: number[] = [], nrm: number[] = [], idx: number[] = [];
         for (let k = 0; k < N; k++) {
           const a = k / SUB;
@@ -4172,20 +4253,25 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const lx = cxx + nx * half, lz = czz + nz * half, rx = cxx - nx * half, rz = czz - nz * half;
           pos.push(lx, getHeightAt(lx, lz) + yBias, lz, rx, getHeightAt(rx, rz) + yBias, rz);
           nrm.push(0, 1, 0, 0, 1, 0);
-          if (k < N - 1) { const b = k * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+          // winding UP (b,b+2,b+1 / …) — the first cut wound the faces downward,
+          // so the whole ribbon rendered as a culled/backlit backface
+          if (k < N - 1) { const b = k * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
         }
         const g = new THREE.BufferGeometry();
         g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
         g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
         g.setIndex(idx);
-        const m = new THREE.Mesh(g, mat); m.receiveShadow = true; scene.add(m);
+        // receiveShadow OFF: the on-axis sun threw every avenue cypress shadow
+        // perpendicular across the road at regular spacing — the ribbon read as
+        // a ladder of wooden boards. A clean sunlit dust strip reads far better.
+        const m = new THREE.Mesh(g, mat); m.receiveShadow = false; scene.add(m);
       };
       const rutMat = new THREE.MeshStandardMaterial({ color: "#CBBD9A", roughness: 1, envMapIntensity: 0.06 });
       extraDisposables.push(rutMat);
-      // yBias ABOVE the draped field patches (+0.22) so the road always wins
-      ribbon(0, 2.5, roadMat, 0.30);      // white dusty road bed
-      ribbon(-0.85, 0.22, rutMat, 0.33);  // left wheel rut
-      ribbon(0.85, 0.22, rutMat, 0.33);   // right wheel rut
+      // ONE clean ribbon, yBias ABOVE the draped field patches (+0.22). The
+      // separate rut ribbons read as loose wooden planks — dropped.
+      void rutMat;
+      ribbon(0, 2.6, roadMat, 0.30);      // white dusty road bed
     }
 
     // ── OLIVE GROVES: silver-green, gnarled ──
@@ -4209,7 +4295,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           if (inApproach(ox, oz)) continue;
           const d = Math.sqrt(ox * ox + oz * oz);
           const oy = getHeightAt(ox, oz), s = 0.85 + Math.random() * 0.4;
-          const trunk = mk(new THREE.CylinderGeometry(.14, .24, 2.2 * s, 5), M.bark, ox, oy + 1.1 * s, oz);
+          const trunk = mk(new THREE.CylinderGeometry(.14, .24, 2.2 * s, 5), M.bark, ox, oy + 1.1 * s - 0.35, oz); // sunk into the slope
           trunk.rotation.z = Math.random() * 0.14 - 0.07; scene.add(trunk);
           for (let cl = 0; cl < 3; cl++) {
             const ca = cl * 2.1 + ox, cr = 0.85 + Math.random() * 0.5;
@@ -4246,7 +4332,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const ph=5+Math.random()*4;
       const pCol=atmosColor("#3A6830",d);
       const pnBaseY=getHeightAt(px,pz);
-      scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,pnBaseY+ph/2,pz));
+      scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,pnBaseY+ph/2-(W3?0.4:0),pz)); // W3: sunk into the slope
       if(W3){
         // Layered umbrella-pine crown: broad main canopy + smaller offset cap
         const pMat=new THREE.MeshStandardMaterial({color:pCol,roughness:.82});
@@ -4684,7 +4770,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const nearFoliageGeo=new THREE.LatheGeometry(prof,8);
       nearFoliageGeo.computeVertexNormals();
       const nearTrunkGeo=new THREE.CylinderGeometry(.04,.14,.3,5);nearTrunkGeo.translate(0,.15,0);
-      const farColGeo=new THREE.CylinderGeometry(.12,.3,.8,6);farColGeo.translate(0,.5,0);
+      const farColGeo=new THREE.CylinderGeometry(.12,.3,.8,6);farColGeo.translate(0,.38,0); // base ~at ground (was +0.1h stilt over a thin trunk)
       const farTrunkGeo=new THREE.CylinderGeometry(.06,.12,.2,5);farTrunkGeo.translate(0,.1,0);
       const setInstances=(mesh:THREE.InstancedMesh,items:{px:number,pz:number,h:number,baseY:number,seed?:number}[],foliage:boolean)=>{
         items.forEach((c,i)=>{
@@ -4696,7 +4782,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             _cyDummy.rotation.set(0,seed,0);
             _cyDummy.scale.set(s,c.h*.82,s);
           }else{
-            _cyDummy.position.set(c.px,c.baseY,c.pz);
+            _cyDummy.position.set(c.px,c.baseY-0.3,c.pz); // sunk — no floating column feet on slopes
             _cyDummy.rotation.set(0,0,0);
             _cyDummy.scale.set(1,c.h,1);
           }
@@ -4732,7 +4818,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const d4=new THREE.Object3D();
           cypressNear.forEach((c,i)=>{
             const s=1+Math.sin(c.seed*1.3)*.1,sc=c.h/3.0;
-            d4.position.set(c.px,c.baseY,c.pz);d4.rotation.set(0,c.seed,0);d4.scale.set(s*sc,sc,s*sc);
+            // sunk 0.35 so no trunk-foot hovers on the downhill side of a slope
+            d4.position.set(c.px,c.baseY-0.35,c.pz);d4.rotation.set(0,c.seed,0);d4.scale.set(s*sc,sc,s*sc);
             d4.updateMatrix();im.setMatrixAt(i,d4.matrix);
           });
           im.instanceMatrix.needsUpdate=true;im.name="w3_cypress";scene.add(im);
@@ -4828,7 +4915,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     });
 
     // ── STONE WALLS: dry stone walls between fields ──
-    const stoneWallCount=isMobileQ?5:20;
+    // W3 drops them: pale strips on the golden hills read as stray "roads".
+    const stoneWallCount=W3?0:(isMobileQ?5:20);
     for(let sw=0;sw<stoneWallCount;sw++){
       const angle=Math.random()*Math.PI*2,dist=60+Math.random()*200;
       const wx=Math.cos(angle)*dist,wz=Math.sin(angle)*dist-40;
@@ -5410,7 +5498,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.current.x,dy=e.clientY-prev.current.y;if(Math.abs(dx)>3||Math.abs(dy)>3)drag.current=true;
-      if(e.buttons===1){camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:e.clientX,y:e.clientY};}
+      if(e.buttons===1){camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(W3?Math.PI*.492:Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:e.clientX,y:e.clientY};}
       const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);onRoomHover(hits.length>0?hits[0].object.userData.roomId:null);};
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
@@ -5435,7 +5523,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       e.preventDefault();
       if(e.touches.length===1){const t=e.touches[0];const dx=t.clientX-prev.current.x,dy=t.clientY-prev.current.y;
         if(Math.abs(dx)>10||Math.abs(dy)>10){drag.current=true;touchTap=false;}
-        camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:t.clientX,y:t.clientY};
+        camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(W3?Math.PI*.492:Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:t.clientX,y:t.clientY};
       }
       if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
         const dist=Math.hypot(dx,dy);if(touchStartDist>0){camD.current=Math.max(40,Math.min(280,touchStartCamD*(touchStartDist/dist)));}
