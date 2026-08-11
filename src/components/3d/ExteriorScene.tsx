@@ -665,7 +665,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             const segs = 10, pos: number[] = [], nrm: number[] = [], idx: number[] = [];
             for (let i = 0; i <= segs; i++) {
               const u = i / segs, z = -55.5 + u * 9.7;
-              const yLow = getHeightAt(0, -55.5) + 0.3, s = u * u * (3 - 2 * u);
+              const yLow = getHeightAt(0, -55.5) + 1.25, s = u * u * (3 - 2 * u); // matches the causeway height where they meet
               const y = yLow + (t1 + 0.16 - yLow) * s;
               pos.push(-3.6, y, z, 3.6, y, z); nrm.push(0, 1, 0, 0, 1, 0);
               if (i < segs) { const b = i * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); } // wound UP (see road ribbon)
@@ -4128,11 +4128,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const vDist=90+vi*28+Math.random()*25;
       const vx=Math.cos(vAngle)*vDist,vz=Math.sin(vAngle)*vDist-40;
       if(Math.sqrt(vx*vx+(vz+40)*(vz+40))<85)continue;
+      // W3: no vineyard anywhere near the approach corridor — rows crossing the
+      // road read as a regular ladder of low boxes over the pale ribbon (THE
+      // "wooden boards"). Coarse whole-vineyard skip; rows are up to 24 long.
+      if(W3&&Math.abs(vx)<40&&vz<-25&&vz>-305)continue;
       const vRot=vAngle+Math.PI/2+Math.random()*.2-.1;
       const nRows=12+Math.floor(Math.random()*15);
       for(let row=0;row<nRows;row++){
         const rx=vx+Math.cos(vRot)*row*1.8,rz=vz+Math.sin(vRot)*row*1.8;
         const rowLen=14+Math.random()*10;
+        // belt-and-braces: skip any individual row that still touches the corridor
+        if(inApproach(rx,rz)||inApproach(rx+Math.sin(vRot)*rowLen/2,rz+Math.cos(vRot)*rowLen/2)||inApproach(rx-Math.sin(vRot)*rowLen/2,rz-Math.cos(vRot)*rowLen/2))continue;
         // Row runs along local +Z after yaw vRot → world dir (sin(vRot), cos(vRot)).
         // Seat on the LOWEST of centre/ends so no row-end floats off a hillside.
         const rdx=Math.sin(vRot)*rowLen/2, rdz=Math.cos(vRot)*rowLen/2;
@@ -4271,7 +4277,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // ONE clean ribbon, yBias ABOVE the draped field patches (+0.22). The
       // separate rut ribbons read as loose wooden planks — dropped.
       void rutMat;
-      ribbon(0, 3.4, roadMat, 0.30);      // white dusty road bed — width matches the wheat exclusion so no shadow-catching bare margin remains
+      // Raised dusty causeway: empirically the only yBias that cleanly clears the
+      // terrain's furrow-textured surface everywhere along the slope (the ribbon
+      // at +0.3 dipped under it in bands, reading as rungs). Wheat hugs the
+      // edges so the lip stays hidden.
+      ribbon(0, 3.4, roadMat, 1.25);
     }
 
     // ── OLIVE GROVES: silver-green, gnarled ──
