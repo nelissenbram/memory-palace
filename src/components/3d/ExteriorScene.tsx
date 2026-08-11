@@ -545,6 +545,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         map: whiteGravelTex.map, normalMap: whiteGravelTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
         roughnessMap: whiteGravelTex.roughnessMap, aoMap: whiteGravelTex.aoMap, aoMapIntensity: .3,
       });
+      // W3 (owner): the fountain/parterre ground must read WHITE — over-unity
+      // lift past the dark gravel map (same trick as the terrain), soft AO.
+      if (W3) { parterreGravelMat.color.setRGB(1.30, 1.27, 1.16); parterreGravelMat.aoMapIntensity = 0.1; }
       const carpet = mk(new THREE.BoxGeometry(34, 1.6, 23.6), parterreGravelMat, 0, HILL_Y - 0.44, -35.05);
       carpet.castShadow = false; scene.add(carpet);
       // ══ Owner review 2026-08-08 r6 #5 — the forecourt must read as a real
@@ -1213,10 +1216,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.5, 0.06, vD + 0.5), new THREE.MeshStandardMaterial({ color: "#6A5E50", roughness: 0.95 }), 0, vH + 1.2, 0));
 
     // Ivy/vine patches on back wall (+Z face)
+    if (!W3) { // W3: no flat ivy rectangles (read as green stickers)
     centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy, -7,   vH * 0.5 + 1.3 - 0.5, (vD / 2 + 0.03)));
     centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy, -5.2, vH * 0.5 + 1.3 + 0.8, (vD / 2 + 0.03)));
     centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy,  7.5, vH * 0.5 + 1.3 - 0.3, (vD / 2 + 0.03)));
     centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy,  5.8, vH * 0.5 + 1.3 + 1.0, (vD / 2 + 0.03)));
+    }
 
     // ── ENTRANCE VESTIBULUM (Front — 6 Corinthian columns) ──
     const vestZ = -(vD / 2 + 3);
@@ -3035,7 +3040,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // texture + weight and read as the ground floor of a multi-storey palazzo.
         // Cyclopean rusticated ashlar (owner: "rustiek mastodontisch") — deep,
         // heavy courses with vertical joints marking big blocks.
-        const rustTop = twoStorey ? h * 0.34 + 0.5 : h * 0.46 + 0.5;
+        // W3: rustication stops BELOW the ground-floor window sills (the proud
+        // courses ran straight through the lower window aediculae)
+        const rustTop = W3 ? Math.min(twoStorey ? h * 0.34 + 0.5 : h * 0.46 + 0.5, 2.9)
+          : (twoStorey ? h * 0.34 + 0.5 : h * 0.46 + 0.5);
         for (let ry = 1.6; ry < rustTop; ry += 1.35) {
           box(gTrimM, bw + 0.3, 0.85, bd + 0.3, cx, ry, cz);                    // deep proud course
           // vertical joints (dark reveals) staggered per course along both long faces
@@ -3540,6 +3548,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       });
 
       // ── MERGE & MOUNT — each bucket → one static mesh ──
+      // W3 (owner): ALL scattered ivy leaves read as unrealistic green confetti
+      // on the sun-bleached walls — drop every ivy bucket before the merge.
+      if (W3) { gIvy.length = 0; gIvy2.length = 0; gIvy3.length = 0; }
       ([[gWall, ochreWall, true], [gWallL, M.stoneL, true], [gWallD, recessDark, true],
         [gTrimM, M.trim, false], [gRoof, M.tile, true], [gRoofDS, roofMatDS, true], [gWinM, M.win, false],
         [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false],

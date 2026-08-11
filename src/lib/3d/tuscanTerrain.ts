@@ -45,6 +45,18 @@ export function getHeightAt(x: number, z: number): number {
     h = HILL_Y * (1 - smooth) + h * smooth;
   }
 
+  // RECTANGULAR hilltop pad under the full palace footprint (x ±55, z −30..42):
+  // the radial clamp (r<42) left the wing/pavilion corners overhanging the
+  // falling ground — black shadow wedges under every slab edge and floating
+  // props. Ground now rises to meet every edge, blending out over 14 units.
+  const dxp = Math.max(0, Math.abs(x) - 55);
+  const dzp = Math.max(0, z < 0 ? -z - 30 : z - 42);
+  const dRect = Math.hypot(dxp, dzp);
+  if (dRect < 14) {
+    const t = dRect / 14, sm = t * t * (3 - 2 * t);
+    h = HILL_Y * (1 - sm) + h * sm;
+  }
+
   // Gentle bowl — edges slope down
   const edge = r / (SIZE * 0.5);
   h -= edge * edge * 6;
