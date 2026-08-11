@@ -3,6 +3,7 @@ import puppeteer from "puppeteer";
 
 const PORT = process.env.SHOT_PORT || 3000;
 const DRAG = Number(process.env.ORBIT_DRAG || 300); // px horizontal drag
+const DRAGY = Number(process.env.ORBIT_DRAG_Y || 0); // px vertical drag (negative = camera up)
 const OUT = process.env.TEMP || "/tmp";
 
 const browser = await puppeteer.launch({
@@ -21,7 +22,7 @@ await new Promise((r) => setTimeout(r, 9000));
 const cx = 960, cy = 500;
 await page.mouse.move(cx, cy);
 await page.mouse.down();
-for (let i = 1; i <= 10; i++) { await page.mouse.move(cx + (DRAG * i) / 10, cy); await new Promise((r) => setTimeout(r, 40)); }
+for (let i = 1; i <= 10; i++) { await page.mouse.move(cx + (DRAG * i) / 10, cy + (DRAGY * i) / 10); await new Promise((r) => setTimeout(r, 40)); }
 await page.mouse.up();
 await new Promise((r) => setTimeout(r, 1200));
 await page.screenshot({ path: `${OUT}/mp_orbit.png` });

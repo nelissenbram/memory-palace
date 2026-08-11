@@ -49,11 +49,13 @@ export function getHeightAt(x: number, z: number): number {
   // the radial clamp (r<42) left the wing/pavilion corners overhanging the
   // falling ground — black shadow wedges under every slab edge and floating
   // props. Ground now rises to meet every edge, blending out over 14 units.
-  const dxp = Math.max(0, Math.abs(x) - 55);
-  const dzp = Math.max(0, z < 0 ? -z - 30 : z - 42);
+  // (Owner: "de rest van het platform moet genivelleerd" — wider dead-flat pad,
+  // crisper 10-unit roll-off into the wheat instead of a long visible tilt.)
+  const dxp = Math.max(0, Math.abs(x) - 60);
+  const dzp = Math.max(0, z < 0 ? -z - 30 : z - 44);
   const dRect = Math.hypot(dxp, dzp);
-  if (dRect < 14) {
-    const t = dRect / 14, sm = t * t * (3 - 2 * t);
+  if (dRect < 10) {
+    const t = dRect / 10, sm = t * t * (3 - 2 * t);
     h = HILL_Y * (1 - sm) + h * sm;
   }
 

@@ -3747,9 +3747,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // in this group's frame; 0.06 left only 0.01 clearance) and no depth
       // write: a transparent ground decal must never depth-spar with the
       // courtyard plane at distance (z-fighting sweep #6)
-      const shadow = mk(new THREE.CircleGeometry(2.5, 12), new THREE.MeshStandardMaterial({ color: "#2A3A1A", roughness: 1, transparent: true, opacity: 0.12, depthWrite: false }), ox, 0.09, oz);
-      shadow.rotation.x = -Math.PI / 2;
-      cAdd(shadow);
+      // W3: no fake shadow discs — where they hang past the courtyard edge they
+      // read as floating BLACK QUARTER-CIRCLES against the walls below.
+      if (!W3) {
+        const shadow = mk(new THREE.CircleGeometry(2.5, 12), new THREE.MeshStandardMaterial({ color: "#2A3A1A", roughness: 1, transparent: true, opacity: 0.12, depthWrite: false }), ox, 0.09, oz);
+        shadow.rotation.x = -Math.PI / 2;
+        cAdd(shadow);
+      }
     });
 
     // Symmetrical parterre gardens with flower beds
@@ -3842,7 +3846,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // No courtyard disc — terrain itself serves as the ground
     const herbGreen=new THREE.MeshStandardMaterial({color:"#5A6A3A",roughness:.88});
     const herbSilver=new THREE.MeshStandardMaterial({color:"#8A9878",roughness:.85});
-    for(const[hx,hz]of[[20,12],[-20,12],[20,-12],[-20,-12]].filter(([x,z])=>!isInWingZone(x,z,4))){
+    // W3 drops the herb beds: their positions test against the OLD radial wing
+    // zones, not the new corps blocks — they now poke half-through the pavilion
+    // walls as floating pale boxes.
+    if(!W3)for(const[hx,hz]of[[20,12],[-20,12],[20,-12],[-20,-12]].filter(([x,z])=>!isInWingZone(x,z,4))){
       cAdd(mk(new THREE.BoxGeometry(4,.2,2),M.stoneD,hx,.1,hz));
       cAdd(mk(new THREE.BoxGeometry(3.6,.15,1.6),herbGreen,hx,.2,hz));
       for(let hi=0;hi<3;hi++){
@@ -4101,7 +4108,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // tests let wide patches poke through the ribbon as regular "planks")
           const reach=14+(fw+fl)/2;
           if(!(Math.abs(fx)<reach&&fz<-30&&fz>-345)){
-            const tint=atmosColor(wheatTints[fi%wheatTints.length],d).lerp(new THREE.Color("#F0E6C8"),0.35);
+            const tint=atmosColor(wheatTints[fi%wheatTints.length],d).lerp(new THREE.Color("#F0E6C8"),0.5);
             drapeTinted(fieldBuckets.wheat,fw,fl,tint,fx,fz,frz);
           }
           continue;
@@ -4262,7 +4269,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const APPROACH_N = 35;
       const apX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
       const apZ = (a: number) => -48 - a * 7;               // z -48 (just below the parterre) → -286
-      const roadMat = new THREE.MeshStandardMaterial({ color: "#F2EBDA", roughness: 1, envMapIntensity: 0.05, side: THREE.DoubleSide }); // white sun-bleached dust (Gladiator)
+      // vertexColors: white core fading to a dusty berm tone at the edges, so the
+      // road "runs over" into the cypress verge instead of a hard pale cut.
+      const roadMat = new THREE.MeshStandardMaterial({ color: "#FFFFFF", vertexColors: true, roughness: 1, envMapIntensity: 0.05, side: THREE.DoubleSide });
       extraDisposables.push(roadMat);
       for (let a = 0; a < APPROACH_N; a++) {
         const x = apX(a), z = apZ(a);
@@ -4272,44 +4281,44 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
       // Continuous dusty-road ribbon(s) draped over the terrain — no stepped
       // segments (those read as treden). Road bed + two darker wheel ruts.
-      const ribbon = (offset: number, half: number, mat: THREE.Material, yBias: number) => {
-        // Sub-sampled (4× per avenue segment) + normals forced straight UP: the
-        // coarse per-segment facets shaded as visible banding down the slope.
+      // 4-across vertex-coloured strip: bright core → dusty edge, sub-sampled
+      // 8× per avenue segment, normals forced UP (coarse facets shaded as
+      // banding), winding UP (the first cut rendered as a culled backface),
+      // receiveShadow OFF (perpendicular on-axis cypress shadows read as a
+      // board-ladder), yBias 1.25 = the empirically-clean causeway height.
+      {
         const SUB = 8, N = (APPROACH_N - 1) * SUB + 1;
-        const pos: number[] = [], nrm: number[] = [], idx: number[] = [];
+        const HALF = 4.4, COREF = 0.42, yBias = 1.25;
+        const core = new THREE.Color("#F2EBDA"), edge = new THREE.Color("#D9C9A6");
+        // column order +→− keeps the proven UP winding (−→+ flipped it to a backface)
+        const offs = [HALF, HALF * COREF, -HALF * COREF, -HALF];
+        const cols = [edge, core, core, edge];
+        const pos: number[] = [], nrm: number[] = [], col: number[] = [], idx: number[] = [];
         for (let k = 0; k < N; k++) {
           const a = k / SUB;
           const pax = apX(Math.max(0, a - 0.5)), paz = apZ(Math.max(0, a - 0.5));
           const pbx = apX(Math.min(APPROACH_N - 1, a + 0.5)), pbz = apZ(Math.min(APPROACH_N - 1, a + 0.5));
           const dx = pbx - pax, dz = pbz - paz, dl = Math.hypot(dx, dz) || 1;
           const nx = -dz / dl, nz = dx / dl;                 // XZ perpendicular
-          const cxx = apX(a) + nx * offset, czz = apZ(a) + nz * offset;
-          const lx = cxx + nx * half, lz = czz + nz * half, rx = cxx - nx * half, rz = czz - nz * half;
-          pos.push(lx, getHeightAt(lx, lz) + yBias, lz, rx, getHeightAt(rx, rz) + yBias, rz);
-          nrm.push(0, 1, 0, 0, 1, 0);
-          // winding UP (b,b+2,b+1 / …) — the first cut wound the faces downward,
-          // so the whole ribbon rendered as a culled/backlit backface
-          if (k < N - 1) { const b = k * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
+          const cxx = apX(a), czz = apZ(a);
+          for (let j = 0; j < 4; j++) {
+            const px = cxx + nx * offs[j], pzz = czz + nz * offs[j];
+            pos.push(px, getHeightAt(px, pzz) + yBias, pzz);
+            nrm.push(0, 1, 0);
+            col.push(cols[j].r, cols[j].g, cols[j].b);
+          }
+          if (k < N - 1) for (let j = 0; j < 3; j++) {
+            const b = k * 4 + j;
+            idx.push(b, b + 4, b + 1, b + 1, b + 4, b + 5);
+          }
         }
         const g = new THREE.BufferGeometry();
         g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
         g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
+        g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
         g.setIndex(idx);
-        // receiveShadow OFF: the on-axis sun threw every avenue cypress shadow
-        // perpendicular across the road at regular spacing — the ribbon read as
-        // a ladder of wooden boards. A clean sunlit dust strip reads far better.
-        const m = new THREE.Mesh(g, mat); m.receiveShadow = false; scene.add(m);
-      };
-      const rutMat = new THREE.MeshStandardMaterial({ color: "#CBBD9A", roughness: 1, envMapIntensity: 0.06 });
-      extraDisposables.push(rutMat);
-      // ONE clean ribbon, yBias ABOVE the draped field patches (+0.22). The
-      // separate rut ribbons read as loose wooden planks — dropped.
-      void rutMat;
-      // Raised dusty causeway: empirically the only yBias that cleanly clears the
-      // terrain's furrow-textured surface everywhere along the slope (the ribbon
-      // at +0.3 dipped under it in bands, reading as rungs). Wheat hugs the
-      // edges so the lip stays hidden.
-      ribbon(0, 3.4, roadMat, 1.25);
+        const m = new THREE.Mesh(g, roadMat); m.receiveShadow = false; scene.add(m);
+      }
     }
 
     // ── OLIVE GROVES: silver-green, gnarled ──
@@ -4339,7 +4348,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             const ca = cl * 2.1 + ox, cr = 0.85 + Math.random() * 0.5;
             const cn = new THREE.Mesh(new THREE.SphereGeometry(cr * s, 8, 6), groveMats[(cl + r + c) % 3]);
             cn.position.set(ox + Math.cos(ca) * 0.8 * s, oy + (2.3 + cl * 0.45) * s, oz + Math.sin(ca) * 0.8 * s);
-            cn.scale.set(1, 0.78, 1); cn.castShadow = d < 140; scene.add(cn);
+            cn.scale.set(1, 0.78, 1); cn.castShadow = false; scene.add(cn); // W3 grove: no field shadow blobs
           }
         }
       });
@@ -4376,7 +4385,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const pMat=new THREE.MeshStandardMaterial({color:pCol,roughness:.82});
         const r1=2.4+Math.random()*1.0;
         const c1=new THREE.Mesh(new THREE.SphereGeometry(r1,10,8),pMat);
-        c1.position.set(px,pnBaseY+ph+r1*.35,pz);c1.scale.set(1,.5,1);c1.castShadow=d<130;scene.add(c1);
+        c1.position.set(px,pnBaseY+ph+r1*.35,pz);c1.scale.set(1,.5,1);c1.castShadow=false;scene.add(c1); // W3: no field shadow blobs
         const c2=new THREE.Mesh(new THREE.SphereGeometry(r1*.55,8,6),pMat);
         c2.position.set(px+(Math.random()*1.4-.7),pnBaseY+ph+r1*.75,pz+(Math.random()*1.4-.7));
         c2.scale.set(1,.55,1);scene.add(c2);
@@ -4852,7 +4861,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){geo=m.geometry;mat=m.material as THREE.Material;}});
           if(!geo||!mat)return;
           const fm=mat as THREE.MeshStandardMaterial;fm.alphaTest=0.5;fm.transparent=false;fm.side=THREE.DoubleSide;fm.needsUpdate=true;
-          const im=new THREE.InstancedMesh(geo,mat,cypressNear.length);im.castShadow=true;
+          // castShadow OFF: the wheat shader can't RECEIVE shadows, so tree
+          // shadows landed on the terrain UNDER the stalks as detached black
+          // blobs scattered over the fields (owner: "rare zwarte vlekken").
+          const im=new THREE.InstancedMesh(geo,mat,cypressNear.length);im.castShadow=false;
           const d4=new THREE.Object3D();
           cypressNear.forEach((c,i)=>{
             const s=1+Math.sin(c.seed*1.3)*.1,sc=c.h/3.0;
@@ -4867,7 +4879,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const items=cypressFar.filter(c=>c.band===b);
         if(!items.length)continue;
         const im=new THREE.InstancedMesh(farColGeo,farCypressMats[b],items.length);
-        im.castShadow=b===0; // only the nearest haze band casts (matches d<250 rule)
+        im.castShadow=b===0&&!W3; // W3: no field shadow blobs (wheat shader cannot receive)
         setInstances(im,items,false);
       }
       if(cypressFar.length){
@@ -4934,7 +4946,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // W1 (WS2-4): ONE shared wheat shader material for every field (~45 ShaderMaterials → 1);
     // per-field hsl uniforms are replaced by per-instance variation baked into the shared shader.
     const W1_WHEAT_STALK_H=1.7;
-    const sharedWheatMat=W1?createSharedWheatMaterial(W1_WHEAT_STALK_H):null;
+    const sharedWheatMat=W1?createSharedWheatMaterial(W1_WHEAT_STALK_H,W3):null; // W3: ripe gold
     if(sharedWheatMat)extraDisposables.push(sharedWheatMat);
     wheatSubset.forEach(([wx, wz, ww, wd]) => {
       const isFar = Math.hypot(wx, wz + 60) > 165;
@@ -4946,8 +4958,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
         headColor: `hsl(${40 + Math.random() * 12}, ${50 + Math.random() * 20}%, ${64 + Math.random() * 12}%)`,
         getHeightAt,
-        // W3: no stalks on the dusty road bed (wheat hugs its edges instead)
-        exclude: W3 ? (sx, sz) => sz < -40 && sz > -295 && Math.abs(sx - Math.sin(((-sz - 48) / 7) * 0.16) * (((-sz - 48) / 7) * 0.55)) < 3.4 : undefined,
+        // W3 (owner): wheat starts only BEYOND the cypress verge — the whole
+        // road + verge + tree line stays a clear dusty band (Gladiator ref)
+        exclude: W3 ? (sx, sz) => sz < -40 && sz > -295 && Math.abs(sx - Math.sin(((-sz - 48) / 7) * 0.16) * (((-sz - 48) / 7) * 0.55)) < 8.2 : undefined,
         material: sharedWheatMat ?? undefined,
       }));
     });

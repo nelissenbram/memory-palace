@@ -45,13 +45,14 @@ interface WheatFieldOptions {
  * (same trick as the grass blades) blending two sun-dried golden stalk tones,
  * so visual variety survives the material collapse. Warm canon-family tones only.
  */
-export function createSharedWheatMaterial(stalkHeight: number): THREE.ShaderMaterial {
+export function createSharedWheatMaterial(stalkHeight: number, ripe = false): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     uniforms: {
       time: { value: 0 },
-      stalkColorA: { value: new THREE.Color("#C9A94E") },
-      stalkColorB: { value: new THREE.Color("#B08E3C") },
-      headColor: { value: new THREE.Color("#E2C468") },
+      // ripe (W3): fully sun-ripened gold — the default B-tone reads olive-green
+      stalkColorA: { value: new THREE.Color(ripe ? "#E5C45E" : "#C9A94E") },
+      stalkColorB: { value: new THREE.Color(ripe ? "#D4AC48" : "#B08E3C") },
+      headColor: { value: new THREE.Color(ripe ? "#F2DA80" : "#E2C468") },
     },
     vertexShader: `
       uniform float time;
