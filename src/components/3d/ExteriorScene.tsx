@@ -977,14 +977,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         scene.add(arno);
       }
 
-      // Distant dome silhouette (Duomo-like) — seated on the terrain (was fixed
-      // y and floated once the rolling hills deepened)
-      const ddY = getHeightAt(-60, -120);
-      const distDome = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.4), M.copper);
-      distDome.position.set(-60, ddY + 5.4, -120);
-      scene.add(distDome);
-      const distDrum = mk(new THREE.CylinderGeometry(7, 7.5, 5, 8), M.stoneD, -60, ddY + 2.4, -120);
-      scene.add(distDrum);
+      // Distant dome silhouette (Duomo-like) — W3 drops it: it now lands in a
+      // terrain dip, leaving only a weird lit-facet sliver hovering over the
+      // hill crest (the "floating dashes"). The Gladiator vista is pure farmland.
+      if (!W3) {
+        const ddY = getHeightAt(-60, -120);
+        const distDome = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.4), M.copper);
+        distDome.position.set(-60, ddY + 5.4, -120);
+        scene.add(distDome);
+        const distDrum = mk(new THREE.CylinderGeometry(7, 7.5, 5, 8), M.stoneD, -60, ddY + 2.4, -120);
+        scene.add(distDrum);
+      }
 
     } else {
     // ═══ ROMAN VILLA — authentic Roman compound ═══
@@ -1990,7 +1993,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       scene.add(viaAppia);
     }
 
-    // Distant temple silhouette on hillside
+    // Distant temple silhouette on hillside — W3 drops it (it lands half-buried
+    // in a terrain dip on the rolling hills; the Gladiator vista is farmland)
+    if (!W3) {
     const templeZ = -130, templeX = 60;
     // Seat on the terrain (was hard-coded y=4 — floated once the hills deepened)
     const templeY = Math.min(getHeightAt(templeX - 5, templeZ - 4), getHeightAt(templeX + 5, templeZ - 4),
@@ -2008,6 +2013,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const tPedR = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX + 2, templeY + 7.7, templeZ);
     tPedR.rotation.z = -0.15;
     scene.add(tPedR);
+    }
 
     // Collect central meshes for hover/glow
     centralGroup.traverse((child: THREE.Object3D) => {
@@ -3360,8 +3366,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           gTrimM.push(new THREE.BoxGeometry(fp + 0.6, 0.22, fp + 0.6).translate(tx, topY + 0.42, tz));
           const eY = topY + 0.55, rH = fp * 0.66, apexY = eY + rH;
           hipRoof(tx, tz, fp + 0.3, fp + 0.3, eY, rH, 0.45, true); // W3 hides this → coppi tower cap
-          // antefix coppo roll-tiles ringing the eave
-          const ne = Math.max(3, Math.round(fp));
+          // antefix coppo roll-tiles ringing the eave — W3 drops them: the coppi
+          // GLB caps carry their own tile ends, and on towers hidden behind the
+          // wings the proud antefix ring peeked past the silhouette as a row of
+          // floating terracotta dashes against the sky.
+          const ne = W3 ? 0 : Math.max(3, Math.round(fp));
           for (const [ex, ez, along] of [[0, -1, 1], [0, 1, 1], [-1, 0, 0], [1, 0, 0]] as [number, number, number][]) {
             for (let e = 0; e < ne; e++) {
               const q = -fp / 2 + 0.4 + (e / (ne - 1)) * (fp - 0.8);
@@ -3942,6 +3951,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       wheat:[] as THREE.BufferGeometry[],green:[] as THREE.BufferGeometry[],
       earth:[] as THREE.BufferGeometry[],vine:[] as THREE.BufferGeometry[],
     }:null;
+    // W3: keep the Gladiator approach corridor clear of stray random scenery
+    // (nothing lands on the dusty road / avenue). Defined before every scatter loop.
+    const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
     const _fieldDummy=new THREE.Object3D();
     // Bake a uniform tint into a color attribute, apply the world transform, queue for merge
     const pushTinted=(bucket:THREE.BufferGeometry[],geo:THREE.BufferGeometry,tint:THREE.Color,px:number,py:number,pz:number,rx:number,ry:number,rz:number)=>{
@@ -3950,6 +3962,20 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       geo.setAttribute("color",new THREE.BufferAttribute(arr,3));
       _fieldDummy.position.set(px,py,pz);_fieldDummy.rotation.set(rx,ry,rz);_fieldDummy.updateMatrix();
       geo.applyMatrix4(_fieldDummy.matrix);
+      bucket.push(geo);
+    };
+    // W3: DRAPE a field patch over the rolling terrain (per-vertex getHeightAt)
+    // instead of a flat plane at centre height — flat patches floated hugely off
+    // hillsides once the terrain gained real relief.
+    const drapeTinted=(bucket:THREE.BufferGeometry[],fw:number,fl:number,tint:THREE.Color,fx:number,fz:number,yaw:number)=>{
+      const geo=new THREE.PlaneGeometry(fw,fl,8,8);
+      geo.rotateX(-Math.PI/2);geo.rotateY(yaw);geo.translate(fx,0,fz);
+      const p=geo.attributes.position;
+      for(let i=0;i<p.count;i++)p.setY(i,getHeightAt(p.getX(i),p.getZ(i))+0.22);
+      geo.computeVertexNormals();
+      const arr=new Float32Array(p.count*3);
+      for(let i=0;i<p.count;i++){arr[i*3]=tint.r;arr[i*3+1]=tint.g;arr[i*3+2]=tint.b;}
+      geo.setAttribute("color",new THREE.BufferAttribute(arr,3));
       bucket.push(geo);
     };
     // VERY dense field coverage — 500 patches for a sea of golden wheat (60 on mobile)
@@ -3964,8 +3990,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // 90% golden wheat, 6% green crop, 4% plowed earth
       const fieldType=Math.random();
       if(fieldBuckets){
+        const frz=Math.random()*.5-.25;
+        if(W3){
+          // Drape onto the terrain — flat centre-height planes floated off the hills
+          if(inApproach(fx,fz)){/* keep the white road clear */}
+          else if(fieldType<0.90)drapeTinted(fieldBuckets.wheat,fw,fl,atmosColor(wheatTints[fi%wheatTints.length],d),fx,fz,frz);
+          else if(fieldType<0.96)drapeTinted(fieldBuckets.green,fw,fl,atmosColor(greenTints[fi%greenTints.length],d),fx,fz,frz);
+          else drapeTinted(fieldBuckets.earth,fw,fl,atmosColor(earthTints[fi%earthTints.length],d),fx,fz,frz);
+          continue;
+        }
         const geo=new THREE.PlaneGeometry(fw,fl,16,16);
-        const fy=getHeightAt(fx,fz)+.2,frz=Math.random()*.5-.25;
+        const fy=getHeightAt(fx,fz)+.2;
         if(fieldType<0.90)pushTinted(fieldBuckets.wheat,geo,atmosColor(wheatTints[fi%wheatTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
         else if(fieldType<0.96)pushTinted(fieldBuckets.green,geo,atmosColor(greenTints[fi%greenTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
         else pushTinted(fieldBuckets.earth,geo,atmosColor(earthTints[fi%earthTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
@@ -4033,9 +4068,6 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── CYPRESS TREES: dense Tuscan signature ──
     // Mobile: ~75% fewer trees (only road avenue + 8 hilltop clusters)
-    // W3: keep the Gladiator approach corridor clear of stray random scenery
-    // (nothing lands on the dusty road / avenue).
-    const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
     const cypressPositions: number[][]=[];
     // Along winding road — dense avenue
     // W3 (owner): drop this second winding cypress avenue — the Gladiator approach
@@ -4156,18 +4188,50 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── OLIVE GROVES: silver-green, gnarled ──
-    const oliveCount=isMobileQ?10:40;
-    for(let oi=0;oi<oliveCount;oi++){
-      const angle=Math.random()*Math.PI*2,dist=38+Math.random()*120;
-      const ox=Math.cos(angle)*dist,oz=Math.sin(angle)*dist-20;
-      if(Math.sqrt(ox*ox+oz*oz)<48)continue;
-      if(inApproach(ox,oz))continue;
-      const d=Math.sqrt(ox*ox+oz*oz);
-      const oCol=atmosColor(`hsl(${102+Math.random()*18},${22+Math.random()*18}%,${36+Math.random()*12}%)`,d);
-      const olBaseY=getHeightAt(ox,oz);
-      scene.add(mk(new THREE.CylinderGeometry(.12,.2,2,5),M.bark,ox,olBaseY+1,oz));
-      const cn=new THREE.Mesh(new THREE.SphereGeometry(1.8+Math.random()*.8,8,7),new THREE.MeshStandardMaterial({color:oCol,roughness:.84}));
-      cn.position.set(ox,olBaseY+(W3?2.4:2.8)+Math.random()*.3,oz);cn.scale.set(1,W3?0.75:0.4,1);cn.castShadow=d<120;scene.add(cn); // W3: rounded canopy, not a flat disc
+    if (W3) {
+      // Real GROVES — planted rows on the hillsides (agriculture, not random
+      // scatter); each tree a leaning gnarled trunk + a 3-clump canopy.
+      const groveMats = [
+        new THREE.MeshStandardMaterial({ color: "#7E8C5C", roughness: 0.85 }),
+        new THREE.MeshStandardMaterial({ color: "#8C9A6A", roughness: 0.83 }),
+        new THREE.MeshStandardMaterial({ color: "#72804F", roughness: 0.86 }),
+      ];
+      extraDisposables.push(...groveMats);
+      const groves: [number, number, number][] = isMobileQ
+        ? [[-70, -100, 0.35], [85, -130, -0.5]]
+        : [[-70, -100, 0.35], [85, -130, -0.5], [-125, -185, 0.9], [135, -215, 0.2]];
+      groves.forEach(([gcx, gcz, gRot]) => {
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+          const lx = (c - 1.5) * 7 + (Math.random() * 2 - 1), lz = (r - 1) * 7 + (Math.random() * 2 - 1);
+          const ox = gcx + lx * Math.cos(gRot) - lz * Math.sin(gRot);
+          const oz = gcz + lx * Math.sin(gRot) + lz * Math.cos(gRot);
+          if (inApproach(ox, oz)) continue;
+          const d = Math.sqrt(ox * ox + oz * oz);
+          const oy = getHeightAt(ox, oz), s = 0.85 + Math.random() * 0.4;
+          const trunk = mk(new THREE.CylinderGeometry(.14, .24, 2.2 * s, 5), M.bark, ox, oy + 1.1 * s, oz);
+          trunk.rotation.z = Math.random() * 0.14 - 0.07; scene.add(trunk);
+          for (let cl = 0; cl < 3; cl++) {
+            const ca = cl * 2.1 + ox, cr = 0.85 + Math.random() * 0.5;
+            const cn = new THREE.Mesh(new THREE.SphereGeometry(cr * s, 8, 6), groveMats[(cl + r + c) % 3]);
+            cn.position.set(ox + Math.cos(ca) * 0.8 * s, oy + (2.3 + cl * 0.45) * s, oz + Math.sin(ca) * 0.8 * s);
+            cn.scale.set(1, 0.78, 1); cn.castShadow = d < 140; scene.add(cn);
+          }
+        }
+      });
+    } else {
+      const oliveCount=isMobileQ?10:40;
+      for(let oi=0;oi<oliveCount;oi++){
+        const angle=Math.random()*Math.PI*2,dist=38+Math.random()*120;
+        const ox=Math.cos(angle)*dist,oz=Math.sin(angle)*dist-20;
+        if(Math.sqrt(ox*ox+oz*oz)<48)continue;
+        if(inApproach(ox,oz))continue;
+        const d=Math.sqrt(ox*ox+oz*oz);
+        const oCol=atmosColor(`hsl(${102+Math.random()*18},${22+Math.random()*18}%,${36+Math.random()*12}%)`,d);
+        const olBaseY=getHeightAt(ox,oz);
+        scene.add(mk(new THREE.CylinderGeometry(.12,.2,2,5),M.bark,ox,olBaseY+1,oz));
+        const cn=new THREE.Mesh(new THREE.SphereGeometry(1.8+Math.random()*.8,8,7),new THREE.MeshStandardMaterial({color:oCol,roughness:.84}));
+        cn.position.set(ox,olBaseY+2.8+Math.random()*.3,oz);cn.scale.set(1,.4,1);cn.castShadow=d<120;scene.add(cn);
+      }
     }
 
     // ── STONE PINES (umbrella pines) ──
@@ -4182,8 +4246,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const pCol=atmosColor("#3A6830",d);
       const pnBaseY=getHeightAt(px,pz);
       scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,pnBaseY+ph/2,pz));
-      const canopy=new THREE.Mesh(new THREE.SphereGeometry(2.5+Math.random()*1.2,10,8),new THREE.MeshStandardMaterial({color:pCol,roughness:.82}));
-      canopy.position.set(px,pnBaseY+ph+(W3?1.4:.8),pz);canopy.scale.set(1,W3?0.6:.28,1);canopy.castShadow=d<130;scene.add(canopy); // W3: rounded umbrella, not a flat disc
+      if(W3){
+        // Layered umbrella-pine crown: broad main canopy + smaller offset cap
+        const pMat=new THREE.MeshStandardMaterial({color:pCol,roughness:.82});
+        const r1=2.4+Math.random()*1.0;
+        const c1=new THREE.Mesh(new THREE.SphereGeometry(r1,10,8),pMat);
+        c1.position.set(px,pnBaseY+ph+r1*.35,pz);c1.scale.set(1,.5,1);c1.castShadow=d<130;scene.add(c1);
+        const c2=new THREE.Mesh(new THREE.SphereGeometry(r1*.55,8,6),pMat);
+        c2.position.set(px+(Math.random()*1.4-.7),pnBaseY+ph+r1*.75,pz+(Math.random()*1.4-.7));
+        c2.scale.set(1,.55,1);scene.add(c2);
+      }else{
+        const canopy=new THREE.Mesh(new THREE.SphereGeometry(2.5+Math.random()*1.2,10,8),new THREE.MeshStandardMaterial({color:pCol,roughness:.82}));
+        canopy.position.set(px,pnBaseY+ph+.8,pz);canopy.scale.set(1,.28,1);canopy.castShadow=d<130;scene.add(canopy);
+      }
     }
 
     // ── FARMHOUSES & VILLAS: warm stone, terracotta roofs, shutters ──
