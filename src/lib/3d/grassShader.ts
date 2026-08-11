@@ -9,6 +9,10 @@ interface GrassOptions {
   tipColor1: string;
   tipColor2: string;
   yOffset: number;
+  /** Seat each blade on the terrain instead of the flat yOffset plane. */
+  getHeightAt?: (x: number, z: number) => number;
+  /** Skip blades where this returns true (e.g. keep the approach road clear). */
+  exclude?: (x: number, z: number) => boolean;
 }
 
 interface WheatFieldOptions {
@@ -84,7 +88,7 @@ export function createSharedWheatMaterial(stalkHeight: number): THREE.ShaderMate
  * Create an instanced grass system with wind animation
  */
 export function createGrassSystem(scene: THREE.Scene, opts: GrassOptions) {
-  const { count, radius, innerRadius, bladeHeight, baseColor, tipColor1, tipColor2, yOffset } = opts;
+  const { count, radius, innerRadius, bladeHeight, baseColor, tipColor1, tipColor2, yOffset, getHeightAt, exclude } = opts;
 
   // Blade geometry — simple thin triangular prism
   const bladeGeo = new THREE.PlaneGeometry(0.08, bladeHeight, 1, 4);
@@ -139,18 +143,22 @@ export function createGrassSystem(scene: THREE.Scene, opts: GrassOptions) {
   const mesh = new THREE.InstancedMesh(bladeGeo, bladeMat, count);
   const dummy = new THREE.Object3D();
 
+  let written = 0;
   for (let i = 0; i < count; i++) {
     // Random position in annular ring
     const angle = Math.random() * Math.PI * 2;
     const dist = innerRadius + Math.random() * (radius - innerRadius);
     const x = Math.cos(angle) * dist;
     const z = Math.sin(angle) * dist;
-    dummy.position.set(x, yOffset + bladeHeight / 2, z);
+    if (exclude && exclude(x, z)) continue;
+    const baseY = getHeightAt ? getHeightAt(x, z) : yOffset;
+    dummy.position.set(x, baseY + bladeHeight / 2, z);
     dummy.rotation.y = Math.random() * Math.PI;
     dummy.scale.setScalar(0.7 + Math.random() * 0.6);
     dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
+    mesh.setMatrixAt(written++, dummy.matrix);
   }
+  mesh.count = written; // never render unwritten (identity-at-origin) instances
   mesh.instanceMatrix.needsUpdate = true;
   scene.add(mesh);
 

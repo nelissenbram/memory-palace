@@ -106,6 +106,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // W3 (owner): the view opens from the BOTTOM of the hill — low, far, looking
     // up the cypress road at the palace crowning the ridge (Gladiator arrival).
     if(W3){camO.current.phi=camOT.current.phi=Math.PI*0.484;camD.current=252;}
+    // W3: keep the Gladiator approach corridor clear of stray random scenery
+    // (nothing lands on the dusty road / avenue). Hoisted above ALL scatter loops.
+    const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
     // ══════════════════════════════════════════════════════════════════════
     // W2 MASTERPLAN — GRONDPLAN v3: "un corpo unico, cresciuto nei secoli"
     // (owner-APPROVED plan, public/concepts/moodboard.html §3). Replaces the
@@ -1417,28 +1420,30 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // A wide, DEEP arched portal that reads as a real opening from the axis:
       // dark tunnel into block A, both door leaves swung OPEN against the
       // reveal, warm interior glow spilling out.
-      const pz = -(vD / 2);
-      // deep dark tunnel (recedes 2.4 into the block)
-      centralGroup.add(mk(new THREE.BoxGeometry(5.6, 7.0, 2.4), portalDark, 0, 4.7, pz + 1.35));
-      // serena surround — jambs + lintel + projecting hood
-      for (const s of [-1, 1]) centralGroup.add(mk(new THREE.BoxGeometry(0.6, 7.4, 0.5), serenaOrder, s * 3.05, 4.8, pz - 0.12));
-      centralGroup.add(mk(new THREE.BoxGeometry(6.7, 0.6, 0.5), serenaOrder, 0, 8.35, pz - 0.12));
-      centralGroup.add(mk(new THREE.BoxGeometry(7.4, 0.42, 0.75), serenaOrder, 0, 8.85, pz - 0.2));
-      // door leaves swung OPEN, standing against the inner reveal walls
+      // The portal must cut BLOCK A's grown front face (z ≈ −10.15) — the first
+      // cut sat at the old villa wall z=−9, fully hidden BEHIND block A's wall.
+      const pf = -10.15;
+      // deep dark tunnel — proud face 0.3 in front of the wall, receding 3.2 in
+      centralGroup.add(mk(new THREE.BoxGeometry(6.2, 7.6, 3.2), portalDark, 0, 5.0, pf + 1.45));
+      // serena surround — jambs + lintel + projecting hood, proud of the wall
+      for (const s of [-1, 1]) centralGroup.add(mk(new THREE.BoxGeometry(0.65, 8.2, 0.6), serenaOrder, s * 3.4, 5.2, pf - 0.18));
+      centralGroup.add(mk(new THREE.BoxGeometry(7.5, 0.65, 0.6), serenaOrder, 0, 9.25, pf - 0.18));
+      centralGroup.add(mk(new THREE.BoxGeometry(8.2, 0.45, 0.9), serenaOrder, 0, 9.8, pf - 0.28));
+      // door leaves swung OPEN against the inner reveal walls
       for (const s of [-1, 1]) {
-        const leaf = mk(new THREE.BoxGeometry(2.5, 6.2, 0.18), M.doorRich, 0, 0, 0);
-        leaf.position.set(s * 2.55, 4.1, pz + 0.9);
+        const leaf = mk(new THREE.BoxGeometry(2.8, 6.8, 0.18), M.doorRich, 0, 0, 0);
+        leaf.position.set(s * 2.8, 4.5, pf + 0.95);
         leaf.rotation.y = s * 1.25; // ~72° open into the tunnel
         centralGroup.add(leaf);
       }
       // warm interior glow spilling from the opening
       if (!isMobileGPU()) {
-        const glow = new THREE.PointLight("#FFC878", 0.85, 14);
-        glow.position.set(0, 4.2, pz + 1.1);
+        const glow = new THREE.PointLight("#FFC878", 0.9, 16);
+        glow.position.set(0, 4.4, pf + 1.2);
         centralGroup.add(glow);
       }
-      // threshold slab through the opening
-      centralGroup.add(mk(new THREE.BoxGeometry(5.6, 0.16, 2.8), M.marble, 0, 1.22, pz + 0.6));
+      // threshold slab from the portal out to the portico platform
+      centralGroup.add(mk(new THREE.BoxGeometry(6.2, 0.16, 2.4), M.marble, 0, 1.22, pf - 0.9));
     } else {
     centralGroup.add(mk(new THREE.BoxGeometry(4.9, 6.0, 0.5), portalDark, 0, 4.5, -(vD / 2 - 0.15)));   // dark reveal behind the doors
     // bold serena architrave frame (proud), + jambs, + hood cornice
@@ -3867,6 +3872,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       tipColor1: "#B8A860",
       tipColor2: "#8A8038",
       yOffset: HILL_Y,
+      // W3: seat every blade on the rolling terrain (fixed-height blades hovered
+      // over the falling ground beyond the plateau) and keep the road clear
+      getHeightAt: W3 ? getHeightAt : undefined,
+      exclude: W3 ? inApproach : undefined,
     });
 
     // ── PALACE CYPRESS RING — LatheGeometry with vertex noise for natural columnar shape ──
@@ -3960,34 +3969,39 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       buildCypress(ccx,ccz,cch,getHeightAt(ccx,ccz));
     }
 
-    // ── NEAR-PALACE VINEYARD — organized rows on south-east slope ──
-    const vineRowMat=new THREE.MeshStandardMaterial({color:W1?"#4C5A30":"#3A5828",roughness:.84});
-    const vineRowCount=isMobileQ?5:14;
-    for(let row=0;row<vineRowCount;row++){
-      const vx=35+row*2.2;const vz=35+Math.sin(row*.3)*3;
-      const vBaseY=getHeightAt(vx,vz);
-      const vr=mk(new THREE.BoxGeometry(.35,.6,16),vineRowMat,vx,vBaseY+.3,vz);
-      vr.rotation.y=.15;scene.add(vr);
+    // ── NEAR-PALACE VINEYARD — W3 drops it (dark striped rows read as an odd
+    // brown rectangle from the arrival; the Gladiator vista is pure wheat) ──
+    if(!W3){
+      const vineRowMat=new THREE.MeshStandardMaterial({color:W1?"#4C5A30":"#3A5828",roughness:.84});
+      const vineRowCount=isMobileQ?5:14;
+      for(let row=0;row<vineRowCount;row++){
+        const vx=35+row*2.2;const vz=35+Math.sin(row*.3)*3;
+        const vBaseY=getHeightAt(vx,vz);
+        const vr=mk(new THREE.BoxGeometry(.35,.6,16),vineRowMat,vx,vBaseY+.3,vz);
+        vr.rotation.y=.15;scene.add(vr);
+      }
     }
 
-    // ── COURTYARD BOXWOOD HEDGES ──
-    const boxwoodMat=new THREE.MeshStandardMaterial({color:W1?"#3C4828":"#2A4A1E",roughness:.88});
-    for(let hi=0;hi<24;hi++){
-      const ha=(hi/24)*Math.PI*2;
-      const hx2=Math.cos(ha)*34,hz2=Math.sin(ha)*34;
-      if(isInWingZone(hx2,hz2,3))continue;
-      const hedge2=mk(new THREE.BoxGeometry(3,.8,.6),boxwoodMat,hx2,.4,hz2);
-      hedge2.rotation.y=ha+Math.PI/2;courtyardGroup.add(hedge2);
-    }
-
-    // ── LOW DRY STONE WALL around courtyard edge (rustic, not fancy) ──
-    const dryWallMat=new THREE.MeshStandardMaterial({color:"#A09078",roughness:.92,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4)});
-    for(let wi=0;wi<20;wi++){
-      const wa=(wi/20)*Math.PI*2;
-      const wx=Math.cos(wa)*42,wz=Math.sin(wa)*42;
-      if(isInWingZone(wx,wz,3))continue;
-      const seg=mk(new THREE.BoxGeometry(4,.45,.35),dryWallMat,wx,.22,wz);
-      seg.rotation.y=wa+Math.PI/2;cAdd(seg);
+    // ── COURTYARD BOXWOOD HEDGES + LOW DRY STONE WALL rings — W3 drops both:
+    // the dark hedge blocks and pale wall segments ride the plateau LIP and read
+    // as odd unfinished clutter on the terrace edges from the arrival.
+    if(!W3){
+      const boxwoodMat=new THREE.MeshStandardMaterial({color:W1?"#3C4828":"#2A4A1E",roughness:.88});
+      for(let hi=0;hi<24;hi++){
+        const ha=(hi/24)*Math.PI*2;
+        const hx2=Math.cos(ha)*34,hz2=Math.sin(ha)*34;
+        if(isInWingZone(hx2,hz2,3))continue;
+        const hedge2=mk(new THREE.BoxGeometry(3,.8,.6),boxwoodMat,hx2,.4,hz2);
+        hedge2.rotation.y=ha+Math.PI/2;courtyardGroup.add(hedge2);
+      }
+      const dryWallMat=new THREE.MeshStandardMaterial({color:"#A09078",roughness:.92,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4)});
+      for(let wi=0;wi<20;wi++){
+        const wa=(wi/20)*Math.PI*2;
+        const wx=Math.cos(wa)*42,wz=Math.sin(wa)*42;
+        if(isInWingZone(wx,wz,3))continue;
+        const seg=mk(new THREE.BoxGeometry(4,.45,.35),dryWallMat,wx,.22,wz);
+        seg.rotation.y=wa+Math.PI/2;cAdd(seg);
+      }
     }
 
     // ── PATCHWORK FIELDS: Tuscan summer — golden wheat blankets the landscape ──
@@ -4026,9 +4040,6 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       wheat:[] as THREE.BufferGeometry[],green:[] as THREE.BufferGeometry[],
       earth:[] as THREE.BufferGeometry[],vine:[] as THREE.BufferGeometry[],
     }:null;
-    // W3: keep the Gladiator approach corridor clear of stray random scenery
-    // (nothing lands on the dusty road / avenue). Defined before every scatter loop.
-    const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
     const _fieldDummy=new THREE.Object3D();
     // Bake a uniform tint into a color attribute, apply the world transform, queue for merge
     const pushTinted=(bucket:THREE.BufferGeometry[],geo:THREE.BufferGeometry,tint:THREE.Color,px:number,py:number,pz:number,rx:number,ry:number,rz:number)=>{
@@ -4122,7 +4133,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // vertex-tinted vine bucket (one merged mesh) instead of ~250 materials/draws.
     const vineM=[new THREE.MeshStandardMaterial({color:W1?"#4C5A30":"#3A5828",roughness:.85}),new THREE.MeshStandardMaterial({color:W1?"#5C6A38":"#4A6830",roughness:.82})];
     extraDisposables.push(...vineM);
-    const vineyardCount=isMobileQ?3:14;
+    // W3: no vineyards at all — from the arrival they read as odd brown
+    // striped rectangles on the hills; the Gladiator vista is pure wheat.
+    const vineyardCount=W3?0:(isMobileQ?3:14);
     for(let vi=0;vi<vineyardCount;vi++){
       const vAngle=Math.random()*Math.PI*2;
       const vDist=90+vi*28+Math.random()*25;
@@ -5021,12 +5034,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const addSignpost=(id: string,label: string,sx: number,sz: number,ry: number)=>{
         const g=new THREE.Group();
         g.position.set(sx,HILL_Y+0.3,sz);g.rotation.y=ry;
+        // W3 (owner): no visible stele — it read as a strange named statue in
+        // front of the pillars. The open gate IS the target; the oversized
+        // invisible hit box below keeps the tap contract intact.
+        if(!W3){
         g.add(mk(new THREE.BoxGeometry(0.9,0.3,0.9),M.stoneD,0,0.15,0));
         g.add(mk(new THREE.BoxGeometry(0.34,2.1,0.34),M.trim,0,1.35,0));
         g.add(mk(new THREE.BoxGeometry(0.5,0.12,0.5),M.trim,0,2.46,0));
         const lbl=makeFrauncesLabel(label,{width:2.3,height:0.55});
         lbl.position.set(0,1.85,0.19);
         g.add(lbl);
+        }
         const hit=new THREE.Mesh(new THREE.BoxGeometry(3.2,3.4,1.6),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
         hit.position.set(0,1.7,0);hit.userData={roomId:id,wingMeshes:[],accent:EMBER};
         g.add(hit);clickTargets.push(hit);
