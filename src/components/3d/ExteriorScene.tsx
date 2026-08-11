@@ -3137,7 +3137,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           for (const sz of [-1, 1]) { box(gTrimM, bw + 1.0, 0.22, 0.5, cx, py + 1.15, cz + sz * (bd / 2 + 0.4)); for (let bx = -bw / 2; bx <= bw / 2; bx += 1.0) gTrimM.push(new THREE.CylinderGeometry(0.14, 0.18, 1.0, 6).translate(cx + bx, py + 0.6, cz + sz * (bd / 2 + 0.4))); }
           for (const sx of [-1, 1]) { box(gTrimM, 0.5, 0.22, bd + 1.0, cx + sx * (bw / 2 + 0.4), py + 1.15, cz); for (let bz = -bd / 2; bz <= bd / 2; bz += 1.0) gTrimM.push(new THREE.CylinderGeometry(0.14, 0.18, 1.0, 6).translate(cx + sx * (bw / 2 + 0.4), py + 0.6, cz + bz)); }
           for (const sx of [-1, 1]) for (const sz of [-1, 1]) urn(cx + sx * (bw / 2 + 0.4), py + 1.3, cz + sz * (bd / 2 + 0.4), 1.3);
-        } else {
+        } else if (!W3) {
+          // W3 drops these: on hip-roofed blocks the corner urns sit 0.2 OUTSIDE
+          // the footprint at eave height with nothing under them — they read as
+          // small pale blocks floating beside every roof corner.
           for (const sx of [-1, 1]) for (const sz of [-1, 1]) urn(cx + sx * (bw / 2 + 0.2), h + 0.9, cz + sz * (bd / 2 + 0.2), 1.15);
         }
         // ── TWO-STOREY RICH WINDOW RITME ────────────────────────────────────
@@ -3295,6 +3298,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // arcade on the downhill (−z) face — big rusticated arches; the central
         // ones hold studded wood doors (owner r4: "meer detail in deuren"), the
         // rest read as deep shadowed openings with a keystone.
+        // W3 drops the blind arcade entirely: outside the parterre (x ±17) its
+        // big dark arch half-discs stand exposed above the levelled ground —
+        // the row of "black quarter circles" the owner kept circling.
+        if (!W3) {
         const na = 9;
         for (let i = 0; i < na; i++) {
           const ax = px0 + (i + 0.5) * (pw / na), aw = pw / na - 1.4;
@@ -3311,6 +3318,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             }
             box(gIron, 0.1, 3.0, 0.1, ax, -2.3, pz0 - 0.5);           // meeting stile
           }
+        }
         }
         // heavy cornice capping the podium (the terrace-floor edge)
         box(gTrimM, pw + 1.2, 0.55, pd + 1.2, pcx, 0.35, pcz);
@@ -4290,11 +4298,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // board-ladder), yBias 1.25 = the empirically-clean causeway height.
       {
         const SUB = 8, N = (APPROACH_N - 1) * SUB + 1;
-        const HALF = 4.4, COREF = 0.42, yBias = 1.25;
-        const core = new THREE.Color("#F2EBDA"), edge = new THREE.Color("#D9C9A6");
-        // column order +→− keeps the proven UP winding (−→+ flipped it to a backface)
-        const offs = [HALF, HALF * COREF, -HALF * COREF, -HALF];
-        const cols = [edge, core, core, edge];
+        const yBias = 1.25;
+        // 6 columns: soft berm edge → pale wheel track → dry-grass CENTRE STRIP
+        // (middenberm, owner) → track → berm; vertex colours blend the bands.
+        // Column order +→− keeps the proven UP winding (−→+ flipped it to a backface)
+        const track = new THREE.Color("#F4EDDC"), edge = new THREE.Color("#D9C9A6"), centre = new THREE.Color("#B7AE7F");
+        const offs = [4.4, 2.8, 1.0, -1.0, -2.8, -4.4];
+        const cols = [edge, track, centre, centre, track, edge];
         const pos: number[] = [], nrm: number[] = [], col: number[] = [], idx: number[] = [];
         for (let k = 0; k < N; k++) {
           const a = k / SUB;
@@ -4303,15 +4313,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const dx = pbx - pax, dz = pbz - paz, dl = Math.hypot(dx, dz) || 1;
           const nx = -dz / dl, nz = dx / dl;                 // XZ perpendicular
           const cxx = apX(a), czz = apZ(a);
-          for (let j = 0; j < 4; j++) {
+          const NC = offs.length;
+          for (let j = 0; j < NC; j++) {
             const px = cxx + nx * offs[j], pzz = czz + nz * offs[j];
             pos.push(px, getHeightAt(px, pzz) + yBias, pzz);
             nrm.push(0, 1, 0);
             col.push(cols[j].r, cols[j].g, cols[j].b);
           }
-          if (k < N - 1) for (let j = 0; j < 3; j++) {
-            const b = k * 4 + j;
-            idx.push(b, b + 4, b + 1, b + 1, b + 4, b + 5);
+          if (k < N - 1) for (let j = 0; j < NC - 1; j++) {
+            const b = k * NC + j;
+            idx.push(b, b + NC, b + 1, b + 1, b + NC, b + NC + 1);
           }
         }
         const g = new THREE.BufferGeometry();
@@ -4405,6 +4416,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const farmPositions=isMobileQ?farmPositionsAll.slice(0,6):farmPositionsAll;
     farmPositions.forEach(([fx,fz])=>{
       const d=Math.sqrt(fx*fx+fz*fz);
+      // W3: no farms on the NEAR hills — their dark windows/shutters read as
+      // dirty spots scattered in the golden wheat from the arrival view.
+      if(W3&&d<190)return;
       const fh=2+Math.random()*2.5;const fw=3.5+Math.random()*3;const fd=fw*.65+Math.random();
       const wallCol=atmosColor(`hsl(${28+Math.random()*10},${18+Math.random()*12}%,${78+Math.random()*10}%)`,d);
       // Seat on the LOWEST footprint corner and sink — on the rolling terrain a
@@ -4937,8 +4951,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       for (let gx = -240; gx <= 240; gx += 40) {
         for (let gz = -28; gz >= -330; gz -= 36) {
           const jx = gx + (Math.random() * 14 - 7), jz = gz + (Math.random() * 12 - 6);
-          if (Math.abs(jx) < 52 && jz > -56) continue;   // palace grounds + parterre
-          if (Math.hypot(jx, jz) < 58) continue;          // hilltop clamp zone
+          if (Math.abs(jx) < 47 && jz > -50) continue;   // palace grounds + parterre
+          if (Math.hypot(jx, jz) < 50) continue;          // hilltop core — wheat now covers the pad edge/blend band ("platform" reads level)
           wheatPositions.push([jx, jz, 34 + Math.random() * 10, 26 + Math.random() * 8]);
         }
       }
