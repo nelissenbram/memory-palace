@@ -965,19 +965,25 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         clickTargets.push(ct);
       });
 
-      // Distance: Arno river
-      const arnoGeo = new THREE.PlaneGeometry(200, 15);
-      const arnoMat = mkPhys(THREE,{ color: "#5A8A7A", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6, envMapIntensity: 1.0 });
-      const arno = new THREE.Mesh(arnoGeo, arnoMat);
-      arno.rotation.x = -Math.PI / 2;
-      arno.position.set(0, getHeightAt(0,-85)+0.1, -85);
-      scene.add(arno);
+      // Distance: Arno river — W3 drops it: a flat 200×15 water plane at one
+      // height cuts straight through the rolling wheat hills AND the approach
+      // road (half buried, half floating). The Gladiator landscape has no river.
+      if (!W3) {
+        const arnoGeo = new THREE.PlaneGeometry(200, 15);
+        const arnoMat = mkPhys(THREE,{ color: "#5A8A7A", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6, envMapIntensity: 1.0 });
+        const arno = new THREE.Mesh(arnoGeo, arnoMat);
+        arno.rotation.x = -Math.PI / 2;
+        arno.position.set(0, getHeightAt(0,-85)+0.1, -85);
+        scene.add(arno);
+      }
 
-      // Distant dome silhouette (Duomo-like)
+      // Distant dome silhouette (Duomo-like) — seated on the terrain (was fixed
+      // y and floated once the rolling hills deepened)
+      const ddY = getHeightAt(-60, -120);
       const distDome = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.4), M.copper);
-      distDome.position.set(-60, 6, -120);
+      distDome.position.set(-60, ddY + 5.4, -120);
       scene.add(distDome);
-      const distDrum = mk(new THREE.CylinderGeometry(7, 7.5, 5, 8), M.stoneD, -60, 3, -120);
+      const distDrum = mk(new THREE.CylinderGeometry(7, 7.5, 5, 8), M.stoneD, -60, ddY + 2.4, -120);
       scene.add(distDrum);
 
     } else {
@@ -1193,8 +1199,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     extraDisposables.push(fluteMat, serenaOrder);
     const centralFluteGeo = new THREE.BoxGeometry(0.02, 5.2, 0.06);
     extraGeoDisposables.push(centralFluteGeo);
-    for (let ci = 0; ci < 6; ci++) {
-      const cx = -5 + ci * 2;
+    // Owner 2026-08-10: FIVE pillars, not six — a pentastyle front (real ancient
+    // precedent: Hera I at Paestum is enneastyle). Wider, calmer bays; the centre
+    // column stands proud of the deep shadowed portal behind.
+    const COLX = W3 ? [-5.2, -2.6, 0, 2.6, 5.2] : null;
+    for (let ci = 0; ci < (COLX ? COLX.length : 6); ci++) {
+      const cx = COLX ? COLX[ci] : -5 + ci * 2;
       // Column shaft — thicker radius 0.65 (owner review #3: columns must read)
       centralGroup.add(mk(new THREE.CylinderGeometry(0.65, 0.7, 5.5, 18), serenaOrder, cx, 4.3, vestZ));
       // Column fluting — 8 thin dark vertical stripes around circumference
@@ -1233,9 +1243,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // (7.6–7.8) and z-fought from side angles (z-fighting sweep #6)
     centralGroup.add(mk(new THREE.BoxGeometry(11.94, 0.5, 2), serenaOrder, 0, 7.55, vestZ));
 
-    // TRIGLYPHS — 6 grooved vertical panels across the frieze area
-    for (let ti = 0; ti < 6; ti++) {
-      const tx = -5 + ti * 2;
+    // TRIGLYPHS — grooved vertical panels aligned over each column axis
+    for (const tx of (COLX ?? [-5, -3, -1, 1, 3, 5])) {
       centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.5, 0.15), serenaOrder, tx, 7.6, vestZ - 1.05));
     }
 
@@ -1970,26 +1979,33 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // ── DISTANT ROMAN ELEMENTS ──
     // (Aqueduct moved to landscape section where atmosColor is available)
 
-    // Via Appia: straight stone road
-    const viaAppia = new THREE.Mesh(new THREE.PlaneGeometry(6, 200), M.path);
-    viaAppia.rotation.x = -Math.PI / 2;
-    viaAppia.position.set(50, 0.15, -60);
-    viaAppia.rotation.z = 0.3;
-    scene.add(viaAppia);
+    // Via Appia: straight stone road — W3 drops it (a second flat road plane at
+    // fixed height gets buried/floats on the rolling hills; the Gladiator
+    // approach is the ONE road).
+    if (!W3) {
+      const viaAppia = new THREE.Mesh(new THREE.PlaneGeometry(6, 200), M.path);
+      viaAppia.rotation.x = -Math.PI / 2;
+      viaAppia.position.set(50, 0.15, -60);
+      viaAppia.rotation.z = 0.3;
+      scene.add(viaAppia);
+    }
 
     // Distant temple silhouette on hillside
     const templeZ = -130, templeX = 60;
-    scene.add(mk(new THREE.BoxGeometry(10, 1, 8), M.stoneD, templeX, 4, templeZ));
-    scene.add(mk(new THREE.BoxGeometry(8, 6, 6), M.stoneL, templeX, 7.5, templeZ));
+    // Seat on the terrain (was hard-coded y=4 — floated once the hills deepened)
+    const templeY = Math.min(getHeightAt(templeX - 5, templeZ - 4), getHeightAt(templeX + 5, templeZ - 4),
+      getHeightAt(templeX - 5, templeZ + 4), getHeightAt(templeX + 5, templeZ + 4)) - 0.3;
+    scene.add(mk(new THREE.BoxGeometry(10, 1, 8), M.stoneD, templeX, templeY + 0.5, templeZ));
+    scene.add(mk(new THREE.BoxGeometry(8, 6, 6), M.stoneL, templeX, templeY + 4, templeZ));
     // Temple columns (front)
     for (let tc = 0; tc < 4; tc++) {
-      scene.add(mk(new THREE.CylinderGeometry(0.3, 0.3, 5, 8), M.col, templeX - 3 + tc * 2, 7, templeZ - 3.2));
+      scene.add(mk(new THREE.CylinderGeometry(0.3, 0.3, 5, 8), M.col, templeX - 3 + tc * 2, templeY + 3.5, templeZ - 3.2));
     }
     // Temple pediment
-    const tPedL = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX - 2, 11.2, templeZ);
+    const tPedL = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX - 2, templeY + 7.7, templeZ);
     tPedL.rotation.z = 0.15;
     scene.add(tPedL);
-    const tPedR = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX + 2, 11.2, templeZ);
+    const tPedR = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX + 2, templeY + 7.7, templeZ);
     tPedR.rotation.z = -0.15;
     scene.add(tPedR);
 
@@ -2019,7 +2035,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const domeOrigin = new THREE.Vector3(0, 0, 0);
       // 3 baked LODs by GPU tier (maxEagerTextureSets: desktop 20 / mobile 4 / potato 2)
       const _q = getQuality();
-      const _domeV = "?v=24"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust)
+      const _domeV = "?v=25"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust)
       const domePath = (_q.maxEagerTextureSets >= 12
         ? "/models/exterior/dome_w3.glb"         // desktop — full stepped courses
         : _q.maxEagerTextureSets <= 3
@@ -4001,12 +4017,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       for(let row=0;row<nRows;row++){
         const rx=vx+Math.cos(vRot)*row*1.8,rz=vz+Math.sin(vRot)*row*1.8;
         const rowLen=14+Math.random()*10;
+        // Row runs along local +Z after yaw vRot → world dir (sin(vRot), cos(vRot)).
+        // Seat on the LOWEST of centre/ends so no row-end floats off a hillside.
+        const rdx=Math.sin(vRot)*rowLen/2, rdz=Math.cos(vRot)*rowLen/2;
+        const rowY=Math.min(getHeightAt(rx,rz),getHeightAt(rx+rdx,rz+rdz),getHeightAt(rx-rdx,rz-rdz));
         const vCol=atmosColor(vineM[row%2].color.getStyle(),Math.sqrt(rx*rx+rz*rz));
         if(fieldBuckets){
-          pushTinted(fieldBuckets.vine,new THREE.BoxGeometry(.35,.7,rowLen),vCol,rx,getHeightAt(rx,rz)+.35,rz,0,vRot,0);
+          pushTinted(fieldBuckets.vine,new THREE.BoxGeometry(.35,.7,rowLen),vCol,rx,rowY+.3,rz,0,vRot,0);
           continue;
         }
-        const rm=mk(new THREE.BoxGeometry(.35,.7,rowLen),new THREE.MeshStandardMaterial({color:vCol,roughness:.84}),rx,getHeightAt(rx,rz)+.35,rz);
+        const rm=mk(new THREE.BoxGeometry(.35,.7,rowLen),new THREE.MeshStandardMaterial({color:vCol,roughness:.84}),rx,rowY+.3,rz);
         rm.rotation.y=vRot;scene.add(rm);
       }
     }
@@ -4106,20 +4126,26 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Continuous dusty-road ribbon(s) draped over the terrain — no stepped
       // segments (those read as treden). Road bed + two darker wheel ruts.
       const ribbon = (offset: number, half: number, mat: THREE.Material, yBias: number) => {
-        const pos: number[] = [], idx: number[] = [];
-        for (let a = 0; a < APPROACH_N; a++) {
-          const pax = apX(Math.max(0, a - 1)), paz = apZ(Math.max(0, a - 1));
-          const pbx = apX(Math.min(APPROACH_N - 1, a + 1)), pbz = apZ(Math.min(APPROACH_N - 1, a + 1));
+        // Sub-sampled (4× per avenue segment) + normals forced straight UP: the
+        // coarse per-segment facets shaded as visible banding down the slope.
+        const SUB = 4, N = (APPROACH_N - 1) * SUB + 1;
+        const pos: number[] = [], nrm: number[] = [], idx: number[] = [];
+        for (let k = 0; k < N; k++) {
+          const a = k / SUB;
+          const pax = apX(Math.max(0, a - 0.5)), paz = apZ(Math.max(0, a - 0.5));
+          const pbx = apX(Math.min(APPROACH_N - 1, a + 0.5)), pbz = apZ(Math.min(APPROACH_N - 1, a + 0.5));
           const dx = pbx - pax, dz = pbz - paz, dl = Math.hypot(dx, dz) || 1;
           const nx = -dz / dl, nz = dx / dl;                 // XZ perpendicular
           const cxx = apX(a) + nx * offset, czz = apZ(a) + nz * offset;
           const lx = cxx + nx * half, lz = czz + nz * half, rx = cxx - nx * half, rz = czz - nz * half;
           pos.push(lx, getHeightAt(lx, lz) + yBias, lz, rx, getHeightAt(rx, rz) + yBias, rz);
-          if (a < APPROACH_N - 1) { const b = a * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+          nrm.push(0, 1, 0, 0, 1, 0);
+          if (k < N - 1) { const b = k * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
         }
         const g = new THREE.BufferGeometry();
         g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-        g.setIndex(idx); g.computeVertexNormals();
+        g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
+        g.setIndex(idx);
         const m = new THREE.Mesh(g, mat); m.receiveShadow = true; scene.add(m);
       };
       const rutMat = new THREE.MeshStandardMaterial({ color: "#CBBD9A", roughness: 1, envMapIntensity: 0.06 });
@@ -4170,7 +4196,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const d=Math.sqrt(fx*fx+fz*fz);
       const fh=2+Math.random()*2.5;const fw=3.5+Math.random()*3;const fd=fw*.65+Math.random();
       const wallCol=atmosColor(`hsl(${28+Math.random()*10},${18+Math.random()*12}%,${78+Math.random()*10}%)`,d);
-      const farmBaseY=getHeightAt(fx,fz);
+      // Seat on the LOWEST footprint corner and sink — on the rolling terrain a
+      // centre-sampled base left the downhill side floating in mid-air.
+      const farmBaseY=Math.min(
+        getHeightAt(fx-fw/2,fz-fd/2),getHeightAt(fx+fw/2,fz-fd/2),
+        getHeightAt(fx-fw/2,fz+fd/2),getHeightAt(fx+fw/2,fz+fd/2))-0.4;
+      // Skip farms on slopes too steep to seat believably
+      if(getHeightAt(fx,fz)-farmBaseY>2.6)return;
       // Main building
       scene.add(mk(new THREE.BoxGeometry(fw,fh,fd),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx,farmBaseY+fh/2+.3,fz));
       // Terracotta roof — slight overhang
@@ -4664,8 +4696,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       [-200, -300, 50, 38], [170, -310, 45, 32], [-80, -360, 48, 35],
       [50, -380, 42, 30], [-160, -340, 50, 38],
     ];
-    // Add many procedurally generated fields across wider area (skip on mobile)
-    const extraFieldCount=isMobileQ?0:35;
+    // Add many procedurally generated fields across wider area (skip on mobile;
+    // W3's blanket grid above already covers the whole vista)
+    const extraFieldCount=(isMobileQ||W3)?0:35;
     for(let extra=0;extra<extraFieldCount;extra++){
       const angle=Math.random()*Math.PI*2;
       const dist=120+Math.random()*250;
@@ -4674,13 +4707,25 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if(Math.sqrt(wx2*wx2+(wz2+60)*(wz2+60))<90)continue;
       wheatPositions.push([wx2,wz2,30+Math.random()*25,20+Math.random()*18]);
     }
-    // ── GLADIATOR APPROACH — dense ripe wheat hugging both sides of the cypress
-    // avenue all the way up to the palace (same curve as the road above).
+    // ── GLADIATOR HILLS — W3 replaces the hand-placed patchwork with (a) dense
+    // ripe wheat hugging the cypress avenue and (b) a systematic BLANKET of
+    // full-grown fields over every visible hill, so the landscape reads as one
+    // continuous golden harvest (owner: "full grown crops all over the hills").
     if (W3) {
+      wheatPositions.length = 0;
+      // (a) approach flanking — first entries so mobile's slice(0,8) keeps them
       for (let a = 1; a < 35; a += 2) {
         const x = Math.sin(a * 0.16) * (a * 0.55), z = -48 - a * 7;
-        // big overlapping fields both sides → a continuous golden sea up to the road
-        for (const sx of [-1, 1]) wheatPositions.unshift([x + sx * 17, z, 28, 20]);
+        for (const sx of [-1, 1]) wheatPositions.push([x + sx * 17, z, 28, 20]);
+      }
+      // (b) blanket grid across the southern vista (jittered, overlapping)
+      for (let gx = -240; gx <= 240; gx += 40) {
+        for (let gz = -28; gz >= -330; gz -= 36) {
+          const jx = gx + (Math.random() * 14 - 7), jz = gz + (Math.random() * 12 - 6);
+          if (Math.abs(jx) < 52 && jz > -56) continue;   // palace grounds + parterre
+          if (Math.hypot(jx, jz) < 58) continue;          // hilltop clamp zone
+          wheatPositions.push([jx, jz, 34 + Math.random() * 10, 26 + Math.random() * 8]);
+        }
       }
     }
     // On mobile, skip far wheat fields entirely and reduce near-field density
@@ -4711,10 +4756,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const wx=Math.cos(angle)*dist,wz=Math.sin(angle)*dist-40;
       if(Math.sqrt(wx*wx+(wz+40)*(wz+40))<70)continue;
       if(inApproach(wx,wz))continue;
-      const wLen=8+Math.random()*20,wAng=Math.random()*Math.PI;
+      const wLen=8+Math.random()*12,wAng=Math.random()*Math.PI;
       const d=Math.sqrt(wx*wx+wz*wz);
       const wCol=atmosColor("#B0A888",d);
-      const wall=mk(new THREE.BoxGeometry(wLen,.5,.3),new THREE.MeshStandardMaterial({color:wCol,roughness:.9}),wx,getHeightAt(wx,wz)+.3,wz);
+      // Wall runs along local +X after yaw wAng → world dir (cos(wAng), -sin(wAng)).
+      // Seat on the LOWEST of centre/ends so wall ends don't hover off slopes.
+      const wdx=Math.cos(wAng)*wLen/2, wdz=-Math.sin(wAng)*wLen/2;
+      const wallY=Math.min(getHeightAt(wx,wz),getHeightAt(wx+wdx,wz+wdz),getHeightAt(wx-wdx,wz-wdz));
+      const wall=mk(new THREE.BoxGeometry(wLen,.5,.3),new THREE.MeshStandardMaterial({color:wCol,roughness:.9}),wx,wallY+.22,wz);
       wall.rotation.y=wAng;scene.add(wall);
     }
 
