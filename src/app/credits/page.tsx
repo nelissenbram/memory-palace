@@ -65,6 +65,13 @@ const CC0: Asset[] = [
     licence: "CC0",
     licenceUrl: "https://creativecommons.org/publicdomain/zero/1.0/",
   },
+  {
+    title: "Rolling Hills (HDRI background)",
+    author: "Poly Haven",
+    source: "https://polyhaven.com/a/rolling_hills",
+    licence: "CC0",
+    licenceUrl: "https://creativecommons.org/publicdomain/zero/1.0/",
+  },
 ];
 
 function AssetItem({ a }: { a: Asset }) {

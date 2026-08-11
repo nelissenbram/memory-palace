@@ -276,9 +276,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     let envMapHDRI: THREE.Texture|null=null;
     let bgMapHDRI: THREE.Texture|null=null;
     if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_EXTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=ENV_INT;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=ENV_INT_HDRI;}}).catch(()=>{});}
-    // Load Rolling Hills HDRI as background panorama — warm sunrise over dry grassy hilltops (Tuscan feel)
-    // Skipped on mobile (6.5 MB) — the procedural sky sphere provides adequate background
-    if(Q.loadBackgroundHDRI){loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});}
+    // Background panorama — W3 (owner-picked): Poly Haven "Rolling Hills" (CC0),
+    // warm sun over empty dry golden hilltops — the Gladiator vista. The old
+    // tuscan_landscape file is actually an ALPS village photo (out of context);
+    // it stays for !W3. Skipped on mobile (~6 MB) — procedural sky suffices.
+    if(Q.loadBackgroundHDRI){loadHDRI(ren,W3?"/textures/hdri/rolling_hills_2k.hdr":HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=W3?0.55:0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});}
 
     // ── POST-PROCESSING ──
     // Quality tier from mobilePerf.ts automatically disables SSAO/DOF/Bloom/SMAA on mobile
