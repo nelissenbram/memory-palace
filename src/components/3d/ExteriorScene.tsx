@@ -4074,7 +4074,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // skip any patch whose FOOTPRINT can reach the road corridor (centre-only
           // tests let wide patches poke through the ribbon as regular "planks")
           const reach=14+(fw+fl)/2;
-          if(!(Math.abs(fx)<reach&&fz<-30&&fz>-300)){
+          if(!(Math.abs(fx)<reach&&fz<-30&&fz>-345)){
             const tint=atmosColor(wheatTints[fi%wheatTints.length],d).lerp(new THREE.Color("#F0E6C8"),0.35);
             drapeTinted(fieldBuckets.wheat,fw,fl,tint,fx,fz,frz);
           }
