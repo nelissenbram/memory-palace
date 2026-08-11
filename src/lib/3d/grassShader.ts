@@ -22,6 +22,8 @@ interface WheatFieldOptions {
   headColor: string;
   yOffset?: number;
   getHeightAt?: (x: number, z: number) => number;
+  /** Skip stalks where this returns true (e.g. keep the approach road clear). */
+  exclude?: (x: number, z: number) => boolean;
   /**
    * MUSEO VIVO WS2-4: pass ONE material (from createSharedWheatMaterial) so every
    * wheat field shares a single shader program + uniform set instead of compiling
@@ -170,7 +172,7 @@ export function createGrassSystem(scene: THREE.Scene, opts: GrassOptions) {
  * Create a 3D wheat field with instanced stalks and grain heads
  */
 export function createWheatField(scene: THREE.Scene, opts: WheatFieldOptions) {
-  const { count, centerX, centerZ, width, depth, stalkHeight, color, headColor, yOffset = 0, getHeightAt } = opts;
+  const { count, centerX, centerZ, width, depth, stalkHeight, color, headColor, yOffset = 0, getHeightAt, exclude } = opts;
 
   // Stalk geometry — thin cylinder
   const stalkGeo = new THREE.CylinderGeometry(0.015, 0.02, stalkHeight, 3);
@@ -209,9 +211,11 @@ export function createWheatField(scene: THREE.Scene, opts: WheatFieldOptions) {
   const mesh = new THREE.InstancedMesh(stalkGeo, stalkMat, count);
   const dummy = new THREE.Object3D();
 
+  let written = 0;
   for (let i = 0; i < count; i++) {
     const x = centerX + (Math.random() - 0.5) * width;
     const z = centerZ + (Math.random() - 0.5) * depth;
+    if (exclude && exclude(x, z)) continue; // skipped slots are trimmed via mesh.count below
     const baseY = getHeightAt ? getHeightAt(x, z) : yOffset;
     dummy.position.set(x, baseY + stalkHeight / 2 + 0.1, z);
     dummy.rotation.y = Math.random() * Math.PI;
@@ -220,8 +224,9 @@ export function createWheatField(scene: THREE.Scene, opts: WheatFieldOptions) {
     dummy.rotation.z = (Math.random() - 0.5) * 0.15;
     dummy.scale.setScalar(0.8 + Math.random() * 0.4);
     dummy.updateMatrix();
-    mesh.setMatrixAt(i, dummy.matrix);
+    mesh.setMatrixAt(written++, dummy.matrix);
   }
+  mesh.count = written; // never render unwritten (identity-at-origin) instances
   mesh.instanceMatrix.needsUpdate = true;
   scene.add(mesh);
 

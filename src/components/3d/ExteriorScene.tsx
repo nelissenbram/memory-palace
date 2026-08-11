@@ -4182,9 +4182,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       };
       const rutMat = new THREE.MeshStandardMaterial({ color: "#CBBD9A", roughness: 1, envMapIntensity: 0.06 });
       extraDisposables.push(rutMat);
-      ribbon(0, 2.5, roadMat, 0.06);      // white dusty road bed
-      ribbon(-0.85, 0.22, rutMat, 0.08);  // left wheel rut
-      ribbon(0.85, 0.22, rutMat, 0.08);   // right wheel rut
+      // yBias ABOVE the draped field patches (+0.22) so the road always wins
+      ribbon(0, 2.5, roadMat, 0.30);      // white dusty road bed
+      ribbon(-0.85, 0.22, rutMat, 0.33);  // left wheel rut
+      ribbon(0.85, 0.22, rutMat, 0.33);   // right wheel rut
     }
 
     // ── OLIVE GROVES: silver-green, gnarled ──
@@ -4721,7 +4722,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // alpha-cut foliage) for every NEAR tree, one InstancedMesh scaled per tree
         // (GLB is 3 m tall). Far trees stay the cheap procedural columns below.
         nearFoliageGeo.dispose();nearTrunkGeo.dispose();
-        loadModel("/models/exterior/cypress_w3.glb?v=24").then((g)=>{
+        loadModel("/models/exterior/cypress_w3.glb?v=25").then((g)=>{
           if(w3Disposed||!cypressNear.length)return;
           let geo:THREE.BufferGeometry|null=null,mat:THREE.Material|null=null;
           g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){geo=m.geometry;mat=m.material as THREE.Material;}});
@@ -4820,6 +4821,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
         headColor: `hsl(${40 + Math.random() * 12}, ${50 + Math.random() * 20}%, ${64 + Math.random() * 12}%)`,
         getHeightAt,
+        // W3: no stalks on the dusty road bed (wheat hugs its edges instead)
+        exclude: W3 ? (sx, sz) => sz < -40 && sz > -295 && Math.abs(sx - Math.sin(((-sz - 48) / 7) * 0.16) * (((-sz - 48) / 7) * 0.55)) < 3.4 : undefined,
         material: sharedWheatMat ?? undefined,
       }));
     });
