@@ -4271,7 +4271,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // ONE clean ribbon, yBias ABOVE the draped field patches (+0.22). The
       // separate rut ribbons read as loose wooden planks — dropped.
       void rutMat;
-      ribbon(0, 2.6, roadMat, 0.30);      // white dusty road bed
+      ribbon(0, 3.4, roadMat, 0.30);      // white dusty road bed — width matches the wheat exclusion so no shadow-catching bare margin remains
     }
 
     // ── OLIVE GROVES: silver-green, gnarled ──
