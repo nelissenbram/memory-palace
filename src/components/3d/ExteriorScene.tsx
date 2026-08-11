@@ -1423,27 +1423,31 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // The portal must cut BLOCK A's grown front face (z ≈ −10.15) — the first
       // cut sat at the old villa wall z=−9, fully hidden BEHIND block A's wall.
       const pf = -10.15;
-      // deep dark tunnel — proud face 0.3 in front of the wall, receding 3.2 in
-      centralGroup.add(mk(new THREE.BoxGeometry(6.2, 7.6, 3.2), portalDark, 0, 5.0, pf + 1.45));
-      // serena surround — jambs + lintel + projecting hood, proud of the wall
-      for (const s of [-1, 1]) centralGroup.add(mk(new THREE.BoxGeometry(0.65, 8.2, 0.6), serenaOrder, s * 3.4, 5.2, pf - 0.18));
-      centralGroup.add(mk(new THREE.BoxGeometry(7.5, 0.65, 0.6), serenaOrder, 0, 9.25, pf - 0.18));
-      centralGroup.add(mk(new THREE.BoxGeometry(8.2, 0.45, 0.9), serenaOrder, 0, 9.8, pf - 0.28));
-      // door leaves swung OPEN against the inner reveal walls
+      // Z-FIGHT NOTE: block A's rustication courses front at −10.3 and string
+      // courses at −10.26 — every portal plane stays ≥0.1 clear of both.
+      // deep dark tunnel — proud face at −10.55 (0.25 clear of the courses)
+      centralGroup.add(mk(new THREE.BoxGeometry(6.2, 7.6, 3.2), portalDark, 0, 5.0, pf + 1.2));
+      // serena surround — jambs + lintel + projecting hood, well proud
+      for (const s of [-1, 1]) centralGroup.add(mk(new THREE.BoxGeometry(0.65, 8.2, 0.6), serenaOrder, s * 3.4, 5.2, pf - 0.6));
+      centralGroup.add(mk(new THREE.BoxGeometry(7.5, 0.65, 0.6), serenaOrder, 0, 9.25, pf - 0.6));
+      centralGroup.add(mk(new THREE.BoxGeometry(8.2, 0.45, 0.85), serenaOrder, 0, 9.8, pf - 0.78));
+      // door leaves swung OPEN against the inner reveal walls (clamped inside the
+      // tunnel sides at ±3.1 — at ±2.8 the rotated leaf edge poked through)
       for (const s of [-1, 1]) {
         const leaf = mk(new THREE.BoxGeometry(2.8, 6.8, 0.18), M.doorRich, 0, 0, 0);
-        leaf.position.set(s * 2.8, 4.5, pf + 0.95);
+        leaf.position.set(s * 2.55, 4.5, pf + 0.7);
         leaf.rotation.y = s * 1.25; // ~72° open into the tunnel
         centralGroup.add(leaf);
       }
       // warm interior glow spilling from the opening
       if (!isMobileGPU()) {
         const glow = new THREE.PointLight("#FFC878", 0.9, 16);
-        glow.position.set(0, 4.4, pf + 1.2);
+        glow.position.set(0, 4.4, pf + 0.9);
         centralGroup.add(glow);
       }
-      // threshold slab from the portal out to the portico platform
-      centralGroup.add(mk(new THREE.BoxGeometry(6.2, 0.16, 2.4), M.marble, 0, 1.22, pf - 0.9));
+      // threshold slab — top 1.36 rides 0.04 PROUD of the portico platform top
+      // (1.32; equal heights z-fought), out from the portal to the platform
+      centralGroup.add(mk(new THREE.BoxGeometry(6.2, 0.16, 2.4), M.marble, 0, 1.28, pf - 1.05));
     } else {
     centralGroup.add(mk(new THREE.BoxGeometry(4.9, 6.0, 0.5), portalDark, 0, 4.5, -(vD / 2 - 0.15)));   // dark reveal behind the doors
     // bold serena architrave frame (proud), + jambs, + hood cornice
