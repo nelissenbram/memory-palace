@@ -280,7 +280,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // warm sun over empty dry golden hilltops — the Gladiator vista. The old
     // tuscan_landscape file is actually an ALPS village photo (out of context);
     // it stays for !W3. Skipped on mobile (~6 MB) — procedural sky suffices.
-    if(Q.loadBackgroundHDRI){loadHDRI(ren,W3?"/textures/hdri/rolling_hills_2k.hdr":HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=W3?0.55:0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});}
+    // W3 backdrop = OUR OWN Blender-rendered 360 (owner option 3): pure far
+    // Tuscan gold ridge-lines + cypress/oak silhouettes at the horizon, warm sky,
+    // ZERO civilisation, colour-matched. Rendered scene-linear at photo level,
+    // so backgroundIntensity ~0.9.
+    if(Q.loadBackgroundHDRI){loadHDRI(ren,W3?"/textures/hdri/tuscan_farhills_360.hdr":HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=W3?0.9:0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});}
 
     // ── POST-PROCESSING ──
     // Quality tier from mobilePerf.ts automatically disables SSAO/DOF/Bloom/SMAA on mobile
