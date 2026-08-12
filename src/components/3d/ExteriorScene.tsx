@@ -606,6 +606,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const paveMat = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.9, envMapIntensity: 0.15 });
         const pave = mk(new THREE.BoxGeometry(116, 0.5, 88), paveMat, 2, HILL_Y - 0.05, -2);
         pave.castShadow = false; pave.receiveShadow = true; scene.add(pave);
+        // Apron step (level 2): its own DARKER rustic tile so the step reads
+        // as a distinct material against the pale plein (owner) — same canvas,
+        // smaller tiles, warm earthy multiplier.
+        const aprTex = tileTex.clone();
+        aprTex.repeat.set(10, 3);
+        aprTex.needsUpdate = true;
+        const aprMat = new THREE.MeshStandardMaterial({ map: aprTex, roughness: 0.94, envMapIntensity: 0.1, color: new THREE.Color(0.80, 0.72, 0.60) });
+        apron.material = aprMat;
       }
       // Parterre garden terrace — warm gravel carpet x ±17, z -23.25..-46.85.
       // Overlaps the apron 0.25 in z (stepped tops 8.42→8.36, never coplanar).
@@ -623,7 +631,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // W3: the carpet no longer abuts the raised apron — a 1.7-wide strip of
       // travertine pave shows between apron (level 2) and garden terrace, so
       // the north beds can never read as overlapping the marble step (owner).
-      const carpet = mk(new THREE.BoxGeometry(34, 1.6, W3 ? 21.6 : 23.6), parterreGravelMat, 0, HILL_Y - 0.44, W3 ? -36.0 : -35.05);
+      const carpet = mk(new THREE.BoxGeometry(34, 1.6, W3 ? 20.4 : 23.6), parterreGravelMat, 0, HILL_Y - 0.44, W3 ? -36.6 : -35.05);
       carpet.castShadow = false; scene.add(carpet);
       // ══ Owner review 2026-08-08 r6 #5 — the forecourt must read as a real
       // giardino all'italiana, not flat green panels ("de tuin is te knullig").
@@ -643,10 +651,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const B = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number) =>
           arr.push(new THREE.BoxGeometry(w, h, d).translate(x, y, z));
         const y0 = HILL_Y + 0.42;
-        // W3: north row 1.7 south (was −29) — from the owner's high camera the
-        // 0.6-tall hedges projected over the 1.5-wide gap onto the apron step
-        const nz = W3 ? -30.7 : -29;
-        for (const [px, pz] of [[-11.5, nz], [11.5, nz], [-11.5, -41], [11.5, -41]] as [number, number][]) {
+        // W3: whole parterre shifted south — from the owner's high camera the
+        // 0.6-tall hedges projected onto the apron step; north row now sits
+        // 4.7 clear of it (owner asked twice for more separation)
+        const nz = W3 ? -32.2 : -29, sz2 = W3 ? -42.2 : -41;
+        for (const [px, pz] of [[-11.5, nz], [11.5, nz], [-11.5, sz2], [11.5, sz2]] as [number, number][]) {
           B(gBed, 8.2, 0.14, 8.0, px, y0, pz);                                           // gravel bed
           for (const s of [-1, 1]) { B(gHedge, 8.2, 0.6, 0.5, px, y0 + 0.3, pz + s * 3.75); B(gHedge, 0.5, 0.6, 8.0, px + s * 3.85, y0 + 0.3, pz); } // clipped border
           B(gHedge, 7.0, 0.44, 0.34, px, y0 + 0.24, pz); B(gHedge, 0.34, 0.44, 7.0, px, y0 + 0.24, pz); // broderie cross
@@ -662,7 +671,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // W3: at ±18 the pots stood just OFF the gravel carpet (x±17) on the
         // travertine pad ("perkje overlapt met de marmer") — moved onto the
         // carpet's cross-walk at ±16.
-        for (const [lx, lz] of (W3 ? [[-16, -36.3], [16, -36.3]] : [[-18, -35], [18, -35]]) as [number, number][]) {
+        for (const [lx, lz] of (W3 ? [[-16, -37.3], [16, -37.3]] : [[-18, -35], [18, -35]]) as [number, number][]) {
           scene.add(mk(new THREE.CylinderGeometry(0.6, 0.42, 1.0, 10), M.tile, lx, HILL_Y + 0.9, lz));
           scene.add(mk(new THREE.CylinderGeometry(0.66, 0.6, 0.18, 10), M.trim, lx, HILL_Y + 1.42, lz));
           const ball = mk(new THREE.SphereGeometry(1.0, 10, 8), M.hedge, lx, HILL_Y + 2.45, lz); ball.castShadow = true; scene.add(ball);
@@ -682,7 +691,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
       // Two marble benches on the cross path (gap between hedge rows; W3 walk
       // moved with the shifted north row)
-      const benchZ = W3 ? -36.3 : -35;
+      const benchZ = W3 ? -37.3 : -35;
       for (const bx of [-13, 13]) {
         scene.add(mk(new THREE.BoxGeometry(2.5, 0.06, 1), M.marble, bx, HILL_Y + 0.71, benchZ));
         scene.add(mk(new THREE.BoxGeometry(2.5, 0.35, 0.7), M.marbleVein, bx, HILL_Y + 0.52, benchZ));
@@ -4107,7 +4116,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── COURTYARD OLIVE TREES — gnarled, silver-green Mediterranean olives ──
-    const oliveCourtPositions = [[-18, -15], [18, -15], [-18, 15], [18, 15], [-25, 0], [25, 0]];
+    // W3: none — the whole forecourt is a travertine plein now, and a tree
+    // standing on the marble reads wrong (owner: "olijfboom op het marmer").
+    const oliveCourtPositions = W3 ? [] : [[-18, -15], [18, -15], [-18, 15], [18, 15], [-25, 0], [25, 0]];
     const oliveMats = [
       new THREE.MeshStandardMaterial({ color: "#7A8A5A", roughness: 0.85 }),
       new THREE.MeshStandardMaterial({ color: "#8A9A68", roughness: 0.82 }),
