@@ -1187,20 +1187,27 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
         const leafTex = new THREE.CanvasTexture(lc);
         leafTex.colorSpace = THREE.SRGBColorSpace;
-        const leafGeo = new THREE.PlaneGeometry(0.46, 0.46);
+        const leafGeo = new THREE.PlaneGeometry(0.58, 0.58);
         const leafMat = new THREE.MeshStandardMaterial({ map: leafTex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 });
         // {x,z, nx,nz outward normal, w,h, kind: 0 green /1 russet /2 bougainvillea /3 jasmine}
         const IVY: [number, number, number, number, number, number, number][] = [
-          [-33, -25.15, 0, -1, 5.0, 9.0, 1],   // W pavilion front — autumn
-          [-19.5, -25.15, 0, -1, 3.2, 6.0, 2], // W pavilion front corner — bougainvillea
-          [21, -25.15, 0, -1, 4.5, 10.0, 0],   // E pavilion front — deep green
-          [38.15, -18, 1, 0, 4.0, 7.0, 3],     // E pavilion east flank — jasmine
-          [-17.15, -2, -1, 0, 5.0, 11.0, 0],   // block A west flank — tall green
-          [-13, -10.15, 0, -1, 2.6, 12.0, 0],  // block A front corner — narrow climber
-          [-44, -6.15, 0, -1, 6.0, 7.5, 1],    // W wing front — autumn spread
-          [50.15, 2, 1, 0, 5.0, 7.0, 2],       // E wing east flank — bougainvillea
-          [36, -26.6, 0, -1, 3.0, 8.0, 0],     // clock-tower foot — green climber
-          [-38.15, -10, -1, 0, 4.5, 6.0, 3],   // W pavilion west flank — jasmine
+          [-33, -25.15, 0, -1, 7.0, 10.5, 1],  // W pavilion front — autumn, broad
+          [-19.5, -25.15, 0, -1, 4.2, 7.5, 2], // W pavilion front corner — bougainvillea
+          [21, -25.15, 0, -1, 6.0, 11.0, 0],   // E pavilion front — deep green
+          [31, -25.15, 0, -1, 3.6, 7.0, 3],    // E pavilion front corner — jasmine
+          [38.15, -18, 1, 0, 5.5, 8.5, 3],     // E pavilion east flank — jasmine
+          [-13.85, -18, 1, 0, 4.0, 7.0, 0],    // W pavilion court flank — green
+          [-17.15, -2, -1, 0, 6.5, 12.5, 0],   // block A west flank — tall green
+          [17.15, 3, 1, 0, 5.0, 11.0, 2],      // block A east flank — bougainvillea
+          [-13, -10.15, 0, -1, 3.4, 13.5, 0],  // block A front corner — narrow climber
+          [-44, -6.15, 0, -1, 8.0, 9.0, 1],    // W wing front — autumn spread, broad
+          [-26, -6.15, 0, -1, 4.5, 10.0, 3],   // W wing front bay — jasmine
+          [50.15, 2, 1, 0, 6.5, 8.5, 2],       // E wing east flank — bougainvillea
+          [40, 18.15, 0, 1, 6.0, 8.0, 1],      // E wing rear — autumn
+          [36, -26.6, 0, -1, 3.8, 9.5, 0],     // clock-tower foot — green climber
+          [-38.15, -10, -1, 0, 6.0, 7.5, 3],   // W pavilion west flank — jasmine
+          [10, 39.15, 0, 1, 7.5, 9.0, 0],      // rear range — broad green
+          [-18, 39.15, 0, 1, 5.0, 7.5, 2],     // rear range west — bougainvillea
         ];
         const GREENS = ["#2F4A1E", "#3C5C26", "#4C6B2C", "#40602A"].map((c) => new THREE.Color(c));
         const RUSSET = new THREE.Color("#7A5B2E");
@@ -3520,16 +3527,20 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // string courses (one per storey → reads as levels), crown cornice + corner
       // quoins, a projecting eave, a REAL hip roof (flat-topped for the dome block
       // A so the cupola stays the hero), and a two-storey rich window ritme.
+      // W3: subtle per-building plaster tints (owner: walls "té egaal") —
+      // each corps leans its own hue inside the golden-hour family; four
+      // extra buckets → four extra draw calls, well inside budget.
+      const gWallT: THREE.BufferGeometry[][] = [[], [], [], []];
       const buildBlock = (
         cx: number, cz: number, w: number, d: number, h: number,
-        opts: { winFaces?: ("+x"|"-x"|"+z"|"-z")[]; loggiaFace?: "+z"|"-z"|"+x"|"-x"; flatRoof?: boolean } = {}
+        opts: { winFaces?: ("+x"|"-x"|"+z"|"-z")[]; loggiaFace?: "+z"|"-z"|"+x"|"-x"; flatRoof?: boolean; tint?: number } = {}
       ) => {
         const bw = w + SEAM * 2, bd = d + SEAM * 2; // grown footprint (seam overlap)
         const twoStorey = h >= 11;                   // tall blocks read as two floors
         // plinth (foot sunk 0.4) — travertine base band
         box(gTrimM, bw + 0.6, 1.0, bd + 0.6, cx, 0.1, cz);
         // plaster body
-        box(gWall, bw, h, bd, cx, h / 2 + 0.5, cz);
+        box(W3 && opts.tint !== undefined ? gWallT[opts.tint] : gWall, bw, h, bd, cx, h / 2 + 0.5, cz);
         // ── RUSTICATED GROUND FLOOR (owner review 2026-08-07 #1 — no blank walls):
         // proud travertine ashlar courses wrapping the lower storey give the base
         // texture + weight and read as the ground floor of a multi-storey palazzo.
@@ -3746,16 +3757,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Symmetric about x=−2. Overlaps at every join → one continuous mass.
       const WING_E = 32, WING_W = -36;
       // A Hoofdblok — tall central hart carrying the dome (flatRoof: dome crowns it).
-      buildBlock(-2, 6, 32, 30, 19, { winFaces: ["+x", "-x", "+z"], flatRoof: true });
+      buildBlock(-2, 6, 32, 30, 19, { winFaces: ["+x", "-x", "+z"], flatRoof: true, tint: 0 });
       // Side wings — SHORTER + DEEPER (mass front-to-back), differently filled.
-      buildBlock(WING_E, 6, 30, 22, 13, { winFaces: ["+z", "+x"], loggiaFace: "-z" }); // east: arcaded court
-      buildBlock(WING_W, 6, 30, 22, 13, { winFaces: ["+z", "-z", "-x"] });             // west: solid palazzo
+      buildBlock(WING_E, 6, 30, 22, 13, { winFaces: ["+z", "+x"], loggiaFace: "-z", tint: 1 }); // east: arcaded court, warm ochre
+      buildBlock(WING_W, 6, 30, 22, 13, { winFaces: ["+z", "-z", "-x"], tint: 2 });             // west: solid palazzo, soft rose
       // Deep REAR RANGE piling behind the dome (mass back).
-      buildBlock(-2, 30, 54, 16, 15, { winFaces: ["+z", "-z"] });
+      buildBlock(-2, 30, 54, 16, 15, { winFaces: ["+z", "-z"], tint: 3 });
       // FRONT PAVILIONS projecting forward → cour d'honneur; centre open for the
       // approach to the entrance (mass front).
-      buildBlock(24, -14, 22, 20, 12, { winFaces: ["-z", "+x"] });   // east front pavilion
-      buildBlock(-28, -14, 22, 20, 12, { winFaces: ["-z", "-x"] });  // west front pavilion
+      buildBlock(24, -14, 22, 20, 12, { winFaces: ["-z", "+x"], tint: 2 });   // east front pavilion — rose
+      buildBlock(-28, -14, 22, 20, 12, { winFaces: ["-z", "-x"], tint: 1 });  // west front pavilion — ochre
 
       // ── SEAM FILLERS — close the A↔wing and A↔rear joins (front pavilions already
       // overlap A + the wings, so those joins read continuous without fillers).
@@ -4057,7 +4068,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // W3 (owner): ALL scattered ivy leaves read as unrealistic green confetti
       // on the sun-bleached walls — drop every ivy bucket before the merge.
       if (W3) { gIvy.length = 0; gIvy2.length = 0; gIvy3.length = 0; }
-      ([[gWall, ochreWall, true], [gWallL, M.stoneL, true], [gWallD, recessDark, true],
+      // W3 wall-tint materials: pale rose-cream / warm ochre / soft rose / sand
+      const wallTintMats = [[1.04, 1.0, 0.93], [1.0, 0.92, 0.76], [1.05, 0.92, 0.85], [0.92, 0.89, 0.79]].map((t) => {
+        const m2 = (ochreWall as THREE.MeshStandardMaterial).clone();
+        m2.color.multiply(new THREE.Color(t[0], t[1], t[2]));
+        extraDisposables.push(m2);
+        return m2;
+      });
+      ([[gWall, ochreWall, true],
+        [gWallT[0], wallTintMats[0], true], [gWallT[1], wallTintMats[1], true],
+        [gWallT[2], wallTintMats[2], true], [gWallT[3], wallTintMats[3], true],
+        [gWallL, M.stoneL, true], [gWallD, recessDark, true],
         [gTrimM, M.trim, false], [gRoof, M.tile, true], [gRoofDS, roofMatDS, true], [gWinM, M.win, false],
         [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false],
         [gWood, woodMat, true], [gIron, ironMat, true], [gIvy, ivyMat, false],
