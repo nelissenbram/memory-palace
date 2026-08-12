@@ -582,7 +582,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const T = 8, S = 512 / T;
           for (let ty = 0; ty < T; ty++) for (let tx = 0; tx < T; tx++) {
             const h2 = Math.sin(tx * 127.1 + ty * 311.7) * 43758.5453;
-            const v2 = Math.floor((h2 - Math.floor(h2)) * 14 - 7);
+            const v2 = Math.floor((h2 - Math.floor(h2)) * 26 - 13);
             ctx2.fillStyle = `rgb(${232 + v2},${224 + v2},${205 + v2})`;
             ctx2.fillRect(tx * S, ty * S, S, S);
             ctx2.strokeStyle = "rgba(180,168,145,0.35)"; ctx2.lineWidth = 1;
@@ -592,7 +592,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
               ctx2.beginPath(); ctx2.moveTo(tx * S + o, ty * S); ctx2.lineTo(tx * S + o - S * 0.35, ty * S + S); ctx2.stroke();
             }
           }
-          ctx2.strokeStyle = "#B9AE94"; ctx2.lineWidth = 3;
+          ctx2.strokeStyle = "#A2977C"; ctx2.lineWidth = 5;
           for (let i = 0; i <= T; i++) {
             ctx2.beginPath(); ctx2.moveTo(i * S, 0); ctx2.lineTo(i * S, 512); ctx2.stroke();
             ctx2.beginPath(); ctx2.moveTo(0, i * S); ctx2.lineTo(512, i * S); ctx2.stroke();
@@ -600,7 +600,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
         const tileTex = new THREE.CanvasTexture(tc);
         tileTex.wrapS = tileTex.wrapT = THREE.RepeatWrapping;
-        tileTex.repeat.set(29, 22);      // ≈4 world units per tile
+        tileTex.repeat.set(19, 15);      // ≈6 world units per tile — reads from the air
         tileTex.anisotropy = aniso || 4;
         tileTex.colorSpace = THREE.SRGBColorSpace;
         const paveMat = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.9, envMapIntensity: 0.15 });
@@ -650,7 +650,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           .forEach(([geos, mat]) => { if (!geos.length) return; const m = mergeGeometries(geos); geos.forEach(g => g.dispose()); if (m) { const mesh = new THREE.Mesh(m, mat); mesh.receiveShadow = true; mesh.castShadow = true; scene.add(mesh); } });
         // Potted clipped bays along the walks (terracotta pot + green ball) — a
         // sober pair flanking the cross-axis, not a row of fruit trees.
-        for (const [lx, lz] of [[-18, -35], [18, -35]] as [number, number][]) {
+        // W3: at ±18 the pots stood just OFF the gravel carpet (x±17) on the
+        // travertine pad ("perkje overlapt met de marmer") — moved onto the
+        // carpet's cross-walk at ±16.
+        for (const [lx, lz] of (W3 ? [[-16, -35], [16, -35]] : [[-18, -35], [18, -35]]) as [number, number][]) {
           scene.add(mk(new THREE.CylinderGeometry(0.6, 0.42, 1.0, 10), M.tile, lx, HILL_Y + 0.9, lz));
           scene.add(mk(new THREE.CylinderGeometry(0.66, 0.6, 0.18, 10), M.trim, lx, HILL_Y + 1.42, lz));
           const ball = mk(new THREE.SphereGeometry(1.0, 10, 8), M.hedge, lx, HILL_Y + 2.45, lz); ball.castShadow = true; scene.add(ball);
@@ -4282,7 +4285,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // W3: seat every blade on the rolling terrain (fixed-height blades hovered
       // over the falling ground beyond the plateau) and keep the road clear
       getHeightAt: W3 ? getHeightAt : undefined,
-      exclude: W3 ? inApproach : undefined,
+      // W3: keep the road AND the paved travertine pad clear — blades poking
+      // through the marble read as "gras groeit op marmer" (owner)
+      exclude: W3 ? (gx: number, gz: number) => inApproach(gx, gz) || (gx > -58 && gx < 62 && gz > -48 && gz < 44) : undefined,
     });
 
     // ── PALACE CYPRESS RING — LatheGeometry with vertex noise for natural columnar shape ──
@@ -5387,6 +5392,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const rim = Math.hypot(wx, wz) > 310;
           return (sx: number, sz: number) => {
             if (sz < -40 && sz > -295 && Math.abs(sx - Math.sin(((-sz - 48) / 7) * 0.16) * (((-sz - 48) / 7) * 0.55)) < 8.2) return true;
+            // paved travertine pad — no wheat on the marble (cell centres are
+            // outside the pad but 63-wide cells overlap its corners)
+            if (sx > -58 && sx < 62 && sz > -48 && sz < 44) return true;
             if (!rim) return false;
             const dx = (sx - wx) / (ww * 0.5), dz = (sz - wz) / (wd * 0.5);
             const ang = Math.atan2(dz, dx);
