@@ -614,9 +614,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         map: whiteGravelTex.map, normalMap: whiteGravelTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
         roughnessMap: whiteGravelTex.roughnessMap, aoMap: whiteGravelTex.aoMap, aoMapIntensity: .3,
       });
-      // W3 (owner): the fountain/parterre ground must read WHITE — over-unity
-      // lift past the dark gravel map (same trick as the terrain), soft AO.
-      if (W3) { parterreGravelMat.color.setRGB(1.30, 1.27, 1.16); parterreGravelMat.aoMapIntensity = 0.1; }
+      // W3: warm sandy gravel, clearly DARKER than the travertine pave — when
+      // this carpet was lifted to white it fused visually with the marble and
+      // the box compartments read as beds sitting ON the marble (owner:
+      // "perkjes overlappen met marmer"). The garden terrace must read as its
+      // own gravel ground against the pale stone plein.
+      if (W3) { parterreGravelMat.color.setRGB(1.04, 0.97, 0.80); parterreGravelMat.aoMapIntensity = 0.3; }
       const carpet = mk(new THREE.BoxGeometry(34, 1.6, 23.6), parterreGravelMat, 0, HILL_Y - 0.44, -35.05);
       carpet.castShadow = false; scene.add(carpet);
       // ══ Owner review 2026-08-08 r6 #5 — the forecourt must read as a real
