@@ -1155,6 +1155,106 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       dummy.rotation.set(0, 0, 0);
       scene.add(vin);
       extraDisposables.push(vinMat); extraGeoDisposables.push(vinGeo);
+
+      // ── FACADE IVY (owner: "zeer realistische klimop/planten, random en
+      // anders, ev. bloemen") — textured 5-lobed leaf cards instanced along
+      // climbing tendrils on a varied selection of walls. Every patch differs:
+      // its own footprint, tendril count, palette (fresh green / autumn russet
+      // / flowering bougainvillea or jasmine), irregular silhouette, denser at
+      // the base. Depth-shading: leaves tucked closer to the wall render
+      // darker, which sells volume. One draw call.
+      {
+        const lc = document.createElement("canvas"); lc.width = 128; lc.height = 128;
+        const lctx = lc.getContext("2d");
+        if (lctx) {
+          lctx.clearRect(0, 0, 128, 128);
+          lctx.fillStyle = "#9DB87E";
+          // classic ivy: centre lobe + two side lobes + two small base lobes
+          const lobe = (cx2: number, cy2: number, rx2: number, ry2: number, rot: number) => {
+            lctx.save(); lctx.translate(cx2, cy2); lctx.rotate(rot);
+            lctx.beginPath(); lctx.ellipse(0, 0, rx2, ry2, 0, 0, Math.PI * 2); lctx.fill(); lctx.restore();
+          };
+          lobe(64, 38, 20, 34, 0);            // centre
+          lobe(38, 58, 17, 26, 0.75);         // left
+          lobe(90, 58, 17, 26, -0.75);        // right
+          lobe(30, 86, 12, 17, 1.2);          // base left
+          lobe(98, 86, 12, 17, -1.2);         // base right
+          lctx.fillRect(60, 88, 8, 34);       // stem
+          lctx.strokeStyle = "#7C9A60"; lctx.lineWidth = 3;
+          lctx.beginPath(); lctx.moveTo(64, 110); lctx.lineTo(64, 22); lctx.stroke();
+          lctx.beginPath(); lctx.moveTo(64, 66); lctx.lineTo(36, 48); lctx.stroke();
+          lctx.beginPath(); lctx.moveTo(64, 66); lctx.lineTo(92, 48); lctx.stroke();
+        }
+        const leafTex = new THREE.CanvasTexture(lc);
+        leafTex.colorSpace = THREE.SRGBColorSpace;
+        const leafGeo = new THREE.PlaneGeometry(0.34, 0.34);
+        const leafMat = new THREE.MeshStandardMaterial({ map: leafTex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 });
+        // {x,z, nx,nz outward normal, w,h, kind: 0 green /1 russet /2 bougainvillea /3 jasmine}
+        const IVY: [number, number, number, number, number, number, number][] = [
+          [-33, -25.15, 0, -1, 5.0, 9.0, 1],   // W pavilion front — autumn
+          [-19.5, -25.15, 0, -1, 3.2, 6.0, 2], // W pavilion front corner — bougainvillea
+          [21, -25.15, 0, -1, 4.5, 10.0, 0],   // E pavilion front — deep green
+          [38.15, -18, 1, 0, 4.0, 7.0, 3],     // E pavilion east flank — jasmine
+          [-17.15, -2, -1, 0, 5.0, 11.0, 0],   // block A west flank — tall green
+          [-13, -10.15, 0, -1, 2.6, 12.0, 0],  // block A front corner — narrow climber
+          [-44, -6.15, 0, -1, 6.0, 7.5, 1],    // W wing front — autumn spread
+          [50.15, 2, 1, 0, 5.0, 7.0, 2],       // E wing east flank — bougainvillea
+          [36, -26.6, 0, -1, 3.0, 8.0, 0],     // clock-tower foot — green climber
+          [-38.15, -10, -1, 0, 4.5, 6.0, 3],   // W pavilion west flank — jasmine
+        ];
+        const GREENS = ["#2F4A1E", "#3C5C26", "#4C6B2C", "#40602A"].map((c) => new THREE.Color(c));
+        const RUSSET = new THREE.Color("#7A5B2E");
+        const FLOWER = [new THREE.Color("#B03A6E"), new THREE.Color("#F2EFE2")]; // bougainvillea, jasmine
+        type Leaf = { x: number; y: number; z: number; nx: number; nz: number; off: number; sc: number; col: THREE.Color; };
+        const leaves: Leaf[] = [];
+        const baseY = 8.2;
+        IVY.forEach(([px, pz, nx, nz, w2, h2, kind], pi) => {
+          const nT = 2 + Math.floor(rHash(pi, 41.7) * 3);
+          const count = Math.round(w2 * h2 * 9);
+          for (let i2 = 0; i2 < count; i2++) {
+            const s1 = rHash(pi * 997 + i2, 3.7), s2 = rHash(pi * 631 + i2, 8.1), s3 = rHash(pi * 389 + i2, 5.9);
+            const t = Math.pow(s1, 0.72);                       // bias to the base
+            const tendril = Math.floor(s2 * nT);
+            const tx = (tendril / Math.max(1, nT - 1) - 0.5) * w2 * 0.8
+              + Math.sin(t * 9 + tendril * 2.4 + pi) * 0.5;     // sinuous climb
+            const spread = (0.55 + (1 - t) * 0.85) * (0.4 + s3);
+            const lat = tx + (rHash(i2 * 17 + pi, 9.3) - 0.5) * spread * 2;
+            // irregular silhouette: reject outliers near the top
+            if (Math.abs(lat) > (w2 / 2) * (1.05 - 0.4 * t) * (0.75 + rHash(i2, 2.2) * 0.5)) continue;
+            const y = baseY + 0.15 + t * h2;
+            const off = 0.06 + rHash(i2 * 7 + pi, 6.6) * 0.22;  // depth off the wall
+            const along = lat;
+            const lx2 = px + (nz !== 0 ? along : 0) + nx * off;
+            const lz2 = pz + (nx !== 0 ? along : 0) + nz * off;
+            const isFlower = kind >= 2 && rHash(i2 * 3 + pi, 12.9) > 0.93;
+            const col = new THREE.Color();
+            if (isFlower) col.copy(FLOWER[kind - 2]);
+            else {
+              col.copy(GREENS[Math.floor(rHash(i2 * 11 + pi, 4.4) * GREENS.length) % GREENS.length]);
+              if (kind === 1 && rHash(i2 * 5 + pi, 7.2) > 0.55) col.lerp(RUSSET, 0.5 + rHash(i2, 3.3) * 0.4);
+            }
+            col.multiplyScalar(0.6 + (off / 0.28) * 0.4);       // deeper = darker
+            leaves.push({ x: lx2, y, z: lz2, nx, nz, off, sc: (isFlower ? 0.5 : 0.75) + s3 * 0.55, col });
+          }
+        });
+        const ivyMesh = new THREE.InstancedMesh(leafGeo, leafMat, leaves.length);
+        const q = new THREE.Quaternion(), q2 = new THREE.Quaternion(), eul = new THREE.Euler();
+        leaves.forEach((L, i2) => {
+          dummy.position.set(L.x, L.y, L.z);
+          q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(L.nx, 0, L.nz));
+          eul.set((rHash(i2, 14.2) - 0.5) * 1.1, (rHash(i2, 15.8) - 0.5) * 1.1, rHash(i2, 16.4) * Math.PI * 2);
+          q2.setFromEuler(eul);
+          dummy.quaternion.copy(q).multiply(q2);
+          dummy.scale.setScalar(L.sc);
+          dummy.updateMatrix();
+          ivyMesh.setMatrixAt(i2, dummy.matrix);
+          ivyMesh.setColorAt(i2, L.col);
+        });
+        dummy.quaternion.identity();
+        ivyMesh.castShadow = false;
+        scene.add(ivyMesh);
+        extraDisposables.push(leafMat); extraGeoDisposables.push(leafGeo);
+      }
     }
     // W3 canary handles (see the dome-load block below): the loaded GLB group,
     // the procedural rib mesh (to re-show on load failure), and an unmount guard.
