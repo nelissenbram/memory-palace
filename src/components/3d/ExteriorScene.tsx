@@ -280,15 +280,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // village photo (out of context); it stays for !W3. Skipped on mobile —
     // procedural sky suffices.
     // W3 backdrop = OWNER-SUPPLIED photographic 360 pano (2026-08-12): real
-    // Tuscan summer far-view, golden fields to the horizon. LDR equirect JPG
-    // (309 KB) → TextureLoader + equirect mapping + sRGB, NOT the RGBE loader.
+    // Tuscan summer far-view, golden fields to the horizon. 4096x2048 LDR
+    // equirect JPG (mobile GPU texture cap) → TextureLoader + equirect
+    // mapping + sRGB, NOT the RGBE loader.
     if(Q.loadBackgroundHDRI){
       if(W3){
-        new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo.jpg",(tex)=>{
+        new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_4k.jpg",(tex)=>{
           tex.mapping=THREE.EquirectangularReflectionMapping;
           tex.colorSpace=THREE.SRGBColorSpace;
           bgMapHDRI=tex;scene.background=tex;scene.backgroundIntensity=1.0;
-          scene.backgroundBlurriness=0.02;skySphere.visible=false;
+          scene.backgroundBlurriness=0;skySphere.visible=false;
         },undefined,()=>{});
       } else {
         loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});
