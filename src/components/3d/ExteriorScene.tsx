@@ -1187,7 +1187,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
         const leafTex = new THREE.CanvasTexture(lc);
         leafTex.colorSpace = THREE.SRGBColorSpace;
-        const leafGeo = new THREE.PlaneGeometry(0.34, 0.34);
+        const leafGeo = new THREE.PlaneGeometry(0.46, 0.46);
         const leafMat = new THREE.MeshStandardMaterial({ map: leafTex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 });
         // {x,z, nx,nz outward normal, w,h, kind: 0 green /1 russet /2 bougainvillea /3 jasmine}
         const IVY: [number, number, number, number, number, number, number][] = [
@@ -1210,7 +1210,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const baseY = 8.2;
         IVY.forEach(([px, pz, nx, nz, w2, h2, kind], pi) => {
           const nT = 2 + Math.floor(rHash(pi, 41.7) * 3);
-          const count = Math.round(w2 * h2 * 9);
+          const count = Math.round(w2 * h2 * 13);
           for (let i2 = 0; i2 < count; i2++) {
             const s1 = rHash(pi * 997 + i2, 3.7), s2 = rHash(pi * 631 + i2, 8.1), s3 = rHash(pi * 389 + i2, 5.9);
             const t = Math.pow(s1, 0.72);                       // bias to the base
