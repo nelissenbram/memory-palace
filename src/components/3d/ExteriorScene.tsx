@@ -5330,10 +5330,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const sharedWheatMat=W1?createSharedWheatMaterial(W1_WHEAT_STALK_H,W3):null; // W3: ripe gold
     if(sharedWheatMat)extraDisposables.push(sharedWheatMat);
     wheatSubset.forEach(([wx, wz, ww, wd, cf]) => {
-      const isFar = Math.hypot(wx, wz + 60) > 165;
-      const baseCount=isFar ? 800 : (2600 + Math.floor(Math.random() * 1000));
+      // Distance-tiered stalk density (owner: DENSE wheat out to ~300m —
+      // the old 165 cutoff dropped to sparse far-tier way too early).
+      // Mobile is untouched: wheatSubset there is the 8-patch approach slice.
+      const d0 = Math.hypot(wx, wz + 60);
+      const baseCount = d0 > 310 ? 800 : d0 > 165 ? 2000 : (2600 + Math.floor(Math.random() * 1000));
       wheatFields.push(createWheatField(scene, {
-        count: Math.round(baseCount*(cf ?? 1)*Q.vegetationDensity*(W3?1.6:1)),
+        count: Math.round(baseCount*(d0 > 310 ? (cf ?? 1) : 1)*Q.vegetationDensity*(W3?1.6:1)),
         centerX: wx, centerZ: wz, width: ww, depth: wd,
         stalkHeight: sharedWheatMat ? W1_WHEAT_STALK_H : 1.4 + Math.random() * 0.9,
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
