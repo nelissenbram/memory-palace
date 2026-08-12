@@ -803,14 +803,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Unlit MeshBasicMaterial: distant land reads flat-lit and needs no sun;
     // fog=false because FogExp2 would wash everything past ~1km to one tone.
     if (W3) {
-      const AZ = 256, RAD = 30, R0 = 380, R1 = 4500;
-      const rPos = new Float32Array(AZ * RAD * 3);
-      const rCol = new Float32Array(AZ * RAD * 3);
-      const pal = ["#D9B25F", "#E6D3A0", "#C9A96A", "#8F9457", "#6E7C44", "#C9B489"]
-        .map((c) => new THREE.Color(c));
-      const hazeC = new THREE.Color("#EAD9B8");
-      const rimC = new THREE.Color("#F2E9D2");
-      const treeC = new THREE.Color("#4F5C36");
+      // Owner: halved extent, and the ring must read as FIELDS — wheat golds,
+      // parcel hedgerow borders, cypress rows — not smooth coloured dunes.
+      const AZ = 256, RAD = 26, R0 = 380, R1 = 2200;
       const rHash = (a: number, b: number) => {
         const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
         return s - Math.floor(s);
@@ -819,6 +814,25 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0)));
         return t * t * (3 - 2 * t);
       };
+      // shared height field — the grid AND the cypress rows sample it
+      const ringY = (x: number, z: number) => {
+        const r = Math.hypot(x, z);
+        const s = sstep(420, 1500, r);
+        let y = -30 - 10 * s;
+        y += Math.sin(x * 0.009 + 1.1) * Math.cos(z * 0.007 + 2.3) * (9 + 14 * s);
+        y += Math.sin(x * 0.003 + 0.9) * Math.cos(z * 0.0024 + 2.2) * 45 * s;
+        y += Math.sin(x * 0.0016 + 1.7) * Math.cos(z * 0.0013 + 0.4) * 110 * s * s;
+        return y;
+      };
+      const rPos = new Float32Array(AZ * RAD * 3);
+      const rCol = new Float32Array(AZ * RAD * 3);
+      // wheat-dominant parcel palette (matches the near ripe-gold wheat family)
+      const pal = ["#E2BC6A", "#D9AE55", "#EDD28F", "#C99F55", "#A8A05E", "#E6C87E"]
+        .map((c) => new THREE.Color(c));
+      const hazeC = new THREE.Color("#EAD9B8");
+      const rimC = new THREE.Color("#F2E9D2");
+      const hedgeC = new THREE.Color("#5F6B3F");
+      const treeC = new THREE.Color("#4F5C36");
       const tmpC = new THREE.Color();
       for (let j = 0; j < RAD; j++) {
         // log-spaced rings: dense near the rim where the eye lands
@@ -826,25 +840,24 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         for (let i = 0; i < AZ; i++) {
           const a = (i / AZ) * Math.PI * 2;
           const x = Math.cos(a) * r, z = Math.sin(a) * r;
-          // ridge amplitude grows with distance (Blender-pano recipe, in 3D)
-          const s = sstep(420, 2800, r);
-          let y = -30 - 10 * s;
-          y += Math.sin(x * 0.009 + 1.1) * Math.cos(z * 0.007 + 2.3) * (9 + 14 * s);
-          y += Math.sin(x * 0.003 + 0.9) * Math.cos(z * 0.0024 + 2.2) * 55 * s;
-          y += Math.sin(x * 0.0009 + 1.7) * Math.cos(z * 0.0007 + 0.4) * 235 * s * s;
+          let y = ringY(x, z);
           if (j === 0) y = -55; // tuck the inner rim under the terrain edge
           const k3 = (j * AZ + i) * 3;
           rPos[k3] = x; rPos[k3 + 1] = y; rPos[k3 + 2] = z;
-          // patchwork fields: stable sheared-cell hash → palette pick
-          const cell = rHash(Math.floor((x + z * 0.35) / 170), Math.floor((z - x * 0.22) / 140));
+          // patchwork parcels: sheared-cell hash → palette pick
+          const u = (x + z * 0.35) / 150, v = (z - x * 0.22) / 120;
+          const cell = rHash(Math.floor(u), Math.floor(v));
           tmpC.copy(pal[Math.floor(cell * pal.length) % pal.length]);
+          // hedgerow lines along the parcel borders — sells "velden"
+          const fu = u - Math.floor(u), fv = v - Math.floor(v);
+          if (Math.min(fu, 1 - fu) < 0.045 || Math.min(fv, 1 - fv) < 0.055) tmpC.lerp(hedgeC, 0.5);
           // scattered tree clusters on the upper slopes
-          if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.83 && y > -28) tmpC.lerp(treeC, 0.55);
+          if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.86 && y > -28) tmpC.lerp(treeC, 0.5);
           // near the rim fade to the pale terrain-edge tone so the square
           // terrain border melts into the ring instead of drawing a seam
           tmpC.lerp(rimC, 1 - sstep(400, 560, r));
           // baked warm haze with distance (this material ignores scene fog)
-          tmpC.lerp(hazeC, sstep(1300, 4300, r) * 0.55);
+          tmpC.lerp(hazeC, sstep(900, 2100, r) * 0.45);
           rCol[k3] = tmpC.r; rCol[k3 + 1] = tmpC.g; rCol[k3 + 2] = tmpC.b;
         }
       }
@@ -861,6 +874,39 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const farHillsRing = new THREE.Mesh(rge, rmat);
       scene.add(farHillsRing);
       extraDisposables.push(rmat); extraGeoDisposables.push(rge);
+
+      // Cypress rows on the ring — short hash-seeded lines of dark spires,
+      // the signature Tuscan field boundary. One instanced draw call.
+      const cypGeo = new THREE.ConeGeometry(1.7, 12, 6);
+      cypGeo.translate(0, 6, 0);
+      const cypMat = new THREE.MeshBasicMaterial({ fog: false });
+      const rows: { x: number; z: number; sc: number }[] = [];
+      for (let m = 0; m < 150; m++) {
+        const ang = rHash(m, 7.3) * Math.PI * 2;
+        const rr = 430 + Math.pow(rHash(m, 3.1), 1.3) * 1200;
+        const ax = Math.cos(ang) * rr, az2 = Math.sin(ang) * rr;
+        const dir = rHash(m, 9.7) * Math.PI;
+        const n = 3 + Math.floor(rHash(m, 5.5) * 4);
+        const step = 7 + rHash(m, 2.9) * 3;
+        for (let i2 = 0; i2 < n; i2++) {
+          const t = i2 - (n - 1) / 2;
+          rows.push({ x: ax + Math.cos(dir) * t * step, z: az2 + Math.sin(dir) * t * step, sc: 0.8 + rHash(m * 31 + i2, 4.4) * 0.55 });
+        }
+      }
+      const cyp = new THREE.InstancedMesh(cypGeo, cypMat, rows.length);
+      const dummy = new THREE.Object3D();
+      const cypC = new THREE.Color("#3E4A2C");
+      rows.forEach((p, i2) => {
+        const y = ringY(p.x, p.z);
+        dummy.position.set(p.x, y - 0.6, p.z);
+        dummy.scale.set(p.sc, p.sc * (0.9 + rHash(i2, 6.1) * 0.35), p.sc);
+        dummy.updateMatrix();
+        cyp.setMatrixAt(i2, dummy.matrix);
+        tmpC.copy(cypC).lerp(hazeC, sstep(600, 1900, Math.hypot(p.x, p.z)) * 0.55);
+        cyp.setColorAt(i2, tmpC);
+      });
+      scene.add(cyp);
+      extraDisposables.push(cypMat); extraGeoDisposables.push(cypGeo);
     }
     // W3 canary handles (see the dome-load block below): the loaded GLB group,
     // the procedural rib mesh (to re-show on load failure), and an unmount guard.
