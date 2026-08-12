@@ -582,17 +582,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const T = 8, S = 512 / T;
           for (let ty = 0; ty < T; ty++) for (let tx = 0; tx < T; tx++) {
             const h2 = Math.sin(tx * 127.1 + ty * 311.7) * 43758.5453;
-            const v2 = Math.floor((h2 - Math.floor(h2)) * 26 - 13);
+            const v2 = Math.floor((h2 - Math.floor(h2)) * 16 - 8);
             ctx2.fillStyle = `rgb(${232 + v2},${224 + v2},${205 + v2})`;
             ctx2.fillRect(tx * S, ty * S, S, S);
-            ctx2.strokeStyle = "rgba(180,168,145,0.35)"; ctx2.lineWidth = 1;
+            ctx2.strokeStyle = "rgba(180,168,145,0.2)"; ctx2.lineWidth = 1;
             for (let vn = 0; vn < 3; vn++) {
               const h3 = Math.sin((tx * 3 + ty * 7 + vn) * 91.7) * 4375.5;
               const o = (h3 - Math.floor(h3)) * S;
               ctx2.beginPath(); ctx2.moveTo(tx * S + o, ty * S); ctx2.lineTo(tx * S + o - S * 0.35, ty * S + S); ctx2.stroke();
             }
           }
-          ctx2.strokeStyle = "#A2977C"; ctx2.lineWidth = 5;
+          ctx2.strokeStyle = "#C6BBA0"; ctx2.lineWidth = 2;
           for (let i = 0; i <= T; i++) {
             ctx2.beginPath(); ctx2.moveTo(i * S, 0); ctx2.lineTo(i * S, 512); ctx2.stroke();
             ctx2.beginPath(); ctx2.moveTo(0, i * S); ctx2.lineTo(512, i * S); ctx2.stroke();
@@ -600,7 +600,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
         const tileTex = new THREE.CanvasTexture(tc);
         tileTex.wrapS = tileTex.wrapT = THREE.RepeatWrapping;
-        tileTex.repeat.set(19, 15);      // ≈6 world units per tile — reads from the air
+        tileTex.repeat.set(9, 7);        // ≈13 world units per tile — monumental slabs, soft joints (owner: "te kunstmatig")
         tileTex.anisotropy = aniso || 4;
         tileTex.colorSpace = THREE.SRGBColorSpace;
         const paveMat = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.9, envMapIntensity: 0.15 });
@@ -3643,10 +3643,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       box(gWall, 22, 15, 4, -2, 8.0, 21.5);                                          // A↔rear
 
       // ── BLOCK A FRONT (−z) upper articulation flanking the central pediment.
+      // These live in massGroup (x World = local + 2), but the portico/tympanum
+      // axis is WORLD x=0 — so the pair must be centred on local −2, not 0
+      // (owner: "ramen en ornamenten boven de ingang staan niet symmetrisch").
       {
         const aFz = 6 - 32.3 / 2; // block A grown front face z ≈ −10.15
-        for (const wx of [-5.5, 5.5]) richWindow("-z", wx, 14.0, aFz, 1.4, 2.0, true);
-        for (const px of [-7.6, 7.6]) {
+        for (const wx of [-7.5, 3.5]) richWindow("-z", wx, 14.0, aFz, 1.4, 2.0, true);
+        for (const px of [-9.6, 5.6]) {
           box(gTrimM, 0.7, 16.0, 0.34, px, 8.5, aFz - 0.18);
           box(gTrimM, 1.02, 0.3, 0.5, px, 16.6, aFz - 0.18);
           box(gTrimM, 0.94, 0.24, 0.45, px, 1.5, aFz - 0.18);

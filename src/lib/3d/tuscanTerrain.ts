@@ -66,6 +66,13 @@ export function getHeightAt(x: number, z: number): number {
   const edge = r / (SIZE * 0.5);
   h -= edge * edge * 6;
 
+  // Beyond the far-hills ring rim (r=380) the SQUARE terrain corners (out to
+  // r≈565) poked ABOVE the ring hills and read as floating pale slabs in the
+  // distance. Dive them steeply below the ring surface. (Legacy is unaffected:
+  // its camera far plane is 300, nothing out here ever renders.)
+  const corner = Math.min(1, Math.max(0, (r - 390) / 170));
+  h -= corner * corner * 45;
+
   return h;
 }
 
