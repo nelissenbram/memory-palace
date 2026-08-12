@@ -962,7 +962,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const cypC = new THREE.Color("#3E4A2C");
       rows.forEach((p, i2) => {
         const y = w3GroundY(p.x, p.z);
-        dummy.position.set(p.x, y - 0.6, p.z);
+        dummy.position.set(p.x, y - 0.9, p.z);
         dummy.scale.set(p.sc, p.sc * (0.9 + rHash(i2, 6.1) * 0.35), p.sc);
         dummy.updateMatrix();
         cyp.setMatrixAt(i2, dummy.matrix);
@@ -1017,7 +1017,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const olC = new THREE.Color("#7E8A5A");
       olivesKept.forEach((p, i2) => {
         const y = w3GroundY(p.x, p.z);
-        dummy.position.set(p.x, y - 0.4, p.z);
+        dummy.position.set(p.x, y - 0.7, p.z);
         dummy.scale.set(p.sc, p.sc, p.sc);
         dummy.updateMatrix();
         oliv.setMatrixAt(i2, dummy.matrix);
@@ -1065,13 +1065,25 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           vinRows.push({ x: cx3, z: cz3, dir, len, sc: 0.85 + rHash(m * 7 + r2, 12.3) * 0.3 });
         }
       }
-      const vin = new THREE.InstancedMesh(vinGeo, vinMat, vinRows.length);
+      // long rigid row-boxes floated off the curved slopes ("zwevende
+      // vlakken") — split every row into short segments that each sample
+      // the ground and sit embedded
+      const vinSegs: { x: number; z: number; dir: number; len: number; sc: number }[] = [];
+      vinRows.forEach((p) => {
+        const nSeg = Math.max(1, Math.round(p.len / 7));
+        const segLen = p.len / nSeg + 0.7;
+        for (let s2 = 0; s2 < nSeg; s2++) {
+          const t = (s2 - (nSeg - 1) / 2) * (p.len / nSeg);
+          vinSegs.push({ x: p.x + Math.cos(p.dir) * t, z: p.z + Math.sin(p.dir) * t, dir: p.dir, len: segLen, sc: p.sc });
+        }
+      });
+      const vin = new THREE.InstancedMesh(vinGeo, vinMat, vinSegs.length);
       const vinC = new THREE.Color("#5E7042");
-      vinRows.forEach((p, i2) => {
+      vinSegs.forEach((p, i2) => {
         const y = w3GroundY(p.x, p.z);
-        dummy.position.set(p.x, y - 0.3, p.z);
+        dummy.position.set(p.x, y - 0.55, p.z);
         dummy.rotation.set(0, -p.dir, 0);
-        dummy.scale.set(p.len, 1.15 * p.sc, 0.85);
+        dummy.scale.set(p.len, 1.3 * p.sc, 0.85);
         dummy.updateMatrix();
         vin.setMatrixAt(i2, dummy.matrix);
         tmpC.copy(vinC).lerp(hazeC, sstep(600, 1900, Math.hypot(p.x, p.z)) * 0.5);
@@ -5300,13 +5312,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // (c) sides + back of the palace (owner: "heuvels direct rond het paleis
       // veel meer populeren") — reduced stalk count (5th tuple entry), these
       // read at distance; mobile is untouched (slice(0,8) keeps the approach)
-      for (let gx = -340; gx <= 340; gx += 44) {
-        for (let gz = 350; gz >= -350; gz -= 40) {
+      for (let gx = -340; gx <= 340; gx += 38) {
+        for (let gz = 350; gz >= -350; gz -= 34) {
           if (Math.abs(gx) <= 240 && gz <= -28 && gz >= -330) continue; // southern grid covers this
           const jx = gx + (Math.random() * 14 - 7), jz = gz + (Math.random() * 12 - 6);
           if (Math.abs(jx) < 75 && jz > -55 && jz < 55) continue;  // palace pad
           if (Math.hypot(jx, jz) < 60) continue;
-          wheatPositions.push([jx, jz, 36 + Math.random() * 10, 28 + Math.random() * 8, 0.5]);
+          wheatPositions.push([jx, jz, 38 + Math.random() * 10, 30 + Math.random() * 8, 0.85]);
         }
       }
     }
@@ -5328,8 +5340,20 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         headColor: `hsl(${40 + Math.random() * 12}, ${50 + Math.random() * 20}%, ${64 + Math.random() * 12}%)`,
         getHeightAt,
         // W3 (owner): wheat starts only BEYOND the cypress verge — the whole
-        // road + verge + tree line stays a clear dusty band (Gladiator ref)
-        exclude: W3 ? (sx, sz) => sz < -40 && sz > -295 && Math.abs(sx - Math.sin(((-sz - 48) / 7) * 0.16) * (((-sz - 48) / 7) * 0.55)) < 8.2 : undefined,
+        // road + verge + tree line stays a clear dusty band (Gladiator ref).
+        // Plus an ORGANIC per-patch blob mask: the rectangular patch outline
+        // read as "vierkante" fields — stalks outside a wobbled ellipse are
+        // dropped, so overlapping patches tile into irregular organic fields.
+        exclude: W3 ? (() => {
+          const seed = wx * 12.9898 + wz * 78.233;
+          return (sx: number, sz: number) => {
+            if (sz < -40 && sz > -295 && Math.abs(sx - Math.sin(((-sz - 48) / 7) * 0.16) * (((-sz - 48) / 7) * 0.55)) < 8.2) return true;
+            const dx = (sx - wx) / (ww * 0.5), dz = (sz - wz) / (wd * 0.5);
+            const ang = Math.atan2(dz, dx);
+            const edge = 1 - 0.22 * (0.5 + 0.5 * Math.sin(ang * 3 + seed)) - 0.14 * (0.5 + 0.5 * Math.sin(ang * 7 + seed * 1.7));
+            return dx * dx + dz * dz > edge * edge;
+          };
+        })() : undefined,
         material: sharedWheatMat ?? undefined,
       }));
     });
