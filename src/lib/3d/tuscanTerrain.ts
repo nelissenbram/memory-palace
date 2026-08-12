@@ -112,6 +112,15 @@ export function createTuscanTerrain(
   const colEdge = new THREE.Color(warm ? "#F8F2E4" : "#F6F0E0");
   const colPlateau = new THREE.Color(warm ? "#F0E8D2" : "#EEE4CC");
   const tmpColor = new THREE.Color();
+  // W3 (bright): the rolling hills beyond the palace pad read as bare pale
+  // dunes — tint them as wheat/pasture parcels so every hill is "populated".
+  // Same sheared-cell recipe as the far-hills ring so the two zones knit.
+  const parcelPal = ["#E2BC6A", "#D9AE55", "#EDD28F", "#9BA05A", "#C99F55", "#7E8C4E", "#E6C87E"]
+    .map((c) => new THREE.Color(c));
+  const pHash = (a: number, b: number) => {
+    const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  };
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -146,9 +155,21 @@ export function createTuscanTerrain(
       tmpColor.b *= (1 - darken);
     }
 
-    // Atmospheric haze at edges
+    if (opts?.bright && dist > 90) {
+      const pb = Math.min(1, (dist - 90) / 60);
+      const u = (x + z * 0.35) / 150, v = (z - x * 0.22) / 120;
+      const cell = pHash(Math.floor(u), Math.floor(v));
+      tmpColor.lerp(parcelPal[Math.floor(cell * parcelPal.length) % parcelPal.length], pb * 0.55);
+      const fu = u - Math.floor(u), fv = v - Math.floor(v);
+      if (Math.min(fu, 1 - fu) < 0.045 || Math.min(fv, 1 - fv) < 0.055) {
+        tmpColor.lerp(new THREE.Color("#5F6B3F"), pb * 0.4);
+      }
+    }
+
+    // Atmospheric haze at edges (softened under W3-bright: the heavy fade
+    // washed the whole mid-zone to a pale blank)
     const edgeFade = Math.max(0, Math.min(1, (dist - 200) / 200));
-    tmpColor.lerp(colEdge, edgeFade * 0.6);
+    tmpColor.lerp(colEdge, edgeFade * (opts?.bright ? 0.2 : 0.6));
 
     colors[i * 3] = tmpColor.r;
     colors[i * 3 + 1] = tmpColor.g;

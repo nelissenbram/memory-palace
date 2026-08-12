@@ -826,8 +826,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       };
       const rPos = new Float32Array(AZ * RAD * 3);
       const rCol = new Float32Array(AZ * RAD * 3);
-      // wheat-dominant parcel palette (matches the near ripe-gold wheat family)
-      const pal = ["#E2BC6A", "#D9AE55", "#EDD28F", "#C99F55", "#A8A05E", "#E6C87E"]
+      // parcel palette: ripe wheat golds + grass/pasture greens (owner: the
+      // hills must read as populated fields, not bare dunes)
+      const pal = ["#E2BC6A", "#D9AE55", "#EDD28F", "#9BA05A", "#C99F55", "#7E8C4E", "#E6C87E", "#A8A05E"]
         .map((c) => new THREE.Color(c));
       const hazeC = new THREE.Color("#EAD9B8");
       const rimC = new THREE.Color("#F2E9D2");
@@ -841,14 +842,6 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const a = (i / AZ) * Math.PI * 2;
           const x = Math.cos(a) * r, z = Math.sin(a) * r;
           let y = ringY(x, z);
-          // outer rim = continuous CLOSING ridge above eye level: it occludes
-          // the photo's blue distance-haze band (read as "sea"), so the pano
-          // only ever supplies sky + clouds. Rolling profile, not a wall.
-          const closeF = sstep(1500, 2200, r);
-          if (closeF > 0) {
-            const ridgeMin = 58 + Math.sin(a * 3 + 1.0) * 14 + Math.sin(a * 7 + 2.6) * 8;
-            y = y * (1 - closeF) + Math.max(y, ridgeMin) * closeF;
-          }
           if (j === 0) y = -55; // tuck the inner rim under the terrain edge
           const k3 = (j * AZ + i) * 3;
           rPos[k3] = x; rPos[k3 + 1] = y; rPos[k3 + 2] = z;
@@ -860,13 +853,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const fu = u - Math.floor(u), fv = v - Math.floor(v);
           if (Math.min(fu, 1 - fu) < 0.045 || Math.min(fv, 1 - fv) < 0.055) tmpC.lerp(hedgeC, 0.5);
           // scattered tree clusters on the upper slopes
-          if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.86 && y > -28) tmpC.lerp(treeC, 0.5);
+          if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.82 && y > -28) tmpC.lerp(treeC, 0.5);
           // near the rim fade to the pale terrain-edge tone so the square
           // terrain border melts into the ring instead of drawing a seam
-          tmpC.lerp(rimC, 1 - sstep(400, 560, r));
-          // baked warm haze with distance (this material ignores scene fog);
-          // the closing ridge hazes hardest — it reads as far golden hills
-          tmpC.lerp(hazeC, sstep(900, 2100, r) * 0.45 + closeF * 0.3);
+          tmpC.lerp(rimC, 1 - sstep(400, 520, r));
+          // light warm haze with distance — kept subtle so the outer hills
+          // stay coloured fields (a heavy haze read as a pale back WALL)
+          tmpC.lerp(hazeC, sstep(1000, 2200, r) * 0.28);
           rCol[k3] = tmpC.r; rCol[k3 + 1] = tmpC.g; rCol[k3 + 2] = tmpC.b;
         }
       }
@@ -890,9 +883,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       cypGeo.translate(0, 6, 0);
       const cypMat = new THREE.MeshBasicMaterial({ fog: false });
       const rows: { x: number; z: number; sc: number }[] = [];
-      for (let m = 0; m < 150; m++) {
+      for (let m = 0; m < 230; m++) {
         const ang = rHash(m, 7.3) * Math.PI * 2;
-        const rr = 430 + Math.pow(rHash(m, 3.1), 1.3) * 1200;
+        const rr = 430 + Math.pow(rHash(m, 3.1), 1.15) * 1620;
         const ax = Math.cos(ang) * rr, az2 = Math.sin(ang) * rr;
         const dir = rHash(m, 9.7) * Math.PI;
         const n = 3 + Math.floor(rHash(m, 5.5) * 4);
@@ -916,6 +909,43 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       });
       scene.add(cyp);
       extraDisposables.push(cypMat); extraGeoDisposables.push(cypGeo);
+
+      // Olive groves on the ring — loose grid rows of rounded silver-green
+      // canopies, the second signature Tuscan planting. One instanced draw.
+      const olGeo = new THREE.SphereGeometry(2.3, 6, 5);
+      olGeo.scale(1, 0.72, 1);
+      olGeo.translate(0, 2.9, 0);
+      const olMat = new THREE.MeshBasicMaterial({ fog: false });
+      const olives: { x: number; z: number; sc: number }[] = [];
+      for (let m = 0; m < 130; m++) {
+        const ang = rHash(m, 11.3) * Math.PI * 2;
+        const rr = 440 + Math.pow(rHash(m, 8.2), 1.2) * 1500;
+        const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
+        const dir = rHash(m, 13.7) * Math.PI;
+        const cols = 2 + Math.floor(rHash(m, 6.6) * 3), rws = 2 + Math.floor(rHash(m, 4.9) * 2);
+        const stepC = 9 + rHash(m, 3.8) * 3, stepR = 10 + rHash(m, 2.2) * 3;
+        for (let c2 = 0; c2 < cols; c2++) for (let r2 = 0; r2 < rws; r2++) {
+          const u2 = (c2 - (cols - 1) / 2) * stepC, v2 = (r2 - (rws - 1) / 2) * stepR;
+          olives.push({
+            x: gx + Math.cos(dir) * u2 - Math.sin(dir) * v2 + (rHash(m * 91 + c2 * 7 + r2, 5.1) - 0.5) * 4,
+            z: gz + Math.sin(dir) * u2 + Math.cos(dir) * v2 + (rHash(m * 57 + c2 * 3 + r2, 9.9) - 0.5) * 4,
+            sc: 0.85 + rHash(m * 13 + c2 + r2 * 5, 7.7) * 0.55,
+          });
+        }
+      }
+      const oliv = new THREE.InstancedMesh(olGeo, olMat, olives.length);
+      const olC = new THREE.Color("#7E8A5A");
+      olives.forEach((p, i2) => {
+        const y = ringY(p.x, p.z);
+        dummy.position.set(p.x, y - 0.4, p.z);
+        dummy.scale.set(p.sc, p.sc, p.sc);
+        dummy.updateMatrix();
+        oliv.setMatrixAt(i2, dummy.matrix);
+        tmpC.copy(olC).lerp(hazeC, sstep(600, 1900, Math.hypot(p.x, p.z)) * 0.5);
+        oliv.setColorAt(i2, tmpC);
+      });
+      scene.add(oliv);
+      extraDisposables.push(olMat); extraGeoDisposables.push(olGeo);
     }
     // W3 canary handles (see the dome-load block below): the loaded GLB group,
     // the procedural rib mesh (to re-show on load failure), and an unmount guard.
@@ -4703,7 +4733,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── ROMAN AQUEDUCT — Pont du Gard-style two-tier structure ──
     // Skipped on mobile — hundreds of geometry pieces, very far from camera
-    if(!isRenaissance&&!isMobileQ){
+    // W3: dropped — it sat beyond the old 300-unit far plane (never visible)
+    // and popped in as pale ghost arches + giant bald dome-hills when the far
+    // plane moved to 5.2km. The far-hills ring owns that zone now.
+    if(!isRenaissance&&!isMobileQ&&!W3){
     const aqZ=220; // behind palace, far in background
     const aqSpans=12;
     const aqSpacing=10;
