@@ -284,20 +284,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // → TextureLoader + equirect mapping + sRGB, NOT the RGBE loader.
     // Desktop gets the native 7096x3548 source (needs 8192 texture support,
     // ~100MB GPU); mobile stays on 4096x2048 (GPU texture cap).
-    if(Q.loadBackgroundHDRI){
-      if(W3){
-        const panoPath=(!isMobileQ&&ren.capabilities.maxTextureSize>=8192)
-          ?"/textures/hdri/tuscan_pano_photo_7k.jpg"
-          :"/textures/hdri/tuscan_pano_photo_4k.jpg";
-        new THREE.TextureLoader().load(panoPath,(tex)=>{
-          tex.mapping=THREE.EquirectangularReflectionMapping;
-          tex.colorSpace=THREE.SRGBColorSpace;
-          bgMapHDRI=tex;scene.background=tex;scene.backgroundIntensity=1.0;
-          scene.backgroundBlurriness=0;skySphere.visible=false;
-        },undefined,()=>{});
-      } else {
-        loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});
+    if(W3&&!isMobileGPU()){
+      // Core W3 visual — gate on the NATIVE tier, not Q (a governor demotion
+      // flips Q.loadBackgroundHDRI off and the backdrop silently vanished).
+      // Progressive: the 1.2MB 4k shows almost immediately; full desktops
+      // swap in the native 7096px source once it has downloaded + decoded.
+      const setBg=(tex:THREE.Texture)=>{
+        tex.mapping=THREE.EquirectangularReflectionMapping;
+        tex.colorSpace=THREE.SRGBColorSpace;
+        const old=bgMapHDRI;
+        bgMapHDRI=tex;scene.background=tex;scene.backgroundIntensity=1.0;
+        scene.backgroundBlurriness=0;skySphere.visible=false;
+        if(old)old.dispose();
+      };
+      const wantHi=!isMobileQ&&ren.capabilities.maxTextureSize>=8192;
+      let hiLoaded=false;
+      new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_4k.jpg",
+        (tex)=>{if(hiLoaded){tex.dispose();}else{setBg(tex);}},undefined,()=>{});
+      if(wantHi){
+        new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_7k.jpg",
+          (tex)=>{hiLoaded=true;setBg(tex);},undefined,()=>{});
       }
+    } else if(Q.loadBackgroundHDRI&&!W3){
+      loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});
     }
 
     // ── POST-PROCESSING ──
