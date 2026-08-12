@@ -569,6 +569,44 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Stone apron — courtyardMat (sandstone under W1), top 8.42, sunk 0.5
       const apron = mk(new THREE.BoxGeometry(26, 0.5, 7.5), courtyardMat, 0, HILL_Y + 0.17, -19.75);
       apron.castShadow = false; scene.add(apron);
+      // W3 (owner): the pale pad around the palace read as a blank WHITE
+      // plane — pave it with procedural travertine TILES (canvas texture:
+      // per-tile tonal variation, darker joints, faint diagonal veins).
+      // Top 8.20 clears the terrain micro-noise (max ~8.13) and steps below
+      // the apron (8.42) / parterre carpet (8.36). Disposed via the scene
+      // material traversal (extraDisposables is declared further down).
+      if (W3) {
+        const tc = document.createElement("canvas"); tc.width = 512; tc.height = 512;
+        const ctx2 = tc.getContext("2d");
+        if (ctx2) {
+          const T = 8, S = 512 / T;
+          for (let ty = 0; ty < T; ty++) for (let tx = 0; tx < T; tx++) {
+            const h2 = Math.sin(tx * 127.1 + ty * 311.7) * 43758.5453;
+            const v2 = Math.floor((h2 - Math.floor(h2)) * 14 - 7);
+            ctx2.fillStyle = `rgb(${232 + v2},${224 + v2},${205 + v2})`;
+            ctx2.fillRect(tx * S, ty * S, S, S);
+            ctx2.strokeStyle = "rgba(180,168,145,0.35)"; ctx2.lineWidth = 1;
+            for (let vn = 0; vn < 3; vn++) {
+              const h3 = Math.sin((tx * 3 + ty * 7 + vn) * 91.7) * 4375.5;
+              const o = (h3 - Math.floor(h3)) * S;
+              ctx2.beginPath(); ctx2.moveTo(tx * S + o, ty * S); ctx2.lineTo(tx * S + o - S * 0.35, ty * S + S); ctx2.stroke();
+            }
+          }
+          ctx2.strokeStyle = "#B9AE94"; ctx2.lineWidth = 3;
+          for (let i = 0; i <= T; i++) {
+            ctx2.beginPath(); ctx2.moveTo(i * S, 0); ctx2.lineTo(i * S, 512); ctx2.stroke();
+            ctx2.beginPath(); ctx2.moveTo(0, i * S); ctx2.lineTo(512, i * S); ctx2.stroke();
+          }
+        }
+        const tileTex = new THREE.CanvasTexture(tc);
+        tileTex.wrapS = tileTex.wrapT = THREE.RepeatWrapping;
+        tileTex.repeat.set(29, 22);      // ≈4 world units per tile
+        tileTex.anisotropy = aniso || 4;
+        tileTex.colorSpace = THREE.SRGBColorSpace;
+        const paveMat = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.9, envMapIntensity: 0.15 });
+        const pave = mk(new THREE.BoxGeometry(116, 0.5, 88), paveMat, 2, HILL_Y - 0.05, -2);
+        pave.castShadow = false; pave.receiveShadow = true; scene.add(pave);
+      }
       // Parterre garden terrace — warm gravel carpet x ±17, z -23.25..-46.85.
       // Overlaps the apron 0.25 in z (stepped tops 8.42→8.36, never coplanar).
       const parterreGravelMat = new THREE.MeshStandardMaterial({
@@ -5300,7 +5338,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // (a) approach flanking — first entries so mobile's slice(0,8) keeps them
       for (let a = 1; a < 35; a += 2) {
         const x = Math.sin(a * 0.16) * (a * 0.55), z = -48 - a * 7;
-        for (const sx of [-1, 1]) wheatPositions.push([x + sx * 17, z, 28, 20]);
+        for (const sx of [-1, 1]) wheatPositions.push([x + sx * 17, z, 28, 20, 0]); // 0 = mobile-only (desktop sea covers this; the extra dense 28x20 blocks read as rectangles)
       }
       // (b) ONE CONTIGUOUS GOLDEN SEA (owner: "echt grote aaneengesloten
       // graanvelden") — edge-to-edge cells with NO jitter and NO gaps, tiled
@@ -5312,13 +5350,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           if (Math.abs(gx) < 78 && Math.abs(gz) < 58) continue;  // palace pad
           const r = Math.hypot(gx, gz);
           if (r < 52 || r > 372) continue;
-          const dens = r < 120 ? 4.0 : r < 200 ? 1.8 : r < 300 ? 0.85 : 0.4;
-          wheatPositions.push([gx, gz, 63, 63, dens]);
+          // CONTINUOUS density curve — hard tiers stepped along the cell grid
+          // and read as rectangular field seams
+          const t = Math.min(1, Math.max(0, (372 - r) / 300));
+          wheatPositions.push([gx, gz, 63, 63, 0.32 + 3.7 * t * t]);
         }
       }
     }
     // On mobile, skip far wheat fields entirely and reduce near-field density
-    const wheatSubset=isMobileQ?wheatPositions.slice(0,8):wheatPositions;
+    const wheatSubset=isMobileQ?wheatPositions.slice(0,8):(W3?wheatPositions.filter(p=>p[4]!==0):wheatPositions);
     // W1 (WS2-4): ONE shared wheat shader material for every field (~45 ShaderMaterials → 1);
     // per-field hsl uniforms are replaced by per-instance variation baked into the shared shader.
     const W1_WHEAT_STALK_H=1.7;
