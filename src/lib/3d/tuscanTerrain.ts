@@ -45,14 +45,17 @@ export function getHeightAt(x: number, z: number): number {
     h = HILL_Y * (1 - smooth) + h * smooth;
   }
 
-  // RECTANGULAR hilltop pad under the full palace footprint (x ±55, z −30..42):
+  // RECTANGULAR hilltop pad under the full palace footprint (x ±55, z −48..44):
   // the radial clamp (r<42) left the wing/pavilion corners overhanging the
   // falling ground — black shadow wedges under every slab edge and floating
   // props. Ground now rises to meet every edge, blending out over 14 units.
   // (Owner: "de rest van het platform moet genivelleerd" — wider dead-flat pad,
   // crisper 10-unit roll-off into the wheat instead of a long visible tilt.)
+  // Front edge runs to z −48: the walled forecourt terrace reaches its
+  // retaining wall at z −47, and the old −30 edge left the ground INSIDE the
+  // walls sagging into the downhill blend ("grond in het platform verzonken").
   const dxp = Math.max(0, Math.abs(x) - 60);
-  const dzp = Math.max(0, z < 0 ? -z - 30 : z - 44);
+  const dzp = Math.max(0, z < 0 ? -z - 48 : z - 44);
   const dRect = Math.hypot(dxp, dzp);
   if (dRect < 10) {
     const t = dRect / 10, sm = t * t * (3 - 2 * t);

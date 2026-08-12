@@ -9,11 +9,11 @@ const browser = await puppeteer.launch({
   headless: "new",
   args: [
     "--use-gl=angle", "--use-angle=swiftshader", "--enable-webgl",
-    "--ignore-gpu-blocklist", "--no-sandbox", "--window-size=1600,900",
+    "--ignore-gpu-blocklist", "--no-sandbox", "--window-size=1920,1080",
   ],
 });
 const page = await browser.newPage();
-await page.setViewport({ width: 1600, height: 900, deviceScaleFactor: 1 });
+await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 2 });
 page.on("pageerror", (e) => console.log("PAGEERR:", e.message));
 page.on("console", (m) => { const t = m.text(); if (/palace|error|WebGL|fail|Exterior|mount/i.test(t)) console.log("LOG:", t.slice(0, 160)); });
 

@@ -276,15 +276,24 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     let envMapHDRI: THREE.Texture|null=null;
     let bgMapHDRI: THREE.Texture|null=null;
     if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_EXTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=ENV_INT;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=ENV_INT_HDRI;}}).catch(()=>{});}
-    // Background panorama — W3 (owner-picked): Poly Haven "Rolling Hills" (CC0),
-    // warm sun over empty dry golden hilltops — the Gladiator vista. The old
-    // tuscan_landscape file is actually an ALPS village photo (out of context);
-    // it stays for !W3. Skipped on mobile (~6 MB) — procedural sky suffices.
-    // W3 backdrop = OUR OWN Blender-rendered 360 (owner option 3): pure far
-    // Tuscan gold ridge-lines + cypress/oak silhouettes at the horizon, warm sky,
-    // ZERO civilisation, colour-matched. Rendered scene-linear at photo level,
-    // so backgroundIntensity ~0.9.
-    if(Q.loadBackgroundHDRI){loadHDRI(ren,W3?"/textures/hdri/tuscan_farhills_360.hdr":HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=W3?0.9:0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});}
+    // Background panorama — the old tuscan_landscape file is actually an ALPS
+    // village photo (out of context); it stays for !W3. Skipped on mobile —
+    // procedural sky suffices.
+    // W3 backdrop = OWNER-SUPPLIED photographic 360 pano (2026-08-12): real
+    // Tuscan summer far-view, golden fields to the horizon. LDR equirect JPG
+    // (309 KB) → TextureLoader + equirect mapping + sRGB, NOT the RGBE loader.
+    if(Q.loadBackgroundHDRI){
+      if(W3){
+        new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo.jpg",(tex)=>{
+          tex.mapping=THREE.EquirectangularReflectionMapping;
+          tex.colorSpace=THREE.SRGBColorSpace;
+          bgMapHDRI=tex;scene.background=tex;scene.backgroundIntensity=1.0;
+          scene.backgroundBlurriness=0.02;skySphere.visible=false;
+        },undefined,()=>{});
+      } else {
+        loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});
+      }
+    }
 
     // ── POST-PROCESSING ──
     // Quality tier from mobilePerf.ts automatically disables SSAO/DOF/Bloom/SMAA on mobile
@@ -3771,7 +3780,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     });
 
     // Symmetrical parterre gardens with flower beds
-    const parterreData=[[-16,-25],[16,-25],[-16,-45],[16,-45],[-24,-35],[24,-35]];
+    // W3 drops these LEGACY raised beds: the W2 forecourt has its own box
+    // parterre; the legacy beds double it up and the [±16,−25] pair clips
+    // half-into the pale stone apron ("groenperk deels ingekleurd door marmer").
+    const parterreData=W3?[]:[[-16,-25],[16,-25],[-16,-45],[16,-45],[-24,-35],[24,-35]];
     const hedgeDark=new THREE.MeshStandardMaterial({color:W1?"#3E4828":"#2E4A22",roughness:.88});
     const hedgeMid=new THREE.MeshStandardMaterial({color:W1?"#4C5A32":"#3A5A2A",roughness:.85});
     const gravelWarm=new THREE.MeshStandardMaterial({color:"#C8B898",roughness:.92});
@@ -3816,21 +3828,23 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // Simple potted plants — rustic terracotta pots with low greenery
-    const potPositions2=[[-10,-35],[10,-35],[-10,-45],[10,-45]];
+    // W3: none — they land in the middle of the W3 box-parterre compartments.
+    const potPositions2=W3?[]:[[-10,-35],[10,-35],[-10,-45],[10,-45]];
     potPositions2.filter(([tx,tz]: any)=>!isInWingZone(tx,tz,2)).forEach(([tx,tz]: any)=>{
       cAdd(mk(new THREE.CylinderGeometry(.4,.3,.6,8),M.tile,tx,.3,tz));
       const bush=mk(new THREE.SphereGeometry(.5,7,6),hedgeDark,tx,.8,tz);
       bush.scale.set(1,.6,1);cAdd(bush);
     });
 
-    // A few simple terracotta pots near paths
-    for(const[ux,uz]of[[-8,-35],[8,-35]].filter(([x,z])=>!isInWingZone(x,z,2))){
+    // A few simple terracotta pots near paths — W3: none (see potPositions2)
+    for(const[ux,uz]of(W3?[]:[[-8,-35],[8,-35]]).filter(([x,z])=>!isInWingZone(x,z,2))){
       cAdd(mk(new THREE.CylinderGeometry(.2,.28,.5,8),M.tile,ux,.25,uz));
       cAdd(mk(new THREE.SphereGeometry(.18,6,5),hedgeDark,ux,.55,uz));
     }
 
-    // Stone benches
-    for(const[bx,bz]of[[-13,-35],[13,-35]].filter(([x,z])=>!isInWingZone(x,z,3))){
+    // Stone benches — W3: none; the W2 forecourt already places its own pair at
+    // world (±13, −35), so these legacy twins z-fight 0.13 above them.
+    for(const[bx,bz]of(W3?[]:[[-13,-35],[13,-35]]).filter(([x,z])=>!isInWingZone(x,z,3))){
       cAdd(mk(new THREE.BoxGeometry(2.5,.06,1),M.marble,bx,.54,bz));
       cAdd(mk(new THREE.BoxGeometry(2.5,.35,.7),M.marbleVein,bx,.18+.17,bz));
       for(const s of[-.9,.9])cAdd(mk(new THREE.BoxGeometry(.4,.35,.7),M.stoneD,bx+s,.18+.17,bz));
@@ -4504,6 +4518,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Entrance vestibulum faces -Z at world coords (0, HILL_Y, vestZ≈-12)
     // Road descends from hilltop courtyard edge down to flat ground, then continues south
     // Courtyard path connects entrance to road at z≈-40
+    // W3 drops ALL the old strada segments: the axis sections lie directly
+    // under the new causeway ribbon, and the winding main/east/west branches
+    // read as chains of brown patches ("oude wegen") across the wheat hills.
+    if(!W3){
     // Hill slope section (on the hill surface, angled slightly)
     for(let ri=0;ri<12;ri++){
       const rz=-40-ri*3.5;
@@ -4540,6 +4558,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const rz3=-65-ri*6;
       mkStrada(rx3,rz3,2.8,7,0);
     }}
+    }
 
     // ── ROMAN AQUEDUCT — Pont du Gard-style two-tier structure ──
     // Skipped on mobile — hundreds of geometry pieces, very far from camera
@@ -5653,7 +5672,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Release (not dispose) — these are refcounted entries in the shared env-map cache
       releaseEnvMap(envMapProc);
       if(envMapHDRI){releaseEnvMap(envMapHDRI);envMapHDRI=null;}
-      if(bgMapHDRI){releaseEnvMap(bgMapHDRI);bgMapHDRI=null;}
+      // W3 background is a plain TextureLoader texture (owner pano JPG), not a
+      // refcounted env-map cache entry — dispose directly.
+      if(bgMapHDRI){if(W3)bgMapHDRI.dispose();else releaseEnvMap(bgMapHDRI);bgMapHDRI=null;}
       composer.dispose();
       try{ren.forceContextLoss();}catch{}
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();

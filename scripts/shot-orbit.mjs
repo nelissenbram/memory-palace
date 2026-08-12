@@ -16,7 +16,7 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 2 });
 await page.goto(`http://localhost:${PORT}/flythrough`, { waitUntil: "networkidle2", timeout: 120000 }).catch(() => {});
-await new Promise((r) => setTimeout(r, 9000));
+await new Promise((r) => setTimeout(r, Number(process.env.ORBIT_WAIT || 9000)));
 
 // drag on the canvas to orbit (mousedown → move → up)
 const cx = 960, cy = 500;
