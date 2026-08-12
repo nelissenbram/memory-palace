@@ -1844,6 +1844,9 @@ export default function LandingV2Client({
             <span style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
               <Link className="lv2-navlink" href="/privacy" style={{ color: "inherit" }}>{footer.privacyPolicy}</Link>
               <Link className="lv2-navlink" href="/terms" style={{ color: "inherit" }}>{footer.termsOfService}</Link>
+              {/* CC-BY attribution discoverability (3D asset credits) — the
+                  word "Credits" is identical across our locales */}
+              <Link className="lv2-navlink" href="/credits" style={{ color: "inherit" }}>Credits</Link>
             </span>
           </div>
         </div>
