@@ -911,7 +911,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const nearOK = (x: number, z: number) => {
         const r = Math.hypot(x, z);
         if (r < 112 || r > 385) return false;
-        if (z < -20 && z > -340 && Math.abs(x) < 250) return false; // wheat blanket zone
+        // trees may stand IN the wheat sea (they rise above it) — only the
+        // road corridors stay clear
         if (inApproach(x, z) || w3OnFarRoad(x, z)) return false;
         return true;
       };
@@ -1048,10 +1049,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           vinRows.push({ x: cx3, z: cz3, dir, len, sc: 0.9 + rHash(m * 7 + r2, 12.3) * 0.3 });
         }
       }
-      // near hills: vineyards on the flanks/back of the palace hill
+      // near hills: vineyards only on the OUTER band — the inner hills are
+      // now one contiguous wheat sea (green rows inside it would break it up)
       for (let m = 200; m < 275; m++) {
         const ang = rHash(m, 21.7) * Math.PI * 2;
-        const rr = 135 + Math.pow(rHash(m, 17.3), 1.2) * 245;
+        const rr = 305 + Math.pow(rHash(m, 17.3), 1.2) * 80;
         const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
         if (!nearOK(gx, gz)) continue;
         const dir = rHash(m, 23.9) * Math.PI;
@@ -5300,25 +5302,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const x = Math.sin(a * 0.16) * (a * 0.55), z = -48 - a * 7;
         for (const sx of [-1, 1]) wheatPositions.push([x + sx * 17, z, 28, 20]);
       }
-      // (b) blanket grid across the southern vista (jittered, overlapping)
-      for (let gx = -240; gx <= 240; gx += 40) {
-        for (let gz = -28; gz >= -330; gz -= 36) {
-          const jx = gx + (Math.random() * 14 - 7), jz = gz + (Math.random() * 12 - 6);
-          if (Math.abs(jx) < 47 && jz > -50) continue;   // palace grounds + parterre
-          if (Math.hypot(jx, jz) < 50) continue;          // hilltop core — wheat now covers the pad edge/blend band ("platform" reads level)
-          wheatPositions.push([jx, jz, 34 + Math.random() * 10, 26 + Math.random() * 8]);
-        }
-      }
-      // (c) sides + back of the palace (owner: "heuvels direct rond het paleis
-      // veel meer populeren") — reduced stalk count (5th tuple entry), these
-      // read at distance; mobile is untouched (slice(0,8) keeps the approach)
-      for (let gx = -340; gx <= 340; gx += 38) {
-        for (let gz = 350; gz >= -350; gz -= 34) {
-          if (Math.abs(gx) <= 240 && gz <= -28 && gz >= -330) continue; // southern grid covers this
-          const jx = gx + (Math.random() * 14 - 7), jz = gz + (Math.random() * 12 - 6);
-          if (Math.abs(jx) < 75 && jz > -55 && jz < 55) continue;  // palace pad
-          if (Math.hypot(jx, jz) < 60) continue;
-          wheatPositions.push([jx, jz, 38 + Math.random() * 10, 30 + Math.random() * 8, 0.85]);
+      // (b) ONE CONTIGUOUS GOLDEN SEA (owner: "echt grote aaneengesloten
+      // graanvelden") — edge-to-edge cells with NO jitter and NO gaps, tiled
+      // over the whole hill out to the terrain rim. The 5th tuple entry is an
+      // ABSOLUTE density (stalks/m²), tiered by distance so huge cells stay
+      // payable; mobile is untouched (slice(0,8) keeps the approach flanks).
+      for (let gx = -366; gx <= 366; gx += 61) {
+        for (let gz = 366; gz >= -366; gz -= 61) {
+          if (Math.abs(gx) < 78 && Math.abs(gz) < 58) continue;  // palace pad
+          const r = Math.hypot(gx, gz);
+          if (r < 52 || r > 372) continue;
+          const dens = r < 120 ? 4.0 : r < 200 ? 1.8 : r < 300 ? 0.85 : 0.4;
+          wheatPositions.push([gx, gz, 63, 63, dens]);
         }
       }
     }
@@ -5329,14 +5324,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const W1_WHEAT_STALK_H=1.7;
     const sharedWheatMat=W1?createSharedWheatMaterial(W1_WHEAT_STALK_H,W3):null; // W3: ripe gold
     if(sharedWheatMat)extraDisposables.push(sharedWheatMat);
-    wheatSubset.forEach(([wx, wz, ww, wd, cf]) => {
-      // Distance-tiered stalk density (owner: DENSE wheat out to ~300m —
-      // the old 165 cutoff dropped to sparse far-tier way too early).
-      // Mobile is untouched: wheatSubset there is the 8-patch approach slice.
+    wheatSubset.forEach(([wx, wz, ww, wd, dens]) => {
+      // dens (stalks/m²) = W3 sea cells → absolute area-based count;
+      // legacy entries (approach flanks, !W3 patchwork) keep the old bases.
       const d0 = Math.hypot(wx, wz + 60);
-      const baseCount = d0 > 310 ? 800 : d0 > 165 ? 2000 : (2600 + Math.floor(Math.random() * 1000));
+      const baseCount = dens
+        ? ww * wd * dens
+        : (d0 > 165 ? 800 : (2600 + Math.floor(Math.random() * 1000))) * (W3 ? 1.6 : 1);
       wheatFields.push(createWheatField(scene, {
-        count: Math.round(baseCount*(d0 > 310 ? (cf ?? 1) : 1)*Q.vegetationDensity*(W3?1.6:1)),
+        count: Math.round(baseCount*Q.vegetationDensity),
         centerX: wx, centerZ: wz, width: ww, depth: wd,
         stalkHeight: sharedWheatMat ? W1_WHEAT_STALK_H : 1.4 + Math.random() * 0.9,
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
@@ -5344,13 +5340,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         getHeightAt,
         // W3 (owner): wheat starts only BEYOND the cypress verge — the whole
         // road + verge + tree line stays a clear dusty band (Gladiator ref).
-        // Plus an ORGANIC per-patch blob mask: the rectangular patch outline
-        // read as "vierkante" fields — stalks outside a wobbled ellipse are
-        // dropped, so overlapping patches tile into irregular organic fields.
+        // Interior sea cells stay SOLID (one contiguous field); only cells on
+        // the sea's OUTER boundary get an organic wobbled edge.
         exclude: W3 ? (() => {
           const seed = wx * 12.9898 + wz * 78.233;
+          const rim = Math.hypot(wx, wz) > 310;
           return (sx: number, sz: number) => {
             if (sz < -40 && sz > -295 && Math.abs(sx - Math.sin(((-sz - 48) / 7) * 0.16) * (((-sz - 48) / 7) * 0.55)) < 8.2) return true;
+            if (!rim) return false;
             const dx = (sx - wx) / (ww * 0.5), dz = (sz - wz) / (wd * 0.5);
             const ang = Math.atan2(dz, dx);
             const edge = 1 - 0.22 * (0.5 + 0.5 * Math.sin(ang * 3 + seed)) - 0.14 * (0.5 + 0.5 * Math.sin(ang * 7 + seed * 1.7));
