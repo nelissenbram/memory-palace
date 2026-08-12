@@ -841,6 +841,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const a = (i / AZ) * Math.PI * 2;
           const x = Math.cos(a) * r, z = Math.sin(a) * r;
           let y = ringY(x, z);
+          // outer rim = continuous CLOSING ridge above eye level: it occludes
+          // the photo's blue distance-haze band (read as "sea"), so the pano
+          // only ever supplies sky + clouds. Rolling profile, not a wall.
+          const closeF = sstep(1500, 2200, r);
+          if (closeF > 0) {
+            const ridgeMin = 44 + Math.sin(a * 3 + 1.0) * 14 + Math.sin(a * 7 + 2.6) * 8;
+            y = y * (1 - closeF) + Math.max(y, ridgeMin) * closeF;
+          }
           if (j === 0) y = -55; // tuck the inner rim under the terrain edge
           const k3 = (j * AZ + i) * 3;
           rPos[k3] = x; rPos[k3 + 1] = y; rPos[k3 + 2] = z;
@@ -856,8 +864,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // near the rim fade to the pale terrain-edge tone so the square
           // terrain border melts into the ring instead of drawing a seam
           tmpC.lerp(rimC, 1 - sstep(400, 560, r));
-          // baked warm haze with distance (this material ignores scene fog)
-          tmpC.lerp(hazeC, sstep(900, 2100, r) * 0.45);
+          // baked warm haze with distance (this material ignores scene fog);
+          // the closing ridge hazes hardest — it reads as far golden hills
+          tmpC.lerp(hazeC, sstep(900, 2100, r) * 0.45 + closeF * 0.3);
           rCol[k3] = tmpC.r; rCol[k3 + 1] = tmpC.g; rCol[k3 + 2] = tmpC.b;
         }
       }
