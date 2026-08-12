@@ -280,12 +280,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // village photo (out of context); it stays for !W3. Skipped on mobile —
     // procedural sky suffices.
     // W3 backdrop = OWNER-SUPPLIED photographic 360 pano (2026-08-12): real
-    // Tuscan summer far-view, golden fields to the horizon. 4096x2048 LDR
-    // equirect JPG (mobile GPU texture cap) → TextureLoader + equirect
-    // mapping + sRGB, NOT the RGBE loader.
+    // Tuscan summer far-view, golden fields to the horizon. LDR equirect JPG
+    // → TextureLoader + equirect mapping + sRGB, NOT the RGBE loader.
+    // Desktop gets the native 7096x3548 source (needs 8192 texture support,
+    // ~100MB GPU); mobile stays on 4096x2048 (GPU texture cap).
     if(Q.loadBackgroundHDRI){
       if(W3){
-        new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_4k.jpg",(tex)=>{
+        const panoPath=(!isMobileQ&&ren.capabilities.maxTextureSize>=8192)
+          ?"/textures/hdri/tuscan_pano_photo_7k.jpg"
+          :"/textures/hdri/tuscan_pano_photo_4k.jpg";
+        new THREE.TextureLoader().load(panoPath,(tex)=>{
           tex.mapping=THREE.EquirectangularReflectionMapping;
           tex.colorSpace=THREE.SRGBColorSpace;
           bgMapHDRI=tex;scene.background=tex;scene.backgroundIntensity=1.0;
