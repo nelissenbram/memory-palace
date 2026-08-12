@@ -842,9 +842,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.83 && y > -28) tmpC.lerp(treeC, 0.55);
           // near the rim fade to the pale terrain-edge tone so the square
           // terrain border melts into the ring instead of drawing a seam
-          tmpC.lerp(rimC, 1 - sstep(400, 640, r));
+          tmpC.lerp(rimC, 1 - sstep(400, 560, r));
           // baked warm haze with distance (this material ignores scene fog)
-          tmpC.lerp(hazeC, sstep(1100, 4300, r) * 0.62);
+          tmpC.lerp(hazeC, sstep(1300, 4300, r) * 0.55);
           rCol[k3] = tmpC.r; rCol[k3 + 1] = tmpC.g; rCol[k3 + 2] = tmpC.b;
         }
       }
