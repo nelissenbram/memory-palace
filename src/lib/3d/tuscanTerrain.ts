@@ -157,7 +157,9 @@ export function createTuscanTerrain(
 
     if (opts?.bright && dist > 90) {
       const pb = Math.min(1, (dist - 90) / 60);
-      const u = (x + z * 0.35) / 150, v = (z - x * 0.22) / 120;
+      // same domain-warped cells as the far-hills ring — organic, not square
+      const u = (x + z * 0.35) / 165 + Math.sin(z * 0.012 + x * 0.004) * 0.33;
+      const v = (z - x * 0.22) / 135 + Math.sin(x * 0.01 - z * 0.005) * 0.33;
       const cell = pHash(Math.floor(u), Math.floor(v));
       tmpColor.lerp(parcelPal[Math.floor(cell * parcelPal.length) % parcelPal.length], pb * 0.55);
       const fu = u - Math.floor(u), fv = v - Math.floor(v);

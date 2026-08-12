@@ -802,28 +802,51 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // into the vertex colors. The pano now only supplies sky + last horizon.
     // Unlit MeshBasicMaterial: distant land reads flat-lit and needs no sun;
     // fog=false because FogExp2 would wash everything past ~1km to one tone.
+    // Shared W3 landscape helpers — the far-hills ring, the extended approach
+    // road and every scatter exclusion sample the same fields, so nothing
+    // floats and nothing lands on the road.
+    const rHash = (a: number, b: number) => {
+      const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+      return s - Math.floor(s);
+    };
+    const sstep = (e0: number, e1: number, v: number) => {
+      const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0)));
+      return t * t * (3 - 2 * t);
+    };
+    const ringY = (x: number, z: number) => {
+      const r = Math.hypot(x, z);
+      const s = sstep(420, 1500, r);
+      let y = -30 - 10 * s;
+      y += Math.sin(x * 0.009 + 1.1) * Math.cos(z * 0.007 + 2.3) * (9 + 14 * s);
+      y += Math.sin(x * 0.003 + 0.9) * Math.cos(z * 0.0024 + 2.2) * 45 * s;
+      y += Math.sin(x * 0.0016 + 1.7) * Math.cos(z * 0.0013 + 0.4) * 110 * s * s;
+      return y;
+    };
+    // Gladiator approach centreline (also used by the road builder below) —
+    // extended far past the terrain onto the ring, to a vanishing point.
+    const w3ApX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
+    const w3ApZ = (a: number) => -48 - a * 7;
+    // ground height that blends terrain → ring across the rim overlap
+    const w3GroundY = (x: number, z: number) => {
+      const r = Math.hypot(x, z);
+      if (r < 360) return getHeightAt(x, z);
+      const s = Math.min(1, (r - 360) / 40);
+      return getHeightAt(x, z) * (1 - s) + ringY(x, z) * s;
+    };
+    // keep ring plantings off the extended road corridor
+    const w3OnFarRoad = (x: number, z: number) =>
+      z < -270 && z > -1980 && Math.abs(x - w3ApX((-48 - z) / 7)) < 11;
+    // organic parcel coordinates — a gentle domain warp bends the cell grid
+    // so fields read as smooth organic shapes, not squares (owner)
+    const w3ParcelUV = (x: number, z: number): [number, number] => {
+      const u = (x + z * 0.35) / 165 + Math.sin(z * 0.012 + x * 0.004) * 0.33;
+      const v = (z - x * 0.22) / 135 + Math.sin(x * 0.01 - z * 0.005) * 0.33;
+      return [u, v];
+    };
     if (W3) {
-      // Owner: halved extent, and the ring must read as FIELDS — wheat golds,
-      // parcel hedgerow borders, cypress rows — not smooth coloured dunes.
+      // Owner: the ring must read as densely FARMED hills — wheat golds,
+      // pasture greens, vineyards, olive groves, cypress rows.
       const AZ = 256, RAD = 26, R0 = 380, R1 = 2200;
-      const rHash = (a: number, b: number) => {
-        const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
-        return s - Math.floor(s);
-      };
-      const sstep = (e0: number, e1: number, v: number) => {
-        const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0)));
-        return t * t * (3 - 2 * t);
-      };
-      // shared height field — the grid AND the cypress rows sample it
-      const ringY = (x: number, z: number) => {
-        const r = Math.hypot(x, z);
-        const s = sstep(420, 1500, r);
-        let y = -30 - 10 * s;
-        y += Math.sin(x * 0.009 + 1.1) * Math.cos(z * 0.007 + 2.3) * (9 + 14 * s);
-        y += Math.sin(x * 0.003 + 0.9) * Math.cos(z * 0.0024 + 2.2) * 45 * s;
-        y += Math.sin(x * 0.0016 + 1.7) * Math.cos(z * 0.0013 + 0.4) * 110 * s * s;
-        return y;
-      };
       const rPos = new Float32Array(AZ * RAD * 3);
       const rCol = new Float32Array(AZ * RAD * 3);
       // parcel palette: ripe wheat golds + grass/pasture greens (owner: the
@@ -845,13 +868,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           if (j === 0) y = -55; // tuck the inner rim under the terrain edge
           const k3 = (j * AZ + i) * 3;
           rPos[k3] = x; rPos[k3 + 1] = y; rPos[k3 + 2] = z;
-          // patchwork parcels: sheared-cell hash → palette pick
-          const u = (x + z * 0.35) / 150, v = (z - x * 0.22) / 120;
+          // patchwork parcels: domain-warped cell hash → palette pick
+          const [u, v] = w3ParcelUV(x, z);
           const cell = rHash(Math.floor(u), Math.floor(v));
           tmpC.copy(pal[Math.floor(cell * pal.length) % pal.length]);
-          // hedgerow lines along the parcel borders — sells "velden"
+          // hedgerow lines along the (warped, organic) parcel borders
           const fu = u - Math.floor(u), fv = v - Math.floor(v);
-          if (Math.min(fu, 1 - fu) < 0.045 || Math.min(fv, 1 - fv) < 0.055) tmpC.lerp(hedgeC, 0.5);
+          if (Math.min(fu, 1 - fu) < 0.04 || Math.min(fv, 1 - fv) < 0.05) tmpC.lerp(hedgeC, 0.5);
           // scattered tree clusters on the upper slopes
           if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.82 && y > -28) tmpC.lerp(treeC, 0.5);
           // near the rim fade to the pale terrain-edge tone so the square
@@ -883,7 +906,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       cypGeo.translate(0, 6, 0);
       const cypMat = new THREE.MeshBasicMaterial({ fog: false });
       const rows: { x: number; z: number; sc: number }[] = [];
-      for (let m = 0; m < 230; m++) {
+      for (let m = 0; m < 380; m++) {
         const ang = rHash(m, 7.3) * Math.PI * 2;
         const rr = 430 + Math.pow(rHash(m, 3.1), 1.15) * 1620;
         const ax = Math.cos(ang) * rr, az2 = Math.sin(ang) * rr;
@@ -892,14 +915,27 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const step = 7 + rHash(m, 2.9) * 3;
         for (let i2 = 0; i2 < n; i2++) {
           const t = i2 - (n - 1) / 2;
-          rows.push({ x: ax + Math.cos(dir) * t * step, z: az2 + Math.sin(dir) * t * step, sc: 0.8 + rHash(m * 31 + i2, 4.4) * 0.55 });
+          const px2 = ax + Math.cos(dir) * t * step, pz2 = az2 + Math.sin(dir) * t * step;
+          if (w3OnFarRoad(px2, pz2)) continue;
+          rows.push({ x: px2, z: pz2, sc: 0.8 + rHash(m * 31 + i2, 4.4) * 0.55 });
+        }
+      }
+      // the avenue continues along the extended road to the vanishing point
+      for (let a = 36; a <= 250; a += 2.2) {
+        const cx2 = w3ApX(a), cz2 = w3ApZ(a);
+        const tx = w3ApX(a + 0.5) - w3ApX(a - 0.5), tz = -7;
+        const tl = Math.hypot(tx, tz) || 1;
+        const nx = -tz / tl, nz = tx / tl;
+        const lsc = 0.5 - sstep(36, 250, a) * 0.24;
+        for (const sd of [-6.8, 6.8]) {
+          rows.push({ x: cx2 + nx * sd, z: cz2 + nz * sd, sc: lsc * (0.9 + rHash(a * 17 + sd, 3.3) * 0.25) });
         }
       }
       const cyp = new THREE.InstancedMesh(cypGeo, cypMat, rows.length);
       const dummy = new THREE.Object3D();
       const cypC = new THREE.Color("#3E4A2C");
       rows.forEach((p, i2) => {
-        const y = ringY(p.x, p.z);
+        const y = w3GroundY(p.x, p.z);
         dummy.position.set(p.x, y - 0.6, p.z);
         dummy.scale.set(p.sc, p.sc * (0.9 + rHash(i2, 6.1) * 0.35), p.sc);
         dummy.updateMatrix();
@@ -917,7 +953,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       olGeo.translate(0, 2.9, 0);
       const olMat = new THREE.MeshBasicMaterial({ fog: false });
       const olives: { x: number; z: number; sc: number }[] = [];
-      for (let m = 0; m < 130; m++) {
+      for (let m = 0; m < 240; m++) {
         const ang = rHash(m, 11.3) * Math.PI * 2;
         const rr = 440 + Math.pow(rHash(m, 8.2), 1.2) * 1500;
         const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
@@ -933,10 +969,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           });
         }
       }
-      const oliv = new THREE.InstancedMesh(olGeo, olMat, olives.length);
+      const olivesKept = olives.filter((p) => !w3OnFarRoad(p.x, p.z));
+      const oliv = new THREE.InstancedMesh(olGeo, olMat, olivesKept.length);
       const olC = new THREE.Color("#7E8A5A");
-      olives.forEach((p, i2) => {
-        const y = ringY(p.x, p.z);
+      olivesKept.forEach((p, i2) => {
+        const y = w3GroundY(p.x, p.z);
         dummy.position.set(p.x, y - 0.4, p.z);
         dummy.scale.set(p.sc, p.sc, p.sc);
         dummy.updateMatrix();
@@ -946,6 +983,43 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       });
       scene.add(oliv);
       extraDisposables.push(olMat); extraGeoDisposables.push(olGeo);
+
+      // Vineyards (owner: "wijngaarden!") — parallel green row-hedges on the
+      // hillsides, each row one stretched instanced box. One draw call.
+      const vinGeo = new THREE.BoxGeometry(1, 1, 1);
+      vinGeo.translate(0, 0.5, 0);
+      const vinMat = new THREE.MeshBasicMaterial({ fog: false });
+      const vinRows: { x: number; z: number; dir: number; len: number; sc: number }[] = [];
+      for (let m = 0; m < 120; m++) {
+        const ang = rHash(m, 21.7) * Math.PI * 2;
+        const rr = 430 + Math.pow(rHash(m, 17.3), 1.2) * 1300;
+        const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
+        const dir = rHash(m, 23.9) * Math.PI;
+        const nRows = 6 + Math.floor(rHash(m, 19.1) * 6);
+        const len = 28 + rHash(m, 15.7) * 18;
+        const gap = 4.6;
+        for (let r2 = 0; r2 < nRows; r2++) {
+          const off = (r2 - (nRows - 1) / 2) * gap;
+          const cx3 = gx - Math.sin(dir) * off, cz3 = gz + Math.cos(dir) * off;
+          if (w3OnFarRoad(cx3, cz3)) continue;
+          vinRows.push({ x: cx3, z: cz3, dir, len, sc: 0.9 + rHash(m * 7 + r2, 12.3) * 0.3 });
+        }
+      }
+      const vin = new THREE.InstancedMesh(vinGeo, vinMat, vinRows.length);
+      const vinC = new THREE.Color("#5E7042");
+      vinRows.forEach((p, i2) => {
+        const y = w3GroundY(p.x, p.z);
+        dummy.position.set(p.x, y - 0.3, p.z);
+        dummy.rotation.set(0, -p.dir, 0);
+        dummy.scale.set(p.len, 1.15 * p.sc, 0.85);
+        dummy.updateMatrix();
+        vin.setMatrixAt(i2, dummy.matrix);
+        tmpC.copy(vinC).lerp(hazeC, sstep(600, 1900, Math.hypot(p.x, p.z)) * 0.5);
+        vin.setColorAt(i2, tmpC);
+      });
+      dummy.rotation.set(0, 0, 0);
+      scene.add(vin);
+      extraDisposables.push(vinMat); extraGeoDisposables.push(vinGeo);
     }
     // W3 canary handles (see the dome-load block below): the loaded GLB group,
     // the procedural rib mesh (to re-show on load failure), and an unmount guard.
@@ -4466,8 +4540,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Straight & on-axis near the stair (frames the dolly), winding into the
       // distance. Flanking wheat is added to the wheat fields below.
       const APPROACH_N = 35;
-      const apX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
-      const apZ = (a: number) => -48 - a * 7;               // z -48 (just below the parterre) → -286
+      const apX = w3ApX;                                    // shared centreline (hoisted:
+      const apZ = w3ApZ;                                    // the ribbon runs far past 35)
       // vertexColors: white core fading to a dusty berm tone at the edges, so the
       // road "runs over" into the cypress verge instead of a hard pale cut.
       const roadMat = new THREE.MeshStandardMaterial({ color: "#FFFFFF", vertexColors: true, roughness: 1, envMapIntensity: 0.05, side: THREE.DoubleSide });
@@ -4486,28 +4560,38 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // receiveShadow OFF (perpendicular on-axis cypress shadows read as a
       // board-ladder), yBias 1.25 = the empirically-clean causeway height.
       {
-        const SUB = 8, N = (APPROACH_N - 1) * SUB + 1;
-        const yBias = 1.25;
+        // Extended to a VANISHING POINT (owner): the ribbon runs past the
+        // terrain edge onto the far-hills ring (w3GroundY blends the two
+        // height fields), narrowing and fading into the haze until it
+        // disappears over a far crest at ~1.9km.
+        const A_END = 265, SUB = 8, N = A_END * SUB + 1;
         // 6 columns: soft berm edge → pale wheel track → dry-grass CENTRE STRIP
         // (middenberm, owner) → track → berm; vertex colours blend the bands.
         // Column order +→− keeps the proven UP winding (−→+ flipped it to a backface)
         const track = new THREE.Color("#F4EDDC"), edge = new THREE.Color("#D9C9A6"), centre = new THREE.Color("#B7AE7F");
+        const rHaze = new THREE.Color("#EAD9B8");
         const offs = [4.4, 2.8, 1.0, -1.0, -2.8, -4.4];
         const cols = [edge, track, centre, centre, track, edge];
         const pos: number[] = [], nrm: number[] = [], col: number[] = [], idx: number[] = [];
+        const fadeC = new THREE.Color();
         for (let k = 0; k < N; k++) {
           const a = k / SUB;
           const pax = apX(Math.max(0, a - 0.5)), paz = apZ(Math.max(0, a - 0.5));
-          const pbx = apX(Math.min(APPROACH_N - 1, a + 0.5)), pbz = apZ(Math.min(APPROACH_N - 1, a + 0.5));
+          const pbx = apX(Math.min(A_END, a + 0.5)), pbz = apZ(Math.min(A_END, a + 0.5));
           const dx = pbx - pax, dz = pbz - paz, dl = Math.hypot(dx, dz) || 1;
           const nx = -dz / dl, nz = dx / dl;                 // XZ perpendicular
           const cxx = apX(a), czz = apZ(a);
+          const dist = -czz;
+          const wsc = 1 - 0.55 * sstep(250, 1750, dist);     // narrows with distance
+          const yB = 1.25 + sstep(300, 900, dist) * 1.0;     // coarser ring mesh → higher bias
+          const fadeF = sstep(450, 1750, dist);              // melts into the haze
           const NC = offs.length;
           for (let j = 0; j < NC; j++) {
-            const px = cxx + nx * offs[j], pzz = czz + nz * offs[j];
-            pos.push(px, getHeightAt(px, pzz) + yBias, pzz);
+            const px = cxx + nx * offs[j] * wsc, pzz = czz + nz * offs[j] * wsc;
+            pos.push(px, w3GroundY(px, pzz) + yB, pzz);
             nrm.push(0, 1, 0);
-            col.push(cols[j].r, cols[j].g, cols[j].b);
+            fadeC.copy(cols[j]).lerp(rHaze, fadeF);
+            col.push(fadeC.r, fadeC.g, fadeC.b);
           }
           if (k < N - 1) for (let j = 0; j < NC - 1; j++) {
             const b = k * NC + j;
