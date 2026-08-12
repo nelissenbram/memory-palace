@@ -1199,7 +1199,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           [-13.85, -18, 1, 0, 4.0, 7.0, 0],    // W pavilion court flank — green
           [-17.15, -2, -1, 0, 6.5, 12.5, 0],   // block A west flank — tall green
           [17.15, 3, 1, 0, 5.0, 11.0, 2],      // block A east flank — bougainvillea
-          [-13, -10.15, 0, -1, 3.4, 13.5, 0],  // block A front corner — narrow climber
+          // block A FRONT (entrance facade) — heavy, varied coverage flanking
+          // the portico (owner: "sterker bedekken"); centre x ±7 stays clear
+          [-14, -10.15, 0, -1, 5.0, 14.0, 0],
+          [-8.6, -10.15, 0, -1, 3.0, 8.0, 2],
+          [8.6, -10.15, 0, -1, 4.2, 12.0, 0],
+          [14, -10.15, 0, -1, 4.6, 15.0, 1],
           [-44, -6.15, 0, -1, 8.0, 9.0, 1],    // W wing front — autumn spread, broad
           [-26, -6.15, 0, -1, 4.5, 10.0, 3],   // W wing front bay — jasmine
           [50.15, 2, 1, 0, 6.5, 8.5, 2],       // E wing east flank — bougainvillea
@@ -1215,33 +1220,50 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         type Leaf = { x: number; y: number; z: number; nx: number; nz: number; off: number; sc: number; col: THREE.Color; };
         const leaves: Leaf[] = [];
         const baseY = 8.2;
+        // Ivy blossom — real ivy carries small cream-green umbels; a few of
+        // these on EVERY patch (owner), on top of the showier bougainvillea /
+        // jasmine of the flowering kinds.
+        const BLOSSOM = new THREE.Color("#E8E2C2");
         IVY.forEach(([px, pz, nx, nz, w2, h2, kind], pi) => {
-          const nT = 2 + Math.floor(rHash(pi, 41.7) * 3);
-          const count = Math.round(w2 * h2 * 13);
-          for (let i2 = 0; i2 < count; i2++) {
+          // 3-5 organic LOBES per patch (owner: not a rectangular column —
+          // the mat is the union of soft blobs, denser at the base)
+          const nLobes = 3 + Math.floor(rHash(pi, 51.2) * 3);
+          const lobes: [number, number, number][] = [];
+          for (let li = 0; li < nLobes; li++) {
+            lobes.push([
+              (rHash(pi * 13 + li, 21.4) - 0.5) * w2 * 0.9,                  // lobe centre x
+              Math.pow(rHash(pi * 29 + li, 27.8), 1.25) * h2 * 0.85,         // lobe centre y (bias low)
+              (0.22 + rHash(pi * 41 + li, 33.1) * 0.4) * Math.max(w2, h2 * 0.55), // lobe radius
+            ]);
+          }
+          const attempts = Math.round(w2 * h2 * 26);
+          for (let i2 = 0; i2 < attempts; i2++) {
             const s1 = rHash(pi * 997 + i2, 3.7), s2 = rHash(pi * 631 + i2, 8.1), s3 = rHash(pi * 389 + i2, 5.9);
-            const t = Math.pow(s1, 0.72);                       // bias to the base
-            const tendril = Math.floor(s2 * nT);
-            const tx = (tendril / Math.max(1, nT - 1) - 0.5) * w2 * 0.8
-              + Math.sin(t * 9 + tendril * 2.4 + pi) * 0.5;     // sinuous climb
-            const spread = (0.55 + (1 - t) * 0.85) * (0.4 + s3);
-            const lat = tx + (rHash(i2 * 17 + pi, 9.3) - 0.5) * spread * 2;
-            // irregular silhouette: reject outliers near the top
-            if (Math.abs(lat) > (w2 / 2) * (1.05 - 0.4 * t) * (0.75 + rHash(i2, 2.2) * 0.5)) continue;
-            const y = baseY + 0.15 + t * h2;
+            const lat = (s2 - 0.5) * w2 * 1.1 + Math.sin(s1 * 11 + pi) * 0.4;
+            const hy = Math.pow(s1, 0.85) * h2;
+            // coverage = strongest lobe at this spot + a base-mat bias
+            let cover = 0.3 * (1 - hy / h2);
+            for (const [lxr, lyr, lr] of lobes) {
+              const d2 = ((lat - lxr) ** 2 + (hy - lyr) ** 2) / (lr * lr);
+              cover = Math.max(cover, Math.exp(-d2));
+            }
+            if (rHash(i2 * 23 + pi, 44.6) > cover) continue;
+            const y = baseY + 0.15 + hy;
             const off = 0.06 + rHash(i2 * 7 + pi, 6.6) * 0.22;  // depth off the wall
-            const along = lat;
-            const lx2 = px + (nz !== 0 ? along : 0) + nx * off;
-            const lz2 = pz + (nx !== 0 ? along : 0) + nz * off;
-            const isFlower = kind >= 2 && rHash(i2 * 3 + pi, 12.9) > 0.93;
+            const lx2 = px + (nz !== 0 ? lat : 0) + nx * off;
+            const lz2 = pz + (nx !== 0 ? lat : 0) + nz * off;
+            const fr = rHash(i2 * 3 + pi, 12.9);
+            const isShowFlower = kind >= 2 && fr > 0.93;
+            const isBlossom = !isShowFlower && fr < 0.035;      // subtle, every patch
             const col = new THREE.Color();
-            if (isFlower) col.copy(FLOWER[kind - 2]);
+            if (isShowFlower) col.copy(FLOWER[kind - 2]);
+            else if (isBlossom) col.copy(BLOSSOM);
             else {
               col.copy(GREENS[Math.floor(rHash(i2 * 11 + pi, 4.4) * GREENS.length) % GREENS.length]);
               if (kind === 1 && rHash(i2 * 5 + pi, 7.2) > 0.55) col.lerp(RUSSET, 0.5 + rHash(i2, 3.3) * 0.4);
             }
             col.multiplyScalar(0.6 + (off / 0.28) * 0.4);       // deeper = darker
-            leaves.push({ x: lx2, y, z: lz2, nx, nz, off, sc: (isFlower ? 0.5 : 0.75) + s3 * 0.55, col });
+            leaves.push({ x: lx2, y, z: lz2, nx, nz, off, sc: (isShowFlower || isBlossom ? 0.45 : 0.75) + s3 * 0.55, col });
           }
         });
         const ivyMesh = new THREE.InstancedMesh(leafGeo, leafMat, leaves.length);
