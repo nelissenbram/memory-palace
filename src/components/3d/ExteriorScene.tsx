@@ -905,7 +905,33 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const cypGeo = new THREE.ConeGeometry(1.7, 12, 6);
       cypGeo.translate(0, 6, 0);
       const cypMat = new THREE.MeshBasicMaterial({ fog: false });
+      // near-zone placement test: the terrain hills directly around the
+      // palace (owner: populate these MUCH more) — everywhere except the
+      // southern wheat blanket, the approach corridor and the palace pad
+      const nearOK = (x: number, z: number) => {
+        const r = Math.hypot(x, z);
+        if (r < 112 || r > 385) return false;
+        if (z < -20 && z > -340 && Math.abs(x) < 250) return false; // wheat blanket zone
+        if (inApproach(x, z) || w3OnFarRoad(x, z)) return false;
+        return true;
+      };
       const rows: { x: number; z: number; sc: number }[] = [];
+      // near hills: cypress lines on the flanks/back of the palace hill
+      for (let m = 400; m < 540; m++) {
+        const ang = rHash(m, 7.3) * Math.PI * 2;
+        const rr = 115 + Math.pow(rHash(m, 3.1), 1.1) * 270;
+        const ax = Math.cos(ang) * rr, az2 = Math.sin(ang) * rr;
+        if (!nearOK(ax, az2)) continue;
+        const dir = rHash(m, 9.7) * Math.PI;
+        const n = 3 + Math.floor(rHash(m, 5.5) * 4);
+        const step = 6 + rHash(m, 2.9) * 2.5;
+        for (let i2 = 0; i2 < n; i2++) {
+          const t = i2 - (n - 1) / 2;
+          const px2 = ax + Math.cos(dir) * t * step, pz2 = az2 + Math.sin(dir) * t * step;
+          if (!nearOK(px2, pz2)) continue;
+          rows.push({ x: px2, z: pz2, sc: 0.55 + rHash(m * 31 + i2, 4.4) * 0.35 });
+        }
+      }
       for (let m = 0; m < 380; m++) {
         const ang = rHash(m, 7.3) * Math.PI * 2;
         const rr = 430 + Math.pow(rHash(m, 3.1), 1.15) * 1620;
@@ -969,6 +995,23 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           });
         }
       }
+      // near hills: olive orchards on the flanks/back of the palace hill
+      for (let m = 300; m < 420; m++) {
+        const ang = rHash(m, 11.3) * Math.PI * 2;
+        const rr = 125 + Math.pow(rHash(m, 8.2), 1.1) * 255;
+        const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
+        if (!nearOK(gx, gz)) continue;
+        const dir = rHash(m, 13.7) * Math.PI;
+        const cols = 2 + Math.floor(rHash(m, 6.6) * 3), rws = 2 + Math.floor(rHash(m, 4.9) * 2);
+        const stepC = 8 + rHash(m, 3.8) * 2.5, stepR = 9 + rHash(m, 2.2) * 2.5;
+        for (let c2 = 0; c2 < cols; c2++) for (let r2 = 0; r2 < rws; r2++) {
+          const u2 = (c2 - (cols - 1) / 2) * stepC, v2 = (r2 - (rws - 1) / 2) * stepR;
+          const px2 = gx + Math.cos(dir) * u2 - Math.sin(dir) * v2 + (rHash(m * 91 + c2 * 7 + r2, 5.1) - 0.5) * 3;
+          const pz2 = gz + Math.sin(dir) * u2 + Math.cos(dir) * v2 + (rHash(m * 57 + c2 * 3 + r2, 9.9) - 0.5) * 3;
+          if (!nearOK(px2, pz2)) continue;
+          olives.push({ x: px2, z: pz2, sc: 0.7 + rHash(m * 13 + c2 + r2 * 5, 7.7) * 0.4 });
+        }
+      }
       const olivesKept = olives.filter((p) => !w3OnFarRoad(p.x, p.z));
       const oliv = new THREE.InstancedMesh(olGeo, olMat, olivesKept.length);
       const olC = new THREE.Color("#7E8A5A");
@@ -1003,6 +1046,23 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const cx3 = gx - Math.sin(dir) * off, cz3 = gz + Math.cos(dir) * off;
           if (w3OnFarRoad(cx3, cz3)) continue;
           vinRows.push({ x: cx3, z: cz3, dir, len, sc: 0.9 + rHash(m * 7 + r2, 12.3) * 0.3 });
+        }
+      }
+      // near hills: vineyards on the flanks/back of the palace hill
+      for (let m = 200; m < 275; m++) {
+        const ang = rHash(m, 21.7) * Math.PI * 2;
+        const rr = 135 + Math.pow(rHash(m, 17.3), 1.2) * 245;
+        const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
+        if (!nearOK(gx, gz)) continue;
+        const dir = rHash(m, 23.9) * Math.PI;
+        const nRows = 5 + Math.floor(rHash(m, 19.1) * 6);
+        const len = 20 + rHash(m, 15.7) * 18;
+        const gap = 4.2;
+        for (let r2 = 0; r2 < nRows; r2++) {
+          const off = (r2 - (nRows - 1) / 2) * gap;
+          const cx3 = gx - Math.sin(dir) * off, cz3 = gz + Math.cos(dir) * off;
+          if (!nearOK(cx3, cz3)) continue;
+          vinRows.push({ x: cx3, z: cz3, dir, len, sc: 0.85 + rHash(m * 7 + r2, 12.3) * 0.3 });
         }
       }
       const vin = new THREE.InstancedMesh(vinGeo, vinMat, vinRows.length);
@@ -5237,6 +5297,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           wheatPositions.push([jx, jz, 34 + Math.random() * 10, 26 + Math.random() * 8]);
         }
       }
+      // (c) sides + back of the palace (owner: "heuvels direct rond het paleis
+      // veel meer populeren") — reduced stalk count (5th tuple entry), these
+      // read at distance; mobile is untouched (slice(0,8) keeps the approach)
+      for (let gx = -340; gx <= 340; gx += 44) {
+        for (let gz = 350; gz >= -350; gz -= 40) {
+          if (Math.abs(gx) <= 240 && gz <= -28 && gz >= -330) continue; // southern grid covers this
+          const jx = gx + (Math.random() * 14 - 7), jz = gz + (Math.random() * 12 - 6);
+          if (Math.abs(jx) < 75 && jz > -55 && jz < 55) continue;  // palace pad
+          if (Math.hypot(jx, jz) < 60) continue;
+          wheatPositions.push([jx, jz, 36 + Math.random() * 10, 28 + Math.random() * 8, 0.5]);
+        }
+      }
     }
     // On mobile, skip far wheat fields entirely and reduce near-field density
     const wheatSubset=isMobileQ?wheatPositions.slice(0,8):wheatPositions;
@@ -5245,11 +5317,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const W1_WHEAT_STALK_H=1.7;
     const sharedWheatMat=W1?createSharedWheatMaterial(W1_WHEAT_STALK_H,W3):null; // W3: ripe gold
     if(sharedWheatMat)extraDisposables.push(sharedWheatMat);
-    wheatSubset.forEach(([wx, wz, ww, wd]) => {
+    wheatSubset.forEach(([wx, wz, ww, wd, cf]) => {
       const isFar = Math.hypot(wx, wz + 60) > 165;
       const baseCount=isFar ? 800 : (2600 + Math.floor(Math.random() * 1000));
       wheatFields.push(createWheatField(scene, {
-        count: Math.round(baseCount*Q.vegetationDensity*(W3?1.6:1)),
+        count: Math.round(baseCount*(cf ?? 1)*Q.vegetationDensity*(W3?1.6:1)),
         centerX: wx, centerZ: wz, width: ww, depth: wd,
         stalkHeight: sharedWheatMat ? W1_WHEAT_STALK_H : 1.4 + Math.random() * 0.9,
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
