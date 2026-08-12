@@ -846,7 +846,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // only ever supplies sky + clouds. Rolling profile, not a wall.
           const closeF = sstep(1500, 2200, r);
           if (closeF > 0) {
-            const ridgeMin = 44 + Math.sin(a * 3 + 1.0) * 14 + Math.sin(a * 7 + 2.6) * 8;
+            const ridgeMin = 58 + Math.sin(a * 3 + 1.0) * 14 + Math.sin(a * 7 + 2.6) * 8;
             y = y * (1 - closeF) + Math.max(y, ridgeMin) * closeF;
           }
           if (j === 0) y = -55; // tuck the inner rim under the terrain edge
