@@ -831,7 +831,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           let y = -30 - 10 * s;
           y += Math.sin(x * 0.009 + 1.1) * Math.cos(z * 0.007 + 2.3) * (9 + 14 * s);
           y += Math.sin(x * 0.003 + 0.9) * Math.cos(z * 0.0024 + 2.2) * 55 * s;
-          y += Math.sin(x * 0.0009 + 1.7) * Math.cos(z * 0.0007 + 0.4) * 150 * s * s;
+          y += Math.sin(x * 0.0009 + 1.7) * Math.cos(z * 0.0007 + 0.4) * 235 * s * s;
           if (j === 0) y = -55; // tuck the inner rim under the terrain edge
           const k3 = (j * AZ + i) * 3;
           rPos[k3] = x; rPos[k3 + 1] = y; rPos[k3 + 2] = z;
@@ -842,9 +842,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.83 && y > -28) tmpC.lerp(treeC, 0.55);
           // near the rim fade to the pale terrain-edge tone so the square
           // terrain border melts into the ring instead of drawing a seam
-          tmpC.lerp(rimC, 1 - sstep(430, 900, r));
+          tmpC.lerp(rimC, 1 - sstep(400, 640, r));
           // baked warm haze with distance (this material ignores scene fog)
-          tmpC.lerp(hazeC, sstep(700, 4200, r) * 0.8);
+          tmpC.lerp(hazeC, sstep(1100, 4300, r) * 0.62);
           rCol[k3] = tmpC.r; rCol[k3 + 1] = tmpC.g; rCol[k3 + 2] = tmpC.b;
         }
       }
