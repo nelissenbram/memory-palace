@@ -251,7 +251,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // never comes closer than ~14 world units to any geometry (min camD is 35,
     // user zoom clamps at 40), and depth precision at the far haze scales with
     // near, so this alone buys 2.5× depth resolution on the distant planes.
-    const camera=new THREE.PerspectiveCamera(32,w/h,2.5,300);
+    // W3: far plane reaches the far-hills ring (~4.5km) — at 300 the real
+    // world stopped ~300m out and the photo band had to carry the midground.
+    const camera=new THREE.PerspectiveCamera(32,w/h,2.5,W3?5200:300);
     let ren:THREE.WebGLRenderer;
     try{ren=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:"high-performance"});}catch{ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"default"});}
     ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,Q.maxPixelRatio));
@@ -790,6 +792,76 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Collect standalone materials/geometries for explicit cleanup
     const extraDisposables: THREE.Material[] = [];
     const extraGeoDisposables: THREE.BufferGeometry[] = [];
+
+    // ── W3 FAR-HILLS RING — real 3D midground out to the horizon ──
+    // A 60° view slice of even an 8k equirect pano is only ~1200px on screen,
+    // so the photo can never read sharp as midground, and it met the terrain
+    // in a hard blurry band. This ring is real geometry: ridged golden
+    // patchwork hills from UNDER the terrain rim (inner edge dropped to −55,
+    // "onder de berg gestoken") out to ~4.5km, with golden-hour haze baked
+    // into the vertex colors. The pano now only supplies sky + last horizon.
+    // Unlit MeshBasicMaterial: distant land reads flat-lit and needs no sun;
+    // fog=false because FogExp2 would wash everything past ~1km to one tone.
+    if (W3) {
+      const AZ = 256, RAD = 30, R0 = 380, R1 = 4500;
+      const rPos = new Float32Array(AZ * RAD * 3);
+      const rCol = new Float32Array(AZ * RAD * 3);
+      const pal = ["#D9B25F", "#E6D3A0", "#C9A96A", "#8F9457", "#6E7C44", "#C9B489"]
+        .map((c) => new THREE.Color(c));
+      const hazeC = new THREE.Color("#EAD9B8");
+      const rimC = new THREE.Color("#F2E9D2");
+      const treeC = new THREE.Color("#4F5C36");
+      const rHash = (a: number, b: number) => {
+        const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+        return s - Math.floor(s);
+      };
+      const sstep = (e0: number, e1: number, v: number) => {
+        const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0)));
+        return t * t * (3 - 2 * t);
+      };
+      const tmpC = new THREE.Color();
+      for (let j = 0; j < RAD; j++) {
+        // log-spaced rings: dense near the rim where the eye lands
+        const r = R0 * Math.pow(R1 / R0, j / (RAD - 1));
+        for (let i = 0; i < AZ; i++) {
+          const a = (i / AZ) * Math.PI * 2;
+          const x = Math.cos(a) * r, z = Math.sin(a) * r;
+          // ridge amplitude grows with distance (Blender-pano recipe, in 3D)
+          const s = sstep(420, 2800, r);
+          let y = -30 - 10 * s;
+          y += Math.sin(x * 0.009 + 1.1) * Math.cos(z * 0.007 + 2.3) * (9 + 14 * s);
+          y += Math.sin(x * 0.003 + 0.9) * Math.cos(z * 0.0024 + 2.2) * 55 * s;
+          y += Math.sin(x * 0.0009 + 1.7) * Math.cos(z * 0.0007 + 0.4) * 150 * s * s;
+          if (j === 0) y = -55; // tuck the inner rim under the terrain edge
+          const k3 = (j * AZ + i) * 3;
+          rPos[k3] = x; rPos[k3 + 1] = y; rPos[k3 + 2] = z;
+          // patchwork fields: stable sheared-cell hash → palette pick
+          const cell = rHash(Math.floor((x + z * 0.35) / 170), Math.floor((z - x * 0.22) / 140));
+          tmpC.copy(pal[Math.floor(cell * pal.length) % pal.length]);
+          // scattered tree clusters on the upper slopes
+          if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.83 && y > -28) tmpC.lerp(treeC, 0.55);
+          // near the rim fade to the pale terrain-edge tone so the square
+          // terrain border melts into the ring instead of drawing a seam
+          tmpC.lerp(rimC, 1 - sstep(430, 900, r));
+          // baked warm haze with distance (this material ignores scene fog)
+          tmpC.lerp(hazeC, sstep(700, 4200, r) * 0.8);
+          rCol[k3] = tmpC.r; rCol[k3 + 1] = tmpC.g; rCol[k3 + 2] = tmpC.b;
+        }
+      }
+      const rIdx: number[] = [];
+      for (let j = 0; j < RAD - 1; j++) for (let i = 0; i < AZ; i++) {
+        const a = j * AZ + i, b = j * AZ + ((i + 1) % AZ);
+        rIdx.push(a, a + AZ, b, b, a + AZ, b + AZ);
+      }
+      const rge = new THREE.BufferGeometry();
+      rge.setIndex(rIdx);
+      rge.setAttribute("position", new THREE.BufferAttribute(rPos, 3));
+      rge.setAttribute("color", new THREE.BufferAttribute(rCol, 3));
+      const rmat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide });
+      const farHillsRing = new THREE.Mesh(rge, rmat);
+      scene.add(farHillsRing);
+      extraDisposables.push(rmat); extraGeoDisposables.push(rge);
+    }
     // W3 canary handles (see the dome-load block below): the loaded GLB group,
     // the procedural rib mesh (to re-show on load failure), and an unmount guard.
     let w3DomeCanary: THREE.Group | null = null;
