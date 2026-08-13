@@ -147,6 +147,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // bands, canon sweep, awClick tap-is-travel are its substrate). Flag-off =
     // W1 behavior fully intact.
     const W2=W1&&(()=>{try{return !!flag3d("w2_corridor");}catch{return false;}})();
+    // ── MUSEO VIVO Wave-3 corridor "The Threshold Procession" (masterplan
+    // docs/CORRIDOR_GRAPHICS_MASTERPLAN.md). Sits on the full W1+W2 substrate
+    // (baked bands + salon hang); flag-off byte-identical. Wave A = code-only
+    // composition/correctness fixes (no assets, no owner gate).
+    const W3C=W2&&(()=>{try{return !!flag3d("w3_corridor");}catch{return false;}})();
     const reduceMotion=W1&&(()=>{try{return prefersReducedMotion();}catch{return false;}})();
     // WS5-9: show the ember Skip during the W2 onboarding push-in
     if(W2&&onboardingModeRef.current&&!reduceMotion){w2CinSkipRef.current=false;w2CinActiveRef.current=true;setW2CinActive(true);}
@@ -170,7 +175,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const camera=new THREE.PerspectiveCamera(55,w/h,0.3,80);
     const Q=getQuality();
     const ren=borrowRenderer(w,h);
-    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.NoToneMapping;ren.toneMappingExposure=EXPOSURE;// grade lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE)
+    // W3C (F13): the corridor was the only canon scene on hard PCFShadowMap;
+    // hall/exterior use PCFSoft. Soften to match (still baked: autoUpdate off).
+    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=W3C?THREE.PCFSoftShadowMap:(Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap);ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.NoToneMapping;ren.toneMappingExposure=EXPOSURE;// grade lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE)
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
@@ -193,10 +200,17 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // W1: sun 1.5→2.1, hemi factor .7→.42, fill 1.0→0.5. Grade law intact
     // (no exposure/tone-mapping change), canon colors kept, legacy path untouched.
     const hemiLight=new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?.42:.55)*dlPreset.ambientIntensity/0.5);scene.add(hemiLight);
-    const sun=new THREE.DirectionalLight(dlPreset.sunColor,(W1?2.1:1.5)*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);
+    // W3C (F06/F11): the key sun sat at +x (8,16,-3) — the OPPOSITE side from
+    // the window bays (winSide=-1, i.e. -x), so no shaft ever crossed an
+    // opening. Move it to the window quadrant so golden light rakes THROUGH
+    // the arches. Softer, biased shadows (F13) + a wider frustum fitted to the
+    // corridor length come after cL is known (see below).
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,(W1?2.1:1.5)*dlPreset.sunIntensity);
+    sun.position.set(W3C?-15:8,16,W3C?-9:-3);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=60;sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
+    if(W3C){sun.shadow.bias=-0.0004;sun.shadow.normalBias=0.03;sun.shadow.radius=3;}
     scene.add(sun);
-    const fill=new THREE.DirectionalLight(dlPreset.fillColor,(W1?.5:1)*dlPreset.fillIntensity);fill.position.set(-6,10,4);scene.add(fill);
+    const fill=new THREE.DirectionalLight(dlPreset.fillColor,(W1?.5:1)*dlPreset.fillIntensity);fill.position.set(W3C?6:-6,10,4);scene.add(fill);
 
     // ── WING LAYOUTS: each wing is a different museum section ──
     // DRAMATICALLY HIGHER CEILINGS (+2m each)
@@ -217,6 +231,21 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const hasLockedNiche = rooms.length < MAX_ROOMS_PER_WING;
     const totalSlots = rooms.length + (hasLockedNiche ? 1 : 0);
     const cW=C.cW,cH=C.cH,cL=totalSlots*C.sp+14;
+    if(W3C){
+      // F40: the far plane (80) clipped the vanishing point off at spawn in the
+      // long wings (cL up to ~90) — the terminus "weenie" was literally culled.
+      // Reach just past the end wall so the whole nave reads.
+      camera.far=cL+15;camera.updateProjectionMatrix();
+      // F-depth: swap exponential haze for a length-pinned LINEAR fog — near
+      // bays stay crisp (memories brightest), the far door-end melts into the
+      // golden grade so the fixed far plane reads as a soft "weenie", not a clip.
+      scene.fog=new THREE.Fog(dlPreset.fogColor,cL*0.34,cL*1.02);
+      // F12: fit the shadow frustum to the actual corridor (was a fixed ±20 box
+      // covering <half the length).
+      sun.shadow.camera.left=-cW*0.7;sun.shadow.camera.right=cW*0.7;
+      sun.shadow.camera.top=cL*0.55;sun.shadow.camera.bottom=-cL*0.55;
+      sun.shadow.camera.far=cL+40;sun.shadow.camera.updateProjectionMatrix();
+    }
 
     // ── REAL PBR TEXTURES (Poly Haven) ──
     const marbleTex=loadMarbleTextures([4,4]);
@@ -236,6 +265,15 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         for(const tx of [set.map,set.normalMap]){
           if(tx&&tx.anisotropy!==aniso){tx.anisotropy=aniso;tx.needsUpdate=true;}
         }
+      }
+    }
+    if(W3C){
+      // F01: the base floor texture was a fixed [3,3] repeat stretched over the
+      // whole cW×cL plane (~9×80 m) → tiles smeared 3–9× along the axis. Repeat
+      // proportional to real metres (~1.4 m tiles) so the floor reads to scale.
+      const TILE=1.4;
+      for(const tx of [floorTileTex.map,floorTileTex.normalMap,floorTileTex.roughnessMap,floorTileTex.aoMap]){
+        if(tx){tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.repeat.set(cW/TILE,cL/TILE);tx.needsUpdate=true;}
       }
     }
 
@@ -1993,8 +2031,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
     let _cinStep=-1;
+    let w3cCinT=0; // F04: stall-proof cinematic time (accumulated clamped dt)
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();_frameCount++;
+      // F04: the entry cinematic ran on absolute wall-clock — a compile stall /
+      // hidden-tab pause ate seconds of the 6 s shot. Accumulate the clamped dt
+      // so a stall advances the cinematic by at most 0.05 s (W3C-gated).
+      if(onboardingModeRef.current)w3cCinT+=dt;
       // Framerate-independent smoothing: 1-exp(-k*dt) with k=-ln(1-f)*60, so the
       // old per-frame factors (f=.08 look, f=.1 pos) are preserved exactly at 60fps
       // and fps dips no longer add rubber-band lag (dt is clamped above).
@@ -2017,7 +2060,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           // straight to the end framing (W1 behavior kept). onCinematicStep
           // contract intact: 0=start, 6=wait-for-Enter, 7=enter walk
           // (intermediate steps 1-5 are retired under W2).
-          const ot=clock.getElapsedTime();
+          const ot=W3C?w3cCinT:clock.getElapsedTime();
           const CIN=6.0;
           if(reduceMotion||w2CinSkipRef.current||ot>=CIN){
             if(_cinStep!==6&&_cinStep!==7){
@@ -2111,7 +2154,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       if(awTarget&&dMeshes.length>0){
         const dm=dMeshes.find((d: any)=>d.room.id===awTarget);
         if(dm){
-          const targetX=dm.x+dm.side*2;
+          // F08: targetX was dm.x + dm.side*2 — for side=-1 (left wall,
+          // dm.x=-cW/2) that lands 2 m BEYOND the wall, so the dist>0.5 test
+          // never clears and onDoorClick never fires (input locks). Stand IN
+          // FRONT of the door, toward the corridor centre.
+          const targetX=W3C?dm.x-dm.side*1.7:dm.x+dm.side*2;
           const targetZ=dm.z;
           const dx2=targetX-posT.x;
           const dz2=targetZ-posT.z;
