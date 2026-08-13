@@ -51,7 +51,15 @@ const FADE_MS = 600;
 export default function FlythroughClient() {
   const [toast, setToast] = useState<ToastData | null>(null);
   const [phase, setPhase] = useState<"idle" | "recording" | "done">("idle");
-  const [currentScene, setCurrentScene] = useState(initialSceneFromURL);
+  // Start at 0 on BOTH server and first client render (lazy URL init here
+  // caused a hydration mismatch that killed the whole page), then apply the
+  // ?scene= deep link after mount; the scene itself only mounts client-side.
+  const [currentScene, setCurrentScene] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setCurrentScene(initialSceneFromURL());
+    setMounted(true);
+  }, []);
   const [progress, setProgress] = useState(0);
   const [fadeOpacity, setFadeOpacity] = useState(1);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -233,7 +241,7 @@ export default function FlythroughClient() {
           transition: `opacity ${FADE_MS}ms ease-in-out`,
         }}
       >
-        {renderScene()}
+        {mounted && renderScene()}
       </div>
 
       {/* Controls overlay */}
