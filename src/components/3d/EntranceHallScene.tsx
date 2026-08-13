@@ -2725,6 +2725,56 @@ function EntranceHallScene({
       awClick.x = Math.cos(ang) * (RADIUS - 4);
       awClick.z = Math.sin(ang) * (RADIUS - 4);
     };
+    // ═══ W3H SHELL MERGE (masterplan interim perf step — the "dead
+    // mergeStaticMeshes" audit finding, done SELECTIVELY) ═══
+    // Collapse the hundreds of static opaque decor meshes into one mesh per
+    // shared material. Excluded: raycast targets (userData.wingId/awTarget),
+    // anything transparent/alphaTest or with a renderOrder (blend-order
+    // sensitive), instanced meshes, and the procedural dome/oculus disc whose
+    // .visible is toggled when the GLB hero lands. Async GLBs arrive after
+    // this pass and are untouched.
+    if (W3H) {
+      const KEEP = new Set<THREE.Object3D>([domeMesh, oculusMesh]);
+      const mergeBuckets = new Map<string, { mat: THREE.Material; meshes: THREE.Mesh[] }>();
+      scene.traverse((c) => {
+        const m = c as THREE.Mesh;
+        if (!m.isMesh) return;
+        if ((m as THREE.InstancedMesh).isInstancedMesh) return;
+        if (KEEP.has(m)) return;
+        if (m.userData && (m.userData.wingId || m.userData.awTarget)) return;
+        if (Array.isArray(m.material)) return;
+        const mat = m.material as THREE.MeshStandardMaterial;
+        if (!mat || mat.transparent || (mat.alphaTest ?? 0) > 0) return;
+        if (m.renderOrder !== 0) return;
+        const key = mat.uuid;
+        if (!mergeBuckets.has(key)) mergeBuckets.set(key, { mat, meshes: [] });
+        mergeBuckets.get(key)!.meshes.push(m);
+      });
+      let shellMerged = 0, shellRemoved = 0;
+      mergeBuckets.forEach(({ mat, meshes }) => {
+        if (meshes.length < 4) return; // singles/pairs aren't worth the bake
+        const geos: THREE.BufferGeometry[] = [];
+        for (const src of meshes) {
+          src.updateWorldMatrix(true, false);
+          const g = src.geometry.clone();
+          g.applyMatrix4(src.matrixWorld);
+          geos.push(g);
+        }
+        const merged = mergeGeometries(geos, false);
+        geos.forEach((g) => g.dispose());
+        if (!merged) return; // mixed attribute sets — leave this bucket as-is
+        const mm = new THREE.Mesh(merged, mat);
+        mm.castShadow = meshes.some((x) => x.castShadow);
+        mm.receiveShadow = meshes.some((x) => x.receiveShadow);
+        scene.add(mm);
+        meshes.forEach((x) => { x.parent?.remove(x); x.geometry.dispose(); });
+        shellMerged++;
+        shellRemoved += meshes.length;
+      });
+      console.info(`[W3H] shell merge: ${shellRemoved} static meshes → ${shellMerged} merged draws`);
+      ren.shadowMap.needsUpdate = true;
+    }
+
     let _lastCream = 0; // cream veil state throttle (reduced-motion crossfade)
     let w3hCinT = 0;    // W3H: stall-proof cinematic time (accumulated clamped dt)
     // Touch-move vector — hoisted above animate() so the w1_hall movement block

@@ -17,6 +17,21 @@ const SAMPLE_MEMORIES: Mem[] = [
   ...(ROOM_MEMS["ro1"] || []),
 ].map(m => ({ ...m, displayed: true }));
 
+// Demo photos for the entrance-hall door lunettes (viewer-only feel check —
+// the real app hangs each wing's newest photo here).
+const DEMO_LUNETTES: Record<string, Mem> = Object.fromEntries(
+  ([
+    ["roots", "/demo/graduation.jpg", "Graduation"],
+    ["nest", "/demo/quiet-morning.jpg", "Quiet Morning"],
+    ["craft", "/demo/between-two-hands.jpg", "Between Two Hands"],
+    ["travel", "/demo/edge-of-water.jpg", "Edge of Water"],
+    ["passions", "/demo/pexels-alexander-mass-748453803-28107011.jpg", "Golden Hour"],
+  ] as [string, string, string][]).map(([wing, url, title]) => [wing, {
+    id: `demo-${wing}`, title, hue: 40, s: 40, l: 60, type: "photo",
+    dataUrl: url, displayed: true, createdAt: "2026-08-13",
+  } satisfies Mem])
+);
+
 // ═══ DEV TOOL — Cinematic flythrough recorder ═══
 // Sequences through 4 palace scenes and records the canvas as .webm
 
@@ -200,6 +215,7 @@ export default function FlythroughClient() {
           <EntranceHallScene
             onDoorClick={noop}
             styleEra="roman"
+            lunettePhotos={DEMO_LUNETTES}
           />
         );
       case 2:
