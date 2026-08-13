@@ -247,6 +247,23 @@ export default function MemoryPalace(){
     }
     return out;
   }, [userMemsMap]);
+  // W3H (hall lunettes): the NEWEST displayed photo per wing — hung in the
+  // half-moon lunette above that wing's door in the entrance hall.
+  const lunettePhotos = useMemo(() => {
+    const rs = useRoomStore.getState();
+    const out: Record<string, Mem> = {};
+    for (const wing of rs.getWings()) {
+      let best: Mem | undefined;
+      for (const room of rs.getWingRooms(wing.id)) {
+        for (const m of (userMemsMap[room.id] || [])) {
+          if (m?.type !== "photo" || !m.dataUrl || m.displayed === false) continue;
+          if (!best || (m.createdAt || "") > (best.createdAt || "")) best = m;
+        }
+      }
+      if (best) out[wing.id] = best;
+    }
+    return out;
+  }, [userMemsMap]);
 
   const getWingRooms = useRoomStore((s) => s.getWingRooms);
   const customRooms = useRoomStore((s) => s.customRooms);
@@ -1392,7 +1409,7 @@ export default function MemoryPalace(){
 
   // ── Entrance Hall node — mounted persistently (desktop) or inline (mobile) ──
   const hallSceneNode = (
-    <Suspense fallback={null}><EntranceHallScene key={dlKey} onReady={() => handleSceneReady("entrance")} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={effStyleEra} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} ancestralMemories={allPhotoMems} onAncestralMemoryClick={(m)=>setSelMem(m)} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>
+    <Suspense fallback={null}><EntranceHallScene key={dlKey} onReady={() => handleSceneReady("entrance")} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={effStyleEra} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} lunettePhotos={lunettePhotos} ancestralMemories={allPhotoMems} onAncestralMemoryClick={(m)=>setSelMem(m)} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>
   );
   // Desktop: keep it alive in its own portal; mobile falls back to inline mount.
   const warmHallScene = (persistHall && hallHost)

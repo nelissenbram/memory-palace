@@ -155,6 +155,7 @@ function EntranceHallScene({
   styleEra = "roman",
   onInlayClick,
   onBustClick,
+  lunettePhotos,
   bustPedestals,
   bustTextureUrl,
   bustModelUrl,
@@ -178,6 +179,8 @@ function EntranceHallScene({
   onReady?: () => void;
   onInlayClick?: () => void;
   onBustClick?: (pedestalIndex: number) => void;
+  /** W3H: newest photo memory per wing — hung in the door lunettes. */
+  lunettePhotos?: Record<string, Mem>;
   bustPedestals?: Record<number, BustPedestalData>;
   bustTextureUrl?: string | null;
   bustModelUrl?: string | null;
@@ -205,6 +208,9 @@ function EntranceHallScene({
   // (declared before the fingerprint below, which folds the Wave-2 inputs in);
   // flag off = current Wave-1 behavior fully intact.
   const [w2] = useState<boolean>(() => { try { return flag3d("w2_hall"); } catch { return false; } });
+  // W3 hall wave (La Sala degli Sguardi) — staging-ON / prod-OFF. Declared
+  // before the fingerprint below, which folds the lunette photos in under it.
+  const [w3h] = useState<boolean>(() => { try { return flag3d("w3_hall"); } catch { return false; } });
   // ── FINGERPRINT: rebuild the hall only when construction INPUT actually
   // changes (wing id/label/icon/accent, unlocked state, shared-wing doors,
   // translated plaque labels, era) — NOT on parent re-renders, where wingsProp
@@ -221,6 +227,11 @@ function EntranceHallScene({
     (w2
       ? "||AW:" + (ancestralMemories || []).map(m => `${m.id}:${m.title}:${m.visibility || ""}:${m.createdAt || ""}`).join(",") +
         `|${ancestralPublicOnly ? "P" : ""}|${bustName || ""}`
+      : "") +
+    // W3H: the door lunettes hang the newest photo per wing — rebuild when
+    // that selection changes (memories arrive async after first mount).
+    (w3h
+      ? "||LUN:" + Object.entries(lunettePhotos || {}).map(([k, m]) => `${k}:${m.id}`).join(",")
       : "");
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -244,8 +255,6 @@ function EntranceHallScene({
   // ── MUSEO VIVO Wave-1 hall flag (WS4 steps 2-5, WS8, WS12-2/3) — read once at
   // mount per flags3d read-at-mount semantics; all visible Wave-1 changes gate on it.
   const [w1] = useState<boolean>(() => { try { return flag3d("w1_hall"); } catch { return false; } });
-  // W3 hall wave (La Sala degli Sguardi, Wave A) — staging-ON / prod-OFF.
-  const [w3h] = useState<boolean>(() => { try { return flag3d("w3_hall"); } catch { return false; } });
   const onAncestralClickRef = useRef(onAncestralMemoryClick);
   useEffect(() => { onAncestralClickRef.current = onAncestralMemoryClick; }, [onAncestralMemoryClick]);
   // Cream crossfade overlay (reduced-motion cinematic; NEVER black — WS12-2)
@@ -767,6 +776,9 @@ function EntranceHallScene({
         skyDisc.rotation.x = Math.PI / 2;
         skyDisc.position.y = WALL_H + 15.4;
         scene.add(skyDisc);
+        // audit F02 generalized: the one-shot shadow bake ran before this
+        // async GLB arrived — rebake so the new geometry participates.
+        ren.shadowMap.needsUpdate = true;
       }).catch((err) => {
         console.warn("[W3H] dome GLB load failed, keeping procedural dome", err);
       });
@@ -919,6 +931,9 @@ function EntranceHallScene({
         abacusMesh.visible = false;
         baseMeshI.visible = false;
         fluteRingInst.visible = false;
+        // audit F02 generalized: rebake the static shadow map now the real
+        // columns exist — otherwise they cast nothing (bake ran pre-load).
+        ren.shadowMap.needsUpdate = true;
       }).catch((err) => {
         console.warn("[W3H] column GLB load failed, keeping procedural columns", err);
       });
@@ -926,6 +941,7 @@ function EntranceHallScene({
 
     // ── 7 GRAND DOORS ──
     const doorMeshes: { mesh: THREE.Mesh; mat: THREE.MeshStandardMaterial; wingId: string; angle: number }[] = [];
+    const lunetteTextures: THREE.Texture[] = []; // scene-owned paintTex canvases (disposed in cleanup)
 
     // ── P2-6: hoisted per-door resources — geometry and constant-material
     // CONTENT is identical for every door (only the mesh transforms differ),
@@ -1165,10 +1181,26 @@ function EntranceHallScene({
         const lunR = 1.35, lunY = DOOR_H + 2.0;
         const lx2 = Math.cos(angle) * (RADIUS - 0.22);
         const lz2 = Math.sin(angle) * (RADIUS - 0.22);
-        const lunTint = new THREE.Color("#3A3226").lerp(new THREE.Color((wing?.accent || sharedAccent || "#8B7355")), 0.22);
+        // The wing's NEWEST photo memory hangs in the lunette (Sguardi move 7
+        // — every sightline ends in a memory). Unlit MeshBasic + a slight
+        // over-unity lift: photo highlights cross the 1.0 bloom threshold and
+        // read as picture-lit. No photo (or locked/shared slot) → carved
+        // relief empty state.
+        const lunMem = !isPlaceholderLocked && !isSharedDoor ? lunettePhotos?.[doorDef.id] : undefined;
+        let lunMat: THREE.Material;
+        if (lunMem) {
+          const ltex = paintTex(lunMem);
+          lunetteTextures.push(ltex);
+          const pm = new THREE.MeshBasicMaterial({ map: ltex });
+          pm.color.setRGB(1.12, 1.12, 1.12);
+          lunMat = pm;
+        } else {
+          const lunTint = new THREE.Color("#3A3226").lerp(new THREE.Color((wing?.accent || sharedAccent || "#8B7355")), 0.22);
+          lunMat = new THREE.MeshStandardMaterial({ color: lunTint, roughness: 0.9, metalness: 0 });
+        }
         const lun = new THREE.Mesh(
           new THREE.CircleGeometry(lunR, 24, 0, Math.PI),
-          new THREE.MeshStandardMaterial({ color: lunTint, roughness: 0.9, metalness: 0 })
+          lunMat
         );
         lun.position.set(lx2, lunY, lz2);
         lun.lookAt(new THREE.Vector3(0, lunY, 0));
@@ -2694,6 +2726,7 @@ function EntranceHallScene({
       awClick.z = Math.sin(ang) * (RADIUS - 4);
     };
     let _lastCream = 0; // cream veil state throttle (reduced-motion crossfade)
+    let w3hCinT = 0;    // W3H: stall-proof cinematic time (accumulated clamped dt)
     // Touch-move vector — hoisted above animate() so the w1_hall movement block
     // can read it directly per frame (replaces the 16ms synthetic-WASD poll).
     const touchMoveDir = { x: 0, z: 0 };
@@ -2741,6 +2774,10 @@ function EntranceHallScene({
       const dt = Math.min(clock.getDelta(), 0.05);
       const t = clock.getElapsedTime();
       _frameCount++;
+      // W3H (audit): the cinematic ran on ABSOLUTE clock time — a 3s shader
+      // compile stall ate 3s of the 6s intro. Accumulate the clamped dt
+      // instead: a stall advances the cinematic by at most 0.05s.
+      if (entranceCinematicRef.current) w3hCinT += dt;
 
       // Walkthrough highlight
       const hlTarget=highlightDoorRef.current;
@@ -2779,7 +2816,7 @@ function EntranceHallScene({
           // centre/impluvium — ZERO blink blackouts, ends with doors in view.
           // Contract preserved (plan §7 risk 5): onboardingMode still fires
           // onDoorClick("roots") at the end, exactly like skipCinematic().
-          const ot = clock.getElapsedTime();
+          const ot = W3H ? w3hCinT : clock.getElapsedTime();
           const CIN_DUR = 6.0;
           const START_Z = 7.3, END_Z = 3.2;
           if (reduceMotion) {
@@ -3403,6 +3440,7 @@ function EntranceHallScene({
       focus?.dispose();
       if (awMountHandle) awMountHandle.dispose();
       awTextures.forEach(tx => tx.dispose());
+      lunetteTextures.forEach(tx => tx.dispose());
       awOwnedGeos.forEach(g => g.dispose());
       awHitMat?.dispose();
       if (envRT) { envRT.texture.dispose(); envRT.dispose(); }
