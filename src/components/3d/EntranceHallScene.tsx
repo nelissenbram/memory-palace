@@ -243,6 +243,8 @@ function EntranceHallScene({
   // ── MUSEO VIVO Wave-1 hall flag (WS4 steps 2-5, WS8, WS12-2/3) — read once at
   // mount per flags3d read-at-mount semantics; all visible Wave-1 changes gate on it.
   const [w1] = useState<boolean>(() => { try { return flag3d("w1_hall"); } catch { return false; } });
+  // W3 hall wave (La Sala degli Sguardi, Wave A) — staging-ON / prod-OFF.
+  const [w3h] = useState<boolean>(() => { try { return flag3d("w3_hall"); } catch { return false; } });
   const onAncestralClickRef = useRef(onAncestralMemoryClick);
   useEffect(() => { onAncestralClickRef.current = onAncestralMemoryClick; }, [onAncestralMemoryClick]);
   // Cream crossfade overlay (reduced-motion cinematic; NEVER black — WS12-2)
@@ -297,6 +299,8 @@ function EntranceHallScene({
     const W1 = w1;
     // Wave-2 hall flag captured for this mount (WS4-6..10, WS7-7/10/15).
     const W2 = w2;
+    // Wave-3 hall flag (La Sala degli Sguardi Wave A) — flag-off byte-identical.
+    const W3H = w3h;
     const reduceMotion = prefersReducedMotion();
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
     // Owner feedback r2: env fill moderated under W1 (key-vs-ambient ratio up).
@@ -359,6 +363,17 @@ function EntranceHallScene({
     const woodDoorTex = loadDarkWoodTextures([2, 3]);
     const wallTex = loadPlasterWallTextures([4, 4]);
     const allTexSets: PBRTextureSet[] = [marbleTex, floorTileTex, woodDoorTex, wallTex];
+    // W3H (audit F03): the hall was the ONLY major scene with zero anisotropic
+    // filtering — floor/wall maps smeared at grazing angles.
+    if (W3H) {
+      const maxAniso = ren.capabilities.getMaxAnisotropy();
+      const aniso = Math.min(isMobileGPU() ? 4 : 8, maxAniso);
+      for (const set of allTexSets) {
+        for (const t of [set.map, set.normalMap, set.roughnessMap, set.aoMap]) {
+          if (t) { t.anisotropy = aniso; t.needsUpdate = true; }
+        }
+      }
+    }
 
     // ── MATERIALS (PBR-upgraded with real textures + env map) ──
     // Archetype materials — module-cached so compiled shader programs survive scene
@@ -463,7 +478,10 @@ function EntranceHallScene({
     // Owner feedback r2: key 2.8→3.9 (~exterior's zon 3.2→4.4) — the shaft reads again.
     const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, (W1 ? 3.9 : 2.4) * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
     oculusSpot.position.set(0, TOTAL_H - 1, 0);
-    oculusSpot.target.position.set(0, 0, 0);
+    // W3H (Wave A graft "the one real sun"): tilt the shaft ~22° toward canon
+    // SW so the light pool lands off-centre like a real sun — a straight-down
+    // shaft reads as a stage light, not daylight.
+    oculusSpot.target.position.set(W3H ? -4 : 0, 0, W3H ? 4 : 0);
     oculusSpot.castShadow = true;
     if (W1) {
       oculusSpot.shadow.mapSize.set(1024, 1024);
@@ -628,7 +646,9 @@ function EntranceHallScene({
       scene.add(domeRing);
     }
     // Coffer recesses (rosettes at intersections)
-    for (let ri = 1; ri <= 3; ri++) {
+    // W3H (audit): these 36 discs face OUTWARD from the dome interior — they
+    // are backface-culled and never render, they only burn 36 draw calls.
+    if (!W3H) for (let ri = 1; ri <= 3; ri++) {
       const phi = (ri / 6) * Math.PI / 2;
       const ringR = RADIUS * Math.sin(phi);
       const ringY = WALL_H + RADIUS * Math.cos(phi);
@@ -815,7 +835,11 @@ function EntranceHallScene({
       // constant materials (never mutated after creation)
       recessUnlockedMat: new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 }),
       recessLockedMat: new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
-      insetMat: new THREE.MeshStandardMaterial({ color: "#5A3A1E", roughness: 0.55, metalness: 0.0 }),
+      insetMat: new THREE.MeshStandardMaterial({
+        color: W3H ? "#6E4826" : "#5A3A1E", roughness: 0.55, metalness: 0.0,
+        // W3H: recessed panels carry the same real wood grain as the leaves
+        ...(W3H ? { map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: woodDoorTex.roughnessMap } : {}),
+      }),
       handlePlateMat: new THREE.MeshStandardMaterial({ color: "#8A7040", roughness: 0.3, metalness: 0.7 }),
       nicheArchOutlineMat: new THREE.MeshStandardMaterial({ color: "#B8A070", roughness: 0.3, metalness: 0.5, emissive: "#B8A070", emissiveIntensity: 0.08 }),
       etchMat: new THREE.MeshStandardMaterial({ color: "#B8A070", roughness: 0.35, metalness: 0.4, emissive: "#B8A070", emissiveIntensity: 0.06 }),
@@ -965,8 +989,17 @@ function EntranceHallScene({
             // Neutral warm-wood self-illumination (fixture compensation, not a
             // wing-accent glow) — static under w1_hall; pre-W1 the animate loop
             // overwrites it with the accent proximity glow.
-            color: "#7A5030", roughness: 0.45, metalness: 0.0,
+            // W3H (owner: "meer textuur op de deuren, nu te basic"): the dark
+            // wood PBR set was loaded but the panels never used it — real
+            // grain, normal relief and roughness variation instead of flat paint.
+            color: W3H ? "#9A6B42" : "#7A5030", roughness: 0.45, metalness: 0.0,
             emissive: "#5A3A20", emissiveIntensity: 0.2,
+            ...(W3H ? {
+              map: woodDoorTex.map, normalMap: woodDoorTex.normalMap,
+              normalScale: new THREE.Vector2(0.55, 0.55),
+              roughnessMap: woodDoorTex.roughnessMap,
+              aoMap: woodDoorTex.aoMap, aoMapIntensity: 0.55,
+            } : {}),
           });
 
       const leftPanel = new THREE.Mesh(DS.panelGeo, doorMat);
@@ -1162,10 +1195,14 @@ function EntranceHallScene({
         : (wing ? (() => { if (wing.nameKey) { const tr = tw(wing.nameKey); if (tr && tr !== wing.nameKey) return tr.toUpperCase(); } return wing.name.toUpperCase(); })() : "");
       if (effectiveLabel) {
         if (W1) {
-        // w1_hall (WS4-4): Fraunces brass lintel plaque — ink on cream, always
-        // visible, one per door (replaces the Georgia/Times canvas label below).
-        const plaque: THREE.Object3D = makeFrauncesLabel(effectiveLabel, { width: 2.6, height: 0.5 });
-        const plaqueY = DOOR_H + 0.32;
+        // w1_hall (WS4-4): Fraunces lintel lettering — carved museum capitals.
+        // W3H (owner: "naamkaartjes veel te onduidelijk"): larger + GILDED —
+        // incised letters with a gold-leaf infill (classic Roman inscription)
+        // read clearly from across the hall without becoming a plate.
+        const plaque: THREE.Object3D = W3H
+          ? makeFrauncesLabel(effectiveLabel, { width: 3.6, height: 0.7, gilded: true })
+          : makeFrauncesLabel(effectiveLabel, { width: 2.6, height: 0.5 });
+        const plaqueY = DOOR_H + (W3H ? 0.44 : 0.32);
         plaque.position.set(dx + inN.x * 0.5, plaqueY, dz + inN.z * 0.5);
         plaque.lookAt(new THREE.Vector3(0, plaqueY, 0));
         scene.add(plaque);
@@ -1541,15 +1578,18 @@ function EntranceHallScene({
       // procedural normal map is scrolled ~0.02/s in the frame loop (desktop;
       // static on mobile) and envMapIntensity catches the golden PMREM — one
       // material tweak, zero extra lights.
+      // W3H (owner: "mogelijk om water in midden te doen?" — the basin read
+      // as a solid olive disc, not water): deeper glassy tone, stronger
+      // ripple normals and doubled reflection pickup so it reads WET.
       const waterMat = mkPhys(THREE,{
-        color: W2 ? "#7BA48E" : "#4A8A7A", roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.65,
-        envMapIntensity: 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
+        color: W3H ? "#4E7E78" : (W2 ? "#7BA48E" : "#4A8A7A"), roughness: 0.02, metalness: 0.1, transparent: true, opacity: W3H ? 0.8 : 0.65,
+        envMapIntensity: W3H ? 2.2 : 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
       });
       if (W2) {
         w2WaterNormal = makeWaterNormalTexture();
         w2WaterNormal.repeat.set(3, 2);
         (waterMat as THREE.MeshPhysicalMaterial).normalMap = w2WaterNormal;
-        (waterMat as THREE.MeshPhysicalMaterial).normalScale = new THREE.Vector2(0.35, 0.35);
+        (waterMat as THREE.MeshPhysicalMaterial).normalScale = W3H ? new THREE.Vector2(0.65, 0.65) : new THREE.Vector2(0.35, 0.35);
       }
 
       // Pool bottom
@@ -1560,8 +1600,9 @@ function EntranceHallScene({
       scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), MS.marble, implW / 2, -implDepth / 2, 0));
       scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), MS.marble, -implW / 2, -implDepth / 2, 0));
 
-      // Water surface
-      const water = mk(new THREE.BoxGeometry(implW - 0.1, 0.03, implD - 0.1), waterMat, 0, -0.05, 0);
+      // Water surface — W3H: raised nearly flush with the rim so the pool
+      // unmistakably reads as standing water from eye level.
+      const water = mk(new THREE.BoxGeometry(implW - 0.1, 0.03, implD - 0.1), waterMat, 0, W3H ? -0.015 : -0.05, 0);
       scene.add(water);
 
       // W2 (WS4-8/9): living caustic web over the water — two counter-drifting
@@ -1582,11 +1623,19 @@ function EntranceHallScene({
           m.renderOrder = order;
           scene.add(m);
         };
-        mkCaustic(w2CausticA, 0.3, -0.028, 1);
+        // W3H (audit graft "honest water"): caustics belong on the pool
+        // BOTTOM, seen through the surface — they previously floated ABOVE
+        // the water plane as a glowing film in mid-air.
+        // (renderOrder: under W3H the layers sit BELOW the water plane, so
+        // they must draw BEFORE it — distance sort handles it at order 0;
+        // forcing them after the water would depth-test them away.)
+        const cA = W3H ? -implDepth + 0.035 : -0.028;
+        const cB = W3H ? -implDepth + 0.05 : -0.022;
+        mkCaustic(w2CausticA, W3H ? 0.42 : 0.3, cA, W3H ? 0 : 1);
         if (w2Anim) {
           w2CausticB = w2CausticA.clone();
           w2CausticB.needsUpdate = true;
-          mkCaustic(w2CausticB, 0.2, -0.022, 2);
+          mkCaustic(w2CausticB, W3H ? 0.3 : 0.2, cB, W3H ? 0 : 2);
         }
       }
 
@@ -1603,10 +1652,13 @@ function EntranceHallScene({
       scene.add(mk(new THREE.BoxGeometry(0.1, rimH * 0.7, implD + 0.3), MS.marble, implW / 2 + 0.05, rimH * 0.35, 0));
       scene.add(mk(new THREE.BoxGeometry(0.1, rimH * 0.7, implD + 0.3), MS.marble, -(implW / 2 + 0.05), rimH * 0.35, 0));
 
-      // Central fountain pedestal with bust figure
-      scene.add(mk(new THREE.CylinderGeometry(0.25, 0.35, 0.8, 8), MS.marble, 0, -implDepth + 0.4, 0));
-      scene.add(mk(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 8), MS.marble, 0, -implDepth + 0.95, 0));
-      scene.add(mk(new THREE.SphereGeometry(0.12, 8, 6), MS.bust, 0, -implDepth + 1.2, 0));
+      // Central fountain pedestal with bust figure — W3H: gone (owner removed
+      // the bust/statue concept); the pool reads as clean standing water.
+      if (!W3H) {
+        scene.add(mk(new THREE.CylinderGeometry(0.25, 0.35, 0.8, 8), MS.marble, 0, -implDepth + 0.4, 0));
+        scene.add(mk(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 8), MS.marble, 0, -implDepth + 0.95, 0));
+        scene.add(mk(new THREE.SphereGeometry(0.12, 8, 6), MS.bust, 0, -implDepth + 1.2, 0));
+      }
 
       // 4 short columns at impluvium corners
       const implCorners = [
@@ -1908,7 +1960,10 @@ function EntranceHallScene({
       }
 
       // ── Ceiling Coffers around Oculus ──
-      {
+      // W3H (audit): the 12 coffer slabs + frames + rosettes hang in MID-AIR
+      // below the dome shell (floating ring) — dropped; real coffers arrive
+      // with the Wave-B dome GLB.
+      if (!W3H) {
         const OCULUS_R_LOCAL = OCULUS_R || 3.0;
         const cofferRingR = OCULUS_R_LOCAL + 2.5;
         const numCoffers = 12;
@@ -2054,9 +2109,8 @@ function EntranceHallScene({
       } // end AW_ENABLED
 
       // ── WS4-7 bust + Fraunces name plaque (canon pedestal) ──
-      // The existing bustBuilder path carries the bust; if the GLB fails the
-      // plaque below still delivers the personal moment (plan fallback).
-      {
+      // W3H: the whole bust/statue concept is REMOVED (owner 2026-08-13).
+      if (!W3H) {
         const { x: bx, z: bz } = W2_BUST;
         const pedBase = mk(new THREE.BoxGeometry(1.05, 0.16, 1.05), MS.marbleDark, bx, 0.08, bz);
         scene.add(pedBase);
@@ -2252,15 +2306,25 @@ function EntranceHallScene({
     exitThresh.lookAt(new THREE.Vector3(0, 0.1, 0));
     scene.add(exitThresh);
 
-    // Sky-blue gradient visible through doorway (suggests outdoors)
+    // Gradient visible through doorway (suggests outdoors).
+    // W3H (audit P0): the cool #87CEEB sky was a triple canon violation — the
+    // brightest, coolest pixel in a golden-hour hall. Now the doorway shows
+    // the same golden-hour world the visitor just walked through.
     const skyCanvas = document.createElement("canvas");
     skyCanvas.width = 256; skyCanvas.height = 512;
     const skyCtx = skyCanvas.getContext("2d")!;
     const skyGrad = skyCtx.createLinearGradient(0, 0, 0, 512);
-    skyGrad.addColorStop(0, "#87CEEB");   // sky blue top
-    skyGrad.addColorStop(0.5, "#B8DCF0"); // lighter middle
-    skyGrad.addColorStop(0.85, "#E8DCC8"); // warm horizon
-    skyGrad.addColorStop(1, "#C8B89A");   // ground hint
+    if (W3H) {
+      skyGrad.addColorStop(0, "#BFD4E4");   // pale warm-blue zenith
+      skyGrad.addColorStop(0.45, "#EAD9B8"); // golden haze band
+      skyGrad.addColorStop(0.8, "#E8C87A");  // low sun glow
+      skyGrad.addColorStop(1, "#C9A96A");    // golden wheat ground
+    } else {
+      skyGrad.addColorStop(0, "#87CEEB");   // sky blue top
+      skyGrad.addColorStop(0.5, "#B8DCF0"); // lighter middle
+      skyGrad.addColorStop(0.85, "#E8DCC8"); // warm horizon
+      skyGrad.addColorStop(1, "#C8B89A");   // ground hint
+    }
     skyCtx.fillStyle = skyGrad;
     skyCtx.fillRect(0, 0, 256, 512);
     const skyTex = new THREE.CanvasTexture(skyCanvas);
@@ -2355,7 +2419,8 @@ function EntranceHallScene({
       });
     }
     // W2 (WS4-7): the bust pedestal is solid — no ghost-walking through it.
-    if (W2) colPositions.push({ x: W2_BUST.x, z: W2_BUST.z, r: 0.95 });
+    // W3H: pedestal removed with the bust concept → no collider either.
+    if (W2 && !W3H) colPositions.push({ x: W2_BUST.x, z: W2_BUST.z, r: 0.95 });
 
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door meshes ──
     // Under w1_hall the 7 intensity-0 PointLights are deleted (WS4-3); the gold
@@ -2377,7 +2442,8 @@ function EntranceHallScene({
     scene.add(dust.points);
 
     // ── VOLUMETRIC LIGHT BEAM from oculus ──
-    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: 0.04 * dlPreset.sunIntensity });
+    // W3H: the beam follows the tilted sun vector (same target as oculusSpot).
+    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: W3H ? new THREE.Vector3(-4, -(TOTAL_H - 1), 4).normalize() : new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: 0.04 * dlPreset.sunIntensity });
     scene.add(oculusBeam.mesh);
 
     // WS10-4 (w1_hall): footsteps return as procedural marble taps — fired from

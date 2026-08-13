@@ -10,7 +10,7 @@ import { INK } from "./canon";
  */
 export function makeFrauncesLabel(
   text: string,
-  opts: { width?: number; height?: number } = {}
+  opts: { width?: number; height?: number; gilded?: boolean } = {}
 ): THREE.Object3D {
   const width = opts.width ?? 2.6;
   const height = opts.height ?? 0.5;
@@ -36,7 +36,7 @@ export function makeFrauncesLabel(
   const draw = () => {
     ctx.clearRect(0, 0, cw, ch);
     const size = Math.round(ch * 0.52);
-    ctx.font = `500 ${size}px Fraunces, Georgia, serif`;
+    ctx.font = `${opts.gilded ? 600 : 500} ${size}px Fraunces, Georgia, serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     try {
@@ -46,13 +46,31 @@ export function makeFrauncesLabel(
     }
     const cx = cw / 2, cy = ch / 2 + ch * 0.02, maxW = cw * 0.94;
     const hair = Math.max(1, Math.round(ch * 0.012));
-    // incision shadow above-light / below-dark
-    ctx.fillStyle = "rgba(255,252,244,0.55)";
-    ctx.fillText(text, cx, cy - hair, maxW);
-    ctx.fillStyle = "rgba(24,20,16,0.45)";
-    ctx.fillText(text, cx, cy + hair, maxW);
-    ctx.fillStyle = INK;
-    ctx.fillText(text, cx, cy, maxW);
+    if (opts.gilded) {
+      // W3 hall (owner: labels unreadable): carved-and-GILDED Roman
+      // inscription — deep incision shadow, then a vertical gold-leaf
+      // gradient fill with a warm bright core. Still no plate.
+      const deep = Math.max(2, Math.round(ch * 0.03));
+      ctx.fillStyle = "rgba(20,14,8,0.85)";
+      ctx.fillText(text, cx, cy + deep, maxW);
+      ctx.fillStyle = "rgba(255,250,238,0.5)";
+      ctx.fillText(text, cx, cy - hair, maxW);
+      const gold = ctx.createLinearGradient(0, cy - ch * 0.3, 0, cy + ch * 0.3);
+      gold.addColorStop(0, "#8A6A26");
+      gold.addColorStop(0.45, "#F0D488");
+      gold.addColorStop(0.55, "#E4C468");
+      gold.addColorStop(1, "#7E5E20");
+      ctx.fillStyle = gold;
+      ctx.fillText(text, cx, cy, maxW);
+    } else {
+      // incision shadow above-light / below-dark
+      ctx.fillStyle = "rgba(255,252,244,0.55)";
+      ctx.fillText(text, cx, cy - hair, maxW);
+      ctx.fillStyle = "rgba(24,20,16,0.45)";
+      ctx.fillText(text, cx, cy + hair, maxW);
+      ctx.fillStyle = INK;
+      ctx.fillText(text, cx, cy, maxW);
+    }
     tex.needsUpdate = true;
   };
   draw();
