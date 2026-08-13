@@ -872,8 +872,11 @@ function EntranceHallScene({
       glowTex.colorSpace = THREE.SRGBColorSpace;
       // r2: baked compensation eases off (0.5→0.42 / 0.35→0.28) now the key is stronger;
       // polygonOffset keeps the floor pool clear of the mosaic Greek-key tops (z-fight).
-      w1GlowSpriteMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.42, blending: THREE.AdditiveBlending, depthWrite: false });
-      w1PoolMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+      // W3H: the 0.42 additive glow bleached the middle of every door — any
+      // wood grain was blown to flat orange. The gilded labels + real wood
+      // carry the door read now, so the compensation glow steps way back.
+      w1GlowSpriteMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: W3H ? 0.16 : 0.42, blending: THREE.AdditiveBlending, depthWrite: false });
+      w1PoolMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: W3H ? 0.2 : 0.28, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
       w1PoolGeo = new THREE.PlaneGeometry(4.2, 4.2);
       w1InkCasingMat = new THREE.MeshStandardMaterial({ color: INK, roughness: 0.6, metalness: 0.0, envMapIntensity: 0.4 });
       // Ember hover outline plane — the ONLY interactive accent (dogma 3); moved to
@@ -894,6 +897,45 @@ function EntranceHallScene({
       w1HlRing.position.y = 0.04;
       w1HlRing.renderOrder = 1;
       scene.add(w1HlRing);
+    }
+
+    // W3H (owner: door texture "komt niet door"): a HIGH-CONTRAST procedural
+    // plank albedo — vertical planks with grain streaks and per-plank tone —
+    // guaranteed to read at hall distance (the subtle 1k PBR diffuse did not).
+    // The dark_wood normal/roughness maps stay for relief.
+    let w3DoorWoodTex: THREE.CanvasTexture | null = null;
+    if (W3H) {
+      const wc = document.createElement("canvas"); wc.width = 256; wc.height = 512;
+      const wctx = wc.getContext("2d");
+      if (wctx) {
+        const PLANKS = 4, pw = 256 / PLANKS;
+        for (let p = 0; p < PLANKS; p++) {
+          const h2 = Math.sin(p * 127.1 + 7.7) * 43758.5453;
+          const v2 = (h2 - Math.floor(h2)) * 30 - 15;
+          wctx.fillStyle = `rgb(${138 + v2 | 0},${92 + v2 * 0.7 | 0},${52 + v2 * 0.5 | 0})`;
+          wctx.fillRect(p * pw, 0, pw, 512);
+          // grain: wavy vertical streaks
+          for (let s2 = 0; s2 < 10; s2++) {
+            const h3 = Math.sin((p * 13 + s2) * 91.7) * 4375.5;
+            const gx2 = p * pw + (h3 - Math.floor(h3)) * pw;
+            const dark = s2 % 3 === 0 ? 0.30 : 0.16;
+            wctx.strokeStyle = `rgba(52,32,14,${dark})`;
+            wctx.lineWidth = s2 % 4 === 0 ? 2.5 : 1.2;
+            wctx.beginPath();
+            wctx.moveTo(gx2, 0);
+            for (let yy = 0; yy <= 512; yy += 32) {
+              wctx.lineTo(gx2 + Math.sin(yy * 0.02 + s2 * 2 + p) * 3.5, yy);
+            }
+            wctx.stroke();
+          }
+          // plank seam
+          wctx.fillStyle = "rgba(40,24,10,0.55)";
+          wctx.fillRect(p * pw, 0, 2, 512);
+        }
+      }
+      w3DoorWoodTex = new THREE.CanvasTexture(wc);
+      w3DoorWoodTex.colorSpace = THREE.SRGBColorSpace;
+      w3DoorWoodTex.anisotropy = 8;
     }
 
     // Map shared wings to locked door slots
@@ -989,16 +1031,16 @@ function EntranceHallScene({
             // Neutral warm-wood self-illumination (fixture compensation, not a
             // wing-accent glow) — static under w1_hall; pre-W1 the animate loop
             // overwrites it with the accent proximity glow.
-            // W3H (owner: "meer textuur op de deuren, nu te basic"): the dark
-            // wood PBR set was loaded but the panels never used it — real
-            // grain, normal relief and roughness variation instead of flat paint.
-            color: W3H ? "#9A6B42" : "#7A5030", roughness: 0.45, metalness: 0.0,
-            emissive: "#5A3A20", emissiveIntensity: 0.2,
-            ...(W3H ? {
-              map: woodDoorTex.map, normalMap: woodDoorTex.normalMap,
+            // W3H (owner: "meer textuur op de deuren"): high-contrast plank
+            // canvas as albedo (white multiplier — the canvas carries the
+            // tone) + dark_wood normal/roughness for relief; emissive wash
+            // halved so the grain isn't flattened.
+            color: W3H ? "#E8D8C4" : "#7A5030", roughness: 0.45, metalness: 0.0,
+            emissive: "#5A3A20", emissiveIntensity: W3H ? 0.1 : 0.2,
+            ...(W3H && w3DoorWoodTex ? {
+              map: w3DoorWoodTex, normalMap: woodDoorTex.normalMap,
               normalScale: new THREE.Vector2(0.55, 0.55),
               roughnessMap: woodDoorTex.roughnessMap,
-              aoMap: woodDoorTex.aoMap, aoMapIntensity: 0.55,
             } : {}),
           });
 
@@ -1582,8 +1624,8 @@ function EntranceHallScene({
       // as a solid olive disc, not water): deeper glassy tone, stronger
       // ripple normals and doubled reflection pickup so it reads WET.
       const waterMat = mkPhys(THREE,{
-        color: W3H ? "#4E7E78" : (W2 ? "#7BA48E" : "#4A8A7A"), roughness: 0.02, metalness: 0.1, transparent: true, opacity: W3H ? 0.8 : 0.65,
-        envMapIntensity: W3H ? 2.2 : 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
+        color: W3H ? "#3A6B64" : (W2 ? "#7BA48E" : "#4A8A7A"), roughness: 0.02, metalness: 0.1, transparent: true, opacity: W3H ? 0.72 : 0.65,
+        envMapIntensity: W3H ? 1.3 : 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
       });
       if (W2) {
         w2WaterNormal = makeWaterNormalTexture();
@@ -1592,13 +1634,18 @@ function EntranceHallScene({
         (waterMat as THREE.MeshPhysicalMaterial).normalScale = W3H ? new THREE.Vector2(0.65, 0.65) : new THREE.Vector2(0.35, 0.35);
       }
 
-      // Pool bottom
-      scene.add(mk(new THREE.BoxGeometry(implW, 0.06, implD), MS.marble, 0, -implDepth, 0));
+      // Pool bottom + walls — W3H: a DEEP dark basin lining. Water over a
+      // near-white marble bottom reads as milky glass; over a dark green
+      // basin it instantly reads as standing water (and the caustics glow).
+      const basinMat = W3H
+        ? new THREE.MeshStandardMaterial({ color: "#22403B", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.5 })
+        : MS.marble;
+      scene.add(mk(new THREE.BoxGeometry(implW, 0.06, implD), basinMat, 0, -implDepth, 0));
       // Pool walls (4 sides)
-      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), MS.marble, 0, -implDepth / 2, implD / 2));
-      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), MS.marble, 0, -implDepth / 2, -implD / 2));
-      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), MS.marble, implW / 2, -implDepth / 2, 0));
-      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), MS.marble, -implW / 2, -implDepth / 2, 0));
+      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), basinMat, 0, -implDepth / 2, implD / 2));
+      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), basinMat, 0, -implDepth / 2, -implD / 2));
+      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), basinMat, implW / 2, -implDepth / 2, 0));
+      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), basinMat, -implW / 2, -implDepth / 2, 0));
 
       // Water surface — W3H: raised nearly flush with the rim so the pool
       // unmistakably reads as standing water from eye level.
