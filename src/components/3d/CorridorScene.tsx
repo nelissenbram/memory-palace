@@ -1207,7 +1207,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     // ── W3C ROOM-DOOR HERO (F10/F30/F31): load once, clone per slot ──
     if(W3C&&w3DoorSlots.length){
-      loadModel("/models/corridor/door_w3.glb?v=2").then((g)=>{
+      loadModel("/models/corridor/door_w3.glb?v=3").then((g)=>{
         g.updateMatrixWorld(true);
         g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.5;}});
         for(const slot of w3DoorSlots){
