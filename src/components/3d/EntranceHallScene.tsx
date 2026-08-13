@@ -2151,7 +2151,9 @@ function EntranceHallScene({
       });
       const w2Pool = new THREE.Mesh(poolGeo, poolMat);
       w2Pool.rotation.x = -Math.PI / 2;
-      w2Pool.position.y = 0.035;
+      // W3H: the baked light pool follows the TILTED sun shaft — it lands
+      // where the oculusSpot target points (−4, 4), not dead centre.
+      w2Pool.position.set(W3H ? -4 : 0, 0.035, W3H ? 4 : 0);
       w2Pool.renderOrder = 2;
       scene.add(w2Pool);
 
