@@ -14,6 +14,7 @@ import { EYE_HEIGHT, MAX_WALK_SPEED, SPRINT_SPEED, MAX_YAW_DEG_S, easeInOutCubic
 import { computeSalonHang, mountSalonHang, type SalonHangMount, type SalonMemoryRef } from "@/lib/3d/salonHang";
 import { createFocusMode, type FocusMode, type FocusTarget } from "@/lib/3d/focusMode";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
+import { loadModel } from "@/lib/3d/modelLoader";
 import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
 import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
@@ -1143,13 +1144,20 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     // ══ DOORS — placed near the entrance (high z), locked niches at far end (low z) ══
     const dMeshes: any[]=[];
+    // W3C (F10/F30/F31): the flat 5-box slab doors are replaced by a Blender
+    // DRACO GLB hero (paneled walnut leaves + travertine architrave + bronze
+    // handles). Collect the procedural visuals per slot so they can be hidden
+    // when the GLB lands (canary: procedural stays on 404). The door LEAF keeps
+    // its material as an invisible raycast proxy so hit-testing is untouched.
+    const w3DoorSlots: {wx:number,z:number,side:number,leafMat:THREE.MeshStandardMaterial,hide:THREE.Object3D[]}[]=[];
     rooms.forEach((room: any,i: any)=>{
       const side=i%2===0?-1:1;
       const z=cL/2-5.5-i*C.sp;
       const wx=side*(cW/2);
       const dW=1.7,dH=3.6;
+      const doorHide: THREE.Object3D[]=[];
       // Minimal door surround — thin trim only at top
-      scene.add(mk(new THREE.BoxGeometry(.04,.12,dW+.2),MS.trim,wx-(side*.02),dH+.1,z));
+      doorHide.push(mk(new THREE.BoxGeometry(.04,.12,dW+.2),MS.trim,wx-(side*.02),dH+.1,z));scene.add(doorHide[doorHide.length-1]);
       // Recess
       scene.add(mk(new THREE.BoxGeometry(.03,dH-.1,dW+.1),MS.doorD,wx-(side*.015),(dH-.1)/2,z));
       // Door panel — clone material per door because each door needs independent
@@ -1158,11 +1166,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const doorMesh=mk(new THREE.BoxGeometry(.05,dH-.2,dW-.05),doorMat,wx-(side*.03),(dH-.2)/2,z);
       doorMesh.userData={roomId:room.id,wingId,idx:i};doorMesh.castShadow=true;scene.add(doorMesh);
       dMeshes.push({mesh:doorMesh,mat:doorMat,room,side,z,x:wx});
+      w3DoorSlots.push({wx,z,side,leafMat:doorMat,hide:doorHide});
       // Panel insets
-      for(let py=0;py<2;py++)for(let pz2=-1;pz2<=1;pz2+=2)
-        scene.add(mk(new THREE.BoxGeometry(.004,.6,dW/2-.18),MS.gold,wx-(side*.05),.65+py*1.3,z+pz2*(dW/4)));
+      for(let py=0;py<2;py++)for(let pz2=-1;pz2<=1;pz2+=2){
+        const ins=mk(new THREE.BoxGeometry(.004,.6,dW/2-.18),MS.gold,wx-(side*.05),.65+py*1.3,z+pz2*(dW/4));scene.add(ins);doorHide.push(ins);}
       // Handles
-      for(let hz of[-.12,.12])scene.add(mk(new THREE.SphereGeometry(.03,6,6),MS.handle,wx-(side*.06),1.5,z+hz));
+      for(let hz of[-.12,.12]){const hh=mk(new THREE.SphereGeometry(.03,6,6),MS.handle,wx-(side*.06),1.5,z+hz);scene.add(hh);doorHide.push(hh);}
       // Warm glow — W1 KILL (WS5-2/3): per-door hsl() PointLight dies; a baked
       // warm threshold pool compensates so no door reads dark
       if(!isMobileGPU()&&!W1)scene.add(new THREE.PointLight(`hsl(${room.coverHue},35%,60%)`,.2,3.5).translateX(wx-(side*.4)).translateY(dH/2).translateZ(z));
@@ -1195,6 +1204,26 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       if(room.shared){const badge=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.02,12),MS.shared);badge.rotation.z=side*Math.PI/2;badge.position.set(wx-(side*.005),dH+1.1,z+.5);scene.add(badge);}
     });
     doorMeshes.current=dMeshes;
+
+    // ── W3C ROOM-DOOR HERO (F10/F30/F31): load once, clone per slot ──
+    if(W3C&&w3DoorSlots.length){
+      loadModel("/models/corridor/door_w3.glb?v=1").then((g)=>{
+        g.updateMatrixWorld(true);
+        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.5;}});
+        for(const slot of w3DoorSlots){
+          const inst=g.clone(true);
+          // door built facing +Z; left wall (side=-1) faces +X → rotY +90°,
+          // right wall (side=1) faces -X → rotY -90°. Sits on the wall plane.
+          inst.position.set(slot.wx,0,slot.z);
+          inst.rotation.y=slot.side===-1?Math.PI/2:-Math.PI/2;
+          inst.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});
+          scene.add(inst);
+          // hide procedural visuals; keep the leaf as an invisible raycast proxy
+          slot.hide.forEach(o=>{o.visible=false;});
+          slot.leafMat.transparent=true;slot.leafMat.opacity=0;slot.leafMat.depthWrite=false;
+        }
+      }).catch((err)=>{console.warn("[W3C] door GLB load failed, keeping procedural doors",err);});
+    }
 
     // ── LOCKED ROOM NICHES — sealed archway alcoves at the far end of corridor ──
     const inlayClickMeshes: THREE.Mesh[] = [];
