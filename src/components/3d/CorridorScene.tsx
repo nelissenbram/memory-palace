@@ -394,8 +394,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const cove=W3C&&cW>=cH-0.2;
     MS.ceil.polygonOffset=true;MS.ceil.polygonOffsetFactor=4;MS.ceil.polygonOffsetUnits=4;
     if(cove){
-      const rise=cW*0.17;                                    // apex = cH+rise > cW
-      const yAt=(x: number)=>cH+rise*(1-(2*x/cW)**2);        // shallow parabolic vault
+      const rise=cW*0.26;                                    // apex = cH+rise, comfortably > cW
+      const yAt=(x: number)=>cH+rise*(1-(2*x/cW)**2);        // segmental parabolic vault
       const NX=28,NZ=Math.max(10,Math.floor(cL/2.2));
       const pos: number[]=[],idx: number[]=[],uv: number[]=[];
       for(let j=0;j<=NZ;j++){const z=-cL/2+(cL*j/NZ);
