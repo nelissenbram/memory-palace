@@ -1680,6 +1680,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
 
       // ── CEILING BEAMS (exposed timber) ──
+      // W3C cove: these Roman flat-ceiling beams sit at cH and would occlude
+      // the vault (which rises to cH+rise ABOVE them) — skip when the cove is
+      // active; the vault carries its own transverse ribs.
+      if(!cove){
       const beamMat = new THREE.MeshStandardMaterial({ color: "#4A3020", roughness: 0.7, metalness: 0.02 });
       const beamCount = 11;
       const beamSpacing = cL / (beamCount + 1);
@@ -1690,6 +1694,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         for (let bs = -1; bs <= 1; bs += 2) {
           scene.add(mk(new THREE.BoxGeometry(0.08, 0.15, 0.15), beamMat, bs * (cW / 2 - 0.24), cH - 0.22, bz));
         }
+      }
       }
     }
 
