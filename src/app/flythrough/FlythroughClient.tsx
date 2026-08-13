@@ -32,6 +32,21 @@ const DEMO_LUNETTES: Record<string, Mem> = Object.fromEntries(
   } satisfies Mem])
 );
 
+// A representative corridor for the viewer: rooms (→ doors + windows) + one
+// hung photo per room (→ populated salon walls). Mirrors the real app shape.
+const DEMO_CORRIDOR_ROOMS = [
+  { id: "ro1", name: "Me, Over Time", icon: "🪞", shared: false, sharedWith: [], coverHue: 18 },
+  { id: "ro2", name: "Sunday Lunches", icon: "🍝", shared: false, sharedWith: [], coverHue: 32 },
+  { id: "ro3", name: "Dad's Garage", icon: "🛠", shared: false, sharedWith: [], coverHue: 42 },
+  { id: "ro4", name: "School Days", icon: "🎒", shared: false, sharedWith: [], coverHue: 48 },
+];
+const DEMO_CORRIDOR_PAINTINGS: Record<string, { url?: string; title?: string; size?: string }> = {
+  ro1: { url: "/demo/graduation.jpg", title: "Graduation" },
+  ro2: { url: "/demo/quiet-morning.jpg", title: "Sunday Lunch" },
+  ro3: { url: "/demo/between-two-hands.jpg", title: "The Garage" },
+  ro4: { url: "/demo/edge-of-water.jpg", title: "School Days" },
+};
+
 // ═══ DEV TOOL — Cinematic flythrough recorder ═══
 // Sequences through 4 palace scenes and records the canvas as .webm
 
@@ -222,6 +237,8 @@ export default function FlythroughClient() {
         return (
           <CorridorScene
             wingId="roots"
+            rooms={DEMO_CORRIDOR_ROOMS}
+            corridorPaintings={DEMO_CORRIDOR_PAINTINGS}
             onDoorHover={noop}
             onDoorClick={noop}
             hoveredDoor={null}
