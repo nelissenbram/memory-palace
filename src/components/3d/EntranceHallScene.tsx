@@ -15,6 +15,7 @@ import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
 import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { EYE_HEIGHT, MAX_YAW_DEG_S, MAX_WALK_SPEED, SPRINT_SPEED, easeInOutCubic } from "@/lib/3d/cameraComfort";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
+import { loadModel } from "@/lib/3d/modelLoader";
 // MUSEO VIVO Wave 2 — w2_hall (WS4-6..9, WS7-7/10/15): Ancestral Wall salon
 // hang, dolly-to-frame focus mode, living water/oculus light, bust plaque.
 import { computeSalonHang, mountSalonHang, type SalonHangMount, type SalonMemoryRef } from "@/lib/3d/salonHang";
@@ -668,7 +669,8 @@ function EntranceHallScene({
       scene.add(rib);
     }
     // Concentric dome rings (more rings)
-    for (let ring = 1; ring <= 4; ring++) {
+    // W3H: the GLB dome carries its own coffer articulation — no gold hoops
+    if (!W3H) for (let ring = 1; ring <= 4; ring++) {
       const phi = (ring / 8) * Math.PI / 2;
       const ringR = RADIUS * Math.sin(phi);
       const ringY = WALL_H + RADIUS * Math.cos(phi);
@@ -715,6 +717,41 @@ function EntranceHallScene({
     oculusMesh.rotation.x = Math.PI / 2;
     oculusMesh.position.y = TOTAL_H - 0.3;
     scene.add(oculusMesh);
+
+    // ═══ W3H WAVE B — THE DOME HERO (La Sala degli Sguardi move 4) ═══
+    // Blender-authored spherical-cap dome GLB: a TRUE oculus opening at the
+    // apex (the old dome was a solid r=20 hemisphere with a flat cream disc
+    // floating 6m BELOW its apex), 4 rings × 24 real recessed coffers with
+    // proud frames, CPU-baked AO folded into the albedo. DRACO, 271KB, ~8k
+    // tris. Canary pattern: procedural dome stays as the load-failure path.
+    if (W3H) {
+      loadModel("/models/hall/dome_hall_w3.glb?v=1").then((g) => {
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const mat = (m.material as THREE.MeshStandardMaterial).clone();
+          mat.side = THREE.DoubleSide;   // inward-facing shell, no winding risk
+          mat.envMapIntensity = 0.45;
+          m.material = mat;
+          m.castShadow = false; m.receiveShadow = false;
+        });
+        g.position.y = WALL_H;
+        scene.add(g);
+        // GLB seated → retire the procedural dome + the floating fake disc
+        domeMesh.visible = false;
+        oculusMesh.visible = false;
+        // warm sky through the REAL hole — the brightest surface in the hall
+        const skyDisc = new THREE.Mesh(
+          new THREE.CircleGeometry(OCULUS_R + 1.8, 32),
+          new THREE.MeshBasicMaterial({ color: "#FFE2A0", side: THREE.DoubleSide })
+        );
+        skyDisc.rotation.x = Math.PI / 2;
+        skyDisc.position.y = WALL_H + 15.4;
+        scene.add(skyDisc);
+      }).catch((err) => {
+        console.warn("[W3H] dome GLB load failed, keeping procedural dome", err);
+      });
+    }
     // Oculus ring (thicker)
     const oculusRing = new THREE.Mesh(
       new THREE.TorusGeometry(OCULUS_R, 0.35, 10, 32),
