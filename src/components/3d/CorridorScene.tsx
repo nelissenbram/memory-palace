@@ -1209,7 +1209,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     if(W3C&&w3DoorSlots.length){
       loadModel("/models/corridor/door_w3.glb?v=3").then((g)=>{
         g.updateMatrixWorld(true);
-        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.5;}});
+        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.7;
+          // the recessed walnut leaf falls in the architrave's shadow and read
+          // as a dark void — lift its albedo + a faint warm self-illum so the
+          // panels always read as a door, not a black slab.
+          if(/wood/i.test(mm.name)){mm.color.multiplyScalar(1.45);mm.emissive=new THREE.Color("#3A2410");mm.emissiveIntensity=0.35;}
+        }});
         for(const slot of w3DoorSlots){
           const inst=g.clone(true);
           // door built facing +Z; left wall (side=-1) faces +X → rotY +90°,
