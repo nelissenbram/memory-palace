@@ -1207,7 +1207,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     // ── W3C ROOM-DOOR HERO (F10/F30/F31): load once, clone per slot ──
     if(W3C&&w3DoorSlots.length){
+      console.warn("[W3Cdoor] start",w3DoorSlots.length);
       loadModel("/models/corridor/door_w3.glb?v=1").then((g)=>{
+        console.warn("[W3Cdoor] loaded meshes",(()=>{let n=0;g.traverse((c)=>{if((c as THREE.Mesh).isMesh)n++;});return n;})());
         g.updateMatrixWorld(true);
         g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.5;}});
         for(const slot of w3DoorSlots){
@@ -1222,7 +1224,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           slot.hide.forEach(o=>{o.visible=false;});
           slot.leafMat.transparent=true;slot.leafMat.opacity=0;slot.leafMat.depthWrite=false;
         }
-      }).catch((err)=>{console.warn("[W3C] door GLB load failed, keeping procedural doors",err);});
+        console.warn("[W3Cdoor] placed+hid",w3DoorSlots.length);
+      }).catch((err)=>{console.warn("[W3Cdoor] FAILED",err);});
     }
 
     // ── LOCKED ROOM NICHES — sealed archway alcoves at the far end of corridor ──
