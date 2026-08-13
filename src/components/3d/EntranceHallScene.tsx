@@ -353,8 +353,14 @@ function EntranceHallScene({
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     // Bloom/vignette inherit the canon SCENE_PRESETS (bloom threshold 0.85,
     // vignette 0.35) — the old 0.25-threshold/0.7-vignette overrides are dead.
+    // W3H WAVE C (Sguardi move 3): SELECTIVE HDR BLOOM — threshold 1.0 means
+    // LDR-lit plaster/marble physically cannot bloom; only surfaces lifted
+    // past 1.0 (the HDR sun disc through the oculus, hot env speculars) glow.
+    // SSAO returns on desktop: the coffers/flutes/lunettes earn real contact
+    // shading now the geometry exists.
     const composer = createPostProcessing(ren, scene, camera, "entrance", {
-      ssao: false, // disabled for performance even on desktop
+      ssao: (W3H && !isMobileGPU()) ? { intensity: 1.7, radius: 0.05, bias: 0.015, samples: 12 } : false,
+      ...(W3H ? { bloom: { luminanceThreshold: 1.0, luminanceSmoothing: 0.25, intensity: 0.75 } } : {}),
     });
     const disposeFit = autoFit(el, { camera, renderer: ren, composer });
 
@@ -434,12 +440,11 @@ function EntranceHallScene({
     // Owner feedback 2026-08-06: the Ancestral Wall leaves the entrance hall
     // until it earns a proper redesign (concept approved, execution not).
     // Bust, living water, oculus pool and the focus rig stay live.
-    // W3H (Wave B, La Sala degli Sguardi move 2): the Ancestral Wall RETURNS.
-    // Privacy verified before this flip (masterplan gate §7-1): visitors get
-    // getVisitorAncestralMemories — a server action that only returns
-    // displayed memories from PUBLISHED wings — AND the scene applies its own
-    // publicOnly filter on top (ancestralPublicOnly).
-    const AW_ENABLED = W3H;
+    // Ancestral Wall: briefly revived under W3H (privacy path verified:
+    // getVisitorAncestralMemories server action + ancestralPublicOnly filter),
+    // then ROLLED BACK by owner decision 2026-08-13. The verified privacy
+    // notes stand for whenever it returns.
+    const AW_ENABLED = false;
     const angDiff = (a: number, b: number) => { let d = Math.abs(a - b); if (d > Math.PI) d = Math.PI * 2 - d; return d; };
     // WS4-7 bust-moment anchor (left-front of the impluvium, facing the spawn).
     const W2_BUST = { x: -4.9, z: 1.7 };
@@ -749,10 +754,15 @@ function EntranceHallScene({
         // GLB seated → retire the procedural dome + the floating fake disc
         domeMesh.visible = false;
         oculusMesh.visible = false;
-        // warm sky through the REAL hole — the brightest surface in the hall
+        // warm sky through the REAL hole — the brightest surface in the hall.
+        // Wave C: HDR-lifted past the 1.0 bloom threshold — in any screenshot
+        // the blooming pixels ARE the sun (the enforcement mechanism of the
+        // whole "memories/sun brightest" dogma).
+        const skyDiscMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+        skyDiscMat.color.setRGB(2.5, 1.95, 1.15);
         const skyDisc = new THREE.Mesh(
           new THREE.CircleGeometry(OCULUS_R + 1.8, 32),
-          new THREE.MeshBasicMaterial({ color: "#FFE2A0", side: THREE.DoubleSide })
+          skyDiscMat
         );
         skyDisc.rotation.x = Math.PI / 2;
         skyDisc.position.y = WALL_H + 15.4;
