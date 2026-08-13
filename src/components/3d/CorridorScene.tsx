@@ -811,8 +811,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     // ── CHANDELIERS ──
     const nCh=Math.max(2,Math.ceil(cL/14));
+    // W3C cove: the vault apex sits at cH+coveRise — hang chandeliers from it
+    // on a longer chain so they don't float below a raised ceiling.
+    const coveRise=cove?cW*0.26:0;
     for(let ci=0;ci<nCh;ci++){const cz=-cL/2+cL/(nCh+1)*(ci+1);
-      scene.add(mk(new THREE.CylinderGeometry(.015,.015,.4,6),MS.bronze,0,cH-.2,cz));
+      // stem spans from the (vaulted) ceiling apex down to the chandelier body
+      const stemLen=.4+coveRise, stemCY=cH-.4+stemLen/2;
+      scene.add(mk(new THREE.CylinderGeometry(.015,.015,stemLen,6),MS.bronze,0,stemCY,cz));
       const tr=new THREE.Mesh(new THREE.TorusGeometry(.45,.035,8,20),MS.bronze);tr.position.set(0,cH-.45,cz);scene.add(tr);
       const tr2=new THREE.Mesh(new THREE.TorusGeometry(.28,.018,8,14),MS.gold);tr2.position.set(0,cH-.42,cz);scene.add(tr2);
       for(let b=0;b<6;b++){const ba=(b/6)*Math.PI*2;
