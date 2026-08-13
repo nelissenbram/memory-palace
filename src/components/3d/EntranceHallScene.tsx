@@ -500,7 +500,33 @@ function EntranceHallScene({
     const oculusFillBase = oculusFill.intensity;
 
     // ── FLOOR — radial marble mosaic ──
-    const floorGeo = new THREE.CircleGeometry(RADIUS + 1, 64);
+    // W3H ROOT CAUSE (owner: "water komt niet door"): the floor was a SOLID
+    // disc — the sunken impluvium and its water have always been UNDERNEATH
+    // it, completely invisible. Cut a real 7×5 opening over the pool.
+    let floorGeo: THREE.BufferGeometry;
+    if (W3H) {
+      const fShape = new THREE.Shape();
+      fShape.absarc(0, 0, RADIUS + 1, 0, Math.PI * 2, false);
+      const hole = new THREE.Path();
+      // (shape is built in XY then rotated -90° about X: shape Y maps to -Z,
+      // so the 7×5 pool rect keeps its aspect after rotation)
+      hole.moveTo(-3.5, -2.5); hole.lineTo(3.5, -2.5);
+      hole.lineTo(3.5, 2.5); hole.lineTo(-3.5, 2.5);
+      hole.closePath();
+      fShape.holes.push(hole);
+      floorGeo = new THREE.ShapeGeometry(fShape, 64);
+      // ShapeGeometry emits raw-coordinate UVs — normalise to the same 0..1
+      // disc mapping CircleGeometry used, so the floor texture scale is
+      // unchanged from the pre-W3H look.
+      const uv = floorGeo.getAttribute("uv") as THREE.BufferAttribute;
+      const span = 2 * (RADIUS + 1);
+      for (let i = 0; i < uv.count; i++) {
+        uv.setXY(i, uv.getX(i) / span + 0.5, uv.getY(i) / span + 0.5);
+      }
+      uv.needsUpdate = true;
+    } else {
+      floorGeo = new THREE.CircleGeometry(RADIUS + 1, 64);
+    }
     const floorMesh = new THREE.Mesh(floorGeo, MS.floor);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.receiveShadow = true;
@@ -508,7 +534,8 @@ function EntranceHallScene({
 
     // Radial floor rings — z-fight sweep r2: lifted (0.003→0.005) and the shared
     // floorAccent material carries polygonOffset against the grazing-angle floor.
-    for (let r = 2; r < RADIUS; r += 3) {
+    // W3H: rings start OUTSIDE the pool opening (r=2 ran straight across it)
+    for (let r = W3H ? 5 : 2; r < RADIUS; r += 3) {
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(r, r + 0.15, 64),
         MS.floorAccent
@@ -519,28 +546,36 @@ function EntranceHallScene({
       scene.add(ring);
     }
     // Radial spokes — r2: lifted above the ring plane (top 0.011 vs ring 0.005)
+    // W3H: shortened so they start beyond the pool opening instead of
+    // crossing the water.
+    const spokeLen = W3H ? RADIUS - 6 : RADIUS - 2;
+    const spokeMid = W3H ? (RADIUS + 3.5) / 2 : RADIUS / 2 - 1;
     for (let i = 0; i < 12; i++) {
       const angle = (i / 12) * Math.PI * 2;
-      const spoke = mk(new THREE.BoxGeometry(0.1, 0.004, RADIUS - 2), MS.floorAccent,
-        Math.sin(angle) * (RADIUS / 2 - 1), 0.009, Math.cos(angle) * (RADIUS / 2 - 1));
+      const spoke = mk(new THREE.BoxGeometry(0.1, 0.004, spokeLen), MS.floorAccent,
+        Math.sin(angle) * spokeMid, 0.009, Math.cos(angle) * spokeMid);
       spoke.rotation.y = -angle;
       scene.add(spoke);
     }
-    // Center medallion
-    const centerMedallion = new THREE.Mesh(new THREE.CircleGeometry(3.0, 32), MS.floorDark);
-    centerMedallion.rotation.x = -Math.PI / 2;
-    centerMedallion.position.y = 0.005;
-    centerMedallion.receiveShadow = true;
-    scene.add(centerMedallion);
-    const innerMedallion = new THREE.Mesh(new THREE.CircleGeometry(2.2, 32), MS.gold);
-    innerMedallion.rotation.x = -Math.PI / 2;
-    innerMedallion.position.y = 0.007;
-    scene.add(innerMedallion);
-    const starGeo = new THREE.CircleGeometry(1.5, 5);
-    const starMesh = new THREE.Mesh(starGeo, MS.marbleDark);
-    starMesh.rotation.x = -Math.PI / 2;
-    starMesh.position.y = 0.009;
-    scene.add(starMesh);
+    // Center medallion — W3H: gone; the centre of the hall is the WATER now
+    // (the gold disc + star drew on top of the covered pool — the "olive
+    // disc" the owner kept seeing).
+    if (!W3H) {
+      const centerMedallion = new THREE.Mesh(new THREE.CircleGeometry(3.0, 32), MS.floorDark);
+      centerMedallion.rotation.x = -Math.PI / 2;
+      centerMedallion.position.y = 0.005;
+      centerMedallion.receiveShadow = true;
+      scene.add(centerMedallion);
+      const innerMedallion = new THREE.Mesh(new THREE.CircleGeometry(2.2, 32), MS.gold);
+      innerMedallion.rotation.x = -Math.PI / 2;
+      innerMedallion.position.y = 0.007;
+      scene.add(innerMedallion);
+      const starGeo = new THREE.CircleGeometry(1.5, 5);
+      const starMesh = new THREE.Mesh(starGeo, MS.marbleDark);
+      starMesh.rotation.x = -Math.PI / 2;
+      starMesh.position.y = 0.009;
+      scene.add(starMesh);
+    }
     // Alternating floor tiles in rings — merged into single geometry
     {
       const tileShapes: THREE.Shape[] = [];
@@ -2470,6 +2505,8 @@ function EntranceHallScene({
     // W2 (WS4-7): the bust pedestal is solid — no ghost-walking through it.
     // W3H: pedestal removed with the bust concept → no collider either.
     if (W2 && !W3H) colPositions.push({ x: W2_BUST.x, z: W2_BUST.z, r: 0.95 });
+    // W3H: the impluvium is now OPEN water — you walk around it, not across.
+    if (W3H) colPositions.push({ x: 0, z: 0, r: 4.4 });
 
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door meshes ──
     // Under w1_hall the 7 intensity-0 PointLights are deleted (WS4-3); the gold
