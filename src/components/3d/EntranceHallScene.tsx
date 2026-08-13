@@ -3106,7 +3106,12 @@ function EntranceHallScene({
       }
 
       // ── Distance-based door glow (strong baseline) ──
-      doorMeshes.forEach(d => {
+      // W3H (audit P0, critic §1): this per-frame loop overrode every door's
+      // material with its wing-ACCENT emissive at ≥0.25 — the wood tints
+      // shipped this wave were instantly repainted (the glowing BLUE door).
+      // Under W3H the static warm-wood emissive stands, and hover feedback is
+      // the EMBER outline plane (WS4-4 contract, finally wired below).
+      if (!W3H) doorMeshes.forEach(d => {
         // Skip normal glow for walkthrough-highlighted door
         if(hlTarget===d.wingId)return;
         const wing = WINGS.find(ww => ww.id === d.wingId);
@@ -3124,6 +3129,19 @@ function EntranceHallScene({
         d.mat.emissive.set(accent);
         d.mat.emissiveIntensity = Math.max(baseGlow, proximityGlow, hoverGlow);
       });
+      if (W3H && w1HoverPlane) {
+        const hd = hoveredWing ? doorMeshes.find(dd => dd.wingId === hoveredWing) : null;
+        if (hd) {
+          const hx = Math.cos(hd.angle) * (RADIUS - 0.75);
+          const hz = Math.sin(hd.angle) * (RADIUS - 0.75);
+          w1HoverPlane.position.set(hx, DOOR_H / 2, hz);
+          w1HoverPlane.lookAt(0, DOOR_H / 2, 0);
+          w1HoverPlane.visible = true;
+          (w1HoverPlane.material as THREE.MeshBasicMaterial).opacity = 0.14 + Math.sin(t * 3) * 0.05;
+        } else {
+          w1HoverPlane.visible = false;
+        }
+      }
 
       // Portal pulse
       portalGlow.material.opacity = 0.03 + Math.sin(t * 2) * 0.015;
