@@ -32,12 +32,26 @@ const SCENES: SceneDef[] = [
   { name: "Room", duration: 6000 },
 ];
 
+// Login-free scene viewer: /flythrough?scene=hall opens straight into the
+// entrance hall (analogous to the exterior review link) — also: exterior,
+// corridor, room, or a numeric index.
+const SCENE_ALIASES: Record<string, number> = { exterior: 0, hall: 1, entrance: 1, corridor: 2, room: 3 };
+function initialSceneFromURL(): number {
+  if (typeof window === "undefined") return 0;
+  const q = new URLSearchParams(window.location.search).get("scene");
+  if (!q) return 0;
+  const alias = SCENE_ALIASES[q.toLowerCase()];
+  if (alias !== undefined) return alias;
+  const n = parseInt(q, 10);
+  return Number.isFinite(n) && n >= 0 && n < SCENES.length ? n : 0;
+}
+
 const FADE_MS = 600;
 
 export default function FlythroughClient() {
   const [toast, setToast] = useState<ToastData | null>(null);
   const [phase, setPhase] = useState<"idle" | "recording" | "done">("idle");
-  const [currentScene, setCurrentScene] = useState(0);
+  const [currentScene, setCurrentScene] = useState(initialSceneFromURL);
   const [progress, setProgress] = useState(0);
   const [fadeOpacity, setFadeOpacity] = useState(1);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -346,8 +360,9 @@ export default function FlythroughClient() {
         )}
       </div>
 
-      {/* Scene indicators at bottom */}
-      {phase === "recording" && (
+      {/* Scene indicators at bottom — clickable scene switcher while idle
+          (the login-free viewer), read-only progress pills while recording */}
+      {phase !== "done" && (
         <div
           style={{
             position: "absolute",
@@ -357,24 +372,28 @@ export default function FlythroughClient() {
             zIndex: 100,
             display: "flex",
             gap: "0.5rem",
-            pointerEvents: "none",
+            pointerEvents: phase === "idle" ? "auto" : "none",
           }}
         >
           {SCENES.map((s, i) => (
-            <div
+            <button
               key={s.name}
+              onClick={() => { if (phase === "idle") setCurrentScene(i); }}
+              disabled={phase !== "idle"}
               style={{
                 padding: "0.25rem 0.75rem",
                 borderRadius: "12px",
+                border: "none",
                 fontSize: "0.7rem",
                 fontFamily: "system-ui, sans-serif",
+                cursor: phase === "idle" ? "pointer" : "default",
                 color: i === currentScene ? "#fff" : "rgba(255,255,255,0.4)",
                 background: i === currentScene ? "rgba(192,57,43,0.8)" : "rgba(255,255,255,0.1)",
                 transition: "all 0.3s ease",
               }}
             >
               {s.name}
-            </div>
+            </button>
           ))}
         </div>
       )}
