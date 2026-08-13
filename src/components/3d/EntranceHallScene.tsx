@@ -862,6 +862,43 @@ function EntranceHallScene({
     fluteRingInst.instanceMatrix.needsUpdate = true;
     scene.add(fluteRingInst);
 
+    // ═══ W3H WAVE B — COLUMN HERO KIT ═══
+    // Blender-authored classical column (20-flute tapered shaft, attic base,
+    // gold acanthus bell capital + abacus, CPU-baked AO in the albedo).
+    // Two child meshes → two InstancedMeshes over the same validColAngles.
+    // Canary: the 5 procedural instanced meshes hide only on load success.
+    if (W3H) {
+      loadModel("/models/hall/column_hall_w3.glb?v=1").then((g) => {
+        const parts: THREE.Mesh[] = [];
+        g.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh) parts.push(m); });
+        if (!parts.length) return;
+        const im4 = new THREE.Matrix4();
+        for (const part of parts) {
+          const mat = (part.material as THREE.MeshStandardMaterial).clone();
+          mat.envMapIntensity = 0.55;
+          const inst = new THREE.InstancedMesh(part.geometry, mat, NUM_VALID_COLS);
+          validColAngles.forEach((angle, idx) => {
+            const cx = Math.cos(angle) * (RADIUS - 0.8);
+            const cz = Math.sin(angle) * (RADIUS - 0.8);
+            im4.makeTranslation(cx, 0, cz);
+            inst.setMatrixAt(idx, im4);
+          });
+          inst.instanceMatrix.needsUpdate = true;
+          inst.castShadow = true;
+          inst.receiveShadow = true;
+          scene.add(inst);
+        }
+        // GLB seated → retire the procedural column kit
+        colBaseMesh.visible = false;
+        capMesh.visible = false;
+        abacusMesh.visible = false;
+        baseMeshI.visible = false;
+        fluteRingInst.visible = false;
+      }).catch((err) => {
+        console.warn("[W3H] column GLB load failed, keeping procedural columns", err);
+      });
+    }
+
     // ── 7 GRAND DOORS ──
     const doorMeshes: { mesh: THREE.Mesh; mat: THREE.MeshStandardMaterial; wingId: string; angle: number }[] = [];
 
