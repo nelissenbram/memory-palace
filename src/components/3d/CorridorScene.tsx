@@ -239,7 +239,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // F-depth: swap exponential haze for a length-pinned LINEAR fog — near
       // bays stay crisp (memories brightest), the far door-end melts into the
       // golden grade so the fixed far plane reads as a soft "weenie", not a clip.
-      scene.fog=new THREE.Fog(dlPreset.fogColor,cL*0.34,cL*1.02);
+      scene.fog=new THREE.Fog(dlPreset.fogColor,cL*0.5,cL*1.7);
       // F12: fit the shadow frustum to the actual corridor (was a fixed ±20 box
       // covering <half the length).
       sun.shadow.camera.left=-cW*0.7;sun.shadow.camera.right=cW*0.7;
