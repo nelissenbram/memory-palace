@@ -172,9 +172,15 @@ export default function MemoryPalace(){
   // map. w2_shell: era-kiezer retired, styleEra hard-coerced to "roman".
   const [w2Veil, setW2Veil] = useState(false);
   const [w2Shell, setW2Shell] = useState(false);
+  // w3_corridor: The Threshold Procession — Wave A auto-seeds the salon walls
+  // from each room's own newest photo when the user hasn't curated the corridor
+  // gallery (F09: no more "hall of empty gold frames"). Flag-gated so prod is
+  // byte-identical until the wave promotes.
+  const [w3Corridor, setW3Corridor] = useState(false);
   useEffect(() => {
     setW2Veil(flag3d("w2_veil"));
     setW2Shell(flag3d("w2_shell"));
+    setW3Corridor(flag3d("w3_corridor"));
   }, []);
   // Key fragment for scene remounting when daylight mode changes manually
   // Only remount scene when daylight is toggled on/off or mode changes — NOT on slider changes.
@@ -355,6 +361,25 @@ export default function MemoryPalace(){
   // memories — not their own (or demo/empty). Keyed to activeRoomId below.
   const [sharedRoomMems, setSharedRoomMems] = useState<Mem[] | null>(null);
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
+  // w3_corridor (F09): merge the user's curated corridor paintings with an
+  // auto-seed — each room's newest displayed photo — so a corridor is never a
+  // wall of empty frames. Manual curation (corridorPaintings) OVERRIDES the
+  // seed. Only the OWNER's own wing (visitor/shared corridors get server-
+  // filtered public data on a separate branch and are never seeded here).
+  const corridorPaintingsSeeded = useMemo(() => {
+    if (!w3Corridor || !activeWing || activeWing.startsWith("shared:")) return corridorPaintings;
+    const rs = useRoomStore.getState();
+    const seed: CorridorPaintings = {};
+    for (const room of rs.getWingRooms(activeWing)) {
+      let best: Mem | undefined;
+      for (const m of (userMemsMap[room.id] || [])) {
+        if (m?.type !== "photo" || !m.dataUrl || m.displayed === false) continue;
+        if (!best || (m.createdAt || "") > (best.createdAt || "")) best = m;
+      }
+      if (best) seed[room.id] = { url: best.dataUrl || undefined, title: best.title };
+    }
+    return { ...seed, ...corridorPaintings };
+  }, [w3Corridor, activeWing, corridorPaintings, userMemsMap]);
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [showNotificationsPage, setShowNotificationsPage] = useState(() => {
@@ -1529,7 +1554,7 @@ export default function MemoryPalace(){
         {warmPalaceScene}
         {warmHallScene}
         {!persistHall && view==="entrance" && hallSceneNode}
-        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
+        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintingsSeeded} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
         {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+effStyleEra} roomId={activeWing} actualRoomId={activeRoomId} onReady={() => handleSceneReady("room")} layoutOverride={roomLayouts[activeRoomId]} memories={effectiveRoomMems} onMemoryClick={handleMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={effStyleEra}/></Suspense>}
       </div>
 
