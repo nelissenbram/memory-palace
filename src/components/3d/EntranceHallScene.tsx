@@ -434,7 +434,12 @@ function EntranceHallScene({
     // Owner feedback 2026-08-06: the Ancestral Wall leaves the entrance hall
     // until it earns a proper redesign (concept approved, execution not).
     // Bust, living water, oculus pool and the focus rig stay live.
-    const AW_ENABLED = false;
+    // W3H (Wave B, La Sala degli Sguardi move 2): the Ancestral Wall RETURNS.
+    // Privacy verified before this flip (masterplan gate §7-1): visitors get
+    // getVisitorAncestralMemories — a server action that only returns
+    // displayed memories from PUBLISHED wings — AND the scene applies its own
+    // publicOnly filter on top (ancestralPublicOnly).
+    const AW_ENABLED = W3H;
     const angDiff = (a: number, b: number) => { let d = Math.abs(a - b); if (d > Math.PI) d = Math.PI * 2 - d; return d; };
     // WS4-7 bust-moment anchor (left-front of the impluvium, facing the spawn).
     const W2_BUST = { x: -4.9, z: 1.7 };
@@ -1141,6 +1146,28 @@ function EntranceHallScene({
         dx + inN.x * 0.3, DOOR_H + 0.45 + archH, dz + inN.z * 0.3);
       keystone.lookAt(new THREE.Vector3(0, DOOR_H + 0.45 + archH, 0));
       scene.add(keystone);
+
+      // W3H (Wave B move 7 — v1 empty state): recessed LUNETTE above each
+      // door: a carved-relief half-moon faintly tinted to the wing accent,
+      // ringed by a gilded arc. The wing's memory photo hangs here once the
+      // per-wing data plumbing lands (masterplan lunette workstream).
+      if (W3H) {
+        const lunR = 1.35, lunY = DOOR_H + 2.0;
+        const lx2 = Math.cos(angle) * (RADIUS - 0.22);
+        const lz2 = Math.sin(angle) * (RADIUS - 0.22);
+        const lunTint = new THREE.Color("#3A3226").lerp(new THREE.Color((wing?.accent || sharedAccent || "#8B7355")), 0.22);
+        const lun = new THREE.Mesh(
+          new THREE.CircleGeometry(lunR, 24, 0, Math.PI),
+          new THREE.MeshStandardMaterial({ color: lunTint, roughness: 0.9, metalness: 0 })
+        );
+        lun.position.set(lx2, lunY, lz2);
+        lun.lookAt(new THREE.Vector3(0, lunY, 0));
+        scene.add(lun);
+        const lunRim = new THREE.Mesh(new THREE.TorusGeometry(lunR + 0.06, 0.05, 6, 24, Math.PI), MS.goldDark);
+        lunRim.position.set(Math.cos(angle) * (RADIUS - 0.28), lunY, Math.sin(angle) * (RADIUS - 0.28));
+        lunRim.lookAt(new THREE.Vector3(0, lunY, 0));
+        scene.add(lunRim);
+      }
 
       if (isUnlocked) {
       // ── DOUBLE DOOR PANELS (unlocked wing) ──
@@ -2618,13 +2645,25 @@ function EntranceHallScene({
     const goldColor=new THREE.Color("#D4AF37");
 
     // ── DUST PARTICLES (oculus light beam) ──
-    const dust = createDustParticles({ count: 150, bounds: { x: 8, y: 10, z: 8 }, center: new THREE.Vector3(0, 12, 0), opacity: 0.2 * dlPreset.sunIntensity, size: 0.04, color: dlPreset.sunColor });
+    // W3H: motes live INSIDE the tilted shaft volume (mid-beam centre,
+    // tighter bounds) so they ignite where the light is, not everywhere.
+    const dust = createDustParticles(W3H
+      ? { count: 220, bounds: { x: 4.5, y: 11, z: 4.5 }, center: new THREE.Vector3(-1.8, 11, 1.8), opacity: 0.28 * dlPreset.sunIntensity, size: 0.045, color: dlPreset.sunColor }
+      : { count: 150, bounds: { x: 8, y: 10, z: 8 }, center: new THREE.Vector3(0, 12, 0), opacity: 0.2 * dlPreset.sunIntensity, size: 0.04, color: dlPreset.sunColor });
     scene.add(dust.points);
 
     // ── VOLUMETRIC LIGHT BEAM from oculus ──
-    // W3H: the beam follows the tilted sun vector (same target as oculusSpot).
-    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: W3H ? new THREE.Vector3(-4, -(TOTAL_H - 1), 4).normalize() : new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: 0.04 * dlPreset.sunIntensity });
+    // W3H: the beam follows the tilted sun vector (same target as oculusSpot),
+    // and gains a brighter INNER CORE cone — the layered falloff reads as a
+    // real shaft of dusty air instead of a single faint ghost cone.
+    const beamDir = W3H ? new THREE.Vector3(-4, -(TOTAL_H - 1), 4).normalize() : new THREE.Vector3(0, -1, 0);
+    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: beamDir, length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: (W3H ? 0.05 : 0.04) * dlPreset.sunIntensity });
     scene.add(oculusBeam.mesh);
+    let oculusBeamCore: ReturnType<typeof createLightBeam> | null = null;
+    if (W3H) {
+      oculusBeamCore = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: beamDir, length: TOTAL_H - 1, radius: 1.7, color: dlPreset.sunColor, opacity: 0.075 * dlPreset.sunIntensity });
+      scene.add(oculusBeamCore.mesh);
+    }
 
     // WS10-4 (w1_hall): footsteps return as procedural marble taps — fired from
     // the walk integrator on real position delta (playFootstep cadence-caps).
