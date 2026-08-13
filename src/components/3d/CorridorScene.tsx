@@ -193,7 +193,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=0.8;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.9;}}).catch(()=>{});
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
-    const composer=createPostProcessing(ren,scene,camera,"corridor");
+    // W3C (WS11 S6A): deepen the vignette so the eye is funnelled down the axis
+    // toward the terminus "weenie" (darkness ≤.45 per canon — edges only).
+    const composer=createPostProcessing(ren,scene,camera,"corridor",W3C?{vignette:{darkness:.44,offset:.22}}:undefined);
     const disposeFit=autoFit(el,{camera,renderer:ren,composer});
 
     // Warm sky + terracotta ground bounce (WS1-6)
@@ -1131,7 +1133,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         scene.add(mk(new THREE.BoxGeometry(.14,.34,dW+.5),MS.wain,wx-(side*.06),dH+.29,z));
         scene.add(mk(new THREE.BoxGeometry(.15,.06,dW+.5),MS.trim,wx-(side*.065),dH+.09,z));
         w2Deferred.push(()=>{ // Basic-material label — deferred past optimizeMaterials
-          const lp=makeFrauncesLabel(roomLabel,{width:1.7,height:.4}) as THREE.Mesh;
+          // W3C (F34/F35): gilded door lintel plaque (hall precedent) — reads as
+          // wayfinding recognition; slightly wider so long/i18n names aren't crushed.
+          const lp=makeFrauncesLabel(roomLabel,W3C?{width:2.0,height:.42,gilded:true}:{width:1.7,height:.4}) as THREE.Mesh;
           // (#6) lintel plaque sits 1cm proud of the travertine beam — polygonOffset
           // guards the grazing-angle z-fight (per-label material, never module-shared)
           const lpm=lp.material as THREE.MeshBasicMaterial;lpm.polygonOffset=true;lpm.polygonOffsetFactor=-1;lpm.polygonOffsetUnits=-1;
@@ -1771,10 +1775,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // W2 (WS5-7): restrained Fraunces wing plaque — the Georgia fresco (wing-
       // wall gradient, accent swirls, off-canon hues) dies; ink on cream.
       w2Deferred.push(()=>{
-        const wf=makeFrauncesLabel(wingLabel,{width:cW*.6,height:cW*.12}) as THREE.Mesh;
+        // W3C (F34): the terminus wing plaque is the "weenie" the whole nave
+        // aims at — gild it (carved gold-leaf Fraunces, hall precedent) so it
+        // reads as a lit destination through the far haze, larger for legibility.
+        const wf=makeFrauncesLabel(wingLabel,W3C?{width:cW*.72,height:cW*.15,gilded:true}:{width:cW*.6,height:cW*.12}) as THREE.Mesh;
         // (#6) wing plaque hangs 2cm off the end wall — offset beats far-plane precision
         const wfm=wf.material as THREE.MeshBasicMaterial;wfm.polygonOffset=true;wfm.polygonOffsetFactor=-1;wfm.polygonOffsetUnits=-1;
-        wf.position.set(0,cH*.5,-cL/2+.02);scene.add(wf);
+        wf.position.set(0,cH*(W3C?.52:.5),-cL/2+.02);scene.add(wf);
       });
     }else{
     const fC=document.createElement("canvas");fC.width=1200;fC.height=360;const fc=fC.getContext("2d")!;
