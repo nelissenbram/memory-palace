@@ -386,9 +386,46 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     }
 
     // ── CEILING (varies by wing) ──
-    const ceil=new THREE.Mesh(new THREE.PlaneGeometry(cW,cL),MS.ceil);ceil.rotation.x=Math.PI/2;ceil.position.set(0,cH,0);scene.add(ceil);
+    // W3C (F36/A1, owner 2026-08-13 = COVE not clamp): wide wings (cW≥cH) read
+    // as a low HALL, not a gallery. Replace the flat ceiling with a shallow
+    // segmental VAULT that springs from the wall-tops and rises to an apex
+    // ABOVE the width — the section now reads as a nave. Near-zero authoring
+    // (parametric mesh + transverse ribs). Narrow wings keep the flat ceiling.
+    const cove=W3C&&cW>=cH-0.2;
     MS.ceil.polygonOffset=true;MS.ceil.polygonOffsetFactor=4;MS.ceil.polygonOffsetUnits=4;
-    if(C.ceilStyle==="coffered"){
+    if(cove){
+      const rise=cW*0.17;                                    // apex = cH+rise > cW
+      const yAt=(x: number)=>cH+rise*(1-(2*x/cW)**2);        // shallow parabolic vault
+      const NX=28,NZ=Math.max(10,Math.floor(cL/2.2));
+      const pos: number[]=[],idx: number[]=[],uv: number[]=[];
+      for(let j=0;j<=NZ;j++){const z=-cL/2+(cL*j/NZ);
+        for(let i=0;i<=NX;i++){const x=-cW/2+(cW*i/NX);pos.push(x,yAt(x),z);uv.push(i/NX*cW/1.4,j/NZ*cL/1.4);}}
+      for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){const a=j*(NX+1)+i,b=a+1,c=a+NX+1,d=c+1;
+        // wind so the surface faces DOWN into the corridor (viewer below)
+        idx.push(a,c,b,b,c,d);}
+      const vGeo=new THREE.BufferGeometry();
+      vGeo.setAttribute("position",new THREE.Float32BufferAttribute(pos,3));
+      vGeo.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));
+      vGeo.setIndex(idx);vGeo.computeVertexNormals();
+      const vMat=(MS.ceil as THREE.MeshStandardMaterial).clone();vMat.side=THREE.DoubleSide;
+      const vault=new THREE.Mesh(vGeo,vMat);vault.receiveShadow=true;scene.add(vault);
+      // (geometry + cloned material disposed by the scene-traverse cleanup below)
+      // Transverse ribs following the vault profile every ~3.4 m (articulation)
+      const ribStep=3.4;
+      for(let rz=-cL/2+ribStep;rz<cL/2;rz+=ribStep){
+        const rp: number[]=[],ri: number[]=[];
+        for(let i=0;i<=NX;i++){const x=-cW/2+(cW*i/NX);rp.push(x,yAt(x)-0.02,rz-0.07,x,yAt(x)-0.02,rz+0.07);}
+        for(let i=0;i<NX;i++){const a=i*2;ri.push(a,a+1,a+2,a+2,a+1,a+3);}
+        const rgeo=new THREE.BufferGeometry();
+        rgeo.setAttribute("position",new THREE.Float32BufferAttribute(rp,3));
+        rgeo.setIndex(ri);rgeo.computeVertexNormals();
+        const rib=new THREE.Mesh(rgeo,MS.trim);rib.renderOrder=1;scene.add(rib);
+      }
+    }else{
+      const ceil=new THREE.Mesh(new THREE.PlaneGeometry(cW,cL),MS.ceil);ceil.rotation.x=Math.PI/2;ceil.position.set(0,cH,0);scene.add(ceil);
+    }
+    if(cove){/* the vault carries its own transverse ribs — skip flat ceilStyle decor */}
+    else if(C.ceilStyle==="coffered"){
       for(let i=0;i<Math.floor(cL/3);i++){const bz=-cL/2+1.5+i*3;scene.add(mk(new THREE.BoxGeometry(cW-.5,.18,.14),MS.trim,0,cH-.09,bz));}
       for(let s=-1;s<=1;s+=2)scene.add(mk(new THREE.BoxGeometry(.14,.18,cL-.5),MS.trim,s*(cW/2-1.5),cH-.09,0));
       for(let i=0;i<Math.floor(cL/6);i++)for(let s=-1;s<=1;s+=2){const rz=-cL/2+3+i*6;
