@@ -946,8 +946,16 @@ function EntranceHallScene({
         const PLANKS = 4, pw = 256 / PLANKS;
         for (let p = 0; p < PLANKS; p++) {
           const h2 = Math.sin(p * 127.1 + 7.7) * 43758.5453;
-          const v2 = (h2 - Math.floor(h2)) * 30 - 15;
-          wctx.fillStyle = `rgb(${138 + v2 | 0},${92 + v2 * 0.7 | 0},${52 + v2 * 0.5 | 0})`;
+          const v2 = (h2 - Math.floor(h2)) * 52 - 26; // strong plank-to-plank tone
+          wctx.fillStyle = `rgb(${112 + v2 | 0},${76 + v2 * 0.7 | 0},${46 + v2 * 0.5 | 0})`;
+          wctx.fillRect(p * pw, 0, pw, 512);
+          // rail shading top/bottom so the leaf reads constructed, not painted
+          const railG = wctx.createLinearGradient(0, 0, 0, 512);
+          railG.addColorStop(0, "rgba(30,18,8,0.35)");
+          railG.addColorStop(0.12, "rgba(30,18,8,0)");
+          railG.addColorStop(0.88, "rgba(30,18,8,0)");
+          railG.addColorStop(1, "rgba(30,18,8,0.4)");
+          wctx.fillStyle = railG;
           wctx.fillRect(p * pw, 0, pw, 512);
           // grain: wavy vertical streaks
           for (let s2 = 0; s2 < 10; s2++) {
@@ -1070,8 +1078,8 @@ function EntranceHallScene({
             // canvas as albedo (white multiplier — the canvas carries the
             // tone) + dark_wood normal/roughness for relief; emissive wash
             // halved so the grain isn't flattened.
-            color: W3H ? "#E8D8C4" : "#7A5030", roughness: 0.45, metalness: 0.0,
-            emissive: "#5A3A20", emissiveIntensity: W3H ? 0.1 : 0.2,
+            color: W3H ? "#D8CCBC" : "#7A5030", roughness: 0.45, metalness: 0.0,
+            emissive: "#5A3A20", emissiveIntensity: W3H ? 0.06 : 0.2,
             ...(W3H && w3DoorWoodTex ? {
               map: w3DoorWoodTex, normalMap: woodDoorTex.normalMap,
               normalScale: new THREE.Vector2(0.55, 0.55),
