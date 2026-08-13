@@ -392,7 +392,6 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // ABOVE the width — the section now reads as a nave. Near-zero authoring
     // (parametric mesh + transverse ribs). Narrow wings keep the flat ceiling.
     const cove=W3C&&cW>=cH-0.2;
-    console.info("[W3C-diag]",JSON.stringify({W1,W2,W3C,cove,cW,cH,wingId}));
     MS.ceil.polygonOffset=true;MS.ceil.polygonOffsetFactor=4;MS.ceil.polygonOffsetUnits=4;
     if(cove){
       const rise=cW*0.26;                                    // apex = cH+rise, comfortably > cW
