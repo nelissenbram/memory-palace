@@ -870,13 +870,19 @@ function EntranceHallScene({
     if (W3H) {
       loadModel("/models/hall/column_hall_w3.glb?v=1").then((g) => {
         const parts: THREE.Mesh[] = [];
+        g.updateMatrixWorld(true);
         g.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh) parts.push(m); });
         if (!parts.length) return;
         const im4 = new THREE.Matrix4();
         for (const part of parts) {
           const mat = (part.material as THREE.MeshStandardMaterial).clone();
           mat.envMapIntensity = 0.55;
-          const inst = new THREE.InstancedMesh(part.geometry, mat, NUM_VALID_COLS);
+          // glTF puts the Z-up→Y-up conversion in the NODE transform, not the
+          // vertices — bake it in, or every instanced column lies flat under
+          // the floor.
+          const geo = part.geometry.clone();
+          geo.applyMatrix4(part.matrixWorld);
+          const inst = new THREE.InstancedMesh(geo, mat, NUM_VALID_COLS);
           validColAngles.forEach((angle, idx) => {
             const cx = Math.cos(angle) * (RADIUS - 0.8);
             const cz = Math.sin(angle) * (RADIUS - 0.8);
