@@ -580,12 +580,16 @@ function EntranceHallScene({
     // Alternating floor tiles in rings — merged into single geometry
     {
       const tileShapes: THREE.Shape[] = [];
+      // W3H: the pool rect corners reach r=4.30 — inner-ring tiles starting at
+      // r=4 overhung the opening as pale triangles "biting" the water corners.
+      const overPool = (x: number, z: number) => W3H && Math.abs(x) < 3.9 && Math.abs(z) < 2.9;
       for (let r = 4; r < RADIUS - 1; r += 3) {
         const segments = Math.floor(r * 2);
         for (let s = 0; s < segments; s++) {
           if (s % 2 === 0) continue;
           const a1 = (s / segments) * Math.PI * 2;
           const a2 = ((s + 1) / segments) * Math.PI * 2;
+          if (overPool(Math.cos(a1) * r, Math.sin(a1) * r) || overPool(Math.cos(a2) * r, Math.sin(a2) * r)) continue;
           const shape = new THREE.Shape();
           shape.moveTo(Math.cos(a1) * r, Math.sin(a1) * r);
           shape.lineTo(Math.cos(a1) * (r + 2.5), Math.sin(a1) * (r + 2.5));
@@ -1037,13 +1041,13 @@ function EntranceHallScene({
           railG.addColorStop(1, "rgba(30,18,8,0.4)");
           wctx.fillStyle = railG;
           wctx.fillRect(p * pw, 0, pw, 512);
-          // grain: wavy vertical streaks
-          for (let s2 = 0; s2 < 10; s2++) {
+          // grain: wavy vertical streaks (owner round 2: "duidelijker")
+          for (let s2 = 0; s2 < 14; s2++) {
             const h3 = Math.sin((p * 13 + s2) * 91.7) * 4375.5;
             const gx2 = p * pw + (h3 - Math.floor(h3)) * pw;
-            const dark = s2 % 3 === 0 ? 0.30 : 0.16;
-            wctx.strokeStyle = `rgba(52,32,14,${dark})`;
-            wctx.lineWidth = s2 % 4 === 0 ? 2.5 : 1.2;
+            const dark = s2 % 3 === 0 ? 0.45 : 0.25;
+            wctx.strokeStyle = `rgba(48,28,12,${dark})`;
+            wctx.lineWidth = s2 % 4 === 0 ? 3.2 : 1.6;
             wctx.beginPath();
             wctx.moveTo(gx2, 0);
             for (let yy = 0; yy <= 512; yy += 32) {
@@ -1158,11 +1162,14 @@ function EntranceHallScene({
             // canvas as albedo (white multiplier — the canvas carries the
             // tone) + dark_wood normal/roughness for relief; emissive wash
             // halved so the grain isn't flattened.
-            color: W3H ? "#D8CCBC" : "#7A5030", roughness: 0.45, metalness: 0.0,
+            // W3H round 2 (owner): every door leans its OWN wood species —
+            // subtle warm shifts (walnut/oak/mahogany/chestnut...) per slot.
+            color: W3H ? ["#D8CCBC", "#E4D4B4", "#CFB9A9", "#DCC8A4", "#C9B6A6", "#E2CFC4", "#D2C0A4"][i % 7] : "#7A5030",
+            roughness: 0.45, metalness: 0.0,
             emissive: "#5A3A20", emissiveIntensity: W3H ? 0.06 : 0.2,
             ...(W3H && w3DoorWoodTex ? {
               map: w3DoorWoodTex, normalMap: woodDoorTex.normalMap,
-              normalScale: new THREE.Vector2(0.55, 0.55),
+              normalScale: new THREE.Vector2(0.85, 0.85),
               roughnessMap: woodDoorTex.roughnessMap,
             } : {}),
           });
@@ -1772,7 +1779,7 @@ function EntranceHallScene({
 
       // Water surface — W3H: raised nearly flush with the rim so the pool
       // unmistakably reads as standing water from eye level.
-      const water = mk(new THREE.BoxGeometry(implW - 0.1, 0.03, implD - 0.1), waterMat, 0, W3H ? -0.015 : -0.05, 0);
+      const water = mk(new THREE.BoxGeometry(implW - 0.1, 0.03, implD - 0.1), waterMat, 0, W3H ? -0.005 : -0.05, 0);
       scene.add(water);
 
       // W2 (WS4-8/9): living caustic web over the water — two counter-drifting
@@ -2593,8 +2600,7 @@ function EntranceHallScene({
     // W2 (WS4-7): the bust pedestal is solid — no ghost-walking through it.
     // W3H: pedestal removed with the bust concept → no collider either.
     if (W2 && !W3H) colPositions.push({ x: W2_BUST.x, z: W2_BUST.z, r: 0.95 });
-    // W3H: the impluvium is now OPEN water — you walk around it, not across.
-    if (W3H) colPositions.push({ x: 0, z: 0, r: 4.4 });
+    // W3H: the impluvium is open water — WADABLE by owner decree (no collider).
 
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door meshes ──
     // Under w1_hall the 7 intensity-0 PointLights are deleted (WS4-3); the gold
