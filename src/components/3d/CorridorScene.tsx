@@ -172,7 +172,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // Add atmospheric fog for depth — owner 2026-08-06 (#2): thinner under W1
     // (.008→.0055) so the far end reads as DEPTH, not haze; canon fog color kept
     scene.fog=new THREE.FogExp2(dlPreset.fogColor,(W1?.0055:.008)*dlPreset.fogDensity);
-    const camera=new THREE.PerspectiveCamera(55,w/h,0.3,80);
+    // W3C: near 0.3→0.5 — pushing the far plane out to the terminus (below)
+    // costs depth precision; raising near is the real lever and kills the
+    // far-end floor z-fighting (worst case: max distance + grazing angle).
+    // 0.5 (not lower) keeps the focus-glide framing clear of the near plane.
+    const camera=new THREE.PerspectiveCamera(55,w/h,W3C?0.5:0.3,80);
     const Q=getQuality();
     const ren=borrowRenderer(w,h);
     // W3C (F13): the corridor was the only canon scene on hard PCFShadowMap;
@@ -285,10 +289,19 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // (grout canon + plaster-ramp inlays), trim → ink, gold → canon GOLD; metal
     // fixtures → ink. msKey includes the flag so acquireMaterialSet never serves
     // a stale palette. Wall/floor tokens all sit ≥0.5 relative luminance (dogma).
-    const msKey=`corridor|w1:${W1?1:0}|${wingId}|${wing.wall}|${wing.floor}|${C.accent}|${C.rugC}|${C.rugB}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    // W3C (F21): wire the plaster diffuse/rough/AO maps into the wall family
+    // at a wall-scaled repeat BEFORE the material set is built — the maps were
+    // loaded into VRAM but only the normal was ever used (flat-colour walls).
+    if(W3C){
+      const wallRepX=Math.max(6,cL/2.6),wallRepY=Math.max(2,cH/2.6);
+      for(const tx of [wallStoneTex.map,wallStoneTex.normalMap,wallStoneTex.roughnessMap,wallStoneTex.aoMap]){
+        if(tx){tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.repeat.set(wallRepX,wallRepY);tx.needsUpdate=true;}
+      }
+    }
+    const msKey=`corridor|w1:${W1?1:0}|w3:${W3C?1:0}|${wingId}|${wing.wall}|${wing.floor}|${C.accent}|${C.rugC}|${C.rugB}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
     const MS=acquireMaterialSet(msKey,()=>({
-      wall:new THREE.MeshStandardMaterial({color:W1?PLASTER:wing.wall,roughness:.85,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3),envMapIntensity:.5}),
-      wallD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.shade:wing.floor,roughness:.8,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
+      wall:new THREE.MeshStandardMaterial({color:W1?PLASTER:wing.wall,roughness:.85,...(W3C?{map:wallStoneTex.map,roughnessMap:wallStoneTex.roughnessMap}:{}),normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(W3C?.5:.3,W3C?.5:.3),envMapIntensity:.5}),
+      wallD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.shade:wing.floor,roughness:.8,...(W3C?{map:wallStoneTex.map,roughnessMap:wallStoneTex.roughnessMap}:{}),normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
       floor:new THREE.MeshStandardMaterial({color:W1?TRAVERTINE_GROUT:wing.floor,roughness:.7,metalness:.02,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.7,envMapIntensity:.15}),
       floorL:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#D0C0A0",roughness:.5,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       floorD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#8A7858",roughness:.5,metalness:.08,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
@@ -356,8 +369,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const mosaicPalette=W1
         ?[PLASTER_RAMP.light,PLASTER_RAMP.base,PLASTER_RAMP.mid,PLASTER_RAMP.shade,PLASTER_RAMP.dark].map(c2=>new THREE.MeshStandardMaterial({color:c2,roughness:.6}))
         :Array.from({length:10},(_,i)=>new THREE.MeshStandardMaterial({color:`hsl(${30+i*2},${25+i*1.5}%,${55+i*1.5}%)`,roughness:.6}));
+      // W3C (F24): the mosaic tile colour was Math.random() per tile — a
+      // different floor every mount. Seed from tile position so it's stable.
+      const mosHash=(a: number,b: number)=>{const s=Math.sin(a*12.9898+b*78.233)*43758.5453;return s-Math.floor(s);};
       for(let fz=-cL/2+1;fz<cL/2;fz+=2)for(let fx=-cW/2+1;fx<cW/2;fx+=2){
-        scene.add(mk(new THREE.BoxGeometry(.8,.003,.8),mosaicPalette[Math.floor(Math.random()*mosaicPalette.length)],fx,.01,fz));}
+        const pick=W3C?Math.floor(mosHash(fx,fz)*mosaicPalette.length):Math.floor(Math.random()*mosaicPalette.length);
+        scene.add(mk(new THREE.BoxGeometry(.8,.003,.8),mosaicPalette[pick],fx,.01,fz));}
     }
 
     // ═══ FLOOR GOLD TRIM STRIPS along both walls ═══
