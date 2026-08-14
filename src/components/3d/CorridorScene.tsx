@@ -1158,8 +1158,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const doorHide: THREE.Object3D[]=[];
       // Minimal door surround — thin trim only at top
       doorHide.push(mk(new THREE.BoxGeometry(.04,.12,dW+.2),MS.trim,wx-(side*.02),dH+.1,z));scene.add(doorHide[doorHide.length-1]);
-      // Recess
-      scene.add(mk(new THREE.BoxGeometry(.03,dH-.1,dW+.1),MS.doorD,wx-(side*.015),(dH-.1)/2,z));
+      // Recess (dark) — captured so the GLB door can replace it too
+      {const rc=mk(new THREE.BoxGeometry(.03,dH-.1,dW+.1),MS.doorD,wx-(side*.015),(dH-.1)/2,z);scene.add(rc);doorHide.push(rc);}
       // Door panel — clone material per door because each door needs independent
       // emissive state for hover highlights and pulse animations (see animate loop)
       const doorMat=MS.door.clone();
@@ -1207,15 +1207,15 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     // ── W3C ROOM-DOOR HERO (F10/F30/F31): load once, clone per slot ──
     if(W3C&&w3DoorSlots.length){
-      loadModel("/models/corridor/door_w3.glb?v=3").then((g)=>{
+      loadModel("/models/corridor/door_w3.glb?v=6").then((g)=>{
         g.updateMatrixWorld(true);
-        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.7;
-          // the recessed walnut leaf falls in the architrave's shadow and read
-          // as a dark void — lift any DARK material (by luminance, robust to
-          // glTF material renaming) + a faint warm self-illum so the panels
-          // always read as a door, not a black slab. Light travertine is skipped.
-          const lum=mm.color.r*0.299+mm.color.g*0.587+mm.color.b*0.114;
-          if(lum<0.45){mm.color.multiplyScalar(1.7);mm.emissive=new THREE.Color("#4A2E14");mm.emissiveIntensity=0.4;}
+        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);
+          mm.envMapIntensity=0.7;
+          // over-unity lift on every door surface (the walnut leaf sits in the
+          // architrave's shadow and read as a black slab); a faint warm self-
+          // illum keeps it from ever going to a void. Travertine tolerates it.
+          mm.color.multiplyScalar(1.45);
+          mm.emissive=new THREE.Color("#3A2410");mm.emissiveIntensity=0.3;
         }});
         for(const slot of w3DoorSlots){
           const inst=g.clone(true);
