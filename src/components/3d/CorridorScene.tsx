@@ -1211,9 +1211,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // at Y=0, height along Y, faces -Z natively.)
     if(W3C&&w3DoorSlots.length){
       loadModel("/models/corridor/door_w3.glb?v=7").then((g)=>{
-        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.6;}});
-        const bb=new THREE.Box3().setFromObject(g);
-        console.warn("[W3Cdoor] bbox",JSON.stringify({min:bb.min.toArray().map(n=>+n.toFixed(2)),max:bb.max.toArray().map(n=>+n.toFixed(2))}));
+        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.35;mm.roughness=Math.min(1,(mm.roughness||0.5)+0.15);}});
         for(const slot of w3DoorSlots){
           const inst=g.clone(true);
           // door faces -Z; left wall (side=-1) faces +X → rotY -90°, right wall
