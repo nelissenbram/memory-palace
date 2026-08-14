@@ -1205,29 +1205,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     });
     doorMeshes.current=dMeshes;
 
-    // ── W3C ROOM-DOOR HERO (F10/F30/F31): load once, clone per slot ──
-    if(W3C&&w3DoorSlots.length){
-      loadModel("/models/corridor/door_w3.glb?v=6").then((g)=>{
-        g.updateMatrixWorld(true);
-        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);
-          mm.envMapIntensity=0.7;
-          // TEMP DIAG: paint every GLB door mesh magenta to locate it on screen
-          mm.color=new THREE.Color("#FF00FF");mm.emissive=new THREE.Color("#FF00FF");mm.emissiveIntensity=0.6;mm.map=null;
-        }});
-        for(const slot of w3DoorSlots){
-          const inst=g.clone(true);
-          // door built facing +Z; left wall (side=-1) faces +X → rotY +90°,
-          // right wall (side=1) faces -X → rotY -90°. Sits on the wall plane.
-          inst.position.set(slot.wx,0,slot.z);
-          inst.rotation.y=slot.side===-1?Math.PI/2:-Math.PI/2;
-          inst.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});
-          scene.add(inst);
-          // hide procedural visuals; keep the leaf as an invisible raycast proxy
-          slot.hide.forEach(o=>{o.visible=false;});
-          slot.leafMat.transparent=true;slot.leafMat.opacity=0;slot.leafMat.depthWrite=false;
-        }
-      }).catch((err)=>{console.warn("[W3C] door GLB load failed, keeping procedural doors",err);});
-    }
+    // ── W3C ROOM-DOOR HERO (F10/F30/F31) — DISABLED pending local scene-graph
+    // debug: the GLB places per logs but renders out of view/occluded (magenta
+    // test showed nothing), so the procedural doors + gilded labels stand for
+    // now. w3DoorSlots stays collected (harmless) for the fix. door_w3.glb
+    // asset is authored and committed.
+    void w3DoorSlots; void loadModel;
 
     // ── LOCKED ROOM NICHES — sealed archway alcoves at the far end of corridor ──
     const inlayClickMeshes: THREE.Mesh[] = [];
