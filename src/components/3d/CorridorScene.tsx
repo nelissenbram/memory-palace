@@ -1211,9 +1211,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         g.updateMatrixWorld(true);
         g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.7;
           // the recessed walnut leaf falls in the architrave's shadow and read
-          // as a dark void — lift its albedo + a faint warm self-illum so the
-          // panels always read as a door, not a black slab.
-          if(/wood/i.test(mm.name)){mm.color.multiplyScalar(1.45);mm.emissive=new THREE.Color("#3A2410");mm.emissiveIntensity=0.35;}
+          // as a dark void — lift any DARK material (by luminance, robust to
+          // glTF material renaming) + a faint warm self-illum so the panels
+          // always read as a door, not a black slab. Light travertine is skipped.
+          const lum=mm.color.r*0.299+mm.color.g*0.587+mm.color.b*0.114;
+          if(lum<0.45){mm.color.multiplyScalar(1.7);mm.emissive=new THREE.Color("#4A2E14");mm.emissiveIntensity=0.4;}
         }});
         for(const slot of w3DoorSlots){
           const inst=g.clone(true);
