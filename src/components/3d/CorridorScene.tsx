@@ -1150,6 +1150,30 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // when the GLB lands (canary: procedural stays on 404). The door LEAF keeps
     // its material as an invisible raycast proxy so hit-testing is untouched.
     const w3DoorSlots: {wx:number,z:number,side:number,leafMat:THREE.MeshStandardMaterial,hide:THREE.Object3D[]}[]=[];
+    // W3C: a warm walnut MOTIF for the flat procedural door leaf (owner likes
+    // the flat door + a material motif). Vertical grain planks + two panel
+    // rebates so the leaf reads as a real door without any bulky geometry.
+    let w3DoorTex: THREE.CanvasTexture|null=null;
+    if(W3C){
+      const dc=document.createElement("canvas");dc.width=256;dc.height=512;const x=dc.getContext("2d");
+      if(x){
+        const PL=3,pw=256/PL;
+        for(let p=0;p<PL;p++){
+          const h=Math.sin(p*91.7)*4375.5;const v=(h-Math.floor(h))*24-12;
+          x.fillStyle=`rgb(${96+v|0},${62+v*0.7|0},${38+v*0.5|0})`;x.fillRect(p*pw,0,pw,512);
+          for(let s=0;s<12;s++){const h2=Math.sin((p*13+s)*57.1)*2531.7;const gx=p*pw+(h2-Math.floor(h2))*pw;
+            x.strokeStyle=`rgba(40,24,10,${s%3===0?0.4:0.22})`;x.lineWidth=s%4===0?2.4:1.2;
+            x.beginPath();x.moveTo(gx,0);for(let yy=0;yy<=512;yy+=32)x.lineTo(gx+Math.sin(yy*0.02+s+p)*3,yy);x.stroke();}
+          x.fillStyle="rgba(30,18,8,0.5)";x.fillRect(p*pw,0,1.5,512);
+        }
+        // two recessed panel rebates (darker inner rectangles)
+        for(const[py,ph] of [[64,150],[300,150]] as [number,number][]){
+          x.strokeStyle="rgba(24,14,6,0.55)";x.lineWidth=6;x.strokeRect(46,py,164,ph);
+          x.strokeStyle="rgba(150,110,70,0.35)";x.lineWidth=2;x.strokeRect(52,py+6,152,ph-12);
+        }
+      }
+      w3DoorTex=new THREE.CanvasTexture(dc);w3DoorTex.colorSpace=THREE.SRGBColorSpace;w3DoorTex.anisotropy=8;
+    }
     rooms.forEach((room: any,i: any)=>{
       const side=i%2===0?-1:1;
       const z=cL/2-5.5-i*C.sp;
@@ -1205,25 +1229,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     });
     doorMeshes.current=dMeshes;
 
-    // ── W3C ROOM-DOOR HERO (F10/F30/F31): Blender DRACO GLB, clone per slot ──
-    // (Root-cause of the earlier invisible door: it was authored height-along-Y
-    // in Blender's Z-up world, so the export laid it flat. Rebuilt Z-up: base
-    // at Y=0, height along Y, faces -Z natively.)
-    if(W3C&&w3DoorSlots.length){
-      loadModel("/models/corridor/door_w3.glb?v=7").then((g)=>{
-        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.35;mm.roughness=Math.min(1,(mm.roughness||0.5)+0.15);}});
-        for(const slot of w3DoorSlots){
-          const inst=g.clone(true);
-          // door faces -Z; left wall (side=-1) faces +X → rotY -90°, right wall
-          // (side=1) faces -X → rotY +90°. Base at Y=0 on the wall plane.
-          inst.position.set(slot.wx,0,slot.z);
-          inst.rotation.y=slot.side===-1?-Math.PI/2:Math.PI/2;
-          inst.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});
-          scene.add(inst);
-          slot.hide.forEach(o=>{o.visible=false;});
-          slot.leafMat.transparent=true;slot.leafMat.opacity=0;slot.leafMat.depthWrite=false;
-        }
-      }).catch((err)=>{console.warn("[W3C] door GLB load failed, keeping procedural doors",err);});
+    // ── ROOM-DOOR HERO — the GLB door read too bulky (owner 2026-08-14); the
+    // flat procedural leaf with its gold panel insets + gilded lintel plaque
+    // is the preferred look. GLB retired; a warm wood-grain MOTIF is added to
+    // the procedural leaf below (W3C) instead. Asset kept on disk.
+    void loadModel;
+    if(W3C&&w3DoorTex){
+      for(const slot of w3DoorSlots){slot.leafMat.map=w3DoorTex;slot.leafMat.color.setRGB(1,1,1);slot.leafMat.needsUpdate=true;}
     }
 
     // ── LOCKED ROOM NICHES — sealed archway alcoves at the far end of corridor ──
