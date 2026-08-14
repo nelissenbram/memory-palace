@@ -1772,20 +1772,23 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       scene.add(mk(new THREE.CylinderGeometry(.2,.15,.12,14),MS.portalArch,px,pH-.02,portalZ));
       scene.add(mk(new THREE.BoxGeometry(.48,.06,.48),MS.portalArch,px,pH+.06,portalZ));
     }
-    // Double arch — outer arch
-    const archSegs=12;
+    // Double arch — outer arch. W3C (F02): more voussoirs, each ROTATED to
+    // follow the arch tangent (was axis-aligned boxes → stair-stepped, gappy).
+    const archSegs=W3C?26:12;
     for(let ai=0;ai<=archSegs;ai++){
       const ang=(ai/archSegs)*Math.PI;
       const ax=Math.cos(ang)*(pW/2+.2);
       const ay=pH+Math.sin(ang)*.7;
-      scene.add(mk(new THREE.BoxGeometry(.2,.2,.24),MS.portalArch,ax,ay,portalZ));
+      const vb=mk(W3C?new THREE.BoxGeometry(.34,.2,.26):new THREE.BoxGeometry(.2,.2,.24),MS.portalArch,ax,ay,portalZ);
+      if(W3C)vb.rotation.z=ang-Math.PI/2; // tangent to the arch → smooth ring
     }
     // Inner arch — gold trim
     for(let ai=0;ai<=archSegs;ai++){
       const ang=(ai/archSegs)*Math.PI;
       const ax=Math.cos(ang)*(pW/2);
       const ay=pH+Math.sin(ang)*.55;
-      scene.add(mk(new THREE.BoxGeometry(.1,.1,.12),MS.portalGoldTrim,ax,ay,portalZ));
+      const ib=mk(W3C?new THREE.BoxGeometry(.16,.1,.14):new THREE.BoxGeometry(.1,.1,.12),MS.portalGoldTrim,ax,ay,portalZ);
+      if(W3C)ib.rotation.z=ang-Math.PI/2;
     }
     // Keystone at top — larger
     scene.add(mk(new THREE.BoxGeometry(.38,.3,.26),MS.portalKeystone,0,pH+.75,portalZ));
@@ -1796,8 +1799,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     scene.add(mk(new THREE.BoxGeometry(pW+1,.06,.2),MS.gold,0,pH+.02,portalZ));
     // Arch lintel
     scene.add(mk(new THREE.BoxGeometry(pW+1.2,.12,.22),MS.portalArch,0,pH+.14,portalZ));
-    // Inner glow plane — brighter
-    const portalGlow=new THREE.Mesh(new THREE.PlaneGeometry(pW-.2,pH-.4),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.08*dlPreset.sunIntensity,depthWrite:false,blending:THREE.AdditiveBlending}));
+    // Inner glow plane — brighter. W3C (F03): DoubleSide so it reads from the
+    // corridor (the player views the portal from -z; the +z-facing plane was
+    // back-face culled = invisible invitation).
+    const portalGlow=new THREE.Mesh(new THREE.PlaneGeometry(pW-.2,pH-.4),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:(W3C?.13:.08)*dlPreset.sunIntensity,depthWrite:false,blending:THREE.AdditiveBlending,side:W3C?THREE.DoubleSide:THREE.FrontSide}));
     portalGlow.position.set(0,pH/2+.2,portalZ);scene.add(portalGlow);
     // ── WARM FOG/MIST at base of portal ──
     for(let fi=0;fi<5;fi++){
@@ -1805,6 +1810,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       fogPlane.position.set(0,.2+fi*.08,portalZ-.05-fi*.04);
       fogPlane.material=MS.portalFog.clone();
       (fogPlane.material as THREE.MeshBasicMaterial).opacity=.06-fi*.008;
+      if(W3C)(fogPlane.material as THREE.MeshBasicMaterial).side=THREE.DoubleSide; // F03: face the corridor
       scene.add(fogPlane);
     }
     // Particle sparkles — MORE (48+)
@@ -1835,8 +1841,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // W2 (WS5-7): portal label joins the Fraunces canon — ink on cream with a
       // gold hairline rule (replaces the gold-gradient Georgia canvas).
       w2Deferred.push(()=>{
-        const pl=makeFrauncesLabel(t("backToEntrance"),{width:2.4,height:.45}) as THREE.Mesh;
+        // W3C (F03/F34): gilded, and DoubleSide + faced toward the corridor so
+        // the "return" label reads (the +z-facing plane was culled from the
+        // player's -z viewpoint).
+        const pl=makeFrauncesLabel(t("backToEntrance"),W3C?{width:2.8,height:.5,gilded:true}:{width:2.4,height:.45}) as THREE.Mesh;
         const plm=pl.material as THREE.MeshBasicMaterial;plm.polygonOffset=true;plm.polygonOffsetFactor=-1;plm.polygonOffsetUnits=-1; // (#6)
+        if(W3C){plm.side=THREE.DoubleSide;pl.rotation.y=Math.PI;}
         pl.position.set(0,pH+.95,portalZ);scene.add(pl);
       });
     }else{
