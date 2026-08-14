@@ -1205,12 +1205,28 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     });
     doorMeshes.current=dMeshes;
 
-    // ── W3C ROOM-DOOR HERO (F10/F30/F31) — DISABLED pending local scene-graph
-    // debug: the GLB places per logs but renders out of view/occluded (magenta
-    // test showed nothing), so the procedural doors + gilded labels stand for
-    // now. w3DoorSlots stays collected (harmless) for the fix. door_w3.glb
-    // asset is authored and committed.
-    void w3DoorSlots; void loadModel;
+    // ── W3C ROOM-DOOR HERO (F10/F30/F31): Blender DRACO GLB, clone per slot ──
+    // (Root-cause of the earlier invisible door: it was authored height-along-Y
+    // in Blender's Z-up world, so the export laid it flat. Rebuilt Z-up: base
+    // at Y=0, height along Y, faces -Z natively.)
+    if(W3C&&w3DoorSlots.length){
+      loadModel("/models/corridor/door_w3.glb?v=7").then((g)=>{
+        g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);mm.envMapIntensity=0.6;}});
+        const bb=new THREE.Box3().setFromObject(g);
+        console.warn("[W3Cdoor] bbox",JSON.stringify({min:bb.min.toArray().map(n=>+n.toFixed(2)),max:bb.max.toArray().map(n=>+n.toFixed(2))}));
+        for(const slot of w3DoorSlots){
+          const inst=g.clone(true);
+          // door faces -Z; left wall (side=-1) faces +X → rotY -90°, right wall
+          // (side=1) faces -X → rotY +90°. Base at Y=0 on the wall plane.
+          inst.position.set(slot.wx,0,slot.z);
+          inst.rotation.y=slot.side===-1?-Math.PI/2:Math.PI/2;
+          inst.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){m.castShadow=true;m.receiveShadow=true;}});
+          scene.add(inst);
+          slot.hide.forEach(o=>{o.visible=false;});
+          slot.leafMat.transparent=true;slot.leafMat.opacity=0;slot.leafMat.depthWrite=false;
+        }
+      }).catch((err)=>{console.warn("[W3C] door GLB load failed, keeping procedural doors",err);});
+    }
 
     // ── LOCKED ROOM NICHES — sealed archway alcoves at the far end of corridor ──
     const inlayClickMeshes: THREE.Mesh[] = [];
