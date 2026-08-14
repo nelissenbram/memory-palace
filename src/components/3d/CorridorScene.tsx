@@ -1211,11 +1211,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         g.updateMatrixWorld(true);
         g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){const mm=(m.material as THREE.MeshStandardMaterial);
           mm.envMapIntensity=0.7;
-          // over-unity lift on every door surface (the walnut leaf sits in the
-          // architrave's shadow and read as a black slab); a faint warm self-
-          // illum keeps it from ever going to a void. Travertine tolerates it.
-          mm.color.multiplyScalar(1.45);
-          mm.emissive=new THREE.Color("#3A2410");mm.emissiveIntensity=0.3;
+          // TEMP DIAG: paint every GLB door mesh magenta to locate it on screen
+          mm.color=new THREE.Color("#FF00FF");mm.emissive=new THREE.Color("#FF00FF");mm.emissiveIntensity=0.6;mm.map=null;
         }});
         for(const slot of w3DoorSlots){
           const inst=g.clone(true);
