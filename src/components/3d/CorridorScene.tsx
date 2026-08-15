@@ -711,7 +711,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         const sg=new THREE.BufferGeometry();
         sg.setAttribute("position",new THREE.Float32BufferAttribute(p,3));
         sg.setIndex([0,1,2,0,2,3]);sg.computeVertexNormals();
-        const shaft=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.05*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+        const shaft=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.11*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
         scene.add(shaft);
         // dust motes igniting inside the shaft
         const mN=24,mg=new THREE.BufferGeometry(),mp=new Float32Array(mN*3);
@@ -720,7 +720,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           mp[mi*3+1]=topY+(botY-topY)*tt;
           mp[mi*3+2]=wz+(botZ-wz)*tt+(Math.random()-0.5)*(halfW*1.6);}
         mg.setAttribute("position",new THREE.BufferAttribute(mp,3));
-        scene.add(new THREE.Points(mg,new THREE.PointsMaterial({color:dlPreset.sunColor,size:0.035,transparent:true,opacity:0.5*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
+        scene.add(new THREE.Points(mg,new THREE.PointsMaterial({color:dlPreset.sunColor,size:0.05,transparent:true,opacity:0.75*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
       }
       // ── Mullion grid (square glass dividers) ──
       const mullMat=winStoneMat;
