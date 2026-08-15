@@ -1907,14 +1907,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         // warm additive backing — the terminus GLOWS without a new light
         const back=new THREE.Mesh(new THREE.PlaneGeometry(px0*2-0.1,pilH*0.82),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.055*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
         back.position.set(0,cH*0.48,tz-0.03);scene.add(back);
-        // pedestal + classical urn below the plaque (built, not a GLB)
+        // marble plinth below the plaque — the wing already stands its own
+        // centrepiece (potted topiary) here; the plinth gives it a base.
         scene.add(mk(new THREE.BoxGeometry(0.95,0.16,0.62),MS.pedestal,0,0.9,tz));
         scene.add(mk(new THREE.CylinderGeometry(0.3,0.36,1.4,14),MS.marble,0,1.7,tz));
-        scene.add(mk(new THREE.BoxGeometry(0.8,0.1,0.56),MS.marble,0,2.45,tz));
-        scene.add(mk(new THREE.CylinderGeometry(0.14,0.28,0.55,16),MS.marble,0,2.78,tz));               // urn body
-        scene.add(mk(new THREE.SphereGeometry(0.27,16,12),MS.marble,0,3.02,tz));
-        scene.add(mk(new THREE.CylinderGeometry(0.16,0.22,0.2,16),MS.marble,0,3.34,tz));                // urn neck
-        scene.add(mk(new THREE.SphereGeometry(0.09,10,8),MS.gold,0,3.5,tz));                            // finial
+        scene.add(mk(new THREE.BoxGeometry(0.8,0.14,0.56),MS.marble,0,2.46,tz));                        // plinth cap
       }
     }else{
     const fC=document.createElement("canvas");fC.width=1200;fC.height=360;const fc=fC.getContext("2d")!;
