@@ -351,6 +351,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
 
     // ── FLOOR (varies by wing) ──
+    // W3C (F26): the gallery floor was matte (rough .7, envInt .15). Polish it
+    // so it catches the golden env + column reflections like a real museum
+    // floor — the hall proved this reads as luxury, not glare.
+    if(W3C){const f=MS.floor as THREE.MeshPhysicalMaterial;f.roughness=0.22;f.envMapIntensity=0.9;f.clearcoat=0.5;f.clearcoatRoughness=0.18;f.needsUpdate=true;}
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(cW,cL),MS.floor);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
     MS.floor.polygonOffset=true;MS.floor.polygonOffsetFactor=4;MS.floor.polygonOffsetUnits=4;
     MS.wall.polygonOffset=true;MS.wall.polygonOffsetFactor=4;MS.wall.polygonOffsetUnits=4;
@@ -693,6 +697,31 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       skyGlow.rotation.y=winSide*(-Math.PI/2);
       skyGlow.position.set(winX+(winSide*0.15),winCenterY,wz);
       scene.add(skyGlow);
+      // W3C (Wave C, masterplan wow #2 "golden shafts that point at the doors"):
+      // an oblique volumetric shaft falls from each window bay to the floor,
+      // leaning down the corridor — additive, no new light, one quad per window.
+      if(W3C&&!isMobileGPU()){
+        const halfW=winW*0.5, botHalf=winW*0.85;
+        const topX=winX-winSide*0.05, topY=winBottom+winH*0.86;
+        const botX=winX-winSide*3.0, botY=0.05, botZ=wz+2.2; // land inward + down-corridor
+        const p=[
+          topX,topY,wz-halfW, topX,topY,wz+halfW,
+          botX,botY,botZ+botHalf, botX,botY,botZ-botHalf,
+        ];
+        const sg=new THREE.BufferGeometry();
+        sg.setAttribute("position",new THREE.Float32BufferAttribute(p,3));
+        sg.setIndex([0,1,2,0,2,3]);sg.computeVertexNormals();
+        const shaft=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.05*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+        scene.add(shaft);
+        // dust motes igniting inside the shaft
+        const mN=24,mg=new THREE.BufferGeometry(),mp=new Float32Array(mN*3);
+        for(let mi=0;mi<mN;mi++){const tt=Math.random();
+          mp[mi*3]=topX+(botX-topX)*tt+(Math.random()-0.5)*0.4;
+          mp[mi*3+1]=topY+(botY-topY)*tt;
+          mp[mi*3+2]=wz+(botZ-wz)*tt+(Math.random()-0.5)*(halfW*1.6);}
+        mg.setAttribute("position",new THREE.BufferAttribute(mp,3));
+        scene.add(new THREE.Points(mg,new THREE.PointsMaterial({color:dlPreset.sunColor,size:0.035,transparent:true,opacity:0.5*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
+      }
       // ── Mullion grid (square glass dividers) ──
       const mullMat=winStoneMat;
       const mullThick=0.03;
