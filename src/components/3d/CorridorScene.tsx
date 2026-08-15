@@ -1882,6 +1882,40 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         const wfm=wf.material as THREE.MeshBasicMaterial;wfm.polygonOffset=true;wfm.polygonOffsetFactor=-1;wfm.polygonOffsetUnits=-1;
         wf.position.set(0,cH*(W3C?.52:.5),-cL/2+.02);scene.add(wf);
       });
+      // W3C (Wave B — masterplan wow #1 "the weenie at the end of the nave"):
+      // compose the end wall into a lit AEDICULA so the terminus reads as a
+      // destination the whole one-point-perspective aims at. Pure geometry
+      // (no GLB), no new dynamic lights (a warm additive backing glows it).
+      if(W3C){
+        const tz=-cL/2+0.14;                 // proud of the end wall
+        const px0=cW*0.40, pilH=cH*0.78, pilR=0.19;
+        for(const s of [-1,1]){
+          scene.add(mk(new THREE.BoxGeometry(pilR*2+0.28,0.34,0.56),MS.pedestal,s*px0,0.17,tz));      // plinth
+          scene.add(mk(new THREE.CylinderGeometry(pilR,pilR*1.12,pilH,14),MS.portalPillar,s*px0,pilH/2+0.34,tz)); // shaft
+          scene.add(mk(new THREE.BoxGeometry(pilR*2+0.22,0.16,0.5),MS.gold,s*px0,pilH+0.34,tz));         // capital
+        }
+        const entY=pilH+0.5, entW=px0*2+pilR*2+0.7;
+        scene.add(mk(new THREE.BoxGeometry(entW,0.3,0.42),MS.marble,0,entY,tz));                        // architrave
+        scene.add(mk(new THREE.BoxGeometry(entW+0.3,0.1,0.5),MS.gold,0,entY+0.2,tz));                   // cornice lip
+        // triangular pediment (two raking cornices meeting at the apex)
+        const pedRise=entW*0.14;
+        for(const s of [-1,1]){
+          const rk=mk(new THREE.BoxGeometry(Math.hypot(entW/2,pedRise)+0.12,0.14,0.42),MS.marble,s*entW/4,entY+0.32+pedRise/2,tz);
+          rk.rotation.z=s*(-Math.atan2(pedRise,entW/2));scene.add(rk);
+        }
+        scene.add(mk(new THREE.BoxGeometry(0.3,0.3,0.42),MS.gold,0,entY+0.32+pedRise,tz));              // apex acroterion
+        // warm additive backing — the terminus GLOWS without a new light
+        const back=new THREE.Mesh(new THREE.PlaneGeometry(px0*2-0.1,pilH*0.82),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.055*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+        back.position.set(0,cH*0.48,tz-0.03);scene.add(back);
+        // pedestal + classical urn below the plaque (built, not a GLB)
+        scene.add(mk(new THREE.BoxGeometry(0.95,0.16,0.62),MS.pedestal,0,0.9,tz));
+        scene.add(mk(new THREE.CylinderGeometry(0.3,0.36,1.4,14),MS.marble,0,1.7,tz));
+        scene.add(mk(new THREE.BoxGeometry(0.8,0.1,0.56),MS.marble,0,2.45,tz));
+        scene.add(mk(new THREE.CylinderGeometry(0.14,0.28,0.55,16),MS.marble,0,2.78,tz));               // urn body
+        scene.add(mk(new THREE.SphereGeometry(0.27,16,12),MS.marble,0,3.02,tz));
+        scene.add(mk(new THREE.CylinderGeometry(0.16,0.22,0.2,16),MS.marble,0,3.34,tz));                // urn neck
+        scene.add(mk(new THREE.SphereGeometry(0.09,10,8),MS.gold,0,3.5,tz));                            // finial
+      }
     }else{
     const fC=document.createElement("canvas");fC.width=1200;fC.height=360;const fc=fC.getContext("2d")!;
     // Fresco background — aged plaster look
