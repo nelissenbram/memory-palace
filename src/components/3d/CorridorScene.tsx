@@ -818,6 +818,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     for(let i=0;i<rooms.length;i++) allDoorZones.push(cL/2-5.5-i*C.sp);
     // Include window positions so sconces/lamps skip them too
     for(const wz of validWinPositions) allDoorZones.push(wz);
+    // W3C grime/patina (F17): candles blacken the wall above them — collect a
+    // soot plume plane per sconce and merge into one draw at the end.
+    const w3cSootGeos:THREE.BufferGeometry[]=[];
     for(let i=0;i<rooms.length;i++){
       const sz=cL/2-5.5-i*C.sp-C.sp*0.25;
       if(sz>cL/2-3||sz<-cL/2+3)continue;
@@ -834,7 +837,59 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         scene.add(mk(new THREE.CylinderGeometry(.012,.012,.08,5),new THREE.MeshStandardMaterial({color:"#F5F0E0",roughness:.8}),sx-(s*.08),2.74,sz));
         const fG2=new THREE.Mesh(new THREE.SphereGeometry(.018,4,4),new THREE.MeshBasicMaterial({color:"#FFE080",transparent:true,opacity:.7}));
         fG2.position.set(sx-(s*.08),2.8,sz);scene.add(fG2);
+        if(W3C&&!isMobileGPU()){
+          const g=new THREE.PlaneGeometry(.2,.62);
+          const m=new THREE.Matrix4().makeRotationY(-s*Math.PI/2);
+          m.setPosition(s*(cW/2-.02),3.18,sz);
+          g.applyMatrix4(m);
+          w3cSootGeos.push(g);
+        }
       }
+    }
+    // ── W3C GRIME/PATINA (F17): the centuries settle in — dark grime rising
+    // from the wall base, soot gathering in the ceiling coving, and candle
+    // plumes above the sconces. All baked overlay planes (no lights); the long
+    // bands are 4 draws, the sconce plumes merge into 1. ──
+    if(W3C&&!isMobileGPU()){
+      const grimeTex=(dark:"low"|"high")=>{
+        const c=document.createElement("canvas");c.width=64;c.height=128;const g=c.getContext("2d")!;
+        const grd=g.createLinearGradient(0,0,0,128);
+        // flipY default: canvas bottom (y=127) ↔ uv v=0 (plane bottom).
+        if(dark==="low"){ // dark at the FLOOR line, fading up
+          grd.addColorStop(0,"rgba(28,22,16,0)");grd.addColorStop(.62,"rgba(28,22,16,0.14)");grd.addColorStop(1,"rgba(24,18,12,0.42)");
+        }else{ // dark at the TOP (coving/plume), fading down
+          grd.addColorStop(0,"rgba(26,20,14,0.4)");grd.addColorStop(.4,"rgba(26,20,14,0.14)");grd.addColorStop(1,"rgba(26,20,14,0)");
+        }
+        g.fillStyle=grd;g.fillRect(0,0,64,128);
+        // faint uneven vertical streaks so the grime never reads as a clean band
+        g.globalAlpha=.5;g.fillStyle="rgba(18,14,10,0.5)";
+        for(const[sx2,sw] of [[8,3],[22,2],[37,4],[52,2],[58,3]] as [number,number][])g.fillRect(sx2,0,sw,128);
+        g.globalAlpha=1;
+        const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+        t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.ClampToEdgeWrapping;
+        return t;
+      };
+      const baseTex=grimeTex("low"),coveTex=grimeTex("high");
+      baseTex.repeat.set(Math.max(8,cL/2.2),1);coveTex.repeat.set(Math.max(8,cL/2.2),1);
+      const grimeMat=(t:THREE.Texture)=>new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false});
+      const baseMat=grimeMat(baseTex),coveMat=grimeMat(coveTex);
+      for(const s of[-1,1]){
+        const rotY=-s*Math.PI/2;
+        // base grime: floor → 1.5 m
+        const b=new THREE.Mesh(new THREE.PlaneGeometry(cL,1.5),baseMat);
+        b.position.set(s*(cW/2-.03),.75,0);b.rotation.y=rotY;b.renderOrder=2;scene.add(b);
+        // coving soot: ceiling → 0.9 m below
+        const cv=new THREE.Mesh(new THREE.PlaneGeometry(cL,.9),coveMat);
+        cv.position.set(s*(cW/2-.03),cH-.45,0);cv.rotation.y=rotY;cv.renderOrder=2;scene.add(cv);
+      }
+      if(w3cSootGeos.length){
+        const merged=mergeBufferGeometries(w3cSootGeos);
+        for(const g of w3cSootGeos)g.dispose();
+        if(merged){const sm=new THREE.Mesh(merged,grimeMat(coveTex));sm.renderOrder=3;scene.add(sm);}
+      }
+      // Patina: age the corridor bronze — darker, rougher, less mirror.
+      const bz=MS.bronze as THREE.MeshPhysicalMaterial;
+      bz.color.set("#6E5A3E");bz.roughness=.45;bz.clearcoat=.05;bz.needsUpdate=true;
     }
 
     // ── SIDE TABLES + POTTED PLANTS — corridor ends only, far from door zones ──
