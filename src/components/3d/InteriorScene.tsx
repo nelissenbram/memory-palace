@@ -765,6 +765,41 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const bw=new THREE.Mesh(new THREE.PlaneGeometry(rW,rH),MS.wall);bw.rotation.y=Math.PI;bw.position.set(0,rH/2,rL/2);bw.receiveShadow=true;scene.add(bw);
     for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
     scene.add(mk(new THREE.BoxGeometry(rW-.3,1.2,.05),MS.wain,0,.6,-rL/2+.025));scene.add(mk(new THREE.BoxGeometry(rW-.2,.07,.06),MS.gold,0,1.23,-rL/2+.03));
+    // ── W3 ENFILADE BAYS: a colonnade turns a GROWN room into a PROCESSION of
+    // cosy bays, not one cavernous hall (owner: "a bigger room must stay cosy").
+    // Intimate rooms (bays=0) are byte-identical. Each portal = paired columns +
+    // an entablature beam spanning the width; each bay gets its own warm floor
+    // pool, so you walk through a sequence of intimate, lit rooms. Columns +
+    // caps + bases are InstancedMesh so N bays cost ~O(1) draw calls.
+    if(W3&&(layout.bays||0)>0){
+      const nCol=(layout.bays||0)+1, zStep=rL/(nCol+1);
+      const zs: number[]=[];for(let i=1;i<=nCol;i++)zs.push(-rL/2+i*zStep);
+      const cx=rW/2-0.5, shaftH=rH-0.8, dummy=new THREE.Object3D();
+      const shaftInst=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16,0.19,shaftH,14),MS.wain,2*nCol);
+      const baseInst=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.24,0.28,0.4,14),MS.trim,2*nCol);
+      const capInst=new THREE.InstancedMesh(new THREE.BoxGeometry(0.46,0.18,0.46),MS.gold,2*nCol);
+      shaftInst.castShadow=true;
+      let ci=0;for(const s of[-1,1])for(const z of zs){
+        dummy.position.set(s*cx,0.4+shaftH/2,z);dummy.rotation.set(0,0,0);dummy.updateMatrix();shaftInst.setMatrixAt(ci,dummy.matrix);
+        dummy.position.set(s*cx,0.2,z);dummy.updateMatrix();baseInst.setMatrixAt(ci,dummy.matrix);
+        dummy.position.set(s*cx,rH-0.3,z);dummy.updateMatrix();capInst.setMatrixAt(ci,dummy.matrix);
+        ci++;
+      }
+      for(const im of[shaftInst,baseInst,capInst]){im.instanceMatrix.needsUpdate=true;scene.add(im);}
+      // entablature beam + gilt cornice across each portal
+      for(const z of zs){
+        scene.add(mk(new THREE.BoxGeometry(rW-0.4,0.22,0.3),MS.wain,0,rH-0.28,z));
+        scene.add(mk(new THREE.BoxGeometry(rW-0.3,0.06,0.34),MS.gold,0,rH-0.14,z));
+      }
+      // warm floor pool per bay (between portals, incl. the two ends) — each
+      // bay reads as its own softly-lit intimate room. Baked additive, no light.
+      const edges=[-rL/2,...zs,rL/2];
+      for(let i=0;i<edges.length-1;i++){
+        const pz=(edges[i]+edges[i+1])/2;
+        const pool=new THREE.Mesh(new THREE.PlaneGeometry(rW*0.52,zStep*0.72),getGlowCardMat());
+        pool.rotation.x=-Math.PI/2;pool.position.set(0,0.02,pz);pool.renderOrder=1;scene.add(pool);
+      }
+    }
     } // end shell isExhibition branch
 
     // ── ERA-SPECIFIC ROOM MODIFICATIONS ──
@@ -1577,6 +1612,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         const mount=mountSalonHang(lay,{
           getTexture:(ref)=>salonTexMap.get(ref.id)!,
           quality:artQuality,
+          // W3 (owner OG4): the corridor-approved refined frame — dark-walnut
+          // moulding + gilt slip, recessed photo, brass museum plaque, picture-
+          // light — replaces the plain gold frame on room wall art.
+          refinedFrame:W3,plaquePlate:W3,rabbet:W3,pictureLight:W3,
           onPiece:(art,p)=>{
             const m=byId.get(p.memory.id);
             if(!m)return;
