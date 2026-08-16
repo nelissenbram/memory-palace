@@ -34,6 +34,13 @@ export interface ArtworkOptions {
    *  arm over the frame with a shade tube, plus a BAKED warm down-wash on the
    *  top of the canvas (no dynamic light — canon ≤4). Off by default. */
   pictureLight?: boolean;
+  /** OPT-IN (corridor W3C): a refined dark-walnut moulding with a thin gilt
+   *  inner slip, instead of the solid-gold slab (owner: gold border too tacky).
+   *  Off by default so hall/interior keep the canon gold frame. */
+  refinedFrame?: boolean;
+  /** OPT-IN (corridor W3C): a real museum plaque — an ivory/brass plate under
+   *  the frame with engraved title+year, instead of floating wall lettering. */
+  plaquePlate?: boolean;
 }
 
 export interface Artwork {
@@ -45,6 +52,7 @@ export interface Artwork {
 // Shared, never-disposed materials — one gold frame + one liner shader program
 // across every artwork in every scene.
 let frameMat: THREE.MeshStandardMaterial | null = null;
+let walnutFrameMat: THREE.MeshStandardMaterial | null = null;
 let linerMat: THREE.MeshStandardMaterial | null = null;
 let lampGlowMat: THREE.MeshBasicMaterial | null = null;
 const glowMats: Partial<Record<"low" | "med" | "high", THREE.MeshBasicMaterial>> = {};
@@ -55,6 +63,14 @@ const PLAQUE_PX = { low: 120, med: 180, high: 240 } as const;
 function getFrameMat() {
   if (!frameMat) frameMat = new THREE.MeshStandardMaterial({ color: GOLD, roughness: 0.28, metalness: 0.6 });
   return frameMat;
+}
+
+// Refined moulding — a dark walnut with a soft satin sheen, so the corridor
+// frames read as fine-art frames (dark wood + a thin gilt slip) rather than a
+// solid gold slab. Module-cached, shared across every corridor piece.
+function getWalnutFrameMat() {
+  if (!walnutFrameMat) walnutFrameMat = new THREE.MeshStandardMaterial({ color: "#3A2A1C", roughness: 0.5, metalness: 0.15 });
+  return walnutFrameMat;
 }
 
 function getLinerMat() {
@@ -117,7 +133,7 @@ function getGlowMat(quality: "low" | "med" | "high") {
   return mat;
 }
 
-function makePlaqueTexture(title: string, year: string | undefined, pxPerUnit: number, planeW: number, planeH: number) {
+function makePlaqueTexture(title: string, year: string | undefined, pxPerUnit: number, planeW: number, planeH: number, plate?: boolean) {
   const cw = Math.min(512, Math.max(128, Math.round(planeW * pxPerUnit * 2)));
   const ch = Math.max(48, Math.round(cw * (planeH / planeW)));
   const canvas = document.createElement("canvas");
@@ -126,13 +142,50 @@ function makePlaqueTexture(title: string, year: string | undefined, pxPerUnit: n
   const ctx = canvas.getContext("2d")!;
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  // Owner feedback 2026-08-06 round 2: no plate, no border — gallery wall
-  // lettering directly under the frame (transparent bg, ink Fraunces with a
-  // whisper of an incision shadow).
+  // Two treatments:
+  //  - default: no plate, gallery wall lettering directly under the frame
+  //    (transparent bg, ink Fraunces with a whisper of an incision shadow).
+  //  - plate (corridor): a brass museum plaque — engraved dark serif on a
+  //    bevelled metal plate with corner screws.
   const draw = () => {
     ctx.clearRect(0, 0, cw, ch);
     ctx.textAlign = "center";
-    const maxW = cw * 0.96;
+    const maxW = cw * (plate ? 0.86 : 0.96);
+    if (plate) {
+      // bevelled brass plate
+      const g = ctx.createLinearGradient(0, 0, 0, ch);
+      g.addColorStop(0, "#C9B47E");
+      g.addColorStop(0.5, "#A8905C");
+      g.addColorStop(1, "#8A7444");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, cw, ch);
+      // top highlight + bottom shade bevel
+      ctx.fillStyle = "rgba(255,244,214,0.5)"; ctx.fillRect(0, 0, cw, Math.max(1, ch * 0.04));
+      ctx.fillStyle = "rgba(40,28,12,0.4)"; ctx.fillRect(0, ch - Math.max(1, ch * 0.05), cw, ch * 0.05);
+      // inner engraved border
+      ctx.strokeStyle = "rgba(60,44,20,0.55)"; ctx.lineWidth = Math.max(1, ch * 0.02);
+      ctx.strokeRect(ch * 0.08, ch * 0.08, cw - ch * 0.16, ch - ch * 0.16);
+      // corner screws
+      ctx.fillStyle = "rgba(50,36,16,0.6)";
+      for (const [sx, sy] of [[ch * 0.16, ch * 0.16], [cw - ch * 0.16, ch * 0.16], [ch * 0.16, ch - ch * 0.16], [cw - ch * 0.16, ch - ch * 0.16]] as [number, number][]) {
+        ctx.beginPath(); ctx.arc(sx, sy, ch * 0.035, 0, Math.PI * 2); ctx.fill();
+      }
+      const engrave = (s: string, y: number, font: string) => {
+        ctx.font = font;
+        ctx.fillStyle = "rgba(255,246,222,0.45)"; ctx.fillText(s, cw / 2, y + Math.max(1, ch * 0.02), maxW); // highlight below
+        ctx.fillStyle = "#372711"; ctx.fillText(s, cw / 2, y, maxW);                                        // dark incision
+      };
+      if (year) {
+        ctx.textBaseline = "alphabetic";
+        engrave(title, ch * 0.5, `600 ${Math.round(ch * 0.3)}px Fraunces, Georgia, serif`);
+        engrave(year, ch * 0.84, `italic 500 ${Math.round(ch * 0.21)}px Fraunces, Georgia, serif`);
+      } else {
+        ctx.textBaseline = "middle";
+        engrave(title, ch / 2 + ch * 0.03, `600 ${Math.round(ch * 0.34)}px Fraunces, Georgia, serif`);
+      }
+      tex.needsUpdate = true;
+      return;
+    }
     const hair = Math.max(1, Math.round(ch * 0.014));
     const put = (s: string, y: number, font: string) => {
       ctx.font = font;
@@ -175,10 +228,13 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
   ownedGeos.push(glowGeo);
   group.add(glow);
 
-  // Canon gold frame + plaster liner behind the photo.
-  const frameGeo = new THREE.BoxGeometry(w + 0.2, h + 0.2, 0.06);
-  const frame = new THREE.Mesh(frameGeo, getFrameMat());
-  frame.position.z = -0.02;
+  // Frame + plaster liner behind the photo. Canon = solid gold slab; refined
+  // (corridor) = a slimmer dark-walnut moulding (gilt slip added below).
+  const frameBorder = opts.refinedFrame ? 0.15 : 0.2;
+  const frameDepth = opts.refinedFrame ? 0.08 : 0.06;
+  const frameGeo = new THREE.BoxGeometry(w + frameBorder, h + frameBorder, frameDepth);
+  const frame = new THREE.Mesh(frameGeo, opts.refinedFrame ? getWalnutFrameMat() : getFrameMat());
+  frame.position.z = opts.refinedFrame ? -0.03 : -0.02;
   ownedGeos.push(frameGeo);
   group.add(frame);
 
@@ -198,15 +254,18 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
   ownedMats.push(photoMat);
   group.add(photo);
 
-  // F15 (opt-in): a raised gold molding lip around the photo opening. It sits
-  // proud of the recessed photo and overhangs its edge → a genuine rabbet with
-  // a soft shadow gap, instead of a photo floating flat on the wall.
+  // F15 (opt-in): a raised molding lip around the photo opening. It sits proud
+  // of the recessed photo and overhangs its edge → a genuine rabbet with a soft
+  // shadow gap, instead of a photo floating flat on the wall.
+  //  - refinedFrame: a SLIM gilt slip (the thin gold line an antique dark-wood
+  //    frame carries at the sight edge) — restrained, not a gold slab.
+  //  - plain rabbet: the original chunky gold lip.
   if (opts.rabbet) {
-    const lipT = 0.05;              // lip thickness (overhang inward over the photo)
-    const lipD = 0.05;              // lip depth (how far it stands proud)
-    const lipZ = 0.05;              // proud of the photo (0.015)
-    const lipMat = getFrameMat();
-    // 4 bars framing the photo, overlapping its edge by lipT
+    const refined = opts.refinedFrame;
+    const lipT = refined ? 0.022 : 0.05;   // slip width (overhang over the photo)
+    const lipD = refined ? 0.03 : 0.05;    // how far it stands proud
+    const lipZ = refined ? 0.045 : 0.05;   // proud of the recessed photo
+    const lipMat = getFrameMat();          // the gilt is the ONLY gold on a refined frame
     const bars: [number, number, number, number][] = [
       [w + lipT * 2, lipT, 0, h / 2 - lipT / 2 + 0.01],   // top
       [w + lipT * 2, lipT, 0, -(h / 2 - lipT / 2 + 0.01)], // bottom
@@ -258,13 +317,25 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
   }
 
   if (opts.title) {
-    const plaqueW = Math.min(w * 0.75, 1.2);
-    const plaqueH = opts.year ? 0.22 : 0.16;
-    const plaqueTex = makePlaqueTexture(opts.title, opts.year, PLAQUE_PX[quality], plaqueW, plaqueH);
+    const plate = opts.plaquePlate;
+    const plaqueW = plate ? Math.min(w * 0.6, 0.9) : Math.min(w * 0.75, 1.2);
+    const plaqueH = plate ? (opts.year ? 0.2 : 0.15) : (opts.year ? 0.22 : 0.16);
+    const plaqueTex = makePlaqueTexture(opts.title, opts.year, PLAQUE_PX[quality], plaqueW, plaqueH, plate);
+    const plaqueY = -h / 2 - (plate ? 0.14 : 0.1) - plaqueH / 2;
+    // Real museum plaque: a thin brass plate stands off the wall, the engraved
+    // face sits just proud of it. Default: flat wall lettering, no plate.
+    if (plate) {
+      const backGeo = new THREE.BoxGeometry(plaqueW + 0.02, plaqueH + 0.02, 0.012);
+      const back = new THREE.Mesh(backGeo, getFrameMat());
+      back.position.set(0, plaqueY, 0.03);
+      back.castShadow = true;
+      ownedGeos.push(backGeo);
+      group.add(back);
+    }
     const plaqueMat = new THREE.MeshBasicMaterial({ map: plaqueTex, transparent: true, depthWrite: false });
     const plaqueGeo = new THREE.PlaneGeometry(plaqueW, plaqueH);
     const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
-    plaque.position.set(0, -h / 2 - 0.1 - plaqueH / 2, 0.024);
+    plaque.position.set(0, plaqueY, plate ? 0.037 : 0.024);
     ownedGeos.push(plaqueGeo);
     ownedMats.push(plaqueMat);
     ownedTexs.push(plaqueTex);

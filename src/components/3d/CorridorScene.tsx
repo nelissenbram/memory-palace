@@ -772,7 +772,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     for(let i=0;i<rooms.length-1;i++){
       const doorSide=i%2===0?-1:1;
       const benchSide=-doorSide; // window/bench side
-      const bz=cL/2-5.5-i*C.sp-C.sp/2;
+      // W3C (owner): the central benches already sit at painting height, so the
+      // WALL benches move OFF the painting line — placed at the door line (half a
+      // bay offset) and only every other bay, for a calmer, non-doubled rhythm.
+      if(W3C&&i%2!==0)continue;
+      const bz=W3C?(cL/2-5.5-i*C.sp):(cL/2-5.5-i*C.sp-C.sp/2);
       if(bz>cL/2-4||bz<-cL/2+3)continue;
       const bx=benchSide*(cW/2-.6);
       // Bench legs
@@ -969,8 +973,53 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       if(!isMobileGPU()&&!W1)scene.add(new THREE.PointLight("#FFE0B0",.18,3.5).translateX(s*(cW/2-.15)).translateY(3.6).translateZ(sz)); // W1 KILL (WS5-3)
     }
 
-    // ── CENTRAL STATUE on marble pedestal ──
+    // ── CENTRAL STATUE — theme-setting centrepiece on a turned marble pedestal ──
     const sZ=0,pH2=1.2;
+    if(W3C){
+      // A proper turned pedestal: stepped plinth → torus base → tapered drum →
+      // torus neck → moulded cap. Reads as carved stone, not a stacked box.
+      scene.add(mk(new THREE.BoxGeometry(1.02,.12,1.02),MS.marble,0,.06,sZ));            // plinth
+      scene.add(mk(new THREE.BoxGeometry(.86,.08,.86),MS.marble,0,.16,sZ));              // plinth cap
+      {const tr=new THREE.Mesh(new THREE.TorusGeometry(.34,.06,10,28),MS.marble);tr.rotation.x=Math.PI/2;tr.position.set(0,.24,sZ);scene.add(tr);} // base torus
+      scene.add(mk(new THREE.CylinderGeometry(.30,.36,pH2-.5,24),MS.marble,0,.24+(pH2-.5)/2,sZ)); // drum
+      {const tr=new THREE.Mesh(new THREE.TorusGeometry(.3,.045,10,28),MS.marble);tr.rotation.x=Math.PI/2;tr.position.set(0,pH2-.19,sZ);scene.add(tr);} // neck torus
+      scene.add(mk(new THREE.CylinderGeometry(.42,.34,.12,24),MS.marble,0,pH2-.08,sZ));  // echinus
+      scene.add(mk(new THREE.BoxGeometry(.72,.06,.72),MS.marble,0,pH2+.01,sZ));          // abacus
+      {const tr=new THREE.Mesh(new THREE.TorusGeometry(.3,.02,8,28),MS.gold);tr.rotation.x=Math.PI/2;tr.position.set(0,pH2+.04,sZ);scene.add(tr);} // gilt fillet
+      const St=MS.statue;
+      if(wingId==="roots"){
+        // Olive tree — tapered trunk, three foliage tiers, exposed roots.
+        scene.add(mk(new THREE.CylinderGeometry(.05,.12,1.0,10),MS.bronze,0,pH2+.5,sZ));
+        for(let r=0;r<5;r++){const a=(r/5)*Math.PI*2;const rt=mk(new THREE.CylinderGeometry(.01,.035,.28,6),MS.bronze,Math.cos(a)*.12,pH2+.08,sZ+Math.sin(a)*.12);rt.rotation.z=Math.cos(a)*.7;rt.rotation.x=Math.sin(a)*.7;scene.add(rt);}
+        const leaf=new THREE.MeshStandardMaterial({color:"#5C7A46",roughness:.85});
+        for(const[dy,rr] of [[1.0,.34],[1.28,.28],[1.5,.2]] as [number,number][])scene.add(mk(new THREE.IcosahedronGeometry(rr,1),leaf,0,pH2+dy,sZ));
+        for(let b=0;b<5;b++){const a=(b/5)*Math.PI*2;const br=mk(new THREE.CylinderGeometry(.012,.028,.4,5),MS.bronze,Math.cos(a)*.13,pH2+.9,sZ+Math.sin(a)*.13);br.rotation.z=-Math.cos(a)*.5;br.rotation.x=-Math.sin(a)*.5;scene.add(br);}
+      } else if(wingId==="travel"){
+        // Armillary sphere — a gilt core caged by three angled rings + axis.
+        scene.add(mk(new THREE.SphereGeometry(.14,18,14),MS.gold,0,pH2+.62,sZ));
+        for(const[ax2,az] of [[0,0],[Math.PI/2.4,0],[0,Math.PI/2.4],[Math.PI/3,Math.PI/4]] as [number,number][]){
+          const ring=new THREE.Mesh(new THREE.TorusGeometry(.4,.016,10,40),MS.gold);ring.rotation.set(Math.PI/2+ax2,az,0);ring.position.set(0,pH2+.62,sZ);scene.add(ring);}
+        {const axis=mk(new THREE.CylinderGeometry(.012,.012,1.05,8),MS.bronze,0,pH2+.62,sZ);axis.rotation.x=.35;scene.add(axis);}
+      } else if(wingId==="nest"){
+        // A woven nest cradling three eggs.
+        scene.add(mk(new THREE.CylinderGeometry(.34,.24,.3,20,1,true),MS.bronze,0,pH2+.45,sZ));
+        {const rim=new THREE.Mesh(new THREE.TorusGeometry(.34,.05,10,24),MS.bronze);rim.rotation.x=Math.PI/2;rim.position.set(0,pH2+.6,sZ);scene.add(rim);}
+        for(const[ex,ez] of [[-.11,.06],[.12,.02],[0,-.12]] as [number,number][]){const eg=mk(new THREE.SphereGeometry(.1,14,12),St,ex,pH2+.5,sZ+ez);eg.scale.y=1.35;scene.add(eg);}
+      } else if(wingId==="craft"){
+        // Fluted obelisk with a gilt pyramidion.
+        for(let f=0;f<4;f++){const a=(f/4)*Math.PI*2;scene.add(mk(new THREE.BoxGeometry(.02,1.1,.02),MS.gold,Math.cos(a)*.09,pH2+.55,sZ+Math.sin(a)*.09));}
+        scene.add(mk(new THREE.CylinderGeometry(.1,.16,1.1,4),St,0,pH2+.55,sZ));
+        scene.add(mk(new THREE.ConeGeometry(.12,.24,4),MS.gold,0,pH2+1.22,sZ));
+      } else {
+        // Classical draped bust — the museum default. Chest, shoulders, neck, head.
+        const bust=mk(new THREE.CylinderGeometry(.26,.34,.5,20),St,0,pH2+.28,sZ);bust.scale.z=.62;scene.add(bust);
+        {const sh=mk(new THREE.SphereGeometry(.3,18,14),St,0,pH2+.5,sZ);sh.scale.set(1,.5,.62);scene.add(sh);} // shoulders
+        scene.add(mk(new THREE.CylinderGeometry(.075,.1,.16,14),St,0,pH2+.66,sZ));                              // neck
+        {const hd=mk(new THREE.SphereGeometry(.16,20,18),St,0,pH2+.86,sZ);hd.scale.set(.9,1.05,.92);scene.add(hd);} // head
+        {const no=mk(new THREE.ConeGeometry(.03,.08,6),St,0,pH2+.86,sZ+.15);no.rotation.x=Math.PI/2;scene.add(no);} // nose
+        {const hr=mk(new THREE.SphereGeometry(.17,16,14),St,0,pH2+.92,sZ-.02);hr.scale.set(.95,.7,.95);scene.add(hr);} // hair cap
+      }
+    }else{
     scene.add(mk(new THREE.BoxGeometry(1,.07,1),MS.marble,0,.035,sZ));
     scene.add(mk(new THREE.BoxGeometry(.75,pH2-.1,.75),MS.marble,0,pH2/2+.03,sZ));
     scene.add(mk(new THREE.BoxGeometry(.85,.07,.85),MS.gold,0,pH2+.01,sZ));
@@ -979,6 +1028,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     else if(wingId==="nest"){scene.add(mk(new THREE.CylinderGeometry(.25,.3,.45,8),MS.statue,0,pH2+.22,sZ));scene.add(mk(new THREE.ConeGeometry(.3,.35,8),MS.velvet,0,pH2+.62,sZ));scene.add(mk(new THREE.SphereGeometry(.05,6,6),MS.gold,0,pH2+.84,sZ));}
     else if(wingId==="craft"){scene.add(mk(new THREE.BoxGeometry(.14,1,.14),MS.statue,0,pH2+.5,sZ));scene.add(mk(new THREE.ConeGeometry(.1,.22,4),MS.gold,0,pH2+1.12,sZ));}
     else{scene.add(mk(new THREE.CylinderGeometry(.1,.15,.65,8),MS.statue,0,pH2+.33,sZ));scene.add(mk(new THREE.SphereGeometry(.14,8,8),MS.statue,0,pH2+.8,sZ));}
+    }
     // W1 KILL (WS5-3): statue spot dies — hemi compensation + envmap carry the marble
     if(!isMobileGPU()&&!W1){const sL=new THREE.SpotLight("#FFF5E0",.7,5,Math.PI/6,.5,1);sL.position.set(0,cH-.1,sZ);sL.target.position.set(0,pH2,sZ);scene.add(sL);scene.add(sL.target);}
     if(W1)w1AddPool(0,sZ,.9);
@@ -1103,6 +1153,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         quality:w2Quality,
         rabbet:W3C, // F15: recessed photo + raised molding lip (corridor only)
         pictureLight:W3C, // F16: brass gallery picture-light + baked wash (corridor only)
+        refinedFrame:W3C, // owner: dark-walnut moulding + gilt slip, not gold slab
+        plaquePlate:W3C, // owner: real engraved brass plaque, not floating letters
         onPiece:(art,p)=>{
           art.group.userData={memory:{id:slot.key,title:slot.appliedTitle,url:slot.appliedUrl}};
           // WS5-8 focus target — world frame (secGroup rotY maps wall-local x → ∓z)
