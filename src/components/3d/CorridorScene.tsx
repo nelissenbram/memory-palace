@@ -1033,6 +1033,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         getTexture:()=>(slot.appliedUrl?paintingTextureCache.get(slot.appliedUrl):undefined)||getPaintingPlaceholderTex(),
         quality:w2Quality,
         rabbet:W3C, // F15: recessed photo + raised molding lip (corridor only)
+        pictureLight:W3C, // F16: brass gallery picture-light + baked wash (corridor only)
         onPiece:(art,p)=>{
           art.group.userData={memory:{id:slot.key,title:slot.appliedTitle,url:slot.appliedUrl}};
           // WS5-8 focus target — world frame (secGroup rotY maps wall-local x → ∓z)

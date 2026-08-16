@@ -30,6 +30,10 @@ export interface ArtworkOptions {
    *  molding lip that overhangs the photo edge → a real rabbet + shadow gap.
    *  Off by default so every existing caller (hall, interior) is unchanged. */
   rabbet?: boolean;
+  /** OPT-IN (corridor W3C, F16): a brass gallery picture-light — a bracket
+   *  arm over the frame with a shade tube, plus a BAKED warm down-wash on the
+   *  top of the canvas (no dynamic light — canon ≤4). Off by default. */
+  pictureLight?: boolean;
 }
 
 export interface Artwork {
@@ -42,6 +46,7 @@ export interface Artwork {
 // across every artwork in every scene.
 let frameMat: THREE.MeshStandardMaterial | null = null;
 let linerMat: THREE.MeshStandardMaterial | null = null;
+let lampGlowMat: THREE.MeshBasicMaterial | null = null;
 const glowMats: Partial<Record<"low" | "med" | "high", THREE.MeshBasicMaterial>> = {};
 
 const GLOW_RES = { low: 64, med: 128, high: 256 } as const;
@@ -55,6 +60,33 @@ function getFrameMat() {
 function getLinerMat() {
   if (!linerMat) linerMat = new THREE.MeshStandardMaterial({ color: PLASTER, roughness: 0.9 });
   return linerMat;
+}
+
+// F16 picture-light down-wash — a vertical gradient (warm at the top of the
+// canvas, fading to nothing) blended additive, so the lamp reads as spilling
+// light onto the art without adding a dynamic light. Module-cached, never disposed.
+function getLampGlowMat() {
+  if (lampGlowMat) return lampGlowMat;
+  const c = document.createElement("canvas");
+  c.width = 4;
+  c.height = 128;
+  const ctx = c.getContext("2d")!;
+  const g = ctx.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0, "rgba(255,224,176,0.55)");
+  g.addColorStop(0.4, "rgba(255,224,176,0.16)");
+  g.addColorStop(1, "rgba(255,224,176,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 4, 128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  lampGlowMat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    opacity: 0.6,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  return lampGlowMat;
 }
 
 function getGlowMat(quality: "low" | "med" | "high") {
@@ -189,6 +221,40 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
       ownedGeos.push(g);
       group.add(m);
     }
+  }
+
+  // F16 (opt-in): brass gallery picture-light over the frame. A short riser off
+  // the frame top, an arm reaching up-and-forward, a horizontal shade tube, and
+  // a baked warm down-wash on the top of the canvas — all in the group's local
+  // frame (front +Z), disposed with the artwork. No dynamic light (canon ≤4).
+  if (opts.pictureLight) {
+    const brass = getFrameMat();
+    const topY = h / 2;
+    const riserGeo = new THREE.BoxGeometry(0.05, 0.15, 0.05);
+    const riser = new THREE.Mesh(riserGeo, brass);
+    riser.position.set(0, topY + 0.075, 0.03);
+    ownedGeos.push(riserGeo);
+    group.add(riser);
+    const armGeo = new THREE.BoxGeometry(0.045, 0.045, 0.36);
+    const arm = new THREE.Mesh(armGeo, brass);
+    arm.position.set(0, topY + 0.17, 0.2);
+    arm.rotation.x = -0.55; // reach up and out over the canvas
+    ownedGeos.push(armGeo);
+    group.add(arm);
+    const shadeLen = Math.min(w * 0.72, 1.1);
+    const shadeGeo = new THREE.CylinderGeometry(0.05, 0.05, shadeLen, 12);
+    const shade = new THREE.Mesh(shadeGeo, brass);
+    shade.position.set(0, topY + 0.25, 0.36);
+    shade.rotation.z = Math.PI / 2; // tube axis runs along the wall
+    ownedGeos.push(shadeGeo);
+    group.add(shade);
+    // baked warm wash: a plane over the upper canvas, additive, faded downward.
+    const washGeo = new THREE.PlaneGeometry(w * 1.02, h * 0.6);
+    const wash = new THREE.Mesh(washGeo, getLampGlowMat());
+    wash.position.set(0, topY - h * 0.3, (opts.rabbet ? 0.020 : 0.024) + 0.006);
+    wash.renderOrder = 2;
+    ownedGeos.push(washGeo);
+    group.add(wash);
   }
 
   if (opts.title) {

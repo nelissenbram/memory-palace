@@ -106,6 +106,8 @@ export interface SalonMountOptions {
   quality?: "low" | "med" | "high";
   /** Opt-in (corridor W3C, F15): raised rabbet molding on every piece. */
   rabbet?: boolean;
+  /** Opt-in (corridor W3C, F16): brass picture-light + baked wash on every piece. */
+  pictureLight?: boolean;
   /** Empty-state easel text ("Hang your first memory", pre-translated by the scene). Omit → no easel. */
   emptyText?: string;
   /** Hook per created piece — attach userData.memory, hit planes, focus targets. */
@@ -429,6 +431,7 @@ export function mountSalonHang(layout: SalonLayout, opts: SalonMountOptions): Sa
         width: p.width,
         quality: opts.quality,
         rabbet: opts.rabbet,
+        pictureLight: opts.pictureLight,
       });
       art.group.position.set(p.x, p.y, 0);
       if (p.rotY) art.group.rotation.y = p.rotY;
