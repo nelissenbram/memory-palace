@@ -104,6 +104,8 @@ export interface SalonMountOptions {
   /** Scene-owned texture per memory (paintTex result). Called once per placement. */
   getTexture(mem: SalonMemoryRef): THREE.Texture;
   quality?: "low" | "med" | "high";
+  /** Opt-in (corridor W3C, F15): raised rabbet molding on every piece. */
+  rabbet?: boolean;
   /** Empty-state easel text ("Hang your first memory", pre-translated by the scene). Omit → no easel. */
   emptyText?: string;
   /** Hook per created piece — attach userData.memory, hit planes, focus targets. */
@@ -426,6 +428,7 @@ export function mountSalonHang(layout: SalonLayout, opts: SalonMountOptions): Sa
         year: p.memory.year,
         width: p.width,
         quality: opts.quality,
+        rabbet: opts.rabbet,
       });
       art.group.position.set(p.x, p.y, 0);
       if (p.rotY) art.group.rotation.y = p.rotY;

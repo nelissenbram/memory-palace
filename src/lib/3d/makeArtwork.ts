@@ -26,6 +26,10 @@ export interface ArtworkOptions {
   /** Photo plane width in metres; height follows the aspect. */
   width: number;
   quality?: "low" | "med" | "high";
+  /** OPT-IN (corridor W3C, F15): recess the photo and add a raised inner
+   *  molding lip that overhangs the photo edge → a real rabbet + shadow gap.
+   *  Off by default so every existing caller (hall, interior) is unchanged. */
+  rabbet?: boolean;
 }
 
 export interface Artwork {
@@ -148,18 +152,44 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
 
   const linerGeo = new THREE.PlaneGeometry(w + 0.07, h + 0.07);
   const liner = new THREE.Mesh(linerGeo, getLinerMat());
-  liner.position.z = 0.016; // 6mm off the frame front — z-fight margin at distance
+  liner.position.z = opts.rabbet ? 0.010 : 0.016; // 6mm off the frame front — z-fight margin at distance
   ownedGeos.push(linerGeo);
   group.add(liner);
 
   // The photo — unlit, aspect-correct, the brightest pixels on the wall.
+  // F15 rabbet: the photo sits deeper so the raised lip below overhangs it.
   const photoMat = new THREE.MeshBasicMaterial({ map: opts.texture });
   const photoGeo = new THREE.PlaneGeometry(w, h);
   const photo = new THREE.Mesh(photoGeo, photoMat);
-  photo.position.z = 0.024;
+  photo.position.z = opts.rabbet ? 0.015 : 0.024;
   ownedGeos.push(photoGeo);
   ownedMats.push(photoMat);
   group.add(photo);
+
+  // F15 (opt-in): a raised gold molding lip around the photo opening. It sits
+  // proud of the recessed photo and overhangs its edge → a genuine rabbet with
+  // a soft shadow gap, instead of a photo floating flat on the wall.
+  if (opts.rabbet) {
+    const lipT = 0.05;              // lip thickness (overhang inward over the photo)
+    const lipD = 0.05;              // lip depth (how far it stands proud)
+    const lipZ = 0.05;              // proud of the photo (0.015)
+    const lipMat = getFrameMat();
+    // 4 bars framing the photo, overlapping its edge by lipT
+    const bars: [number, number, number, number][] = [
+      [w + lipT * 2, lipT, 0, h / 2 - lipT / 2 + 0.01],   // top
+      [w + lipT * 2, lipT, 0, -(h / 2 - lipT / 2 + 0.01)], // bottom
+      [lipT, h - lipT, -(w / 2 - lipT / 2 + 0.01), 0],     // left
+      [lipT, h - lipT, (w / 2 - lipT / 2 + 0.01), 0],      // right
+    ];
+    for (const [bw, bh, bx, by] of bars) {
+      const g = new THREE.BoxGeometry(bw, bh, lipD);
+      const m = new THREE.Mesh(g, lipMat);
+      m.position.set(bx, by, lipZ - lipD / 2);
+      m.castShadow = true;
+      ownedGeos.push(g);
+      group.add(m);
+    }
+  }
 
   if (opts.title) {
     const plaqueW = Math.min(w * 0.75, 1.2);

@@ -1002,6 +1002,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       slot.mount=mountSalonHang(layout,{
         getTexture:()=>(slot.appliedUrl?paintingTextureCache.get(slot.appliedUrl):undefined)||getPaintingPlaceholderTex(),
         quality:w2Quality,
+        rabbet:W3C, // F15: recessed photo + raised molding lip (corridor only)
         onPiece:(art,p)=>{
           art.group.userData={memory:{id:slot.key,title:slot.appliedTitle,url:slot.appliedUrl}};
           // WS5-8 focus target — world frame (secGroup rotY maps wall-local x → ∓z)
