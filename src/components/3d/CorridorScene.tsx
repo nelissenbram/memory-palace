@@ -359,14 +359,18 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // so it catches the golden env + column reflections like a real museum
     // floor — the hall proved this reads as luxury, not glare.
     if(W3C){const f=MS.floor as THREE.MeshPhysicalMaterial;f.roughness=0.22;f.envMapIntensity=0.9;f.clearcoat=0.5;f.clearcoatRoughness=0.18;f.needsUpdate=true;}
-    // W3C (§7-3): over-unity lift for selective bloom. Only the canon "may-bloom"
-    // emitters go above 1.0 — candle/chandelier glass and the portal gilding — so
-    // they catch the threshold-1.0 bloom while plaster, floor and paintings stay
-    // sub-unity (memories remain the brightest via their unlit photo + wash).
+    // W3C (owner round 2: "gold too tacky") — retint the whole gold family to a
+    // muted antique bronze with a SATIN (not mirror) finish, so the metal reads
+    // as a warm accent instead of glare. Also drops the gold's bloom lift below
+    // the 1.0 threshold — only the lamp GLASS (the actual light) still blooms.
     if(W3C){
-      const g=MS.glassG as THREE.MeshStandardMaterial;g.emissiveIntensity=1.9;g.needsUpdate=true;
-      for(const[key,lift] of [["portalGoldTrim",1.35],["portalKeystone",1.15],["portalArch",.95],["portalArch",.95]] as [keyof typeof MS,number][]){
-        const m=MS[key] as THREE.MeshPhysicalMaterial;if(m){m.emissiveIntensity=lift;m.needsUpdate=true;}
+      for(const key of ["gold","fG","portalGoldTrim","portalArch","portalKeystone","floorGoldStrip","handle"] as (keyof typeof MS)[]){
+        const m=MS[key] as THREE.MeshPhysicalMaterial;
+        if(m){m.color.set("#9E8455");m.metalness=0.5;m.roughness=0.44;if("clearcoat" in m)m.clearcoat=0.08;m.needsUpdate=true;}
+      }
+      (MS.glassG as THREE.MeshStandardMaterial).emissiveIntensity=1.9; // the lamp glass still blooms (it is the light)
+      for(const key of ["portalGoldTrim","portalKeystone","portalArch"] as (keyof typeof MS)[]){
+        const m=MS[key] as THREE.MeshPhysicalMaterial;if(m){m.emissive.set("#9E8455");m.emissiveIntensity=0.4;m.needsUpdate=true;}
       }
     }
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(cW,cL),MS.floor);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
@@ -890,10 +894,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     for(let i=0;i<rooms.length;i++) allDoorZones.push(cL/2-5.5-i*C.sp);
     // Include window positions so sconces/lamps skip them too
     for(const wz of validWinPositions) allDoorZones.push(wz);
-    // W3C grime/patina (F17): candles blacken the wall above them — collect a
-    // soot plume plane per sconce and merge into one draw at the end.
-    const w3cSootGeos:THREE.BufferGeometry[]=[];
-    for(let i=0;i<rooms.length;i++){
+    const w3cSootGeos:THREE.BufferGeometry[]=[]; // (empty under W3C — no candles → no soot plumes)
+    // ── CANDLE SCONCES — W2/W1 only; W3C replaces them with wall lights below ──
+    if(!W3C)for(let i=0;i<rooms.length;i++){
       const sz=cL/2-5.5-i*C.sp-C.sp*0.25;
       if(sz>cL/2-3||sz<-cL/2+3)continue;
       for(const s of[-1,1]){
@@ -902,19 +905,31 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         const tooCloseDoor=allDoorZones.some(dz=>Math.abs(sz-dz)<1.8);
         const tooCloseWin=s===-1&&validWinPositions.some(wz=>Math.abs(sz-wz)<winHalfGap+0.5);
         if(tooClosePainting||tooCloseDoor||tooCloseWin)continue;
-        // Mount sconce flush against wall (not protruding into corridor)
         const sx=s*(cW/2-.005);
         scene.add(mk(new THREE.BoxGeometry(.04,.02,.12),MS.bronze,sx-(s*.04),2.6,sz));
         scene.add(mk(new THREE.CylinderGeometry(.025,.02,.1,6),MS.bronze,sx-(s*.08),2.65,sz));
         scene.add(mk(new THREE.CylinderGeometry(.012,.012,.08,5),new THREE.MeshStandardMaterial({color:"#F5F0E0",roughness:.8}),sx-(s*.08),2.74,sz));
         const fG2=new THREE.Mesh(new THREE.SphereGeometry(.018,4,4),new THREE.MeshBasicMaterial({color:"#FFE080",transparent:true,opacity:.7}));
         fG2.position.set(sx-(s*.08),2.8,sz);scene.add(fG2);
-        if(W3C&&!isMobileGPU()){
-          const g=new THREE.PlaneGeometry(.2,.62);
-          const m=new THREE.Matrix4().makeRotationY(-s*Math.PI/2);
-          m.setPosition(s*(cW/2-.02),3.18,sz);
-          g.applyMatrix4(m);
-          w3cSootGeos.push(g);
+      }
+    }
+    // ── W3C WALL LIGHTS (owner round 2) — subtle bronze sconces with a frosted
+    // alabaster shade (soft warm glow, sub-unity so it doesn't bloom) and a baked
+    // wall-wash. NON-candle, evenly PITCHED down both walls, doors/windows aside. ──
+    if(W3C){
+      const shadeMat=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.9,roughness:.6,transparent:true,opacity:.9});
+      const washMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.1*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false});
+      const pitch=cL/Math.max(4,Math.round(cL/5));
+      for(let z=-cL/2+pitch*0.7;z<cL/2-1.4;z+=pitch){
+        for(const s of[-1,1]){
+          if(allDoorZones.some(dz=>Math.abs(z-dz)<1.5))continue;
+          const wx2=s*(cW/2-.02);
+          scene.add(mk(new THREE.BoxGeometry(.05,.34,.13),MS.bronze,wx2-s*.02,2.55,z));           // backplate
+          scene.add(mk(new THREE.BoxGeometry(.06,.05,.15),MS.bronze,wx2-s*.07,2.4,z));            // arm
+          scene.add(mk(new THREE.CylinderGeometry(.08,.1,.28,12,1,true),shadeMat,wx2-s*.12,2.62,z)); // frosted shade
+          scene.add(mk(new THREE.CylinderGeometry(.1,.1,.02,12),MS.bronze,wx2-s*.12,2.77,z));      // shade cap
+          const up=new THREE.Mesh(new THREE.PlaneGeometry(.55,1.0),washMat);                      // baked uplight wash
+          up.rotation.y=s===-1?Math.PI/2:-Math.PI/2;up.position.set(wx2-s*.03,3.15,z);up.renderOrder=2;scene.add(up);
         }
       }
     }
@@ -1014,8 +1029,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       if(!isMobileGPU()&&!W1)scene.add(new THREE.PointLight("#FFE8C0",.7,9).translateY(cH-.5).translateZ(cz));
     }
 
-    // ── SCONCES between door zones — at z_i + sp*0.75, skip near paintings/windows ──
-    for(const s of[-1,1])for(let i=0;i<rooms.length;i++){
+    // ── SCONCES between door zones — W2/W1 only (W3C uses the wall lights above) ──
+    if(!W3C)for(const s of[-1,1])for(let i=0;i<rooms.length;i++){
       const sz=cL/2-5.5-i*C.sp-C.sp*0.75;if(sz>cL/2-2||sz<-cL/2+2)continue;
       const tooClose=paintingZBySide[s].some(pz=>Math.abs(sz-pz)<3.0);
       const tooCloseDoor2=allDoorZones.some(dz=>Math.abs(sz-dz)<1.8);
@@ -1042,12 +1057,23 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       {const tr=new THREE.Mesh(new THREE.TorusGeometry(.3,.02,8,28),MS.gold);tr.rotation.x=Math.PI/2;tr.position.set(0,pH2+.04,sZ);scene.add(tr);} // gilt fillet
       const St=MS.statue;
       if(wingId==="roots"){
-        // Olive tree — tapered trunk, three foliage tiers, exposed roots.
-        scene.add(mk(new THREE.CylinderGeometry(.05,.12,1.0,10),MS.bronze,0,pH2+.5,sZ));
-        for(let r=0;r<5;r++){const a=(r/5)*Math.PI*2;const rt=mk(new THREE.CylinderGeometry(.01,.035,.28,6),MS.bronze,Math.cos(a)*.12,pH2+.08,sZ+Math.sin(a)*.12);rt.rotation.z=Math.cos(a)*.7;rt.rotation.x=Math.sin(a)*.7;scene.add(rt);}
-        const leaf=new THREE.MeshStandardMaterial({color:"#5C7A46",roughness:.85});
-        for(const[dy,rr] of [[1.0,.34],[1.28,.28],[1.5,.2]] as [number,number][])scene.add(mk(new THREE.IcosahedronGeometry(rr,1),leaf,0,pH2+dy,sZ));
-        for(let b=0;b<5;b++){const a=(b/5)*Math.PI*2;const br=mk(new THREE.CylinderGeometry(.012,.028,.4,5),MS.bronze,Math.cos(a)*.13,pH2+.9,sZ+Math.sin(a)*.13);br.rotation.z=-Math.cos(a)*.5;br.rotation.x=-Math.sin(a)*.5;scene.add(br);}
+        // The Family Tree — a bark trunk with dramatic exposed roots gripping the
+        // pedestal, spreading branches, and a full layered canopy (owner round 2).
+        const bark=new THREE.MeshStandardMaterial({color:"#6B5138",roughness:.9,metalness:0});
+        const leafA=new THREE.MeshStandardMaterial({color:"#4E7238",roughness:.9});
+        const leafB=new THREE.MeshStandardMaterial({color:"#5F864A",roughness:.9});
+        scene.add(mk(new THREE.CylinderGeometry(.08,.16,1.15,12),bark,0,pH2+.6,sZ)); // trunk
+        // roots flaring off the base + curling tips onto the abacus
+        for(let r=0;r<7;r++){const a=(r/7)*Math.PI*2;
+          const rt=mk(new THREE.CylinderGeometry(.018,.055,.42,6),bark,Math.cos(a)*.14,pH2+.08,sZ+Math.sin(a)*.14);
+          rt.rotation.z=Math.cos(a)*.95;rt.rotation.x=-Math.sin(a)*.95;scene.add(rt);
+          const tip=mk(new THREE.CylinderGeometry(.008,.022,.2,5),bark,Math.cos(a)*.3,pH2+.02,sZ+Math.sin(a)*.3);
+          tip.rotation.z=Math.cos(a)*1.45;tip.rotation.x=-Math.sin(a)*1.45;scene.add(tip);}
+        // branches reaching up into the canopy
+        for(let b=0;b<6;b++){const a=(b/6)*Math.PI*2;const br=mk(new THREE.CylinderGeometry(.012,.032,.46,5),bark,Math.cos(a)*.12,pH2+1.06,sZ+Math.sin(a)*.12);br.rotation.z=-Math.cos(a)*.6;br.rotation.x=Math.sin(a)*.6;scene.add(br);}
+        // full layered canopy — offset clumps, two green tones
+        for(const[dx,dy,dz,rr,lm] of [[0,1.52,0,.38,leafA],[.24,1.34,.07,.26,leafB],[-.22,1.38,-.05,.25,leafB],[.05,1.74,-.04,.27,leafA],[-.07,1.6,.19,.22,leafB],[.16,1.66,-.16,.21,leafA]] as [number,number,number,number,THREE.Material][])
+          scene.add(mk(new THREE.IcosahedronGeometry(rr,1),lm,dx,pH2+dy,sZ+dz));
       } else if(wingId==="travel"){
         // Armillary sphere — a gilt core caged by three angled rings + axis.
         scene.add(mk(new THREE.SphereGeometry(.14,18,14),MS.gold,0,pH2+.62,sZ));
@@ -1065,13 +1091,16 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         scene.add(mk(new THREE.CylinderGeometry(.1,.16,1.1,4),St,0,pH2+.55,sZ));
         scene.add(mk(new THREE.ConeGeometry(.12,.24,4),MS.gold,0,pH2+1.22,sZ));
       } else {
-        // Classical draped bust — the museum default. Chest, shoulders, neck, head.
-        const bust=mk(new THREE.CylinderGeometry(.26,.34,.5,20),St,0,pH2+.28,sZ);bust.scale.z=.62;scene.add(bust);
-        {const sh=mk(new THREE.SphereGeometry(.3,18,14),St,0,pH2+.5,sZ);sh.scale.set(1,.5,.62);scene.add(sh);} // shoulders
-        scene.add(mk(new THREE.CylinderGeometry(.075,.1,.16,14),St,0,pH2+.66,sZ));                              // neck
-        {const hd=mk(new THREE.SphereGeometry(.16,20,18),St,0,pH2+.86,sZ);hd.scale.set(.9,1.05,.92);scene.add(hd);} // head
-        {const no=mk(new THREE.ConeGeometry(.03,.08,6),St,0,pH2+.86,sZ+.15);no.rotation.x=Math.PI/2;scene.add(no);} // nose
-        {const hr=mk(new THREE.SphereGeometry(.17,16,14),St,0,pH2+.92,sZ-.02);hr.scale.set(.95,.7,.95);scene.add(hr);} // hair cap
+        // Neutral classical marble bust — the default for any standard/new corridor
+        // (owner round 2). Draped shoulders, turned head, no theme props.
+        const chest=mk(new THREE.CylinderGeometry(.2,.28,.36,20),St,0,pH2+.18,sZ);chest.scale.z=.64;scene.add(chest);
+        {const sh=mk(new THREE.SphereGeometry(.29,20,14),St,0,pH2+.38,sZ);sh.scale.set(1.05,.5,.66);scene.add(sh);}   // shoulders/drape
+        for(const sgn of[-1,1]){const f=mk(new THREE.CylinderGeometry(.02,.03,.34,6),St,sgn*.11,pH2+.32,sZ+.12);f.rotation.z=sgn*.4;scene.add(f);} // drape folds
+        scene.add(mk(new THREE.CylinderGeometry(.07,.09,.15,14),St,0,pH2+.55,sZ));                                    // neck
+        {const hd=mk(new THREE.SphereGeometry(.15,22,18),St,0,pH2+.73,sZ);hd.scale.set(.9,1.08,.95);scene.add(hd);}   // head
+        {const no=mk(new THREE.ConeGeometry(.026,.075,6),St,0,pH2+.72,sZ+.145);no.rotation.x=Math.PI/2;scene.add(no);} // nose
+        {const hr=mk(new THREE.SphereGeometry(.16,18,14),St,0,pH2+.79,sZ-.02);hr.scale.set(.98,.74,1);scene.add(hr);}  // hair
+        {const bun=mk(new THREE.SphereGeometry(.06,12,10),St,0,pH2+.84,sZ-.14);scene.add(bun);}                        // classical hair knot
       }
     }else{
     scene.add(mk(new THREE.BoxGeometry(1,.07,1),MS.marble,0,.035,sZ));
@@ -2094,6 +2123,17 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       for(const s of[-1,1])scene.add(mk(new THREE.BoxGeometry(.07,pH,.55),MS.portalPillar,s*(pW/2-.02),pH/2,portalZ+.28));
       scene.add(mk(new THREE.BoxGeometry(pW,.07,.55),MS.portalPillar,0,pH-.03,portalZ+.28));       // soffit
       scene.add(mk(new THREE.BoxGeometry(pW-.1,.02,.55),MS.floorGoldStrip,0,.02,portalZ+.28));     // threshold
+      // Owner round 2: the portal was an open glowing void — add SUBTLE double
+      // walnut doors, all but closed (a thin warm reveal at the meeting stiles),
+      // so it reads as a real door to the hall. Click target (portalHit) unchanged.
+      const doorH=pH-0.5, leafW=pW/2-0.05;
+      for(const s of[-1,1]){
+        const cx=s*(leafW/2+0.03);
+        scene.add(mk(new THREE.BoxGeometry(leafW,doorH,.07),MS.door,cx,doorH/2,portalZ-.06));            // leaf
+        scene.add(mk(new THREE.BoxGeometry(leafW-.14,doorH-.24,.006),MS.doorD,cx,doorH/2,portalZ-.098)); // recessed panel
+        scene.add(mk(new THREE.SphereGeometry(.04,8,8),MS.handle,s*.06,doorH*0.5,portalZ-.11));          // handle
+      }
+      scene.add(mk(new THREE.BoxGeometry(pW+.06,.08,.1),MS.portalPillar,0,doorH+.02,portalZ-.05));       // door head
     }
     if(W2){
       w2Deferred.push(()=>{
@@ -2112,9 +2152,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
             ex.fillText(t("backToEntrance"),384,88,690);
           }
           const et=new THREE.CanvasTexture(ec);et.colorSpace=THREE.SRGBColorSpace;et.anisotropy=8;
-          scene.add(mk(new THREE.BoxGeometry(2.94,.64,.08),MS.bronze,0,pH+.6,portalZ+.03));           // plate backing
-          const face=new THREE.Mesh(new THREE.PlaneGeometry(2.84,.56),new THREE.MeshBasicMaterial({map:et,transparent:true}));
-          face.rotation.y=Math.PI;face.position.set(0,pH+.6,portalZ-.02);scene.add(face);
+          // Sits over the doorway opening (y≈pH-.25), well clear of the arch
+          // keystone above — owner: a block above the door made the text unreadable.
+          scene.add(mk(new THREE.BoxGeometry(2.7,.5,.08),MS.bronze,0,pH-.25,portalZ-.05));            // plate backing
+          const face=new THREE.Mesh(new THREE.PlaneGeometry(2.6,.42),new THREE.MeshBasicMaterial({map:et,transparent:true}));
+          face.rotation.y=Math.PI;face.position.set(0,pH-.25,portalZ-.1);scene.add(face);
         }else{
           const pl=makeFrauncesLabel(t("backToEntrance"),{width:2.4,height:.45}) as THREE.Mesh;
           const plm=pl.material as THREE.MeshBasicMaterial;plm.polygonOffset=true;plm.polygonOffsetFactor=-1;plm.polygonOffsetUnits=-1;

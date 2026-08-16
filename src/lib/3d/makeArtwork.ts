@@ -66,11 +66,19 @@ function getFrameMat() {
 }
 
 // Refined moulding — a dark walnut with a soft satin sheen, so the corridor
-// frames read as fine-art frames (dark wood + a thin gilt slip) rather than a
+// frames read as fine-art frames (dark wood + a thin bronze slip) rather than a
 // solid gold slab. Module-cached, shared across every corridor piece.
 function getWalnutFrameMat() {
   if (!walnutFrameMat) walnutFrameMat = new THREE.MeshStandardMaterial({ color: "#3A2A1C", roughness: 0.5, metalness: 0.15 });
   return walnutFrameMat;
+}
+
+// Muted antique-bronze slip — owner round 2 wanted the gilt accents toned down;
+// this replaces the bright gold slip/plaque-backing on refined (corridor) pieces.
+let refinedSlipMat: THREE.MeshStandardMaterial | null = null;
+function getRefinedSlipMat() {
+  if (!refinedSlipMat) refinedSlipMat = new THREE.MeshStandardMaterial({ color: "#9E8455", roughness: 0.44, metalness: 0.5 });
+  return refinedSlipMat;
 }
 
 function getLinerMat() {
@@ -152,28 +160,23 @@ function makePlaqueTexture(title: string, year: string | undefined, pxPerUnit: n
     ctx.textAlign = "center";
     const maxW = cw * (plate ? 0.86 : 0.96);
     if (plate) {
-      // bevelled brass plate
+      // Owner round 2: a DARK bronze plate with ivory engraved serif (matches the
+      // door nameplates the owner kept) — the bright brass plate read too tacky.
       const g = ctx.createLinearGradient(0, 0, 0, ch);
-      g.addColorStop(0, "#C9B47E");
-      g.addColorStop(0.5, "#A8905C");
-      g.addColorStop(1, "#8A7444");
+      g.addColorStop(0, "#4A3B29");
+      g.addColorStop(0.5, "#33281B");
+      g.addColorStop(1, "#241A11");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, cw, ch);
-      // top highlight + bottom shade bevel
-      ctx.fillStyle = "rgba(255,244,214,0.5)"; ctx.fillRect(0, 0, cw, Math.max(1, ch * 0.04));
-      ctx.fillStyle = "rgba(40,28,12,0.4)"; ctx.fillRect(0, ch - Math.max(1, ch * 0.05), cw, ch * 0.05);
-      // inner engraved border
-      ctx.strokeStyle = "rgba(60,44,20,0.55)"; ctx.lineWidth = Math.max(1, ch * 0.02);
-      ctx.strokeRect(ch * 0.08, ch * 0.08, cw - ch * 0.16, ch - ch * 0.16);
-      // corner screws
-      ctx.fillStyle = "rgba(50,36,16,0.6)";
-      for (const [sx, sy] of [[ch * 0.16, ch * 0.16], [cw - ch * 0.16, ch * 0.16], [ch * 0.16, ch - ch * 0.16], [cw - ch * 0.16, ch - ch * 0.16]] as [number, number][]) {
-        ctx.beginPath(); ctx.arc(sx, sy, ch * 0.035, 0, Math.PI * 2); ctx.fill();
-      }
+      // faint top highlight
+      ctx.fillStyle = "rgba(220,190,120,0.28)"; ctx.fillRect(0, 0, cw, Math.max(1, ch * 0.035));
+      // muted bronze keyline border
+      ctx.strokeStyle = "rgba(158,132,85,0.7)"; ctx.lineWidth = Math.max(1, ch * 0.022);
+      ctx.strokeRect(ch * 0.09, ch * 0.09, cw - ch * 0.18, ch - ch * 0.18);
       const engrave = (s: string, y: number, font: string) => {
         ctx.font = font;
-        ctx.fillStyle = "rgba(255,246,222,0.45)"; ctx.fillText(s, cw / 2, y + Math.max(1, ch * 0.02), maxW); // highlight below
-        ctx.fillStyle = "#372711"; ctx.fillText(s, cw / 2, y, maxW);                                        // dark incision
+        ctx.fillStyle = "rgba(10,7,4,0.5)"; ctx.fillText(s, cw / 2, y + Math.max(1, ch * 0.02), maxW); // incision shadow
+        ctx.fillStyle = "#EBDBB4"; ctx.fillText(s, cw / 2, y, maxW);                                   // ivory serif
       };
       if (year) {
         ctx.textBaseline = "alphabetic";
@@ -265,7 +268,7 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
     const lipT = refined ? 0.022 : 0.05;   // slip width (overhang over the photo)
     const lipD = refined ? 0.03 : 0.05;    // how far it stands proud
     const lipZ = refined ? 0.045 : 0.05;   // proud of the recessed photo
-    const lipMat = getFrameMat();          // the gilt is the ONLY gold on a refined frame
+    const lipMat = refined ? getRefinedSlipMat() : getFrameMat(); // muted bronze slip on refined frames
     const bars: [number, number, number, number][] = [
       [w + lipT * 2, lipT, 0, h / 2 - lipT / 2 + 0.01],   // top
       [w + lipT * 2, lipT, 0, -(h / 2 - lipT / 2 + 0.01)], // bottom
@@ -326,7 +329,7 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
     // face sits just proud of it. Default: flat wall lettering, no plate.
     if (plate) {
       const backGeo = new THREE.BoxGeometry(plaqueW + 0.02, plaqueH + 0.02, 0.012);
-      const back = new THREE.Mesh(backGeo, getFrameMat());
+      const back = new THREE.Mesh(backGeo, getRefinedSlipMat());
       back.position.set(0, plaqueY, 0.03);
       back.castShadow = true;
       ownedGeos.push(backGeo);
