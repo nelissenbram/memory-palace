@@ -776,6 +776,36 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
     }
 
+    // ── W3C: CENTRAL GALLERY BENCHES + GREENERY (lived-in museum) ──
+    // Backless upholstered benches just off the runner, aligned with the salon
+    // walls (the classic "sit and contemplate the art" bench), plus a few
+    // potted plants — the corridor reads as an inhabited gallery, not a hall.
+    if(W3C){
+      const terracotta=new THREE.MeshStandardMaterial({color:"#A85A38",roughness:.85,metalness:0});
+      const foliage=new THREE.MeshStandardMaterial({color:"#4E6B3A",roughness:.9,metalness:0});
+      const foliage2=new THREE.MeshStandardMaterial({color:"#5C7A42",roughness:.9,metalness:0});
+      for(let i=0;i<rooms.length-1;i++){
+        const bz=cL/2-5.5-i*C.sp-C.sp/2;
+        if(bz>cL/2-4||bz<-cL/2+3.5)continue;
+        const bx=(i%2===0?1:-1)*1.65; // just off the 2 m runner, alternating
+        // legs
+        for(const lz of[-.55,.55])for(const lx of[-.28,.28])
+          scene.add(mk(new THREE.BoxGeometry(.08,.4,.08),MS.bench,bx+lx,.2,bz+lz));
+        // seat plank + double-sided cushion (no back — museum bench) + gold rail
+        scene.add(mk(new THREE.BoxGeometry(.74,.08,1.32),MS.bench,bx,.42,bz));
+        scene.add(mk(new THREE.BoxGeometry(.03,.06,1.34),MS.gold,bx,.47,bz));
+        scene.add(mk(new THREE.BoxGeometry(.64,.12,1.22),MS.benchCushion,bx,.52,bz));
+        // a potted plant on every 3rd bay, opposite side, against the wall base
+        if(i%3===0){
+          const gx=-Math.sign(bx)*(cW/2-.5), gz=bz;
+          scene.add(mk(new THREE.CylinderGeometry(.22,.16,.42,14),terracotta,gx,.21,gz));   // pot
+          scene.add(mk(new THREE.CylinderGeometry(.24,.24,.05,14),terracotta,gx,.44,gz));    // rim
+          for(const[dx,dy,dz,r,fm] of [[0,.75,0,.34,foliage],[.16,.62,.1,.24,foliage2],[-.14,.66,-.08,.22,foliage2],[.05,.9,-.05,.2,foliage]] as [number,number,number,number,THREE.Material][])
+            scene.add(mk(new THREE.SphereGeometry(r,8,7),fm,gx+dx,dy,gz+dz));
+        }
+      }
+    }
+
     // ── CANDLE SCONCES — at z_i + sp*0.25 on both walls, skip near paintings/doors/niches ──
     const paintingZBySide: Record<number, number[]> = {[-1]: [], [1]: []};
     for(let i=0;i<rooms.length-1;i++){

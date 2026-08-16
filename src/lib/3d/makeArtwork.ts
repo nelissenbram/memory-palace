@@ -152,7 +152,7 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
 
   const linerGeo = new THREE.PlaneGeometry(w + 0.07, h + 0.07);
   const liner = new THREE.Mesh(linerGeo, getLinerMat());
-  liner.position.z = opts.rabbet ? 0.010 : 0.016; // 6mm off the frame front — z-fight margin at distance
+  liner.position.z = opts.rabbet ? 0.014 : 0.016; // clear of the frame front (0.010) — no coplanar z-fight
   ownedGeos.push(linerGeo);
   group.add(liner);
 
@@ -161,7 +161,7 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
   const photoMat = new THREE.MeshBasicMaterial({ map: opts.texture });
   const photoGeo = new THREE.PlaneGeometry(w, h);
   const photo = new THREE.Mesh(photoGeo, photoMat);
-  photo.position.z = opts.rabbet ? 0.015 : 0.024;
+  photo.position.z = opts.rabbet ? 0.020 : 0.024; // above the liner (0.014); lip at 0.05 still overhangs
   ownedGeos.push(photoGeo);
   ownedMats.push(photoMat);
   group.add(photo);
