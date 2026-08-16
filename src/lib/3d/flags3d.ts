@@ -17,11 +17,13 @@ const PROD_HOSTS = new Set(["thememorypalace.ai", "www.thememorypalace.ai"]);
 const STORE_KEY = "mp_flag3d";
 
 // Retired flags (waves promoted to production; exterior owner-approved
-// 2026-08-12, hall "full go" 2026-08-13): unconditionally ON everywhere.
+// 2026-08-12, hall "full go" 2026-08-13, corridor "op naar productie"
+// 2026-08-16): unconditionally ON everywhere.
 // `?flag3d=-name` still works as an emergency kill switch.
 const RETIRED_ON = new Set([
   "w1_exterior", "w2_exterior", "w3_exterior",
   "w1_hall", "w2_hall", "w3_hall",
+  "w1_corridor", "w2_corridor", "w3_corridor",
 ]);
 
 function readOverrides(): Map<string, boolean> {
