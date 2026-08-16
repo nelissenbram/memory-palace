@@ -637,9 +637,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       for (const seg of wainSegments) {
         const segLen = seg.end - seg.start;
         const segCenter = (seg.start + seg.end) / 2;
-        scene.add(mk(new THREE.BoxGeometry(.04,1.4,segLen),MS.wain,s*(cW/2-.06),.7,segCenter));
+        // Wainscot + skirting run BELOW the floor (bottom at y=-0.04) so their
+        // bottom faces are never coplanar with the floor plane at y=0 (z-fight).
+        scene.add(mk(new THREE.BoxGeometry(.04,1.44,segLen),MS.wain,s*(cW/2-.06),.68,segCenter));
         scene.add(mk(new THREE.BoxGeometry(.05,.07,segLen),MS.gold,s*(cW/2-.06),1.43,segCenter));
-        scene.add(mk(new THREE.BoxGeometry(.06,.12,segLen),MS.dkW,s*(cW/2-.06),.06,segCenter));
+        scene.add(mk(new THREE.BoxGeometry(.06,.16,segLen),MS.dkW,s*(cW/2-.06),.04,segCenter));
       }
       // Crown molding at ceiling (continuous, doesn't clip doors)
       scene.add(mk(new THREE.BoxGeometry(.10,.14,cL-.2),MS.gold,s*(cW/2-.08),cH-.07,0));
@@ -2129,9 +2131,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const doorH=pH-0.5, leafW=pW/2-0.05;
       for(const s of[-1,1]){
         const cx=s*(leafW/2+0.03);
-        scene.add(mk(new THREE.BoxGeometry(leafW,doorH,.07),MS.door,cx,doorH/2,portalZ-.06));            // leaf
-        scene.add(mk(new THREE.BoxGeometry(leafW-.14,doorH-.24,.006),MS.doorD,cx,doorH/2,portalZ-.098)); // recessed panel
-        scene.add(mk(new THREE.SphereGeometry(.04,8,8),MS.handle,s*.06,doorH*0.5,portalZ-.11));          // handle
+        scene.add(mk(new THREE.BoxGeometry(leafW,doorH,.07),MS.door,cx,doorH/2,portalZ-.06));            // leaf (front face at portalZ-.095)
+        scene.add(mk(new THREE.BoxGeometry(leafW-.14,doorH-.24,.01),MS.doorD,cx,doorH/2,portalZ-.115));  // applied panel, clearly proud of the leaf (no coplanar z-fight)
+        scene.add(mk(new THREE.SphereGeometry(.04,8,8),MS.handle,s*.06,doorH*0.5,portalZ-.14));          // handle
       }
       scene.add(mk(new THREE.BoxGeometry(pW+.06,.08,.1),MS.portalPillar,0,doorH+.02,portalZ-.05));       // door head
     }
