@@ -161,8 +161,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       }
       return n;
     };
-    const layout=layoutForRoom(actualRoomId||roomId,layoutOverride,W3?displayedWallCount(mems):undefined);
-    if(W3&&typeof process!=="undefined"&&process.env.NODE_ENV!=="production")console.debug(`[enfilade] tier=${layout.tier} bays=${layout.bays} rL=${layout.rL} (walls=${displayedWallCount(mems)})`);
+    // Viewer-only preview override: ?wallcount=N forces the tier so the enfilade
+    // growth can be reviewed without a photo-rich account (harmless on prod).
+    const _wcOverride=(typeof window!=="undefined")?parseInt(new URLSearchParams(window.location.search).get("wallcount")||"",10):NaN;
+    const wallCount=W3?(Number.isFinite(_wcOverride)?_wcOverride:displayedWallCount(mems)):undefined;
+    const layout=layoutForRoom(actualRoomId||roomId,layoutOverride,wallCount);
+    if(W3&&typeof process!=="undefined"&&process.env.NODE_ENV!=="production")console.debug(`[enfilade] tier=${layout.tier} bays=${layout.bays} rL=${layout.rL} (walls=${wallCount})`);
     const dlPresetRaw=getLightingPreset();
     // Interior rooms have artificial lighting — enforce minimum brightness
     // so evening/night presets don't make rooms too dark to navigate.
