@@ -131,7 +131,38 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // WS12-1 (W1): shared reduced-motion singleton — forced onboarding pans
     // below jump to the end framing when this reports true.
     const reduceMotion=W1&&prefersReducedMotion();
-    const layout=layoutForRoom(actualRoomId||roomId,layoutOverride);
+    // ── W3 (WS-Enfilade): scalable rooms — the room lengthens (rL only) in
+    // snapped depth tiers as the displayed WALL photo count grows. Flag-off =
+    // legacy fixed size, byte-identical. W3 requires W2 (salon-hang wall art).
+    const W3=W2&&(()=>{try{return !!flag3d("w3_interior");}catch{return false;}})();
+    // Count the displayed wall photos BEFORE the layout picks — mirrors the
+    // wall-slot bucketing + pickAllW2 display filter used later at ~L1266 so the
+    // size and the actual hang agree exactly (avoids drift).
+    const displayedWallCount=(list: any[]): number=>{
+      const unitToSlot: Record<string,string>={frame:"frame",painting:"painting",album:"album",screen:"video",vinyl:"audio",vitrine:"case",bookshelf:"document"};
+      const buckets: Record<string,any[]>={painting:[],photo:[],frame:[]};
+      for(const m of list){
+        let slot=m.type;
+        if(m.displayUnit)slot=unitToSlot[m.displayUnit]||m.type;
+        if(slot==="voice"||slot==="interview")slot="audio";
+        if(slot==="orb")slot="case";
+        if(slot==="text")slot="document";
+        if(buckets[slot])buckets[slot].push(m);
+      }
+      const pick=(arr: any[])=>{
+        const explicit=arr.filter((m: any)=>m.displayed===true);
+        const hidden=arr.filter((m: any)=>m.displayed===false);
+        if(explicit.length>0||hidden.length>0)return explicit;
+        return arr.filter((m: any)=>m.displayed===undefined||m.displayed===null);
+      };
+      const seen=new Set<string>();let n=0;
+      for(const slot of ["painting","photo","frame"] as const)for(const m of pick(buckets[slot])){
+        const id=String(m.id??m.title);if(seen.has(id))continue;seen.add(id);n++;
+      }
+      return n;
+    };
+    const layout=layoutForRoom(actualRoomId||roomId,layoutOverride,W3?displayedWallCount(mems):undefined);
+    if(W3&&typeof process!=="undefined"&&process.env.NODE_ENV!=="production")console.debug(`[enfilade] tier=${layout.tier} bays=${layout.bays} rL=${layout.rL} (walls=${displayedWallCount(mems)})`);
     const dlPresetRaw=getLightingPreset();
     // Interior rooms have artificial lighting — enforce minimum brightness
     // so evening/night presets don't make rooms too dark to navigate.

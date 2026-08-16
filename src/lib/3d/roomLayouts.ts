@@ -21,6 +21,38 @@ export interface RoomLayout {
   // Exhibition hall — grand museum room with 20 painting slots + 1 video screen
   isExhibition?: boolean;
   paintingSlots?: number;   // number of wall paintings (default 1)
+  // "The Enfilade" scalable rooms (w3_interior): a room grows by adding depth
+  // BAYS as more photos hang. rW/rH stay frozen (they carry the proportions);
+  // only rL lengthens, snapped to a tier. These are filled in by sizeForRoom().
+  tier?: RoomTier;
+  bays?: number;            // 0..MAX_BAYS depth bays added on top of the base rL
+}
+
+// ── The Enfilade — media-driven depth growth (w3_interior) ──
+// Rooms lengthen along their depth axis (rL only) in snapped tiers as the
+// number of displayed WALL photos grows. Width/height are sacred. Deterministic
+// and pure so a room is stable across revisits; snapped tiers keep draw calls
+// bounded and avoid a rebuild on every single add.
+export const BAY_DEPTH = 4;   // metres of rL added per depth bay
+export const MAX_BAYS = 3;    // iOS-safe ceiling on added bays
+export const MAX_RL = 26;     // hard depth clamp (~ old peristylium footprint)
+
+export type RoomTier = "Intimate" | "Hall" | "Gallery" | "Grand Enfilade";
+
+/** Map a displayed-wall-photo count to a tier + bay count (owner thresholds: 6/16/32). */
+export function tierForCount(count: number): { tier: RoomTier; bays: number } {
+  if (count <= 6) return { tier: "Intimate", bays: 0 };
+  if (count <= 16) return { tier: "Hall", bays: 1 };
+  if (count <= 32) return { tier: "Gallery", bays: 2 };
+  return { tier: "Grand Enfilade", bays: 3 };
+}
+
+/** Grow ONLY rL of a base layout by the media tier; rW/rH and every style field pass through. */
+export function sizeForRoom(base: RoomLayout, count: number): RoomLayout {
+  const { tier, bays } = tierForCount(count);
+  const b = Math.min(bays, MAX_BAYS);
+  const rL = Math.min(base.rL + b * BAY_DEPTH, MAX_RL);
+  return { ...base, rL, tier, bays: b };
 }
 
 export const ROOM_LAYOUTS: RoomLayout[] = [
@@ -74,7 +106,7 @@ export const ROOM_LAYOUTS: RoomLayout[] = [
 // Exhibition Hall is excluded — it must be chosen explicitly via layoutOverride.
 const AUTO_LAYOUTS = ROOM_LAYOUTS.filter(l => !l.isExhibition);
 
-export function layoutForRoom(roomId: string, layoutOverride?: string): RoomLayout {
+function pickBaseLayout(roomId: string, layoutOverride?: string): RoomLayout {
   if (layoutOverride) {
     const found = ROOM_LAYOUTS.find(l => l.id === layoutOverride);
     if (found) return found;
@@ -82,4 +114,17 @@ export function layoutForRoom(roomId: string, layoutOverride?: string): RoomLayo
   let h = 0;
   for (const c of roomId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return AUTO_LAYOUTS[h % AUTO_LAYOUTS.length];
+}
+
+/**
+ * Pick a room's STYLE variant by id-hash (or explicit override), then — when a
+ * displayed-wall-photo `count` is supplied (w3_interior ON) — grow only its
+ * depth (rL) to the media tier via sizeForRoom. `count` omitted → the legacy
+ * fixed-size layout, byte-identical to before (flag-off path). Exhibition rooms
+ * keep their fixed footprint (no tiered growth).
+ */
+export function layoutForRoom(roomId: string, layoutOverride?: string, count?: number): RoomLayout {
+  const base = pickBaseLayout(roomId, layoutOverride);
+  if (count === undefined || base.isExhibition) return base;
+  return sizeForRoom(base, count);
 }
