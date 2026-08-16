@@ -26,6 +26,7 @@ import type { QueuedFile } from "@/components/ui/ImportHub";
 import CloudBrowser from "@/components/ui/CloudBrowser";
 import type { CloudItem } from "@/components/ui/CloudBrowser";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
+import { flag3d } from "@/lib/3d/flags3d";
 
 // ─── Constants (kept from original) ──────────────────────────────────────────
 const ROOM_SLOT_COUNTS: Record<string, number> = {
@@ -478,6 +479,12 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
     return ROOM_LAYOUTS.find(l => l.id === roomLayout) || null;
   }, [roomLayout]);
   const isExhibition = !!currentLayout?.isExhibition;
+  // The Peristylium is retired under the Enfilade (w3_interior): hide it from the
+  // room-type picker. Mounted-gate keeps SSR/first-render identical (no hydration
+  // mismatch); the courtyard drops out once the flag resolves client-side.
+  const [w3Rooms, setW3Rooms] = useState(false);
+  useEffect(() => { try { setW3Rooms(!!flag3d("w3_interior")); } catch {} }, []);
+  const pickerLayouts = useMemo(() => w3Rooms ? ROOM_LAYOUTS.filter(l => !l.isExhibition) : ROOM_LAYOUTS, [w3Rooms]);
 
   const activeFurnitureSlots = useMemo(() => {
     if (isExhibition) {
@@ -1125,7 +1132,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 </svg>
                 {t("roomType")}
               </span>
-              {[{ id: "", name: "Auto", nameKey: "" }, ...ROOM_LAYOUTS].map(l => {
+              {[{ id: "", name: "Auto", nameKey: "" }, ...pickerLayouts].map(l => {
                 const isActive = (roomLayout || "") === l.id;
                 return (
                   <button

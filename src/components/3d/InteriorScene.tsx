@@ -220,7 +220,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const isExhibition=!!layout.isExhibition;
     // Owner feedback r2 (W1): fogFar 22→30 / 65→85 — the dense golden haze read as
     // "gouden melk"; a longer falloff gives the far wall its depth back.
-    const fogFar=isExhibition?(W1?85:65)/dlPreset.fogDensity:(W1?30:22)/dlPreset.fogDensity;
+    // W3: fog-far scales with the room's depth so a Grand Enfilade's far bay
+    // resolves out of the haze instead of being swallowed (base tiers unchanged).
+    const baseFogFar=(W1?30:22)/dlPreset.fogDensity;
+    const fogFar=isExhibition?(W1?85:65)/dlPreset.fogDensity:(W3?Math.max(baseFogFar,(layout.rL/13)*baseFogFar):baseFogFar);
     scene.fog=new THREE.Fog(isExhibition?GOLDEN.skyColor:dlPreset.fogColor,isExhibition?8:3,fogFar);
 
     // Warm sky + terracotta ground bounce (WS1-6)
@@ -791,13 +794,29 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         scene.add(mk(new THREE.BoxGeometry(rW-0.4,0.22,0.3),MS.wain,0,rH-0.28,z));
         scene.add(mk(new THREE.BoxGeometry(rW-0.3,0.06,0.34),MS.gold,0,rH-0.14,z));
       }
-      // warm floor pool per bay (between portals, incl. the two ends) — each
-      // bay reads as its own softly-lit intimate room. Baked additive, no light.
-      const edges=[-rL/2,...zs,rL/2];
+      // Per bay: a coffered ceiling module, a warm floor pool, and a clerestory
+      // strip high on one long wall casting a raking golden shaft — so each bay
+      // is its own softly-lit intimate room and the shafts march down the hall.
+      // All baked (additive planes / emissive) — no new dynamic lights.
+      const edges=[-rL/2,...zs,rL/2], sunWall=1; // +x long wall carries the clerestory
       for(let i=0;i<edges.length-1;i++){
-        const pz=(edges[i]+edges[i+1])/2;
-        const pool=new THREE.Mesh(new THREE.PlaneGeometry(rW*0.52,zStep*0.72),getGlowCardMat());
+        const z0=edges[i],z1=edges[i+1],pz=(z0+z1)/2,bd=z1-z0;
+        // warm floor pool
+        const pool=new THREE.Mesh(new THREE.PlaneGeometry(rW*0.52,bd*0.72),getGlowCardMat());
         pool.rotation.x=-Math.PI/2;pool.position.set(0,0.02,pz);pool.renderOrder=1;scene.add(pool);
+        // coffered ceiling panel (gilt bead frame + recessed pan)
+        scene.add(mk(new THREE.BoxGeometry(rW-1.6,0.05,bd-0.5),MS.gold,0,rH-0.05,pz));
+        scene.add(mk(new THREE.BoxGeometry(rW-1.85,0.03,bd-0.75),MS.ceil,0,rH-0.13,pz));
+        // clerestory glow strip high on the sun wall
+        const cw=new THREE.Mesh(new THREE.PlaneGeometry(bd*0.62,0.72),getGlowCardMat());
+        cw.position.set(sunWall*(rW/2-0.06),rH-0.95,pz);cw.rotation.y=sunWall*(-Math.PI/2);cw.renderOrder=1;scene.add(cw);
+        // raking golden shaft from the strip down onto the floor
+        const hw=bd*0.26, sg=new THREE.BufferGeometry();
+        const topX=sunWall*(rW/2-0.12),topY=rH-0.8,botX=sunWall*(rW*0.12),botY=0.06;
+        sg.setAttribute("position",new THREE.Float32BufferAttribute([topX,topY,pz-hw, topX,topY,pz+hw, botX,botY,pz+hw*1.5, botX,botY,pz-hw*1.5],3));
+        sg.setIndex([0,1,2,0,2,3]);sg.computeVertexNormals();
+        const shaft=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.075*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+        shaft.renderOrder=2;scene.add(shaft);
       }
     }
     } // end shell isExhibition branch

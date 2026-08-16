@@ -124,7 +124,11 @@ function pickBaseLayout(roomId: string, layoutOverride?: string): RoomLayout {
  * keep their fixed footprint (no tiered growth).
  */
 export function layoutForRoom(roomId: string, layoutOverride?: string, count?: number): RoomLayout {
-  const base = pickBaseLayout(roomId, layoutOverride);
-  if (count === undefined || base.isExhibition) return base;
+  let base = pickBaseLayout(roomId, layoutOverride);
+  if (count === undefined) return base; // legacy fixed size (w3_interior OFF), incl. exhibition
+  // W3 "Enfilade": the Peristylium is retired — a room pinned to it becomes a
+  // scalable Salon; its wall assignments re-home as ordinary salon-hang art and
+  // the count naturally lands it in the Gallery / Grand-Enfilade tier.
+  if (base.isExhibition) base = ROOM_LAYOUTS.find(l => l.id === "salon") || base;
   return sizeForRoom(base, count);
 }
