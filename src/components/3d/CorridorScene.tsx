@@ -2296,6 +2296,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const lookA={yaw:0,pitch:0},lookT={yaw:0,pitch:0};
     const pos=camera.position.clone(),posT=pos.clone();
     const keys: Record<string,boolean>={},drag={v:false},prev={x:0,y:0},lastRayPos={x:0,y:0};let hovDoor: string|null=null,lastCursor="";
+    // Debug camera (viewer-only): ?cam=portal|door|terminus hard-poses the camera
+    // each frame for fixed review angles — the portal sits BEHIND spawn and doors
+    // are edge-on from the axis, so straight-ahead shots can't show them.
+    const camDebug=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("cam"):null;
 
     // ── W2 (WS5-8): DOLLY-TO-FRAME — one shared focus controller. While
     // update(dt) returns true it owns the camera (no walk/autoWalk/cinematic
@@ -2665,6 +2669,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       pos.lerp(posT,kPos);camera.position.copy(pos);
       _ld.set(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
       _lookTarget.copy(camera.position).add(_ld);camera.lookAt(_lookTarget);
+      // Debug review angles — override the walk/cinematic pose (viewer-only param).
+      if(camDebug){
+        if(camDebug==="portal"){camera.position.set(0,2.0,cL/2-6.5);camera.lookAt(0,cH*0.55,cL/2-1);}
+        else if(camDebug==="door"){const dz=cL/2-5.5;camera.position.set(-cW/2+2.7,1.7,dz);camera.lookAt(-cW/2,1.95,dz);}
+        else if(camDebug==="terminus"){camera.position.set(0,2.0,cL/2-9);camera.lookAt(0,cH*0.5,-cL/2+1);}
+      }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
         camDebugRef.current.textContent = `yaw: ${lookA.yaw.toFixed(4)}\npitch: ${lookA.pitch.toFixed(4)}\npos: ${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
