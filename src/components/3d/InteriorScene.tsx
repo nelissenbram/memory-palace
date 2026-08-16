@@ -818,6 +818,25 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         const shaft=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.075*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
         shaft.renderOrder=2;scene.add(shaft);
       }
+      // ── Per-bay COSY DRESSING — a rug, a warm floor lamp and a potted plant in
+      // each ADDED bay (the central furnished bay is left alone), off the central
+      // walk on alternating sides, so a long room never reads as empty floor. ──
+      const rugMat=new THREE.MeshStandardMaterial({color:"#6E3B2E",roughness:.95});
+      const shadeMat=new THREE.MeshStandardMaterial({color:"#FFE6BE",emissive:new THREE.Color("#FFC880"),emissiveIntensity:.9,roughness:.6});
+      const potMat=new THREE.MeshStandardMaterial({color:"#A85A38",roughness:.85});
+      const leafMat=new THREE.MeshStandardMaterial({color:"#4E6B3A",roughness:.9});
+      let bIdx=0;
+      for(let i=0;i<edges.length-1;i++){
+        const z0=edges[i],z1=edges[i+1],pz=(z0+z1)/2;
+        if(Math.abs(pz)<zStep*0.5)continue; // leave the central (furnished) bay
+        const side=(bIdx++%2===0)?1:-1, lx=side*(rW*0.32), px=-side*(rW*0.32);
+        scene.add(mk(new THREE.BoxGeometry(2.6,0.014,Math.min(2.6,(z1-z0)*0.62)),rugMat,0,0.015,pz));   // rug
+        scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,lx,0.75,pz-0.3));               // lamp pole
+        scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),shadeMat,lx,1.62,pz-0.3));            // warm shade
+        scene.add(mk(new THREE.CylinderGeometry(0.18,0.14,0.42,10),potMat,px,0.21,pz+0.3));             // pot
+        scene.add(mk(new THREE.SphereGeometry(0.34,8,7),leafMat,px,0.72,pz+0.3));
+        scene.add(mk(new THREE.SphereGeometry(0.24,7,6),leafMat,px+0.15,0.64,pz+0.36));                 // foliage
+      }
     }
     } // end shell isExhibition branch
 
