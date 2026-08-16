@@ -196,7 +196,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     // W3C (WS11 S6A): deepen the vignette so the eye is funnelled down the axis
     // toward the terminus "weenie" (darkness ≤.45 per canon — edges only).
-    const composer=createPostProcessing(ren,scene,camera,"corridor",W3C?{vignette:{darkness:.44,offset:.22}}:undefined);
+    // W3C (§7-3 selective HDR bloom): raise the threshold to 1.0 so ONLY
+    // over-unity pixels bloom — the gold gilding, candle glass and picture-light
+    // washes lifted above 1.0 below. At the canon 0.85 half the wall could bloom;
+    // at 1.0 the bloom is a jewel on the emitters, not a haze on the plaster.
+    const composer=createPostProcessing(ren,scene,camera,"corridor",W3C?{vignette:{darkness:.44,offset:.22},bloom:{luminanceThreshold:1.0,luminanceSmoothing:.16,intensity:.82}}:undefined);
     const disposeFit=autoFit(el,{camera,renderer:ren,composer});
 
     // Warm sky + terracotta ground bounce (WS1-6)
@@ -355,6 +359,16 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // so it catches the golden env + column reflections like a real museum
     // floor — the hall proved this reads as luxury, not glare.
     if(W3C){const f=MS.floor as THREE.MeshPhysicalMaterial;f.roughness=0.22;f.envMapIntensity=0.9;f.clearcoat=0.5;f.clearcoatRoughness=0.18;f.needsUpdate=true;}
+    // W3C (§7-3): over-unity lift for selective bloom. Only the canon "may-bloom"
+    // emitters go above 1.0 — candle/chandelier glass and the portal gilding — so
+    // they catch the threshold-1.0 bloom while plaster, floor and paintings stay
+    // sub-unity (memories remain the brightest via their unlit photo + wash).
+    if(W3C){
+      const g=MS.glassG as THREE.MeshStandardMaterial;g.emissiveIntensity=1.9;g.needsUpdate=true;
+      for(const[key,lift] of [["portalGoldTrim",1.35],["portalKeystone",1.15],["portalArch",.95],["portalArch",.95]] as [keyof typeof MS,number][]){
+        const m=MS[key] as THREE.MeshPhysicalMaterial;if(m){m.emissiveIntensity=lift;m.needsUpdate=true;}
+      }
+    }
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(cW,cL),MS.floor);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
     MS.floor.polygonOffset=true;MS.floor.polygonOffsetFactor=4;MS.floor.polygonOffsetUnits=4;
     MS.wall.polygonOffset=true;MS.wall.polygonOffsetFactor=4;MS.wall.polygonOffsetUnits=4;
