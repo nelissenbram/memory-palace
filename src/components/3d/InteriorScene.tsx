@@ -801,13 +801,51 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const ce=new THREE.Mesh(new THREE.PlaneGeometry(rW,rL),MS.ceil);ce.rotation.x=Math.PI/2;ce.position.y=rH;scene.add(ce);
     for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.1,.14,rL),MS.gold,s*(rW/2-.05),rH-.07,0));scene.add(mk(new THREE.BoxGeometry(rW,.14,.1),MS.gold,0,rH-.07,s*(rL/2-.05)));}
     }
+    // ── Arched "Roman" faux-window: a warm glowing pane (straight section + a
+    // semicircular head) set proud of a wall, with a moulded frame + sill + a baked
+    // wash so it reads lit. ONE window style shared by wings + main room (owner
+    // "juiste stijl" + "een hoop ramen ontbreken"). px/pz sit ON the wall plane;
+    // rotY orients the facing (+X wall→π/2, -X wall→-π/2, back→0, front→π).
+    const addArchWindow=(px:number,py:number,pz:number,rotY:number,w:number,h:number)=>{
+      const g=new THREE.Group();g.position.set(px,py,pz);g.rotation.y=rotY;
+      const r=w/2, glow=new THREE.MeshBasicMaterial({color:"#FFEAC8"});
+      const rect=new THREE.Mesh(new THREE.PlaneGeometry(w,h),glow);rect.position.set(0,h/2,0.02);g.add(rect);
+      const head=new THREE.Mesh(new THREE.CircleGeometry(r,22,0,Math.PI),glow);head.position.set(0,h,0.02);g.add(head);
+      for(const sx of[-1,1]){const j=new THREE.Mesh(new THREE.BoxGeometry(0.1,h+0.05,0.14),MS.wain);j.position.set(sx*(r+0.05),h/2,0.04);g.add(j);}      // jambs
+      const arch=new THREE.Mesh(new THREE.RingGeometry(r,r+0.11,24,1,0,Math.PI),MS.wain);arch.position.set(0,h,0.04);g.add(arch);                          // arch surround
+      const sill=new THREE.Mesh(new THREE.BoxGeometry(w+0.3,0.1,0.18),MS.gold);sill.position.set(0,0,0.06);g.add(sill);                                    // sill
+      const key=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.18,0.16),MS.gold);key.position.set(0,h+r-0.02,0.06);g.add(key);                                // keystone
+      scene.add(g);
+      addGlowCard(px,py+h*0.55,pz,1.1,rotY);
+    };
+    // ── Arched WING PORTAL: frames a wing opening (in a ±rW/2 main wall) so the
+    // wing reads as a SEPARATE corner you enter through a portal (owner: the
+    // "afzonderlijke hoekjes" — library/music — must actually be made). Header wall
+    // lowers the opening to a portal height, pilasters frame the jambs, and a warm
+    // arched fanlight crowns it. sign=-1 left (library), +1 right (music). ──
+    const addWingPortal=(sign:number,z0:number,z1:number)=>{
+      const zc=(z0+z1)/2, ww=z1-z0, wx=sign*(rW/2), hdrY=2.6, hh=rH-hdrY;
+      const rotY=sign<0?Math.PI/2:-Math.PI/2;
+      scene.add(mk(new THREE.BoxGeometry(0.16,hh,ww),MS.wall,wx,hdrY+hh/2,zc));                    // header wall above the opening (both-sided box)
+      scene.add(mk(new THREE.BoxGeometry(0.34,0.22,ww),MS.dkW,wx-sign*0.12,hdrY-0.02,zc));         // lintel beam
+      for(const zz of[z0+0.16,z1-0.16]){                                                            // pilasters framing the jambs
+        scene.add(mk(new THREE.BoxGeometry(0.24,hdrY,0.34),MS.wain,wx-sign*0.12,hdrY/2,zz));
+        scene.add(mk(new THREE.BoxGeometry(0.32,0.16,0.42),MS.gold,wx-sign*0.12,hdrY-0.02,zz));    // capital
+        scene.add(mk(new THREE.BoxGeometry(0.32,0.16,0.42),MS.marble,wx-sign*0.12,0.08,zz));       // base
+      }
+      const fr=1.1, g=new THREE.Group();g.position.set(wx-sign*0.06,hdrY+0.16,zc);g.rotation.y=rotY;
+      g.add(new THREE.Mesh(new THREE.CircleGeometry(fr,22,0,Math.PI),new THREE.MeshBasicMaterial({color:"#FFEAC8"})));
+      const af=new THREE.Mesh(new THREE.RingGeometry(fr,fr+0.12,24,1,0,Math.PI),MS.gold);af.position.z=0.02;g.add(af);
+      scene.add(g);
+      addGlowCard(wx,hdrY+0.7,zc,1.4,rotY);
+    };
     if(W3){
       // ── T-SHAPE walls: hall side walls (past each wing) → widening shoulders →
       // narrow stem side walls → narrow front (door) wall; full back wall. The
       // wing openings sit below wingZ1; the stem-to-hall gap is between the shoulders.
       {const w=widenZ-libWingZ1;if(w>0.2){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,rH),MS.wall);m.rotation.y=Math.PI/2;m.position.set(-rW/2,rH/2,(libWingZ1+widenZ)/2);m.receiveShadow=true;scene.add(m);}}
       {const w=widenZ-musWingZ1;if(w>0.2){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,rH),MS.wall);m.rotation.y=-Math.PI/2;m.position.set(rW/2,rH/2,(musWingZ1+widenZ)/2);m.receiveShadow=true;scene.add(m);}}
-      for(const s of[-1,1]){const shW=rW/2-stemHalfW;scene.add(mk(new THREE.PlaneGeometry(shW,rH),MS.wall,s*(stemHalfW+shW/2),rH/2,widenZ));}                                   // widening shoulders (face +Z)
+      for(const s of[-1,1]){const shW=rW/2-stemHalfW;const m=new THREE.Mesh(new THREE.PlaneGeometry(shW,rH),MS.wall);m.rotation.y=Math.PI;m.position.set(s*(stemHalfW+shW/2),rH/2,widenZ);m.receiveShadow=true;scene.add(m);} // widening shoulders — MUST face -Z (into the hall); MS.wall is single-sided so a +Z normal would read as an open wall
       for(const s of[-1,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(stemLen,rH),MS.wall);m.rotation.y=s*(-Math.PI/2);m.position.set(s*stemHalfW,rH/2,(widenZ+rL/2)/2);m.receiveShadow=true;scene.add(m);} // stem side walls
       scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));                                                                                                          // back wall (full width)
       {const m=new THREE.Mesh(new THREE.PlaneGeometry(2*stemHalfW,rH),MS.wall);m.rotation.y=Math.PI;m.position.set(0,rH/2,rL/2);m.receiveShadow=true;scene.add(m);}                 // narrow front (door) wall
@@ -885,11 +923,31 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.CylinderGeometry(0.04,0.04,0.016,12),MS.gold,rpx,1.02,rpz));
       scene.add(mk(new THREE.BoxGeometry(0.02,0.28,0.02),MS.iron,rpx+0.28,1.14,rpz+0.18));                                                      // horn stem
       {const horn=mk(new THREE.CylinderGeometry(0.16,0.04,0.28,12,1,true),MS.gold,rpx+0.28,1.32,rpz+0.18);horn.rotation.z=0.5;scene.add(horn);} // brass horn
+      // ── Frame each wing as a distinct ARCHED PORTAL (separate corner) ──
+      addWingPortal(-1,libWingZ0,libWingZ1);
+      addWingPortal(1,musWingZ0,musWingZ1);
+      // ── Arched windows through the MAIN room (owner: "een hoop ramen" ontbreken) ──
+      for(const s of[-1,1])addArchWindow(s*(rW/2-1.9),1.5,-rL/2+0.06,0,1.3,1.5);                 // back wall, flanking the fireplace
+      for(const s of[-1,1]){                                                                       // clerestory band, high on the hall walls above the salon hang
+        const wingZ1=s<0?libWingZ1:musWingZ1, rotY=s<0?Math.PI/2:-Math.PI/2, wx=s*(rW/2)-s*0.06;
+        for(const dz of[-1.5,1.5]){const z=(wingZ1+widenZ)/2+dz; if(z>wingZ1+0.7&&z<widenZ-0.7)addArchWindow(wx,rH-1.55,z,rotY,0.95,0.66);}
+      }
+      for(const s of[-1,1])addArchWindow(s*(stemHalfW)-s*0.06,rH-1.5,(widenZ+rL/2)/2,s<0?Math.PI/2:-Math.PI/2,0.85,0.6); // stem entry, one clerestory each side
     }
-    for(let s=-1;s<=1;s+=2){
-      // left wainscot skips the wing opening under W3 (built on the segment only)
-      if(W3&&s===-1){const segW=rL-libWingW,segC=(libWingZ1+rL/2)/2;scene.add(mk(new THREE.BoxGeometry(.05,1.2,segW-.3),MS.wain,-rW/2+.025,.6,segC));scene.add(mk(new THREE.BoxGeometry(.06,.07,segW-.2),MS.gold,-rW/2+.03,1.23,segC));continue;}
-      scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
+    if(W3){
+      // T-shape wainscot: hall side walls (past each wing) at ±rW/2, then the stem
+      // side walls at ±stemHalfW — never at ±rW/2 in the stem (that's cut away).
+      for(const s of[-1,1]){
+        const wingZ1=s<0?libWingZ1:musWingZ1;
+        const hL=widenZ-wingZ1, hC=(wingZ1+widenZ)/2;
+        if(hL>0.5){scene.add(mk(new THREE.BoxGeometry(.05,1.2,hL-.3),MS.wain,s*(rW/2-.025),.6,hC));scene.add(mk(new THREE.BoxGeometry(.06,.07,hL-.2),MS.gold,s*(rW/2-.03),1.23,hC));scene.add(mk(new THREE.BoxGeometry(.08,.18,hL-.1),MS.dkW,s*(rW/2-.04),.09,hC));}
+        const sL=rL/2-widenZ, sC=(widenZ+rL/2)/2;
+        scene.add(mk(new THREE.BoxGeometry(.05,1.2,sL-.3),MS.wain,s*(stemHalfW-.025),.6,sC));scene.add(mk(new THREE.BoxGeometry(.06,.07,sL-.2),MS.gold,s*(stemHalfW-.03),1.23,sC));scene.add(mk(new THREE.BoxGeometry(.08,.18,sL-.1),MS.dkW,s*(stemHalfW-.04),.09,sC));
+      }
+    }else{
+      for(let s=-1;s<=1;s+=2){
+        scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
+    }
     scene.add(mk(new THREE.BoxGeometry(rW-.3,1.2,.05),MS.wain,0,.6,-rL/2+.025));scene.add(mk(new THREE.BoxGeometry(rW-.2,.07,.06),MS.gold,0,1.23,-rL/2+.03));
     // ── W3 "The Deepening Cabinet": a grown room is ONE undivided volume — the
     // added depth becomes hanging WALL for the salon-hang display, NOT a
@@ -2359,7 +2417,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // WINDOWS
     // ═══════════════════════════════════════════
     // Peristylium (exhibition) is an outdoor scene — no windows needed
-    const winPositions: [number,number][]=isExhibition
+    const winPositions: [number,number][]=isExhibition||W3   // W3: arched windows are placed by addArchWindow (wings + hall + back flanks)
       ?[]
       :layout.windowCount===2
       ?[[rW/2-2,-rL/2+.01],[-rW/2+2,-rL/2+.01]]
