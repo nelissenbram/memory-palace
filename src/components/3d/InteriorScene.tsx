@@ -1184,7 +1184,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // CHESTERFIELD SOFA (center-right area, facing fireplace)
     // ═══════════════════════════════════════════
-    const sofaZ=rL/2-3.5;
+    // W3 (owner #7): anchor the seating cluster to a FIXED distance from the
+    // hearth so a grown room keeps ONE cosy conversation group at the fireplace
+    // instead of a sofa marooned at the far end. rug + coffee table derive from
+    // sofaZ, so they follow.
+    const sofaZ=W3?(-rL/2+5.6):(rL/2-3.5);
     if(!isExhibition){
     addCol(0,sofaZ,1.25,0.55); // WS6-8: chesterfield
     // Sofa legs (raised off floor to avoid z-fighting)
@@ -1207,14 +1211,18 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     if(!isExhibition){
     for(let s=-1;s<=1;s+=2){
       if(s===-1&&layout.readingChair)continue; // reading chair occupies this spot
-      const ax=s*Math.min(3.5,rW/2-2.5),az=fpZ+2.5;
+      // W3 (#7): pull the armchairs in to flank the coffee table (part of the one
+      // hearth cluster), not spread wide against the walls.
+      const ax=s*Math.min(W3?2.3:3.5,rW/2-2.5),az=W3?(sofaZ-1.6):(fpZ+2.5);
       addCol(ax,az,0.65,0.55); // WS6-8: armchair
       // Legs (cylinders raised off floor)
       for(let abx of[-1,1])for(let abz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.03,.035,.18,6),MS.dkW,ax+abx*.4,.09,az+abz*.3));
-      // Seat
+      // Seat + a plumper cushion (owner #7: richer)
       scene.add(mk(new THREE.BoxGeometry(1,.12,.8),MS.leather,ax,.24,az));
+      scene.add(mk(new THREE.BoxGeometry(.86,.16,.66),MS.leather,ax,.36,az-.02));
       // Back
       scene.add(mk(new THREE.BoxGeometry(1,.42,.1),MS.leatherD,ax,.48,az+.35));
+      scene.add(mk(new THREE.BoxGeometry(.84,.34,.08),MS.leather,ax,.5,az+.31));
       // Arms
       for(let as=-1;as<=1;as+=2)scene.add(mk(new THREE.BoxGeometry(.12,.3,.7),MS.leatherD,ax+as*.44,.36,az));
     }
