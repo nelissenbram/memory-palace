@@ -490,14 +490,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // see the library/music/vitrine from the walking path. Make the wings SHALLOW +
     // WIDE + fully OPEN so each reads as a clearly-visible lit alcove flanking the
     // hearth the moment you enter the hall (bookcase/piano sit near the mouth).
-    const libWingD=3.2, libWingW=5.2;             // wing depth (−X, shallow) and mouth width (Z, wide/open)
-    const libWingZ0=-rL/2, libWingZ1=-rL/2+libWingW; // wing spans the back-left corner
-    const libWingX=-rW/2;                          // wing shares the main-room left wall line
-    const libFarX=libWingX-libWingD;               // wing far (outer) wall
-    // MUSIC wing — mirror off the back-RIGHT (piano + record player).
-    const musWingD=3.2, musWingW=5.2;
+    // owner round 3: recessed side-wings read as flat dim panels from the walking
+    // path. Drop the protrusion — the library/music are now dressed CORNERS of the
+    // hall itself (bookcase along the left wall, piano in the right corner), visible
+    // head-on like the vitrine. These are just the wall ZONES they occupy.
+    const libWingW=4.6;                              // library zone length on the back-left wall
+    const libWingZ0=-rL/2, libWingZ1=-rL/2+libWingW;
+    const musWingW=4.6;                              // music zone length on the back-right
     const musWingZ0=-rL/2, musWingZ1=-rL/2+musWingW;
-    const musWingX=rW/2, musFarX=musWingX+musWingD;
     // T-SHAPE — a NARROW entry stem at the door that WIDENS into the hall. Keep the
     // stem SHORTER now so the hall (and its three corners) is close to the entry and
     // in view, not 20m away down a corridor.
@@ -822,33 +822,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(g);
       addGlowCard(px,py+h*0.55,pz,1.1,rotY);
     };
-    // ── Arched WING PORTAL: frames a wing opening (in a ±rW/2 main wall) so the
-    // wing reads as a SEPARATE corner you enter through a portal (owner: the
-    // "afzonderlijke hoekjes" — library/music — must actually be made). Header wall
-    // lowers the opening to a portal height, pilasters frame the jambs, and a warm
-    // arched fanlight crowns it. sign=-1 left (library), +1 right (music). ──
-    const addWingPortal=(sign:number,z0:number,z1:number)=>{
-      const zc=(z0+z1)/2, ww=z1-z0, wx=sign*(rW/2), hdrY=3.1, hh=rH-hdrY;   // raised so the shallow alcove's contents (bookcase/piano/window) stay visible from the hall
-      const rotY=sign<0?Math.PI/2:-Math.PI/2;
-      scene.add(mk(new THREE.BoxGeometry(0.16,hh,ww),MS.wall,wx,hdrY+hh/2,zc));                    // header wall above the opening (both-sided box)
-      scene.add(mk(new THREE.BoxGeometry(0.34,0.22,ww),MS.dkW,wx-sign*0.12,hdrY-0.02,zc));         // lintel beam
-      for(const zz of[z0+0.16,z1-0.16]){                                                            // pilasters framing the jambs
-        scene.add(mk(new THREE.BoxGeometry(0.24,hdrY,0.34),MS.wain,wx-sign*0.12,hdrY/2,zz));
-        scene.add(mk(new THREE.BoxGeometry(0.32,0.16,0.42),MS.gold,wx-sign*0.12,hdrY-0.02,zz));    // capital
-        scene.add(mk(new THREE.BoxGeometry(0.32,0.16,0.42),MS.marble,wx-sign*0.12,0.08,zz));       // base
-      }
-      const fr=1.1, g=new THREE.Group();g.position.set(wx-sign*0.06,hdrY+0.16,zc);g.rotation.y=rotY;
-      g.add(new THREE.Mesh(new THREE.CircleGeometry(fr,22,0,Math.PI),new THREE.MeshBasicMaterial({color:"#FFEAC8"})));
-      const af=new THREE.Mesh(new THREE.RingGeometry(fr,fr+0.12,24,1,0,Math.PI),MS.gold);af.position.z=0.02;g.add(af);
-      scene.add(g);
-      addGlowCard(wx,hdrY+0.7,zc,1.4,rotY);
-    };
     if(W3){
-      // ── T-SHAPE walls: hall side walls (past each wing) → widening shoulders →
-      // narrow stem side walls → narrow front (door) wall; full back wall. The
-      // wing openings sit below wingZ1; the stem-to-hall gap is between the shoulders.
-      {const w=widenZ-libWingZ1;if(w>0.2){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,rH),MS.wall);m.rotation.y=Math.PI/2;m.position.set(-rW/2,rH/2,(libWingZ1+widenZ)/2);m.receiveShadow=true;scene.add(m);}}
-      {const w=widenZ-musWingZ1;if(w>0.2){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,rH),MS.wall);m.rotation.y=-Math.PI/2;m.position.set(rW/2,rH/2,(musWingZ1+widenZ)/2);m.receiveShadow=true;scene.add(m);}}
+      // ── T-SHAPE walls: FULL-length hall side walls → widening shoulders → narrow
+      // stem side walls → narrow front (door) wall; full back wall. (No wing
+      // openings any more — the library/music are dressed corners, not recesses.)
+      for(const s of[-1,1]){const hl=widenZ+rL/2;const m=new THREE.Mesh(new THREE.PlaneGeometry(hl,rH),MS.wall);m.rotation.y=s*(-Math.PI/2);m.position.set(s*(rW/2),rH/2,(-rL/2+widenZ)/2);m.receiveShadow=true;scene.add(m);} // hall side walls (full)
       for(const s of[-1,1]){const shW=rW/2-stemHalfW;const m=new THREE.Mesh(new THREE.PlaneGeometry(shW,rH),MS.wall);m.rotation.y=Math.PI;m.position.set(s*(stemHalfW+shW/2),rH/2,widenZ);m.receiveShadow=true;scene.add(m);} // widening shoulders — MUST face -Z (into the hall); MS.wall is single-sided so a +Z normal would read as an open wall
       for(const s of[-1,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(stemLen,rH),MS.wall);m.rotation.y=s*(-Math.PI/2);m.position.set(s*stemHalfW,rH/2,(widenZ+rL/2)/2);m.receiveShadow=true;scene.add(m);} // stem side walls
       scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));                                                                                                          // back wall (full width)
@@ -860,84 +838,69 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));
       const bw=new THREE.Mesh(new THREE.PlaneGeometry(rW,rH),MS.wall);bw.rotation.y=Math.PI;bw.position.set(0,rH/2,rL/2);bw.receiveShadow=true;scene.add(bw);
     }
-    // ── W3 LIBRARY WING — an additive straight-cornered nook off the back-left ──
+    // ── W3 HALL-CORNER NOOKS — the library, music and vitrine are FREESTANDING,
+    // clearly-visible corners of the one hall (not recessed side-wings, which read
+    // as flat dim panels from the walking path). Each corner: a rug + warm baked
+    // washes zone it, and the hero object faces into the room. ──
     if(W3){
-      const wcx=(libFarX+libWingX)/2, wcz=(libWingZ0+libWingZ1)/2;
-      const wfl=new THREE.Mesh(new THREE.PlaneGeometry(libWingD,libWingW),MS.floor);wfl.rotation.x=-Math.PI/2;wfl.position.set(wcx,0,wcz);wfl.receiveShadow=true;scene.add(wfl);
-      const wce=new THREE.Mesh(new THREE.PlaneGeometry(libWingD,libWingW),MS.ceil);wce.rotation.x=Math.PI/2;wce.position.set(wcx,rH,wcz);scene.add(wce);
-      const wfar=new THREE.Mesh(new THREE.PlaneGeometry(libWingW,rH),MS.wall);wfar.rotation.y=Math.PI/2;wfar.position.set(libFarX,rH/2,wcz);wfar.receiveShadow=true;scene.add(wfar);   // far wall, faces +X
-      scene.add(mk(new THREE.PlaneGeometry(libWingD,rH),MS.wall,wcx,rH/2,libWingZ0));                                                                                              // back wall extension, faces +Z
-      const wfr=new THREE.Mesh(new THREE.PlaneGeometry(libWingD,rH),MS.wall);wfr.rotation.y=Math.PI;wfr.position.set(wcx,rH/2,libWingZ1);wfr.receiveShadow=true;scene.add(wfr);     // wing front wall, faces -Z
-      // wing wainscot (far + front + back)
-      scene.add(mk(new THREE.BoxGeometry(.05,1.2,libWingW-.1),MS.wain,libFarX+.025,.6,wcz));scene.add(mk(new THREE.BoxGeometry(.06,.07,libWingW-.1),MS.gold,libFarX+.03,1.23,wcz));
-      scene.add(mk(new THREE.BoxGeometry(libWingD-.1,1.2,.05),MS.wain,wcx,.6,libWingZ1-.025));scene.add(mk(new THREE.BoxGeometry(libWingD-.1,.07,.06),MS.gold,wcx,1.23,libWingZ1-.03));
-      // ── wing lighting + LIBRARY furnishing: a warm window on the far wall, a
-      // floor pool, a reading chair + lamp, and a writing desk. ──
-      addArchWindow(wcx,0.95,libWingZ0+0.05,0,2.6,2.1);   // arched window on the wing's back wall (far wall holds the bookcase) — light rakes the shelves, reads lit from the hall
-      const wp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());wp.rotation.x=-Math.PI/2;wp.position.set(libFarX+1.9,0.02,wcz);wp.renderOrder=1;scene.add(wp);
-      // baked washes so the nook reads lit (no new dynamic light): the window wall + a warm fill
-      addGlowCard(libFarX+0.35,2.1,wcz,2.7,Math.PI/2);   // window-wall wash
-      addGlowCard(wcx,rH-0.5,wcz,2.6,0);                   // ceiling wash
-      addGlowCard(libWingX-0.4,2.0,wcz,2.6,-Math.PI/2);   // portal-mouth wash (reads lit from the hall)
-      addGlowCard(wcx,1.5,wcz,2.4,0);                       // low warm fill
-      const rcx=libFarX+2.05, wShade=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.9,roughness:.6});
-      scene.add(mk(new THREE.BoxGeometry(0.82,0.42,0.82),MS.leather,rcx,0.21,wcz-1.2));                               // reading chair base
-      scene.add(mk(new THREE.BoxGeometry(0.76,0.16,0.76),MS.leather,rcx,0.5,wcz-1.2));                                // cushion
-      scene.add(mk(new THREE.BoxGeometry(0.16,0.9,0.82),MS.leatherD,rcx-0.33,0.9,wcz-1.2));                           // wingback
-      for(const zz of[-0.4,0.4])scene.add(mk(new THREE.BoxGeometry(0.7,0.3,0.13),MS.leatherD,rcx,0.62,wcz-1.2+zz));   // arms
-      scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,rcx+0.55,0.75,wcz-1.65));                       // floor-lamp pole
-      scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),wShade,rcx+0.55,1.62,wcz-1.65));                      // warm shade
-      scene.add(mk(new THREE.BoxGeometry(1.5,0.06,0.72),MS.dkW,rcx,0.78,wcz+1.4));                                    // writing desk top
-      scene.add(mk(new THREE.BoxGeometry(1.5,0.04,0.72),MS.gold,rcx,0.81,wcz+1.4));                                   // gilt inlay
-      for(const[lx,lz] of [[-0.65,-0.3],[0.65,-0.3],[-0.65,0.3],[0.65,0.3]] as [number,number][])scene.add(mk(new THREE.BoxGeometry(0.07,0.78,0.07),MS.dkW,rcx+lx,0.39,wcz+1.4+lz)); // legs
-      scene.add(mk(new THREE.BoxGeometry(0.5,0.08,0.5),MS.leather,rcx-0.35,0.46,wcz+0.82));                           // desk chair seat
-      scene.add(mk(new THREE.BoxGeometry(0.5,0.5,0.08),MS.leatherD,rcx-0.35,0.72,wcz+0.58));                          // desk chair back
-      // ── MUSIC WING (mirror off the back-right): grand piano + record player ──
-      const mcx=(musFarX+musWingX)/2, mcz=(musWingZ0+musWingZ1)/2;
-      const mfl=new THREE.Mesh(new THREE.PlaneGeometry(musWingD,musWingW),MS.floor);mfl.rotation.x=-Math.PI/2;mfl.position.set(mcx,0,mcz);mfl.receiveShadow=true;scene.add(mfl);
-      const mce=new THREE.Mesh(new THREE.PlaneGeometry(musWingD,musWingW),MS.ceil);mce.rotation.x=Math.PI/2;mce.position.set(mcx,rH,mcz);scene.add(mce);
-      const mfar=new THREE.Mesh(new THREE.PlaneGeometry(musWingW,rH),MS.wall);mfar.rotation.y=-Math.PI/2;mfar.position.set(musFarX,rH/2,mcz);mfar.receiveShadow=true;scene.add(mfar);
-      scene.add(mk(new THREE.PlaneGeometry(musWingD,rH),MS.wall,mcx,rH/2,musWingZ0));
-      const mfr=new THREE.Mesh(new THREE.PlaneGeometry(musWingD,rH),MS.wall);mfr.rotation.y=Math.PI;mfr.position.set(mcx,rH/2,musWingZ1);mfr.receiveShadow=true;scene.add(mfr);
-      scene.add(mk(new THREE.BoxGeometry(.05,1.2,musWingW-.1),MS.wain,musFarX-.025,.6,mcz));scene.add(mk(new THREE.BoxGeometry(.06,.07,musWingW-.1),MS.gold,musFarX-.03,1.23,mcz));
-      scene.add(mk(new THREE.BoxGeometry(musWingD-.1,1.2,.05),MS.wain,mcx,.6,musWingZ1-.025));scene.add(mk(new THREE.BoxGeometry(musWingD-.1,.07,.06),MS.gold,mcx,1.23,musWingZ1-.03));
-      addArchWindow(musFarX-0.05,0.95,mcz,-Math.PI/2,2.6,2.1);   // big bright arched window fills the music arm's far end
-      const mpp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());mpp.rotation.x=-Math.PI/2;mpp.position.set(musFarX-1.9,0.02,mcz);mpp.renderOrder=1;scene.add(mpp);
-      addGlowCard(musFarX-0.35,2.1,mcz,2.7,-Math.PI/2);addGlowCard(mcx,rH-0.5,mcz,2.6,0);
-      addGlowCard(musWingX+0.4,2.0,mcz,2.6,Math.PI/2);addGlowCard(mcx,1.5,mcz,2.4,0);   // portal-mouth wash + low fill
-      // grand piano (glossy black) — body, angled lid, legs, keyboard, bench
+      const wShade=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.9,roughness:.6});
+      // ═ LIBRARY — back-LEFT corner. The bookcase runs along the left wall (built in
+      //   the bookcase block at bsX). Here: a reading chair + floor lamp + side table
+      //   + rug turn it into a nook, and a writing desk sits against the back wall. ═
+      const libZc=(libWingZ0+libWingZ1)/2, rcx=-rW/2+1.7;
+      const lrug=new THREE.Mesh(new THREE.PlaneGeometry(2.8,3.4),MS.rug);lrug.rotation.x=-Math.PI/2;lrug.position.set(-rW/2+1.8,0.012,libZc);lrug.renderOrder=1;scene.add(lrug);
+      scene.add(mk(new THREE.BoxGeometry(0.9,0.42,0.9),MS.leather,rcx,0.21,libZc));                    // reading chair base
+      scene.add(mk(new THREE.BoxGeometry(0.82,0.16,0.82),MS.leather,rcx,0.5,libZc));                   // cushion
+      scene.add(mk(new THREE.BoxGeometry(0.16,0.95,0.82),MS.leatherD,rcx-0.37,0.95,libZc));            // wingback (against the bookcase wall; you face the room)
+      for(const zz of[-0.4,0.4])scene.add(mk(new THREE.BoxGeometry(0.7,0.3,0.13),MS.leatherD,rcx,0.62,libZc+zz)); // arms
+      scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,rcx+0.3,0.75,libZc-1.0));        // floor-lamp pole
+      scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),wShade,rcx+0.3,1.62,libZc-1.0));       // warm shade
+      scene.add(mk(new THREE.CylinderGeometry(0.26,0.26,0.5,12),MS.dkW,rcx+0.4,0.25,libZc+0.9));       // side table
+      // writing desk against the back wall (faces +Z into the room)
+      const dkx=-rW/2+1.8;
+      scene.add(mk(new THREE.BoxGeometry(1.6,0.06,0.7),MS.dkW,dkx,0.78,-rL/2+0.55));                   // desk top
+      scene.add(mk(new THREE.BoxGeometry(1.6,0.04,0.7),MS.gold,dkx,0.81,-rL/2+0.55));                  // gilt inlay
+      for(const[lx,lz] of [[-0.7,-0.28],[0.7,-0.28],[-0.7,0.28],[0.7,0.28]] as [number,number][])scene.add(mk(new THREE.BoxGeometry(0.07,0.78,0.07),MS.dkW,dkx+lx,0.39,-rL/2+0.55+lz));
+      scene.add(mk(new THREE.BoxGeometry(0.5,0.08,0.5),MS.leather,dkx,0.46,-rL/2+1.2));                // desk chair
+      scene.add(mk(new THREE.BoxGeometry(0.5,0.5,0.08),MS.leatherD,dkx,0.72,-rL/2+1.44));
+      addGlowCard(-rW/2+0.4,2.0,libZc,2.8,Math.PI/2);   // wall wash over the bookcase
+      addGlowCard(-rW/2+1.6,rH-0.5,libZc,2.6,0);         // ceiling wash
+      addGlowCard(-rW/2+1.6,1.4,libZc,2.4,0);            // low warm fill
+      // ═ MUSIC — back-RIGHT corner: grand piano (keys toward the entry) + record player + rug ═
+      const musZc=(musWingZ0+musWingZ1)/2;
+      const mrug=new THREE.Mesh(new THREE.PlaneGeometry(3.4,3.0),MS.rug);mrug.rotation.x=-Math.PI/2;mrug.position.set(rW/2-2.0,0.012,-rL/2+2.4);mrug.renderOrder=1;scene.add(mrug);
       const pnMat=new THREE.MeshStandardMaterial({color:"#141210",roughness:.28,metalness:.12});
-      const pcx=musFarX-2.05, pcz=mcz-0.2;
-      scene.add(mk(new THREE.BoxGeometry(1.5,0.26,2.0),pnMat,pcx,0.92,pcz));                                          // body
-      scene.add(mk(new THREE.BoxGeometry(1.5,0.62,0.1),pnMat,pcx,0.48,pcz-0.95));scene.add(mk(new THREE.BoxGeometry(0.1,0.62,2.0),pnMat,pcx-0.7,0.48,pcz)); // aprons
+      const pcx=rW/2-2.0, pcz=-rL/2+2.4;
+      scene.add(mk(new THREE.BoxGeometry(1.5,0.26,2.0),pnMat,pcx,0.92,pcz));                           // body
+      scene.add(mk(new THREE.BoxGeometry(1.5,0.62,0.1),pnMat,pcx,0.48,pcz-0.95));scene.add(mk(new THREE.BoxGeometry(0.1,0.62,2.0),pnMat,pcx+0.7,0.48,pcz)); // aprons
       for(const[lx,lz] of [[-0.6,-0.85],[0.6,-0.85],[0,0.9]] as [number,number][])scene.add(mk(new THREE.CylinderGeometry(0.05,0.06,0.8,8),pnMat,pcx+lx,0.4,pcz+lz));
-      scene.add(mk(new THREE.BoxGeometry(1.3,0.06,0.32),new THREE.MeshStandardMaterial({color:"#F2ECDA",roughness:.4}),pcx,0.86,pcz+0.92)); // keys
-      {const lid=mk(new THREE.BoxGeometry(1.44,0.03,1.9),pnMat,pcx-0.35,1.42,pcz-0.05);lid.rotation.z=0.4;scene.add(lid);}                      // raised lid
-      {const prop=mk(new THREE.CylinderGeometry(0.015,0.015,0.9,6),MS.gold,pcx-0.55,1.15,pcz-0.6);prop.rotation.z=0.3;scene.add(prop);}         // prop stick
+      scene.add(mk(new THREE.BoxGeometry(1.3,0.06,0.32),new THREE.MeshStandardMaterial({color:"#F2ECDA",roughness:.4}),pcx,0.86,pcz+0.92)); // keys (front, +z)
+      {const lid=mk(new THREE.BoxGeometry(1.44,0.03,1.9),pnMat,pcx+0.35,1.42,pcz-0.05);lid.rotation.z=-0.4;scene.add(lid);}                     // raised lid (opens toward the room)
+      {const prop=mk(new THREE.CylinderGeometry(0.015,0.015,0.9,6),MS.gold,pcx+0.55,1.15,pcz-0.6);prop.rotation.z=-0.3;scene.add(prop);}        // prop stick
       scene.add(mk(new THREE.BoxGeometry(1.0,0.09,0.42),MS.leather,pcx,0.5,pcz+1.55));                                                          // bench
       for(const[lx,lz] of [[-0.42,-0.16],[0.42,-0.16],[-0.42,0.16],[0.42,0.16]] as [number,number][])scene.add(mk(new THREE.BoxGeometry(0.05,0.5,0.05),MS.dkW,pcx+lx,0.25,pcz+1.55+lz));
-      // record player on a cabinet, against the front wall
-      const rpx=musWingX+0.95, rpz=musWingZ1-0.7;
+      // record player on a cabinet against the back wall
+      const rpx=rW/2-1.0, rpz=-rL/2+0.5;
       scene.add(mk(new THREE.BoxGeometry(0.85,0.92,0.6),MS.dkW,rpx,0.46,rpz));
       scene.add(mk(new THREE.BoxGeometry(0.75,0.08,0.52),new THREE.MeshStandardMaterial({color:"#1A1510",roughness:.3}),rpx,0.96,rpz));
       scene.add(mk(new THREE.CylinderGeometry(0.17,0.17,0.02,20),new THREE.MeshStandardMaterial({color:"#0A0806",roughness:.5}),rpx,1.01,rpz));
       scene.add(mk(new THREE.CylinderGeometry(0.04,0.04,0.016,12),MS.gold,rpx,1.02,rpz));
-      scene.add(mk(new THREE.BoxGeometry(0.02,0.28,0.02),MS.iron,rpx+0.28,1.14,rpz+0.18));                                                      // horn stem
-      {const horn=mk(new THREE.CylinderGeometry(0.16,0.04,0.28,12,1,true),MS.gold,rpx+0.28,1.32,rpz+0.18);horn.rotation.z=0.5;scene.add(horn);} // brass horn
-      // ── Frame each wing as a distinct ARCHED PORTAL (separate corner) ──
-      addWingPortal(-1,libWingZ0,libWingZ1);
-      addWingPortal(1,musWingZ0,musWingZ1);
-      // ── Windows ONLY on the far end walls (owner 2026-08-17: "enkel aan de
-      // overkant verre zijden ramen") — the two wing far walls (above) + the back
-      // wall flanking the fireplace. The long media walls stay clear for the hang.
+      scene.add(mk(new THREE.BoxGeometry(0.02,0.28,0.02),MS.iron,rpx,1.14,rpz+0.2));                                                            // horn stem
+      {const horn=mk(new THREE.CylinderGeometry(0.16,0.04,0.28,12,1,true),MS.gold,rpx,1.32,rpz+0.2);horn.rotation.x=-0.6;scene.add(horn);}      // brass horn
+      addGlowCard(rW/2-0.4,2.0,musZc,2.8,-Math.PI/2);   // wall wash
+      addGlowCard(rW/2-1.6,rH-0.5,musZc,2.6,0);          // ceiling wash
+      addGlowCard(rW/2-1.6,1.4,musZc,2.4,0);             // low warm fill
+      // ── Windows ONLY on far end walls (owner: "enkel aan de overkant verre zijden") —
+      // back wall flanking the fireplace + one high on each side wall over each corner. ──
       for(const s of[-1,1])addArchWindow(s*(rW/2-1.9),1.5,-rL/2+0.06,0,1.3,1.5);                 // back wall, flanking the fireplace
+      addArchWindow(-rW/2+0.06,rH-1.7,libZc,Math.PI/2,1.2,0.9);                                   // high over the library
+      addArchWindow(rW/2-0.06,rH-1.7,musZc,-Math.PI/2,1.2,0.9);                                   // high over the music corner
     }
     if(W3){
-      // T-shape wainscot: hall side walls (past each wing) at ±rW/2, then the stem
-      // side walls at ±stemHalfW — never at ±rW/2 in the stem (that's cut away).
+      // T-shape wainscot: FULL hall side walls at ±rW/2, then the stem side walls at
+      // ±stemHalfW — never at ±rW/2 in the stem (that's cut away).
       for(const s of[-1,1]){
-        const wingZ1=s<0?libWingZ1:musWingZ1;
-        const hL=widenZ-wingZ1, hC=(wingZ1+widenZ)/2;
+        const hL=widenZ+rL/2, hC=(-rL/2+widenZ)/2;
         if(hL>0.5){scene.add(mk(new THREE.BoxGeometry(.05,1.2,hL-.3),MS.wain,s*(rW/2-.025),.6,hC));scene.add(mk(new THREE.BoxGeometry(.06,.07,hL-.2),MS.gold,s*(rW/2-.03),1.23,hC));scene.add(mk(new THREE.BoxGeometry(.08,.18,hL-.1),MS.dkW,s*(rW/2-.04),.09,hC));}
         const sL=rL/2-widenZ, sC=(widenZ+rL/2)/2;
         scene.add(mk(new THREE.BoxGeometry(.05,1.2,sL-.3),MS.wain,s*(stemHalfW-.025),.6,sC));scene.add(mk(new THREE.BoxGeometry(.06,.07,sL-.2),MS.gold,s*(stemHalfW-.03),1.23,sC));scene.add(mk(new THREE.BoxGeometry(.08,.18,sL-.1),MS.dkW,s*(stemHalfW-.04),.09,sC));
@@ -1876,7 +1839,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // BOOKSHELVES (left wall, floor to ceiling)
     // ═══════════════════════════════════════════
     if(!isExhibition){
-    const bsX=W3?libFarX+.35:-rW/2+.35; // W3: library moves onto the wing's far wall
+    const bsX=-rW/2+.35; // library bookcase runs along the back-left of the left hall wall (W3 and legacy alike)
     const bookPalette=["#6B1A1A","#1A2744","#2A4A2A","#4A1A2A","#8B6914","#3A2010","#1A3A4A","#5A2A3A","#2A3A1A","#6A4A2A","#3A1A3A","#1A4A3A","#7A3A1A","#2A2A4A","#4A3A1A","#5A1A1A"];
     let bSeed=0;for(const c of (actualRoomId||roomId))bSeed=(bSeed*31+c.charCodeAt(0))>>>0;
     const bRng=()=>{bSeed=(bSeed*16807+1)>>>0;return(bSeed&0x7fffffff)/0x7fffffff;};
