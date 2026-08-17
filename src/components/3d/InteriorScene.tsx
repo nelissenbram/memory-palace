@@ -3062,6 +3062,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         else if(_rcam==="entry"){camera.position.set(0,1.75,rWRef.l/2-1.2);camera.lookAt(0,1.6,-rWRef.l/2);} // eye-level at the door, looking straight down the stem into the hall
         else if(_rcam==="libportal"){camera.position.set(2.6,2.2,-rWRef.l/2+6.5);camera.lookAt(-rWRef.w/2+0.4,1.5,-rWRef.l/2+2.6);} // hall → library portal
         else if(_rcam==="musportal"){camera.position.set(-2.6,2.2,-rWRef.l/2+6.5);camera.lookAt(rWRef.w/2-0.4,1.5,-rWRef.l/2+2.6);}  // hall → music portal
+        else if(_rcam==="front"){camera.position.set(0,2.3,-rWRef.l/2+7);camera.lookAt(1.5,1.0,rWRef.l/2);}   // mid-hall → the two FRONT corners (library left, vitrine right)
+        else if(_rcam==="vitrine"){camera.position.set(1.5,1.8,0);camera.lookAt(rWRef.w/2,1.2,rWRef.l/2-(rWRef.l*0.28<7?rWRef.l*0.28:7)-1);}  // → front-right corner cabinet
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
