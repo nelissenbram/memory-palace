@@ -818,24 +818,46 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         const shaft=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.075*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
         shaft.renderOrder=2;scene.add(shaft);
       }
-      // ── Per-bay COSY DRESSING — a rug, a warm floor lamp and a potted plant in
-      // each ADDED bay (the central furnished bay is left alone), off the central
-      // walk on alternating sides, so a long room never reads as empty floor. ──
+      // ── Per-bay PURPOSEFUL vignettes (owner: a JOURNEY of zones, not scattered
+      // objects). Each ADDED bay is a deliberate little room arranged on its own
+      // rug: front bays = READING nooks, back bays = GALLERY viewing benches, so
+      // the walk reads living → reading → gallery → hearth. Central (living) and
+      // back (hearth) bays are left to the existing furniture. ──
+      const fabricMat=new THREE.MeshStandardMaterial({color:(wing as any)?.accent||"#8A5A44",roughness:.92});
       const rugMat=new THREE.MeshStandardMaterial({color:"#6E3B2E",roughness:.95});
       const shadeMat=new THREE.MeshStandardMaterial({color:"#FFE6BE",emissive:new THREE.Color("#FFC880"),emissiveIntensity:.9,roughness:.6});
       const potMat=new THREE.MeshStandardMaterial({color:"#A85A38",roughness:.85});
       const leafMat=new THREE.MeshStandardMaterial({color:"#4E6B3A",roughness:.9});
+      // a wingchair reading corner, grouped to one side, facing the central walk
+      const readingNook=(pz: number,side: number)=>{
+        const px=side*(rW*0.24);
+        scene.add(mk(new THREE.BoxGeometry(2.5,0.014,2.2),rugMat,px,0.015,pz));                     // rug anchors the group
+        scene.add(mk(new THREE.BoxGeometry(0.82,0.4,0.82),fabricMat,px,0.2,pz));                    // upholstered base
+        scene.add(mk(new THREE.BoxGeometry(0.74,0.14,0.74),fabricMat,px,0.47,pz));                  // seat cushion
+        scene.add(mk(new THREE.BoxGeometry(0.16,0.9,0.82),fabricMat,px+side*0.35,0.92,pz));         // wingback (wall side)
+        for(const zz of[-0.4,0.4])scene.add(mk(new THREE.BoxGeometry(0.68,0.3,0.13),fabricMat,px,0.62,pz+zz)); // arms
+        scene.add(mk(new THREE.CylinderGeometry(0.22,0.22,0.06,10),MS.dkW,px-side*0.72,0.55,pz-0.35)); // side table top
+        scene.add(mk(new THREE.CylinderGeometry(0.03,0.03,0.5,6),MS.dkW,px-side*0.72,0.28,pz-0.35));   // table leg
+        scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,px+side*0.55,0.75,pz+0.55));   // floor-lamp pole
+        scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),shadeMat,px+side*0.55,1.62,pz+0.55));// warm shade (per-nook light)
+        scene.add(mk(new THREE.BoxGeometry(0.32,0.1,0.24),MS.gold,px-side*0.72,0.63,pz-0.35));         // a book on the table
+      };
+      // a viewing bench facing the salon-hang wall + a plant — a gallery pause
+      const galleryBench=(pz: number)=>{
+        const bx=rW*0.16;
+        scene.add(mk(new THREE.BoxGeometry(2.2,0.014,1.5),rugMat,bx,0.015,pz));                     // rug
+        scene.add(mk(new THREE.BoxGeometry(1.5,0.34,0.5),MS.dkW,bx,0.17,pz));                        // bench base
+        scene.add(mk(new THREE.BoxGeometry(1.42,0.1,0.44),fabricMat,bx,0.39,pz));                    // bench cushion
+        scene.add(mk(new THREE.CylinderGeometry(0.18,0.14,0.42,10),potMat,-rW*0.3,0.21,pz));         // planter
+        scene.add(mk(new THREE.SphereGeometry(0.33,8,7),leafMat,-rW*0.3,0.7,pz));
+        scene.add(mk(new THREE.SphereGeometry(0.23,7,6),leafMat,-rW*0.3+0.14,0.62,pz+0.06));         // foliage
+      };
       let bIdx=0;
       for(let i=0;i<edges.length-1;i++){
-        const z0=edges[i],z1=edges[i+1],pz=(z0+z1)/2;
-        if(Math.abs(pz)<zStep*0.5)continue; // leave the central (furnished) bay
-        const side=(bIdx++%2===0)?1:-1, lx=side*(rW*0.32), px=-side*(rW*0.32);
-        scene.add(mk(new THREE.BoxGeometry(2.6,0.014,Math.min(2.6,(z1-z0)*0.62)),rugMat,0,0.015,pz));   // rug
-        scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,lx,0.75,pz-0.3));               // lamp pole
-        scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),shadeMat,lx,1.62,pz-0.3));            // warm shade
-        scene.add(mk(new THREE.CylinderGeometry(0.18,0.14,0.42,10),potMat,px,0.21,pz+0.3));             // pot
-        scene.add(mk(new THREE.SphereGeometry(0.34,8,7),leafMat,px,0.72,pz+0.3));
-        scene.add(mk(new THREE.SphereGeometry(0.24,7,6),leafMat,px+0.15,0.64,pz+0.36));                 // foliage
+        const pz=(edges[i]+edges[i+1])/2;
+        if(Math.abs(pz)<zStep*0.5)continue;                 // leave the central (living) bay
+        const side=(bIdx++%2===0)?1:-1;
+        if(pz>0)readingNook(pz,side); else galleryBench(pz); // front → reading, back → gallery
       }
     }
     } // end shell isExhibition branch
