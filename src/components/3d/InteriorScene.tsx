@@ -293,7 +293,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const aw={active:false,x:0,z:0,fx:0,fz:0,detour:null as {x:number,z:number}|null,target:null as FocusTarget|null};
     // ── W2 (WS6-8): cheap AABB colliders around the big furniture ──
     const colliders: {x:number,z:number,hw:number,hd:number}[]=[];
-    const addCol=(x: number,z: number,hw: number,hd: number)=>{if(W2)colliders.push({x,z,hw,hd});};
+    // owner 2026-08-17: under W3 you walk THROUGH the furniture — only the four
+    // "solid" pieces (fireplace, vitrine, gramophone, bookcase) still block, so
+    // pass solid=true for those. Legacy (flag-off) keeps every collider.
+    const addCol=(x: number,z: number,hw: number,hd: number,solid=false)=>{if(W2&&(!W3||solid))colliders.push({x,z,hw,hd});};
     const COL_R=0.35; // walker radius
     const resolveColliders=(p: THREE.Vector3)=>{
       for(const c of colliders){
@@ -814,6 +817,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const arch=new THREE.Mesh(new THREE.RingGeometry(r,r+0.11,24,1,0,Math.PI),MS.wain);arch.position.set(0,h,0.04);g.add(arch);                          // arch surround
       const sill=new THREE.Mesh(new THREE.BoxGeometry(w+0.3,0.1,0.18),MS.gold);sill.position.set(0,0,0.06);g.add(sill);                                    // sill
       const key=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.18,0.16),MS.gold);key.position.set(0,h+r-0.02,0.06);g.add(key);                                // keystone
+      // muntins / crossbars — a slim dark glazing grid so it reads as a real window
+      const bar=(bw:number,bh:number,bx:number,by:number)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,0.022),MS.dkW);m.position.set(bx,by,0.035);g.add(m);};
+      bar(0.028,h,0,h/2);                          // vertical mullion (lower)
+      bar(w-0.02,0.028,0,h*0.55);                  // transom
+      bar(w*0.7,0.026,0,h*0.24);                   // lower rail
+      for(const a of[Math.PI*0.34,Math.PI*0.66]){const rb=new THREE.Mesh(new THREE.BoxGeometry(0.024,r*0.94,0.022),MS.dkW);rb.position.set(Math.cos(a)*r*0.46,h+Math.sin(a)*r*0.46,0.035);rb.rotation.z=a-Math.PI/2;g.add(rb);} // arch bars
+      bar(0.026,r*0.9,0,h+r*0.45);                 // arch centre bar
       scene.add(g);
       addGlowCard(px,py+h*0.55,pz,1.1,rotY);
     };
@@ -872,12 +882,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           bx+=bwi+0.01;k=(k*1103515245+12345)>>>8;
         }
       }
+      addCol(-rW/2+0.55,bookC,0.42,BOOKSHELF_LEN/2,true); // library bookcase (left wall) — solid
+      addCol(saXc,widenZ-0.25,saLen/2,0.35,true);          // library L-arm (shoulder) — solid
       addGlowCard(-rW/2+0.4,2.0,libZc,2.8,Math.PI/2);   // wall wash over the bookcase
       addGlowCard(-rW/2+1.6,rH-0.5,libZc,2.6,0);         // ceiling wash
       // ═ MUSIC — BACK-RIGHT corner (owner: NO piano — a beautiful gramophone instead).
       //   A walnut console with a turntable + a large flared brass horn, a stack of
       //   records, and a listening stool on a rug. ═
       const musZc=(musWingZ0+musWingZ1)/2, gcx=rW/2-1.15, gcz=-rL/2+1.1;
+      addCol(gcx,gcz,0.75,0.5,true); // gramophone — solid
       const mrug=new THREE.Mesh(new THREE.PlaneGeometry(3.0,3.0),MS.rug);mrug.rotation.x=-Math.PI/2;mrug.position.set(rW/2-1.7,0.012,-rL/2+1.7);mrug.renderOrder=1;scene.add(mrug);
       const brass=new THREE.MeshStandardMaterial({color:"#C9A24B",roughness:.26,metalness:.9});
       const brassD=new THREE.MeshStandardMaterial({color:"#997731",roughness:.35,metalness:.85});
@@ -1337,7 +1350,28 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     const fpX=0,fpZ=-rL/2+.3;
     if(!isExhibition){
-    addCol(fpX,fpZ,1.4,0.55); // WS6-8: fireplace + hearth slab
+    addCol(fpX,fpZ,1.4,0.55,true); // WS6-8: fireplace + hearth slab (solid — you can't walk through it)
+    if(W3){
+      // ── carved marble chimneypiece: jamb pilasters, friezed breast with corbels,
+      // a layered bullnose mantel shelf, a two-tier stone hearth + brass andirons ──
+      const fbW=1.7,fbH=1.16;
+      scene.add(mk(new THREE.BoxGeometry(fbW,fbH,.08),new THREE.MeshStandardMaterial({color:"#150F0C",roughness:.93}),fpX,.62,fpZ+.03));  // dark firebox back
+      scene.add(mk(new THREE.BoxGeometry(fbW+.5,fbH+.12,.34),MS.brickD,fpX,.62,fpZ-.06));                                                  // firebrick mass
+      for(const s of[-1,1]){
+        scene.add(mk(new THREE.BoxGeometry(.26,fbH+.08,.44),MS.marble,fpX+s*(fbW/2+.16),.6,fpZ+.06));                                      // jamb pilaster
+        scene.add(mk(new THREE.BoxGeometry(.3,.1,.48),MS.gold,fpX+s*(fbW/2+.16),1.17,fpZ+.06));                                            // pilaster cap
+        scene.add(mk(new THREE.BoxGeometry(.3,.1,.48),MS.marble,fpX+s*(fbW/2+.16),.1,fpZ+.06));                                            // base
+      }
+      scene.add(mk(new THREE.BoxGeometry(fbW+.6,.26,.42),MS.marble,fpX,1.28,fpZ+.06));                                                     // frieze
+      scene.add(mk(new THREE.BoxGeometry(.34,.2,.46),MS.gold,fpX,1.28,fpZ+.08));                                                           // centre tablet
+      for(const s of[-1,1])scene.add(mk(new THREE.BoxGeometry(.14,.16,.52),MS.marble,fpX+s*(fbW/2+.05),1.42,fpZ+.06));                     // corbels
+      scene.add(mk(new THREE.BoxGeometry(fbW+.94,.1,.56),MS.marble,fpX,1.5,fpZ+.08));                                                      // mantel shelf
+      scene.add(mk(new THREE.BoxGeometry(fbW+1.02,.05,.62),MS.marble,fpX,1.56,fpZ+.09));                                                   // bullnose
+      scene.add(mk(new THREE.BoxGeometry(fbW+.9,.03,.6),MS.gold,fpX,1.6,fpZ+.09));                                                         // gilt lip
+      scene.add(mk(new THREE.BoxGeometry(fbW+1.1,.1,.72),MS.marble,fpX,.05,fpZ+.22));                                                      // hearth tier 1
+      scene.add(mk(new THREE.BoxGeometry(fbW+.7,.06,.5),MS.marble,fpX,.13,fpZ+.16));                                                       // hearth tier 2
+      for(const s of[-1,1]){scene.add(mk(new THREE.CylinderGeometry(.02,.02,.42,8),MS.bronze,fpX+s*.38,.21,fpZ+.14));scene.add(mk(new THREE.SphereGeometry(.045,8,8),MS.gold,fpX+s*.38,.44,fpZ+.14));scene.add(mk(new THREE.BoxGeometry(.03,.03,.34),MS.iron,fpX+s*.38,.06,fpZ+.18));} // andirons
+    }else{
     scene.add(mk(new THREE.BoxGeometry(2.8,.12,.5),MS.marble,fpX,1.3,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2.6,.08,.4),MS.gold,fpX,1.24,fpZ+.02));
     scene.add(mk(new THREE.BoxGeometry(1.6,1.1,.3),MS.brickD,fpX,.55,fpZ));
@@ -1345,15 +1379,21 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.add(mk(new THREE.BoxGeometry(.2,1.1,.3),MS.brick,fpX+.9,.55,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2,.18,.3),MS.brick,fpX,1.19,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2.6,.06,.6),MS.marble,fpX,.03,fpZ+.15));
+    }
     // W2 (WS6-9): the fire point is one of the ≤4 budget lights — mobile
     // finally gets the flicker too (it lost every other decorative light).
     const fireL=new THREE.PointLight("#FF8030",(W2||!isMobileGPU())?.6:0,5);fireL.position.set(fpX,.5,fpZ+.2);if(W2||!isMobileGPU())scene.add(fireL);
     animTex.push({type:"fire",light:fireL});
     for(let l=0;l<3;l++){const log=mk(new THREE.CylinderGeometry(.06,.07,.5+Math.random()*.3,6),MS.dkW,fpX-.25+l*.25,.12,fpZ+.1);log.rotation.z=Math.PI/2+Math.random()*.2;scene.add(log);}
     for(let f=0;f<5;f++){const fl2=new THREE.Mesh(new THREE.ConeGeometry(.06+Math.random()*.04,.2+Math.random()*.15,4),f%2?MS.fire:MS.fireG);fl2.position.set(fpX-.2+f*.1,.2+Math.random()*.1,fpZ+.1);animTex.push({type:"flame",mesh:fl2,baseY:.2+Math.random()*.1,phase:Math.random()*6});scene.add(fl2);}
-    scene.add(mk(new THREE.BoxGeometry(2.4,rH-1.3,.08),MS.wall,fpX,1.3+(rH-1.3)/2,fpZ-.02));
-    scene.add(mk(new THREE.BoxGeometry(.2,.3,.12),MS.bronze,fpX,1.45,fpZ+.15));
-    scene.add(mk(new THREE.CylinderGeometry(.12,.12,.02,16),MS.gold,fpX,1.62,fpZ+.15));
+    if(W3){
+      scene.add(mk(new THREE.BoxGeometry(2.0,rH-1.62,.12),MS.wall,fpX,1.62+(rH-1.62)/2,fpZ+.03));       // chimney breast above the mantel
+      scene.add(mk(new THREE.BoxGeometry(2.24,.06,.16),MS.gold,fpX,rH-.12,fpZ+.05));                     // ceiling cornice
+    }else{
+      scene.add(mk(new THREE.BoxGeometry(2.4,rH-1.3,.08),MS.wall,fpX,1.3+(rH-1.3)/2,fpZ-.02));
+      scene.add(mk(new THREE.BoxGeometry(.2,.3,.12),MS.bronze,fpX,1.45,fpZ+.15));
+      scene.add(mk(new THREE.CylinderGeometry(.12,.12,.02,16),MS.gold,fpX,1.62,fpZ+.15));
+    }
     } // end !isExhibition fireplace
 
     // ═══════════════════════════════════════════
@@ -1698,7 +1738,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // z-fight sweep r2: +.06 put the makeArtwork glow plane (z −0.035) 5mm off the
       // chimney-breast face (fpZ+.02) — shimmer; +.09 gives it real clearance.
       // W3 (owner): raise the hero so its plaque clears the mantel clock/ornaments.
-      mountArtwork(om,t,fpX,W3?2.95:2.4,fpZ+.09,0,W2?2.0:1.7);
+      mountArtwork(om,t,fpX,W3?2.5:2.4,fpZ+.09,0,W2?2.0:1.7);   // owner: dropped to just above the mantel
     }else if(bigPaintMem){
       // Frame only shown when there's actual content
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
@@ -1753,7 +1793,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const salonRuns=(W3?[
         {cx:-(rW/2-0.12),cz:((-rL/2+cornerIn)+(libWingZ0-cornerIn))/2,rotY:Math.PI/2,width:(libWingZ0-cornerIn)-(-rL/2+cornerIn),nx:1,nz:0},   // left hall wall (BACK portion — library sits at the FRONT of this wall)
         {cx:rW/2-0.12,cz:((musWingZ1+cornerIn)+(-scrHalf))/2,rotY:-Math.PI/2,width:(-scrHalf)-(musWingZ1+cornerIn),nx:-1,nz:0},                    // right hall, behind screen
-        {cx:rW/2-0.12,cz:(scrHalf+(widenZ-cornerIn))/2,rotY:-Math.PI/2,width:(widenZ-cornerIn)-scrHalf,nx:-1,nz:0},                                // right hall, front of screen
+        {cx:rW/2-0.12,cz:(scrHalf+(widenZ-3.2))/2,rotY:-Math.PI/2,width:(widenZ-3.2)-scrHalf,nx:-1,nz:0},                                          // right hall, front of screen — stops BEFORE the vitrine corner (no art behind it)
         {cx:-(stemHalfW-0.12),cz:((widenZ+cornerIn)+(rL/2-cornerIn))/2,rotY:Math.PI/2,width:stemLen-2*cornerIn,nx:1,nz:0},                         // stem left
         {cx:stemHalfW-0.12,cz:((widenZ+cornerIn)+(rL/2-cornerIn))/2,rotY:-Math.PI/2,width:stemLen-2*cornerIn,nx:-1,nz:0},                          // stem right
         {cx:-(doorHalf+(stemHalfW-cornerIn-doorHalf)/2),cz:rL/2-0.12,rotY:Math.PI,width:stemHalfW-cornerIn-doorHalf,nx:0,nz:-1},                   // front flank left
@@ -1821,13 +1861,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // the archive" instead of silently dropping memories past the live-texture
       // budget, so a big collection reads as "a lifetime", not a wall that quietly
       // truncates. Hung low on the front wall beside the door.
-      if(W3&&omittedCount>0){
-        const oc=document.createElement("canvas");oc.width=512;oc.height=88;const ox=oc.getContext("2d");
-        if(ox){ox.fillStyle="#33281B";ox.fillRect(0,0,512,88);ox.strokeStyle="#9E8455";ox.lineWidth=3;ox.strokeRect(7,7,498,74);ox.fillStyle="#E9D7AC";ox.font="italic 30px Georgia,serif";ox.textAlign="center";ox.textBaseline="middle";ox.fillText(`…and ${omittedCount} more in the archive`,256,46);}
-        const ot=new THREE.CanvasTexture(oc);ot.colorSpace=THREE.SRGBColorSpace;ot.anisotropy=8;
-        const op=new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.26),new THREE.MeshBasicMaterial({map:ot,transparent:true}));
-        op.rotation.y=Math.PI;op.position.set(-(rW/2-2.2),1.05,rL/2-0.14);scene.add(op);
-      }
+      // (owner 2026-08-17: the "…and N more in the archive" wall plaque is removed —
+      // the overflow is still reported to console for dev, just not hung on the wall.)
     }
     // W2 (WS6-6 empty state): 0 wall memories → the warm cream easel ("Hang
     // your first memory", i18n flat key ×5); tap routes to the existing
@@ -2183,26 +2218,32 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // VINYL RECORD PLAYER (right wall, near front)
     // ═══════════════════════════════════════════
-    const vpX=rW/2-1.5,vpZ=rL/2-2;
+    // owner 2026-08-17: under W3 the GRAMOPHONE (back-right) IS the audio player —
+    // the old vinyl-player table at the front-right (the "floating cupholder") is
+    // removed; audio + its clickable records live at the gramophone instead.
+    const vpX=W3?(rW/2-1.15):(rW/2-1.5),vpZ=W3?(-rL/2+1.1):(rL/2-2);
     let vinylAudio: HTMLAudioElement|null=null;
     if(!isExhibition){
-    addCol(vpX,vpZ,0.5,0.4); // WS6-8: vinyl player table
-    scene.add(mk(new THREE.BoxGeometry(.8,.04,.6),MS.dkW,vpX,.78,vpZ));
-    for(let vl=-1;vl<=1;vl+=2)for(let vlz=-1;vlz<=1;vlz+=2)scene.add(mk(new THREE.CylinderGeometry(.03,.03,.75,6),MS.dkW,vpX+vl*.3,.38,vpZ+vlz*.22));
-    scene.add(mk(new THREE.BoxGeometry(.55,.08,.45),MS.ltW,vpX,.84,vpZ));
-    const disc=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.01,24),MS.vinyl);disc.position.set(vpX-.05,.89,vpZ);scene.add(disc);
-    const discLabel=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.012,16),MS.vinylL);discLabel.position.set(vpX-.05,.895,vpZ);scene.add(discLabel);
-    animTex.push({type:"disc",mesh:disc,label:discLabel});
-    const arm=mk(new THREE.BoxGeometry(.18,.015,.02),MS.bronze,vpX+.12,.9,vpZ-.05);arm.rotation.y=-.3;scene.add(arm);
+    if(!W3){
+      addCol(vpX,vpZ,0.5,0.4); // WS6-8: vinyl player table
+      scene.add(mk(new THREE.BoxGeometry(.8,.04,.6),MS.dkW,vpX,.78,vpZ));
+      for(let vl=-1;vl<=1;vl+=2)for(let vlz=-1;vlz<=1;vlz+=2)scene.add(mk(new THREE.CylinderGeometry(.03,.03,.75,6),MS.dkW,vpX+vl*.3,.38,vpZ+vlz*.22));
+      scene.add(mk(new THREE.BoxGeometry(.55,.08,.45),MS.ltW,vpX,.84,vpZ));
+      const disc=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.01,24),MS.vinyl);disc.position.set(vpX-.05,.89,vpZ);scene.add(disc);
+      const discLabel=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.012,16),MS.vinylL);discLabel.position.set(vpX-.05,.895,vpZ);scene.add(discLabel);
+      animTex.push({type:"disc",mesh:disc,label:discLabel});
+      const arm=mk(new THREE.BoxGeometry(.18,.015,.02),MS.bronze,vpX+.12,.9,vpZ-.05);arm.rotation.y=-.3;scene.add(arm);
+    }
+    // clickable record sleeves (W3: standing at the gramophone; legacy: beside the table)
     audioMems.slice(0,3).forEach((m: any,i: any)=>{
       const recTex=paintTex(m);
-      const rec=new THREE.Mesh(new THREE.PlaneGeometry(.3,.3),new THREE.MeshStandardMaterial({map:recTex,roughness:.6}));
-      rec.position.set(vpX+.5,.15+i*.01,vpZ-.3+i*.12);rec.rotation.z=.1+i*.05;rec.rotation.y=-Math.PI/4;
+      const rec=new THREE.Mesh(new THREE.PlaneGeometry(.32,.32),new THREE.MeshStandardMaterial({map:recTex,roughness:.6}));
+      if(W3){rec.position.set(vpX-0.86,0.36,vpZ+0.28+i*0.03);rec.rotation.y=0.35;rec.rotation.z=0.04;}
+      else{rec.position.set(vpX+.5,.15+i*.01,vpZ-.3+i*.12);rec.rotation.z=.1+i*.05;rec.rotation.y=-Math.PI/4;}
       rec.userData={memory:m};scene.add(rec);memMeshes.current.push(rec);
-      scene.add(mk(new THREE.BoxGeometry(.32,.32,.015),new THREE.MeshStandardMaterial({color:`hsl(${m.hue},${m.s}%,${Math.max(20,m.l-20)}%)`,roughness:.5}),vpX+.5,.15+i*.01,vpZ-.3+i*.12));
     });
-    const vpHit=new THREE.Mesh(new THREE.BoxGeometry(1.2,.5,1),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
-    vpHit.position.set(vpX,.85,vpZ);
+    const vpHit=new THREE.Mesh(new THREE.BoxGeometry(W3?1.3:1.2,W3?1.0:.5,W3?1.3:1),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+    vpHit.position.set(vpX,W3?0.9:.85,vpZ);
     vpHit.userData=audioMems.length>0?{memory:audioMems[0],isHitArea:true}:{isStation:true};
     vpHitRef.current=vpHit;
     scene.add(vpHit);hitAreaMeshes.current.push(vpHit);
@@ -2227,7 +2268,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const vtShelfMat=mkPhys(THREE,{color:"#E8F4F4",transparent:true,opacity:.1,roughness:.01,metalness:0,transmission:.95,ior:1.5,thickness:.15});
     const buildGlassCase=(cx:number,cz:number,cw:number,cd:number,mems:any[])=>{
       const vtX=cx,vtZ=cz,vtW=cw,vtD=cd, along=cw>=cd;
-      addCol(cx,cz,W3?rH*0.9:0.8,Math.max(cw,cd)*0.5);
+      addCol(cx,cz,cw*0.5+0.1,cd*0.5+0.1,true); // vitrine — solid
       scene.add(mk(new THREE.BoxGeometry(vtW+.08,.06,vtD+.08),MS.dkW,vtX,.03,vtZ));
       for(const sx of[-1,1])for(const sz of[-1,1])scene.add(mk(new THREE.SphereGeometry(.05,8,8),vtBrassMat,vtX+sx*(vtW/2-.06),.06,vtZ+sz*(vtD/2-.06)));
       scene.add(mk(new THREE.BoxGeometry(vtW,vtBaseH-.06,vtD),MS.dkW,vtX,.06+(vtBaseH-.06)/2,vtZ));
@@ -2785,9 +2826,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         dpx.fillText(t("backToCorridor"),256,57,452);
       }
       const dpt=new THREE.CanvasTexture(dpc);dpt.colorSpace=THREE.SRGBColorSpace;dpt.anisotropy=8;
-      scene.add(mk(new THREE.BoxGeometry(1.0,.3,.03),dpBronze,0,2.35,bdZ-0.12));                         // plate backing
+      // clearly PROUD of the door panels (bdZ-0.13) so the plate never z-fights, with
+      // a walnut frame border so the sign reads complete.
+      scene.add(mk(new THREE.BoxGeometry(1.12,.42,.03),MS.dkW,0,2.35,bdZ-0.17));                          // walnut frame
+      scene.add(mk(new THREE.BoxGeometry(1.0,.3,.03),dpBronze,0,2.35,bdZ-0.195));                         // bronze plate backing
       const dpl=new THREE.Mesh(new THREE.PlaneGeometry(.94,.24),new THREE.MeshBasicMaterial({map:dpt,transparent:true}));
-      dpl.rotation.y=Math.PI;dpl.position.set(0,2.35,bdZ-0.14);scene.add(dpl);
+      dpl.rotation.y=Math.PI;dpl.position.set(0,2.35,bdZ-0.212);scene.add(dpl);
     }else{
     // Outer stone architrave (wide in X, thin in Z)
     scene.add(mk(new THREE.BoxGeometry(2.2,3.6,.18),MS.marble,0,1.8,bdZ));
