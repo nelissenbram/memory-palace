@@ -876,8 +876,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.BoxGeometry(0.16,0.1,2.2),MS.gold,libFarX+0.08,0.9,wcz));                                // sill
       const wp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());wp.rotation.x=-Math.PI/2;wp.position.set(libFarX+1.9,0.02,wcz);wp.renderOrder=1;scene.add(wp);
       // baked washes so the nook reads lit (no new dynamic light): the window wall + a warm fill
-      addGlowCard(libFarX+0.35,2.1,wcz,1.6,Math.PI/2);
-      addGlowCard(wcx,rH-0.5,wcz,1.6,0);
+      addGlowCard(libFarX+0.35,2.1,wcz,2.7,Math.PI/2);   // window-wall wash
+      addGlowCard(wcx,rH-0.5,wcz,2.6,0);                   // ceiling wash
+      addGlowCard(libWingX-0.4,2.0,wcz,2.6,-Math.PI/2);   // portal-mouth wash (reads lit from the hall)
+      addGlowCard(wcx,1.5,wcz,2.4,0);                       // low warm fill
       const rcx=libFarX+2.05, wShade=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.9,roughness:.6});
       scene.add(mk(new THREE.BoxGeometry(0.82,0.42,0.82),MS.leather,rcx,0.21,wcz-1.2));                               // reading chair base
       scene.add(mk(new THREE.BoxGeometry(0.76,0.16,0.76),MS.leather,rcx,0.5,wcz-1.2));                                // cushion
@@ -903,7 +905,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       for(const zs of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.12,2.6,0.16),MS.wain,musFarX-0.08,2.1,mcz+zs*0.95));
       scene.add(mk(new THREE.BoxGeometry(0.14,0.16,2.2),MS.wain,musFarX-0.08,3.35,mcz));scene.add(mk(new THREE.BoxGeometry(0.16,0.1,2.2),MS.gold,musFarX-0.08,0.9,mcz));
       const mpp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());mpp.rotation.x=-Math.PI/2;mpp.position.set(musFarX-1.9,0.02,mcz);mpp.renderOrder=1;scene.add(mpp);
-      addGlowCard(musFarX-0.35,2.1,mcz,1.6,-Math.PI/2);addGlowCard(mcx,rH-0.5,mcz,1.6,0);
+      addGlowCard(musFarX-0.35,2.1,mcz,2.7,-Math.PI/2);addGlowCard(mcx,rH-0.5,mcz,2.6,0);
+      addGlowCard(musWingX+0.4,2.0,mcz,2.6,Math.PI/2);addGlowCard(mcx,1.5,mcz,2.4,0);   // portal-mouth wash + low fill
       // grand piano (glossy black) — body, angled lid, legs, keyboard, bench
       const pnMat=new THREE.MeshStandardMaterial({color:"#141210",roughness:.28,metalness:.12});
       const pcx=musFarX-2.05, pcz=mcz-0.2;
@@ -3107,6 +3110,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         else if(_rcam==="music"){camera.position.set(rWRef.w/2+1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(rWRef.w/2+3.5,1.4,-rWRef.l/2+1.5);}
         else if(_rcam==="plan"){camera.position.set(0,rH-0.35,rWRef.l/2-0.6);camera.lookAt(0,0,-rWRef.l/4);} // high at the entry, looking down the room — reads the T footprint
         else if(_rcam==="entry"){camera.position.set(0,1.75,rWRef.l/2-1.2);camera.lookAt(0,1.6,-rWRef.l/2);} // eye-level at the door, looking straight down the stem into the hall
+        else if(_rcam==="libportal"){camera.position.set(2.6,2.2,-rWRef.l/2+6.5);camera.lookAt(-rWRef.w/2+0.4,1.5,-rWRef.l/2+2.6);} // hall → library portal
+        else if(_rcam==="musportal"){camera.position.set(-2.6,2.2,-rWRef.l/2+6.5);camera.lookAt(rWRef.w/2-0.4,1.5,-rWRef.l/2+2.6);}  // hall → music portal
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
