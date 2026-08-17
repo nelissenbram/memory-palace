@@ -804,6 +804,26 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // wing wainscot (far + front + back)
       scene.add(mk(new THREE.BoxGeometry(.05,1.2,libWingW-.1),MS.wain,libFarX+.025,.6,wcz));scene.add(mk(new THREE.BoxGeometry(.06,.07,libWingW-.1),MS.gold,libFarX+.03,1.23,wcz));
       scene.add(mk(new THREE.BoxGeometry(libWingD-.1,1.2,.05),MS.wain,wcx,.6,libWingZ1-.025));scene.add(mk(new THREE.BoxGeometry(libWingD-.1,.07,.06),MS.gold,wcx,1.23,libWingZ1-.03));
+      // ── wing lighting + LIBRARY furnishing: a warm window on the far wall, a
+      // floor pool, a reading chair + lamp, and a writing desk. ──
+      const skyG=new THREE.Mesh(new THREE.PlaneGeometry(1.7,2.3),new THREE.MeshBasicMaterial({color:dlPreset.fogColor}));
+      skyG.rotation.y=Math.PI/2;skyG.position.set(libFarX+0.06,2.1,wcz);scene.add(skyG);
+      for(const zs of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.12,2.6,0.16),MS.wain,libFarX+0.08,2.1,wcz+zs*0.95)); // jambs
+      scene.add(mk(new THREE.BoxGeometry(0.14,0.16,2.2),MS.wain,libFarX+0.08,3.35,wcz));                              // lintel
+      scene.add(mk(new THREE.BoxGeometry(0.16,0.1,2.2),MS.gold,libFarX+0.08,0.9,wcz));                                // sill
+      const wp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());wp.rotation.x=-Math.PI/2;wp.position.set(libFarX+1.9,0.02,wcz);wp.renderOrder=1;scene.add(wp);
+      const rcx=libFarX+2.05, wShade=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.9,roughness:.6});
+      scene.add(mk(new THREE.BoxGeometry(0.82,0.42,0.82),MS.leather,rcx,0.21,wcz-1.2));                               // reading chair base
+      scene.add(mk(new THREE.BoxGeometry(0.76,0.16,0.76),MS.leather,rcx,0.5,wcz-1.2));                                // cushion
+      scene.add(mk(new THREE.BoxGeometry(0.16,0.9,0.82),MS.leatherD,rcx-0.33,0.9,wcz-1.2));                           // wingback
+      for(const zz of[-0.4,0.4])scene.add(mk(new THREE.BoxGeometry(0.7,0.3,0.13),MS.leatherD,rcx,0.62,wcz-1.2+zz));   // arms
+      scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,rcx+0.55,0.75,wcz-1.65));                       // floor-lamp pole
+      scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),wShade,rcx+0.55,1.62,wcz-1.65));                      // warm shade
+      scene.add(mk(new THREE.BoxGeometry(1.5,0.06,0.72),MS.dkW,rcx,0.78,wcz+1.4));                                    // writing desk top
+      scene.add(mk(new THREE.BoxGeometry(1.5,0.04,0.72),MS.gold,rcx,0.81,wcz+1.4));                                   // gilt inlay
+      for(const[lx,lz] of [[-0.65,-0.3],[0.65,-0.3],[-0.65,0.3],[0.65,0.3]] as [number,number][])scene.add(mk(new THREE.BoxGeometry(0.07,0.78,0.07),MS.dkW,rcx+lx,0.39,wcz+1.4+lz)); // legs
+      scene.add(mk(new THREE.BoxGeometry(0.5,0.08,0.5),MS.leather,rcx-0.35,0.46,wcz+0.82));                           // desk chair seat
+      scene.add(mk(new THREE.BoxGeometry(0.5,0.5,0.08),MS.leatherD,rcx-0.35,0.72,wcz+0.58));                          // desk chair back
     }
     for(let s=-1;s<=1;s+=2){
       // left wainscot skips the wing opening under W3 (built on the segment only)
