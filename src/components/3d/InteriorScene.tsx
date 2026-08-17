@@ -486,23 +486,23 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // "Enfilade of Wings" (owner 2026-08-17): straight-cornered WINGS bud off the
     // main room — a LIBRARY wing off the back-left. The wing is an additive nook
     // with an opening cut in the left wall. (Music wing + more follow.)
-    // owner 2026-08-17: the wings felt cramped/unclear — make them DEEPER and
-    // NARROWER ("T-uiteinden smaller maar langer") so each reads as a distinct
-    // elongated room you look down into, with a bright window at its far end.
-    const libWingD=6.4, libWingW=4.2;             // wing depth (−X, longer) and mouth width (Z, narrower)
+    // owner 2026-08-17 (round 3): deep narrow arms HID the corners — you couldn't
+    // see the library/music/vitrine from the walking path. Make the wings SHALLOW +
+    // WIDE + fully OPEN so each reads as a clearly-visible lit alcove flanking the
+    // hearth the moment you enter the hall (bookcase/piano sit near the mouth).
+    const libWingD=3.2, libWingW=5.2;             // wing depth (−X, shallow) and mouth width (Z, wide/open)
     const libWingZ0=-rL/2, libWingZ1=-rL/2+libWingW; // wing spans the back-left corner
     const libWingX=-rW/2;                          // wing shares the main-room left wall line
     const libFarX=libWingX-libWingD;               // wing far (outer) wall
     // MUSIC wing — mirror off the back-RIGHT (piano + record player).
-    const musWingD=6.4, musWingW=4.2;
+    const musWingD=3.2, musWingW=5.2;
     const musWingZ0=-rL/2, musWingZ1=-rL/2+musWingW;
     const musWingX=rW/2, musFarX=musWingX+musWingD;
-    // T-SHAPE (owner: the room itself is non-rectangular) — a NARROW entry stem at
-    // the door that WIDENS into the full-width hall (hearth + wings). owner 2026-08-17:
-    // narrower + longer stem (a proper gallery approach) so it reads spacious, not
-    // cramped, and gives more media wall on the way in.
+    // T-SHAPE — a NARROW entry stem at the door that WIDENS into the hall. Keep the
+    // stem SHORTER now so the hall (and its three corners) is close to the entry and
+    // in view, not 20m away down a corridor.
     const stemHalfW=Math.max(2.4,rW/2-3.4);            // narrow entry-stem half-width
-    const stemLen=Math.min(Math.max(5,rL*0.42),11);    // entry stem depth (longer)
+    const stemLen=Math.min(Math.max(3.5,rL*0.28),7);   // entry stem depth (shorter → hall in view)
     const widenZ=rL/2-stemLen;                         // z where the stem opens into the hall
     const BOOKSHELF_LEN=4.0;
     // Under W3 the library lives IN the wing (on its far wall); flag-off keeps it
@@ -828,7 +828,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // lowers the opening to a portal height, pilasters frame the jambs, and a warm
     // arched fanlight crowns it. sign=-1 left (library), +1 right (music). ──
     const addWingPortal=(sign:number,z0:number,z1:number)=>{
-      const zc=(z0+z1)/2, ww=z1-z0, wx=sign*(rW/2), hdrY=2.6, hh=rH-hdrY;
+      const zc=(z0+z1)/2, ww=z1-z0, wx=sign*(rW/2), hdrY=3.1, hh=rH-hdrY;   // raised so the shallow alcove's contents (bookcase/piano/window) stay visible from the hall
       const rotY=sign<0?Math.PI/2:-Math.PI/2;
       scene.add(mk(new THREE.BoxGeometry(0.16,hh,ww),MS.wall,wx,hdrY+hh/2,zc));                    // header wall above the opening (both-sided box)
       scene.add(mk(new THREE.BoxGeometry(0.34,0.22,ww),MS.dkW,wx-sign*0.12,hdrY-0.02,zc));         // lintel beam
