@@ -19,9 +19,10 @@ export async function importFilesToRoom(
   files: QueuedFile[],
   roomId: string | undefined,
   addMemory: (roomId: string, mem: Mem) => Promise<boolean> | boolean,
-): Promise<{ anyFailed: boolean }> {
-  if (!roomId) return { anyFailed: false };
+): Promise<{ anyFailed: boolean; created: Mem[] }> {
+  if (!roomId) return { anyFailed: false, created: [] };
   let anyFailed = false;
+  const created: Mem[] = [];
   for (const item of files) {
     const isVideo = (item.type || "").startsWith("video/") || /\.(mp4|mov|webm|3gp)$/i.test(item.name);
     const isAudio = (item.type || "").startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(item.name);
@@ -83,14 +84,33 @@ export async function importFilesToRoom(
       dataUrl = item.previewUrl;
     }
     if (item.file && !dataUrl && !directFilePath) { anyFailed = true; continue; }
-    await addMemory(roomId, {
+    const mem = {
       id: `import-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       title: item.name,
       hue: Math.floor(Math.random() * 360), s: 50, l: 70,
       type: isVideo ? "video" : isAudio ? "audio" : "photo",
       dataUrl, desc: "", createdAt: new Date().toISOString(),
       ...(directFilePath ? { _filePath: directFilePath, _storageBackend: directStorageBackend } : {}),
-    } as Mem);
+    } as Mem;
+    await addMemory(roomId, mem);
+    created.push(mem);
   }
-  return { anyFailed };
+  return { anyFailed, created };
+}
+
+/** Create a written (text) memory in a room. Returns the created memory. */
+export async function writeTextMemory(
+  roomId: string | undefined, title: string, body: string,
+  addMemory: (roomId: string, mem: Mem) => Promise<boolean> | boolean,
+): Promise<Mem | null> {
+  if (!roomId) return null;
+  const mem = {
+    id: `text-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    title: title.trim() || "Untitled note",
+    hue: 38, s: 30, l: 55, type: "text",
+    dataUrl: "", desc: body, createdAt: new Date().toISOString(),
+    displayed: true, displayUnit: "bookshelf",
+  } as Mem;
+  await addMemory(roomId, mem);
+  return mem;
 }
