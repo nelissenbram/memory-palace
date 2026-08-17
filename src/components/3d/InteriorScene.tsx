@@ -474,6 +474,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
     const rW=layout.rW,rL=layout.rL,rH=layout.rH;
     rWRef.w=rW;rWRef.l=rL;
+    // W3 "Deepening Cabinet" (owner 2026-08-17): the LIBRARY must NOT scale with
+    // the room — freeze it to a fixed length at the hearth end; the rest of the
+    // left wall becomes salon display. bookEndZ = far edge of the frozen shelf.
+    const BOOKSHELF_LEN=4.0;
+    const bookC=-rL/2+0.1+BOOKSHELF_LEN/2, bookEndZ=-rL/2+0.1+BOOKSHELF_LEN;
 
     // ═══════════════════════════════════════════
     // SHELL: floor, ceiling, walls, wainscoting
@@ -1560,6 +1565,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         // right wall, front of the screen
         {cx:rW/2-0.12,cz:scrHalf+(rL/2-cornerIn-scrHalf)/2,rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
       ].filter(r=>r.width>1.6);
+      // W3: the frozen bookshelf occupies only BOOKSHELF_LEN at the hearth end,
+      // so the REST of the left wall (toward the door) becomes a salon run —
+      // this is where a deeper room turns into MORE paintings on show, not a
+      // longer library. Front faces +X (into the room).
+      if(W3){
+        const lStart=bookEndZ+0.4, lEnd=rL/2-cornerIn, lw=lEnd-lStart;
+        if(lw>1.6)salonRuns.push({cx:-(rW/2-0.12),cz:(lStart+lEnd)/2,rotY:Math.PI/2,width:lw,nx:1,nz:0});
+      }
       const salonRest=wallMems.slice(1); // hero already above the fireplace
       // Tier budget: ~24 live CanvasTextures on mobile (WS6-6), minus the hero.
       const texBudget=Q.paintingResWidth>=512?31:Q.paintingResWidth>=256?23:11;
@@ -1667,11 +1680,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const bookPalette=["#6B1A1A","#1A2744","#2A4A2A","#4A1A2A","#8B6914","#3A2010","#1A3A4A","#5A2A3A","#2A3A1A","#6A4A2A","#3A1A3A","#1A4A3A","#7A3A1A","#2A2A4A","#4A3A1A","#5A1A1A"];
     let bSeed=0;for(const c of (actualRoomId||roomId))bSeed=(bSeed*31+c.charCodeAt(0))>>>0;
     const bRng=()=>{bSeed=(bSeed*16807+1)>>>0;return(bSeed&0x7fffffff)/0x7fffffff;};
+    // W3: freeze the library to BOOKSHELF_LEN at the hearth end (constraint #3).
+    // Flag-off keeps the legacy full-wall bookshelf byte-identical (bL=rL-2,bC=0).
+    const bL=W3?BOOKSHELF_LEN:rL-2, bC=W3?bookC:0;
     for(let shelf=0;shelf<5;shelf++){
       const sy=.35+shelf*.75;
-      scene.add(mk(new THREE.BoxGeometry(.5,.05,rL-2),MS.dkW,bsX,sy,0));
-      scene.add(mk(new THREE.BoxGeometry(.52,.02,rL-1.9),MS.ltW,bsX,sy+.025,0));
-      let bz=-rL/2+1.2;const shelfEnd=rL/2-1.2;
+      scene.add(mk(new THREE.BoxGeometry(.5,.05,bL),MS.dkW,bsX,sy,bC));
+      scene.add(mk(new THREE.BoxGeometry(.52,.02,bL+0.1),MS.ltW,bsX,sy+.025,bC));
+      let bz=bC-bL/2+0.2;const shelfEnd=bC+bL/2-0.2;
       while(bz<shelfEnd){
         if(bRng()<.08){
           scene.add(mk(new THREE.BoxGeometry(.18,.22,.02),MS.bronze,bsX+.1,sy+.03+.11,bz));
@@ -1702,20 +1718,20 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         bz+=bw2+.005+bRng()*.01;
       }
     }
-    scene.add(mk(new THREE.BoxGeometry(.55,rH-.2,.06),MS.dkW,bsX,rH/2,-rL/2+.1));
-    scene.add(mk(new THREE.BoxGeometry(.55,rH-.2,.06),MS.dkW,bsX,rH/2,rL/2-.1));
-    scene.add(mk(new THREE.BoxGeometry(.55,.06,rL-.1),MS.dkW,bsX,rH-.1,0));
-    scene.add(mk(new THREE.BoxGeometry(.06,rH-.2,rL-.1),MS.dkW,bsX-.23,rH/2,0));
-    scene.add(mk(new THREE.BoxGeometry(.6,.04,rL-.05),MS.gold,bsX,rH-.06,0));
-    scene.add(mk(new THREE.BoxGeometry(.58,.02,rL-.08),MS.ltW,bsX,rH-.02,0));
+    scene.add(mk(new THREE.BoxGeometry(.55,rH-.2,.06),MS.dkW,bsX,rH/2,W3?bC-bL/2:-rL/2+.1));
+    scene.add(mk(new THREE.BoxGeometry(.55,rH-.2,.06),MS.dkW,bsX,rH/2,W3?bC+bL/2:rL/2-.1));
+    scene.add(mk(new THREE.BoxGeometry(.55,.06,W3?bL:rL-.1),MS.dkW,bsX,rH-.1,bC));
+    scene.add(mk(new THREE.BoxGeometry(.06,rH-.2,W3?bL:rL-.1),MS.dkW,bsX-.23,rH/2,bC));
+    scene.add(mk(new THREE.BoxGeometry(.6,.04,W3?bL:rL-.05),MS.gold,bsX,rH-.06,bC));
+    scene.add(mk(new THREE.BoxGeometry(.58,.02,W3?bL:rL-.08),MS.ltW,bsX,rH-.02,bC));
     docMems.slice(0,5).forEach((m: any,i: any)=>{
-      const sy=.35+((i+1)%5)*.75;const bz=-rL/2+1.5+i*((rL-3)/5);
+      const sy=.35+((i+1)%5)*.75;const bz=W3?(bC-bL/2+0.4+i*((bL-0.8)/5)):(-rL/2+1.5+i*((rL-3)/5));
       const spine=new THREE.Mesh(new THREE.BoxGeometry(.12,.4,.22),new THREE.MeshStandardMaterial({color:`hsl(${m.hue},${m.s}%,${m.l}%)`,roughness:.6,metalness:.05}));
       spine.position.set(bsX+.15,sy+.23,bz);spine.userData={memory:m};scene.add(spine);memMeshes.current.push(spine);
       scene.add(mk(new THREE.BoxGeometry(.13,.06,.05),MS.gold,bsX+.15,sy+.25,bz+.09));
     });
-    const bsHit=new THREE.Mesh(new THREE.BoxGeometry(.6,rH-.5,rL-2),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
-    bsHit.position.set(bsX,rH/2,0);
+    const bsHit=new THREE.Mesh(new THREE.BoxGeometry(.6,rH-.5,W3?bL:rL-2),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+    bsHit.position.set(bsX,rH/2,bC);
     bsHit.userData=docMems.length>0?{memory:docMems[0],isHitArea:true}:{isStation:true};
     scene.add(bsHit);hitAreaMeshes.current.push(bsHit);
     } // end !isExhibition bookshelf
