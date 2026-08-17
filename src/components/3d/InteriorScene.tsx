@@ -494,6 +494,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const musWingD=4.2, musWingW=5.2;
     const musWingZ0=-rL/2, musWingZ1=-rL/2+musWingW;
     const musWingX=rW/2, musFarX=musWingX+musWingD;
+    // T-SHAPE (owner: the room itself is non-rectangular) — a NARROW entry stem at
+    // the door that WIDENS into the full-width hall (hearth + wings). Scales: the
+    // stem lengthens and the hall deepens with the room.
+    const stemHalfW=Math.max(2.6,rW/2-2.6);            // narrow entry-stem half-width
+    const stemLen=Math.min(Math.max(3.8,rL*0.3),7.0);  // entry stem depth
+    const widenZ=rL/2-stemLen;                         // z where the stem opens into the hall
     const BOOKSHELF_LEN=4.0;
     // Under W3 the library lives IN the wing (on its far wall); flag-off keeps it
     // on the main left wall. bookEndZ = where the main left-wall salon run resumes.
@@ -778,6 +784,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         }
       }
     }else{
+    if(W3){
+      // T-SHAPE floor + ceiling: a full-width back HALL + a narrow entry STEM.
+      const backD=widenZ+rL/2, backCz=(-rL/2+widenZ)/2, stemCz=(widenZ+rL/2)/2;
+      {const f=new THREE.Mesh(new THREE.PlaneGeometry(rW,backD),MS.floor);f.rotation.x=-Math.PI/2;f.position.set(0,0,backCz);f.receiveShadow=true;scene.add(f);}
+      {const f=new THREE.Mesh(new THREE.PlaneGeometry(2*stemHalfW,stemLen),MS.floor);f.rotation.x=-Math.PI/2;f.position.set(0,0,stemCz);f.receiveShadow=true;scene.add(f);}
+      {const c=new THREE.Mesh(new THREE.PlaneGeometry(rW,backD),MS.ceil);c.rotation.x=Math.PI/2;c.position.set(0,rH,backCz);scene.add(c);}
+      {const c=new THREE.Mesh(new THREE.PlaneGeometry(2*stemHalfW,stemLen),MS.ceil);c.rotation.x=Math.PI/2;c.position.set(0,rH,stemCz);scene.add(c);}
+      scene.add(mk(new THREE.BoxGeometry(rW-1.5,.003,backD-1.2),MS.floorL,0,.0035,backCz)); // hall inlay
+    }else{
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(rW,rL),MS.floor);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
     // z-fight sweep r2: inlay lifted (was 0.5mm off the floor — shimmer at grazing
     // angles) — floorL top now 5mm, border strips ride 2mm above that.
@@ -785,24 +800,24 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.05,.004,rL-2),MS.dkW,s*(rW/2-.9),.009,0));scene.add(mk(new THREE.BoxGeometry(rW-2,.004,.05),MS.dkW,0,.009,s*(rL/2-.9)));}
     const ce=new THREE.Mesh(new THREE.PlaneGeometry(rW,rL),MS.ceil);ce.rotation.x=Math.PI/2;ce.position.y=rH;scene.add(ce);
     for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.1,.14,rL),MS.gold,s*(rW/2-.05),rH-.07,0));scene.add(mk(new THREE.BoxGeometry(rW,.14,.1),MS.gold,0,rH-.07,s*(rL/2-.05)));}
-    for(let s=-1;s<=1;s+=2){
-      if(W3&&s===-1){
-        // LEFT wall: leave an OPENING for the library wing (z∈[libWingZ0,libWingZ1]);
-        // build only the remaining segment (toward the door).
-        const segW=rL-libWingW, segC=(libWingZ1+rL/2)/2;
-        const wm=new THREE.Mesh(new THREE.PlaneGeometry(segW,rH),MS.wall);wm.rotation.y=Math.PI/2;wm.position.set(-rW/2,rH/2,segC);wm.receiveShadow=true;scene.add(wm);
-        continue;
-      }
-      if(W3&&s===1){
-        // RIGHT wall: opening for the music wing; build only the remaining segment.
-        const segW=rL-musWingW, segC=(musWingZ1+rL/2)/2;
-        const wm=new THREE.Mesh(new THREE.PlaneGeometry(segW,rH),MS.wall);wm.rotation.y=-Math.PI/2;wm.position.set(rW/2,rH/2,segC);wm.receiveShadow=true;scene.add(wm);
-        continue;
-      }
-      const wm=new THREE.Mesh(new THREE.PlaneGeometry(rL,rH),MS.wall);wm.rotation.y=s*(-Math.PI/2);wm.position.set(s*(rW/2),rH/2,0);wm.receiveShadow=true;scene.add(wm);
     }
-    scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));
-    const bw=new THREE.Mesh(new THREE.PlaneGeometry(rW,rH),MS.wall);bw.rotation.y=Math.PI;bw.position.set(0,rH/2,rL/2);bw.receiveShadow=true;scene.add(bw);
+    if(W3){
+      // ── T-SHAPE walls: hall side walls (past each wing) → widening shoulders →
+      // narrow stem side walls → narrow front (door) wall; full back wall. The
+      // wing openings sit below wingZ1; the stem-to-hall gap is between the shoulders.
+      {const w=widenZ-libWingZ1;if(w>0.2){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,rH),MS.wall);m.rotation.y=Math.PI/2;m.position.set(-rW/2,rH/2,(libWingZ1+widenZ)/2);m.receiveShadow=true;scene.add(m);}}
+      {const w=widenZ-musWingZ1;if(w>0.2){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,rH),MS.wall);m.rotation.y=-Math.PI/2;m.position.set(rW/2,rH/2,(musWingZ1+widenZ)/2);m.receiveShadow=true;scene.add(m);}}
+      for(const s of[-1,1]){const shW=rW/2-stemHalfW;scene.add(mk(new THREE.PlaneGeometry(shW,rH),MS.wall,s*(stemHalfW+shW/2),rH/2,widenZ));}                                   // widening shoulders (face +Z)
+      for(const s of[-1,1]){const m=new THREE.Mesh(new THREE.PlaneGeometry(stemLen,rH),MS.wall);m.rotation.y=s*(-Math.PI/2);m.position.set(s*stemHalfW,rH/2,(widenZ+rL/2)/2);m.receiveShadow=true;scene.add(m);} // stem side walls
+      scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));                                                                                                          // back wall (full width)
+      {const m=new THREE.Mesh(new THREE.PlaneGeometry(2*stemHalfW,rH),MS.wall);m.rotation.y=Math.PI;m.position.set(0,rH/2,rL/2);m.receiveShadow=true;scene.add(m);}                 // narrow front (door) wall
+    }else{
+      for(let s=-1;s<=1;s+=2){
+        const wm=new THREE.Mesh(new THREE.PlaneGeometry(rL,rH),MS.wall);wm.rotation.y=s*(-Math.PI/2);wm.position.set(s*(rW/2),rH/2,0);wm.receiveShadow=true;scene.add(wm);
+      }
+      scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));
+      const bw=new THREE.Mesh(new THREE.PlaneGeometry(rW,rH),MS.wall);bw.rotation.y=Math.PI;bw.position.set(0,rH/2,rL/2);bw.receiveShadow=true;scene.add(bw);
+    }
     // ── W3 LIBRARY WING — an additive straight-cornered nook off the back-left ──
     if(W3){
       const wcx=(libFarX+libWingX)/2, wcz=(libWingZ0+libWingZ1)/2;
@@ -1256,7 +1271,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         // W3 (owner #6): the beams no longer cast shadows (the hard shadow stripes
         // read badly) and sit flush against the ceiling — quiet articulation, not
         // a rack of dark bars.
-        const bm=mk(new THREE.BoxGeometry(rW-0.3,W3?0.1:0.14,0.1),MS.dkW,0,rH-(W3?0.05:0.07),bz3);
+        // T-shape: in the narrow stem the beams only span the stem width so they
+        // don't overhang the cut-away front corners.
+        const beamW=(W3&&bz3>widenZ)?(2*stemHalfW-0.3):(rW-0.3);
+        const bm=mk(new THREE.BoxGeometry(beamW,W3?0.1:0.14,0.1),MS.dkW,0,rH-(W3?0.05:0.07),bz3);
         if(W3)bm.castShadow=false;
         scene.add(bm);
       }
@@ -1672,24 +1690,22 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     if(W2&&wallMems.length>1){
       let salonSeed=0;for(const c of (actualRoomId||roomId))salonSeed=(salonSeed*31+c.charCodeAt(0))>>>0;
       const doorHalf=1.7,scrHalf=1.9,cornerIn=W3?0.8:0.4; // W3 (owner #6): more corner clearance so art clears the wall pilasters/trim
-      const salonRuns=[
-        // front wall, left of the door — front faces -Z
+      // Salon runs — T-SHAPE under W3: hall side walls (past each wing, split by
+      // the screen on the right) + narrow stem side walls + the front-wall flanks.
+      const salonRuns=(W3?[
+        {cx:-(rW/2-0.12),cz:((libWingZ1+cornerIn)+(widenZ-cornerIn))/2,rotY:Math.PI/2,width:(widenZ-cornerIn)-(libWingZ1+cornerIn),nx:1,nz:0},   // left hall wall
+        {cx:rW/2-0.12,cz:((musWingZ1+cornerIn)+(-scrHalf))/2,rotY:-Math.PI/2,width:(-scrHalf)-(musWingZ1+cornerIn),nx:-1,nz:0},                    // right hall, behind screen
+        {cx:rW/2-0.12,cz:(scrHalf+(widenZ-cornerIn))/2,rotY:-Math.PI/2,width:(widenZ-cornerIn)-scrHalf,nx:-1,nz:0},                                // right hall, front of screen
+        {cx:-(stemHalfW-0.12),cz:((widenZ+cornerIn)+(rL/2-cornerIn))/2,rotY:Math.PI/2,width:stemLen-2*cornerIn,nx:1,nz:0},                         // stem left
+        {cx:stemHalfW-0.12,cz:((widenZ+cornerIn)+(rL/2-cornerIn))/2,rotY:-Math.PI/2,width:stemLen-2*cornerIn,nx:-1,nz:0},                          // stem right
+        {cx:-(doorHalf+(stemHalfW-cornerIn-doorHalf)/2),cz:rL/2-0.12,rotY:Math.PI,width:stemHalfW-cornerIn-doorHalf,nx:0,nz:-1},                   // front flank left
+        {cx:doorHalf+(stemHalfW-cornerIn-doorHalf)/2,cz:rL/2-0.12,rotY:Math.PI,width:stemHalfW-cornerIn-doorHalf,nx:0,nz:-1},                      // front flank right
+      ]:[
         {cx:-(doorHalf+(rW/2-cornerIn-doorHalf)/2),cz:rL/2-0.12,rotY:Math.PI,width:rW/2-cornerIn-doorHalf,nx:0,nz:-1},
-        // front wall, right of the door
         {cx:doorHalf+(rW/2-cornerIn-doorHalf)/2,cz:rL/2-0.12,rotY:Math.PI,width:rW/2-cornerIn-doorHalf,nx:0,nz:-1},
-        // right wall, back of the screen — front faces -X (dropped under W3: the music wing opens here)
-        {cx:rW/2-0.12,cz:-(scrHalf+(rL/2-cornerIn-scrHalf)/2),rotY:-Math.PI/2,width:W3?0:(rL/2-cornerIn-scrHalf),nx:-1,nz:0},
-        // right wall, front of the screen
+        {cx:rW/2-0.12,cz:-(scrHalf+(rL/2-cornerIn-scrHalf)/2),rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
         {cx:rW/2-0.12,cz:scrHalf+(rL/2-cornerIn-scrHalf)/2,rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
-      ].filter(r=>r.width>1.6);
-      // W3: the frozen bookshelf occupies only BOOKSHELF_LEN at the hearth end,
-      // so the REST of the left wall (toward the door) becomes a salon run —
-      // this is where a deeper room turns into MORE paintings on show, not a
-      // longer library. Front faces +X (into the room).
-      if(W3){
-        const lStart=bookEndZ+0.4, lEnd=rL/2-cornerIn, lw=lEnd-lStart;
-        if(lw>1.6)salonRuns.push({cx:-(rW/2-0.12),cz:(lStart+lEnd)/2,rotY:Math.PI/2,width:lw,nx:1,nz:0});
-      }
+      ]).filter(r=>r.width>1.6);
       const salonRest=wallMems.slice(1); // hero already above the fireplace
       // Tier budget: ~24 live CanvasTextures on mobile (WS6-6), minus the hero.
       const texBudget=Q.paintingResWidth>=512?31:Q.paintingResWidth>=256?23:11;
@@ -2111,7 +2127,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // VITRINE / GLASS DISPLAY CASE (left of fireplace, against back wall)
     // ═══════════════════════════════════════════
     if(!isExhibition){
-    const vtX=W3?(rW/2-1.6):(-rW/2+2), vtZ=W3?(rL/2-2.0):(-rL/2+0.7); // W3: vitrine to the FRONT-RIGHT corner (back-right is the music wing)
+    const vtX=W3?(rW/2-1.5):(-rW/2+2), vtZ=W3?(widenZ-1.5):(-rL/2+0.7); // W3: vitrine stands in the HALL front-right (the T's front-right corner is cut away — keep it inside the hall, off the right wall)
     // owner #8: under W3 the vitrine rises floor-to-ceiling with several glass
     // shelves so it can hold MANY objects; base tiers keep the low case.
     const vtW=1.4, vtD=0.7, vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.22):1.0;
@@ -2302,15 +2318,21 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // without the fussy little bulbs competing with the art.
       const shMat=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.85,roughness:.6,transparent:true,opacity:.92});
       const sconceY=rH-0.7;
-      const pitch=rL/Math.max(2,Math.round(rL/5));
+      // T-shape aware: hall side walls sit at ±rW/2 (past each wing up to the
+      // widening), the stem walls at ±stemHalfW (from the widening to the door).
+      const addWallSconce=(wxEdge: number,z: number,s: number)=>{
+        const wx=wxEdge-s*.04;
+        scene.add(mk(new THREE.BoxGeometry(.05,.28,.12),MS.bronze,wx-s*.02,sconceY,z));            // backplate
+        scene.add(mk(new THREE.BoxGeometry(.06,.05,.14),MS.bronze,wx-s*.06,sconceY-.12,z));         // arm
+        scene.add(mk(new THREE.CylinderGeometry(.07,.09,.22,12,1,true),shMat,wx-s*.1,sconceY,z));   // frosted shade
+        if(W2)addGlowCard(wx-s*.12,sconceY+.5,z,0.7,s>0?-Math.PI/2:Math.PI/2);                       // baked uplight wash
+      };
       for(let s=-1;s<=1;s+=2){
-        for(let z=-rL/2+pitch;z<rL/2-0.6;z+=pitch){
-          const wx=s*(rW/2-0.04);
-          scene.add(mk(new THREE.BoxGeometry(.05,.28,.12),MS.bronze,wx-s*.02,sconceY,z));            // backplate
-          scene.add(mk(new THREE.BoxGeometry(.06,.05,.14),MS.bronze,wx-s*.06,sconceY-.12,z));         // arm
-          scene.add(mk(new THREE.CylinderGeometry(.07,.09,.22,12,1,true),shMat,wx-s*.1,sconceY,z));   // frosted shade
-          if(W2)addGlowCard(wx-s*.12,sconceY+.5,z,0.7,s>0?-Math.PI/2:Math.PI/2);                       // baked uplight wash
-        }
+        const wingZ1=s<0?libWingZ1:musWingZ1;
+        const hallPitch=(widenZ-wingZ1)/Math.max(2,Math.round((widenZ-wingZ1)/5));
+        for(let z=wingZ1+hallPitch*0.5;z<widenZ-0.4;z+=hallPitch)addWallSconce(s*(rW/2),z,s);   // hall wall
+        const stemPitch=(rL/2-widenZ)/Math.max(2,Math.round((rL/2-widenZ)/5));
+        for(let z=widenZ+stemPitch*0.5;z<rL/2-0.6;z+=stemPitch)addWallSconce(s*stemHalfW,z,s);   // stem wall
       }
     }else{
     for(let s=-1;s<=1;s+=2){
