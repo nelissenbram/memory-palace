@@ -806,12 +806,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.BoxGeometry(libWingD-.1,1.2,.05),MS.wain,wcx,.6,libWingZ1-.025));scene.add(mk(new THREE.BoxGeometry(libWingD-.1,.07,.06),MS.gold,wcx,1.23,libWingZ1-.03));
       // ── wing lighting + LIBRARY furnishing: a warm window on the far wall, a
       // floor pool, a reading chair + lamp, and a writing desk. ──
-      const skyG=new THREE.Mesh(new THREE.PlaneGeometry(1.7,2.3),new THREE.MeshBasicMaterial({color:dlPreset.fogColor}));
+      const skyG=new THREE.Mesh(new THREE.PlaneGeometry(1.7,2.3),new THREE.MeshBasicMaterial({color:"#FFEAC8"}));   // bright warm window
       skyG.rotation.y=Math.PI/2;skyG.position.set(libFarX+0.06,2.1,wcz);scene.add(skyG);
       for(const zs of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.12,2.6,0.16),MS.wain,libFarX+0.08,2.1,wcz+zs*0.95)); // jambs
       scene.add(mk(new THREE.BoxGeometry(0.14,0.16,2.2),MS.wain,libFarX+0.08,3.35,wcz));                              // lintel
       scene.add(mk(new THREE.BoxGeometry(0.16,0.1,2.2),MS.gold,libFarX+0.08,0.9,wcz));                                // sill
       const wp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());wp.rotation.x=-Math.PI/2;wp.position.set(libFarX+1.9,0.02,wcz);wp.renderOrder=1;scene.add(wp);
+      // baked washes so the nook reads lit (no new dynamic light): the window wall + a warm fill
+      addGlowCard(libFarX+0.35,2.1,wcz,1.6,Math.PI/2);
+      addGlowCard(wcx,rH-0.5,wcz,1.6,0);
       const rcx=libFarX+2.05, wShade=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.9,roughness:.6});
       scene.add(mk(new THREE.BoxGeometry(0.82,0.42,0.82),MS.leather,rcx,0.21,wcz-1.2));                               // reading chair base
       scene.add(mk(new THREE.BoxGeometry(0.76,0.16,0.76),MS.leather,rcx,0.5,wcz-1.2));                                // cushion
@@ -2977,7 +2980,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(_rcam){
         if(_rcam==="door"){camera.position.set(0,2.0,rWRef.l/2-6);camera.lookAt(0,1.9,rWRef.l/2);}
         else if(_rcam==="hearth"){camera.position.set(0,2.0,-rWRef.l/2+7);camera.lookAt(0,1.6,-rWRef.l/2);}
-        else if(_rcam==="bookcase"||_rcam==="wing"){camera.position.set(-rWRef.w/2+1.6,2.0,-rWRef.l/2+2.6);camera.lookAt(-rWRef.w/2-4.2,1.5,-rWRef.l/2+2.6);}
+        else if(_rcam==="bookcase"||_rcam==="wing"){camera.position.set(-rWRef.w/2-1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(-rWRef.w/2-3.5,1.4,-rWRef.l/2+1.5);}
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
