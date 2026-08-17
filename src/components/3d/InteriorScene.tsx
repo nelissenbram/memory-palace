@@ -3047,6 +3047,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         else if(_rcam==="hearth"){camera.position.set(0,2.0,-rWRef.l/2+7);camera.lookAt(0,1.6,-rWRef.l/2);}
         else if(_rcam==="bookcase"||_rcam==="wing"){camera.position.set(-rWRef.w/2-1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(-rWRef.w/2-3.5,1.4,-rWRef.l/2+1.5);}
         else if(_rcam==="music"){camera.position.set(rWRef.w/2+1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(rWRef.w/2+3.5,1.4,-rWRef.l/2+1.5);}
+        else if(_rcam==="plan"){camera.position.set(0,rH-0.35,rWRef.l/2-0.6);camera.lookAt(0,0,-rWRef.l/4);} // high at the entry, looking down the room — reads the T footprint
+        else if(_rcam==="entry"){camera.position.set(0,1.75,rWRef.l/2-1.2);camera.lookAt(0,1.6,-rWRef.l/2);} // eye-level at the door, looking straight down the stem into the hall
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
