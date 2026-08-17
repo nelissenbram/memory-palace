@@ -909,12 +909,16 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     if(W3){
       // T-shape wainscot: FULL hall side walls at ±rW/2, then the stem side walls at
       // ±stemHalfW — never at ±rW/2 in the stem (that's cut away).
+      const railY=rH-0.45; // picture rail — with the wainscot below, frames the portrait band
       for(const s of[-1,1]){
         const hL=widenZ+rL/2, hC=(-rL/2+widenZ)/2;
-        if(hL>0.5){scene.add(mk(new THREE.BoxGeometry(.05,1.2,hL-.3),MS.wain,s*(rW/2-.025),.6,hC));scene.add(mk(new THREE.BoxGeometry(.06,.07,hL-.2),MS.gold,s*(rW/2-.03),1.23,hC));scene.add(mk(new THREE.BoxGeometry(.08,.18,hL-.1),MS.dkW,s*(rW/2-.04),.09,hC));}
+        if(hL>0.5){scene.add(mk(new THREE.BoxGeometry(.05,1.2,hL-.3),MS.wain,s*(rW/2-.025),.6,hC));scene.add(mk(new THREE.BoxGeometry(.06,.07,hL-.2),MS.gold,s*(rW/2-.03),1.23,hC));scene.add(mk(new THREE.BoxGeometry(.08,.18,hL-.1),MS.dkW,s*(rW/2-.04),.09,hC));
+          scene.add(mk(new THREE.BoxGeometry(.09,.06,hL-.2),MS.dkW,s*(rW/2-.045),railY,hC));scene.add(mk(new THREE.BoxGeometry(.05,.03,hL-.2),MS.gold,s*(rW/2-.03),railY-.045,hC));}
         const sL=rL/2-widenZ, sC=(widenZ+rL/2)/2;
         scene.add(mk(new THREE.BoxGeometry(.05,1.2,sL-.3),MS.wain,s*(stemHalfW-.025),.6,sC));scene.add(mk(new THREE.BoxGeometry(.06,.07,sL-.2),MS.gold,s*(stemHalfW-.03),1.23,sC));scene.add(mk(new THREE.BoxGeometry(.08,.18,sL-.1),MS.dkW,s*(stemHalfW-.04),.09,sC));
+        scene.add(mk(new THREE.BoxGeometry(.09,.06,sL-.3),MS.dkW,s*(stemHalfW-.045),railY,sC));scene.add(mk(new THREE.BoxGeometry(.05,.03,sL-.3),MS.gold,s*(stemHalfW-.03),railY-.045,sC));
       }
+      scene.add(mk(new THREE.BoxGeometry(rW-.3,.06,.09),MS.dkW,0,railY,-rL/2+.045));scene.add(mk(new THREE.BoxGeometry(rW-.3,.03,.05),MS.gold,0,railY-.045,-rL/2+.03));   // back-wall picture rail
     }else{
       for(let s=-1;s<=1;s+=2){
         scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
@@ -1757,7 +1761,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           const tx=paintTex(m);salonTexMap.set(id,tx);salonTexs.push(tx);byId.set(id,m);
           return {id,aspect:(tx.userData?.aspect as number)||4/3,title:m.title,year:memYear(m)};
         });
-        const lay=computeSalonHang(refs,{width:run.width,height:rH-0.2,yBase:0},{seed:(salonSeed^(ri*0x9e3779b9))>>>0,maxPieces:slice.length});
+        // W3 (owner 2026-08-17): the portraits must sit WITHIN the decorative wall
+        // band — above the wainscot dado (~1.3m) and below the picture rail (~rH-0.5),
+        // not floating the full wall. Pass a raised floor + capped top so the hang
+        // is confined to that band and reads as an intentional picture-rail row.
+        const bandBottom=W3?0.5:0, bandTop=W3?(rH-0.55):(rH-0.2);
+        const lay=computeSalonHang(refs,{width:run.width,height:bandTop-bandBottom,yBase:bandBottom},{seed:(salonSeed^(ri*0x9e3779b9))>>>0,maxPieces:slice.length});
         omittedCount+=lay.omitted.length;
         const mount=mountSalonHang(lay,{
           getTexture:(ref)=>salonTexMap.get(ref.id)!,
@@ -1909,6 +1918,24 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         scene.add(mk(new THREE.BoxGeometry(.155,.055,.23),MS.gold,bsX+.14,jY+jh*0.72,jz));   // gilt title band
         scene.add(mk(new THREE.BoxGeometry(.05,.09,.02),wing?.accent?new THREE.MeshStandardMaterial({color:wing.accent,roughness:.8}):MS.gold,bsX+.06,jY+jh-0.02,jz)); // ribbon marker
       });
+      // owner 2026-08-17: an unmistakable "there are WRITTEN memories here" cue —
+      // an OPEN BOOK on a brass stand at eye level, ruled with ink lines, facing the
+      // room. Clickable to the first written memory. Faces +X (bookcase faces +X).
+      {
+        const obX=bsX+0.34, obY=1.66, obZ=bC;
+        const openMat=new THREE.MeshStandardMaterial({color:"#F3ECDA",roughness:.92});
+        const inkMat=new THREE.MeshStandardMaterial({color:"#3A2E22",roughness:.85});
+        scene.add(mk(new THREE.BoxGeometry(0.2,0.03,0.72),MS.gold,obX-0.06,obY-0.24,obZ));                 // brass book-stand ledge
+        scene.add(mk(new THREE.BoxGeometry(0.07,0.5,0.74),new THREE.MeshStandardMaterial({color:"#5A2A18",roughness:.5}),obX-0.06,obY,obZ)); // slanted cover/back
+        scene.add(mk(new THREE.BoxGeometry(0.05,0.5,0.04),new THREE.MeshStandardMaterial({color:"#4A1F12",roughness:.5}),obX-0.02,obY,obZ)); // centre spine
+        const openBook=docMems[0]||null;
+        for(const sgn of[-1,1]){
+          const pg=new THREE.Mesh(new THREE.PlaneGeometry(0.44,0.34),openMat);pg.rotation.y=Math.PI/2;pg.rotation.z=sgn*0.06;pg.position.set(obX,obY,obZ+sgn*0.18);
+          if(openBook){pg.userData={memory:openBook};memMeshes.current.push(pg);}
+          scene.add(pg);
+          for(let l=0;l<6;l++)scene.add(mk(new THREE.BoxGeometry(0.006,0.008,0.24),inkMat,obX+0.006,obY+0.13-l*0.05,obZ+sgn*0.18));   // ruled ink lines
+        }
+      }
       // photo-book: a thick album with a cover image, standing at the shelf end
       const pbMem=wallMems[0]||photoMems[0]||paintingMems[0];
       if(pbMem){
@@ -3055,6 +3082,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         else if(_rcam==="musportal"){camera.position.set(-2.6,2.2,-rWRef.l/2+6.5);camera.lookAt(rWRef.w/2-0.4,1.5,-rWRef.l/2+2.6);}  // hall → music portal
         else if(_rcam==="front"){camera.position.set(0,2.3,-rWRef.l/2+7);camera.lookAt(1.5,1.0,rWRef.l/2);}   // mid-hall → the two FRONT corners (library left, vitrine right)
         else if(_rcam==="vitrine"){camera.position.set(1.5,1.8,0);camera.lookAt(rWRef.w/2,1.2,rWRef.l/2-(rWRef.l*0.28<7?rWRef.l*0.28:7)-1);}  // → front-right corner cabinet
+        else if(_rcam==="libshelf"){const wz=rWRef.l/2-Math.min(Math.max(3.5,rWRef.l*0.28),7);camera.position.set(-rWRef.w/2+2.4,1.7,(wz-4.75+wz)/2-2.5);camera.lookAt(-rWRef.w/2,1.6,(wz-4.75+wz)/2);}  // → library bookcase (open book)
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
