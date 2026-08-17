@@ -63,6 +63,7 @@ const PasscodeModal = lazy(() => import("@/components/social/PasscodeModal"));
 // MassImportPanel removed — all import flows now use ImportHub in Library mode
 import RoomGallery from "@/components/ui/RoomGallery";
 const RoomMediaPanel = lazy(() => import("@/components/ui/RoomMediaPanel"));
+const RoomStewardLedger = lazy(() => import("@/components/ui/RoomStewardLedger"));
 import StoragePlayerPanel from "@/components/ui/StoragePlayerPanel";
 import InviteNotificationsPanel from "@/components/ui/InviteNotificationsPanel";
 const SharedWithMePanel = lazy(() => import("@/components/ui/SharedWithMePanel"));
@@ -177,10 +178,13 @@ export default function MemoryPalace(){
   // gallery (F09: no more "hall of empty gold frames"). Flag-gated so prod is
   // byte-identical until the wave promotes.
   const [w3Corridor, setW3Corridor] = useState(false);
+  // "The Steward's Ledger" room-media UI (staging-ON / prod-OFF until the wave promotes).
+  const [w1RoomUI, setW1RoomUI] = useState(false);
   useEffect(() => {
     setW2Veil(flag3d("w2_veil"));
     setW2Shell(flag3d("w2_shell"));
     setW3Corridor(flag3d("w3_corridor"));
+    setW1RoomUI(flag3d("w1_roomui"));
   }, []);
   // Key fragment for scene remounting when daylight mode changes manually
   // Only remount scene when daylight is toggled on/off or mode changes — NOT on slider changes.
@@ -1688,7 +1692,9 @@ export default function MemoryPalace(){
       {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=wingForRoom(roomId);setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
       {showFamilyTree&&<Suspense fallback={lazyFallback}><FamilyTreePanel onClose={()=>setShowFamilyTree(false)}/></Suspense>}
       {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
-      {showGallery&&activeRoomId&&<RoomMediaPanel mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={(mem)=>{handleAddMemory(mem);if(galleryAutoAssignUnit){setTimeout(()=>{handleUpdateMemory(mem.id,{displayed:true,displayUnit:galleryAutoAssignUnit});setGalleryAutoAssignUnit(null);},100);}}} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} initialMemId={galleryInitialMemId} initialTab={galleryInitialTab} roomLayout={roomLayouts[activeRoomId]||""} onRoomLayoutChange={(id)=>setRoomLayout(activeRoomId,id)}/>}
+      {showGallery&&activeRoomId&&(w1RoomUI
+        ? <Suspense fallback={null}><RoomStewardLedger mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={handleAddMemory} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} canEdit/></Suspense>
+        : <RoomMediaPanel mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={(mem)=>{handleAddMemory(mem);if(galleryAutoAssignUnit){setTimeout(()=>{handleUpdateMemory(mem.id,{displayed:true,displayUnit:galleryAutoAssignUnit});setGalleryAutoAssignUnit(null);},100);}}} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} initialMemId={galleryInitialMemId} initialTab={galleryInitialTab} roomLayout={roomLayouts[activeRoomId]||""} onRoomLayoutChange={(id)=>setRoomLayout(activeRoomId,id)}/>)}
       {/* ─── AV remote pill — opens media playback bar ─── */}
       {view==="room"&&wingData&&!showGallery&&roomMediaBarOpen===null&&(()=>{
         const hasVideo=allRoomMems.some((m:any)=>m.type==="video");
