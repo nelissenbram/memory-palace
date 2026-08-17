@@ -1636,6 +1636,17 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         salonMounts.push(mount);
       });
       if(process.env.NODE_ENV!=="production"&&omittedCount>0)console.debug(`[InteriorScene] salon-hang: ${omittedCount} memories omitted (tier budget/wall capacity)`);
+      // W3 (owner B/C): honest overflow — a small engraved plate "…and N more in
+      // the archive" instead of silently dropping memories past the live-texture
+      // budget, so a big collection reads as "a lifetime", not a wall that quietly
+      // truncates. Hung low on the front wall beside the door.
+      if(W3&&omittedCount>0){
+        const oc=document.createElement("canvas");oc.width=512;oc.height=88;const ox=oc.getContext("2d");
+        if(ox){ox.fillStyle="#33281B";ox.fillRect(0,0,512,88);ox.strokeStyle="#9E8455";ox.lineWidth=3;ox.strokeRect(7,7,498,74);ox.fillStyle="#E9D7AC";ox.font="italic 30px Georgia,serif";ox.textAlign="center";ox.textBaseline="middle";ox.fillText(`…and ${omittedCount} more in the archive`,256,46);}
+        const ot=new THREE.CanvasTexture(oc);ot.colorSpace=THREE.SRGBColorSpace;ot.anisotropy=8;
+        const op=new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.26),new THREE.MeshBasicMaterial({map:ot,transparent:true}));
+        op.rotation.y=Math.PI;op.position.set(-(rW/2-2.2),1.05,rL/2-0.14);scene.add(op);
+      }
     }
     // W2 (WS6-6 empty state): 0 wall memories → the warm cream easel ("Hang
     // your first memory", i18n flat key ×5); tap routes to the existing
@@ -1816,9 +1827,22 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.BoxGeometry(0.05,fh+0.2,0.05),MS.trim,scrX-0.02,scrY,scrZ-fw/2-0.085));     // flush trim -z
       scene.add(mk(new THREE.BoxGeometry(0.045,0.02,fw+0.05),MS.gold,scrX-0.03,scrY+fh/2+0.03,scrZ));    // hairline gilt top
       scene.add(mk(new THREE.BoxGeometry(0.045,0.02,fw+0.05),MS.gold,scrX-0.03,scrY-fh/2-0.03,scrZ));    // hairline gilt bottom
-    }else{
+      // owner: a viewing bench a couple of metres out, facing the screen
+      const bvx=scrX-2.1;
+      for(const lz of[-0.55,0.55])for(const lx of[-0.22,0.22])scene.add(mk(new THREE.BoxGeometry(.07,.36,.07),MS.dkW,bvx+lx,.18,scrZ+lz));
+      scene.add(mk(new THREE.BoxGeometry(.6,.08,1.42),MS.dkW,bvx,.4,scrZ));
+      scene.add(mk(new THREE.BoxGeometry(.52,.13,1.3),MS.leather,bvx,.5,scrZ));
       scene.add(mk(new THREE.BoxGeometry(.08,2,3),MS.screen,scrX,scrY,scrZ));
       scene.add(mk(new THREE.BoxGeometry(.04,.15,.15),MS.iron,scrX,1.15,scrZ));
+    }
+    // owner #15 (adaptive slot): with NO moving media, the screen niche shows a
+    // PAINTING instead of a dark/idle screen — the slot is never empty.
+    if(W3&&!isExhibition&&videoMems.length===0){
+      const pm=wallMems[1]||wallMems[0]||paintingMems[0]||photoMems[0];
+      if(pm){
+        const pl=new THREE.Mesh(new THREE.PlaneGeometry(scrPlaneW,scrPlaneH),new THREE.MeshBasicMaterial({map:paintTex(pm)}));
+        pl.rotation.y=-Math.PI/2;pl.position.set(scrX-0.04,scrY,scrZ);pl.userData={memory:pm};scene.add(pl);memMeshes.current.push(pl);
+      }
     }
     // W2 (WS7-8) VideoTexture state — `active` flips true once metadata lands
     // and the blit loop stands down; onError flips it back (canvas fallback).
