@@ -31,6 +31,28 @@ const SAMPLE_MEMORIES: Mem[] = [
   _dm(400, { type: "video", dataUrl: "/demo/piano-recital.mp4", displayUnit: "screen", title: "Piano Recital" }),
 ];
 
+// ── Scalability review viewers (?scene=room&fill=max | min) ──
+// MAX: the room grown to its top tier — ~100 wall paintings (packed to the
+// texture budget, the rest reported as "…N more in the archive"), a fully-filled
+// L-vitrine, several bookcase documents, and audio + video on the player medium.
+const SAMPLE_MEMORIES_MAX: Mem[] = [
+  ...Array.from({ length: 100 }, (_, i) => _dm(i, {})),
+  ...Array.from({ length: 14 }, (_, i) => _dm(1000 + i, { type: "photo", displayUnit: "vitrine", title: `Keepsake ${i + 1}` })),
+  ...Array.from({ length: 6 }, (_, i) => _dm(2000 + i, { type: "text", displayUnit: "bookshelf", title: `Letter ${i + 1}` })),
+  _dm(3000, { type: "audio", dataUrl: "/demo/song-of-summer.mp3", displayUnit: "vinyl", title: "Song of Summer" }),
+  _dm(4000, { type: "video", dataUrl: "/demo/piano-recital.mp4", displayUnit: "screen", title: "Piano Recital" }),
+];
+// MIN: the smallest tier — one painting on the wall, one photo in the vitrine.
+const SAMPLE_MEMORIES_MIN: Mem[] = [
+  _dm(0, {}),
+  _dm(1, { type: "photo", displayUnit: "vitrine", title: "Keepsake" }),
+];
+function fillFromURL(): "max" | "min" | "default" {
+  if (typeof window === "undefined") return "default";
+  const q = new URLSearchParams(window.location.search).get("fill");
+  return q === "max" ? "max" : q === "min" ? "min" : "default";
+}
+
 // Demo photos for the entrance-hall door lunettes (viewer-only feel check —
 // the real app hangs each wing's newest photo here).
 const DEMO_LUNETTES: Record<string, Mem> = Object.fromEntries(
@@ -259,16 +281,20 @@ export default function FlythroughClient() {
             styleEra="roman"
           />
         );
-      case 3:
+      case 3: {
+        const fill = fillFromURL();
+        const roomMems = fill === "max" ? SAMPLE_MEMORIES_MAX : fill === "min" ? SAMPLE_MEMORIES_MIN : SAMPLE_MEMORIES;
         return (
           <InteriorScene
+            key={`room-${fill}`}
             roomId="roots"
             actualRoomId="ro1"
-            memories={SAMPLE_MEMORIES}
+            memories={roomMems}
             onMemoryClick={noop}
             styleEra="roman"
           />
         );
+      }
       default:
         return null;
     }
