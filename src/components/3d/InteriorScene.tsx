@@ -2527,6 +2527,26 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const bdMat=new THREE.MeshStandardMaterial({color:"#4A3018",roughness:.42,metalness:.06});
     const bdPanel=new THREE.MeshStandardMaterial({color:"#5C3D22",roughness:.5,metalness:.04});
     const bdAccent=new THREE.MeshStandardMaterial({color:wing?.accent||"#C8A868",roughness:.28,metalness:.55});
+    if(W3){
+      // owner #5: a CLEAN, wider doorway to the corridor — walnut double doors in
+      // a slim frame with warm light spilling through, matching the refined room.
+      // No ornate marble pilasters / gold panels / keystone (they read as a
+      // cramped column). Keeps the isBackDoor hit area below.
+      const dW=2.7, dH=3.3, leafW=dW/2-0.06;
+      const dpBronze=new THREE.MeshStandardMaterial({color:"#8A6A45",roughness:.4,metalness:.6});
+      // slim walnut frame: jambs, lintel, a restrained cornice
+      for(const s of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.15,dH+0.1,0.18),MS.dkW,s*(dW/2),dH/2,bdZ));
+      scene.add(mk(new THREE.BoxGeometry(dW+0.34,0.17,0.2),MS.dkW,0,dH+0.06,bdZ));                     // lintel
+      scene.add(mk(new THREE.BoxGeometry(dW+0.54,0.08,0.22),MS.marble,0,dH+0.17,bdZ));                 // slim cornice
+      scene.add(mk(new THREE.BoxGeometry(dW+0.2,0.04,0.23),dpBronze,0,dH+0.13,bdZ));                   // thin bronze band
+      // two walnut leaves, all but closed (a warm reveal at the meeting stiles)
+      for(const s of[-1,1]){
+        const cx=s*(leafW/2+0.04);
+        scene.add(mk(new THREE.BoxGeometry(leafW,dH-0.12,0.08),bdMat,cx,(dH-0.12)/2,bdZ-0.05));        // leaf
+        scene.add(mk(new THREE.BoxGeometry(leafW-0.18,dH-0.7,0.01),bdPanel,cx,(dH-0.12)/2,bdZ-0.1));   // recessed panel
+        scene.add(mk(new THREE.SphereGeometry(0.045,8,8),dpBronze,s*0.07,1.45,bdZ-0.13));              // handle
+      }
+    }else{
     // Outer stone architrave (wide in X, thin in Z)
     scene.add(mk(new THREE.BoxGeometry(2.2,3.6,.18),MS.marble,0,1.8,bdZ));
     // Inner wood surround
@@ -2569,6 +2589,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       shaft.rotation.x=Math.PI/2;scene.add(shaft);// shaft protruding towards camera
       scene.add(mk(new THREE.BoxGeometry(.08,.015,.015),bdAccent,hx,1.48,bdZ-.14));// lever hanging down
     }
+    }
     // Transom arch glow (semicircular light above doors, facing into room)
     const tranGeo=new THREE.CircleGeometry(.6,16,0,Math.PI);
     const tranMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity});
@@ -2580,7 +2601,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // compensate for the deleted door lights
     // z-fight sweep r2: the spill plane at z=bdZ sliced straight through the door
     // leaves (bdZ±.05) and panels — moved in front of the handles (−.148).
-    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:(W2?.09:.04)*dlPreset.sunIntensity,depthWrite:false}));
+    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:(W3?.13:W2?.09:.04)*dlPreset.sunIntensity,depthWrite:false}));
     bdGlow.position.set(0,1.9,bdZ-.17);scene.add(bdGlow);
     // W1 KILL (WS6-4): the doorGlow pulse animation dies; the faint static warm
     // spill plane stays (zero per-frame cost, no throbbing glow).
