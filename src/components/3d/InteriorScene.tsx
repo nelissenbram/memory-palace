@@ -423,7 +423,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // code expects (userData.memory) and is registered in memMeshes.
     const mountArtwork=(mem: any,tex: THREE.Texture,x: number,y: number,z: number,rotY: number,width: number)=>{
       const aspect=(tex.userData?.aspect as number)||4/3;
-      const art=makeArtwork({texture:tex,aspect,title:mem.title,year:memYear(mem),width,quality:artQuality});
+      // W3 (owner #3): the hero-over-fireplace + framed mantel photo get the same
+      // refined walnut+bronze moulding + museum plaque as the salon wall — no more
+      // old gold slab. No picture-light (owner #1: too much at room level).
+      const art=makeArtwork({texture:tex,aspect,title:mem.title,year:memYear(mem),width,quality:artQuality,refinedFrame:W3,plaquePlate:W3,rabbet:W3});
       art.group.position.set(x,y,z);
       art.group.rotation.y=rotY;
       art.group.userData={...art.group.userData,memory:mem};
@@ -1554,7 +1557,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // Deterministic (roomId-seeded), tier-budgeted, overflow reported omitted.
     if(W2&&wallMems.length>1){
       let salonSeed=0;for(const c of (actualRoomId||roomId))salonSeed=(salonSeed*31+c.charCodeAt(0))>>>0;
-      const doorHalf=1.7,scrHalf=1.9,cornerIn=0.4;
+      const doorHalf=1.7,scrHalf=1.9,cornerIn=W3?0.8:0.4; // W3 (owner #6): more corner clearance so art clears the wall pilasters/trim
       const salonRuns=[
         // front wall, left of the door — front faces -Z
         {cx:-(doorHalf+(rW/2-cornerIn-doorHalf)/2),cz:rL/2-0.12,rotY:Math.PI,width:rW/2-cornerIn-doorHalf,nx:0,nz:-1},
@@ -1603,7 +1606,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           // W3 (owner OG4): the corridor-approved refined frame — dark-walnut
           // moulding + gilt slip, recessed photo, brass museum plaque, picture-
           // light — replaces the plain gold frame on room wall art.
-          refinedFrame:W3,plaquePlate:W3,rabbet:W3,pictureLight:W3,
+          refinedFrame:W3,plaquePlate:W3,rabbet:W3,pictureLight:false, // owner #1: drop the room-level picture-lights
           onPiece:(art,p)=>{
             const m=byId.get(p.memory.id);
             if(!m)return;
