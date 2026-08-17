@@ -874,32 +874,51 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       }
       addGlowCard(-rW/2+0.4,2.0,libZc,2.8,Math.PI/2);   // wall wash over the bookcase
       addGlowCard(-rW/2+1.6,rH-0.5,libZc,2.6,0);         // ceiling wash
-      addGlowCard(-rW/2+1.6,1.4,libZc,2.4,0);            // low warm fill
       // ═ MUSIC — BACK-RIGHT corner (owner: NO piano — a beautiful gramophone instead).
       //   A walnut console with a turntable + a large flared brass horn, a stack of
       //   records, and a listening stool on a rug. ═
       const musZc=(musWingZ0+musWingZ1)/2, gcx=rW/2-1.15, gcz=-rL/2+1.1;
       const mrug=new THREE.Mesh(new THREE.PlaneGeometry(3.0,3.0),MS.rug);mrug.rotation.x=-Math.PI/2;mrug.position.set(rW/2-1.7,0.012,-rL/2+1.7);mrug.renderOrder=1;scene.add(mrug);
-      const brass=new THREE.MeshStandardMaterial({color:"#C9A24B",roughness:.28,metalness:.85});
-      // cabinet (turned legs + panelled body + lifted lid)
-      scene.add(mk(new THREE.BoxGeometry(1.2,0.72,0.72),MS.dkW,gcx,0.86,gcz));                          // console body
-      scene.add(mk(new THREE.BoxGeometry(1.26,0.06,0.78),MS.gold,gcx,1.23,gcz));                        // top lip
-      for(const[lx,lz] of [[-0.5,-0.28],[0.5,-0.28],[-0.5,0.28],[0.5,0.28]] as [number,number][])scene.add(mk(new THREE.CylinderGeometry(0.05,0.07,0.5,8),MS.dkW,gcx+lx,0.25,gcz+lz)); // turned legs
-      scene.add(mk(new THREE.BoxGeometry(1.0,0.04,0.5),new THREE.MeshStandardMaterial({color:"#1A1510",roughness:.35}),gcx-0.05,1.28,gcz)); // platter deck
-      scene.add(mk(new THREE.CylinderGeometry(0.2,0.2,0.02,24),new THREE.MeshStandardMaterial({color:"#0A0806",roughness:.5}),gcx-0.1,1.31,gcz)); // record
-      scene.add(mk(new THREE.CylinderGeometry(0.05,0.05,0.016,16),brass,gcx-0.1,1.32,gcz));            // label
-      {const lid=mk(new THREE.BoxGeometry(1.2,0.03,0.72),MS.dkW,gcx,1.62,gcz-0.34);lid.rotation.x=-0.9;scene.add(lid);}   // lifted lid
-      // the beautiful part — a big flared brass horn rising from the cabinet
-      scene.add(mk(new THREE.CylinderGeometry(0.035,0.035,0.5,10),brass,gcx+0.42,1.55,gcz+0.05));      // horn neck
-      {const bend=mk(new THREE.TorusGeometry(0.12,0.035,8,12,Math.PI/2),brass,gcx+0.42,1.78,gcz+0.05);bend.rotation.y=Math.PI/2;scene.add(bend);} // elbow
-      {const bell=mk(new THREE.CylinderGeometry(0.34,0.06,0.5,20,1,true),brass,gcx+0.34,1.95,gcz+0.05);bell.rotation.z=Math.PI/2;bell.rotation.x=0.15;scene.add(bell);} // flared bell
-      // a stack of records leaning against the cabinet + a listening stool
-      scene.add(mk(new THREE.BoxGeometry(0.4,0.4,0.04),new THREE.MeshStandardMaterial({color:"#2A2620",roughness:.6}),gcx-0.75,0.4,gcz+0.15));
-      scene.add(mk(new THREE.CylinderGeometry(0.24,0.26,0.12,16),MS.leather,gcx-0.15,0.52,gcz+1.15));  // stool seat
-      for(let a=0;a<3;a++){const an=a*2.094;scene.add(mk(new THREE.CylinderGeometry(0.03,0.03,0.5,6),MS.dkW,gcx-0.15+Math.cos(an)*0.16,0.25,gcz+1.15+Math.sin(an)*0.16));}
+      const brass=new THREE.MeshStandardMaterial({color:"#C9A24B",roughness:.26,metalness:.9});
+      const brassD=new THREE.MeshStandardMaterial({color:"#997731",roughness:.35,metalness:.85});
+      const ebony=new THREE.MeshStandardMaterial({color:"#17110C",roughness:.4,metalness:.1});
+      const V2=(x:number,y:number)=>new THREE.Vector2(x,y);
+      // ── walnut console: moulded base + panelled body + gilt-banded top ──
+      scene.add(mk(new THREE.BoxGeometry(1.22,0.6,0.74),MS.dkW,gcx,0.9,gcz));                             // body
+      scene.add(mk(new THREE.BoxGeometry(1.3,0.08,0.82),MS.dkW,gcx,0.62,gcz));                            // base moulding
+      scene.add(mk(new THREE.BoxGeometry(1.28,0.05,0.80),MS.gold,gcx,1.225,gcz));                         // gilt band
+      scene.add(mk(new THREE.BoxGeometry(1.32,0.05,0.84),MS.dkW,gcx,1.265,gcz));                          // top
+      for(const px of[-0.3,0.3]){scene.add(mk(new THREE.BoxGeometry(0.46,0.42,0.012),MS.gold,gcx+px,0.9,gcz+0.372));scene.add(mk(new THREE.BoxGeometry(0.4,0.36,0.02),ebony,gcx+px,0.9,gcz+0.378));} // raised panels w/ gilt frame
+      // ── turned baluster legs (lathed profile) ──
+      const legProf=[V2(0.055,0),V2(0.062,0.03),V2(0.03,0.1),V2(0.058,0.17),V2(0.026,0.3),V2(0.05,0.44),V2(0.02,0.54),V2(0.03,0.6)];
+      for(const[lx,lz] of [[-0.52,-0.31],[0.52,-0.31],[-0.52,0.31],[0.52,0.31]] as [number,number][]){
+        const leg=new THREE.Mesh(new THREE.LatheGeometry(legProf,10),MS.dkW);leg.position.set(gcx+lx,0.0,gcz+lz);leg.castShadow=false;scene.add(leg);
+      }
+      // ── turntable: deck + platter + record + spindle + tonearm + counterweight ──
+      scene.add(mk(new THREE.BoxGeometry(1.04,0.03,0.62),ebony,gcx-0.02,1.30,gcz));                       // deck
+      scene.add(mk(new THREE.CylinderGeometry(0.22,0.22,0.02,28),MS.iron,gcx-0.12,1.315,gcz));            // platter
+      scene.add(mk(new THREE.CylinderGeometry(0.21,0.21,0.014,28),new THREE.MeshStandardMaterial({color:"#0A0806",roughness:.55}),gcx-0.12,1.328,gcz)); // record
+      scene.add(mk(new THREE.CylinderGeometry(0.05,0.05,0.006,20),brass,gcx-0.12,1.336,gcz));            // label
+      scene.add(mk(new THREE.CylinderGeometry(0.008,0.008,0.04,8),brass,gcx-0.12,1.34,gcz));             // spindle
+      scene.add(mk(new THREE.CylinderGeometry(0.03,0.035,0.05,12),brass,gcx+0.28,1.33,gcz-0.22));        // tonearm pivot
+      {const arm=mk(new THREE.CylinderGeometry(0.011,0.011,0.42,8),brassD,gcx+0.09,1.355,gcz-0.11);arm.rotation.set(0,0.9,Math.PI/2);scene.add(arm);} // arm
+      scene.add(mk(new THREE.BoxGeometry(0.055,0.03,0.045),MS.iron,gcx-0.09,1.335,gcz+0.0));             // headshell
+      scene.add(mk(new THREE.CylinderGeometry(0.028,0.028,0.05,10),brassD,gcx+0.34,1.355,gcz-0.29));     // counterweight
+      // side crank
+      {const cr=mk(new THREE.CylinderGeometry(0.012,0.012,0.14,8),brass,gcx+0.64,0.92,gcz);cr.rotation.z=Math.PI/2;scene.add(cr);}
+      {const ch=mk(new THREE.CylinderGeometry(0.018,0.018,0.08,8),MS.dkW,gcx+0.71,1.0,gcz);ch.rotation.x=Math.PI/2;scene.add(ch);}
+      // ── the horn: a curved tube neck rising from the cabinet into a big flared bell ──
+      const neck=new THREE.CatmullRomCurve3([new THREE.Vector3(gcx+0.30,1.34,gcz),new THREE.Vector3(gcx+0.46,1.54,gcz+0.02),new THREE.Vector3(gcx+0.42,1.82,gcz+0.10),new THREE.Vector3(gcx+0.26,1.98,gcz+0.18)]);
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(neck,20,0.036,10,false),brass));
+      {const collar=mk(new THREE.CylinderGeometry(0.05,0.05,0.03,12),brassD,gcx+0.30,1.35,gcz);scene.add(collar);}   // base collar
+      const bellProf=[V2(0.04,0),V2(0.052,0.06),V2(0.08,0.13),V2(0.13,0.2),V2(0.2,0.26),V2(0.29,0.31),V2(0.305,0.335)];
+      {const bell=new THREE.Mesh(new THREE.LatheGeometry(bellProf,26),brass);bell.position.set(gcx+0.26,1.98,gcz+0.18);bell.rotation.set(-1.2,0.2,0.25);scene.add(bell);}
+      // stack of records on the floor + a listening stool on the rug
+      for(let r2=0;r2<4;r2++)scene.add(mk(new THREE.CylinderGeometry(0.2,0.2,0.012,20),new THREE.MeshStandardMaterial({color:r2%2?"#241610":"#2E2A24",roughness:.6}),gcx-0.78,0.02+r2*0.014,gcz+0.2));
+      scene.add(mk(new THREE.CylinderGeometry(0.24,0.26,0.12,16),MS.leather,gcx-0.15,0.52,gcz+1.15));    // stool seat
+      for(let a=0;a<3;a++){const an=a*2.094;const sl=new THREE.Mesh(new THREE.LatheGeometry([V2(0.03,0),V2(0.02,0.18),V2(0.028,0.34),V2(0.015,0.46)],8),MS.dkW);sl.position.set(gcx-0.15+Math.cos(an)*0.16,0.0,gcz+1.15+Math.sin(an)*0.16);scene.add(sl);}
       addGlowCard(rW/2-0.4,2.0,musZc,2.8,-Math.PI/2);   // wall wash
       addGlowCard(rW/2-1.4,rH-0.5,musZc,2.6,0);          // ceiling wash
-      addGlowCard(rW/2-1.4,1.4,musZc,2.4,0);             // low warm fill
       // ── Windows ONLY on far end walls (owner: "enkel aan de overkant verre zijden") —
       // back wall flanking the fireplace + one high on each side wall over each corner. ──
       for(const s of[-1,1])addArchWindow(s*(rW/2-1.9),1.5,-rL/2+0.06,0,1.3,1.5);                 // back wall, flanking the fireplace
@@ -1347,18 +1366,22 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const sofaZ=W3?(-rL/2+5.6):(rL/2-3.5);
     if(!isExhibition){
     addCol(0,sofaZ,1.25,0.55); // WS6-8: chesterfield
-    // Sofa legs (raised off floor to avoid z-fighting)
-    for(let lx of[-1,1])for(let lz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.04,.045,.12,6),MS.dkW,lx*1,.06,sofaZ+lz*.35));
-    // Seat base
-    scene.add(mk(new THREE.BoxGeometry(2.4,.25,.9),MS.leather,0,.245,sofaZ));
-    // Back
-    scene.add(mk(new THREE.BoxGeometry(2.4,.48,.12),MS.leatherD,0,.6,sofaZ+.39));
-    // Arms
-    for(let s=-1;s<=1;s+=2)scene.add(mk(new THREE.BoxGeometry(.14,.38,.8),MS.leatherD,s*1.13,.39,sofaZ));
-    // Buttons
-    for(let bx=-3;bx<=3;bx++)for(let by=0;by<2;by++){scene.add(mk(new THREE.SphereGeometry(.02,6,6),MS.button,bx*.3,.5+by*.18,sofaZ+.44));}
-    scene.add(mk(new THREE.BoxGeometry(.45,.22,.35),new THREE.MeshStandardMaterial({color:"#8A5838",roughness:.8}),-0.7,.48,sofaZ-.15));
-    scene.add(mk(new THREE.BoxGeometry(.4,.2,.32),new THREE.MeshStandardMaterial({color:wing?.accent||"#C66B3D",roughness:.85}),.8,.46,sofaZ-.12));
+    const legProfS=[new THREE.Vector2(.045,0),new THREE.Vector2(.052,.03),new THREE.Vector2(.028,.1),new THREE.Vector2(.04,.16),new THREE.Vector2(.02,.21)];
+    // turned bun legs
+    for(let lx of[-1,1])for(let lz of[-1,1]){const lg=new THREE.Mesh(new THREE.LatheGeometry(legProfS,8),MS.dkW);lg.position.set(lx*1.06,0,sofaZ+lz*.34);lg.castShadow=false;scene.add(lg);}
+    // seat frame + 3 plush leather cushions
+    scene.add(mk(new THREE.BoxGeometry(2.42,.24,.92),MS.leatherD,0,.32,sofaZ));
+    for(let c=-1;c<=1;c++){scene.add(mk(new THREE.BoxGeometry(.72,.22,.8),MS.leather,c*.76,.52,sofaZ-.02));scene.add(mk(new THREE.BoxGeometry(.68,.06,.76),MS.leather,c*.76,.63,sofaZ-.02));} // domed top
+    // rolled back + 3 back cushions + tufting
+    scene.add(mk(new THREE.BoxGeometry(2.42,.5,.16),MS.leatherD,0,.74,sofaZ+.4));
+    {const rb=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,2.42,12),MS.leatherD);rb.rotation.z=Math.PI/2;rb.position.set(0,.97,sofaZ+.4);scene.add(rb);}
+    for(let c=-1;c<=1;c++)scene.add(mk(new THREE.BoxGeometry(.72,.46,.14),MS.leather,c*.76,.72,sofaZ+.31));
+    for(let bx=-3;bx<=3;bx++)scene.add(mk(new THREE.SphereGeometry(.016,6,6),MS.button,bx*.34,.74,sofaZ+.235));
+    // rolled arms (arm body + a horizontal roll bolster)
+    for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.2,.52,.88),MS.leatherD,s*1.2,.5,sofaZ));const ra=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.88,12),MS.leatherD);ra.rotation.x=Math.PI/2;ra.position.set(s*1.2,.74,sofaZ);scene.add(ra);}
+    // a throw pillow at each end
+    scene.add(mk(new THREE.BoxGeometry(.34,.3,.14),new THREE.MeshStandardMaterial({color:"#8A5838",roughness:.85}),-0.72,.66,sofaZ+.16));
+    scene.add(mk(new THREE.BoxGeometry(.34,.3,.14),new THREE.MeshStandardMaterial({color:wing?.accent||"#C66B3D",roughness:.9}),.72,.66,sofaZ+.16));
     } // end !isExhibition sofa
 
     // ═══════════════════════════════════════════
@@ -1371,16 +1394,18 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // hearth cluster), not spread wide against the walls.
       const ax=s*Math.min(W3?2.3:3.5,rW/2-2.5),az=W3?(sofaZ-1.6):(fpZ+2.5);
       addCol(ax,az,0.65,0.55); // WS6-8: armchair
-      // Legs (cylinders raised off floor)
-      for(let abx of[-1,1])for(let abz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.03,.035,.18,6),MS.dkW,ax+abx*.4,.09,az+abz*.3));
-      // Seat + a plumper cushion (owner #7: richer)
-      scene.add(mk(new THREE.BoxGeometry(1,.12,.8),MS.leather,ax,.24,az));
-      scene.add(mk(new THREE.BoxGeometry(.86,.16,.66),MS.leather,ax,.36,az-.02));
-      // Back
-      scene.add(mk(new THREE.BoxGeometry(1,.42,.1),MS.leatherD,ax,.48,az+.35));
-      scene.add(mk(new THREE.BoxGeometry(.84,.34,.08),MS.leather,ax,.5,az+.31));
-      // Arms
-      for(let as=-1;as<=1;as+=2)scene.add(mk(new THREE.BoxGeometry(.12,.3,.7),MS.leatherD,ax+as*.44,.36,az));
+      const legP=[new THREE.Vector2(.04,0),new THREE.Vector2(.048,.03),new THREE.Vector2(.026,.09),new THREE.Vector2(.038,.14),new THREE.Vector2(.02,.19)];
+      for(let abx of[-1,1])for(let abz of[-1,1]){const lg=new THREE.Mesh(new THREE.LatheGeometry(legP,8),MS.dkW);lg.position.set(ax+abx*.42,0,az+abz*.3);lg.castShadow=false;scene.add(lg);}
+      // seat frame + plush cushion (domed)
+      scene.add(mk(new THREE.BoxGeometry(1,.16,.82),MS.leatherD,ax,.28,az));
+      scene.add(mk(new THREE.BoxGeometry(.84,.2,.68),MS.leather,ax,.44,az-.02));
+      scene.add(mk(new THREE.BoxGeometry(.8,.06,.64),MS.leather,ax,.54,az-.02));
+      // rolled back + cushion
+      scene.add(mk(new THREE.BoxGeometry(1,.5,.12),MS.leatherD,ax,.62,az+.37));
+      {const rb=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,1,12),MS.leatherD);rb.rotation.z=Math.PI/2;rb.position.set(ax,.85,az+.37);scene.add(rb);}
+      scene.add(mk(new THREE.BoxGeometry(.82,.44,.1),MS.leather,ax,.6,az+.3));
+      // rolled arms
+      for(let as=-1;as<=1;as+=2){scene.add(mk(new THREE.BoxGeometry(.16,.44,.72),MS.leatherD,ax+as*.46,.46,az));const ra=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.72,12),MS.leatherD);ra.rotation.x=Math.PI/2;ra.position.set(ax+as*.46,.66,az);scene.add(ra);}
     }
     } // end !isExhibition armchairs
 
@@ -1906,6 +1931,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.add(mk(new THREE.BoxGeometry(.06,rH-.2,W3?bL:rL-.1),MS.dkW,bsX-.23,rH/2,bC));
     scene.add(mk(new THREE.BoxGeometry(.6,.04,W3?bL:rL-.05),MS.gold,bsX,rH-.06,bC));
     scene.add(mk(new THREE.BoxGeometry(.58,.02,W3?bL:rL-.08),MS.ltW,bsX,rH-.02,bC));
+    if(W3){
+      // cabinetmaker finish: stepped crown cornice + base plinth + end pilasters
+      scene.add(mk(new THREE.BoxGeometry(.74,.1,bL+.18),MS.dkW,bsX+.05,rH-.17,bC));    // cornice step 1
+      scene.add(mk(new THREE.BoxGeometry(.66,.08,bL+.1),MS.dkW,bsX+.03,rH-.26,bC));    // cornice step 2
+      scene.add(mk(new THREE.BoxGeometry(.68,.03,bL+.12),MS.gold,bsX+.04,rH-.215,bC)); // gilt fillet
+      scene.add(mk(new THREE.BoxGeometry(.72,.16,bL+.16),MS.dkW,bsX+.04,.08,bC));      // base plinth
+      scene.add(mk(new THREE.BoxGeometry(.74,.03,bL+.18),MS.gold,bsX+.05,.17,bC));     // plinth cap
+      for(const ez of[bC-bL/2+.03,bC+bL/2-.03]){const pil=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,rH-.5,10),MS.dkW);pil.position.set(bsX+.26,rH/2,ez);pil.castShadow=false;scene.add(pil);scene.add(mk(new THREE.CylinderGeometry(.075,.075,.06,10),MS.gold,bsX+.26,rH-.28,ez));scene.add(mk(new THREE.CylinderGeometry(.075,.075,.06,10),MS.gold,bsX+.26,.28,ez));}  // fluted pilasters + brass caps
+    }
     if(W3){
       // owner #9/#10: the written memories are grouped at EYE LEVEL as inviting
       // leather journals (gilt title + a ribbon marker) so the shelf clearly reads
@@ -3075,7 +3109,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         if(_rcam==="door"){camera.position.set(0,2.0,rWRef.l/2-6);camera.lookAt(0,1.9,rWRef.l/2);}
         else if(_rcam==="hearth"){camera.position.set(0,2.0,-rWRef.l/2+7);camera.lookAt(0,1.6,-rWRef.l/2);}
         else if(_rcam==="bookcase"||_rcam==="wing"){camera.position.set(-rWRef.w/2-1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(-rWRef.w/2-3.5,1.4,-rWRef.l/2+1.5);}
-        else if(_rcam==="music"){camera.position.set(rWRef.w/2+1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(rWRef.w/2+3.5,1.4,-rWRef.l/2+1.5);}
+        else if(_rcam==="music"){camera.position.set(rWRef.w/2-2.9,1.55,-rWRef.l/2+3.3);camera.lookAt(rWRef.w/2-1.15,1.35,-rWRef.l/2+1.1);}  // → gramophone corner (back-right)
         else if(_rcam==="plan"){camera.position.set(0,rH-0.35,rWRef.l/2-0.6);camera.lookAt(0,0,-rWRef.l/4);} // high at the entry, looking down the room — reads the T footprint
         else if(_rcam==="entry"){camera.position.set(0,1.75,rWRef.l/2-1.2);camera.lookAt(0,1.6,-rWRef.l/2);} // eye-level at the door, looking straight down the stem into the hall
         else if(_rcam==="libportal"){camera.position.set(2.6,2.2,-rWRef.l/2+6.5);camera.lookAt(-rWRef.w/2+0.4,1.5,-rWRef.l/2+2.6);} // hall → library portal
