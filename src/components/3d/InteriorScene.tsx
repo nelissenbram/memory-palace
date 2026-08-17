@@ -1508,7 +1508,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const om=bigPaintMem;const t=paintTex(om);
       // z-fight sweep r2: +.06 put the makeArtwork glow plane (z −0.035) 5mm off the
       // chimney-breast face (fpZ+.02) — shimmer; +.09 gives it real clearance.
-      mountArtwork(om,t,fpX,2.4,fpZ+.09,0,W2?2.0:1.7);
+      // W3 (owner): raise the hero so its plaque clears the mantel clock/ornaments.
+      mountArtwork(om,t,fpX,W3?2.95:2.4,fpZ+.09,0,W2?2.0:1.7);
     }else if(bigPaintMem){
       // Frame only shown when there's actual content
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
@@ -1744,7 +1745,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // Peristylium: screen centered on back wall (z=-rL/2), paintings split to left/right sides
     // Screen sits at eye level on the clear center section of the back wall
-    const scrX=isExhibition?0:rW/2-.2;
+    const scrX=isExhibition?0:(rW/2-(W3?0.05:0.2)); // W3 (owner): sit near the wall so the screen reads INSET, not proud
     const scrZ=isExhibition?-rL/2+0.2:0;
     const scrY=isExhibition?3.2:2.2;
     const scrPlaneW=isExhibition?3.2:2.8, scrPlaneH=isExhibition?1.8:1.8;
@@ -1770,17 +1771,17 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(scrAccent);scene.add(scrAccent.target);
       }
     }else if(W3){
-      // owner #4: the screen is recessed into a SLIM light frame — reads built-in
-      // but not heavy (the earlier walnut niche was too bulky). Thin trim reveal +
-      // a delicate gilt bead; no mantel. The video plane (scrX-.06) sits inside it.
-      const fw=scrPlaneW,fh=scrPlaneH,fp=scrX-0.09;
-      scene.add(mk(new THREE.BoxGeometry(0.1,fh+0.12,fw+0.12),MS.screen,scrX+0.04,scrY,scrZ));           // recessed dark back (slim border)
-      scene.add(mk(new THREE.BoxGeometry(0.1,0.06,fw+0.22),MS.trim,fp,scrY+fh/2+0.08,scrZ));             // slim reveal top
-      scene.add(mk(new THREE.BoxGeometry(0.1,0.06,fw+0.22),MS.trim,fp,scrY-fh/2-0.08,scrZ));             // slim reveal bottom
-      scene.add(mk(new THREE.BoxGeometry(0.1,fh+0.22,0.06),MS.trim,fp,scrY,scrZ+fw/2+0.08));             // slim reveal +z
-      scene.add(mk(new THREE.BoxGeometry(0.1,fh+0.22,0.06),MS.trim,fp,scrY,scrZ-fw/2-0.08));             // slim reveal -z
-      scene.add(mk(new THREE.BoxGeometry(0.09,0.022,fw+0.06),MS.gold,fp-0.006,scrY+fh/2+0.03,scrZ));     // delicate gilt bead top
-      scene.add(mk(new THREE.BoxGeometry(0.09,0.022,fw+0.06),MS.gold,fp-0.006,scrY-fh/2-0.03,scrZ));     // delicate gilt bead bottom
+      // owner: SINK the screen flush into the wall — a shallow inset, not a proud
+      // box. The wider dark panel just off the wall reads as the recess; the video
+      // sits in front of it; a slim flush trim ring frames the opening.
+      const fw=scrPlaneW,fh=scrPlaneH;
+      scene.add(mk(new THREE.BoxGeometry(0.05,fh+0.16,fw+0.16),MS.screen,scrX+0.03,scrY,scrZ));          // dark recess panel (at the wall, wider than the screen)
+      scene.add(mk(new THREE.BoxGeometry(0.05,0.05,fw+0.2),MS.trim,scrX-0.02,scrY+fh/2+0.085,scrZ));     // flush trim top
+      scene.add(mk(new THREE.BoxGeometry(0.05,0.05,fw+0.2),MS.trim,scrX-0.02,scrY-fh/2-0.085,scrZ));     // flush trim bottom
+      scene.add(mk(new THREE.BoxGeometry(0.05,fh+0.2,0.05),MS.trim,scrX-0.02,scrY,scrZ+fw/2+0.085));     // flush trim +z
+      scene.add(mk(new THREE.BoxGeometry(0.05,fh+0.2,0.05),MS.trim,scrX-0.02,scrY,scrZ-fw/2-0.085));     // flush trim -z
+      scene.add(mk(new THREE.BoxGeometry(0.045,0.02,fw+0.05),MS.gold,scrX-0.03,scrY+fh/2+0.03,scrZ));    // hairline gilt top
+      scene.add(mk(new THREE.BoxGeometry(0.045,0.02,fw+0.05),MS.gold,scrX-0.03,scrY-fh/2-0.03,scrZ));    // hairline gilt bottom
     }else{
       scene.add(mk(new THREE.BoxGeometry(.08,2,3),MS.screen,scrX,scrY,scrZ));
       scene.add(mk(new THREE.BoxGeometry(.04,.15,.15),MS.iron,scrX,1.15,scrZ));
@@ -1796,7 +1797,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const vtex=new THREE.CanvasTexture(vc);vtex.colorSpace=THREE.SRGBColorSpace;
       const scrMesh=new THREE.Mesh(new THREE.PlaneGeometry(scrPlaneW,scrPlaneH),new THREE.MeshBasicMaterial({map:vtex}));
       if(isExhibition){scrMesh.position.set(scrX,scrY,scrZ+0.06);}
-      else{scrMesh.rotation.y=-Math.PI/2;scrMesh.position.set(scrX-.06,scrY,scrZ);}
+      else{scrMesh.rotation.y=-Math.PI/2;scrMesh.position.set(scrX-(W3?0.0:.06),scrY,scrZ);}
       scrMesh.userData={memory:videoMems[0]};
       scrMeshRef.current=scrMesh;
       scene.add(scrMesh);memMeshes.current.push(scrMesh);
@@ -1953,7 +1954,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const vtX=-rW/2+2, vtZ=-rL/2+0.7;
     // owner #8: under W3 the vitrine rises floor-to-ceiling with several glass
     // shelves so it can hold MANY objects; base tiers keep the low case.
-    const vtW=1.4, vtD=0.7, vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.45):1.0;
+    const vtW=1.4, vtD=0.7, vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.22):1.0;
     addCol(vtX,vtZ,W3?rH*0.9:0.8,0.45); // WS6-8: vitrine
     const vtBrassMat=new THREE.MeshStandardMaterial({color:"#B8963E",roughness:.22,metalness:.7});
     const vtVelvet=new THREE.MeshStandardMaterial({color:"#1A0A2E",roughness:.95,metalness:0});
@@ -1983,6 +1984,17 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.add(mk(new THREE.BoxGeometry(vtW+.04,.05,vtD+.04),MS.dkW,vtX,vtTopY,vtZ));
     scene.add(mk(new THREE.BoxGeometry(vtW+.08,.015,vtD+.08),vtBrassMat,vtX,vtTopY+.025,vtZ));
     scene.add(mk(new THREE.BoxGeometry(vtW+.12,.02,vtD+.12),MS.dkW,vtX,vtTopY+.04,vtZ));
+    // W3 (owner): the cabinet runs to the ceiling — a solid DECORATIVE topping
+    // (stepped cornice + a central finial) fills the gap above the top shelf, so
+    // the top is a functionless crown, not another display shelf.
+    if(W3){
+      const capBot=vtTopY+0.05, capH=Math.max(0.12,rH-capBot);
+      scene.add(mk(new THREE.BoxGeometry(vtW+.1,capH*0.55,vtD+.1),MS.dkW,vtX,capBot+capH*0.275,vtZ));      // cornice block
+      scene.add(mk(new THREE.BoxGeometry(vtW+.18,.04,vtD+.18),vtBrassMat,vtX,capBot+capH*0.56,vtZ));       // gilt band
+      scene.add(mk(new THREE.BoxGeometry(vtW-.1,capH*0.4,vtD-.1),MS.dkW,vtX,capBot+capH*0.78,vtZ));        // stepped-in upper
+      scene.add(mk(new THREE.CylinderGeometry(.05,.08,capH*0.35,10),vtBrassMat,vtX,capBot+capH*0.85,vtZ)); // central finial
+      scene.add(mk(new THREE.SphereGeometry(.06,10,10),vtBrassMat,vtX,rH-.05,vtZ));                        // finial ball at ceiling
+    }
     const glassF=new THREE.Mesh(new THREE.PlaneGeometry(vtW-.1,vtGlassH-.04),vtGlassMat);glassF.position.set(vtX,vtGBot+vtGlassH/2,vtZ+vtD/2-.03);glassF.raycast=()=>{};scene.add(glassF);
     const glassB=new THREE.Mesh(new THREE.PlaneGeometry(vtW-.1,vtGlassH-.04),vtGlassMat);glassB.position.set(vtX,vtGBot+vtGlassH/2,vtZ-vtD/2+.03);glassB.rotation.y=Math.PI;glassB.raycast=()=>{};scene.add(glassB);
     const glassL=new THREE.Mesh(new THREE.PlaneGeometry(vtD-.1,vtGlassH-.04),vtGlassMat);glassL.rotation.y=Math.PI/2;glassL.position.set(vtX-vtW/2+.03,vtGBot+vtGlassH/2,vtZ);glassL.raycast=()=>{};scene.add(glassL);
@@ -2007,8 +2019,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     }
     // Objects sit ON the shelves — one per shelf-row (up to 2 side-by-side),
     // so a tall W3 case fills with many objects; the low case keeps up to 3.
-    const vtCap=W3?Math.min(vtShelfYs.length*2,8):3;
-    const vtLevels=W3?[...vtShelfYs].reverse():[vtGBot+vtGlassH*.35];
+    // Objects fill from the upper-middle down; the very top shelf stays clear so
+    // the crown reads as decorative headroom, not a display level (owner).
+    const vtLevels=W3?[...vtShelfYs].reverse().slice(vtShelfYs.length>2?1:0):[vtGBot+vtGlassH*.35];
+    const vtCap=W3?Math.min(vtLevels.length*2,8):3;
     caseMems.slice(0,vtCap).forEach((m: any,i: any)=>{
       const recTex=paintTex(m);
       const rec=new THREE.Mesh(new THREE.PlaneGeometry(.42,.42),new THREE.MeshStandardMaterial({map:recTex,roughness:.4,metalness:.05}));
