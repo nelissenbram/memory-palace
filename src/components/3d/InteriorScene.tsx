@@ -486,19 +486,23 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // "Enfilade of Wings" (owner 2026-08-17): straight-cornered WINGS bud off the
     // main room — a LIBRARY wing off the back-left. The wing is an additive nook
     // with an opening cut in the left wall. (Music wing + more follow.)
-    const libWingD=4.2, libWingW=5.2;             // wing depth (−X) and width (Z)
+    // owner 2026-08-17: the wings felt cramped/unclear — make them DEEPER and
+    // NARROWER ("T-uiteinden smaller maar langer") so each reads as a distinct
+    // elongated room you look down into, with a bright window at its far end.
+    const libWingD=6.4, libWingW=4.2;             // wing depth (−X, longer) and mouth width (Z, narrower)
     const libWingZ0=-rL/2, libWingZ1=-rL/2+libWingW; // wing spans the back-left corner
     const libWingX=-rW/2;                          // wing shares the main-room left wall line
     const libFarX=libWingX-libWingD;               // wing far (outer) wall
     // MUSIC wing — mirror off the back-RIGHT (piano + record player).
-    const musWingD=4.2, musWingW=5.2;
+    const musWingD=6.4, musWingW=4.2;
     const musWingZ0=-rL/2, musWingZ1=-rL/2+musWingW;
     const musWingX=rW/2, musFarX=musWingX+musWingD;
     // T-SHAPE (owner: the room itself is non-rectangular) — a NARROW entry stem at
-    // the door that WIDENS into the full-width hall (hearth + wings). Scales: the
-    // stem lengthens and the hall deepens with the room.
-    const stemHalfW=Math.max(2.6,rW/2-2.6);            // narrow entry-stem half-width
-    const stemLen=Math.min(Math.max(3.8,rL*0.3),7.0);  // entry stem depth
+    // the door that WIDENS into the full-width hall (hearth + wings). owner 2026-08-17:
+    // narrower + longer stem (a proper gallery approach) so it reads spacious, not
+    // cramped, and gives more media wall on the way in.
+    const stemHalfW=Math.max(2.4,rW/2-3.4);            // narrow entry-stem half-width
+    const stemLen=Math.min(Math.max(5,rL*0.42),11);    // entry stem depth (longer)
     const widenZ=rL/2-stemLen;                         // z where the stem opens into the hall
     const BOOKSHELF_LEN=4.0;
     // Under W3 the library lives IN the wing (on its far wall); flag-off keeps it
@@ -869,11 +873,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.BoxGeometry(libWingD-.1,1.2,.05),MS.wain,wcx,.6,libWingZ1-.025));scene.add(mk(new THREE.BoxGeometry(libWingD-.1,.07,.06),MS.gold,wcx,1.23,libWingZ1-.03));
       // ── wing lighting + LIBRARY furnishing: a warm window on the far wall, a
       // floor pool, a reading chair + lamp, and a writing desk. ──
-      const skyG=new THREE.Mesh(new THREE.PlaneGeometry(1.7,2.3),new THREE.MeshBasicMaterial({color:"#FFEAC8"}));   // bright warm window
-      skyG.rotation.y=Math.PI/2;skyG.position.set(libFarX+0.06,2.1,wcz);scene.add(skyG);
-      for(const zs of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.12,2.6,0.16),MS.wain,libFarX+0.08,2.1,wcz+zs*0.95)); // jambs
-      scene.add(mk(new THREE.BoxGeometry(0.14,0.16,2.2),MS.wain,libFarX+0.08,3.35,wcz));                              // lintel
-      scene.add(mk(new THREE.BoxGeometry(0.16,0.1,2.2),MS.gold,libFarX+0.08,0.9,wcz));                                // sill
+      addArchWindow(wcx,0.95,libWingZ0+0.05,0,2.6,2.1);   // arched window on the wing's back wall (far wall holds the bookcase) — light rakes the shelves, reads lit from the hall
       const wp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());wp.rotation.x=-Math.PI/2;wp.position.set(libFarX+1.9,0.02,wcz);wp.renderOrder=1;scene.add(wp);
       // baked washes so the nook reads lit (no new dynamic light): the window wall + a warm fill
       addGlowCard(libFarX+0.35,2.1,wcz,2.7,Math.PI/2);   // window-wall wash
@@ -901,9 +901,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const mfr=new THREE.Mesh(new THREE.PlaneGeometry(musWingD,rH),MS.wall);mfr.rotation.y=Math.PI;mfr.position.set(mcx,rH/2,musWingZ1);mfr.receiveShadow=true;scene.add(mfr);
       scene.add(mk(new THREE.BoxGeometry(.05,1.2,musWingW-.1),MS.wain,musFarX-.025,.6,mcz));scene.add(mk(new THREE.BoxGeometry(.06,.07,musWingW-.1),MS.gold,musFarX-.03,1.23,mcz));
       scene.add(mk(new THREE.BoxGeometry(musWingD-.1,1.2,.05),MS.wain,mcx,.6,musWingZ1-.025));scene.add(mk(new THREE.BoxGeometry(musWingD-.1,.07,.06),MS.gold,mcx,1.23,musWingZ1-.03));
-      const mskyG=new THREE.Mesh(new THREE.PlaneGeometry(1.7,2.3),new THREE.MeshBasicMaterial({color:"#FFEAC8"}));mskyG.rotation.y=-Math.PI/2;mskyG.position.set(musFarX-0.06,2.1,mcz);scene.add(mskyG);
-      for(const zs of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.12,2.6,0.16),MS.wain,musFarX-0.08,2.1,mcz+zs*0.95));
-      scene.add(mk(new THREE.BoxGeometry(0.14,0.16,2.2),MS.wain,musFarX-0.08,3.35,mcz));scene.add(mk(new THREE.BoxGeometry(0.16,0.1,2.2),MS.gold,musFarX-0.08,0.9,mcz));
+      addArchWindow(musFarX-0.05,0.95,mcz,-Math.PI/2,2.6,2.1);   // big bright arched window fills the music arm's far end
       const mpp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());mpp.rotation.x=-Math.PI/2;mpp.position.set(musFarX-1.9,0.02,mcz);mpp.renderOrder=1;scene.add(mpp);
       addGlowCard(musFarX-0.35,2.1,mcz,2.7,-Math.PI/2);addGlowCard(mcx,rH-0.5,mcz,2.6,0);
       addGlowCard(musWingX+0.4,2.0,mcz,2.6,Math.PI/2);addGlowCard(mcx,1.5,mcz,2.4,0);   // portal-mouth wash + low fill
@@ -929,13 +927,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // ── Frame each wing as a distinct ARCHED PORTAL (separate corner) ──
       addWingPortal(-1,libWingZ0,libWingZ1);
       addWingPortal(1,musWingZ0,musWingZ1);
-      // ── Arched windows through the MAIN room (owner: "een hoop ramen" ontbreken) ──
+      // ── Windows ONLY on the far end walls (owner 2026-08-17: "enkel aan de
+      // overkant verre zijden ramen") — the two wing far walls (above) + the back
+      // wall flanking the fireplace. The long media walls stay clear for the hang.
       for(const s of[-1,1])addArchWindow(s*(rW/2-1.9),1.5,-rL/2+0.06,0,1.3,1.5);                 // back wall, flanking the fireplace
-      for(const s of[-1,1]){                                                                       // clerestory band, high on the hall walls above the salon hang
-        const wingZ1=s<0?libWingZ1:musWingZ1, rotY=s<0?Math.PI/2:-Math.PI/2, wx=s*(rW/2)-s*0.06;
-        for(const dz of[-1.5,1.5]){const z=(wingZ1+widenZ)/2+dz; if(z>wingZ1+0.7&&z<widenZ-0.7)addArchWindow(wx,rH-1.55,z,rotY,0.95,0.66);}
-      }
-      for(const s of[-1,1])addArchWindow(s*(stemHalfW)-s*0.06,rH-1.5,(widenZ+rL/2)/2,s<0?Math.PI/2:-Math.PI/2,0.85,0.6); // stem entry, one clerestory each side
     }
     if(W3){
       // T-shape wainscot: hall side walls (past each wing) at ±rW/2, then the stem

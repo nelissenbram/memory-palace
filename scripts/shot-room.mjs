@@ -12,8 +12,9 @@ const browser = await puppeteer.launch({
   ],
 });
 const page = await browser.newPage();
+if (process.env.UA) await page.setUserAgent(process.env.UA);
 await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 2 });
-page.on("console", (m) => { const t = m.text(); if (/error|warn|aspect|rooms/i.test(t)) console.log("PAGE:", t); });
+page.on("console", (m) => { const t = m.text(); if (/error|warn|aspect|rooms|draw|light|budget|tris/i.test(t)) console.log("PAGE:", t); });
 await page.goto(URL, { waitUntil: "networkidle2", timeout: 120000 }).catch(() => {});
 await new Promise((r) => setTimeout(r, Number(process.env.WAIT || 10000)));
 await page.screenshot({ path: OUT });

@@ -33,9 +33,9 @@ export interface RoomLayout {
 // number of displayed WALL photos grows. Width/height are sacred. Deterministic
 // and pure so a room is stable across revisits; snapped tiers keep draw calls
 // bounded and avoid a rebuild on every single add.
-export const BAY_DEPTH = 4;   // metres of rL added per depth bay
+export const BAY_DEPTH = 5;   // metres of rL added per depth bay (owner 2026-08-17: rooms felt cramped for the media — grow more per tier)
 export const MAX_BAYS = 3;    // iOS-safe ceiling on added bays
-export const MAX_RL = 26;     // hard depth clamp (~ old peristylium footprint)
+export const MAX_RL = 30;     // hard depth clamp
 
 export type RoomTier = "Intimate" | "Hall" | "Gallery" | "Grand Enfilade";
 
@@ -56,8 +56,8 @@ export function tierForCount(count: number): { tier: RoomTier; bays: number } {
 export function sizeForRoom(base: RoomLayout, count: number): RoomLayout {
   const { tier, bays } = tierForCount(count);
   const b = Math.min(bays, MAX_BAYS);
-  const rL = Math.min(base.rL + b * BAY_DEPTH, base.rW * 1.6, MAX_RL);
-  if (process.env.NODE_ENV !== "production" && rL / base.rW > 1.8) {
+  const rL = Math.min(base.rL + b * BAY_DEPTH, base.rW * 2.0, MAX_RL);
+  if (process.env.NODE_ENV !== "production" && rL / base.rW > 2.2) {
     console.warn(`[rooms] aspect rL/rW=${(rL / base.rW).toFixed(2)} > 1.8 — room risks reading as a hall`);
   }
   return { ...base, rL, tier, bays: b };
