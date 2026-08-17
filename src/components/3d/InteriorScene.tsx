@@ -854,15 +854,20 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // LIBRARY made L-SHAPED (owner 2026-08-17): a SECOND bookcase arm runs along the
       // shoulder wall, wrapping the front-left corner together with the main left-wall
       // bookcase (built at bsX). Decorative shelves + book spines, facing -Z.
-      const saZ=widenZ-0.32, saX0=-rW/2+0.32, saLen=3.2, saXc=saX0+saLen/2;
+      // spans from the corner to the STEM wall so it aligns with the entry opening
+      // (never protrudes into the entrance hall). Open front (books face -Z) so the
+      // shelves + spines are visible, not hidden behind a solid carcass.
+      const saXL=-rW/2+0.15, saXR=-stemHalfW, saLen=saXR-saXL, saXc=(saXL+saXR)/2;
+      const saZ=widenZ-0.22; // shelving front (faces -Z into the hall)
       const libPal=["#6B1A1A","#1A2744","#2A4A2A","#4A1A2A","#8B6914","#3A2010","#1A3A4A","#5A2A3A","#2A3A1A","#6A4A2A"];
-      scene.add(mk(new THREE.BoxGeometry(saLen+0.12,rH-0.22,0.3),MS.dkW,saXc,(rH-0.22)/2+0.06,saZ-0.03));   // carcass
-      scene.add(mk(new THREE.BoxGeometry(saLen+0.2,0.06,0.36),MS.gold,saXc,rH-0.13,saZ));                    // gilt cornice
-      scene.add(mk(new THREE.BoxGeometry(saLen+0.18,0.08,0.34),MS.dkW,saXc,0.09,saZ));                       // plinth
+      scene.add(mk(new THREE.BoxGeometry(saLen,rH-0.2,0.05),MS.dkW,saXc,(rH-0.2)/2+0.05,widenZ-0.05));       // back panel (against the shoulder wall)
+      for(const ex of[saXL,saXR])scene.add(mk(new THREE.BoxGeometry(0.05,rH-0.2,0.34),MS.dkW,ex,(rH-0.2)/2+0.05,widenZ-0.2)); // end sides
+      scene.add(mk(new THREE.BoxGeometry(saLen+0.1,0.06,0.4),MS.gold,saXc,rH-0.12,widenZ-0.2));              // gilt cornice
+      scene.add(mk(new THREE.BoxGeometry(saLen+0.06,0.09,0.38),MS.dkW,saXc,0.08,widenZ-0.2));                // plinth
       for(let sh=0;sh<5;sh++){const shy=0.36+sh*((rH-0.78)/4);
-        scene.add(mk(new THREE.BoxGeometry(saLen,0.04,0.3),MS.dkW,saXc,shy,saZ));                            // shelf board
-        let bx=saX0+0.06,k=sh*7+3;
-        while(bx<saX0+saLen-0.12){const bwi=0.05+((k*13)%5)*0.016, bhi=0.24+((k*7)%4)*0.03;
+        scene.add(mk(new THREE.BoxGeometry(saLen,0.04,0.32),MS.dkW,saXc,shy,widenZ-0.2));                    // shelf board
+        let bx=saXL+0.1,k=sh*7+3;
+        while(bx<saXR-0.12){const bwi=0.05+((k*13)%5)*0.016, bhi=0.24+((k*7)%4)*0.03;
           scene.add(mk(new THREE.BoxGeometry(bwi,bhi,0.2),new THREE.MeshStandardMaterial({color:libPal[k%libPal.length],roughness:.72}),bx+bwi/2,shy+0.04+bhi/2,saZ));
           bx+=bwi+0.01;k=(k*1103515245+12345)>>>8;
         }
@@ -2201,9 +2206,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     };
     if(W3){
       // L: right-wall arm (thin X, long Z) + shoulder arm (long X, thin Z) with a solid
-      // shared corner overlap so it reads as ONE L-shaped cabinet, not two cases.
+      // shared corner overlap so it reads as ONE L. The shoulder arm spans exactly from
+      // the STEM wall to the right wall, so it aligns with the entry opening and never
+      // pokes into the corridor.
+      const vShX0=stemHalfW, vShX1=rW/2-0.12, vShCx=(vShX0+vShX1)/2, vShCw=vShX1-vShX0;
       buildGlassCase(rW/2-0.38, widenZ-1.6, 0.64, 2.8, caseMems.slice(0,6));   // right-wall arm
-      buildGlassCase(rW/2-1.7, widenZ-0.38, 2.9, 0.64, caseMems.slice(6,12));  // shoulder arm
+      buildGlassCase(vShCx, widenZ-0.38, vShCw, 0.64, caseMems.slice(6,12));    // shoulder arm (aligned to the stem wall)
     }else buildGlassCase(-rW/2+2, -rL/2+0.7, 1.4, 0.7, caseMems.slice(0,3));
     } // end !isExhibition vitrine
 
