@@ -1156,7 +1156,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const beamSpacing=rL/(beamCount+1);
       for(let bi=1;bi<=beamCount;bi++){
         const bz3=-rL/2+bi*beamSpacing;
-        scene.add(mk(new THREE.BoxGeometry(rW-0.3,0.14,0.1),MS.dkW,0,rH-0.07,bz3));
+        // W3 (owner #6): the beams no longer cast shadows (the hard shadow stripes
+        // read badly) and sit flush against the ceiling — quiet articulation, not
+        // a rack of dark bars.
+        const bm=mk(new THREE.BoxGeometry(rW-0.3,W3?0.1:0.14,0.1),MS.dkW,0,rH-(W3?0.05:0.07),bz3);
+        if(W3)bm.castShadow=false;
+        scene.add(bm);
       }
     }
 
@@ -2193,6 +2198,23 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(courtyardSun);scene.add(courtyardSun.target);}
       // Warm ambient uplighting from courtyard floor
       if(!W2&&!isMobileGPU()){const courtAmbient=new THREE.PointLight("#FFE8D0",0.3,15);courtAmbient.position.set(0,1,0);scene.add(courtAmbient);}
+    }else if(W3){
+      // owner #6: cleaner, quieter wall lights high above the salon hang — a
+      // bronze backplate + a frosted alabaster shade (soft warm glow, sub-unity so
+      // it never blooms) + one baked wall wash. Evenly pitched, they light the wall
+      // without the fussy little bulbs competing with the art.
+      const shMat=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.85,roughness:.6,transparent:true,opacity:.92});
+      const sconceY=rH-0.7;
+      const pitch=rL/Math.max(2,Math.round(rL/5));
+      for(let s=-1;s<=1;s+=2){
+        for(let z=-rL/2+pitch;z<rL/2-0.6;z+=pitch){
+          const wx=s*(rW/2-0.04);
+          scene.add(mk(new THREE.BoxGeometry(.05,.28,.12),MS.bronze,wx-s*.02,sconceY,z));            // backplate
+          scene.add(mk(new THREE.BoxGeometry(.06,.05,.14),MS.bronze,wx-s*.06,sconceY-.12,z));         // arm
+          scene.add(mk(new THREE.CylinderGeometry(.07,.09,.22,12,1,true),shMat,wx-s*.1,sconceY,z));   // frosted shade
+          if(W2)addGlowCard(wx-s*.12,sconceY+.5,z,0.7,s>0?-Math.PI/2:Math.PI/2);                       // baked uplight wash
+        }
+      }
     }else{
     for(let s=-1;s<=1;s+=2){
       for(const sz of[-2,2]){
@@ -2566,10 +2588,24 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // two walnut leaves, all but closed (a warm reveal at the meeting stiles)
       for(const s of[-1,1]){
         const cx=s*(leafW/2+0.04);
-        scene.add(mk(new THREE.BoxGeometry(leafW,dH-0.12,0.08),bdMat,cx,(dH-0.12)/2,bdZ-0.05));        // leaf
-        scene.add(mk(new THREE.BoxGeometry(leafW-0.18,dH-0.7,0.01),bdPanel,cx,(dH-0.12)/2,bdZ-0.1));   // recessed panel
-        scene.add(mk(new THREE.SphereGeometry(0.045,8,8),dpBronze,s*0.07,1.45,bdZ-0.13));              // handle
+        scene.add(mk(new THREE.BoxGeometry(leafW,dH-0.12,0.08),bdMat,cx,(dH-0.12)/2,bdZ-0.05));        // leaf (front face bdZ-0.09)
+        scene.add(mk(new THREE.BoxGeometry(leafW-0.18,dH-0.7,0.01),bdPanel,cx,(dH-0.12)/2,bdZ-0.125)); // applied panel, clearly proud (no z-fight)
+        scene.add(mk(new THREE.SphereGeometry(0.045,8,8),dpBronze,s*0.07,1.45,bdZ-0.14));              // handle
       }
+      // owner #1: the name goes ON the door — an engraved bronze plate in the
+      // room's style (dark plate, warm ivory serif), spanning the meeting stiles.
+      const dpc=document.createElement("canvas");dpc.width=512;dpc.height=110;const dpx=dpc.getContext("2d");
+      if(dpx){
+        const g=dpx.createLinearGradient(0,0,0,110);g.addColorStop(0,"#4A3B29");g.addColorStop(.5,"#33281B");g.addColorStop(1,"#231A11");
+        dpx.fillStyle=g;dpx.fillRect(0,0,512,110);
+        dpx.strokeStyle="rgba(158,132,85,0.75)";dpx.lineWidth=4;dpx.strokeRect(10,12,492,86);
+        dpx.fillStyle="#E9D7AC";dpx.font="500 44px Fraunces, Georgia, serif";dpx.textAlign="center";dpx.textBaseline="middle";
+        dpx.fillText(t("backToCorridor"),256,57,452);
+      }
+      const dpt=new THREE.CanvasTexture(dpc);dpt.colorSpace=THREE.SRGBColorSpace;dpt.anisotropy=8;
+      scene.add(mk(new THREE.BoxGeometry(1.0,.3,.03),dpBronze,0,2.35,bdZ-0.12));                         // plate backing
+      const dpl=new THREE.Mesh(new THREE.PlaneGeometry(.94,.24),new THREE.MeshBasicMaterial({map:dpt,transparent:true}));
+      dpl.rotation.y=Math.PI;dpl.position.set(0,2.35,bdZ-0.14);scene.add(dpl);
     }else{
     // Outer stone architrave (wide in X, thin in Z)
     scene.add(mk(new THREE.BoxGeometry(2.2,3.6,.18),MS.marble,0,1.8,bdZ));
@@ -2637,7 +2673,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     bdLight.position.set(0,2.5,bdZ-.5);bdLight.target.position.set(0,1,bdZ-2);scene.add(bdLight);scene.add(bdLight.target);
     const bdAmbient=new THREE.PointLight("#FFE8C0",.25,4);bdAmbient.position.set(0,2,bdZ-.3);scene.add(bdAmbient);
     }
-    // Label
+    // Label — W3 puts it ON the door (above); the legacy above-door label stays for flag-off.
+    if(!W3){
     const bdLabel=document.createElement("canvas");bdLabel.width=280;bdLabel.height=50;
     const blc=bdLabel.getContext("2d")!;
     blc.fillStyle=wing?.accent||"#C8A868";blc.font="bold 16px Georgia,serif";blc.textAlign="center";
@@ -2645,6 +2682,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const blTex=new THREE.CanvasTexture(bdLabel);blTex.colorSpace=THREE.SRGBColorSpace;
     const bdLabelMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.4,.25),new THREE.MeshBasicMaterial({map:blTex,transparent:true}));
     bdLabelMesh.rotation.y=Math.PI;bdLabelMesh.position.set(0,3.75,bdZ-.02);scene.add(bdLabelMesh);
+    }
     // Hit area
     const bdHit=new THREE.Mesh(new THREE.BoxGeometry(2,3.4,.3),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
     bdHit.position.set(0,1.7,bdZ);bdHit.userData={isBackDoor:true};scene.add(bdHit);
