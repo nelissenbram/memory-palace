@@ -12,10 +12,18 @@ const EntranceHallScene = dynamic(() => import("@/components/3d/EntranceHallScen
 const CorridorScene = dynamic(() => import("@/components/3d/CorridorScene"), { ssr: false });
 const InteriorScene = dynamic(() => import("@/components/3d/InteriorScene"), { ssr: false });
 
-// Sample memories for the room scene — combine all family room defaults
+// Sample memories for the room scene. A photo-RICH set (viewer-only) so the
+// "Deepening Cabinet" display walls actually fill — the room auto-sizes to its
+// tier from the wall-photo count and hangs a salon wall of paintings + one video.
+const _DEMO_PHOTOS = ["/demo/graduation.jpg", "/demo/quiet-morning.jpg", "/demo/between-two-hands.jpg", "/demo/edge-of-water.jpg", "/demo/pexels-alexander-mass-748453803-28107011.jpg"];
 const SAMPLE_MEMORIES: Mem[] = [
-  ...(ROOM_MEMS["ro1"] || []),
-].map(m => ({ ...m, displayed: true }));
+  ...Array.from({ length: 34 }, (_, i) => ({
+    id: `demo-photo-${i}`, title: `Memory ${i + 1}`, hue: 24 + (i * 29) % 60, s: 42, l: 58,
+    type: "photo", dataUrl: _DEMO_PHOTOS[i % _DEMO_PHOTOS.length], displayed: true,
+    createdAt: `2026-${String(1 + (i % 9)).padStart(2, "0")}-${String(1 + (i % 27)).padStart(2, "0")}`,
+  } satisfies Mem)),
+  { id: "demo-video", title: "Piano Recital", hue: 40, s: 42, l: 58, type: "video", dataUrl: "/demo/piano-recital.mp4", displayUnit: "screen", displayed: true, createdAt: "2026-05-01" } satisfies Mem,
+];
 
 // Demo photos for the entrance-hall door lunettes (viewer-only feel check —
 // the real app hangs each wing's newest photo here).
