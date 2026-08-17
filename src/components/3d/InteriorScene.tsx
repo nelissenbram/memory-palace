@@ -166,7 +166,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const _wcOverride=(typeof window!=="undefined")?parseInt(new URLSearchParams(window.location.search).get("wallcount")||"",10):NaN;
     const wallCount=W3?(Number.isFinite(_wcOverride)?_wcOverride:displayedWallCount(mems)):undefined;
     const layout=layoutForRoom(actualRoomId||roomId,layoutOverride,wallCount);
-    if(W3&&typeof process!=="undefined"&&process.env.NODE_ENV!=="production")console.debug(`[enfilade] tier=${layout.tier} bays=${layout.bays} rL=${layout.rL} (walls=${wallCount})`);
+    if(W3&&typeof process!=="undefined"&&process.env.NODE_ENV!=="production")console.debug(`[rooms] tier=${layout.tier} deeper-by=${layout.bays} rL=${layout.rL} rW=${layout.rW} (walls=${wallCount})`);
     const dlPresetRaw=getLightingPreset();
     // Interior rooms have artificial lighting — enforce minimum brightness
     // so evening/night presets don't make rooms too dark to navigate.
@@ -768,98 +768,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const bw=new THREE.Mesh(new THREE.PlaneGeometry(rW,rH),MS.wall);bw.rotation.y=Math.PI;bw.position.set(0,rH/2,rL/2);bw.receiveShadow=true;scene.add(bw);
     for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
     scene.add(mk(new THREE.BoxGeometry(rW-.3,1.2,.05),MS.wain,0,.6,-rL/2+.025));scene.add(mk(new THREE.BoxGeometry(rW-.2,.07,.06),MS.gold,0,1.23,-rL/2+.03));
-    // ── W3 ENFILADE BAYS: a colonnade turns a GROWN room into a PROCESSION of
-    // cosy bays, not one cavernous hall (owner: "a bigger room must stay cosy").
-    // Intimate rooms (bays=0) are byte-identical. Each portal = paired columns +
-    // an entablature beam spanning the width; each bay gets its own warm floor
-    // pool, so you walk through a sequence of intimate, lit rooms. Columns +
-    // caps + bases are InstancedMesh so N bays cost ~O(1) draw calls.
-    if(W3&&(layout.bays||0)>0){
-      const nCol=(layout.bays||0)+1, zStep=rL/(nCol+1);
-      const zs: number[]=[];for(let i=1;i<=nCol;i++)zs.push(-rL/2+i*zStep);
-      const cx=rW/2-0.5, shaftH=rH-0.8, dummy=new THREE.Object3D();
-      const shaftInst=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.16,0.19,shaftH,14),MS.wain,2*nCol);
-      const baseInst=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.24,0.28,0.4,14),MS.trim,2*nCol);
-      const capInst=new THREE.InstancedMesh(new THREE.BoxGeometry(0.46,0.18,0.46),MS.gold,2*nCol);
-      shaftInst.castShadow=true;
-      let ci=0;for(const s of[-1,1])for(const z of zs){
-        dummy.position.set(s*cx,0.4+shaftH/2,z);dummy.rotation.set(0,0,0);dummy.updateMatrix();shaftInst.setMatrixAt(ci,dummy.matrix);
-        dummy.position.set(s*cx,0.2,z);dummy.updateMatrix();baseInst.setMatrixAt(ci,dummy.matrix);
-        dummy.position.set(s*cx,rH-0.3,z);dummy.updateMatrix();capInst.setMatrixAt(ci,dummy.matrix);
-        ci++;
-      }
-      for(const im of[shaftInst,baseInst,capInst]){im.instanceMatrix.needsUpdate=true;scene.add(im);}
-      // entablature beam + gilt cornice across each portal
-      for(const z of zs){
-        scene.add(mk(new THREE.BoxGeometry(rW-0.4,0.22,0.3),MS.wain,0,rH-0.28,z));
-        scene.add(mk(new THREE.BoxGeometry(rW-0.3,0.06,0.34),MS.gold,0,rH-0.14,z));
-      }
-      // Per bay: a coffered ceiling module, a warm floor pool, and a clerestory
-      // strip high on one long wall casting a raking golden shaft — so each bay
-      // is its own softly-lit intimate room and the shafts march down the hall.
-      // All baked (additive planes / emissive) — no new dynamic lights.
-      const edges=[-rL/2,...zs,rL/2], sunWall=1; // +x long wall carries the clerestory
-      for(let i=0;i<edges.length-1;i++){
-        const z0=edges[i],z1=edges[i+1],pz=(z0+z1)/2,bd=z1-z0;
-        // warm floor pool
-        const pool=new THREE.Mesh(new THREE.PlaneGeometry(rW*0.52,bd*0.72),getGlowCardMat());
-        pool.rotation.x=-Math.PI/2;pool.position.set(0,0.02,pz);pool.renderOrder=1;scene.add(pool);
-        // coffered ceiling panel (gilt bead frame + recessed pan)
-        scene.add(mk(new THREE.BoxGeometry(rW-1.6,0.05,bd-0.5),MS.gold,0,rH-0.05,pz));
-        scene.add(mk(new THREE.BoxGeometry(rW-1.85,0.03,bd-0.75),MS.ceil,0,rH-0.13,pz));
-        // clerestory glow strip high on the sun wall
-        const cw=new THREE.Mesh(new THREE.PlaneGeometry(bd*0.62,0.72),getGlowCardMat());
-        cw.position.set(sunWall*(rW/2-0.06),rH-0.95,pz);cw.rotation.y=sunWall*(-Math.PI/2);cw.renderOrder=1;scene.add(cw);
-        // raking golden shaft from the strip down onto the floor
-        const hw=bd*0.26, sg=new THREE.BufferGeometry();
-        const topX=sunWall*(rW/2-0.12),topY=rH-0.8,botX=sunWall*(rW*0.12),botY=0.06;
-        sg.setAttribute("position",new THREE.Float32BufferAttribute([topX,topY,pz-hw, topX,topY,pz+hw, botX,botY,pz+hw*1.5, botX,botY,pz-hw*1.5],3));
-        sg.setIndex([0,1,2,0,2,3]);sg.computeVertexNormals();
-        const shaft=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:0.075*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
-        shaft.renderOrder=2;scene.add(shaft);
-      }
-      // ── Per-bay PURPOSEFUL vignettes (owner: a JOURNEY of zones, not scattered
-      // objects). Each ADDED bay is a deliberate little room arranged on its own
-      // rug: front bays = READING nooks, back bays = GALLERY viewing benches, so
-      // the walk reads living → reading → gallery → hearth. Central (living) and
-      // back (hearth) bays are left to the existing furniture. ──
-      const fabricMat=new THREE.MeshStandardMaterial({color:(wing as any)?.accent||"#8A5A44",roughness:.92});
-      const rugMat=new THREE.MeshStandardMaterial({color:"#6E3B2E",roughness:.95});
-      const shadeMat=new THREE.MeshStandardMaterial({color:"#FFE6BE",emissive:new THREE.Color("#FFC880"),emissiveIntensity:.9,roughness:.6});
-      const potMat=new THREE.MeshStandardMaterial({color:"#A85A38",roughness:.85});
-      const leafMat=new THREE.MeshStandardMaterial({color:"#4E6B3A",roughness:.9});
-      // a wingchair reading corner, grouped to one side, facing the central walk
-      const readingNook=(pz: number,side: number)=>{
-        const px=side*(rW*0.24);
-        scene.add(mk(new THREE.BoxGeometry(2.5,0.014,2.2),rugMat,px,0.015,pz));                     // rug anchors the group
-        scene.add(mk(new THREE.BoxGeometry(0.82,0.4,0.82),fabricMat,px,0.2,pz));                    // upholstered base
-        scene.add(mk(new THREE.BoxGeometry(0.74,0.14,0.74),fabricMat,px,0.47,pz));                  // seat cushion
-        scene.add(mk(new THREE.BoxGeometry(0.16,0.9,0.82),fabricMat,px+side*0.35,0.92,pz));         // wingback (wall side)
-        for(const zz of[-0.4,0.4])scene.add(mk(new THREE.BoxGeometry(0.68,0.3,0.13),fabricMat,px,0.62,pz+zz)); // arms
-        scene.add(mk(new THREE.CylinderGeometry(0.22,0.22,0.06,10),MS.dkW,px-side*0.72,0.55,pz-0.35)); // side table top
-        scene.add(mk(new THREE.CylinderGeometry(0.03,0.03,0.5,6),MS.dkW,px-side*0.72,0.28,pz-0.35));   // table leg
-        scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,px+side*0.55,0.75,pz+0.55));   // floor-lamp pole
-        scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),shadeMat,px+side*0.55,1.62,pz+0.55));// warm shade (per-nook light)
-        scene.add(mk(new THREE.BoxGeometry(0.32,0.1,0.24),MS.gold,px-side*0.72,0.63,pz-0.35));         // a book on the table
-      };
-      // a viewing bench facing the salon-hang wall + a plant — a gallery pause
-      const galleryBench=(pz: number)=>{
-        const bx=rW*0.16;
-        scene.add(mk(new THREE.BoxGeometry(2.2,0.014,1.5),rugMat,bx,0.015,pz));                     // rug
-        scene.add(mk(new THREE.BoxGeometry(1.5,0.34,0.5),MS.dkW,bx,0.17,pz));                        // bench base
-        scene.add(mk(new THREE.BoxGeometry(1.42,0.1,0.44),fabricMat,bx,0.39,pz));                    // bench cushion
-        scene.add(mk(new THREE.CylinderGeometry(0.18,0.14,0.42,10),potMat,-rW*0.3,0.21,pz));         // planter
-        scene.add(mk(new THREE.SphereGeometry(0.33,8,7),leafMat,-rW*0.3,0.7,pz));
-        scene.add(mk(new THREE.SphereGeometry(0.23,7,6),leafMat,-rW*0.3+0.14,0.62,pz+0.06));         // foliage
-      };
-      let bIdx=0;
-      for(let i=0;i<edges.length-1;i++){
-        const pz=(edges[i]+edges[i+1])/2;
-        if(Math.abs(pz)<zStep*0.5)continue;                 // leave the central (living) bay
-        const side=(bIdx++%2===0)?1:-1;
-        if(pz>0)readingNook(pz,side); else galleryBench(pz); // front → reading, back → gallery
-      }
-    }
+    // ── W3 "The Deepening Cabinet": a grown room is ONE undivided volume — the
+    // added depth becomes hanging WALL for the salon-hang display, NOT a
+    // colonnade or a furniture journey (owner 2026-08-17: "it feels like a ZAAL,
+    // not a room"). The old colonnade / per-bay clerestory-coffer-pool +
+    // reading-nook / gallery-bench block was stripped in full — no mid-floor
+    // architecture, no added furniture. Enclosure comes from close continuous
+    // walls; display comes from the length-aware salon runs (see salon-hang).
     } // end shell isExhibition branch
 
     // ── ERA-SPECIFIC ROOM MODIFICATIONS ──

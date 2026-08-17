@@ -47,11 +47,19 @@ export function tierForCount(count: number): { tier: RoomTier; bays: number } {
   return { tier: "Grand Enfilade", bays: 3 };
 }
 
-/** Grow ONLY rL of a base layout by the media tier; rW/rH and every style field pass through. */
+/**
+ * Grow ONLY the depth (rL) of a base layout by the media tier — the added wall
+ * becomes salon-hang display space. rW/rH and every style field pass through
+ * frozen (they carry the room's intimacy). The depth is PROPORTION-CLAMPED to
+ * rW*1.6 so a deep room can never read as a corridor/hall (owner 2026-08-17).
+ */
 export function sizeForRoom(base: RoomLayout, count: number): RoomLayout {
   const { tier, bays } = tierForCount(count);
   const b = Math.min(bays, MAX_BAYS);
-  const rL = Math.min(base.rL + b * BAY_DEPTH, MAX_RL);
+  const rL = Math.min(base.rL + b * BAY_DEPTH, base.rW * 1.6, MAX_RL);
+  if (process.env.NODE_ENV !== "production" && rL / base.rW > 1.8) {
+    console.warn(`[rooms] aspect rL/rW=${(rL / base.rW).toFixed(2)} > 1.8 — room risks reading as a hall`);
+  }
   return { ...base, rL, tier, bays: b };
 }
 
