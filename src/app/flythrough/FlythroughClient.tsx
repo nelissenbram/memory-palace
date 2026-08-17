@@ -16,13 +16,19 @@ const InteriorScene = dynamic(() => import("@/components/3d/InteriorScene"), { s
 // "Deepening Cabinet" display walls actually fill — the room auto-sizes to its
 // tier from the wall-photo count and hangs a salon wall of paintings + one video.
 const _DEMO_PHOTOS = ["/demo/graduation.jpg", "/demo/quiet-morning.jpg", "/demo/between-two-hands.jpg", "/demo/edge-of-water.jpg", "/demo/pexels-alexander-mass-748453803-28107011.jpg"];
+const _dm = (i: number, extra: Partial<Mem>): Mem => ({
+  id: `demo-${extra.type || "photo"}-${i}`, title: `Memory ${i + 1}`, hue: 24 + (i * 29) % 60, s: 42, l: 58,
+  type: "photo", dataUrl: _DEMO_PHOTOS[i % _DEMO_PHOTOS.length], displayed: true,
+  createdAt: `2026-${String(1 + (i % 9)).padStart(2, "0")}-${String(1 + (i % 27)).padStart(2, "0")}`, ...extra,
+} as Mem);
 const SAMPLE_MEMORIES: Mem[] = [
-  ...Array.from({ length: 34 }, (_, i) => ({
-    id: `demo-photo-${i}`, title: `Memory ${i + 1}`, hue: 24 + (i * 29) % 60, s: 42, l: 58,
-    type: "photo", dataUrl: _DEMO_PHOTOS[i % _DEMO_PHOTOS.length], displayed: true,
-    createdAt: `2026-${String(1 + (i % 9)).padStart(2, "0")}-${String(1 + (i % 27)).padStart(2, "0")}`,
-  } satisfies Mem)),
-  { id: "demo-video", title: "Piano Recital", hue: 40, s: 42, l: 58, type: "video", dataUrl: "/demo/piano-recital.mp4", displayUnit: "screen", displayed: true, createdAt: "2026-05-01" } satisfies Mem,
+  // 34 wall photos (→ Grand tier), plus objects, documents, audio + one video so
+  // every station (walls, vitrine, bookcase, vinyl, screen) populates for review.
+  ...Array.from({ length: 34 }, (_, i) => _dm(i, {})),
+  ...Array.from({ length: 4 }, (_, i) => _dm(100 + i, { type: "photo", displayUnit: "vitrine", title: `Keepsake ${i + 1}` })),
+  ...Array.from({ length: 3 }, (_, i) => _dm(200 + i, { type: "text", displayUnit: "bookshelf", title: `Letter ${i + 1}` })),
+  _dm(300, { type: "audio", dataUrl: "/demo/song-of-summer.mp3", displayUnit: "vinyl", title: "Song of Summer" }),
+  _dm(400, { type: "video", dataUrl: "/demo/piano-recital.mp4", displayUnit: "screen", title: "Piano Recital" }),
 ];
 
 // Demo photos for the entrance-hall door lunettes (viewer-only feel check —
