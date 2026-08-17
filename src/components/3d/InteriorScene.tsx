@@ -498,7 +498,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const stemHalfW=Math.max(2.4,rW/2-3.4);            // narrow entry-stem half-width
     const stemLen=Math.min(Math.max(3.5,rL*0.28),7);   // entry stem depth (shorter → hall in view)
     const widenZ=rL/2-stemLen;                         // z where the stem opens into the hall
-    const libWingZ1=widenZ-0.4, libWingZ0=libWingZ1-libWingW; // library: FRONT-left (near the widening, in view on entry)
+    const libWingZ1=widenZ-0.15, libWingZ0=libWingZ1-libWingW; // library: FRONT-left (bookcase reaches the corner so the L-arm connects)
     const BOOKSHELF_LEN=4.0;
     // Under W3 the library lives IN the wing (on its far wall); flag-off keeps it
     // on the main left wall. bookEndZ = where the main left-wall salon run resumes.
@@ -854,7 +854,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // LIBRARY made L-SHAPED (owner 2026-08-17): a SECOND bookcase arm runs along the
       // shoulder wall, wrapping the front-left corner together with the main left-wall
       // bookcase (built at bsX). Decorative shelves + book spines, facing -Z.
-      const saZ=widenZ-0.32, saX0=-rW/2+0.32, saLen=2.3, saXc=saX0+saLen/2;
+      const saZ=widenZ-0.32, saX0=-rW/2+0.32, saLen=3.2, saXc=saX0+saLen/2;
       const libPal=["#6B1A1A","#1A2744","#2A4A2A","#4A1A2A","#8B6914","#3A2010","#1A3A4A","#5A2A3A","#2A3A1A","#6A4A2A"];
       scene.add(mk(new THREE.BoxGeometry(saLen+0.12,rH-0.22,0.3),MS.dkW,saXc,(rH-0.22)/2+0.06,saZ-0.03));   // carcass
       scene.add(mk(new THREE.BoxGeometry(saLen+0.2,0.06,0.36),MS.gold,saXc,rH-0.13,saZ));                    // gilt cornice
@@ -2200,9 +2200,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(vtHit);hitAreaMeshes.current.push(vtHit);
     };
     if(W3){
-      // L: right-wall arm (thin X, long Z) + shoulder arm (long X, thin Z), meeting at the corner
-      buildGlassCase(rW/2-0.4, widenZ-1.35, 0.62, 2.0, caseMems.slice(0,5));
-      buildGlassCase(rW/2-1.45, widenZ-0.4, 1.55, 0.62, caseMems.slice(5,10));
+      // L: right-wall arm (thin X, long Z) + shoulder arm (long X, thin Z) with a solid
+      // shared corner overlap so it reads as ONE L-shaped cabinet, not two cases.
+      buildGlassCase(rW/2-0.38, widenZ-1.6, 0.64, 2.8, caseMems.slice(0,6));   // right-wall arm
+      buildGlassCase(rW/2-1.7, widenZ-0.38, 2.9, 0.64, caseMems.slice(6,12));  // shoulder arm
     }else buildGlassCase(-rW/2+2, -rL/2+0.7, 1.4, 0.7, caseMems.slice(0,3));
     } // end !isExhibition vitrine
 
