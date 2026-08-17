@@ -1769,6 +1769,19 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scrAccent.position.set(scrX,rH-0.3,scrZ+1.5);scrAccent.target.position.set(scrX,scrY,scrZ);
       scene.add(scrAccent);scene.add(scrAccent.target);
       }
+    }else if(W3){
+      // owner #4: build the screen INTO a walnut niche (a recessed reveal) so it
+      // reads as built-in cabinetry, not a flatscreen stuck on the wall. The
+      // video/idle plane (scrMesh, scrX-.06) sits recessed inside this surround.
+      const fw=scrPlaneW,fh=scrPlaneH,fp=scrX-0.16;
+      scene.add(mk(new THREE.BoxGeometry(0.14,fh+0.34,fw+0.34),MS.screen,scrX+0.06,scrY,scrZ));          // recessed dark back
+      scene.add(mk(new THREE.BoxGeometry(0.16,0.16,fw+0.5),MS.dkW,fp,scrY+fh/2+0.17,scrZ));              // surround top
+      scene.add(mk(new THREE.BoxGeometry(0.16,0.16,fw+0.5),MS.dkW,fp,scrY-fh/2-0.17,scrZ));              // surround bottom
+      scene.add(mk(new THREE.BoxGeometry(0.16,fh+0.5,0.16),MS.dkW,fp,scrY,scrZ+fw/2+0.17));              // surround +z
+      scene.add(mk(new THREE.BoxGeometry(0.16,fh+0.5,0.16),MS.dkW,fp,scrY,scrZ-fw/2-0.17));              // surround -z
+      scene.add(mk(new THREE.BoxGeometry(0.15,0.04,fw+0.34),MS.gold,fp-0.005,scrY+fh/2+0.075,scrZ));     // gilt bead top
+      scene.add(mk(new THREE.BoxGeometry(0.15,0.04,fw+0.34),MS.gold,fp-0.005,scrY-fh/2-0.075,scrZ));     // gilt bead bottom
+      scene.add(mk(new THREE.BoxGeometry(0.24,0.07,fw+0.6),MS.marble,scrX-0.12,scrY-fh/2-0.28,scrZ));    // ledge / mantel under
     }else{
       scene.add(mk(new THREE.BoxGeometry(.08,2,3),MS.screen,scrX,scrY,scrZ));
       scene.add(mk(new THREE.BoxGeometry(.04,.15,.15),MS.iron,scrX,1.15,scrZ));
