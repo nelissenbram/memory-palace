@@ -851,13 +851,22 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,rcx+0.3,0.75,libZc-1.0));        // floor-lamp pole
       scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),wShade,rcx+0.3,1.62,libZc-1.0));       // warm shade
       scene.add(mk(new THREE.CylinderGeometry(0.26,0.26,0.5,12),MS.dkW,rcx+0.4,0.25,libZc+0.9));       // side table
-      // writing desk tucked into the front-left corner, against the shoulder (faces -Z)
-      const dkx=-rW/2+1.5, dkz=widenZ-0.55;
-      scene.add(mk(new THREE.BoxGeometry(1.5,0.06,0.68),MS.dkW,dkx,0.78,dkz));                         // desk top
-      scene.add(mk(new THREE.BoxGeometry(1.5,0.04,0.68),MS.gold,dkx,0.81,dkz));                        // gilt inlay
-      for(const[lx,lz] of [[-0.65,-0.27],[0.65,-0.27],[-0.65,0.27],[0.65,0.27]] as [number,number][])scene.add(mk(new THREE.BoxGeometry(0.07,0.78,0.07),MS.dkW,dkx+lx,0.39,dkz+lz));
-      scene.add(mk(new THREE.BoxGeometry(0.5,0.08,0.5),MS.leather,dkx,0.46,dkz-0.6));                  // desk chair
-      scene.add(mk(new THREE.BoxGeometry(0.5,0.5,0.08),MS.leatherD,dkx,0.72,dkz-0.84));
+      // LIBRARY made L-SHAPED (owner 2026-08-17): a SECOND bookcase arm runs along the
+      // shoulder wall, wrapping the front-left corner together with the main left-wall
+      // bookcase (built at bsX). Decorative shelves + book spines, facing -Z.
+      const saZ=widenZ-0.32, saX0=-rW/2+0.32, saLen=2.3, saXc=saX0+saLen/2;
+      const libPal=["#6B1A1A","#1A2744","#2A4A2A","#4A1A2A","#8B6914","#3A2010","#1A3A4A","#5A2A3A","#2A3A1A","#6A4A2A"];
+      scene.add(mk(new THREE.BoxGeometry(saLen+0.12,rH-0.22,0.3),MS.dkW,saXc,(rH-0.22)/2+0.06,saZ-0.03));   // carcass
+      scene.add(mk(new THREE.BoxGeometry(saLen+0.2,0.06,0.36),MS.gold,saXc,rH-0.13,saZ));                    // gilt cornice
+      scene.add(mk(new THREE.BoxGeometry(saLen+0.18,0.08,0.34),MS.dkW,saXc,0.09,saZ));                       // plinth
+      for(let sh=0;sh<5;sh++){const shy=0.36+sh*((rH-0.78)/4);
+        scene.add(mk(new THREE.BoxGeometry(saLen,0.04,0.3),MS.dkW,saXc,shy,saZ));                            // shelf board
+        let bx=saX0+0.06,k=sh*7+3;
+        while(bx<saX0+saLen-0.12){const bwi=0.05+((k*13)%5)*0.016, bhi=0.24+((k*7)%4)*0.03;
+          scene.add(mk(new THREE.BoxGeometry(bwi,bhi,0.2),new THREE.MeshStandardMaterial({color:libPal[k%libPal.length],roughness:.72}),bx+bwi/2,shy+0.04+bhi/2,saZ));
+          bx+=bwi+0.01;k=(k*1103515245+12345)>>>8;
+        }
+      }
       addGlowCard(-rW/2+0.4,2.0,libZc,2.8,Math.PI/2);   // wall wash over the bookcase
       addGlowCard(-rW/2+1.6,rH-0.5,libZc,2.6,0);         // ceiling wash
       addGlowCard(-rW/2+1.6,1.4,libZc,2.4,0);            // low warm fill
@@ -2142,86 +2151,59 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // VITRINE / GLASS DISPLAY CASE (left of fireplace, against back wall)
     // ═══════════════════════════════════════════
     if(!isExhibition){
-    // owner 2026-08-17: a proper CORNER CABINET (hoekkast) tucked into the FRONT-RIGHT
-    // corner and turned 45° so it sits diagonally in the corner. Built into a group at
-    // a local origin, then positioned + rotated. (Legacy: freestanding by the back wall.)
-    const vtGrp=new THREE.Group();
-    const vtAX=W3?(rW/2-0.95):(-rW/2+2), vtAZ=W3?(widenZ-0.95):(-rL/2+0.7);
-    const vtX=0, vtZ=0; // local build origin inside the group
-    const vtW=1.4, vtD=0.7, vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.22):1.0;
-    addCol(vtAX,vtAZ,W3?rH*0.9:0.8,0.45); // WS6-8: vitrine contact shadow (world coords)
+    // owner 2026-08-17: the vitrine is an L-SHAPED corner cabinet — two glass arms
+    // hugging the FRONT-RIGHT corner (one along the right wall, one along the
+    // shoulder), meeting at the corner. buildGlassCase draws one axis-aligned arm.
+    const vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.22):1.0;
     const vtBrassMat=new THREE.MeshStandardMaterial({color:"#B8963E",roughness:.22,metalness:.7});
     const vtVelvet=new THREE.MeshStandardMaterial({color:"#1A0A2E",roughness:.95,metalness:0});
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW+.08,.06,vtD+.08),MS.dkW,vtX,.03,vtZ));
-    for(const sx of [-1,1])for(const sz of [-1,1]){
-      vtGrp.add(mk(new THREE.SphereGeometry(.05,8,8),vtBrassMat,vtX+sx*(vtW/2-.06),.06,vtZ+sz*(vtD/2-.06)));
-    }
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW,vtBaseH-.06,vtD),MS.dkW,vtX,.06+(vtBaseH-.06)/2,vtZ));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW-.12,.03,.01),vtBrassMat,vtX,vtBaseH*.55,vtZ+vtD/2+.005));
-    for(const sx of [-1,1]){
-      vtGrp.add(mk(new THREE.BoxGeometry(.03,vtBaseH-.12,.03),vtBrassMat,vtX+sx*(vtW/2-.02),vtBaseH/2,vtZ+vtD/2-.02));
-    }
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW-.2,vtBaseH-.2,.015),new THREE.MeshStandardMaterial({color:"#4A3520",roughness:.45,metalness:.1}),vtX,vtBaseH/2,vtZ+vtD/2+.005));
-    vtGrp.add(mk(new THREE.SphereGeometry(.025,8,8),vtBrassMat,vtX,vtBaseH*.45,vtZ+vtD/2+.02));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW+.06,.04,vtD+.06),MS.dkW,vtX,vtBaseH,vtZ));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW+.1,.015,vtD+.1),vtBrassMat,vtX,vtBaseH+.02,vtZ));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW-.06,.01,vtD-.06),vtVelvet,vtX,vtBaseH+.03,vtZ));
-    const vtGBot=vtBaseH+.04;
     const vtGlassMat=mkPhys(THREE,{color:"#E0EEF0",transparent:true,opacity:.07,roughness:.02,metalness:.03,transmission:.94,ior:1.5,thickness:.3,side:THREE.DoubleSide});
-    const vtMidY=vtGBot+vtGlassH*.5;
-    // Glass shelves: one at mid for the low case; several up the tall W3 case.
-    const vtShelfN=W3?Math.max(2,Math.round(vtGlassH/0.72)):1;
-    const vtShelfYs:number[]=[];for(let s=1;s<=vtShelfN;s++)vtShelfYs.push(vtGBot+vtGlassH*(s/(vtShelfN+1)));
     const vtShelfMat=mkPhys(THREE,{color:"#E8F4F4",transparent:true,opacity:.1,roughness:.01,metalness:0,transmission:.95,ior:1.5,thickness:.15});
-    for(const sy of vtShelfYs)vtGrp.add(mk(new THREE.BoxGeometry(vtW-.1,.012,vtD-.1),vtShelfMat,vtX,sy,vtZ));
-    const vtTopY=vtGBot+vtGlassH;
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW+.04,.05,vtD+.04),MS.dkW,vtX,vtTopY,vtZ));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW+.08,.015,vtD+.08),vtBrassMat,vtX,vtTopY+.025,vtZ));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW+.12,.02,vtD+.12),MS.dkW,vtX,vtTopY+.04,vtZ));
+    const buildGlassCase=(cx:number,cz:number,cw:number,cd:number,mems:any[])=>{
+      const vtX=cx,vtZ=cz,vtW=cw,vtD=cd, along=cw>=cd;
+      addCol(cx,cz,W3?rH*0.9:0.8,Math.max(cw,cd)*0.5);
+      scene.add(mk(new THREE.BoxGeometry(vtW+.08,.06,vtD+.08),MS.dkW,vtX,.03,vtZ));
+      for(const sx of[-1,1])for(const sz of[-1,1])scene.add(mk(new THREE.SphereGeometry(.05,8,8),vtBrassMat,vtX+sx*(vtW/2-.06),.06,vtZ+sz*(vtD/2-.06)));
+      scene.add(mk(new THREE.BoxGeometry(vtW,vtBaseH-.06,vtD),MS.dkW,vtX,.06+(vtBaseH-.06)/2,vtZ));
+      scene.add(mk(new THREE.BoxGeometry(vtW+.06,.04,vtD+.06),MS.dkW,vtX,vtBaseH,vtZ));
+      scene.add(mk(new THREE.BoxGeometry(vtW+.1,.015,vtD+.1),vtBrassMat,vtX,vtBaseH+.02,vtZ));
+      scene.add(mk(new THREE.BoxGeometry(vtW-.06,.01,vtD-.06),vtVelvet,vtX,vtBaseH+.03,vtZ));
+      const vtGBot=vtBaseH+.04, vtMidY=vtGBot+vtGlassH*.5, vtTopY=vtGBot+vtGlassH;
+      const vtShelfN=W3?Math.max(2,Math.round(vtGlassH/0.72)):1;
+      const vtShelfYs:number[]=[];for(let s=1;s<=vtShelfN;s++)vtShelfYs.push(vtGBot+vtGlassH*(s/(vtShelfN+1)));
+      for(const sy of vtShelfYs)scene.add(mk(new THREE.BoxGeometry(vtW-.1,.012,vtD-.1),vtShelfMat,vtX,sy,vtZ));
+      scene.add(mk(new THREE.BoxGeometry(vtW+.04,.05,vtD+.04),MS.dkW,vtX,vtTopY,vtZ));
+      scene.add(mk(new THREE.BoxGeometry(vtW+.08,.015,vtD+.08),vtBrassMat,vtX,vtTopY+.025,vtZ));
+      if(W3){
+        const capBot=vtTopY+0.05, capH=Math.max(0.12,rH-capBot);
+        scene.add(mk(new THREE.BoxGeometry(vtW+.1,capH*0.55,vtD+.1),MS.dkW,vtX,capBot+capH*0.275,vtZ));
+        scene.add(mk(new THREE.BoxGeometry(vtW+.18,.04,vtD+.18),vtBrassMat,vtX,capBot+capH*0.56,vtZ));
+        scene.add(mk(new THREE.BoxGeometry(vtW-.1,capH*0.4,vtD-.1),MS.dkW,vtX,capBot+capH*0.78,vtZ));
+        scene.add(mk(new THREE.CylinderGeometry(.05,.08,capH*0.35,10),vtBrassMat,vtX,capBot+capH*0.85,vtZ));
+      }
+      const gF=new THREE.Mesh(new THREE.PlaneGeometry(vtW-.1,vtGlassH-.04),vtGlassMat);gF.position.set(vtX,vtMidY,vtZ+vtD/2-.03);gF.raycast=()=>{};scene.add(gF);
+      const gB=new THREE.Mesh(new THREE.PlaneGeometry(vtW-.1,vtGlassH-.04),vtGlassMat);gB.position.set(vtX,vtMidY,vtZ-vtD/2+.03);gB.rotation.y=Math.PI;gB.raycast=()=>{};scene.add(gB);
+      const gL=new THREE.Mesh(new THREE.PlaneGeometry(vtD-.1,vtGlassH-.04),vtGlassMat);gL.rotation.y=Math.PI/2;gL.position.set(vtX-vtW/2+.03,vtMidY,vtZ);gL.raycast=()=>{};scene.add(gL);
+      const gR=new THREE.Mesh(new THREE.PlaneGeometry(vtD-.1,vtGlassH-.04),vtGlassMat);gR.rotation.y=-Math.PI/2;gR.position.set(vtX+vtW/2-.03,vtMidY,vtZ);gR.raycast=()=>{};scene.add(gR);
+      for(const sx of[-1,1])for(const sz of[-1,1])scene.add(mk(new THREE.BoxGeometry(.03,vtGlassH,.03),vtBrassMat,vtX+sx*(vtW/2-.02),vtMidY,vtZ+sz*(vtD/2-.02)));
+      if(W2){scene.add(mk(new THREE.BoxGeometry(vtW-.2,.015,vtD-.2),MS.glassG,vtX,vtTopY-.03,vtZ));addGlowCard(vtX,vtMidY,vtZ,0.9);}
+      if(!W2&&!isMobileGPU()){const l=new THREE.PointLight("#FFF5E0",.7,3);l.position.set(vtX,vtTopY-.06,vtZ);scene.add(l);}
+      const vtLevels=W3?[...vtShelfYs].reverse().slice(vtShelfYs.length>2?1:0):[vtGBot+vtGlassH*.35];
+      mems.slice(0,vtLevels.length).forEach((m:any,i:number)=>{
+        const rec=new THREE.Mesh(new THREE.PlaneGeometry(.42,.42),new THREE.MeshStandardMaterial({map:paintTex(m),roughness:.4,metalness:.05}));
+        rec.position.set(vtX,(vtLevels[i]||vtGBot)+0.24,vtZ);rec.rotation.y=along?0:Math.PI/2;
+        rec.userData={memory:m};scene.add(rec);memMeshes.current.push(rec);
+      });
+      const vtHit=new THREE.Mesh(new THREE.BoxGeometry(vtW,vtBaseH+vtGlassH,vtD),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+      vtHit.position.set(vtX,(vtBaseH+vtGlassH)/2,vtZ);
+      vtHit.userData=mems.length>0?{memory:mems[0],isHitArea:true}:{isStation:true};
+      scene.add(vtHit);hitAreaMeshes.current.push(vtHit);
+    };
     if(W3){
-      const capBot=vtTopY+0.05, capH=Math.max(0.12,rH-capBot);
-      vtGrp.add(mk(new THREE.BoxGeometry(vtW+.1,capH*0.55,vtD+.1),MS.dkW,vtX,capBot+capH*0.275,vtZ));      // cornice block
-      vtGrp.add(mk(new THREE.BoxGeometry(vtW+.18,.04,vtD+.18),vtBrassMat,vtX,capBot+capH*0.56,vtZ));       // gilt band
-      vtGrp.add(mk(new THREE.BoxGeometry(vtW-.1,capH*0.4,vtD-.1),MS.dkW,vtX,capBot+capH*0.78,vtZ));        // stepped-in upper
-      vtGrp.add(mk(new THREE.CylinderGeometry(.05,.08,capH*0.35,10),vtBrassMat,vtX,capBot+capH*0.85,vtZ)); // central finial
-      vtGrp.add(mk(new THREE.SphereGeometry(.06,10,10),vtBrassMat,vtX,rH-.05,vtZ));                        // finial ball at ceiling
-    }
-    const glassF=new THREE.Mesh(new THREE.PlaneGeometry(vtW-.1,vtGlassH-.04),vtGlassMat);glassF.position.set(vtX,vtGBot+vtGlassH/2,vtZ+vtD/2-.03);glassF.raycast=()=>{};vtGrp.add(glassF);
-    const glassB=new THREE.Mesh(new THREE.PlaneGeometry(vtW-.1,vtGlassH-.04),vtGlassMat);glassB.position.set(vtX,vtGBot+vtGlassH/2,vtZ-vtD/2+.03);glassB.rotation.y=Math.PI;glassB.raycast=()=>{};vtGrp.add(glassB);
-    const glassL=new THREE.Mesh(new THREE.PlaneGeometry(vtD-.1,vtGlassH-.04),vtGlassMat);glassL.rotation.y=Math.PI/2;glassL.position.set(vtX-vtW/2+.03,vtGBot+vtGlassH/2,vtZ);glassL.raycast=()=>{};vtGrp.add(glassL);
-    const glassR=new THREE.Mesh(new THREE.PlaneGeometry(vtD-.1,vtGlassH-.04),vtGlassMat);glassR.rotation.y=-Math.PI/2;glassR.position.set(vtX+vtW/2-.03,vtGBot+vtGlassH/2,vtZ);glassR.raycast=()=>{};vtGrp.add(glassR);
-    for(const sx of [-1,1])for(const sz of [-1,1]){
-      vtGrp.add(mk(new THREE.BoxGeometry(.03,vtGlassH,.03),vtBrassMat,vtX+sx*(vtW/2-.02),vtGBot+vtGlassH/2,vtZ+sz*(vtD/2-.02)));
-      vtGrp.add(mk(new THREE.SphereGeometry(.025,8,8),vtBrassMat,vtX+sx*(vtW/2-.02),vtTopY+.065,vtZ+sz*(vtD/2-.02)));
-    }
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW,.02,.025),vtBrassMat,vtX,vtTopY-.01,vtZ+vtD/2-.015));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW,.02,.025),vtBrassMat,vtX,vtTopY-.01,vtZ-vtD/2+.015));
-    vtGrp.add(mk(new THREE.BoxGeometry(.025,.02,vtD),vtBrassMat,vtX-vtW/2+.015,vtTopY-.01,vtZ));
-    vtGrp.add(mk(new THREE.BoxGeometry(.025,.02,vtD),vtBrassMat,vtX+vtW/2-.015,vtTopY-.01,vtZ));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW,.02,.025),vtBrassMat,vtX,vtGBot+.01,vtZ+vtD/2-.015));
-    vtGrp.add(mk(new THREE.BoxGeometry(vtW,.02,.025),vtBrassMat,vtX,vtGBot+.01,vtZ-vtD/2+.015));
-    if(!W2&&!isMobileGPU()){const vtLight=new THREE.PointLight("#FFF5E0",.8,3);vtLight.position.set(vtX,vtTopY-.06,vtZ);vtGrp.add(vtLight);
-    const vtLight2=new THREE.PointLight("#FFF0D0",.4,1.5);vtLight2.position.set(vtX,vtMidY-.05,vtZ);vtGrp.add(vtLight2);}
-    if(W2){
-      vtGrp.add(mk(new THREE.BoxGeometry(vtW-.2,.015,vtD-.2),MS.glassG,vtX,vtTopY-.03,vtZ));
-    }
-    const vtLevels=W3?[...vtShelfYs].reverse().slice(vtShelfYs.length>2?1:0):[vtGBot+vtGlassH*.35];
-    const vtCap=W3?Math.min(vtLevels.length*2,8):3;
-    caseMems.slice(0,vtCap).forEach((m: any,i: any)=>{
-      const recTex=paintTex(m);
-      const rec=new THREE.Mesh(new THREE.PlaneGeometry(.42,.42),new THREE.MeshStandardMaterial({map:recTex,roughness:.4,metalness:.05}));
-      const lvl=W3?vtLevels[Math.floor(i/2)%vtLevels.length]:vtLevels[0];
-      const col=W3?(i%2===0?-1:1):(i-1);
-      rec.position.set(vtX+(W3?col*0.32:col*0.4),(lvl||vtGBot)+0.24,vtZ+.05);rec.rotation.y=.1-(W3?col:i)*.1;
-      rec.userData={memory:m};vtGrp.add(rec);memMeshes.current.push(rec);
-    });
-    const vtHit=new THREE.Mesh(new THREE.BoxGeometry(vtW,vtBaseH+vtGlassH,vtD),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
-    vtHit.position.set(vtX,(vtBaseH+vtGlassH)/2,vtZ);
-    vtHit.userData=caseMems.length>0?{memory:caseMems[0],isHitArea:true}:{isStation:true};
-    vtGrp.add(vtHit);hitAreaMeshes.current.push(vtHit);
-    // place + turn the whole cabinet into the corner (45° under W3)
-    vtGrp.position.set(vtAX,0,vtAZ);vtGrp.rotation.y=W3?Math.PI/4:0;scene.add(vtGrp);
-    if(W2)addGlowCard(vtAX,vtMidY,vtAZ,0.8);
+      // L: right-wall arm (thin X, long Z) + shoulder arm (long X, thin Z), meeting at the corner
+      buildGlassCase(rW/2-0.4, widenZ-1.35, 0.62, 2.0, caseMems.slice(0,5));
+      buildGlassCase(rW/2-1.45, widenZ-0.4, 1.55, 0.62, caseMems.slice(5,10));
+    }else buildGlassCase(-rW/2+2, -rL/2+0.7, 1.4, 0.7, caseMems.slice(0,3));
     } // end !isExhibition vitrine
 
     // ═══════════════════════════════════════════
