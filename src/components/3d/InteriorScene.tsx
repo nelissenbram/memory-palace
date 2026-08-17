@@ -164,6 +164,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // Viewer-only preview override: ?wallcount=N forces the tier so the enfilade
     // growth can be reviewed without a photo-rich account (harmless on prod).
     const _wcOverride=(typeof window!=="undefined")?parseInt(new URLSearchParams(window.location.search).get("wallcount")||"",10):NaN;
+    // Viewer-only review angle: ?rcam=door|hearth|bookcase hard-poses the camera
+    // (the exit door sits behind the spawn, so straight-ahead can't show it).
+    const _rcam=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("rcam"):null;
     const wallCount=W3?(Number.isFinite(_wcOverride)?_wcOverride:displayedWallCount(mems)):undefined;
     const layout=layoutForRoom(actualRoomId||roomId,layoutOverride,wallCount);
     if(W3&&typeof process!=="undefined"&&process.env.NODE_ENV!=="production")console.debug(`[rooms] tier=${layout.tier} deeper-by=${layout.bays} rL=${layout.rL} rW=${layout.rW} (walls=${wallCount})`);
@@ -2836,6 +2839,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       camera.position.copy(pos.current);
       _ld.current.set(Math.sin(lookA.current.yaw)*Math.cos(lookA.current.pitch),Math.sin(lookA.current.pitch),-Math.cos(lookA.current.yaw)*Math.cos(lookA.current.pitch));
       _lookTarget.current.copy(camera.position).add(_ld.current);camera.lookAt(_lookTarget.current);
+      // Debug review angles (viewer-only) — override the walk pose.
+      if(_rcam){
+        if(_rcam==="door"){camera.position.set(0,2.0,rWRef.l/2-6);camera.lookAt(0,1.9,rWRef.l/2);}
+        else if(_rcam==="hearth"){camera.position.set(0,2.0,-rWRef.l/2+7);camera.lookAt(0,1.6,-rWRef.l/2);}
+        else if(_rcam==="bookcase"){camera.position.set(rWRef.w/2-3,1.9,-rWRef.l/2+3);camera.lookAt(-rWRef.w/2,1.7,-rWRef.l/2+2.5);}
+      }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
         camDebugRef.current.textContent = `yaw: ${lookA.current.yaw.toFixed(4)}\npitch: ${lookA.current.pitch.toFixed(4)}\npos: ${pos.current.x.toFixed(1)}, ${pos.current.y.toFixed(1)}, ${pos.current.z.toFixed(1)}`;
