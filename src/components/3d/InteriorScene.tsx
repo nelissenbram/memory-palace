@@ -1736,12 +1736,35 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.add(mk(new THREE.BoxGeometry(.06,rH-.2,W3?bL:rL-.1),MS.dkW,bsX-.23,rH/2,bC));
     scene.add(mk(new THREE.BoxGeometry(.6,.04,W3?bL:rL-.05),MS.gold,bsX,rH-.06,bC));
     scene.add(mk(new THREE.BoxGeometry(.58,.02,W3?bL:rL-.08),MS.ltW,bsX,rH-.02,bC));
+    if(W3){
+      // owner #9/#10: the written memories are grouped at EYE LEVEL as inviting
+      // leather journals (gilt title + a ribbon marker) so the shelf clearly reads
+      // "click to read", plus a photo-book album standing among them.
+      const jY=1.82, jz0=bC-bL/2+0.55;
+      docMems.slice(0,5).forEach((m: any,i: any)=>{
+        const jz=jz0+i*0.24, jh=0.44+((i*7)%3)*0.03;
+        const spine=new THREE.Mesh(new THREE.BoxGeometry(.15,jh,.23),new THREE.MeshStandardMaterial({color:`hsl(${m.hue},${Math.min(38,m.s)}%,${Math.min(36,m.l)}%)`,roughness:.5,metalness:.06}));
+        spine.position.set(bsX+.14,jY+jh/2,jz);spine.userData={memory:m};scene.add(spine);memMeshes.current.push(spine);
+        scene.add(mk(new THREE.BoxGeometry(.155,.055,.23),MS.gold,bsX+.14,jY+jh*0.72,jz));   // gilt title band
+        scene.add(mk(new THREE.BoxGeometry(.05,.09,.02),wing?.accent?new THREE.MeshStandardMaterial({color:wing.accent,roughness:.8}):MS.gold,bsX+.06,jY+jh-0.02,jz)); // ribbon marker
+      });
+      // photo-book: a thick album with a cover image, standing at the shelf end
+      const pbMem=wallMems[0]||photoMems[0]||paintingMems[0];
+      if(pbMem){
+        const pbz=jz0+5*0.24+0.16, pbTex=paintTex(pbMem);
+        scene.add(mk(new THREE.BoxGeometry(.17,.52,.42),new THREE.MeshStandardMaterial({color:"#5A3A28",roughness:.5}),bsX+.14,jY+.26,pbz)); // album body
+        scene.add(mk(new THREE.BoxGeometry(.03,.52,.42),MS.gold,bsX+.055,jY+.26,pbz));                                                        // gilt cover edge
+        const cover=new THREE.Mesh(new THREE.PlaneGeometry(.34,.46),new THREE.MeshStandardMaterial({map:pbTex,roughness:.5}));
+        cover.rotation.y=Math.PI/2;cover.position.set(bsX+.045,jY+.26,pbz);cover.userData={memory:pbMem};scene.add(cover);memMeshes.current.push(cover);
+      }
+    }else{
     docMems.slice(0,5).forEach((m: any,i: any)=>{
-      const sy=.35+((i+1)%5)*.75;const bz=W3?(bC-bL/2+0.4+i*((bL-0.8)/5)):(-rL/2+1.5+i*((rL-3)/5));
+      const sy=.35+((i+1)%5)*.75;const bz=-rL/2+1.5+i*((rL-3)/5);
       const spine=new THREE.Mesh(new THREE.BoxGeometry(.12,.4,.22),new THREE.MeshStandardMaterial({color:`hsl(${m.hue},${m.s}%,${m.l}%)`,roughness:.6,metalness:.05}));
       spine.position.set(bsX+.15,sy+.23,bz);spine.userData={memory:m};scene.add(spine);memMeshes.current.push(spine);
       scene.add(mk(new THREE.BoxGeometry(.13,.06,.05),MS.gold,bsX+.15,sy+.25,bz+.09));
     });
+    }
     const bsHit=new THREE.Mesh(new THREE.BoxGeometry(.6,rH-.5,W3?bL:rL-2),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
     bsHit.position.set(bsX,rH/2,bC);
     bsHit.userData=docMems.length>0?{memory:docMems[0],isHitArea:true}:{isStation:true};
