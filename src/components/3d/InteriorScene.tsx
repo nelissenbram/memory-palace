@@ -490,6 +490,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const libWingZ0=-rL/2, libWingZ1=-rL/2+libWingW; // wing spans the back-left corner
     const libWingX=-rW/2;                          // wing shares the main-room left wall line
     const libFarX=libWingX-libWingD;               // wing far (outer) wall
+    // MUSIC wing — mirror off the back-RIGHT (piano + record player).
+    const musWingD=4.2, musWingW=5.2;
+    const musWingZ0=-rL/2, musWingZ1=-rL/2+musWingW;
+    const musWingX=rW/2, musFarX=musWingX+musWingD;
     const BOOKSHELF_LEN=4.0;
     // Under W3 the library lives IN the wing (on its far wall); flag-off keeps it
     // on the main left wall. bookEndZ = where the main left-wall salon run resumes.
@@ -789,6 +793,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         const wm=new THREE.Mesh(new THREE.PlaneGeometry(segW,rH),MS.wall);wm.rotation.y=Math.PI/2;wm.position.set(-rW/2,rH/2,segC);wm.receiveShadow=true;scene.add(wm);
         continue;
       }
+      if(W3&&s===1){
+        // RIGHT wall: opening for the music wing; build only the remaining segment.
+        const segW=rL-musWingW, segC=(musWingZ1+rL/2)/2;
+        const wm=new THREE.Mesh(new THREE.PlaneGeometry(segW,rH),MS.wall);wm.rotation.y=-Math.PI/2;wm.position.set(rW/2,rH/2,segC);wm.receiveShadow=true;scene.add(wm);
+        continue;
+      }
       const wm=new THREE.Mesh(new THREE.PlaneGeometry(rL,rH),MS.wall);wm.rotation.y=s*(-Math.PI/2);wm.position.set(s*(rW/2),rH/2,0);wm.receiveShadow=true;scene.add(wm);
     }
     scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));
@@ -827,6 +837,39 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       for(const[lx,lz] of [[-0.65,-0.3],[0.65,-0.3],[-0.65,0.3],[0.65,0.3]] as [number,number][])scene.add(mk(new THREE.BoxGeometry(0.07,0.78,0.07),MS.dkW,rcx+lx,0.39,wcz+1.4+lz)); // legs
       scene.add(mk(new THREE.BoxGeometry(0.5,0.08,0.5),MS.leather,rcx-0.35,0.46,wcz+0.82));                           // desk chair seat
       scene.add(mk(new THREE.BoxGeometry(0.5,0.5,0.08),MS.leatherD,rcx-0.35,0.72,wcz+0.58));                          // desk chair back
+      // ── MUSIC WING (mirror off the back-right): grand piano + record player ──
+      const mcx=(musFarX+musWingX)/2, mcz=(musWingZ0+musWingZ1)/2;
+      const mfl=new THREE.Mesh(new THREE.PlaneGeometry(musWingD,musWingW),MS.floor);mfl.rotation.x=-Math.PI/2;mfl.position.set(mcx,0,mcz);mfl.receiveShadow=true;scene.add(mfl);
+      const mce=new THREE.Mesh(new THREE.PlaneGeometry(musWingD,musWingW),MS.ceil);mce.rotation.x=Math.PI/2;mce.position.set(mcx,rH,mcz);scene.add(mce);
+      const mfar=new THREE.Mesh(new THREE.PlaneGeometry(musWingW,rH),MS.wall);mfar.rotation.y=-Math.PI/2;mfar.position.set(musFarX,rH/2,mcz);mfar.receiveShadow=true;scene.add(mfar);
+      scene.add(mk(new THREE.PlaneGeometry(musWingD,rH),MS.wall,mcx,rH/2,musWingZ0));
+      const mfr=new THREE.Mesh(new THREE.PlaneGeometry(musWingD,rH),MS.wall);mfr.rotation.y=Math.PI;mfr.position.set(mcx,rH/2,musWingZ1);mfr.receiveShadow=true;scene.add(mfr);
+      scene.add(mk(new THREE.BoxGeometry(.05,1.2,musWingW-.1),MS.wain,musFarX-.025,.6,mcz));scene.add(mk(new THREE.BoxGeometry(.06,.07,musWingW-.1),MS.gold,musFarX-.03,1.23,mcz));
+      scene.add(mk(new THREE.BoxGeometry(musWingD-.1,1.2,.05),MS.wain,mcx,.6,musWingZ1-.025));scene.add(mk(new THREE.BoxGeometry(musWingD-.1,.07,.06),MS.gold,mcx,1.23,musWingZ1-.03));
+      const mskyG=new THREE.Mesh(new THREE.PlaneGeometry(1.7,2.3),new THREE.MeshBasicMaterial({color:"#FFEAC8"}));mskyG.rotation.y=-Math.PI/2;mskyG.position.set(musFarX-0.06,2.1,mcz);scene.add(mskyG);
+      for(const zs of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.12,2.6,0.16),MS.wain,musFarX-0.08,2.1,mcz+zs*0.95));
+      scene.add(mk(new THREE.BoxGeometry(0.14,0.16,2.2),MS.wain,musFarX-0.08,3.35,mcz));scene.add(mk(new THREE.BoxGeometry(0.16,0.1,2.2),MS.gold,musFarX-0.08,0.9,mcz));
+      const mpp=new THREE.Mesh(new THREE.PlaneGeometry(2.8,2.8),getGlowCardMat());mpp.rotation.x=-Math.PI/2;mpp.position.set(musFarX-1.9,0.02,mcz);mpp.renderOrder=1;scene.add(mpp);
+      addGlowCard(musFarX-0.35,2.1,mcz,1.6,-Math.PI/2);addGlowCard(mcx,rH-0.5,mcz,1.6,0);
+      // grand piano (glossy black) — body, angled lid, legs, keyboard, bench
+      const pnMat=new THREE.MeshStandardMaterial({color:"#141210",roughness:.28,metalness:.12});
+      const pcx=musFarX-2.05, pcz=mcz-0.2;
+      scene.add(mk(new THREE.BoxGeometry(1.5,0.26,2.0),pnMat,pcx,0.92,pcz));                                          // body
+      scene.add(mk(new THREE.BoxGeometry(1.5,0.62,0.1),pnMat,pcx,0.48,pcz-0.95));scene.add(mk(new THREE.BoxGeometry(0.1,0.62,2.0),pnMat,pcx-0.7,0.48,pcz)); // aprons
+      for(const[lx,lz] of [[-0.6,-0.85],[0.6,-0.85],[0,0.9]] as [number,number][])scene.add(mk(new THREE.CylinderGeometry(0.05,0.06,0.8,8),pnMat,pcx+lx,0.4,pcz+lz));
+      scene.add(mk(new THREE.BoxGeometry(1.3,0.06,0.32),new THREE.MeshStandardMaterial({color:"#F2ECDA",roughness:.4}),pcx,0.86,pcz+0.92)); // keys
+      {const lid=mk(new THREE.BoxGeometry(1.44,0.03,1.9),pnMat,pcx-0.35,1.42,pcz-0.05);lid.rotation.z=0.4;scene.add(lid);}                      // raised lid
+      {const prop=mk(new THREE.CylinderGeometry(0.015,0.015,0.9,6),MS.gold,pcx-0.55,1.15,pcz-0.6);prop.rotation.z=0.3;scene.add(prop);}         // prop stick
+      scene.add(mk(new THREE.BoxGeometry(1.0,0.09,0.42),MS.leather,pcx,0.5,pcz+1.55));                                                          // bench
+      for(const[lx,lz] of [[-0.42,-0.16],[0.42,-0.16],[-0.42,0.16],[0.42,0.16]] as [number,number][])scene.add(mk(new THREE.BoxGeometry(0.05,0.5,0.05),MS.dkW,pcx+lx,0.25,pcz+1.55+lz));
+      // record player on a cabinet, against the front wall
+      const rpx=musWingX+0.95, rpz=musWingZ1-0.7;
+      scene.add(mk(new THREE.BoxGeometry(0.85,0.92,0.6),MS.dkW,rpx,0.46,rpz));
+      scene.add(mk(new THREE.BoxGeometry(0.75,0.08,0.52),new THREE.MeshStandardMaterial({color:"#1A1510",roughness:.3}),rpx,0.96,rpz));
+      scene.add(mk(new THREE.CylinderGeometry(0.17,0.17,0.02,20),new THREE.MeshStandardMaterial({color:"#0A0806",roughness:.5}),rpx,1.01,rpz));
+      scene.add(mk(new THREE.CylinderGeometry(0.04,0.04,0.016,12),MS.gold,rpx,1.02,rpz));
+      scene.add(mk(new THREE.BoxGeometry(0.02,0.28,0.02),MS.iron,rpx+0.28,1.14,rpz+0.18));                                                      // horn stem
+      {const horn=mk(new THREE.CylinderGeometry(0.16,0.04,0.28,12,1,true),MS.gold,rpx+0.28,1.32,rpz+0.18);horn.rotation.z=0.5;scene.add(horn);} // brass horn
     }
     for(let s=-1;s<=1;s+=2){
       // left wainscot skips the wing opening under W3 (built on the segment only)
@@ -1634,8 +1677,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         {cx:-(doorHalf+(rW/2-cornerIn-doorHalf)/2),cz:rL/2-0.12,rotY:Math.PI,width:rW/2-cornerIn-doorHalf,nx:0,nz:-1},
         // front wall, right of the door
         {cx:doorHalf+(rW/2-cornerIn-doorHalf)/2,cz:rL/2-0.12,rotY:Math.PI,width:rW/2-cornerIn-doorHalf,nx:0,nz:-1},
-        // right wall, back of the screen — front faces -X
-        {cx:rW/2-0.12,cz:-(scrHalf+(rL/2-cornerIn-scrHalf)/2),rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
+        // right wall, back of the screen — front faces -X (dropped under W3: the music wing opens here)
+        {cx:rW/2-0.12,cz:-(scrHalf+(rL/2-cornerIn-scrHalf)/2),rotY:-Math.PI/2,width:W3?0:(rL/2-cornerIn-scrHalf),nx:-1,nz:0},
         // right wall, front of the screen
         {cx:rW/2-0.12,cz:scrHalf+(rL/2-cornerIn-scrHalf)/2,rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
       ].filter(r=>r.width>1.6);
@@ -2068,7 +2111,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // VITRINE / GLASS DISPLAY CASE (left of fireplace, against back wall)
     // ═══════════════════════════════════════════
     if(!isExhibition){
-    const vtX=W3?(rW/2-2):(-rW/2+2), vtZ=-rL/2+0.7; // W3: vitrine to the back-RIGHT corner (left is the library wing opening)
+    const vtX=W3?(rW/2-1.6):(-rW/2+2), vtZ=W3?(rL/2-2.0):(-rL/2+0.7); // W3: vitrine to the FRONT-RIGHT corner (back-right is the music wing)
     // owner #8: under W3 the vitrine rises floor-to-ceiling with several glass
     // shelves so it can hold MANY objects; base tiers keep the low case.
     const vtW=1.4, vtD=0.7, vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.22):1.0;
@@ -2981,6 +3024,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         if(_rcam==="door"){camera.position.set(0,2.0,rWRef.l/2-6);camera.lookAt(0,1.9,rWRef.l/2);}
         else if(_rcam==="hearth"){camera.position.set(0,2.0,-rWRef.l/2+7);camera.lookAt(0,1.6,-rWRef.l/2);}
         else if(_rcam==="bookcase"||_rcam==="wing"){camera.position.set(-rWRef.w/2-1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(-rWRef.w/2-3.5,1.4,-rWRef.l/2+1.5);}
+        else if(_rcam==="music"){camera.position.set(rWRef.w/2+1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(rWRef.w/2+3.5,1.4,-rWRef.l/2+1.5);}
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
