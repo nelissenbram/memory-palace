@@ -483,8 +483,17 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // W3 "Deepening Cabinet" (owner 2026-08-17): the LIBRARY must NOT scale with
     // the room — freeze it to a fixed length at the hearth end; the rest of the
     // left wall becomes salon display. bookEndZ = far edge of the frozen shelf.
+    // "Enfilade of Wings" (owner 2026-08-17): straight-cornered WINGS bud off the
+    // main room — a LIBRARY wing off the back-left. The wing is an additive nook
+    // with an opening cut in the left wall. (Music wing + more follow.)
+    const libWingD=4.2, libWingW=5.2;             // wing depth (−X) and width (Z)
+    const libWingZ0=-rL/2, libWingZ1=-rL/2+libWingW; // wing spans the back-left corner
+    const libWingX=-rW/2;                          // wing shares the main-room left wall line
+    const libFarX=libWingX-libWingD;               // wing far (outer) wall
     const BOOKSHELF_LEN=4.0;
-    const bookC=-rL/2+0.1+BOOKSHELF_LEN/2, bookEndZ=-rL/2+0.1+BOOKSHELF_LEN;
+    // Under W3 the library lives IN the wing (on its far wall); flag-off keeps it
+    // on the main left wall. bookEndZ = where the main left-wall salon run resumes.
+    const bookC=W3?(libWingZ0+libWingZ1)/2:(-rL/2+0.1+BOOKSHELF_LEN/2), bookEndZ=W3?libWingZ1:(-rL/2+0.1+BOOKSHELF_LEN);
 
     // ═══════════════════════════════════════════
     // SHELL: floor, ceiling, walls, wainscoting
@@ -773,11 +782,33 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const ce=new THREE.Mesh(new THREE.PlaneGeometry(rW,rL),MS.ceil);ce.rotation.x=Math.PI/2;ce.position.y=rH;scene.add(ce);
     for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.1,.14,rL),MS.gold,s*(rW/2-.05),rH-.07,0));scene.add(mk(new THREE.BoxGeometry(rW,.14,.1),MS.gold,0,rH-.07,s*(rL/2-.05)));}
     for(let s=-1;s<=1;s+=2){
+      if(W3&&s===-1){
+        // LEFT wall: leave an OPENING for the library wing (z∈[libWingZ0,libWingZ1]);
+        // build only the remaining segment (toward the door).
+        const segW=rL-libWingW, segC=(libWingZ1+rL/2)/2;
+        const wm=new THREE.Mesh(new THREE.PlaneGeometry(segW,rH),MS.wall);wm.rotation.y=Math.PI/2;wm.position.set(-rW/2,rH/2,segC);wm.receiveShadow=true;scene.add(wm);
+        continue;
+      }
       const wm=new THREE.Mesh(new THREE.PlaneGeometry(rL,rH),MS.wall);wm.rotation.y=s*(-Math.PI/2);wm.position.set(s*(rW/2),rH/2,0);wm.receiveShadow=true;scene.add(wm);
     }
     scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));
     const bw=new THREE.Mesh(new THREE.PlaneGeometry(rW,rH),MS.wall);bw.rotation.y=Math.PI;bw.position.set(0,rH/2,rL/2);bw.receiveShadow=true;scene.add(bw);
-    for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
+    // ── W3 LIBRARY WING — an additive straight-cornered nook off the back-left ──
+    if(W3){
+      const wcx=(libFarX+libWingX)/2, wcz=(libWingZ0+libWingZ1)/2;
+      const wfl=new THREE.Mesh(new THREE.PlaneGeometry(libWingD,libWingW),MS.floor);wfl.rotation.x=-Math.PI/2;wfl.position.set(wcx,0,wcz);wfl.receiveShadow=true;scene.add(wfl);
+      const wce=new THREE.Mesh(new THREE.PlaneGeometry(libWingD,libWingW),MS.ceil);wce.rotation.x=Math.PI/2;wce.position.set(wcx,rH,wcz);scene.add(wce);
+      const wfar=new THREE.Mesh(new THREE.PlaneGeometry(libWingW,rH),MS.wall);wfar.rotation.y=Math.PI/2;wfar.position.set(libFarX,rH/2,wcz);wfar.receiveShadow=true;scene.add(wfar);   // far wall, faces +X
+      scene.add(mk(new THREE.PlaneGeometry(libWingD,rH),MS.wall,wcx,rH/2,libWingZ0));                                                                                              // back wall extension, faces +Z
+      const wfr=new THREE.Mesh(new THREE.PlaneGeometry(libWingD,rH),MS.wall);wfr.rotation.y=Math.PI;wfr.position.set(wcx,rH/2,libWingZ1);wfr.receiveShadow=true;scene.add(wfr);     // wing front wall, faces -Z
+      // wing wainscot (far + front + back)
+      scene.add(mk(new THREE.BoxGeometry(.05,1.2,libWingW-.1),MS.wain,libFarX+.025,.6,wcz));scene.add(mk(new THREE.BoxGeometry(.06,.07,libWingW-.1),MS.gold,libFarX+.03,1.23,wcz));
+      scene.add(mk(new THREE.BoxGeometry(libWingD-.1,1.2,.05),MS.wain,wcx,.6,libWingZ1-.025));scene.add(mk(new THREE.BoxGeometry(libWingD-.1,.07,.06),MS.gold,wcx,1.23,libWingZ1-.03));
+    }
+    for(let s=-1;s<=1;s+=2){
+      // left wainscot skips the wing opening under W3 (built on the segment only)
+      if(W3&&s===-1){const segW=rL-libWingW,segC=(libWingZ1+rL/2)/2;scene.add(mk(new THREE.BoxGeometry(.05,1.2,segW-.3),MS.wain,-rW/2+.025,.6,segC));scene.add(mk(new THREE.BoxGeometry(.06,.07,segW-.2),MS.gold,-rW/2+.03,1.23,segC));continue;}
+      scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
     scene.add(mk(new THREE.BoxGeometry(rW-.3,1.2,.05),MS.wain,0,.6,-rL/2+.025));scene.add(mk(new THREE.BoxGeometry(rW-.2,.07,.06),MS.gold,0,1.23,-rL/2+.03));
     // ── W3 "The Deepening Cabinet": a grown room is ONE undivided volume — the
     // added depth becomes hanging WALL for the salon-hang display, NOT a
@@ -1707,7 +1738,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // BOOKSHELVES (left wall, floor to ceiling)
     // ═══════════════════════════════════════════
     if(!isExhibition){
-    const bsX=-rW/2+.35;
+    const bsX=W3?libFarX+.35:-rW/2+.35; // W3: library moves onto the wing's far wall
     const bookPalette=["#6B1A1A","#1A2744","#2A4A2A","#4A1A2A","#8B6914","#3A2010","#1A3A4A","#5A2A3A","#2A3A1A","#6A4A2A","#3A1A3A","#1A4A3A","#7A3A1A","#2A2A4A","#4A3A1A","#5A1A1A"];
     let bSeed=0;for(const c of (actualRoomId||roomId))bSeed=(bSeed*31+c.charCodeAt(0))>>>0;
     const bRng=()=>{bSeed=(bSeed*16807+1)>>>0;return(bSeed&0x7fffffff)/0x7fffffff;};
@@ -2014,7 +2045,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // VITRINE / GLASS DISPLAY CASE (left of fireplace, against back wall)
     // ═══════════════════════════════════════════
     if(!isExhibition){
-    const vtX=-rW/2+2, vtZ=-rL/2+0.7;
+    const vtX=W3?(rW/2-2):(-rW/2+2), vtZ=-rL/2+0.7; // W3: vitrine to the back-RIGHT corner (left is the library wing opening)
     // owner #8: under W3 the vitrine rises floor-to-ceiling with several glass
     // shelves so it can hold MANY objects; base tiers keep the low case.
     const vtW=1.4, vtD=0.7, vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.22):1.0;
@@ -2926,7 +2957,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(_rcam){
         if(_rcam==="door"){camera.position.set(0,2.0,rWRef.l/2-6);camera.lookAt(0,1.9,rWRef.l/2);}
         else if(_rcam==="hearth"){camera.position.set(0,2.0,-rWRef.l/2+7);camera.lookAt(0,1.6,-rWRef.l/2);}
-        else if(_rcam==="bookcase"){camera.position.set(rWRef.w/2-3,1.9,-rWRef.l/2+3);camera.lookAt(-rWRef.w/2,1.7,-rWRef.l/2+2.5);}
+        else if(_rcam==="bookcase"||_rcam==="wing"){camera.position.set(-rWRef.w/2+1.6,2.0,-rWRef.l/2+2.6);camera.lookAt(-rWRef.w/2-4.2,1.5,-rWRef.l/2+2.6);}
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
