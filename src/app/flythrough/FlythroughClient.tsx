@@ -25,9 +25,9 @@ const _dm = (i: number, extra: Partial<Mem>): Mem => ({
   createdAt: `2026-${String(1 + (i % 9)).padStart(2, "0")}-${String(1 + (i % 27)).padStart(2, "0")}`, ...extra,
 } as Mem);
 const SAMPLE_MEMORIES: Mem[] = [
-  // 34 wall photos (→ Grand tier), plus objects, documents, audio + one video so
-  // every station (walls, vitrine, bookcase, vinyl, screen) populates for review.
-  ...Array.from({ length: 34 }, (_, i) => _dm(i, {})),
+  // 14 wall photos (→ Hall tier — mid-size, so the max/min viewers visibly differ),
+  // plus objects, documents, audio + one video so every station populates.
+  ...Array.from({ length: 14 }, (_, i) => _dm(i, {})),
   ...Array.from({ length: 4 }, (_, i) => _dm(100 + i, { type: "photo", displayUnit: "vitrine", title: `Keepsake ${i + 1}` })),
   ...Array.from({ length: 3 }, (_, i) => _dm(200 + i, { type: "text", displayUnit: "bookshelf", title: `Letter ${i + 1}` })),
   _dm(300, { type: "audio", dataUrl: "/demo/song-of-summer.mp3", displayUnit: "vinyl", title: "Song of Summer" }),
@@ -55,6 +55,16 @@ function fillFromURL(): "max" | "min" | "default" {
   const q = new URLSearchParams(window.location.search).get("fill");
   return q === "max" ? "max" : q === "min" ? "min" : "default";
 }
+
+// A second demo room so the Ledger's "From another room" flow can be reviewed.
+const OTHER_ROOM_FEED = [{
+  id: "ro2", name: "Sunday Lunches",
+  mems: [
+    _dm(9001, { title: "Nonna's table" }),
+    _dm(9002, { title: "The garden in June" }),
+    _dm(9003, { title: "Uncle's toast", type: "audio", dataUrl: "/demo/song-of-summer.mp3", displayUnit: "vinyl" }),
+  ],
+}];
 
 // Demo photos for the entrance-hall door lunettes (viewer-only feel check —
 // the real app hangs each wing's newest photo here).
@@ -129,6 +139,7 @@ export default function FlythroughClient() {
   const [demoFill, setDemoFill] = useState<"max" | "min" | "default">("default");
   const [demoMems, setDemoMems] = useState<Mem[]>(SAMPLE_MEMORIES);
   const [ledgerOpen, setLedgerOpen] = useState(false);
+  const [lightboxId, setLightboxId] = useState<string | null>(null);
   const applyFill = useCallback((f: "max" | "min" | "default") => {
     setDemoFill(f);
     setDemoMems(f === "max" ? SAMPLE_MEMORIES_MAX : f === "min" ? SAMPLE_MEMORIES_MIN : SAMPLE_MEMORIES);
@@ -498,7 +509,7 @@ export default function FlythroughClient() {
                 fontSize: "0.7rem", fontFamily: "system-ui, sans-serif", fontWeight: 600,
                 color: demoFill === f ? "#241A12" : "rgba(255,255,255,0.75)",
                 background: demoFill === f ? "#D4AF37" : "transparent",
-              }}>{f === "min" ? "Min (2)" : f === "default" ? "Standard (43)" : "Max (122)"}</button>
+              }}>{f === "min" ? "Min (2)" : f === "default" ? "Standard (23)" : "Max (122)"}</button>
             ))}
           </div>
           <button onClick={() => setLedgerOpen(true)} style={{
@@ -517,11 +528,43 @@ export default function FlythroughClient() {
           onUpdate={(id, updates) => setDemoMems((ms) => ms.map((m) => (m.id === id ? { ...m, ...updates } as Mem : m)))}
           onDelete={(id) => setDemoMems((ms) => ms.filter((m) => m.id !== id))}
           onAdd={(mem) => setDemoMems((ms) => [...ms, mem])}
-          onSelect={() => {}}
+          onSelect={(mem) => setLightboxId(mem.id)}
           canEdit
+          otherRooms={OTHER_ROOM_FEED}
           addMemoryOverride={(_roomId, mem) => { setDemoMems((ms) => [...ms, mem]); return true; }}
         />
       )}
+      {/* Full-screen item viewer (Library-style: scroll through items + edit) */}
+      {mounted && lightboxId && (() => {
+        const idx = demoMems.findIndex((m) => m.id === lightboxId);
+        const mem = demoMems[idx];
+        if (!mem) return null;
+        const go = (d: number) => { const n = demoMems[(idx + d + demoMems.length) % demoMems.length]; setLightboxId(n.id); };
+        const upd = (u: Partial<Mem>) => setDemoMems((ms) => ms.map((m) => (m.id === mem.id ? { ...m, ...u } as Mem : m)));
+        return (
+          <div onClick={(e) => { if (e.target === e.currentTarget) setLightboxId(null); }} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(20,16,12,0.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button onClick={() => go(-1)} aria-label="previous" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", fontSize: "2rem", background: "rgba(252,250,245,0.12)", color: "#F3ECDA", border: "none", borderRadius: "50%", width: "3rem", height: "3rem", cursor: "pointer" }}>‹</button>
+            <button onClick={() => go(1)} aria-label="next" style={{ position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", fontSize: "2rem", background: "rgba(252,250,245,0.12)", color: "#F3ECDA", border: "none", borderRadius: "50%", width: "3rem", height: "3rem", cursor: "pointer" }}>›</button>
+            <button onClick={() => setLightboxId(null)} aria-label="close" style={{ position: "absolute", top: "1rem", right: "1rem", fontSize: "1.4rem", background: "none", color: "#F3ECDA", border: "none", cursor: "pointer" }}>✕</button>
+            <div style={{ width: "min(92vw, 36rem)", maxHeight: "88vh", overflowY: "auto", background: "#F2EDE4", borderRadius: "1rem", padding: "1rem", boxSizing: "border-box" }}>
+              {mem.dataUrl && (mem.type === "photo" || mem.type === "painting") && (
+                <img src={mem.dataUrl} alt="" style={{ width: "100%", borderRadius: "0.6rem", marginBottom: "0.75rem" }} />
+              )}
+              {mem.type === "video" && mem.dataUrl && <video src={mem.dataUrl} controls style={{ width: "100%", borderRadius: "0.6rem", marginBottom: "0.75rem", background: "#000" }} />}
+              {mem.type === "audio" && mem.dataUrl && <audio src={mem.dataUrl} controls style={{ width: "100%", marginBottom: "0.75rem" }} />}
+              <input value={mem.title || ""} onChange={(e) => upd({ title: e.target.value })} style={{ width: "100%", boxSizing: "border-box", fontFamily: "Georgia, serif", fontSize: "1.15rem", fontWeight: 600, color: "#403B36", border: "none", background: "transparent", borderBottom: "0.0625rem solid #D6CCBA", padding: "0.25rem 0", marginBottom: "0.5rem" }} />
+              <textarea value={(mem as { desc?: string }).desc || ""} onChange={(e) => upd({ desc: e.target.value } as Partial<Mem>)} placeholder="Write something about this memory…" rows={3} style={{ width: "100%", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", fontSize: "0.9rem", color: "#403B36", border: "0.0625rem solid #D6CCBA", borderRadius: "0.5rem", padding: "0.5rem", marginBottom: "0.6rem", resize: "vertical", background: "#FCFAF5" }} />
+              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: "system-ui, sans-serif", fontSize: "0.75rem", color: "#716A5E" }}>{idx + 1} / {demoMems.length}</span>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button onClick={() => upd({ displayed: !mem.displayed })} style={{ padding: "0.4rem 0.8rem", borderRadius: "2rem", border: "0.0625rem solid #D6CCBA", background: mem.displayed ? "#B85C38" : "#FCFAF5", color: mem.displayed ? "#fff" : "#403B36", fontFamily: "system-ui, sans-serif", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>{mem.displayed ? "Shown" : "In the archive"}</button>
+                  <button onClick={() => { setDemoMems((ms) => ms.filter((m) => m.id !== mem.id)); setLightboxId(null); }} style={{ padding: "0.4rem 0.8rem", borderRadius: "2rem", border: "0.0625rem solid #C05050", background: "transparent", color: "#C05050", fontFamily: "system-ui, sans-serif", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Remove</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Pulse animation for recording indicator */}
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>

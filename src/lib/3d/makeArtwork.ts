@@ -41,6 +41,10 @@ export interface ArtworkOptions {
   /** OPT-IN (corridor W3C): a real museum plaque — an ivory/brass plate under
    *  the frame with engraved title+year, instead of floating wall lettering. */
   plaquePlate?: boolean;
+  /** OPT-IN (rooms W3, owner 2026-08-18 #16): skip the baked glow plane behind
+   *  the frame — on the room's calm plaster walls the halo read as a strange
+   *  glow around every painting. Off by default (hall/corridor keep it). */
+  noGlow?: boolean;
 }
 
 export interface Artwork {
@@ -223,13 +227,15 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
   const ownedMats: THREE.Material[] = [];
   const ownedTexs: THREE.Texture[] = [];
 
-  // Baked art light — the warm wall wash a gallery spot would cast.
-  const glowGeo = new THREE.PlaneGeometry(w * 1.9 + 0.6, h * 1.9 + 0.6);
-  const glow = new THREE.Mesh(glowGeo, getGlowMat(quality));
-  glow.position.z = -0.035;
-  glow.renderOrder = -1;
-  ownedGeos.push(glowGeo);
-  group.add(glow);
+  // Baked art light — the warm wall wash a gallery spot would cast (skippable).
+  if (!opts.noGlow) {
+    const glowGeo = new THREE.PlaneGeometry(w * 1.9 + 0.6, h * 1.9 + 0.6);
+    const glow = new THREE.Mesh(glowGeo, getGlowMat(quality));
+    glow.position.z = -0.035;
+    glow.renderOrder = -1;
+    ownedGeos.push(glowGeo);
+    group.add(glow);
+  }
 
   // Frame + plaster liner behind the photo. Canon = solid gold slab; refined
   // (corridor) = a slimmer dark-walnut moulding (gilt slip added below).

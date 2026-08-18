@@ -33,18 +33,20 @@ export interface RoomLayout {
 // number of displayed WALL photos grows. Width/height are sacred. Deterministic
 // and pure so a room is stable across revisits; snapped tiers keep draw calls
 // bounded and avoid a rebuild on every single add.
-export const BAY_DEPTH = 5;   // metres of rL added per depth bay (owner 2026-08-17: rooms felt cramped for the media — grow more per tier)
-export const MAX_BAYS = 3;    // iOS-safe ceiling on added bays
-export const MAX_RL = 30;     // hard depth clamp
+export const BAY_DEPTH = 4;   // metres of rL added per depth bay
+export const MAX_BAYS = 4;    // iOS-safe ceiling on added bays
+export const MAX_RL = 26;     // hard depth clamp
 
 export type RoomTier = "Intimate" | "Hall" | "Gallery" | "Grand Enfilade";
 
-/** Map a displayed-wall-photo count to a tier + bay count (owner thresholds: 6/16/32). */
+/** Map a displayed-wall-photo count to a tier + bay count (owner thresholds: 6/16/32).
+ *  Owner 2026-08-18: the Intimate room was far too small → every tier gains a bay
+ *  (Intimate starts at +1) so min is much roomier and each tier visibly differs. */
 export function tierForCount(count: number): { tier: RoomTier; bays: number } {
-  if (count <= 6) return { tier: "Intimate", bays: 0 };
-  if (count <= 16) return { tier: "Hall", bays: 1 };
-  if (count <= 32) return { tier: "Gallery", bays: 2 };
-  return { tier: "Grand Enfilade", bays: 3 };
+  if (count <= 6) return { tier: "Intimate", bays: 1 };
+  if (count <= 16) return { tier: "Hall", bays: 2 };
+  if (count <= 32) return { tier: "Gallery", bays: 3 };
+  return { tier: "Grand Enfilade", bays: 4 };
 }
 
 /**
@@ -56,8 +58,11 @@ export function tierForCount(count: number): { tier: RoomTier; bays: number } {
 export function sizeForRoom(base: RoomLayout, count: number): RoomLayout {
   const { tier, bays } = tierForCount(count);
   const b = Math.min(bays, MAX_BAYS);
-  const rL = Math.min(base.rL + b * BAY_DEPTH, base.rW * 2.0, MAX_RL);
-  if (process.env.NODE_ENV !== "production" && rL / base.rW > 2.2) {
+  // Non-linear depth per tier: a generous first bay (the Intimate room must not
+  // feel cramped) then smaller increments, so every tier still reads different.
+  const DEPTH_BY_BAYS = [0, 5, 8, 11, 14];
+  const rL = Math.min(base.rL + (DEPTH_BY_BAYS[b] ?? b * BAY_DEPTH), base.rW * 2.2, MAX_RL);
+  if (process.env.NODE_ENV !== "production" && rL / base.rW > 2.4) {
     console.warn(`[rooms] aspect rL/rW=${(rL / base.rW).toFixed(2)} > 1.8 — room risks reading as a hall`);
   }
   return { ...base, rL, tier, bays: b };

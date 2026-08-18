@@ -370,14 +370,16 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // tones with canon grout, trim → ink, gold → canon gold; the leather
     // "gentleman's club" set and fireplace brick regrade to canon ink/travertine.
     // msKey includes the flag so acquireMaterialSet never serves a stale palette.
-    const msKey=`interior|w1:${W1?1:0}|${wing?.wall||"-"}|${wing?.accent||"-"}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    const msKey=`interior|w1:${W1?1:0}|w3:${W3?1:0}|${wing?.wall||"-"}|${wing?.accent||"-"}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
     const MS=acquireMaterialSet(msKey,()=>({
       wall:new THREE.MeshStandardMaterial({color:W1?PLASTER:(wing?.wall||"#DDD4C6"),roughness:.88,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:wallTex.roughnessMap,aoMap:wallTex.aoMap,aoMapIntensity:.6}),
       floor:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#8A7358",roughness:.45,metalness:.1,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.7}),
       floorL:new THREE.MeshStandardMaterial({color:W1?TRAVERTINE_GROUT:"#B8A480",roughness:.5,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       ceil:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#F0EAE0",roughness:.95}),
       trim:new THREE.MeshStandardMaterial({color:W1?INK:"#CFC3AE",roughness:.55,metalness:.12}),
-      gold:new THREE.MeshStandardMaterial({color:W1?GOLD:"#C8A868",roughness:.28,metalness:.6}),
+      // W3 (owner 2026-08-18 #6): NO gold anywhere in the room — every "gold"
+      // accent becomes matte bronze (corridor precedent: "mat brons ipv tacky goud").
+      gold:new THREE.MeshStandardMaterial({color:W3?"#8B6B4A":(W1?GOLD:"#C8A868"),roughness:W3?.52:.28,metalness:W3?.42:.6}),
       dkW:new THREE.MeshStandardMaterial({color:"#3E2A18",roughness:.5,metalness:.08,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.4,.4),aoMap:woodTex.aoMap,aoMapIntensity:.5}),
       ltW:new THREE.MeshStandardMaterial({color:"#A08060",roughness:.55,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       wain:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.mid:"#B8A890",roughness:.65,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.2,.2),roughnessMap:wallTex.roughnessMap}),
@@ -432,7 +434,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // W3 (owner #3): the hero-over-fireplace + framed mantel photo get the same
       // refined walnut+bronze moulding + museum plaque as the salon wall — no more
       // old gold slab. No picture-light (owner #1: too much at room level).
-      const art=makeArtwork({texture:tex,aspect,title:mem.title,year:memYear(mem),width,quality:artQuality,refinedFrame:W3,plaquePlate:W3,rabbet:W3});
+      const art=makeArtwork({texture:tex,aspect,title:mem.title,year:memYear(mem),width,quality:artQuality,refinedFrame:W3,plaquePlate:W3,rabbet:W3,noGlow:W3});
       art.group.position.set(x,y,z);
       art.group.rotation.y=rotY;
       art.group.userData={...art.group.userData,memory:mem};
@@ -493,7 +495,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // as flat dim panels from the walking path — the vitrine works because it stands
     // free IN the hall). Corner assignment (owner 2026-08-17): LIBRARY front-left,
     // VITRINE front-right (corner cabinet), MUSIC back-right (gramophone, no piano).
-    const libWingW=4.6, musWingW=4.6;                // wall ZONE lengths for each corner
+    // owner 2026-08-18 (#8/#17): the library + vitrine SHRINK with the room tier.
+    const tierBays=W3?(layout.bays??3):3;            // 1..4 under W3 (Intimate..Grand)
+    const musWingW=4.6;                              // music zone length (back-right)
     const musWingZ0=-rL/2, musWingZ1=-rL/2+musWingW; // music: back-right
     // T-SHAPE — a NARROW entry stem at the door that WIDENS into the hall. Keep the
     // stem SHORTER now so the hall (and its three corners) is close to the entry and
@@ -501,8 +505,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const stemHalfW=Math.max(2.4,rW/2-3.4);            // narrow entry-stem half-width
     const stemLen=Math.min(Math.max(3.5,rL*0.28),7);   // entry stem depth (shorter → hall in view)
     const widenZ=rL/2-stemLen;                         // z where the stem opens into the hall
+    const BOOKSHELF_LEN=W3?[2.4,2.6,3.2,3.8,4.2][tierBays]:4.0;   // library length follows the tier
+    const libWingW=W3?BOOKSHELF_LEN+0.6:4.6;
     const libWingZ1=widenZ-0.15, libWingZ0=libWingZ1-libWingW; // library: FRONT-left (bookcase reaches the corner so the L-arm connects)
-    const BOOKSHELF_LEN=4.0;
     // Under W3 the library lives IN the wing (on its far wall); flag-off keeps it
     // on the main left wall. bookEndZ = where the main left-wall salon run resumes.
     const bookC=W3?(libWingZ0+libWingZ1)/2:(-rL/2+0.1+BOOKSHELF_LEN/2), bookEndZ=W3?libWingZ1:(-rL/2+0.1+BOOKSHELF_LEN);
@@ -849,18 +854,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // washes zone it, and the hero object faces into the room. ──
     if(W3){
       const wShade=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.9,roughness:.6});
-      // ═ LIBRARY — FRONT-LEFT corner (owner 2026-08-17). Bookcase along the front of
-      //   the left wall (bsX/bookC), a reading chair + floor lamp + side table on a
-      //   rug, and a small writing desk tucked against the shoulder. ═
-      const libZc=(libWingZ0+libWingZ1)/2, rcx=-rW/2+1.7;
-      const lrug=new THREE.Mesh(new THREE.PlaneGeometry(2.8,3.4),MS.rug);lrug.rotation.x=-Math.PI/2;lrug.position.set(-rW/2+1.8,0.012,libZc);lrug.renderOrder=1;scene.add(lrug);
-      scene.add(mk(new THREE.BoxGeometry(0.9,0.42,0.9),MS.leather,rcx,0.21,libZc));                    // reading chair base
-      scene.add(mk(new THREE.BoxGeometry(0.82,0.16,0.82),MS.leather,rcx,0.5,libZc));                   // cushion
-      scene.add(mk(new THREE.BoxGeometry(0.16,0.95,0.82),MS.leatherD,rcx-0.37,0.95,libZc));            // wingback (against the bookcase wall; you face the room)
-      for(const zz of[-0.4,0.4])scene.add(mk(new THREE.BoxGeometry(0.7,0.3,0.13),MS.leatherD,rcx,0.62,libZc+zz)); // arms
-      scene.add(mk(new THREE.CylinderGeometry(0.03,0.05,1.5,8),MS.dkW,rcx+0.3,0.75,libZc-1.0));        // floor-lamp pole
-      scene.add(mk(new THREE.CylinderGeometry(0.16,0.11,0.3,12),wShade,rcx+0.3,1.62,libZc-1.0));       // warm shade
-      scene.add(mk(new THREE.CylinderGeometry(0.26,0.26,0.5,12),MS.dkW,rcx+0.4,0.25,libZc+0.9));       // side table
+      // ═ LIBRARY — FRONT-LEFT corner (owner 2026-08-18 #3): NO chair, NO floor
+      //   lamp — a writing table is built INTO the bookcase itself (see the
+      //   bookcase block: built-in table + reading lamp + the open book on it).
+      //   Here only the rug zones the corner. ═
+      const libZc=(libWingZ0+libWingZ1)/2;
+      const lrug=new THREE.Mesh(new THREE.PlaneGeometry(2.4,BOOKSHELF_LEN),MS.rug);lrug.rotation.x=-Math.PI/2;lrug.position.set(-rW/2+1.5,0.012,libZc);lrug.renderOrder=1;scene.add(lrug);
       // LIBRARY made L-SHAPED (owner 2026-08-17): a SECOND bookcase arm runs along the
       // shoulder wall, wrapping the front-left corner together with the main left-wall
       // bookcase (built at bsX). Decorative shelves + book spines, facing -Z.
@@ -892,8 +891,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const musZc=(musWingZ0+musWingZ1)/2, gcx=rW/2-1.15, gcz=-rL/2+1.1;
       addCol(gcx,gcz,0.75,0.5,true); // gramophone — solid
       const mrug=new THREE.Mesh(new THREE.PlaneGeometry(3.0,3.0),MS.rug);mrug.rotation.x=-Math.PI/2;mrug.position.set(rW/2-1.7,0.012,-rL/2+1.7);mrug.renderOrder=1;scene.add(mrug);
-      const brass=new THREE.MeshStandardMaterial({color:"#C9A24B",roughness:.26,metalness:.9});
-      const brassD=new THREE.MeshStandardMaterial({color:"#997731",roughness:.35,metalness:.85});
+      const brass=new THREE.MeshStandardMaterial({color:"#8F6F4B",roughness:.42,metalness:.55}); // matte bronze horn (owner: no gold)
+      const brassD=new THREE.MeshStandardMaterial({color:"#6E5438",roughness:.5,metalness:.5});
       const ebony=new THREE.MeshStandardMaterial({color:"#17110C",roughness:.4,metalness:.1});
       const V2=(x:number,y:number)=>new THREE.Vector2(x,y);
       // ── walnut console: moulded base + panelled body + gilt-banded top ──
@@ -911,25 +910,21 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.BoxGeometry(1.04,0.03,0.62),ebony,gcx-0.02,1.30,gcz));                       // deck
       scene.add(mk(new THREE.CylinderGeometry(0.22,0.22,0.02,28),MS.iron,gcx-0.12,1.315,gcz));            // platter
       scene.add(mk(new THREE.CylinderGeometry(0.21,0.21,0.014,28),new THREE.MeshStandardMaterial({color:"#0A0806",roughness:.55}),gcx-0.12,1.328,gcz)); // record
-      scene.add(mk(new THREE.CylinderGeometry(0.05,0.05,0.006,20),brass,gcx-0.12,1.336,gcz));            // label
-      scene.add(mk(new THREE.CylinderGeometry(0.008,0.008,0.04,8),brass,gcx-0.12,1.34,gcz));             // spindle
-      scene.add(mk(new THREE.CylinderGeometry(0.03,0.035,0.05,12),brass,gcx+0.28,1.33,gcz-0.22));        // tonearm pivot
-      {const arm=mk(new THREE.CylinderGeometry(0.011,0.011,0.42,8),brassD,gcx+0.09,1.355,gcz-0.11);arm.rotation.set(0,0.9,Math.PI/2);scene.add(arm);} // arm
-      scene.add(mk(new THREE.BoxGeometry(0.055,0.03,0.045),MS.iron,gcx-0.09,1.335,gcz+0.0));             // headshell
-      scene.add(mk(new THREE.CylinderGeometry(0.028,0.028,0.05,10),brassD,gcx+0.34,1.355,gcz-0.29));     // counterweight
-      // side crank
-      {const cr=mk(new THREE.CylinderGeometry(0.012,0.012,0.14,8),brass,gcx+0.64,0.92,gcz);cr.rotation.z=Math.PI/2;scene.add(cr);}
-      {const ch=mk(new THREE.CylinderGeometry(0.018,0.018,0.08,8),MS.dkW,gcx+0.71,1.0,gcz);ch.rotation.x=Math.PI/2;scene.add(ch);}
-      // ── the horn: a curved tube neck rising from the cabinet into a big flared bell ──
+      // record groove rings (subtle sheen bands) + a small dark label — clean deck
+      for(const gr of[0.09,0.13,0.17])scene.add(mk(new THREE.CylinderGeometry(gr,gr,0.0155,32,1,true),new THREE.MeshStandardMaterial({color:"#151210",roughness:.35}),gcx-0.12,1.329,gcz));
+      scene.add(mk(new THREE.CylinderGeometry(0.05,0.05,0.006,20),new THREE.MeshStandardMaterial({color:"#7A2A22",roughness:.6}),gcx-0.12,1.336,gcz)); // deep-red label
+      // slim tonearm (owner #10: less clutter — no pivot tower, no counterweight, no crank)
+      {const arm=mk(new THREE.CylinderGeometry(0.010,0.010,0.40,8),brassD,gcx+0.09,1.35,gcz-0.11);arm.rotation.set(0,0.9,Math.PI/2);scene.add(arm);}
+      scene.add(mk(new THREE.BoxGeometry(0.05,0.026,0.04),MS.iron,gcx-0.09,1.335,gcz));                  // headshell
+      // ── the horn: a curved tube neck rising into a big flared bell (matte bronze,
+      // darker inner throat so the bell reads with depth) ──
       const neck=new THREE.CatmullRomCurve3([new THREE.Vector3(gcx+0.30,1.34,gcz),new THREE.Vector3(gcx+0.46,1.54,gcz+0.02),new THREE.Vector3(gcx+0.42,1.82,gcz+0.10),new THREE.Vector3(gcx+0.26,1.98,gcz+0.18)]);
-      scene.add(new THREE.Mesh(new THREE.TubeGeometry(neck,20,0.036,10,false),brass));
-      {const collar=mk(new THREE.CylinderGeometry(0.05,0.05,0.03,12),brassD,gcx+0.30,1.35,gcz);scene.add(collar);}   // base collar
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(neck,22,0.036,12,false),brass));
       const bellProf=[V2(0.04,0),V2(0.052,0.06),V2(0.08,0.13),V2(0.13,0.2),V2(0.2,0.26),V2(0.29,0.31),V2(0.305,0.335)];
-      {const bell=new THREE.Mesh(new THREE.LatheGeometry(bellProf,26),brass);bell.position.set(gcx+0.26,1.98,gcz+0.18);bell.rotation.set(-1.2,0.2,0.25);scene.add(bell);}
-      // stack of records on the floor + a listening stool on the rug
-      for(let r2=0;r2<4;r2++)scene.add(mk(new THREE.CylinderGeometry(0.2,0.2,0.012,20),new THREE.MeshStandardMaterial({color:r2%2?"#241610":"#2E2A24",roughness:.6}),gcx-0.78,0.02+r2*0.014,gcz+0.2));
-      scene.add(mk(new THREE.CylinderGeometry(0.24,0.26,0.12,16),MS.leather,gcx-0.15,0.52,gcz+1.15));    // stool seat
-      for(let a=0;a<3;a++){const an=a*2.094;const sl=new THREE.Mesh(new THREE.LatheGeometry([V2(0.03,0),V2(0.02,0.18),V2(0.028,0.34),V2(0.015,0.46)],8),MS.dkW);sl.position.set(gcx-0.15+Math.cos(an)*0.16,0.0,gcz+1.15+Math.sin(an)*0.16);scene.add(sl);}
+      {const bell=new THREE.Mesh(new THREE.LatheGeometry(bellProf,30),brass);bell.position.set(gcx+0.26,1.98,gcz+0.18);bell.rotation.set(-1.2,0.2,0.25);scene.add(bell);}
+      {const inner=new THREE.Mesh(new THREE.LatheGeometry([V2(0.038,0.01),V2(0.075,0.13),V2(0.19,0.26),V2(0.285,0.315)],30),new THREE.MeshStandardMaterial({color:"#3A2C1E",roughness:.6,side:THREE.BackSide}));inner.position.set(gcx+0.26,1.98,gcz+0.18);inner.rotation.set(-1.2,0.2,0.25);scene.add(inner);}
+      // a neat stack of records on the cabinet end — nothing else on the floor
+      for(let r2=0;r2<3;r2++)scene.add(mk(new THREE.CylinderGeometry(0.16,0.16,0.011,22),new THREE.MeshStandardMaterial({color:r2%2?"#241610":"#2E2A24",roughness:.6}),gcx-0.42,1.30+r2*0.013,gcz+0.18));
       addGlowCard(rW/2-0.4,2.0,musZc,2.8,-Math.PI/2);   // wall wash
       addGlowCard(rW/2-1.4,rH-0.5,musZc,2.6,0);          // ceiling wash
       // ── Windows ONLY on far end walls (owner: "enkel aan de overkant verre zijden") —
@@ -1240,6 +1235,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const panelMats=[pomRed,pomBlack,pomOchre];
       const socle=new THREE.MeshStandardMaterial({color:"#1A1A18",roughness:0.6});
 
+      // W3 (owner 2026-08-18 #15): the Pompeiian coloured wall panels are laid out
+      // on the OLD rectangle grid — they float across the T-shape cut and the salon
+      // hang crosses their red/black boundaries. Under W3 the walls stay calm warm
+      // plaster (wainscot + picture rail carry the architecture; the paintings carry
+      // the colour) — panels, socle strips and amphorae are legacy-only.
+      if(!W3){
       // Side walls
       for(let s=-1;s<=1;s+=2){
         const wx=s*(rW/2-0.01);
@@ -1312,9 +1313,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           scene.add(handle);
         }
       }
+      } // end !W3 (Pompeiian panels + amphorae are legacy decor)
 
       // ─── OIL LAMP ON TABLE ───
-      const lampX=0, lampZ2=rL/2-3.5-1.7, lampY=0.56;
+      // W3: the coffee table moved to the hearth cluster (-rL/2+3.9) — follow it.
+      const lampX=0, lampZ2=W3?(-rL/2+3.9):(rL/2-3.5-1.7), lampY=0.56;
       const bronzeLamp=MS.bronze;
       // dish
       scene.add(mk(new THREE.CylinderGeometry(0.06,0.05,0.025,10),bronzeLamp,lampX,lampY,lampZ2));
@@ -1409,9 +1412,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const legProfS=[new THREE.Vector2(.045,0),new THREE.Vector2(.052,.03),new THREE.Vector2(.028,.1),new THREE.Vector2(.04,.16),new THREE.Vector2(.02,.21)];
     // turned bun legs
     for(let lx of[-1,1])for(let lz of[-1,1]){const lg=new THREE.Mesh(new THREE.LatheGeometry(legProfS,8),MS.dkW);lg.position.set(lx*1.06,0,sofaZ+lz*.34);lg.castShadow=false;scene.add(lg);}
-    // seat frame + 3 plush leather cushions
+    // seat frame + 3 plush leather cushions + a rolled FRONT bolster edge (#13)
     scene.add(mk(new THREE.BoxGeometry(2.42,.24,.92),MS.leatherD,0,.32,sofaZ));
-    for(let c=-1;c<=1;c++){scene.add(mk(new THREE.BoxGeometry(.72,.22,.8),MS.leather,c*.76,.52,sofaZ-.02));scene.add(mk(new THREE.BoxGeometry(.68,.06,.76),MS.leather,c*.76,.63,sofaZ-.02));} // domed top
+    {const fb=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,2.38,12),MS.leatherD);fb.rotation.z=Math.PI/2;fb.position.set(0,.42,sofaZ-.44);scene.add(fb);}
+    for(let c=-1;c<=1;c++){scene.add(mk(new THREE.BoxGeometry(.72,.22,.8),MS.leather,c*.76,.52,sofaZ-.02));scene.add(mk(new THREE.BoxGeometry(.68,.06,.76),MS.leather,c*.76,.63,sofaZ-.02));
+      scene.add(mk(new THREE.BoxGeometry(.7,.015,.015),MS.leatherD,c*.76,.635,sofaZ-.41));} // piping seam
     // rolled back + 3 back cushions + tufting
     scene.add(mk(new THREE.BoxGeometry(2.42,.5,.16),MS.leatherD,0,.74,sofaZ+.4));
     {const rb=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,2.42,12),MS.leatherD);rb.rotation.z=Math.PI/2;rb.position.set(0,.97,sofaZ+.4);scene.add(rb);}
@@ -1427,12 +1432,20 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // ARMCHAIRS (flanking fireplace — skip left if reading chair present)
     // ═══════════════════════════════════════════
-    if(!isExhibition){
+    // owner 2026-08-18 #13: NO armchairs under W3 — the chesterfield is the one
+    // seat, flanked by two small backless benches (viewing-bench style) instead.
+    if(!isExhibition&&W3){
+      for(const s of[-1,1]){
+        const bx2=s*1.9, bz2=sofaZ-1.5;
+        for(const lz of[-0.42,0.42])for(const lx of[-0.18,0.18])scene.add(mk(new THREE.BoxGeometry(.06,.34,.06),MS.dkW,bx2+lx,.17,bz2+lz));
+        scene.add(mk(new THREE.BoxGeometry(.52,.07,1.12),MS.dkW,bx2,.37,bz2));
+        scene.add(mk(new THREE.BoxGeometry(.46,.11,1.02),MS.leather,bx2,.46,bz2));
+      }
+    }
+    if(!isExhibition&&!W3){
     for(let s=-1;s<=1;s+=2){
       if(s===-1&&layout.readingChair)continue; // reading chair occupies this spot
-      // W3 (#7): pull the armchairs in to flank the coffee table (part of the one
-      // hearth cluster), not spread wide against the walls.
-      const ax=s*Math.min(W3?2.3:3.5,rW/2-2.5),az=W3?(sofaZ-1.6):(fpZ+2.5);
+      const ax=s*Math.min(3.5,rW/2-2.5),az=fpZ+2.5;
       addCol(ax,az,0.65,0.55); // WS6-8: armchair
       const legP=[new THREE.Vector2(.04,0),new THREE.Vector2(.048,.03),new THREE.Vector2(.026,.09),new THREE.Vector2(.038,.14),new THREE.Vector2(.02,.19)];
       for(let abx of[-1,1])for(let abz of[-1,1]){const lg=new THREE.Mesh(new THREE.LatheGeometry(legP,8),MS.dkW);lg.position.set(ax+abx*.42,0,az+abz*.3);lg.castShadow=false;scene.add(lg);}
@@ -1463,8 +1476,11 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // WRITING DESK / SCRIBE TABLE (front-left corner, facing back wall)
     // ═══════════════════════════════════════════
-    const dkX=-rW/2+1.8, dkZ=rL/2-2.2;
-    if(!isExhibition){
+    // W3: the freestanding desk is GONE — the writing surface is the built-in
+    // table in the bookcase (owner #3). dkX/dkZ retarget there so the scribe
+    // papers + hit area land on the built-in table.
+    const dkX=W3?(-rW/2+0.55):(-rW/2+1.8), dkZ=W3?bookC:(rL/2-2.2);
+    if(!isExhibition&&!W3){
     addCol(dkX,dkZ+.35,0.85,0.85); // WS6-8: writing desk + chair
     scene.add(mk(new THREE.BoxGeometry(1.6,.06,.75),MS.dkW,dkX,.78,dkZ));
     for(let dx of[-1,1])for(let dz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.035,.04,.75,8),MS.dkW,dkX+dx*.65,.38,dkZ+dz*.28));
@@ -1489,7 +1505,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     const SLOT_COUNTS: Record<string,number>=isExhibition
       ?{painting:20,frame:0,photo:0,album:0,video:1,audio:0,case:0,document:0,orb:0}
-      :{painting:1,frame:1,photo:1,album:3,video:1,audio:3,case:3,document:5,orb:4};
+      // W3: the L-vitrine holds up to 12 keepsakes and the scroll cubbies 6 written
+      // notes (count reconciliation with the Ledger — masterplan §9).
+      :{painting:1,frame:1,photo:1,album:3,video:1,audio:W3?6:3,case:W3?12:3,document:W3?6:5,orb:4};
 
     // Route memories to display slots based on displayUnit (if set) or type
     // "frame" and "painting" are SEPARATE slots to avoid painting-fallback ambiguity
@@ -1727,7 +1745,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     }else{
     // Priority: explicit painting assignment > unassigned photo fallback.
     // W2: the hero is simply the oldest wall memory — "1 photo = one large piece".
-    const bigPaintMem=W2?(wallMems[0]||null):paintingMems.length>0?paintingMems[0]:photoMems.length>0?photoMems[0]:null;
+    // W3 (Ledger "Mantelpiece"): the hero is the memory the user FEATURED
+    // (mem.hero===true, set via the ★ in the Steward's Ledger); fallback = oldest.
+    const bigPaintMem=W2?((W3&&wallMems.find((m:any)=>m.hero===true))||wallMems[0]||null):paintingMems.length>0?paintingMems[0]:photoMems.length>0?photoMems[0]:null;
     const bigPaintUsedPhoto=!W2&&paintingMems.length===0&&photoMems.length>0;// track if we borrowed an unassigned photo
     if(bigPaintMem&&(W1||W2)){
       // W1 hero spot (WS7-3): the big painting over the fireplace becomes a
@@ -1738,7 +1758,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // z-fight sweep r2: +.06 put the makeArtwork glow plane (z −0.035) 5mm off the
       // chimney-breast face (fpZ+.02) — shimmer; +.09 gives it real clearance.
       // W3 (owner): raise the hero so its plaque clears the mantel clock/ornaments.
-      mountArtwork(om,t,fpX,W3?2.5:2.4,fpZ+.09,0,W2?2.0:1.7);   // owner: dropped to just above the mantel
+      // owner #11: z fpZ+.09 sat ON the chimney-breast face (breast front = fpZ+.09)
+      // → the museum plaque was z-buried and invisible. +.17 gives it real clearance.
+      mountArtwork(om,t,fpX,W3?2.5:2.4,W3?fpZ+.17:fpZ+.09,0,W2?2.0:1.7);
     }else if(bigPaintMem){
       // Frame only shown when there's actual content
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
@@ -1804,7 +1826,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         {cx:rW/2-0.12,cz:-(scrHalf+(rL/2-cornerIn-scrHalf)/2),rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
         {cx:rW/2-0.12,cz:scrHalf+(rL/2-cornerIn-scrHalf)/2,rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
       ]).filter(r=>r.width>1.6);
-      const salonRest=wallMems.slice(1); // hero already above the fireplace
+      const heroSel=(W3&&wallMems.find((m:any)=>m.hero===true))||wallMems[0];
+      const salonRest=wallMems.filter((m:any)=>m!==heroSel); // hero already above the fireplace
       // Tier budget: ~24 live CanvasTextures on mobile (WS6-6), minus the hero.
       const texBudget=Q.paintingResWidth>=512?31:Q.paintingResWidth>=256?23:11;
       const nHang=Math.min(salonRest.length,texBudget);
@@ -1839,7 +1862,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           // W3 (owner OG4): the corridor-approved refined frame — dark-walnut
           // moulding + gilt slip, recessed photo, brass museum plaque, picture-
           // light — replaces the plain gold frame on room wall art.
-          refinedFrame:W3,plaquePlate:W3,rabbet:W3,pictureLight:false, // owner #1: drop the room-level picture-lights
+          refinedFrame:W3,plaquePlate:W3,rabbet:W3,pictureLight:false,noGlow:W3, // owner #1 no picture-lights; #16 no glow halo
           onPiece:(art,p)=>{
             const m=byId.get(p.memory.id);
             if(!m)return;
@@ -1931,6 +1954,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.BoxGeometry(.52,.02,bL+0.1),MS.ltW,bsX,sy+.025,bC));
       let bz=bC-bL/2+0.2;const shelfEnd=bC+bL/2-0.2;
       while(bz<shelfEnd){
+        // W3: keep the DESK NICHE clear (shelves 0-1, centre span — the built-in
+        // table lives there) and the SCROLL pigeonholes (shelf 2, hearth end).
+        if(W3&&shelf<2&&bz>bC-0.78&&bz<bC+0.78){bz=bC+0.78;continue;}
+        if(W3&&shelf===2&&bz<bC-bL/2+1.15){bz=bC-bL/2+1.15;continue;}
         if(bRng()<.08){
           scene.add(mk(new THREE.BoxGeometry(.18,.22,.02),MS.bronze,bsX+.1,sy+.03+.11,bz));
           scene.add(mk(new THREE.BoxGeometry(.12,.02,.1),MS.bronze,bsX+.1,sy+.03+.01,bz+.04));
@@ -1976,43 +2003,64 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       for(const ez of[bC-bL/2+.03,bC+bL/2-.03]){const pil=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,rH-.5,10),MS.dkW);pil.position.set(bsX+.26,rH/2,ez);pil.castShadow=false;scene.add(pil);scene.add(mk(new THREE.CylinderGeometry(.075,.075,.06,10),MS.gold,bsX+.26,rH-.28,ez));scene.add(mk(new THREE.CylinderGeometry(.075,.075,.06,10),MS.gold,bsX+.26,.28,ez));}  // fluted pilasters + brass caps
     }
     if(W3){
-      // owner #9/#10: the written memories are grouped at EYE LEVEL as inviting
-      // leather journals (gilt title + a ribbon marker) so the shelf clearly reads
-      // "click to read", plus a photo-book album standing among them.
-      const jY=1.82, jz0=bC-bL/2+0.55;
-      docMems.slice(0,5).forEach((m: any,i: any)=>{
-        const jz=jz0+i*0.24, jh=0.44+((i*7)%3)*0.03;
-        const spine=new THREE.Mesh(new THREE.BoxGeometry(.15,jh,.23),new THREE.MeshStandardMaterial({color:`hsl(${m.hue},${Math.min(38,m.s)}%,${Math.min(36,m.l)}%)`,roughness:.5,metalness:.06}));
-        spine.position.set(bsX+.14,jY+jh/2,jz);spine.userData={memory:m};scene.add(spine);memMeshes.current.push(spine);
-        scene.add(mk(new THREE.BoxGeometry(.155,.055,.23),MS.gold,bsX+.14,jY+jh*0.72,jz));   // gilt title band
-        scene.add(mk(new THREE.BoxGeometry(.05,.09,.02),wing?.accent?new THREE.MeshStandardMaterial({color:wing.accent,roughness:.8}):MS.gold,bsX+.06,jY+jh-0.02,jz)); // ribbon marker
-      });
-      // owner 2026-08-17: an unmistakable "there are WRITTEN memories here" cue —
-      // an OPEN BOOK on a brass stand at eye level, ruled with ink lines, facing the
-      // room. Clickable to the first written memory. Faces +X (bookcase faces +X).
+      // ═ BUILT-IN WRITING TABLE (owner 2026-08-18 #3): a desk surface worked INTO
+      // the bookcase — no chair, no floor lamp. The open book lies ON the table
+      // with a small bronze reading lamp beside it. ═
+      const dTop=0.95, dHalf=0.7, dOut=0.62;
+      scene.add(mk(new THREE.BoxGeometry(dOut,0.055,dHalf*2),MS.dkW,bsX+0.14+dOut/2-0.1,dTop,bC));            // desk top (protrudes from the carcass)
+      scene.add(mk(new THREE.BoxGeometry(dOut+0.04,0.025,dHalf*2+0.06),MS.bronze,bsX+0.14+dOut/2-0.1,dTop-0.038,bC)); // bronze edge band
+      for(const sz of[-1,1])scene.add(mk(new THREE.BoxGeometry(dOut-0.08,0.5,0.06),MS.dkW,bsX+0.14+dOut/2-0.1,dTop-0.29,bC+sz*(dHalf-0.03))); // side cheeks
+      scene.add(mk(new THREE.BoxGeometry(0.05,0.55,dHalf*2-0.1),MS.wain,bsX+0.16,dTop-0.31,bC));               // niche back panel
+      // reading lamp on the table (bronze stem + warm shade — the only light cue)
       {
-        const obX=bsX+0.34, obY=1.66, obZ=bC;
+        const lShade=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.85,roughness:.6});
+        scene.add(mk(new THREE.CylinderGeometry(0.055,0.07,0.02,10),MS.bronze,bsX+0.34,dTop+0.04,bC-0.48));   // foot
+        scene.add(mk(new THREE.CylinderGeometry(0.012,0.012,0.26,8),MS.bronze,bsX+0.34,dTop+0.17,bC-0.48));   // stem
+        scene.add(mk(new THREE.CylinderGeometry(0.09,0.12,0.1,12),lShade,bsX+0.34,dTop+0.32,bC-0.48));        // warm shade
+        if(W2)addGlowCard(bsX+0.36,dTop+0.32,bC-0.48,0.5,Math.PI/2);
+      }
+      // the OPEN BOOK lies flat on the table (clickable → first written memory)
+      {
         const openMat=new THREE.MeshStandardMaterial({color:"#F3ECDA",roughness:.92});
         const inkMat=new THREE.MeshStandardMaterial({color:"#3A2E22",roughness:.85});
-        scene.add(mk(new THREE.BoxGeometry(0.2,0.03,0.72),MS.gold,obX-0.06,obY-0.24,obZ));                 // brass book-stand ledge
-        scene.add(mk(new THREE.BoxGeometry(0.07,0.5,0.74),new THREE.MeshStandardMaterial({color:"#5A2A18",roughness:.5}),obX-0.06,obY,obZ)); // slanted cover/back
-        scene.add(mk(new THREE.BoxGeometry(0.05,0.5,0.04),new THREE.MeshStandardMaterial({color:"#4A1F12",roughness:.5}),obX-0.02,obY,obZ)); // centre spine
+        const obX=bsX+0.40, obY=dTop+0.035, obZ=bC+0.12;
+        scene.add(mk(new THREE.BoxGeometry(0.5,0.035,0.72),new THREE.MeshStandardMaterial({color:"#5A2A18",roughness:.5}),obX,obY-0.02,obZ)); // cover under
         const openBook=docMems[0]||null;
         for(const sgn of[-1,1]){
-          const pg=new THREE.Mesh(new THREE.PlaneGeometry(0.44,0.34),openMat);pg.rotation.y=Math.PI/2;pg.rotation.z=sgn*0.06;pg.position.set(obX,obY,obZ+sgn*0.18);
+          const pg=new THREE.Mesh(new THREE.PlaneGeometry(0.44,0.32),openMat);pg.rotation.x=-Math.PI/2;pg.rotation.z=sgn*0.03;pg.position.set(obX,obY+0.005,obZ+sgn*0.17);
           if(openBook){pg.userData={memory:openBook};memMeshes.current.push(pg);}
           scene.add(pg);
-          for(let l=0;l<6;l++)scene.add(mk(new THREE.BoxGeometry(0.006,0.008,0.24),inkMat,obX+0.006,obY+0.13-l*0.05,obZ+sgn*0.18));   // ruled ink lines
+          for(let l=0;l<6;l++)scene.add(mk(new THREE.BoxGeometry(0.3,0.004,0.01),inkMat,obX,obY+0.009,obZ+sgn*0.17-0.12+l*0.048)); // ruled ink lines
         }
+      }
+      // ═ SCROLL PIGEONHOLES (owner #5): handwritten notes live as parchment
+      // SCROLLS in a cubby grid at eye level — unmistakable at a glance. ═
+      {
+        const cubY0=1.88, holeH=0.34, holeW=0.30, cz0=bC-bL/2+0.16;
+        const nCols=3, nRows=2;
+        scene.add(mk(new THREE.BoxGeometry(0.44,nRows*holeH+0.06,nCols*holeW+0.06),MS.dkW,bsX+0.02,cubY0+ (nRows*holeH)/2,cz0+(nCols*holeW)/2)); // cubby block
+        for(let r3=0;r3<=nRows;r3++)scene.add(mk(new THREE.BoxGeometry(0.4,0.025,nCols*holeW+0.02),MS.ltW,bsX+0.06,cubY0+r3*holeH,cz0+(nCols*holeW)/2));   // horizontals
+        for(let c3=0;c3<=nCols;c3++)scene.add(mk(new THREE.BoxGeometry(0.4,nRows*holeH,0.025),MS.ltW,bsX+0.06,cubY0+(nRows*holeH)/2,cz0+c3*holeW));         // dividers
+        const parch=new THREE.MeshStandardMaterial({color:"#EAE0C8",roughness:.85});
+        const parchD=new THREE.MeshStandardMaterial({color:"#D9CBAA",roughness:.9});
+        docMems.slice(0,nCols*nRows).forEach((m: any,i: number)=>{
+          const r3=Math.floor(i/nCols), c3=i%nCols;
+          const sy2=cubY0+holeH*(r3+0.5), sz2=cz0+holeW*(c3+0.5);
+          const roll=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,0.34,10),parch);
+          roll.rotation.z=Math.PI/2;roll.position.set(bsX+0.16,sy2,sz2);roll.userData={memory:m};scene.add(roll);memMeshes.current.push(roll);
+          scene.add(mk(new THREE.CylinderGeometry(0.058,0.058,0.05,10),parchD,bsX+0.16,sy2,sz2)); // wrap band
+          {const tie=mk(new THREE.CylinderGeometry(0.06,0.06,0.02,8),MS.bronze,bsX+0.16,sy2,sz2+0.06);scene.add(tie);} // bronze tie
+          {const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.055,0.001,10),parchD);cap.rotation.z=Math.PI/2;cap.position.set(bsX+0.34,sy2,sz2);scene.add(cap);} // rolled end
+        });
       }
       // photo-book: a thick album with a cover image, standing at the shelf end
       const pbMem=wallMems[0]||photoMems[0]||paintingMems[0];
       if(pbMem){
-        const pbz=jz0+5*0.24+0.16, pbTex=paintTex(pbMem);
-        scene.add(mk(new THREE.BoxGeometry(.17,.52,.42),new THREE.MeshStandardMaterial({color:"#5A3A28",roughness:.5}),bsX+.14,jY+.26,pbz)); // album body
-        scene.add(mk(new THREE.BoxGeometry(.03,.52,.42),MS.gold,bsX+.055,jY+.26,pbz));                                                        // gilt cover edge
-        const cover=new THREE.Mesh(new THREE.PlaneGeometry(.34,.46),new THREE.MeshStandardMaterial({map:pbTex,roughness:.5}));
-        cover.rotation.y=Math.PI/2;cover.position.set(bsX+.045,jY+.26,pbz);cover.userData={memory:pbMem};scene.add(cover);memMeshes.current.push(cover);
+        const pbY=1.88, pbz=bC+bL/2-0.4, pbTex=paintTex(pbMem);
+        scene.add(mk(new THREE.BoxGeometry(.17,.5,.4),new THREE.MeshStandardMaterial({color:"#5A3A28",roughness:.5}),bsX+.14,pbY+.25,pbz)); // album body
+        scene.add(mk(new THREE.BoxGeometry(.03,.5,.4),MS.bronze,bsX+.055,pbY+.25,pbz));                                                      // bronze cover edge
+        const cover=new THREE.Mesh(new THREE.PlaneGeometry(.32,.44),new THREE.MeshStandardMaterial({map:pbTex,roughness:.5}));
+        cover.rotation.y=Math.PI/2;cover.position.set(bsX+.045,pbY+.25,pbz);cover.userData={memory:pbMem};scene.add(cover);memMeshes.current.push(cover);
       }
     }else{
     docMems.slice(0,5).forEach((m: any,i: any)=>{
@@ -2234,12 +2282,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       animTex.push({type:"disc",mesh:disc,label:discLabel});
       const arm=mk(new THREE.BoxGeometry(.18,.015,.02),MS.bronze,vpX+.12,.9,vpZ-.05);arm.rotation.y=-.3;scene.add(arm);
     }
-    // clickable record sleeves (W3: standing at the gramophone; legacy: beside the table)
-    audioMems.slice(0,3).forEach((m: any,i: any)=>{
+    // clickable record sleeves — LEGACY only. Under W3 they rendered the audio
+    // title canvas → read as a "weird text object" beside the gramophone (owner
+    // #10); the gramophone's hit area carries the audio interaction instead.
+    if(!W3)audioMems.slice(0,3).forEach((m: any,i: any)=>{
       const recTex=paintTex(m);
       const rec=new THREE.Mesh(new THREE.PlaneGeometry(.32,.32),new THREE.MeshStandardMaterial({map:recTex,roughness:.6}));
-      if(W3){rec.position.set(vpX-0.86,0.36,vpZ+0.28+i*0.03);rec.rotation.y=0.35;rec.rotation.z=0.04;}
-      else{rec.position.set(vpX+.5,.15+i*.01,vpZ-.3+i*.12);rec.rotation.z=.1+i*.05;rec.rotation.y=-Math.PI/4;}
+      rec.position.set(vpX+.5,.15+i*.01,vpZ-.3+i*.12);rec.rotation.z=.1+i*.05;rec.rotation.y=-Math.PI/4;
       rec.userData={memory:m};scene.add(rec);memMeshes.current.push(rec);
     });
     const vpHit=new THREE.Mesh(new THREE.BoxGeometry(W3?1.3:1.2,W3?1.0:.5,W3?1.3:1),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
@@ -2262,7 +2311,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // hugging the FRONT-RIGHT corner (one along the right wall, one along the
     // shoulder), meeting at the corner. buildGlassCase draws one axis-aligned arm.
     const vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.22):1.0;
-    const vtBrassMat=new THREE.MeshStandardMaterial({color:"#B8963E",roughness:.22,metalness:.7});
+    const vtBrassMat=new THREE.MeshStandardMaterial({color:"#8B6B4A",roughness:.5,metalness:.42}); // matte bronze (owner: no gold)
     const vtVelvet=new THREE.MeshStandardMaterial({color:"#1A0A2E",roughness:.95,metalness:0});
     const vtGlassMat=mkPhys(THREE,{color:"#E0EEF0",transparent:true,opacity:.07,roughness:.02,metalness:.03,transmission:.94,ior:1.5,thickness:.3,side:THREE.DoubleSide});
     const vtShelfMat=mkPhys(THREE,{color:"#E8F4F4",transparent:true,opacity:.1,roughness:.01,metalness:0,transmission:.95,ior:1.5,thickness:.15});
@@ -2301,6 +2350,25 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         rec.position.set(vtX,(vtLevels[i]||vtGBot)+0.24,vtZ);rec.rotation.y=along?0:Math.PI/2;
         rec.userData={memory:m};scene.add(rec);memMeshes.current.push(rec);
       });
+      // owner 2026-08-18 #9: shelves WITHOUT a memory get quiet decorative
+      // keepsakes (vase / bowl / stacked books) so the cabinet never looks bare.
+      if(W3){
+        const terr=new THREE.MeshStandardMaterial({color:"#A9714C",roughness:.7});
+        const cream=new THREE.MeshStandardMaterial({color:"#E7DCC6",roughness:.8});
+        for(let i=mems.length;i<vtLevels.length;i++){
+          const ly=(vtLevels[i]||vtGBot), kind=(i+Math.round(vtX*7+vtZ*13))%3;
+          if(kind===0){ // small vase
+            const vprof=[new THREE.Vector2(0.05,0),new THREE.Vector2(0.075,0.05),new THREE.Vector2(0.05,0.13),new THREE.Vector2(0.028,0.2),new THREE.Vector2(0.04,0.26)];
+            const vs=new THREE.Mesh(new THREE.LatheGeometry(vprof,12),terr);vs.position.set(vtX,ly+0.012,vtZ);scene.add(vs);
+          }else if(kind===1){ // low bowl
+            const bprof=[new THREE.Vector2(0.02,0),new THREE.Vector2(0.1,0.02),new THREE.Vector2(0.12,0.07),new THREE.Vector2(0.105,0.09)];
+            const bw3=new THREE.Mesh(new THREE.LatheGeometry(bprof,14),cream);bw3.position.set(vtX,ly+0.012,vtZ);scene.add(bw3);
+          }else{ // two stacked books
+            scene.add(mk(new THREE.BoxGeometry(along?0.3:0.2,0.045,along?0.2:0.3),new THREE.MeshStandardMaterial({color:"#5A2A3A",roughness:.7}),vtX,ly+0.035,vtZ));
+            scene.add(mk(new THREE.BoxGeometry(along?0.26:0.17,0.04,along?0.17:0.26),new THREE.MeshStandardMaterial({color:"#2A4A2A",roughness:.7}),vtX+0.02,ly+0.078,vtZ));
+          }
+        }
+      }
       const vtHit=new THREE.Mesh(new THREE.BoxGeometry(vtW,vtBaseH+vtGlassH,vtD),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
       vtHit.position.set(vtX,(vtBaseH+vtGlassH)/2,vtZ);
       vtHit.userData=mems.length>0?{memory:mems[0],isHitArea:true}:{isStation:true};
@@ -2312,8 +2380,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // the STEM wall to the right wall, so it aligns with the entry opening and never
       // pokes into the corridor.
       const vShX0=stemHalfW, vShX1=rW/2-0.12, vShCx=(vShX0+vShX1)/2, vShCw=vShX1-vShX0;
-      buildGlassCase(rW/2-0.38, widenZ-1.6, 0.64, 2.8, caseMems.slice(0,6));   // right-wall arm
-      buildGlassCase(vShCx, widenZ-0.38, vShCw, 0.64, caseMems.slice(6,12));    // shoulder arm (aligned to the stem wall)
+      // owner 2026-08-18 #8: the vitrine SHRINKS with the room along the length
+      // axis — the right-wall arm scales per tier and DISAPPEARS at Intimate
+      // (only the shoulder piece remains as a corner cabinet).
+      const vitArmLen=[0,0,1.8,2.4,2.8][tierBays]??2.8;
+      if(vitArmLen>0)buildGlassCase(rW/2-0.38, widenZ-0.2-vitArmLen/2, 0.64, vitArmLen, caseMems.slice(0,6));   // right-wall arm (tier-scaled)
+      buildGlassCase(vShCx, widenZ-0.38, vShCw, 0.64, vitArmLen>0?caseMems.slice(6,12):caseMems.slice(0,6));     // shoulder arm (aligned to the stem wall)
     }else buildGlassCase(-rW/2+2, -rL/2+0.7, 1.4, 0.7, caseMems.slice(0,3));
     } // end !isExhibition vitrine
 
@@ -2324,14 +2396,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const scribeMems=docMems.slice(5,8);
     const albumOverflow=albumMems.slice(3,5);
     const deskItems=[...scribeMems,...albumOverflow];
-    deskItems.slice(0,3).forEach((m: any,i: any)=>{
+    deskItems.slice(0,W3?2:3).forEach((m: any,i: any)=>{
       const t=paintTex(m);
       const paper=new THREE.Mesh(new THREE.PlaneGeometry(.28,.36),new THREE.MeshStandardMaterial({map:t,roughness:.85}));
       paper.rotation.x=-Math.PI/2+.02;paper.rotation.z=(i-1)*.15;
-      paper.position.set(dkX-.3+i*.35,.82,dkZ-.05);paper.userData={memory:m};scene.add(paper);memMeshes.current.push(paper);
+      if(W3)paper.position.set(dkX,0.985,dkZ-0.62-i*0.05);else paper.position.set(dkX-.3+i*.35,.82,dkZ-.05); // W3: loose papers on the built-in table beside the open book
+      paper.userData={memory:m};scene.add(paper);memMeshes.current.push(paper);
     });
-    const dkHit=new THREE.Mesh(new THREE.BoxGeometry(1.6,.3,.75),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
-    dkHit.position.set(dkX,.85,dkZ);
+    const dkHit=new THREE.Mesh(new THREE.BoxGeometry(W3?.9:1.6,W3?.4:.3,W3?1.6:.75),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+    dkHit.position.set(dkX,W3?1.0:.85,dkZ);
     dkHit.userData=deskItems.length>0?{memory:deskItems[0],isHitArea:true}:{isStation:true};
     scene.add(dkHit);hitAreaMeshes.current.push(dkHit);
     } // end !isExhibition scribe desk
@@ -2353,7 +2426,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // TABLE LAMPS
     // ═══════════════════════════════════════════
-    if(!isExhibition){
+    // W3: the legacy floor lamp stood exactly in the gramophone corner (owner #10:
+    // "ornament onder/rond de gramofoon te veel") — skipped; the room's light cues
+    // are the sconces, hearth and the built-in reading lamp.
+    if(!isExhibition&&!W3){
     for(const[lx,lz] of [[rW/2-1.5,-rL/2+1.5]]){
       addCol(lx,lz,0.32,0.32); // WS6-8: floor lamp
       scene.add(mk(new THREE.CylinderGeometry(.2,.25,.6,8),MS.dkW,lx,.3,lz));
@@ -2431,12 +2507,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         scene.add(mk(new THREE.CylinderGeometry(.07,.09,.22,12,1,true),shMat,wx-s*.1,sconceY,z));   // frosted shade
         if(W2)addGlowCard(wx-s*.12,sconceY+.5,z,0.7,s>0?-Math.PI/2:Math.PI/2);                       // baked uplight wash
       };
-      for(let s=-1;s<=1;s+=2){
-        const wingZ1=s<0?libWingZ1:musWingZ1;
-        const hallPitch=(widenZ-wingZ1)/Math.max(2,Math.round((widenZ-wingZ1)/5));
-        for(let z=wingZ1+hallPitch*0.5;z<widenZ-0.4;z+=hallPitch)addWallSconce(s*(rW/2),z,s);   // hall wall
-        const stemPitch=(rL/2-widenZ)/Math.max(2,Math.round((rL/2-widenZ)/5));
-        for(let z=widenZ+stemPitch*0.5;z<rL/2-0.6;z+=stemPitch)addWallSconce(s*stemHalfW,z,s);   // stem wall
+      // owner 2026-08-18 #16: SYMMETRIC left/right — both hall walls get the same
+      // sconce grid (the old loop keyed off each side's wing zone, which had moved
+      // to the front on the left → left and right lit differently).
+      {
+        const hz0=-rL/2+1.6, hz1=widenZ-0.8, span=hz1-hz0;
+        const n=Math.max(2,Math.round(span/4.5));
+        for(let i=0;i<n;i++){const z=hz0+span*(i+0.5)/n;addWallSconce(rW/2,z,1);addWallSconce(-rW/2,z,-1);}
+        const sc=(widenZ+rL/2)/2;addWallSconce(stemHalfW,sc,1);addWallSconce(-stemHalfW,sc,-1);   // one per stem wall, mirrored
       }
     }else{
     for(let s=-1;s<=1;s+=2){
@@ -2802,36 +2880,32 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // No ornate marble pilasters / gold panels / keystone (they read as a
       // cramped column). Keeps the isBackDoor hit area below.
       const dW=2.7, dH=3.3, leafW=dW/2-0.06;
-      const dpBronze=new THREE.MeshStandardMaterial({color:"#8A6A45",roughness:.4,metalness:.6});
-      // slim walnut frame: jambs, lintel, a restrained cornice
+      const dpBronze=new THREE.MeshStandardMaterial({color:"#8A6A45",roughness:.5,metalness:.45});
+      // slim walnut frame: jambs + a DEEP lintel that carries the engraved name
+      // (owner #2: the sign is worked INTO the bovenlijst, not a card across the
+      // leaves). Cornice sits clearly ABOVE the lintel — no overlapping boxes.
       for(const s of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.15,dH+0.1,0.18),MS.dkW,s*(dW/2),dH/2,bdZ));
-      scene.add(mk(new THREE.BoxGeometry(dW+0.34,0.17,0.2),MS.dkW,0,dH+0.06,bdZ));                     // lintel
-      scene.add(mk(new THREE.BoxGeometry(dW+0.54,0.08,0.22),MS.marble,0,dH+0.17,bdZ));                 // slim cornice
-      scene.add(mk(new THREE.BoxGeometry(dW+0.2,0.04,0.23),dpBronze,0,dH+0.13,bdZ));                   // thin bronze band
-      // two walnut leaves, all but closed (a warm reveal at the meeting stiles)
-      for(const s of[-1,1]){
-        const cx=s*(leafW/2+0.04);
-        scene.add(mk(new THREE.BoxGeometry(leafW,dH-0.12,0.08),bdMat,cx,(dH-0.12)/2,bdZ-0.05));        // leaf (front face bdZ-0.09)
-        scene.add(mk(new THREE.BoxGeometry(leafW-0.18,dH-0.7,0.01),bdPanel,cx,(dH-0.12)/2,bdZ-0.125)); // applied panel, clearly proud (no z-fight)
-        scene.add(mk(new THREE.SphereGeometry(0.045,8,8),dpBronze,s*0.07,1.45,bdZ-0.14));              // handle
-      }
-      // owner #1: the name goes ON the door — an engraved bronze plate in the
-      // room's style (dark plate, warm ivory serif), spanning the meeting stiles.
+      scene.add(mk(new THREE.BoxGeometry(dW+0.34,0.42,0.2),MS.dkW,0,dH+0.18,bdZ));                     // deep lintel (name board)
+      scene.add(mk(new THREE.BoxGeometry(dW+0.54,0.08,0.24),MS.marble,0,dH+0.44,bdZ));                 // cornice, clear above
+      // engraved name IN the lintel face (recessed bronze field + ivory serif)
       const dpc=document.createElement("canvas");dpc.width=512;dpc.height=110;const dpx=dpc.getContext("2d");
       if(dpx){
-        const g=dpx.createLinearGradient(0,0,0,110);g.addColorStop(0,"#4A3B29");g.addColorStop(.5,"#33281B");g.addColorStop(1,"#231A11");
+        const g=dpx.createLinearGradient(0,0,0,110);g.addColorStop(0,"#3A2E1F");g.addColorStop(.5,"#2C2318");g.addColorStop(1,"#201810");
         dpx.fillStyle=g;dpx.fillRect(0,0,512,110);
-        dpx.strokeStyle="rgba(158,132,85,0.75)";dpx.lineWidth=4;dpx.strokeRect(10,12,492,86);
+        dpx.strokeStyle="rgba(138,106,69,0.7)";dpx.lineWidth=4;dpx.strokeRect(10,12,492,86);
         dpx.fillStyle="#E9D7AC";dpx.font="500 44px Fraunces, Georgia, serif";dpx.textAlign="center";dpx.textBaseline="middle";
         dpx.fillText(t("backToCorridor"),256,57,452);
       }
       const dpt=new THREE.CanvasTexture(dpc);dpt.colorSpace=THREE.SRGBColorSpace;dpt.anisotropy=8;
-      // clearly PROUD of the door panels (bdZ-0.13) so the plate never z-fights, with
-      // a walnut frame border so the sign reads complete.
-      scene.add(mk(new THREE.BoxGeometry(1.12,.42,.03),MS.dkW,0,2.35,bdZ-0.17));                          // walnut frame
-      scene.add(mk(new THREE.BoxGeometry(1.0,.3,.03),dpBronze,0,2.35,bdZ-0.195));                         // bronze plate backing
-      const dpl=new THREE.Mesh(new THREE.PlaneGeometry(.94,.24),new THREE.MeshBasicMaterial({map:dpt,transparent:true}));
-      dpl.rotation.y=Math.PI;dpl.position.set(0,2.35,bdZ-0.212);scene.add(dpl);
+      const dpl=new THREE.Mesh(new THREE.PlaneGeometry(1.4,0.3),new THREE.MeshBasicMaterial({map:dpt,transparent:true}));
+      dpl.rotation.y=Math.PI;dpl.position.set(0,dH+0.18,bdZ-0.105);scene.add(dpl);                     // flush ON the lintel face (lintel front at bdZ-0.10)
+      // two walnut leaves, all but closed (a warm reveal at the meeting stiles)
+      for(const s of[-1,1]){
+        const cx=s*(leafW/2+0.04);
+        scene.add(mk(new THREE.BoxGeometry(leafW,dH-0.12,0.08),bdMat,cx,(dH-0.12)/2,bdZ-0.05));        // leaf (front face bdZ-0.09)
+        scene.add(mk(new THREE.BoxGeometry(leafW-0.18,dH-0.7,0.012),bdPanel,cx,(dH-0.12)/2,bdZ-0.13)); // applied panel, clearly proud (no z-fight)
+        scene.add(mk(new THREE.SphereGeometry(0.045,8,8),dpBronze,s*0.07,1.45,bdZ-0.16));              // handle
+      }
     }else{
     // Outer stone architrave (wide in X, thin in Z)
     scene.add(mk(new THREE.BoxGeometry(2.2,3.6,.18),MS.marble,0,1.8,bdZ));
@@ -2876,22 +2950,19 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.BoxGeometry(.08,.015,.015),bdAccent,hx,1.48,bdZ-.14));// lever hanging down
     }
     }
-    // Transom arch glow (semicircular light above doors, facing into room)
+    // Transom arch glow + big spill plane — LEGACY ONLY. Under W3 both are gone:
+    // the 2.4×3.8 translucent spill plane floating 17cm off the door read as a
+    // strange hovering pad at the room entrance (owner #7).
+    if(!W3){
     const tranGeo=new THREE.CircleGeometry(.6,16,0,Math.PI);
     const tranMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity});
     const transom=new THREE.Mesh(tranGeo,tranMat);
     transom.rotation.y=Math.PI;// face into room (towards -Z)
-    // z-fight sweep r2: −.02 sat inside the iron bar/cornice depth — pulled clear.
     transom.position.set(0,3.02,bdZ-.12);scene.add(transom);
-    // Warm light spilling from corridor — W2 brightens the static spill plane to
-    // compensate for the deleted door lights
-    // z-fight sweep r2: the spill plane at z=bdZ sliced straight through the door
-    // leaves (bdZ±.05) and panels — moved in front of the handles (−.148).
-    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:(W3?.13:W2?.09:.04)*dlPreset.sunIntensity,depthWrite:false}));
+    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:(W2?.09:.04)*dlPreset.sunIntensity,depthWrite:false}));
     bdGlow.position.set(0,1.9,bdZ-.17);scene.add(bdGlow);
-    // W1 KILL (WS6-4): the doorGlow pulse animation dies; the faint static warm
-    // spill plane stays (zero per-frame cost, no throbbing glow).
     if(!W1)animTex.push({type:"doorGlow",mesh:bdGlow});
+    }
     // W2 (WS6-9): the door Spot+Point were the mobile budget-busters (5 lights
     // on mobile pre-W2) — deleted; transom glow + spill plane are the baked pool.
     if(!W2){

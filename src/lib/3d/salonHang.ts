@@ -106,6 +106,8 @@ export interface SalonMountOptions {
   quality?: "low" | "med" | "high";
   /** Opt-in (corridor W3C, F15): raised rabbet molding on every piece. */
   rabbet?: boolean;
+  /** Opt-in (rooms W3): skip the baked glow plane behind each frame. */
+  noGlow?: boolean;
   /** Opt-in (corridor W3C, F16): brass picture-light + baked wash on every piece. */
   pictureLight?: boolean;
   /** Opt-in (corridor W3C): refined dark-walnut moulding instead of gold slab. */
@@ -438,6 +440,7 @@ export function mountSalonHang(layout: SalonLayout, opts: SalonMountOptions): Sa
         pictureLight: opts.pictureLight,
         refinedFrame: opts.refinedFrame,
         plaquePlate: opts.plaquePlate,
+        noGlow: opts.noGlow,
       });
       art.group.position.set(p.x, p.y, 0);
       if (p.rotY) art.group.rotation.y = p.rotY;
