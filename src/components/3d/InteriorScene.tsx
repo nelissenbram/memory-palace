@@ -916,13 +916,22 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // slim tonearm (owner #10: less clutter — no pivot tower, no counterweight, no crank)
       {const arm=mk(new THREE.CylinderGeometry(0.010,0.010,0.40,8),brassD,gcx+0.09,1.35,gcz-0.11);arm.rotation.set(0,0.9,Math.PI/2);scene.add(arm);}
       scene.add(mk(new THREE.BoxGeometry(0.05,0.026,0.04),MS.iron,gcx-0.09,1.335,gcz));                  // headshell
-      // ── the horn: a curved tube neck rising into a big flared bell (matte bronze,
-      // darker inner throat so the bell reads with depth) ──
-      const neck=new THREE.CatmullRomCurve3([new THREE.Vector3(gcx+0.30,1.34,gcz),new THREE.Vector3(gcx+0.46,1.54,gcz+0.02),new THREE.Vector3(gcx+0.42,1.82,gcz+0.10),new THREE.Vector3(gcx+0.26,1.98,gcz+0.18)]);
-      scene.add(new THREE.Mesh(new THREE.TubeGeometry(neck,22,0.036,12,false),brass));
-      const bellProf=[V2(0.04,0),V2(0.052,0.06),V2(0.08,0.13),V2(0.13,0.2),V2(0.2,0.26),V2(0.29,0.31),V2(0.305,0.335)];
-      {const bell=new THREE.Mesh(new THREE.LatheGeometry(bellProf,30),brass);bell.position.set(gcx+0.26,1.98,gcz+0.18);bell.rotation.set(-1.2,0.2,0.25);scene.add(bell);}
-      {const inner=new THREE.Mesh(new THREE.LatheGeometry([V2(0.038,0.01),V2(0.075,0.13),V2(0.19,0.26),V2(0.285,0.315)],30),new THREE.MeshStandardMaterial({color:"#3A2C1E",roughness:.6,side:THREE.BackSide}));inner.position.set(gcx+0.26,1.98,gcz+0.18);inner.rotation.set(-1.2,0.2,0.25);scene.add(inner);}
+      // ── the horn: ONE aligned group (elbow → straight neck → flared bell on the
+      // SAME axis) so nothing reads broken (owner 2026-08-18 #4). Built along +Y at
+      // a local origin, then tilted as a whole toward the room like a classic HMV horn. ──
+      {
+        const horn=new THREE.Group();
+        {const elb=new THREE.Mesh(new THREE.TorusGeometry(0.09,0.032,10,16,Math.PI/2),brass);elb.rotation.z=Math.PI;elb.position.set(0.09,0,0);horn.add(elb);}   // elbow from the deck
+        const neckLen=0.34;
+        {const nk=new THREE.Mesh(new THREE.CylinderGeometry(0.034,0.04,neckLen,14),brass);nk.position.y=0.09+neckLen/2;horn.add(nk);}                              // straight neck
+        const bellProf=[V2(0.04,0),V2(0.06,0.08),V2(0.095,0.16),V2(0.15,0.24),V2(0.22,0.31),V2(0.30,0.37),V2(0.315,0.40)];
+        {const bell=new THREE.Mesh(new THREE.LatheGeometry(bellProf,30),brass);bell.position.y=0.09+neckLen;horn.add(bell);}                                        // flared bell (same axis)
+        {const inner=new THREE.Mesh(new THREE.LatheGeometry([V2(0.038,0.02),V2(0.09,0.16),V2(0.21,0.31),V2(0.295,0.385)],30),new THREE.MeshStandardMaterial({color:"#3A2C1E",roughness:.6,side:THREE.BackSide}));inner.position.y=0.09+neckLen;horn.add(inner);}
+        {const rim=new THREE.Mesh(new THREE.TorusGeometry(0.315,0.012,10,30),brassD);rim.rotation.x=Math.PI/2;rim.position.y=0.09+neckLen+0.40;horn.add(rim);}      // bell rim
+        horn.position.set(gcx+0.30,1.33,gcz);
+        horn.rotation.x=0.62;horn.rotation.z=-0.12;   // whole horn leans forward into the room
+        scene.add(horn);
+      }
       // a neat stack of records on the cabinet end — nothing else on the floor
       for(let r2=0;r2<3;r2++)scene.add(mk(new THREE.CylinderGeometry(0.16,0.16,0.011,22),new THREE.MeshStandardMaterial({color:r2%2?"#241610":"#2E2A24",roughness:.6}),gcx-0.42,1.30+r2*0.013,gcz+0.18));
       addGlowCard(rW/2-0.4,2.0,musZc,2.8,-Math.PI/2);   // wall wash
@@ -1760,7 +1769,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // W3 (owner): raise the hero so its plaque clears the mantel clock/ornaments.
       // owner #11: z fpZ+.09 sat ON the chimney-breast face (breast front = fpZ+.09)
       // → the museum plaque was z-buried and invisible. +.17 gives it real clearance.
-      mountArtwork(om,t,fpX,W3?2.5:2.4,W3?fpZ+.17:fpZ+.09,0,W2?2.0:1.7);
+      // owner 2026-08-18 #5: 2.5 put the plaque INSIDE the mantel shelf — 2.72
+      // clears it (frame bottom ~1.97, plaque ~1.8 > shelf top 1.6).
+      mountArtwork(om,t,fpX,W3?2.72:2.4,W3?fpZ+.17:fpZ+.09,0,W2?2.0:1.7);
     }else if(bigPaintMem){
       // Frame only shown when there's actual content
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
@@ -2041,17 +2052,29 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         scene.add(mk(new THREE.BoxGeometry(0.44,nRows*holeH+0.06,nCols*holeW+0.06),MS.dkW,bsX+0.02,cubY0+ (nRows*holeH)/2,cz0+(nCols*holeW)/2)); // cubby block
         for(let r3=0;r3<=nRows;r3++)scene.add(mk(new THREE.BoxGeometry(0.4,0.025,nCols*holeW+0.02),MS.ltW,bsX+0.06,cubY0+r3*holeH,cz0+(nCols*holeW)/2));   // horizontals
         for(let c3=0;c3<=nCols;c3++)scene.add(mk(new THREE.BoxGeometry(0.4,nRows*holeH,0.025),MS.ltW,bsX+0.06,cubY0+(nRows*holeH)/2,cz0+c3*holeW));         // dividers
-        const parch=new THREE.MeshStandardMaterial({color:"#EAE0C8",roughness:.85});
-        const parchD=new THREE.MeshStandardMaterial({color:"#D9CBAA",roughness:.9});
+        const parch=new THREE.MeshStandardMaterial({color:"#F2E9D4",roughness:.8});
+        const parchIn=new THREE.MeshStandardMaterial({color:"#CBBB98",roughness:.9});
+        const ribbon=new THREE.MeshStandardMaterial({color:"#7A2A22",roughness:.75});
         docMems.slice(0,nCols*nRows).forEach((m: any,i: number)=>{
           const r3=Math.floor(i/nCols), c3=i%nCols;
           const sy2=cubY0+holeH*(r3+0.5), sz2=cz0+holeW*(c3+0.5);
-          const roll=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,0.34,10),parch);
-          roll.rotation.z=Math.PI/2;roll.position.set(bsX+0.16,sy2,sz2);roll.userData={memory:m};scene.add(roll);memMeshes.current.push(roll);
-          scene.add(mk(new THREE.CylinderGeometry(0.058,0.058,0.05,10),parchD,bsX+0.16,sy2,sz2)); // wrap band
-          {const tie=mk(new THREE.CylinderGeometry(0.06,0.06,0.02,8),MS.bronze,bsX+0.16,sy2,sz2+0.06);scene.add(tie);} // bronze tie
-          {const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.055,0.001,10),parchD);cap.rotation.z=Math.PI/2;cap.position.set(bsX+0.34,sy2,sz2);scene.add(cap);} // rolled end
+          // the rolled scroll lies SIDEWAYS across its pigeonhole (axis along z) so
+          // you see the full roll with its wine ribbon — not a white end-blob.
+          const rollLen=0.24, rx=bsX+0.24, ry=sy2-holeH*0.5+0.062;   // resting on the hole floor
+          const roll=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,rollLen,14),parch);
+          roll.rotation.x=Math.PI/2;roll.position.set(rx,ry,sz2);roll.userData={memory:m};scene.add(roll);memMeshes.current.push(roll);
+          for(const ez2 of[-rollLen/2+0.015,rollLen/2-0.015]){const lip=new THREE.Mesh(new THREE.CylinderGeometry(0.057,0.057,0.028,14),parchIn);lip.rotation.x=Math.PI/2;lip.position.set(rx,ry,sz2+ez2);scene.add(lip);}   // curled lips
+          {const band=new THREE.Mesh(new THREE.CylinderGeometry(0.054,0.054,0.034,14),ribbon);band.rotation.x=Math.PI/2;band.position.set(rx,ry,sz2);scene.add(band);}   // ribbon band around the middle
+          scene.add(mk(new THREE.BoxGeometry(0.014,0.055,0.02),ribbon,rx+0.045,ry-0.045,sz2));                                                                            // ribbon tail hangs forward
+          {const knot=new THREE.Mesh(new THREE.SphereGeometry(0.016,8,8),ribbon);knot.position.set(rx+0.05,ry+0.005,sz2);scene.add(knot);}                                 // knot
         });
+        // empty pigeonholes get a plain decor roll (no ribbon, not clickable)
+        for(let i=Math.min(docMems.length,nCols*nRows);i<nCols*nRows;i++){
+          const r3=Math.floor(i/nCols), c3=i%nCols;
+          const sy2=cubY0+holeH*(r3+0.5), sz2=cz0+holeW*(c3+0.5);
+          const dr=new THREE.Mesh(new THREE.CylinderGeometry(0.044,0.044,0.22,12),parchIn);
+          dr.rotation.x=Math.PI/2;dr.position.set(bsX+0.22,sy2-holeH*0.5+0.056,sz2);scene.add(dr);
+        }
       }
       // photo-book: a thick album with a cover image, standing at the shelf end
       const pbMem=wallMems[0]||photoMems[0]||paintingMems[0];
@@ -2350,23 +2373,34 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         rec.position.set(vtX,(vtLevels[i]||vtGBot)+0.24,vtZ);rec.rotation.y=along?0:Math.PI/2;
         rec.userData={memory:m};scene.add(rec);memMeshes.current.push(rec);
       });
-      // owner 2026-08-18 #9: shelves WITHOUT a memory get quiet decorative
-      // keepsakes (vase / bowl / stacked books) so the cabinet never looks bare.
+      // owner 2026-08-18 #2: decorative keepsakes FILL THE GAPS — one beside every
+      // photo, and two spread out on shelves without a memory, so the cabinet
+      // always reads collected, never sparse.
       if(W3){
         const terr=new THREE.MeshStandardMaterial({color:"#A9714C",roughness:.7});
         const cream=new THREE.MeshStandardMaterial({color:"#E7DCC6",roughness:.8});
-        for(let i=mems.length;i<vtLevels.length;i++){
-          const ly=(vtLevels[i]||vtGBot), kind=(i+Math.round(vtX*7+vtZ*13))%3;
+        const jade=new THREE.MeshStandardMaterial({color:"#5E7A63",roughness:.6});
+        const placeDecor=(ly:number,off:number,kind:number)=>{
+          const px2=along?vtX+off:vtX, pz2=along?vtZ:vtZ+off;
           if(kind===0){ // small vase
-            const vprof=[new THREE.Vector2(0.05,0),new THREE.Vector2(0.075,0.05),new THREE.Vector2(0.05,0.13),new THREE.Vector2(0.028,0.2),new THREE.Vector2(0.04,0.26)];
-            const vs=new THREE.Mesh(new THREE.LatheGeometry(vprof,12),terr);vs.position.set(vtX,ly+0.012,vtZ);scene.add(vs);
+            const vprof=[new THREE.Vector2(0.045,0),new THREE.Vector2(0.068,0.05),new THREE.Vector2(0.045,0.12),new THREE.Vector2(0.026,0.18),new THREE.Vector2(0.036,0.235)];
+            const vs=new THREE.Mesh(new THREE.LatheGeometry(vprof,12),terr);vs.position.set(px2,ly+0.012,pz2);scene.add(vs);
           }else if(kind===1){ // low bowl
-            const bprof=[new THREE.Vector2(0.02,0),new THREE.Vector2(0.1,0.02),new THREE.Vector2(0.12,0.07),new THREE.Vector2(0.105,0.09)];
-            const bw3=new THREE.Mesh(new THREE.LatheGeometry(bprof,14),cream);bw3.position.set(vtX,ly+0.012,vtZ);scene.add(bw3);
-          }else{ // two stacked books
-            scene.add(mk(new THREE.BoxGeometry(along?0.3:0.2,0.045,along?0.2:0.3),new THREE.MeshStandardMaterial({color:"#5A2A3A",roughness:.7}),vtX,ly+0.035,vtZ));
-            scene.add(mk(new THREE.BoxGeometry(along?0.26:0.17,0.04,along?0.17:0.26),new THREE.MeshStandardMaterial({color:"#2A4A2A",roughness:.7}),vtX+0.02,ly+0.078,vtZ));
+            const bprof=[new THREE.Vector2(0.018,0),new THREE.Vector2(0.085,0.018),new THREE.Vector2(0.10,0.06),new THREE.Vector2(0.09,0.078)];
+            const bw3=new THREE.Mesh(new THREE.LatheGeometry(bprof,14),cream);bw3.position.set(px2,ly+0.012,pz2);scene.add(bw3);
+          }else if(kind===2){ // stacked books
+            scene.add(mk(new THREE.BoxGeometry(along?0.24:0.16,0.04,along?0.16:0.24),new THREE.MeshStandardMaterial({color:"#5A2A3A",roughness:.7}),px2,ly+0.032,pz2));
+            scene.add(mk(new THREE.BoxGeometry(along?0.2:0.14,0.035,along?0.14:0.2),new THREE.MeshStandardMaterial({color:"#2A4A2A",roughness:.7}),px2+0.015,ly+0.07,pz2));
+          }else{ // small jade figure on a plinth
+            scene.add(mk(new THREE.BoxGeometry(0.07,0.025,0.07),MS.dkW,px2,ly+0.024,pz2));
+            const fg=new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0.028,0),new THREE.Vector2(0.02,0.05),new THREE.Vector2(0.032,0.1),new THREE.Vector2(0.012,0.16)],10),jade);fg.position.set(px2,ly+0.037,pz2);scene.add(fg);
           }
+        };
+        const seedK=Math.round(vtX*7+vtZ*13);
+        for(let i=0;i<vtLevels.length;i++){
+          const ly=(vtLevels[i]||vtGBot);
+          if(i<mems.length){ placeDecor(ly,(i%2===0?1:-1)*0.34,(seedK+i)%4); }              // beside the photo
+          else { placeDecor(ly,-0.26,(seedK+i)%4); placeDecor(ly,0.26,(seedK+i+2)%4); }      // two on an empty shelf
         }
       }
       const vtHit=new THREE.Mesh(new THREE.BoxGeometry(vtW,vtBaseH+vtGlassH,vtD),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
@@ -2734,7 +2768,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // OPTIONAL: READING CHAIR (wingback by fireplace)
     // ═══════════════════════════════════════════
-    if(layout.readingChair){
+    // W3 (owner 2026-08-18 #3): the legacy wingback read as a stray "small
+    // chesterfield" beside the hearth — gone; the benches + chesterfield carry seating.
+    if(layout.readingChair&&!W3){
     const rcX=-rW/2+2,rcZ=fpZ+2;
     addCol(rcX,rcZ,0.6,0.55); // WS6-8: reading chair
     scene.add(mk(new THREE.BoxGeometry(1,.3,.85),MS.leather,rcX,.15,rcZ));
@@ -2879,14 +2915,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // a slim frame with warm light spilling through, matching the refined room.
       // No ornate marble pilasters / gold panels / keystone (they read as a
       // cramped column). Keeps the isBackDoor hit area below.
-      const dW=2.7, dH=3.3, leafW=dW/2-0.06;
+      const dW=2.7, dH=3.3, leafW=dW/2-0.115;   // leaves STOP at the jamb inner face (was overlapping the jambs → z-fight)
       const dpBronze=new THREE.MeshStandardMaterial({color:"#8A6A45",roughness:.5,metalness:.45});
       // slim walnut frame: jambs + a DEEP lintel that carries the engraved name
       // (owner #2: the sign is worked INTO the bovenlijst, not a card across the
-      // leaves). Cornice sits clearly ABOVE the lintel — no overlapping boxes.
+      // leaves). All frame boxes keep their BACK faces 1cm clear of the wall plane
+      // (rL/2 = bdZ+0.10) — a coplanar lintel back face shimmered (owner #1).
       for(const s of[-1,1])scene.add(mk(new THREE.BoxGeometry(0.15,dH+0.1,0.18),MS.dkW,s*(dW/2),dH/2,bdZ));
-      scene.add(mk(new THREE.BoxGeometry(dW+0.34,0.42,0.2),MS.dkW,0,dH+0.18,bdZ));                     // deep lintel (name board)
-      scene.add(mk(new THREE.BoxGeometry(dW+0.54,0.08,0.24),MS.marble,0,dH+0.44,bdZ));                 // cornice, clear above
+      scene.add(mk(new THREE.BoxGeometry(dW+0.34,0.42,0.18),MS.dkW,0,dH+0.18,bdZ-0.01));               // deep lintel (name board), back face bdZ+0.08
+      scene.add(mk(new THREE.BoxGeometry(dW+0.54,0.08,0.22),MS.marble,0,dH+0.44,bdZ-0.02));            // cornice, clear above + clear of the wall
       // engraved name IN the lintel face (recessed bronze field + ivory serif)
       const dpc=document.createElement("canvas");dpc.width=512;dpc.height=110;const dpx=dpc.getContext("2d");
       if(dpx){

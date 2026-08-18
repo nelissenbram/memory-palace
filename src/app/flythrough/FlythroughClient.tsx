@@ -14,6 +14,10 @@ const InteriorScene = dynamic(() => import("@/components/3d/InteriorScene"), { s
 // The room's media manager (The Steward's Ledger) — mounted in the viewer so the
 // owner can review the 3D room AND its media functionality in one login-free link.
 const RoomStewardLedger = dynamic(() => import("@/components/ui/RoomStewardLedger"), { ssr: false });
+// The REAL library full-screen memory view (owner: the room must open the same
+// viewer as the Library menu, with all its options) — plus ‹ › overlay arrows to
+// scroll through the room's memories.
+const MemoryDetail = dynamic(() => import("@/components/ui/MemoryDetail"), { ssr: false });
 
 // Sample memories for the room scene. A photo-RICH set (viewer-only) so the
 // "Deepening Cabinet" display walls actually fill — the room auto-sizes to its
@@ -311,7 +315,7 @@ export default function FlythroughClient() {
             roomId="roots"
             actualRoomId="ro1"
             memories={demoMems}
-            onMemoryClick={noop}
+            onMemoryClick={(mem: Mem) => { if (mem?.id) setLightboxId(mem.id); }}
             styleEra="roman"
           />
         );
@@ -528,41 +532,37 @@ export default function FlythroughClient() {
           onUpdate={(id, updates) => setDemoMems((ms) => ms.map((m) => (m.id === id ? { ...m, ...updates } as Mem : m)))}
           onDelete={(id) => setDemoMems((ms) => ms.filter((m) => m.id !== id))}
           onAdd={(mem) => setDemoMems((ms) => [...ms, mem])}
-          onSelect={(mem) => setLightboxId(mem.id)}
+          onSelect={(mem) => { setLedgerOpen(false); setLightboxId(mem.id); }}
           canEdit
           otherRooms={OTHER_ROOM_FEED}
           addMemoryOverride={(_roomId, mem) => { setDemoMems((ms) => [...ms, mem]); return true; }}
         />
       )}
-      {/* Full-screen item viewer (Library-style: scroll through items + edit) */}
+      {/* Full-screen memory view — the REAL Library MemoryDetail (all options),
+          with overlay ‹ › arrows to scroll through the room's memories. */}
       {mounted && lightboxId && (() => {
         const idx = demoMems.findIndex((m) => m.id === lightboxId);
         const mem = demoMems[idx];
         if (!mem) return null;
         const go = (d: number) => { const n = demoMems[(idx + d + demoMems.length) % demoMems.length]; setLightboxId(n.id); };
-        const upd = (u: Partial<Mem>) => setDemoMems((ms) => ms.map((m) => (m.id === mem.id ? { ...m, ...u } as Mem : m)));
         return (
-          <div onClick={(e) => { if (e.target === e.currentTarget) setLightboxId(null); }} style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(20,16,12,0.9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <button onClick={() => go(-1)} aria-label="previous" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", fontSize: "2rem", background: "rgba(252,250,245,0.12)", color: "#F3ECDA", border: "none", borderRadius: "50%", width: "3rem", height: "3rem", cursor: "pointer" }}>‹</button>
-            <button onClick={() => go(1)} aria-label="next" style={{ position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", fontSize: "2rem", background: "rgba(252,250,245,0.12)", color: "#F3ECDA", border: "none", borderRadius: "50%", width: "3rem", height: "3rem", cursor: "pointer" }}>›</button>
-            <button onClick={() => setLightboxId(null)} aria-label="close" style={{ position: "absolute", top: "1rem", right: "1rem", fontSize: "1.4rem", background: "none", color: "#F3ECDA", border: "none", cursor: "pointer" }}>✕</button>
-            <div style={{ width: "min(92vw, 36rem)", maxHeight: "88vh", overflowY: "auto", background: "#F2EDE4", borderRadius: "1rem", padding: "1rem", boxSizing: "border-box" }}>
-              {mem.dataUrl && (mem.type === "photo" || mem.type === "painting") && (
-                <img src={mem.dataUrl} alt="" style={{ width: "100%", borderRadius: "0.6rem", marginBottom: "0.75rem" }} />
-              )}
-              {mem.type === "video" && mem.dataUrl && <video src={mem.dataUrl} controls style={{ width: "100%", borderRadius: "0.6rem", marginBottom: "0.75rem", background: "#000" }} />}
-              {mem.type === "audio" && mem.dataUrl && <audio src={mem.dataUrl} controls style={{ width: "100%", marginBottom: "0.75rem" }} />}
-              <input value={mem.title || ""} onChange={(e) => upd({ title: e.target.value })} style={{ width: "100%", boxSizing: "border-box", fontFamily: "Georgia, serif", fontSize: "1.15rem", fontWeight: 600, color: "#403B36", border: "none", background: "transparent", borderBottom: "0.0625rem solid #D6CCBA", padding: "0.25rem 0", marginBottom: "0.5rem" }} />
-              <textarea value={(mem as { desc?: string }).desc || ""} onChange={(e) => upd({ desc: e.target.value } as Partial<Mem>)} placeholder="Write something about this memory…" rows={3} style={{ width: "100%", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", fontSize: "0.9rem", color: "#403B36", border: "0.0625rem solid #D6CCBA", borderRadius: "0.5rem", padding: "0.5rem", marginBottom: "0.6rem", resize: "vertical", background: "#FCFAF5" }} />
-              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontFamily: "system-ui, sans-serif", fontSize: "0.75rem", color: "#716A5E" }}>{idx + 1} / {demoMems.length}</span>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button onClick={() => upd({ displayed: !mem.displayed })} style={{ padding: "0.4rem 0.8rem", borderRadius: "2rem", border: "0.0625rem solid #D6CCBA", background: mem.displayed ? "#B85C38" : "#FCFAF5", color: mem.displayed ? "#fff" : "#403B36", fontFamily: "system-ui, sans-serif", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>{mem.displayed ? "Shown" : "In the archive"}</button>
-                  <button onClick={() => { setDemoMems((ms) => ms.filter((m) => m.id !== mem.id)); setLightboxId(null); }} style={{ padding: "0.4rem 0.8rem", borderRadius: "2rem", border: "0.0625rem solid #C05050", background: "transparent", color: "#C05050", fontFamily: "system-ui, sans-serif", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Remove</button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <>
+            <MemoryDetail
+              key={mem.id}
+              mem={mem}
+              room={{ id: "ro1", name: "Me, Over Time" } as never}
+              wing={null as never}
+              onClose={() => setLightboxId(null)}
+              onDelete={(id: string) => { setDemoMems((ms) => ms.filter((m) => m.id !== id)); setLightboxId(null); }}
+              onUpdate={(id: string, updates: Partial<Mem>) => setDemoMems((ms) => ms.map((m) => (m.id === id ? { ...m, ...updates } as Mem : m)))}
+            />
+            {demoMems.length > 1 && (
+              <>
+                <button onClick={() => go(-1)} aria-label="previous" style={{ position: "fixed", left: "0.75rem", top: "50%", transform: "translateY(-50%)", zIndex: 4000, fontSize: "1.8rem", background: "rgba(32,24,16,0.55)", color: "#F3ECDA", border: "none", borderRadius: "50%", width: "2.8rem", height: "2.8rem", cursor: "pointer" }}>‹</button>
+                <button onClick={() => go(1)} aria-label="next" style={{ position: "fixed", right: "0.75rem", top: "50%", transform: "translateY(-50%)", zIndex: 4000, fontSize: "1.8rem", background: "rgba(32,24,16,0.55)", color: "#F3ECDA", border: "none", borderRadius: "50%", width: "2.8rem", height: "2.8rem", cursor: "pointer" }}>›</button>
+              </>
+            )}
+          </>
         );
       })()}
 

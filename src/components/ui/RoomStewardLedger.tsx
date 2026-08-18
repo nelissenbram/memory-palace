@@ -327,17 +327,25 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
 function PlayerCard({ tracks, index, onIndex, tr }: { tracks: Mem[]; index: number; onIndex: (i: number) => void; tr: (k: string, f: string) => string }) {
   const mem = tracks[index];
   const isVideo = mem ? normType(mem) === "video" : false;
-  const aRef = useRef<HTMLAudioElement | null>(null);
+  // ONE transport drives BOTH kinds (owner #9): the ref points at whichever
+  // media element is mounted (video without native controls, or audio).
+  const mRef = useRef<HTMLVideoElement | HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(0); const [dur, setDur] = useState(0);
   const [vol, setVol] = useState(1); const [loop, setLoop] = useState(false);
 
-  useEffect(() => { const a = aRef.current; if (a) a.volume = vol; }, [vol]);
-  useEffect(() => { const a = aRef.current; if (a) a.loop = loop; }, [loop]);
+  useEffect(() => { const a = mRef.current; if (a) a.volume = vol; }, [vol]);
+  useEffect(() => { const a = mRef.current; if (a) a.loop = loop; }, [loop]);
   useEffect(() => { setCur(0); setDur(0); setPlaying(false); }, [mem?.id]);
   const fmt = (s: number) => { if (!isFinite(s)) return "0:00"; const m = Math.floor(s / 60); const ss = Math.floor(s % 60); return `${m}:${ss < 10 ? "0" : ""}${ss}`; };
-  const toggle = () => { const a = aRef.current; if (!a) return; if (a.paused) { a.play(); setPlaying(true); } else { a.pause(); setPlaying(false); } };
+  const toggle = () => { const a = mRef.current; if (!a) return; if (a.paused) { a.play(); setPlaying(true); } else { a.pause(); setPlaying(false); } };
   const step = (d: number) => onIndex((index + d + tracks.length) % tracks.length);
+  const mediaEvents = {
+    onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement | HTMLAudioElement>) => setCur(e.currentTarget.currentTime),
+    onLoadedMetadata: (e: React.SyntheticEvent<HTMLVideoElement | HTMLAudioElement>) => setDur(e.currentTarget.duration),
+    onPlay: () => setPlaying(true), onPause: () => setPlaying(false),
+    onEnded: () => { setPlaying(false); if (tracks.length > 1) step(1); },
+  };
   if (!mem) return null;
 
   return (
@@ -345,25 +353,23 @@ function PlayerCard({ tracks, index, onIndex, tr }: { tracks: Mem[]; index: numb
       <div style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.625rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A87C", marginBottom: "0.35rem" }}>▸ {tr("roomPlayer", "Player")}</div>
       <div style={{ fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, marginBottom: "0.5rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mem.title || tr("untitled", "Untitled")}</div>
       {isVideo ? (
-        <video key={mem.id} src={mem.dataUrl || undefined} controls loop={loop} style={{ width: "100%", borderRadius: T.radius.sm, background: "#000", maxHeight: "15rem" }} />
+        <video key={mem.id} ref={mRef as React.RefObject<HTMLVideoElement>} src={mem.dataUrl || undefined} playsInline onClick={toggle} {...mediaEvents} style={{ width: "100%", borderRadius: T.radius.sm, background: "#000", maxHeight: "15rem", cursor: "pointer" }} />
       ) : (
-        <>
-          <audio key={mem.id} ref={aRef} src={mem.dataUrl || undefined} onTimeUpdate={(e) => setCur(e.currentTarget.currentTime)} onLoadedMetadata={(e) => setDur(e.currentTarget.duration)} onEnded={() => { setPlaying(false); if (tracks.length > 1) step(1); }} />
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <button onClick={() => step(-1)} aria-label={tr("previous", "Previous")} style={miniBtn()}>◀◀</button>
-            <button onClick={toggle} aria-label={playing ? tr("pause", "Pause") : tr("play", "Play")} style={{ width: "2.2rem", height: "2.2rem", borderRadius: "50%", border: "none", background: "#C9A87C", color: "#241A12", fontSize: "1rem", cursor: "pointer", flexShrink: 0 }}>{playing ? "❚❚" : "▶"}</button>
-            <button onClick={() => step(1)} aria-label={tr("next", "Next")} style={miniBtn()}>▶▶</button>
-            <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C9BFA8", width: "2.4rem" }}>{fmt(cur)}</span>
-            <input type="range" min={0} max={dur || 0} value={cur} onChange={(e) => { const a = aRef.current; if (a) { a.currentTime = Number(e.target.value); setCur(Number(e.target.value)); } }} style={{ flex: 1, accentColor: "#C9A87C" }} />
-            <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C9BFA8", width: "2.4rem" }}>{fmt(dur)}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginTop: "0.45rem" }}>
-            <span aria-hidden style={{ color: "#C9BFA8" }}>🔊</span>
-            <input type="range" min={0} max={1} step={0.02} value={vol} onChange={(e) => setVol(Number(e.target.value))} style={{ width: "6rem", accentColor: "#C9A87C" }} aria-label={tr("volumeLabel", "Volume")} />
-            <button onClick={() => setLoop((v) => !v)} aria-pressed={loop} style={{ marginLeft: "auto", background: loop ? "#C9A87C" : "transparent", color: loop ? "#241A12" : "#C9BFA8", border: `0.0625rem solid ${loop ? "#C9A87C" : "#5A4A34"}`, borderRadius: T.radius.pill, padding: "0.2rem 0.6rem", fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer" }}>⟲ {tr("loopLabel", "Loop")}</button>
-          </div>
-        </>
+        <audio key={mem.id} ref={mRef as React.RefObject<HTMLAudioElement>} src={mem.dataUrl || undefined} {...mediaEvents} />
       )}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: isVideo ? "0.5rem" : 0 }}>
+        <button onClick={() => step(-1)} aria-label={tr("previous", "Previous")} style={miniBtn()}>◀◀</button>
+        <button onClick={toggle} aria-label={playing ? tr("pause", "Pause") : tr("play", "Play")} style={{ width: "2.2rem", height: "2.2rem", borderRadius: "50%", border: "none", background: "#C9A87C", color: "#241A12", fontSize: "1rem", cursor: "pointer", flexShrink: 0 }}>{playing ? "❚❚" : "▶"}</button>
+        <button onClick={() => step(1)} aria-label={tr("next", "Next")} style={miniBtn()}>▶▶</button>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C9BFA8", width: "2.4rem" }}>{fmt(cur)}</span>
+        <input type="range" min={0} max={dur || 0} value={cur} onChange={(e) => { const a = mRef.current; if (a) { a.currentTime = Number(e.target.value); setCur(Number(e.target.value)); } }} style={{ flex: 1, accentColor: "#C9A87C" }} />
+        <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C9BFA8", width: "2.4rem" }}>{fmt(dur)}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginTop: "0.45rem" }}>
+        <span aria-hidden style={{ color: "#C9BFA8" }}>🔊</span>
+        <input type="range" min={0} max={1} step={0.02} value={vol} onChange={(e) => setVol(Number(e.target.value))} style={{ width: "6rem", accentColor: "#C9A87C" }} aria-label={tr("volumeLabel", "Volume")} />
+        <button onClick={() => setLoop((v) => !v)} aria-pressed={loop} style={{ marginLeft: "auto", background: loop ? "#C9A87C" : "transparent", color: loop ? "#241A12" : "#C9BFA8", border: `0.0625rem solid ${loop ? "#C9A87C" : "#5A4A34"}`, borderRadius: T.radius.pill, padding: "0.2rem 0.6rem", fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer" }}>⟲ {tr("loopLabel", "Loop")}</button>
+      </div>
       {/* track tray */}
       {tracks.length > 1 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", marginTop: "0.55rem", borderTop: "0.0625rem solid rgba(201,168,124,0.25)", paddingTop: "0.45rem" }}>
