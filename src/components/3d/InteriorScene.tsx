@@ -920,16 +920,19 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // SAME axis) so nothing reads broken (owner 2026-08-18 #4). Built along +Y at
       // a local origin, then tilted as a whole toward the room like a classic HMV horn. ──
       {
+        // a solid bronze BASE STUB rises from the deck; the tilted horn's throat
+        // overlaps it — the horn is visibly CARRIED, never floating (owner #3).
+        scene.add(mk(new THREE.CylinderGeometry(0.05,0.065,0.05,12),brassD,gcx+0.30,1.325,gcz));       // deck flange
+        scene.add(mk(new THREE.CylinderGeometry(0.036,0.044,0.18,12),brass,gcx+0.30,1.43,gcz));        // vertical base stub
         const horn=new THREE.Group();
-        {const elb=new THREE.Mesh(new THREE.TorusGeometry(0.09,0.032,10,16,Math.PI/2),brass);elb.rotation.z=Math.PI;elb.position.set(0.09,0,0);horn.add(elb);}   // elbow from the deck
-        const neckLen=0.34;
-        {const nk=new THREE.Mesh(new THREE.CylinderGeometry(0.034,0.04,neckLen,14),brass);nk.position.y=0.09+neckLen/2;horn.add(nk);}                              // straight neck
+        const neckLen=0.30;
+        {const nk=new THREE.Mesh(new THREE.CylinderGeometry(0.034,0.04,neckLen,14),brass);nk.position.y=neckLen/2;horn.add(nk);}                                    // straight neck (starts AT group origin)
         const bellProf=[V2(0.04,0),V2(0.06,0.08),V2(0.095,0.16),V2(0.15,0.24),V2(0.22,0.31),V2(0.30,0.37),V2(0.315,0.40)];
-        {const bell=new THREE.Mesh(new THREE.LatheGeometry(bellProf,30),brass);bell.position.y=0.09+neckLen;horn.add(bell);}                                        // flared bell (same axis)
-        {const inner=new THREE.Mesh(new THREE.LatheGeometry([V2(0.038,0.02),V2(0.09,0.16),V2(0.21,0.31),V2(0.295,0.385)],30),new THREE.MeshStandardMaterial({color:"#3A2C1E",roughness:.6,side:THREE.BackSide}));inner.position.y=0.09+neckLen;horn.add(inner);}
-        {const rim=new THREE.Mesh(new THREE.TorusGeometry(0.315,0.012,10,30),brassD);rim.rotation.x=Math.PI/2;rim.position.y=0.09+neckLen+0.40;horn.add(rim);}      // bell rim
-        horn.position.set(gcx+0.30,1.33,gcz);
-        horn.rotation.x=0.62;horn.rotation.z=-0.12;   // whole horn leans forward into the room
+        {const bell=new THREE.Mesh(new THREE.LatheGeometry(bellProf,30),brass);bell.position.y=neckLen;horn.add(bell);}                                              // flared bell (same axis)
+        {const inner=new THREE.Mesh(new THREE.LatheGeometry([V2(0.038,0.02),V2(0.09,0.16),V2(0.21,0.31),V2(0.295,0.385)],30),new THREE.MeshStandardMaterial({color:"#3A2C1E",roughness:.6,side:THREE.BackSide}));inner.position.y=neckLen;horn.add(inner);}
+        {const rim=new THREE.Mesh(new THREE.TorusGeometry(0.315,0.012,10,30),brassD);rim.rotation.x=Math.PI/2;rim.position.y=neckLen+0.40;horn.add(rim);}            // bell rim
+        horn.position.set(gcx+0.30,1.48,gcz);          // group origin sits ON the stub top
+        horn.rotation.x=0.5;horn.rotation.z=-0.08;     // leans forward into the room, throat stays on the stub
         scene.add(horn);
       }
       // a neat stack of records on the cabinet end — nothing else on the floor
@@ -2370,7 +2373,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const vtLevels=W3?[...vtShelfYs].reverse().slice(vtShelfYs.length>2?1:0):[vtGBot+vtGlassH*.35];
       mems.slice(0,vtLevels.length).forEach((m:any,i:number)=>{
         const rec=new THREE.Mesh(new THREE.PlaneGeometry(.42,.42),new THREE.MeshStandardMaterial({map:paintTex(m),roughness:.4,metalness:.05}));
-        rec.position.set(vtX,(vtLevels[i]||vtGBot)+0.24,vtZ);rec.rotation.y=along?0:Math.PI/2;
+        // face INTO the room (owner 2026-08-18 #2: photos were invisible — they
+        // faced the wall after the L-move): shoulder arm faces -Z, wall arm faces -X.
+        if(along){rec.position.set(vtX,(vtLevels[i]||vtGBot)+0.24,vtZ-0.06);rec.rotation.y=Math.PI;}
+        else{rec.position.set(vtX-0.06,(vtLevels[i]||vtGBot)+0.24,vtZ);rec.rotation.y=-Math.PI/2;}
         rec.userData={memory:m};scene.add(rec);memMeshes.current.push(rec);
       });
       // owner 2026-08-18 #2: decorative keepsakes FILL THE GAPS — one beside every
@@ -2936,13 +2942,17 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const dpt=new THREE.CanvasTexture(dpc);dpt.colorSpace=THREE.SRGBColorSpace;dpt.anisotropy=8;
       const dpl=new THREE.Mesh(new THREE.PlaneGeometry(1.4,0.3),new THREE.MeshBasicMaterial({map:dpt,transparent:true}));
       dpl.rotation.y=Math.PI;dpl.position.set(0,dH+0.18,bdZ-0.105);scene.add(dpl);                     // flush ON the lintel face (lintel front at bdZ-0.10)
-      // two walnut leaves, all but closed (a warm reveal at the meeting stiles)
+      // two walnut leaves, all but closed. The raised panels are EMBEDDED into the
+      // leaf face (back face 5mm inside the leaf, 4cm thick) — the old thin slab
+      // floated 3.4cm free and its edges shimmered (owner #1). A walnut astragal
+      // covers the meeting stiles so the centre seam can't flicker either.
       for(const s of[-1,1]){
         const cx=s*(leafW/2+0.04);
         scene.add(mk(new THREE.BoxGeometry(leafW,dH-0.12,0.08),bdMat,cx,(dH-0.12)/2,bdZ-0.05));        // leaf (front face bdZ-0.09)
-        scene.add(mk(new THREE.BoxGeometry(leafW-0.18,dH-0.7,0.012),bdPanel,cx,(dH-0.12)/2,bdZ-0.13)); // applied panel, clearly proud (no z-fight)
+        scene.add(mk(new THREE.BoxGeometry(leafW-0.2,dH-0.72,0.04),bdPanel,cx,(dH-0.12)/2,bdZ-0.105)); // raised panel, embedded (spans -0.125..-0.085)
         scene.add(mk(new THREE.SphereGeometry(0.045,8,8),dpBronze,s*0.07,1.45,bdZ-0.16));              // handle
       }
+      scene.add(mk(new THREE.BoxGeometry(0.07,dH-0.1,0.025),bdMat,0,(dH-0.12)/2,bdZ-0.1));             // astragal over the meeting stiles
     }else{
     // Outer stone architrave (wide in X, thin in Z)
     scene.add(mk(new THREE.BoxGeometry(2.2,3.6,.18),MS.marble,0,1.8,bdZ));

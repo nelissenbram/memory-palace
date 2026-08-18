@@ -258,9 +258,12 @@ interface MemoryDetailProps {
   /** Deep-link from the media viewer's quick-actions chips: opens with this
    *  ActionCard pre-expanded and scrolled into view (e.g. "date", "moveRoom"). */
   initialAction?: string;
+  /** Force the FULL-SCREEN presentation (photo hero on top, options captured
+   *  below) even on wide viewports — the room opens memories full screen. */
+  fullScreen?: boolean;
 }
 
-export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpdate, initialAction }: MemoryDetailProps) {
+export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpdate, initialAction, fullScreen }: MemoryDetailProps) {
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
   const { t, locale } = useTranslation("memoryDetail");
@@ -508,7 +511,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const breadcrumb = [wing?.name, room?.name, mem.title].filter(Boolean).join("  /  ");
 
   // ── Panel dimensions ──
-  const panelWidth = (isMobile || isCompact) ? "100%" : "32rem";
+  const panelWidth = (fullScreen || isMobile || isCompact) ? "100%" : "32rem";
 
   // ── Styles ──
   const labelStyle: React.CSSProperties = {

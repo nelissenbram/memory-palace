@@ -324,7 +324,7 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
 }
 
 // ── PLAYER anchor card: track list + transport (audio transport / native video) ──
-function PlayerCard({ tracks, index, onIndex, tr }: { tracks: Mem[]; index: number; onIndex: (i: number) => void; tr: (k: string, f: string) => string }) {
+export function PlayerCard({ tracks, index, onIndex, tr }: { tracks: Mem[]; index: number; onIndex: (i: number) => void; tr: (k: string, f: string) => string }) {
   const mem = tracks[index];
   const isVideo = mem ? normType(mem) === "video" : false;
   // ONE transport drives BOTH kinds (owner #9): the ref points at whichever
@@ -353,9 +353,9 @@ function PlayerCard({ tracks, index, onIndex, tr }: { tracks: Mem[]; index: numb
       <div style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.625rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "#C9A87C", marginBottom: "0.35rem" }}>▸ {tr("roomPlayer", "Player")}</div>
       <div style={{ fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, marginBottom: "0.5rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mem.title || tr("untitled", "Untitled")}</div>
       {isVideo ? (
-        <video key={mem.id} ref={mRef as React.RefObject<HTMLVideoElement>} src={mem.dataUrl || undefined} playsInline onClick={toggle} {...mediaEvents} style={{ width: "100%", borderRadius: T.radius.sm, background: "#000", maxHeight: "15rem", cursor: "pointer" }} />
+        <video key={mem.id} ref={mRef as React.RefObject<HTMLVideoElement>} src={mem.dataUrl || undefined} preload="metadata" playsInline onClick={toggle} {...mediaEvents} style={{ width: "100%", borderRadius: T.radius.sm, background: "#000", maxHeight: "15rem", cursor: "pointer" }} />
       ) : (
-        <audio key={mem.id} ref={mRef as React.RefObject<HTMLAudioElement>} src={mem.dataUrl || undefined} {...mediaEvents} />
+        <audio key={mem.id} ref={mRef as React.RefObject<HTMLAudioElement>} src={mem.dataUrl || undefined} preload="metadata" {...mediaEvents} />
       )}
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: isVideo ? "0.5rem" : 0 }}>
         <button onClick={() => step(-1)} aria-label={tr("previous", "Previous")} style={miniBtn()}>◀◀</button>

@@ -18,6 +18,9 @@ const RoomStewardLedger = dynamic(() => import("@/components/ui/RoomStewardLedge
 // viewer as the Library menu, with all its options) — plus ‹ › overlay arrows to
 // scroll through the room's memories.
 const MemoryDetail = dynamic(() => import("@/components/ui/MemoryDetail"), { ssr: false });
+// The room's AV transport, standalone — the player must work OUTSIDE the media
+// menu too (stand before the gramophone/screen and play).
+const PlayerCard = dynamic(() => import("@/components/ui/RoomStewardLedger").then((m) => m.PlayerCard), { ssr: false });
 
 // Sample memories for the room scene. A photo-RICH set (viewer-only) so the
 // "Deepening Cabinet" display walls actually fill — the room auto-sizes to its
@@ -144,6 +147,9 @@ export default function FlythroughClient() {
   const [demoMems, setDemoMems] = useState<Mem[]>(SAMPLE_MEMORIES);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
+  // standalone AV player (outside the media menu): open at a track index, or null
+  const [playerTrack, setPlayerTrack] = useState<number | null>(null);
+  const demoPlayables = demoMems.filter((m) => (m.type === "audio" || m.type === "video" || m.type === "voice" || m.type === "interview") && !!m.dataUrl);
   const applyFill = useCallback((f: "max" | "min" | "default") => {
     setDemoFill(f);
     setDemoMems(f === "max" ? SAMPLE_MEMORIES_MAX : f === "min" ? SAMPLE_MEMORIES_MIN : SAMPLE_MEMORIES);
@@ -315,7 +321,13 @@ export default function FlythroughClient() {
             roomId="roots"
             actualRoomId="ro1"
             memories={demoMems}
-            onMemoryClick={(mem: Mem) => { if (mem?.id) setLightboxId(mem.id); }}
+            onMemoryClick={(mem: Mem) => {
+              if (!mem?.id) return;
+              // standing before the gramophone/screen: clicking AV opens the PLAYER
+              const isAV = (mem.type === "audio" || mem.type === "video" || mem.type === "voice" || mem.type === "interview") && !!mem.dataUrl;
+              if (isAV) { const i = demoPlayables.findIndex((p) => p.id === mem.id); setPlayerTrack(i >= 0 ? i : 0); }
+              else setLightboxId(mem.id);
+            }}
             styleEra="roman"
           />
         );
@@ -516,11 +528,30 @@ export default function FlythroughClient() {
               }}>{f === "min" ? "Min (2)" : f === "default" ? "Standard (23)" : "Max (122)"}</button>
             ))}
           </div>
-          <button onClick={() => setLedgerOpen(true)} style={{
-            padding: "0.55rem 1rem", borderRadius: "2rem", border: "0.0625rem solid #E7D9C4", cursor: "pointer",
-            fontSize: "0.8125rem", fontFamily: "system-ui, sans-serif", fontWeight: 600,
-            background: "#FCFAF5", color: "#403B36", boxShadow: "0 0.35rem 1rem rgba(20,16,12,0.35)",
-          }}>☰ Manage media</button>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            {demoPlayables.length > 0 && (
+              <button onClick={() => setPlayerTrack((v) => (v === null ? 0 : null))} style={{
+                padding: "0.55rem 1rem", borderRadius: "2rem", border: "0.0625rem solid #8B6B4A", cursor: "pointer",
+                fontSize: "0.8125rem", fontFamily: "system-ui, sans-serif", fontWeight: 600,
+                background: playerTrack !== null ? "#241A12" : "#FCFAF5", color: playerTrack !== null ? "#C9A87C" : "#403B36", boxShadow: "0 0.35rem 1rem rgba(20,16,12,0.35)",
+              }}>♪ Player</button>
+            )}
+            <button onClick={() => setLedgerOpen(true)} style={{
+              padding: "0.55rem 1rem", borderRadius: "2rem", border: "0.0625rem solid #E7D9C4", cursor: "pointer",
+              fontSize: "0.8125rem", fontFamily: "system-ui, sans-serif", fontWeight: 600,
+              background: "#FCFAF5", color: "#403B36", boxShadow: "0 0.35rem 1rem rgba(20,16,12,0.35)",
+            }}>☰ Manage media</button>
+          </div>
+        </div>
+      )}
+      {/* Standalone AV player — outside the media menu (stand before the
+          gramophone/screen, click it, and it plays right here). */}
+      {mounted && currentScene === 3 && playerTrack !== null && demoPlayables.length > 0 && !ledgerOpen && (
+        <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", bottom: "3.4rem", zIndex: 110, width: "min(92vw, 26rem)" }}>
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setPlayerTrack(null)} aria-label="close player" style={{ position: "absolute", top: "0.4rem", right: "0.45rem", zIndex: 2, background: "none", border: "none", color: "#C9BFA8", cursor: "pointer", fontSize: "0.95rem" }}>✕</button>
+            <PlayerCard tracks={demoPlayables} index={Math.min(playerTrack, demoPlayables.length - 1)} onIndex={setPlayerTrack} tr={(_k: string, f: string) => f} />
+          </div>
         </div>
       )}
       {mounted && currentScene === 3 && ledgerOpen && (
@@ -555,6 +586,7 @@ export default function FlythroughClient() {
               onClose={() => setLightboxId(null)}
               onDelete={(id: string) => { setDemoMems((ms) => ms.filter((m) => m.id !== id)); setLightboxId(null); }}
               onUpdate={(id: string, updates: Partial<Mem>) => setDemoMems((ms) => ms.map((m) => (m.id === id ? { ...m, ...updates } as Mem : m)))}
+              fullScreen
             />
             {demoMems.length > 1 && (
               <>
