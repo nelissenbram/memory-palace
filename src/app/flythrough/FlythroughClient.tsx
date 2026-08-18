@@ -14,9 +14,11 @@ const InteriorScene = dynamic(() => import("@/components/3d/InteriorScene"), { s
 // The room's media manager (The Steward's Ledger) — mounted in the viewer so the
 // owner can review the 3D room AND its media functionality in one login-free link.
 const RoomStewardLedger = dynamic(() => import("@/components/ui/RoomStewardLedger"), { ssr: false });
-// The REAL library full-screen memory view (owner: the room must open the same
-// viewer as the Library menu, with all its options) — plus ‹ › overlay arrows to
-// scroll through the room's memories.
+// The REAL Library click-a-media flow (owner): clicking a media item opens
+// RoomMediaPlayer — the true full-screen viewer with options captured below and
+// built-in prev/next — and its Edit/chips step into MemoryDetail, exactly as in
+// the Library menu.
+const RoomMediaPlayerView = dynamic(() => import("@/components/ui/RoomMediaPlayer"), { ssr: false });
 const MemoryDetail = dynamic(() => import("@/components/ui/MemoryDetail"), { ssr: false });
 // The room's AV transport, standalone — the player must work OUTSIDE the media
 // menu too (stand before the gramophone/screen and play).
@@ -147,6 +149,8 @@ export default function FlythroughClient() {
   const [demoMems, setDemoMems] = useState<Mem[]>(SAMPLE_MEMORIES);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
+  // the Library-style edit step behind the media viewer (Edit button / quick-action chips)
+  const [detailMem, setDetailMem] = useState<{ mem: Mem; initialAction?: string } | null>(null);
   // standalone AV player (outside the media menu): open at a track index, or null
   const [playerTrack, setPlayerTrack] = useState<number | null>(null);
   const demoPlayables = demoMems.filter((m) => (m.type === "audio" || m.type === "video" || m.type === "voice" || m.type === "interview") && !!m.dataUrl);
@@ -569,34 +573,36 @@ export default function FlythroughClient() {
           addMemoryOverride={(_roomId, mem) => { setDemoMems((ms) => [...ms, mem]); return true; }}
         />
       )}
-      {/* Full-screen memory view — the REAL Library MemoryDetail (all options),
-          with overlay ‹ › arrows to scroll through the room's memories. */}
-      {mounted && lightboxId && (() => {
+      {/* Full-screen media view — EXACTLY the Library flow: RoomMediaPlayer
+          (full-bleed viewer, options below, own prev/next), Edit/chips →
+          MemoryDetail, just like clicking a media item in the Library menu. */}
+      {mounted && lightboxId && !detailMem && (() => {
         const idx = demoMems.findIndex((m) => m.id === lightboxId);
-        const mem = demoMems[idx];
-        if (!mem) return null;
-        const go = (d: number) => { const n = demoMems[(idx + d + demoMems.length) % demoMems.length]; setLightboxId(n.id); };
+        if (idx < 0) return null;
         return (
-          <>
-            <MemoryDetail
-              key={mem.id}
-              mem={mem}
-              room={{ id: "ro1", name: "Me, Over Time" } as never}
-              wing={null as never}
-              onClose={() => setLightboxId(null)}
-              onDelete={(id: string) => { setDemoMems((ms) => ms.filter((m) => m.id !== id)); setLightboxId(null); }}
-              onUpdate={(id: string, updates: Partial<Mem>) => setDemoMems((ms) => ms.map((m) => (m.id === id ? { ...m, ...updates } as Mem : m)))}
-              fullScreen
-            />
-            {demoMems.length > 1 && (
-              <>
-                <button onClick={() => go(-1)} aria-label="previous" style={{ position: "fixed", left: "0.75rem", top: "50%", transform: "translateY(-50%)", zIndex: 4000, fontSize: "1.8rem", background: "rgba(32,24,16,0.55)", color: "#F3ECDA", border: "none", borderRadius: "50%", width: "2.8rem", height: "2.8rem", cursor: "pointer" }}>‹</button>
-                <button onClick={() => go(1)} aria-label="next" style={{ position: "fixed", right: "0.75rem", top: "50%", transform: "translateY(-50%)", zIndex: 4000, fontSize: "1.8rem", background: "rgba(32,24,16,0.55)", color: "#F3ECDA", border: "none", borderRadius: "50%", width: "2.8rem", height: "2.8rem", cursor: "pointer" }}>›</button>
-              </>
-            )}
-          </>
+          <RoomMediaPlayerView
+            memories={demoMems}
+            initialIndex={idx}
+            onClose={() => setLightboxId(null)}
+            onEdit={(mem: Mem) => { setLightboxId(null); setDetailMem({ mem }); }}
+            onUpdate={(memId: string, updates: Partial<Mem>) => setDemoMems((ms) => ms.map((m) => (m.id === memId ? { ...m, ...updates } as Mem : m)))}
+            storedIn={() => ({ wing: "Roots", room: "Me, Over Time", accent: "#B85C38" })}
+            onQuickAction={(mem: Mem, actionId: string) => { setLightboxId(null); setDetailMem({ mem, initialAction: actionId }); }}
+          />
         );
       })()}
+      {mounted && detailMem && (
+        <MemoryDetail
+          key={detailMem.mem.id}
+          mem={demoMems.find((m) => m.id === detailMem.mem.id) || detailMem.mem}
+          room={{ id: "ro1", name: "Me, Over Time" } as never}
+          wing={null as never}
+          onClose={() => setDetailMem(null)}
+          onDelete={(id: string) => { setDemoMems((ms) => ms.filter((m) => m.id !== id)); setDetailMem(null); }}
+          onUpdate={(id: string, updates: Partial<Mem>) => setDemoMems((ms) => ms.map((m) => (m.id === id ? { ...m, ...updates } as Mem : m)))}
+          initialAction={detailMem.initialAction}
+        />
+      )}
 
       {/* Pulse animation for recording indicator */}
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
