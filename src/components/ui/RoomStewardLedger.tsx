@@ -80,12 +80,16 @@ interface Props {
   onSelect?: (mem: Mem) => void;
   canEdit?: boolean;
   anchor?: "top" | "nowPlaying";
+  /** Viewer/demo override: add memories locally instead of via the memory store
+   *  (the login-free flythrough reviewer has no authed store). */
+  addMemoryOverride?: (roomId: string, mem: Mem) => Promise<boolean> | boolean;
 }
 
-export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDelete, onSelect, canEdit = true }: Props) {
+export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDelete, onSelect, canEdit = true, addMemoryOverride }: Props) {
   const { t } = useTranslation("roomMedia");
   const tr = useCallback((k: string, fallback: string) => { const v = t(k); return v && v !== k ? v : fallback; }, [t]);
-  const addMemory = useMemoryStore((s) => s.addMemory);
+  const storeAddMemory = useMemoryStore((s) => s.addMemory);
+  const addMemory = addMemoryOverride ?? storeAddMemory;
 
   const [importUnit, setImportUnit] = useState<string | null | undefined>(undefined);
   const [selectMode, setSelectMode] = useState(false);

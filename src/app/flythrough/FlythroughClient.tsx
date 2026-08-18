@@ -11,6 +11,9 @@ const ExteriorScene = dynamic(() => import("@/components/3d/ExteriorScene"), { s
 const EntranceHallScene = dynamic(() => import("@/components/3d/EntranceHallScene"), { ssr: false });
 const CorridorScene = dynamic(() => import("@/components/3d/CorridorScene"), { ssr: false });
 const InteriorScene = dynamic(() => import("@/components/3d/InteriorScene"), { ssr: false });
+// The room's media manager (The Steward's Ledger) — mounted in the viewer so the
+// owner can review the 3D room AND its media functionality in one login-free link.
+const RoomStewardLedger = dynamic(() => import("@/components/ui/RoomStewardLedger"), { ssr: false });
 
 // Sample memories for the room scene. A photo-RICH set (viewer-only) so the
 // "Deepening Cabinet" display walls actually fill — the room auto-sizes to its
@@ -122,10 +125,19 @@ export default function FlythroughClient() {
   // ?scene= deep link after mount; the scene itself only mounts client-side.
   const [currentScene, setCurrentScene] = useState(0);
   const [mounted, setMounted] = useState(false);
+  // ── Room demo state (viewer-only): live memory list + fill preset + the Ledger ──
+  const [demoFill, setDemoFill] = useState<"max" | "min" | "default">("default");
+  const [demoMems, setDemoMems] = useState<Mem[]>(SAMPLE_MEMORIES);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  const applyFill = useCallback((f: "max" | "min" | "default") => {
+    setDemoFill(f);
+    setDemoMems(f === "max" ? SAMPLE_MEMORIES_MAX : f === "min" ? SAMPLE_MEMORIES_MIN : SAMPLE_MEMORIES);
+  }, []);
   useEffect(() => {
     setCurrentScene(initialSceneFromURL());
+    applyFill(fillFromURL());
     setMounted(true);
-  }, []);
+  }, [applyFill]);
   const [progress, setProgress] = useState(0);
   const [fadeOpacity, setFadeOpacity] = useState(1);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -281,20 +293,17 @@ export default function FlythroughClient() {
             styleEra="roman"
           />
         );
-      case 3: {
-        const fill = fillFromURL();
-        const roomMems = fill === "max" ? SAMPLE_MEMORIES_MAX : fill === "min" ? SAMPLE_MEMORIES_MIN : SAMPLE_MEMORIES;
+      case 3:
         return (
           <InteriorScene
-            key={`room-${fill}`}
+            key={`room-${demoFill}`}
             roomId="roots"
             actualRoomId="ro1"
-            memories={roomMems}
+            memories={demoMems}
             onMemoryClick={noop}
             styleEra="roman"
           />
         );
-      }
       default:
         return null;
     }
@@ -477,6 +486,41 @@ export default function FlythroughClient() {
             </button>
           ))}
         </div>
+      )}
+
+      {/* ── Room review extras: media-scale switcher + the Steward's Ledger ── */}
+      {mounted && currentScene === 3 && phase === "idle" && (
+        <div style={{ position: "absolute", right: "1rem", bottom: "3.5rem", zIndex: 100, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.5rem" }}>
+          <div style={{ display: "flex", gap: "0.35rem", background: "rgba(20,16,12,0.55)", borderRadius: "12px", padding: "0.25rem" }}>
+            {(["min", "default", "max"] as const).map((f) => (
+              <button key={f} onClick={() => applyFill(f)} style={{
+                padding: "0.25rem 0.65rem", borderRadius: "9px", border: "none", cursor: "pointer",
+                fontSize: "0.7rem", fontFamily: "system-ui, sans-serif", fontWeight: 600,
+                color: demoFill === f ? "#241A12" : "rgba(255,255,255,0.75)",
+                background: demoFill === f ? "#D4AF37" : "transparent",
+              }}>{f === "min" ? "Min (2)" : f === "default" ? "Standard (43)" : "Max (122)"}</button>
+            ))}
+          </div>
+          <button onClick={() => setLedgerOpen(true)} style={{
+            padding: "0.55rem 1rem", borderRadius: "2rem", border: "0.0625rem solid #E7D9C4", cursor: "pointer",
+            fontSize: "0.8125rem", fontFamily: "system-ui, sans-serif", fontWeight: 600,
+            background: "#FCFAF5", color: "#403B36", boxShadow: "0 0.35rem 1rem rgba(20,16,12,0.35)",
+          }}>☰ Manage media</button>
+        </div>
+      )}
+      {mounted && currentScene === 3 && ledgerOpen && (
+        <RoomStewardLedger
+          mems={demoMems}
+          wing={null}
+          room={{ id: "ro1", name: "Me, Over Time" } as never}
+          onClose={() => setLedgerOpen(false)}
+          onUpdate={(id, updates) => setDemoMems((ms) => ms.map((m) => (m.id === id ? { ...m, ...updates } as Mem : m)))}
+          onDelete={(id) => setDemoMems((ms) => ms.filter((m) => m.id !== id))}
+          onAdd={(mem) => setDemoMems((ms) => [...ms, mem])}
+          onSelect={() => {}}
+          canEdit
+          addMemoryOverride={(_roomId, mem) => { setDemoMems((ms) => [...ms, mem]); return true; }}
+        />
       )}
 
       {/* Pulse animation for recording indicator */}
