@@ -64,6 +64,9 @@ const PasscodeModal = lazy(() => import("@/components/social/PasscodeModal"));
 import RoomGallery from "@/components/ui/RoomGallery";
 const RoomMediaPanel = lazy(() => import("@/components/ui/RoomMediaPanel"));
 const RoomStewardLedger = lazy(() => import("@/components/ui/RoomStewardLedger"));
+// Library-parity media viewer for the room (w1_roomui): clicking a memory in 3D
+// or in the Ledger opens RoomMediaPlayer first; Edit/chips step into MemoryDetail.
+const RoomMediaPlayerView = lazy(() => import("@/components/ui/RoomMediaPlayer"));
 import StoragePlayerPanel from "@/components/ui/StoragePlayerPanel";
 import InviteNotificationsPanel from "@/components/ui/InviteNotificationsPanel";
 const SharedWithMePanel = lazy(() => import("@/components/ui/SharedWithMePanel"));
@@ -180,6 +183,10 @@ export default function MemoryPalace(){
   const [w3Corridor, setW3Corridor] = useState(false);
   // "The Steward's Ledger" room-media UI (staging-ON / prod-OFF until the wave promotes).
   const [w1RoomUI, setW1RoomUI] = useState(false);
+  // Library-parity room viewer: index into allRoomMems, or null; + the pre-opened
+  // ActionCard when a viewer quick-action chip steps into MemoryDetail.
+  const [roomViewerIdx, setRoomViewerIdx] = useState<number | null>(null);
+  const [selMemAction, setSelMemAction] = useState<string | undefined>(undefined);
   useEffect(() => {
     setW2Veil(flag3d("w2_veil"));
     setW2Shell(flag3d("w2_shell"));
@@ -450,6 +457,15 @@ export default function MemoryPalace(){
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings } = useNavigation();
   const { roomMems, allRoomMems, handleAddMemory, addMemoryToRoom, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
+  // w1_roomui: a 3D memory click opens the Library-parity viewer (RoomMediaPlayer)
+  // instead of the old gallery panel; stations/strings fall through unchanged.
+  const roomMemClick = useCallback((m: unknown) => {
+    if (w1RoomUI && m && typeof m === "object" && (m as Mem).id) {
+      const i = allRoomMems.findIndex((x) => x.id === (m as Mem).id);
+      if (i >= 0) { setRoomViewerIdx(i); return; }
+    }
+    handleMemClick(m);
+  }, [w1RoomUI, allRoomMems, handleMemClick]);
   // Top media bar open state (drives InteriorScene video/audio bar)
   const roomMediaBarOpen = useRoomMediaBarStore(s => s.open);
   const setRoomMediaBarOpen = useRoomMediaBarStore(s => s.setOpen);
@@ -1559,7 +1575,7 @@ export default function MemoryPalace(){
         {warmHallScene}
         {!persistHall && view==="entrance" && hallSceneNode}
         {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintingsSeeded} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
-        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+effStyleEra} roomId={activeWing} actualRoomId={activeRoomId} onReady={() => handleSceneReady("room")} layoutOverride={roomLayouts[activeRoomId]} memories={effectiveRoomMems} onMemoryClick={handleMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={effStyleEra}/></Suspense>}
+        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+effStyleEra} roomId={activeWing} actualRoomId={activeRoomId} onReady={() => handleSceneReady("room")} layoutOverride={roomLayouts[activeRoomId]} memories={effectiveRoomMems} onMemoryClick={roomMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={effStyleEra}/></Suspense>}
       </div>
 
       <PerfHud />
@@ -1685,7 +1701,17 @@ export default function MemoryPalace(){
       {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} roomId={activeRoomId} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>{updateSharing(activeRoomId,u);markChecklistItem("share_room");}} onClose={()=>setShowSharing(false)}/>}
       {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>{setShowRoomManager(false);markChecklistItem("customize_room");}} onEnterRoom={enterRoom}/>}
       {showWingManager&&<WingManagerPanel onClose={()=>setShowWingManager(false)}/>}
-      {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
+      {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>{setSelMem(null);setSelMemAction(undefined);}} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory} initialAction={selMemAction}/>}
+      {/* w1_roomui: Library-parity room media viewer — RoomMediaPlayer first, Edit/chips → MemoryDetail */}
+      {roomViewerIdx!==null&&!selMem&&allRoomMems.length>0&&<Suspense fallback={null}><RoomMediaPlayerView
+        memories={allRoomMems}
+        initialIndex={Math.min(roomViewerIdx,allRoomMems.length-1)}
+        onClose={()=>setRoomViewerIdx(null)}
+        onEdit={(m)=>{setRoomViewerIdx(null);setSelMemAction(undefined);setSelMem(m);}}
+        onUpdate={handleUpdateMemory}
+        storedIn={()=>wingData&&activeRoomData?{wing:wingData.name,room:activeRoomData.name,accent:wingData.accent||"#B85C38"}:null}
+        onQuickAction={(m,actionId)=>{setRoomViewerIdx(null);setSelMemAction(actionId);setSelMem(m);}}
+      /></Suspense>}
       {showRoomShare&&activeRoomData&&wingData&&<ShareCard roomName={activeRoomData.name} roomIcon={activeRoomData.icon} wingName={wingData.nameKey ? (tWings(wingData.nameKey) || wingData.name) : wingData.name} wingIcon={wingData.icon} memCount={allRoomMems.length} accent={wingData.accent} onClose={()=>setShowRoomShare(false)}/>}
       {showTimeline&&<Suspense fallback={lazyFallback}><MemoryTimeline onClose={()=>setShowTimeline(false)} onNavigateLibrary={()=>{setShowTimeline(false);setNavMode("library");}}/></Suspense>}
       {showStatistics&&<Suspense fallback={lazyFallback}><StatisticsPanel onClose={()=>setShowStatistics(false)}/></Suspense>}
@@ -1693,7 +1719,7 @@ export default function MemoryPalace(){
       {showFamilyTree&&<Suspense fallback={lazyFallback}><FamilyTreePanel onClose={()=>setShowFamilyTree(false)}/></Suspense>}
       {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
       {showGallery&&activeRoomId&&(w1RoomUI
-        ? <Suspense fallback={null}><RoomStewardLedger mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={handleAddMemory} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} canEdit/></Suspense>
+        ? <Suspense fallback={null}><RoomStewardLedger mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={handleAddMemory} onSelect={(mem)=>{setShowGallery(false);const i=allRoomMems.findIndex(x=>x.id===mem.id);if(i>=0)setRoomViewerIdx(i);else setSelMem(mem);}} canEdit/></Suspense>
         : <RoomMediaPanel mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={(mem)=>{handleAddMemory(mem);if(galleryAutoAssignUnit){setTimeout(()=>{handleUpdateMemory(mem.id,{displayed:true,displayUnit:galleryAutoAssignUnit});setGalleryAutoAssignUnit(null);},100);}}} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} initialMemId={galleryInitialMemId} initialTab={galleryInitialTab} roomLayout={roomLayouts[activeRoomId]||""} onRoomLayoutChange={(id)=>setRoomLayout(activeRoomId,id)}/>)}
       {/* ─── AV remote pill — opens media playback bar ─── */}
       {view==="room"&&wingData&&!showGallery&&roomMediaBarOpen===null&&(()=>{

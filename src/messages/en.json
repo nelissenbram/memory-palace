@@ -2965,6 +2965,18 @@
     "sizeLarge": "Large"
   },
   "roomMedia": {
+    "stationMantel": "Mantelpiece",
+    "stationWhereMantel": "Above the fireplace",
+    "featureAboveFireplace": "Feature above the fireplace",
+    "archiveLane": "In the archive",
+    "archiveKeptSafe": "{n} kept safe",
+    "fromOtherRoom": "From another room",
+    "bringHere": "Bring here",
+    "borrowedToast": "Brought over from {room}",
+    "roomPlayer": "Player",
+    "previous": "Previous",
+    "next": "Next",
+    "wasAt": "From",
     "station_portraits": "Portraits",
     "station_vitrine": "Vitrine",
     "station_library": "Library",

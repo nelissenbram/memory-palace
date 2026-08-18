@@ -2967,6 +2967,18 @@
     "sizeLarge": "Groot"
   },
   "roomMedia": {
+    "stationMantel": "Schouw",
+    "stationWhereMantel": "Boven de haard",
+    "featureAboveFireplace": "Boven de haard hangen",
+    "archiveLane": "In het archief",
+    "archiveKeptSafe": "{n} veilig bewaard",
+    "fromOtherRoom": "Uit een andere kamer",
+    "bringHere": "Breng hierheen",
+    "borrowedToast": "Overgebracht uit {room}",
+    "roomPlayer": "Speler",
+    "previous": "Vorige",
+    "next": "Volgende",
+    "wasAt": "Uit",
     "station_portraits": "Portretten",
     "station_vitrine": "Vitrine",
     "station_library": "Bibliotheek",
