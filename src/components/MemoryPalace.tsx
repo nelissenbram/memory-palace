@@ -25,7 +25,7 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useRoomMemories } from "@/lib/hooks/useRoomMemories";
 import type { Mem } from "@/lib/constants/defaults";
 const OnboardingWizard = lazy(() => import("@/components/ui/OnboardingWizard"));
-const LandscapeNudge = lazy(() => import("@/components/ui/LandscapeNudge"));
+// LandscapeNudge removed (owner 2026-08-20): the three gesture hints cluttered mobile exterior
 // TopBar removed — replaced by PalaceSubNav
 import { WingTooltip, DoorTooltip } from "@/components/ui/HoverTooltip";
 // SearchBar removed — search is no longer shown in room view
@@ -456,7 +456,7 @@ export default function MemoryPalace(){
 
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings } = useNavigation();
-  const { roomMems, allRoomMems, handleAddMemory, addMemoryToRoom, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
+  const { roomMems, allRoomMems, roomMemsLoading, handleAddMemory, addMemoryToRoom, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
   // w1_roomui: a 3D memory click opens the Library-parity viewer (RoomMediaPlayer)
   // instead of the old gallery panel; stations/strings fall through unchanged.
   const roomMemClick = useCallback((m: unknown) => {
@@ -1579,7 +1579,6 @@ export default function MemoryPalace(){
       </div>
 
       <PerfHud />
-      {view==="exterior"&&<LandscapeNudge />}
       {view==="exterior"&&<PalaceExteriorTutorial open={palaceTourOpen} onClose={()=>setPalaceTourOpen(false)} />}
       {view==="entrance"&&<EntranceHallTutorial open={entranceTourOpen} onClose={()=>setEntranceTourOpen(false)} />}
       {view==="corridor"&&<CorridorTutorial open={corridorTourOpen} onClose={()=>setCorridorTourOpen(false)} />}
@@ -1719,8 +1718,25 @@ export default function MemoryPalace(){
       {showFamilyTree&&<Suspense fallback={lazyFallback}><FamilyTreePanel onClose={()=>setShowFamilyTree(false)}/></Suspense>}
       {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
       {showGallery&&activeRoomId&&(w1RoomUI
-        ? <Suspense fallback={null}><RoomStewardLedger mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={handleAddMemory} onSelect={(mem)=>{setShowGallery(false);const i=allRoomMems.findIndex(x=>x.id===mem.id);if(i>=0)setRoomViewerIdx(i);else setSelMem(mem);}} canEdit/></Suspense>
+        ? <Suspense fallback={null}><RoomStewardLedger mems={allRoomMems} wing={wingData} room={activeRoomData} loading={roomMemsLoading} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={handleAddMemory} onSelect={(mem)=>{setShowGallery(false);const i=allRoomMems.findIndex(x=>x.id===mem.id);if(i>=0)setRoomViewerIdx(i);else setSelMem(mem);}} canEdit/></Suspense>
         : <RoomMediaPanel mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={(mem)=>{handleAddMemory(mem);if(galleryAutoAssignUnit){setTimeout(()=>{handleUpdateMemory(mem.id,{displayed:true,displayUnit:galleryAutoAssignUnit});setGalleryAutoAssignUnit(null);},100);}}} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} initialMemId={galleryInitialMemId} initialTab={galleryInitialTab} roomLayout={roomLayouts[activeRoomId]||""} onRoomLayoutChange={(id)=>setRoomLayout(activeRoomId,id)}/>)}
+      {/* ─── Room memories loading pill — while the first fetch is in flight the
+           3D room would otherwise show its empty-room prompts for a beat ─── */}
+      {view==="room"&&roomMemsLoading&&allRoomMems.length===0&&!showGallery&&!selMem&&(
+        <div aria-live="polite" style={{
+          position:"fixed",left:"50%",transform:"translateX(-50%)",
+          bottom:`calc(6.5rem + env(safe-area-inset-bottom, 0px))`,
+          zIndex:46,pointerEvents:"none",
+          padding:"0.5rem 1rem",borderRadius:"1.375rem",
+          background:`${T.color.linen}E0`,
+          backdropFilter:"blur(1rem) saturate(160%)",WebkitBackdropFilter:"blur(1rem) saturate(160%)",
+          border:"0.0625rem solid rgba(227,214,188,0.6)",
+          boxShadow:"0 0.125rem 0.5rem rgba(64,59,54,0.08)",
+          color:T.color.ink,fontFamily:T.font.body,fontSize:"0.8125rem",
+        }}>
+          {tRoom("gatheringMemories")!=="gatheringMemories"?tRoom("gatheringMemories"):"Gathering memories…"}
+        </div>
+      )}
       {/* ─── AV remote pill — opens media playback bar ─── */}
       {view==="room"&&wingData&&!showGallery&&roomMediaBarOpen===null&&(()=>{
         const hasVideo=allRoomMems.some((m:any)=>m.type==="video");

@@ -85,6 +85,8 @@ interface Props {
   onAdd: (mem: Mem) => void;
   onSelect?: (mem: Mem) => void;
   canEdit?: boolean;
+  /** true while the room's memories are still being fetched — shows "Gathering memories…" instead of 0-count/empty copy */
+  loading?: boolean;
   anchor?: "top" | "nowPlaying";
   /** Other rooms the user may borrow memories from (owner #4 — only rooms the
    *  user can access; the caller applies the access filter). */
@@ -93,7 +95,7 @@ interface Props {
   addMemoryOverride?: (roomId: string, mem: Mem) => Promise<boolean> | boolean;
 }
 
-export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDelete, onAdd, onSelect, canEdit = true, otherRooms, addMemoryOverride }: Props) {
+export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDelete, onAdd, onSelect, canEdit = true, loading = false, otherRooms, addMemoryOverride }: Props) {
   const { t } = useTranslation("roomMedia");
   const tr = useCallback((k: string, fallback: string) => { const v = t(k); return v && v !== k ? v : fallback; }, [t]);
   const storeAddMemory = useMemoryStore((s) => s.addMemory);
@@ -118,17 +120,22 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
 
   const roomName = room ? translateRoomName(room, (k: string) => t(k)) : "";
   const q = search.trim().toLowerCase();
+  // Binary Shown/Archive: only an EXPLICIT displayed:false is archived. Memories
+  // that were never toggled (displayed undefined/null — e.g. Library imports) are
+  // shown, matching InteriorScene/Library — they used to vanish from the Ledger
+  // entirely ("0 memories kept here" while the room and Library showed media).
+  const isShown = (m: Mem) => m.displayed !== false;
   const filtered = useMemo(() => q ? mems.filter((m) => (m.title || "").toLowerCase().includes(q)) : mems, [mems, q]);
-  const kept = useMemo(() => mems.filter((m) => m.displayed), [mems]);
+  const kept = useMemo(() => mems.filter(isShown), [mems]);
   const archived = useMemo(() => filtered.filter((m) => m.displayed === false), [filtered]);
   const playables = useMemo(() => mems.filter(isPlayable), [mems]);
   const hero = useMemo(() => {
-    const shownPortraits = mems.filter((m) => m.displayed && stationOf(m) === "portraits");
+    const shownPortraits = mems.filter((m) => isShown(m) && stationOf(m) === "portraits");
     return shownPortraits.find(isHero) || shownPortraits[0] || null;
   }, [mems]);
   const byStation = useMemo(() => {
     const g: Record<StationId, Mem[]> = { portraits: [], vitrine: [], library: [], gramophone: [], screen: [] };
-    for (const m of filtered) { if (m.displayed && m !== hero) g[stationOf(m)].push(m); }
+    for (const m of filtered) { if (isShown(m) && m !== hero) g[stationOf(m)].push(m); }
     return g;
   }, [filtered, hero]);
 
@@ -179,7 +186,9 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
     <Sheet open onClose={onClose} side="right" maxWidth="30rem" background={T.color.linen}
       title={<span style={{ fontFamily: T.font.display }}>{roomName || tr("thisRoom", "This room")}</span>}>
       <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, marginTop: "-0.25rem", marginBottom: T.space.sm }}>
-        {kept.length === 1 ? tr("keptOne", "1 memory kept here") : tr("keptN", "{n} memories kept here").replace("{n}", String(kept.length))}
+        {loading && !anyMem
+          ? tr("gatheringMemories", "Gathering memories…")
+          : kept.length === 1 ? tr("keptOne", "1 memory kept here") : tr("keptN", "{n} memories kept here").replace("{n}", String(kept.length))}
       </div>
 
       {/* ── PLAYER — always present when the room has audio/video (owner #5) ── */}
@@ -234,7 +243,12 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
         </div>
       )}
 
-      {!anyMem && !writeOpen && (
+      {!anyMem && loading && (
+        <div style={{ textAlign: "center", padding: `${T.space.xl} ${T.space.md}`, color: MUTED, fontFamily: T.font.body, fontSize: "0.875rem" }}>
+          {tr("gatheringMemories", "Gathering memories…")}
+        </div>
+      )}
+      {!anyMem && !writeOpen && !loading && (
         <div style={{ textAlign: "center", padding: `${T.space.xl} ${T.space.md}` }}>
           <div style={{ fontFamily: T.font.display, fontSize: "1.1rem", color: INK, marginBottom: "0.5rem" }}>{tr("emptyRoomTitle", "An empty room, waiting")}</div>
           <div style={{ color: MUTED, fontFamily: T.font.body, fontSize: "0.875rem", marginBottom: T.space.md }}>{tr("emptyRoomLedger", "Bring in a photo, write a note, or add a recording to begin filling this room.")}</div>
@@ -338,7 +352,7 @@ export function PlayerCard({ tracks, index, onIndex, tr }: { tracks: Mem[]; inde
   useEffect(() => { const a = mRef.current; if (a) a.loop = loop; }, [loop]);
   useEffect(() => { setCur(0); setDur(0); setPlaying(false); }, [mem?.id]);
   const fmt = (s: number) => { if (!isFinite(s)) return "0:00"; const m = Math.floor(s / 60); const ss = Math.floor(s % 60); return `${m}:${ss < 10 ? "0" : ""}${ss}`; };
-  const toggle = () => { const a = mRef.current; if (!a) return; if (a.paused) { a.play(); setPlaying(true); } else { a.pause(); setPlaying(false); } };
+  const toggle = () => { const a = mRef.current; if (!a) return; if (a.paused) { a.play().then(() => setPlaying(true)).catch(() => setPlaying(false)); } else { a.pause(); setPlaying(false); } };
   const step = (d: number) => onIndex((index + d + tracks.length) % tracks.length);
   const mediaEvents = {
     onTimeUpdate: (e: React.SyntheticEvent<HTMLVideoElement | HTMLAudioElement>) => setCur(e.currentTarget.currentTime),

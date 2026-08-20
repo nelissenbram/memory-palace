@@ -8,6 +8,8 @@ import { enqueueMemory, cacheMemories, getCachedMemories, type CachedMemory } fr
 
 interface MemoryState {
   userMems: Record<string, Mem[]>;
+  /** true while a room's memories fetch is in flight — drives "Gathering memories…" UI */
+  roomLoading: Record<string, boolean>;
   selMem: Mem | null;
   showUpload: boolean;
   showSharing: boolean;
@@ -41,6 +43,7 @@ const _inflightRoomFetches = new Map<string, Promise<void>>();
 
 export const useMemoryStore = create<MemoryState>((set, get) => ({
   userMems: {},
+  roomLoading: {},
   selMem: null,
   showUpload: false,
   showSharing: false,
@@ -107,7 +110,11 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     }
     })();
     _inflightRoomFetches.set(roomId, p);
-    try { await p; } finally { _inflightRoomFetches.delete(roomId); }
+    set((s) => ({ roomLoading: { ...s.roomLoading, [roomId]: true } }));
+    try { await p; } finally {
+      _inflightRoomFetches.delete(roomId);
+      set((s) => ({ roomLoading: { ...s.roomLoading, [roomId]: false } }));
+    }
   },
 
   fetchAllRoomMemories: async () => {

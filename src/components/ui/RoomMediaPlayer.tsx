@@ -57,6 +57,12 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const touchStartRef = useRef<{ x: number; y: number; t: number; target: EventTarget | null } | null>(null);
   const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  /* Video playback state — the opening tap's gesture context is gone by the time
+     this lazy component mounts, so muted autoplay is best-effort; when it's
+     refused (or the file fails) we surface an overlay instead of a black frame. */
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [vidBlocked, setVidBlocked] = useState(false);
+  const [vidError, setVidError] = useState(false);
 
   const mem: Mem | undefined = memories[index];
   const total = memories.length;
@@ -136,6 +142,30 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
       if (autoPlayRef.current) clearInterval(autoPlayRef.current);
     };
   }, [autoPlay, memories.length]);
+
+  /* ─── Video autoplay nudge + blocked detection ─── */
+  useEffect(() => { setVidBlocked(false); setVidError(false); }, [mem?.id]);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    // Give the muted autoPlay attribute a beat; if still paused, retry play()
+    // and show the tap-to-play overlay when the browser refuses.
+    const id = setTimeout(() => {
+      if (v.paused && !v.ended) v.play().catch(() => setVidBlocked(true));
+    }, 400);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mem?.id]);
+  const tapToPlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    // In-gesture: try with sound first, fall back to muted (native controls unmute)
+    v.muted = false;
+    v.play().then(() => setVidBlocked(false)).catch(() => {
+      v.muted = true;
+      v.play().then(() => setVidBlocked(false)).catch(() => {});
+    });
+  }, []);
 
   /* ─── Scroll active thumb into view ─── */
   useEffect(() => {
@@ -242,17 +272,21 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
       case "video": {
         return (
           <div style={{
-            width: "100%", height: "100%",
+            width: "100%", height: "100%", position: "relative",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             {mem.dataUrl ? (
+              <>
               <video
                 key={mem.id}
+                ref={videoRef}
                 controls
                 autoPlay
                 muted
                 playsInline
-                preload="metadata"
+                preload="auto"
+                onPlaying={() => setVidBlocked(false)}
+                onError={() => setVidError(true)}
                 src={mem.dataUrl?.startsWith("/api/media/") ? mem.dataUrl + (mem.dataUrl.includes("?") ? "&" : "?") + "stream=1" : mem.dataUrl}
                 style={{
                   maxWidth: "92%", maxHeight: "88%",
@@ -260,6 +294,41 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                   boxShadow: "0 0.5rem 2rem rgba(36,28,21,0.5)",
                 }}
               />
+              {/* Couldn't load — say so instead of a dead black frame */}
+              {vidError && (
+                <div style={{
+                  position: "absolute", inset: 0,
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem",
+                  background: "rgba(36,28,21,0.65)", borderRadius: "0.5rem",
+                  color: "rgba(255,255,255,0.75)", fontFamily: T.font.body, fontSize: "0.9375rem",
+                }}>
+                  <TypeIcon type="video" size={40} color="rgba(255,255,255,0.45)" />
+                  <span>{t("mediaPlayerVideoError") !== "mediaPlayerVideoError" ? t("mediaPlayerVideoError") : "This video couldn't be loaded"}</span>
+                </div>
+              )}
+              {/* Autoplay blocked — visible tap-to-play affordance (user gesture) */}
+              {vidBlocked && !vidError && (
+                <button
+                  onClick={tapToPlay}
+                  aria-label={t("mediaPlayerTapToPlay") !== "mediaPlayerTapToPlay" ? t("mediaPlayerTapToPlay") : "Tap to play"}
+                  style={{
+                    position: "absolute", inset: 0,
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.625rem",
+                    background: "rgba(36,28,21,0.35)", border: "none", cursor: "pointer",
+                  }}
+                >
+                  <span style={{
+                    width: "3.5rem", height: "3.5rem", borderRadius: "50%",
+                    background: T.color.terracotta, color: "#fff", fontSize: "1.375rem",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: "0 0.25rem 1rem rgba(36,28,21,0.45)",
+                  }}>{"▶"}</span>
+                  <span style={{ color: "rgba(255,255,255,0.9)", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600 }}>
+                    {t("mediaPlayerTapToPlay") !== "mediaPlayerTapToPlay" ? t("mediaPlayerTapToPlay") : "Tap to play"}
+                  </span>
+                </button>
+              )}
+              </>
             ) : mem.thumbnailUrl ? (
               <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
                 <img

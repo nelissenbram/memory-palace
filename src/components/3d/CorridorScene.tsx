@@ -1192,7 +1192,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // the hung pieces do — matches the hung-piece clamp band.
       const fw=1.0,fh=.75,cy=W2_RAIL_TOP+.38+fh/2;
       const frameGeo=new THREE.BoxGeometry(fw+.14,fh+.14,.05);
-      const frameMat=new THREE.MeshStandardMaterial({color:GOLD,roughness:.28,metalness:.6});
+      // W3C: muted antique bronze (the "gold too tacky" retint family) — this
+      // locally-built frame escaped the MS-family sweep above.
+      const frameMat=new THREE.MeshStandardMaterial({color:W3C?"#9E8455":GOLD,roughness:W3C?.44:.28,metalness:W3C?.5:.6});
       const frame=new THREE.Mesh(frameGeo,frameMat);frame.position.set(0,cy,.025);
       const linerGeo=new THREE.PlaneGeometry(fw,fh);
       // (#6) liner sat 2mm over the frame's front face (.052 vs .05) — z-fight
@@ -2510,8 +2512,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           if(tg){
             // W2 (WS5-8) dolly-to-frame state machine: idle→glide→focused;
             // second tap on the same piece opens the existing memory flow.
+            // A re-tap on the SAME piece MID-GLIDE also opens (handleTap would
+            // CANCEL the glide, so an eager double tap read as a dead click).
             awClick.id=null;
-            w2Focus.handleTap(tg);
+            if(w2Focus.state()==="gliding"&&w2Focus.current()?.data===tg.data)fireAwClick(b.id);
+            else w2Focus.handleTap(tg);
             return true;
           }
           if(w2Focus.state()!=="idle")w2Focus.cancel(); // empty slot → legacy walk/open (gallery panel)
@@ -2792,6 +2797,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       if(newCursor!==lastCursor){lastCursor=newCursor;el.style.cursor=newCursor;}
       onDoorHover(found||(portalHov?"__portal__":null));};
     const onCk=()=>{
+      // Ghost-click guard (owner 2026-08-20 #6): after a tap, browsers fire a
+      // synthetic click ~10-300ms later — it re-ran w1Pick, whose handleTap on
+      // the just-started focus glide CANCELLED it (start+cancel = painting taps
+      // did nothing on mobile). Touch is fully handled in onTE; swallow the echo.
+      if(performance.now()-lastTouchEndT<700)return;
       if(W1){
         // WS8-4 no-dead-clicks: fresh raycast without the 5m gate — near targets
         // enter immediately (legacy feel), far targets walk-then-enter.
@@ -2816,8 +2826,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);
 
     // ── TOUCH SUPPORT ──
-    let touchTap=true,touchLookId: number|null=null,touchMoveId: number|null=null;
-    const touchMoveDir={x:0,z:0};
+    let touchTap=true,touchLookId: number|null=null,touchMoveId: number|null=null,lastTouchEndT=0;
+    const touchMoveDir={x:0,z:0},touchStart={x:0,y:0};
     const onTS=(e: TouchEvent)=>{
       for(let i=0;i<e.changedTouches.length;i++){
         const t=e.changedTouches[i];const rect=el.getBoundingClientRect();
@@ -2826,7 +2836,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           touchMoveId=t.identifier;touchMoveDir.x=0;touchMoveDir.z=0;
           prev.x=t.clientX;prev.y=t.clientY;
         }else if(touchLookId===null){
-          touchLookId=t.identifier;drag.v=false;prev.x=t.clientX;prev.y=t.clientY;touchTap=true;
+          touchLookId=t.identifier;drag.v=false;prev.x=t.clientX;prev.y=t.clientY;touchStart.x=t.clientX;touchStart.y=t.clientY;touchTap=true;
         }
       }
     };
@@ -2842,7 +2852,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           touchMoveDir.x=nx;touchMoveDir.z=nz;
         }else if(t.identifier===touchLookId){
           const dx=t.clientX-prev.x,dy=t.clientY-prev.y;
-          if(Math.abs(dx)>2||Math.abs(dy)>2){drag.v=true;touchTap=false;w2Focus?.cancel();}
+          // Tap-vs-drag by TOTAL travel from touch START (9px finger slop) —
+          // the old 2px per-event delta flagged normal finger taps as drags,
+          // so painting/door taps died on mobile (owner 2026-08-20 #6).
+          const sx=t.clientX-touchStart.x,sy=t.clientY-touchStart.y;
+          if(sx*sx+sy*sy>81){drag.v=true;touchTap=false;w2Focus?.cancel();}
           lookT.yaw-=dx*.003;lookT.pitch=Math.max(-.85,Math.min(.5,lookT.pitch+dy*.003));
           prev.x=t.clientX;prev.y=t.clientY;
         }
@@ -2869,6 +2883,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
             }
           }
           touchLookId=null;
+          lastTouchEndT=performance.now(); // arm the ghost-click guard in onCk
         }
       }
     };

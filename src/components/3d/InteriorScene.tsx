@@ -413,7 +413,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       glass:mkPhys(THREE,{color:"#E8F0F0",transparent:true,opacity:.15,roughness:.02,metalness:.0,transmission:.85,ior:1.5,thickness:.5}),
     }));
     const fMats=[MS.fG,MS.fB,MS.gold];
-    memMeshes.current=[];hitAreaMeshes.current=[];
+    memMeshes.current=[];hitAreaMeshes.current=[];allClickableRef.current=[]; // reset the raycast list too — a rebuilt scene with the SAME mesh count must not keep stale (disposed) meshes clickable
     const animTex: any[]=[];
     // W1 (WS7-3/WS6-5): makeArtwork instances mounted this cycle — disposed in cleanup.
     const artworks: {group: THREE.Group;dispose(): void;setTexture(t2: THREE.Texture): void}[]=[];
@@ -2207,6 +2207,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           scene.add(affordance);memMeshes.current.push(affordance);
           videoHandle=makeVideoArtwork({
             url:vidSrc,
+            // Owner item 8: Supabase-streamed videos buffer the WHOLE file before
+            // first byte — the default 8s metadata deadline flipped big videos to
+            // the dead canvas fallback. Give them room to breathe.
+            timeoutMs:20000,
             onReady:(tex)=>{
               if(!alive)return;
               const aspect=(tex.userData.aspect as number)||16/9;
@@ -3470,6 +3474,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ── TOUCH SUPPORT ──
     let touchTap2=true,touchLookId2: number|null=null,touchMoveId2: number|null=null;
     const touchMoveDir2={x:0,z:0};
+    const tapStart2={x:0,y:0,t:0}; // owner item 9: tap slop measured CUMULATIVELY from touch start (+ max duration)
     const onTS2=(e: TouchEvent)=>{
       for(let i=0;i<e.changedTouches.length;i++){
         const t=e.changedTouches[i];const rect=el.getBoundingClientRect();
@@ -3479,6 +3484,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           prev.current={x:t.clientX,y:t.clientY};
         }else if(touchLookId2===null){
           touchLookId2=t.identifier;drag.current=false;prev.current={x:t.clientX,y:t.clientY};touchTap2=true;
+          tapStart2.x=t.clientX;tapStart2.y=t.clientY;tapStart2.t=Date.now();
         }
       }
     };
@@ -3493,7 +3499,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           touchMoveDir2.x=Math.max(-1,Math.min(1,dx/maxR));touchMoveDir2.z=Math.max(-1,Math.min(1,dy/maxR));
         }else if(t.identifier===touchLookId2){
           const dx=t.clientX-prev.current.x,dy=t.clientY-prev.current.y;
-          if(Math.abs(dx)>10||Math.abs(dy)>10){drag.current=true;touchTap2=false;cancelFocusOnDrag();}
+          // Owner item 9: classify tap vs look by TOTAL travel from touch start
+          // (~12px). The old per-event 10px gate misfired both ways: 120Hz
+          // screens deliver tiny per-event deltas (drags stayed "taps"), while
+          // one jittery event killed a legitimate tap.
+          const sx=t.clientX-tapStart2.x,sy=t.clientY-tapStart2.y;
+          if(touchTap2&&sx*sx+sy*sy>144){drag.current=true;touchTap2=false;cancelFocusOnDrag();}
           lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.85,Math.min(.5,lookT.current.pitch+dy*.003));
           prev.current={x:t.clientX,y:t.clientY};
         }
@@ -3504,11 +3515,15 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         const t=e.changedTouches[i];
         if(t.identifier===touchMoveId2){touchMoveId2=null;touchMoveDir2.x=0;touchMoveDir2.z=0;}
         if(t.identifier===touchLookId2){
-          if(touchTap2){
+          if(touchTap2&&Date.now()-tapStart2.t<500){
             const rect=el.getBoundingClientRect();_mouse.current.set(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1);
             _rc.current.setFromCamera(_mouse.current,camera);
-            // Unified raycast — specific items win over hit areas within 1 unit
-            if(allClickableRef.current.length!==memMeshes.current.length+hitAreaMeshes.current.length){allClickableRef.current=[...memMeshes.current,...hitAreaMeshes.current];}
+            // Unified raycast — specific items win over hit areas within 1 unit.
+            // Owner item 9: ALWAYS rebuild the clickable list on tap (it's a cheap
+            // spread) — the old length-equality check went stale when a rebuilt
+            // scene happened to keep the same mesh count, leaving taps raycasting
+            // disposed meshes.
+            allClickableRef.current=[...memMeshes.current,...hitAreaMeshes.current];
             // W2 (WS6-7): no distance gate — taps travel from anywhere
             const hits=_rc.current.intersectObjects(allClickableRef.current).filter(h2=>W2||h2.distance<4);
             let tapped=false;let tHitAreaFallback: any=null;let tHitAreaDist=Infinity;
@@ -3544,6 +3559,16 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         }
       }
     };
+    // Owner item 9: without touchcancel the look/move touch ids stuck forever
+    // after a browser-cancelled touch (overlay/gesture/notification) — every
+    // later touch was then ignored, so paintings became unclickable.
+    const onTC2=(e: TouchEvent)=>{
+      for(let i=0;i<e.changedTouches.length;i++){
+        const t=e.changedTouches[i];
+        if(t.identifier===touchMoveId2){touchMoveId2=null;touchMoveDir2.x=0;touchMoveDir2.z=0;}
+        if(t.identifier===touchLookId2){touchLookId2=null;touchTap2=false;}
+      }
+    };
     const touchKeys2=()=>{
       if(touchMoveId2!==null){const k=keys.current;
         k.w=touchMoveDir2.z<-.2;k.s=touchMoveDir2.z>.2;
@@ -3551,7 +3576,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       }
     };
     const touchTick2=setInterval(touchKeys2,16);
-    el.addEventListener("touchstart",onTS2,{passive:true});el.addEventListener("touchmove",onTM2,{passive:false});el.addEventListener("touchend",onTE2,{passive:true});
+    el.addEventListener("touchstart",onTS2,{passive:true});el.addEventListener("touchmove",onTM2,{passive:false});el.addEventListener("touchend",onTE2,{passive:true});el.addEventListener("touchcancel",onTC2,{passive:true});
 
     // Media state polling — update video and audio independently
     const mediaPoll=setInterval(()=>{
@@ -3562,7 +3587,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
     return()=>{alive=false;if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);
       window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);disposeFit();
-      el.removeEventListener("touchstart",onTS2);el.removeEventListener("touchmove",onTM2);el.removeEventListener("touchend",onTE2);
+      el.removeEventListener("touchstart",onTS2);el.removeEventListener("touchmove",onTM2);el.removeEventListener("touchend",onTE2);el.removeEventListener("touchcancel",onTC2);
       clearInterval(touchTick2);clearInterval(mediaPoll);
       videoElRef.current=null;audioElRef.current=null;setShowMedia({video:false,audio:false});
       try{useRoomMediaBarStore.getState().setOpen(null);}catch{}

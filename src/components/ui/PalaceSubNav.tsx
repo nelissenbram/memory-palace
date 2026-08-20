@@ -154,8 +154,8 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
   const { t: tWings } = useTranslation("wings");
   // The desktop breadcrumb is a single non-wrapping line: Palace › Entrance ›
   // all wing pills (icon + label) › Room + Publish/Passcode. On an iPad in
-  // portrait (768–1024px) that row overflows. The mobile 3-bar nav scrolls
-  // horizontally and handles narrow widths, so route iPad portrait to it.
+  // portrait (768–1024px) that row overflows. The mobile compact bar truncates
+  // and expands on demand, so route iPad portrait to it.
   const isCompactViewport = useIsCompact();
   const useMobileLayout = isMobile || isCompactViewport;
   const [showWingPicker, setShowWingPicker] = useState(false);
@@ -774,7 +774,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
 
   if (useMobileLayout) {
     return (
-      <MobileThreeBarNav
+      <MobileCompactNav
         view={view}
         wingName={wingName}
         wingAccent={wingAccent}
@@ -950,10 +950,10 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
 }
 
 /* ================================================================== */
-/*  Mobile: 3 constant bars + Enter button (pre-select → enter pattern) */
+/*  Mobile: single compact bar + expandable picker (pre-select → Enter) */
 /* ================================================================== */
 
-interface MobileThreeBarNavProps {
+interface MobileCompactNavProps {
   view: "exterior" | "entrance" | "corridor" | "room";
   wingName?: string;
   wingAccent?: string;
@@ -975,22 +975,29 @@ interface MobileThreeBarNavProps {
 
 type Pending = PalacePending;
 
-function MobileThreeBarNav(props: MobileThreeBarNavProps) {
+function MobileCompactNav(props: MobileCompactNavProps) {
   const { view, wingName, wingAccent, roomId, wings, wingRooms,
     onExitToPalace, onEntranceHall, onSwitchWing, onNavigateRoom,
     barBackground, barBorder, barShadow, onPublish, onPasscode } = props;
   const { t } = useTranslation("palace");
   const { t: tWings } = useTranslation("wings");
 
-  const currentWingId = wings.find((w) => w.name === wingName)?.id;
-  // Bar 2 shows rooms for whichever wing is "in focus": pending > current > first
+  const currentWing = wings.find((w) => w.name === wingName) || null;
+  const currentWingId = currentWing?.id;
+
+  // Pending selection (pre-select → Enter commit). Controlled from outside
+  // when ExteriorScene taps set it — identical contract to the old 3-bar nav.
   const [internalPending, setInternalPending] = useState<Pending>(null);
   const pending = props.controlledPending !== undefined ? props.controlledPending : internalPending;
   const setPending = (p: Pending) => {
     if (props.onPendingChange) props.onPendingChange(p);
     if (props.controlledPending === undefined) setInternalPending(p);
   };
-  // The wing whose rooms are displayed in Bar 3
+
+  // Single collapsed bar ↔ expanded picker panel
+  const [expanded, setExpanded] = useState(false);
+
+  // The wing whose rooms are listed in the picker: pending > current > first
   const focusWingId =
     pending?.kind === "wing" ? pending.wingId
     : pending?.kind === "room" ? pending.wingId
@@ -1008,6 +1015,17 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     else if (pending.kind === "room" && view === "room" && roomId === pending.roomId) setPending(null);
   }, [view, roomId, currentWingId, pending]);
 
+  // Collapse the picker whenever navigation lands somewhere new
+  useEffect(() => { setExpanded(false); }, [view, roomId]);
+
+  // Escape closes the picker
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setExpanded(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded]);
+
   const isCurrent = (p: Pending): boolean => {
     if (!p) return false;
     if (p.kind === "palace") return view === "exterior";
@@ -1023,89 +1041,103 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     else if (pending.kind === "entrance") onEntranceHall();
     else if (pending.kind === "wing") onSwitchWing(pending.wingId);
     else if (pending.kind === "room") onNavigateRoom(pending.wingId, pending.roomId);
+    setExpanded(false);
   };
 
-  // Styles
+  /* ---- canon styles (mirror NavigationBar mobile grammar) ---------- */
+
+  const safeL = "env(safe-area-inset-left, 0px)";
+  const safeR = "env(safe-area-inset-right, 0px)";
+  const safeT = "env(safe-area-inset-top, 0px)";
+  const BAR_H = "2.75rem";
+
+  // Picker pills: linen glass, hairline border, muted inactive /
+  // ember-or-wing-accent active, 0.5rem radii, 2.75rem touch targets.
   const pillBase: CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
-    gap: "0.3125rem",
-    padding: "0.3125rem 0.625rem",
-    borderRadius: "999px",
+    gap: "0.375rem",
+    padding: "0.375rem 0.625rem",
+    minHeight: "2.75rem",
+    borderRadius: "0.5rem",
     fontSize: "0.75rem",
     fontFamily: T.font.body,
+    fontWeight: 500,
     whiteSpace: "nowrap",
     cursor: "pointer",
-    border: `0.0625rem solid ${T.color.cream}`,
-    background: `${T.color.linen}cc`,
-    color: T.color.charcoal,
+    border: `0.0625rem solid ${CANON_HAIRLINE}`,
+    background: `${T.color.cream}80`,
+    color: CANON_MUTED,
     flexShrink: 0,
+    maxWidth: "100%",
     transition: "all 0.18s ease",
+    WebkitTapHighlightColor: "transparent",
+    WebkitAppearance: "none" as const,
   };
   const currentPill = (col: string): CSSProperties => ({
     ...pillBase,
-    border: `0.125rem solid ${col}`,
-    background: `${col}1f`,
+    border: `0.09375rem solid ${col}`,
+    background: `${col}18`,
     color: col,
     fontWeight: 700,
     boxShadow: `0 0.125rem 0.5rem ${col}33`,
   });
   const pendingPill = (col: string): CSSProperties => ({
     ...pillBase,
-    border: `0.125rem dashed ${col}`,
+    border: `0.09375rem dashed ${col}`,
     background: `${col}14`,
     color: col,
     fontWeight: 700,
     animation: "mpPendingPulse 1.6s ease-in-out infinite",
   });
-  const sectionLabel: CSSProperties = {
-    fontSize: "0.625rem",
-    fontFamily: T.font.display,
-    fontWeight: 700,
-    color: CANON_MUTED,
-    opacity: 0.75,
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    padding: "0 0.25rem",
-    flexShrink: 0,
-  };
-  const ENTER_W = "4rem";
-  const safeL = "env(safe-area-inset-left, 0px)";
-  const safeR = "env(safe-area-inset-right, 0px)";
-  const safeT = "env(safe-area-inset-top, 0px)";
-  const barCommon: CSSProperties = {
-    position: "fixed",
-    left: 0,
-    right: `calc(${ENTER_W} + ${safeR})`,
-    zIndex: 42,
-    display: "flex",
-    alignItems: "center",
-    gap: "0.25rem",
-    // Left notch safe-area (phone landscape): keep the section label + first
-    // pill out from under the notch; the bar itself still spans edge-to-edge.
-    padding: `0 0.5rem 0 calc(0.5rem + ${safeL})`,
-    overflowX: "auto",
-    overflowY: "hidden",
-    backdropFilter: "blur(0.75rem)",
-    WebkitBackdropFilter: "blur(0.75rem)",
-    borderBottom: barBorder,
-    // Subtle left/right edge fade so it reads as horizontally scrollable.
-    // Fades only the leading 1.25rem on each side; the label/pills stay crisp.
-    maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
-    WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
-  };
-
   const pillFor = (p: Pending, col: string) => {
     if (isCurrent(p)) return currentPill(col);
     if (pending && JSON.stringify(pending) === JSON.stringify(p)) return pendingPill(col);
     return pillBase;
   };
 
-  const BAR_H = "2.75rem";
-  const bar1Top = safeT;
-  const bar2Top = `calc(${safeT} + ${BAR_H})`;
-  const bar3Top = `calc(${safeT} + ${BAR_H} * 2)`;
-  const totalH = `calc(${safeT} + ${BAR_H} * 3)`;
+  const sectionLabel: CSSProperties = {
+    fontSize: "0.6875rem",
+    fontFamily: T.font.body,
+    fontWeight: 700,
+    color: CANON_MUTED,
+    letterSpacing: "0.12em",
+    textTransform: "uppercase",
+    padding: "0.5rem 0.125rem 0.375rem",
+  };
+  const pillRow: CSSProperties = {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.375rem",
+    minWidth: 0,
+  };
+
+  // Collapsed-bar breadcrumb text (0.6875rem uppercase, muted → accent)
+  const crumbText = (active: boolean, col: string = CANON_EMBER): CSSProperties => ({
+    fontSize: "0.6875rem",
+    fontFamily: T.font.body,
+    fontWeight: active ? 700 : 600,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    color: active ? col : CANON_MUTED,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    minWidth: 0,
+    flexShrink: 1,
+    lineHeight: 1.2,
+  });
+  const renderSep = () => (
+    <span aria-hidden style={{ color: CANON_MUTED, opacity: 0.55, fontSize: "0.75rem", lineHeight: 1, flexShrink: 0 }}>
+      ›
+    </span>
+  );
+
+  const currentRoomItem = roomId
+    ? Object.values(wingRooms).flat().find((r) => r.id === roomId)
+    : undefined;
+  const currentRoomLabel = currentRoomItem ? translateRoomName(currentRoomItem, tWings) : null;
+  const currentWingLabel = currentWing ? translateWingName(currentWing, tWings) : null;
 
   return (<>
     <style>{`
@@ -1113,124 +1145,298 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         0%,100% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
         50%     { box-shadow: 0 0 0 0.25rem currentColor; opacity: 0.85; }
       }
+      @keyframes mpPanelIn {
+        from { opacity: 0; transform: translateY(-0.375rem); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
       @media (prefers-reduced-motion: reduce) {
-        [data-mp-palace-bars] *,
-        [data-mp-palace-enter],
-        [data-mp-palace-enter] * {
+        [data-mp-palace-bars], [data-mp-palace-bars] *,
+        [data-mp-palace-panel], [data-mp-palace-panel] *,
+        [data-mp-palace-enter], [data-mp-palace-enter] * {
           animation: none !important;
           transition: none !important;
         }
       }
     `}</style>
 
-    {/* Bar 1: Palace level (Palace + Entrance Hall) */}
+    {/* Collapsed bar: single 2.75rem strip — breadcrumb toggle + Enter chip.
+        Fixed to its own strip only, so 3D drag outside it is never blocked. */}
     <div
       role="navigation"
-      aria-label={t("palace")}
+      aria-label={t("subnavBreadcrumb")}
       data-nudge="palace_subnav"
       data-mp-palace-bars="1"
-      className="hide-scrollbar"
       style={{
-        ...barCommon,
-        top: bar1Top,
-        height: BAR_H,
-        background: barBackground,
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: expanded ? 46 : 42,
+        paddingTop: safeT,
+        paddingLeft: safeL,
+        paddingRight: safeR,
+        background: `${T.color.linen}E0`,
+        backdropFilter: "blur(0.75rem)",
+        WebkitBackdropFilter: "blur(0.75rem)",
+        borderBottom: barBorder,
         boxShadow: barShadow,
+        display: "flex",
+        alignItems: "stretch",
       }}
     >
-      <span style={sectionLabel}>P</span>
       <button
-        onClick={() => setPending({ kind: "palace" })}
-        style={pillFor({ kind: "palace" }, CANON_EMBER)}
-        aria-current={view === "exterior" ? "location" : undefined}
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-haspopup="true"
+        aria-label={t("subnavBreadcrumb")}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: BAR_H,
+          display: "flex",
+          alignItems: "center",
+          gap: "0.375rem",
+          padding: "0 0.75rem",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left" as const,
+          WebkitTapHighlightColor: "transparent",
+          WebkitAppearance: "none" as const,
+        }}
       >
-        <PalaceIcon size={13} color={CANON_EMBER} />
-        <span>{t("palaceLabel")}</span>
-      </button>
-      <button
-        onClick={() => setPending({ kind: "entrance" })}
-        style={pillFor({ kind: "entrance" }, CANON_EMBER)}
-        aria-current={view === "entrance" ? "location" : undefined}
-      >
-        <TempleIcon size={13} color={CANON_EMBER} />
-        <span>{t("entranceHallLabel")}</span>
-      </button>
-    </div>
-
-    {/* Bar 2: Wings (All + each wing) */}
-    <div
-      role="navigation"
-      aria-label={t("ariaWings")}
-      data-mp-palace-bars="2"
-      className="hide-scrollbar"
-      style={{
-        ...barCommon,
-        top: bar2Top,
-        height: BAR_H,
-        background: `${T.color.linen}f2`,
-      }}
-    >
-      <span style={sectionLabel}>W</span>
-      {wings.map((w) => {
-        const isCurr = (view === "corridor" || view === "room") && currentWingId === w.id;
-        const isPending = pending?.kind === "wing" && pending.wingId === w.id;
-        const style = isCurr ? currentPill(w.accent) : isPending ? pendingPill(w.accent) : pillBase;
-        return (
-          <button
-            key={w.id}
-            onClick={() => setPending({ kind: "wing", wingId: w.id })}
-            style={style}
-            aria-current={isCurr ? "location" : undefined}
-          >
-            <WingIcon wingId={w.id} size={12} color={isCurr || isPending ? w.accent : T.color.charcoal} />
-            <span style={{ maxWidth: "calc(9rem * var(--a11y-scale, 1))", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {translateWingName(w, tWings)}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-
-    {/* Bar 3: Rooms of focus wing */}
-    <div
-      role="navigation"
-      aria-label={t("ariaRooms")}
-      data-mp-palace-bars="3"
-      className="hide-scrollbar"
-      style={{
-        ...barCommon,
-        top: bar3Top,
-        height: BAR_H,
-        background: `${T.color.linen}f2`,
-      }}
-    >
-      <span style={{ ...sectionLabel, color: accent }}>R</span>
-      {focusRooms.length === 0 && (
-        <span style={{ fontSize: "0.7rem", color: T.color.muted, fontStyle: "italic" }}>
-          {t("selectAWing")}
+        <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
+          <PalaceIcon size={14} color={view === "exterior" ? CANON_EMBER : CANON_MUTED} />
         </span>
-      )}
-      {focusWingId && focusRooms.map((r) => {
-        const isCurr = view === "room" && currentWingId === focusWingId && roomId === r.id;
-        const isPending = pending?.kind === "room" && pending.roomId === r.id;
-        const style = isCurr ? currentPill(accent) : isPending ? pendingPill(accent) : pillBase;
-        return (
-          <button
-            // key includes focus wing so pills remount (and fade in) on wing switch
-            key={`${focusWingId}-${r.id}`}
-            className="mp-fade-in"
-            onClick={() => setPending({ kind: "room", wingId: focusWingId, roomId: r.id })}
-            style={style}
-            aria-current={isCurr ? "location" : undefined}
-          >
-            <RoomIcon roomId={r.id} size={12} color={isCurr || isPending ? accent : T.color.charcoal} />
-            <span style={{ maxWidth: "calc(9rem * var(--a11y-scale, 1))", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {translateRoomName(r, tWings)}
+        <span style={{ ...crumbText(view === "exterior"), flexShrink: 2 }}>{t("palaceLabel")}</span>
+
+        {view === "entrance" && (<>
+          {renderSep()}
+          <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
+            <TempleIcon size={14} color={CANON_EMBER} />
+          </span>
+          <span style={crumbText(true)}>{t("entranceHallLabel")}</span>
+        </>)}
+
+        {(view === "corridor" || view === "room") && currentWing && (<>
+          {renderSep()}
+          <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
+            <WingIcon wingId={currentWing.id} size={14} color={view === "corridor" ? currentWing.accent : CANON_MUTED} />
+          </span>
+          <span style={{ ...crumbText(view === "corridor", currentWing.accent), maxWidth: "calc(8rem * var(--a11y-scale, 1))" }}>
+            {currentWingLabel}
+          </span>
+        </>)}
+
+        {view === "room" && currentRoomLabel && (<>
+          {renderSep()}
+          {roomId && (
+            <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
+              <RoomIcon roomId={roomId} size={14} color={currentWing?.accent || CANON_EMBER} />
             </span>
-          </button>
-        );
-      })}
+          )}
+          <span style={{ ...crumbText(true, currentWing?.accent || CANON_EMBER), maxWidth: "calc(8rem * var(--a11y-scale, 1))" }}>
+            {currentRoomLabel}
+          </span>
+        </>)}
+
+        {/* expand/collapse chevron — pinned right */}
+        <svg
+          width={10} height={10} viewBox="0 0 8 8" fill="none"
+          stroke={CANON_MUTED} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+          aria-hidden
+          style={{
+            marginLeft: "auto",
+            flexShrink: 0,
+            opacity: 0.7,
+            transition: "transform 0.15s ease",
+            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        >
+          <path d="M2 3l2 2 2-2" />
+        </svg>
+      </button>
+
+      {/* Enter chip — visible whenever a pending selection awaits commit
+          (incl. selections set from 3D taps), so the commit affordance
+          survives the collapse of the old full-height portico button. */}
+      {pending && (
+        <button
+          onClick={commitEnter}
+          data-mp-palace-enter="1"
+          aria-label={t("enterAction")}
+          style={{
+            alignSelf: "center",
+            minHeight: "2.75rem",
+            margin: "0 0.5rem 0 0.25rem",
+            padding: "0 1rem",
+            borderRadius: "0.5rem",
+            border: "none",
+            background: CANON_EMBER,
+            color: T.color.cream,
+            fontFamily: T.font.body,
+            fontSize: "0.6875rem",
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            cursor: "pointer",
+            boxShadow: CANON_SHADOW_1,
+            flexShrink: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.375rem",
+            transition: "all 0.2s ease",
+            WebkitTapHighlightColor: "transparent",
+            WebkitAppearance: "none" as const,
+          }}
+        >
+          {t("enterAction")}
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M5 12h14M13 6l6 6-6 6" />
+          </svg>
+        </button>
+      )}
     </div>
+
+    {/* Expanded picker: scrim + scrollable linen-glass panel */}
+    {expanded && (<>
+      <div
+        onClick={() => setExpanded(false)}
+        aria-hidden
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 44,
+          background: "rgba(64,59,54,0.18)",
+        }}
+      />
+      <div
+        role="navigation"
+        aria-label={t("subnavQuickNav")}
+        data-mp-palace-panel="1"
+        className="hide-scrollbar"
+        style={{
+          position: "fixed",
+          top: `calc(${safeT} + ${BAR_H})`,
+          left: 0,
+          right: 0,
+          zIndex: 45,
+          maxHeight: "min(40vh, 20rem)",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch" as const,
+          background: barBackground,
+          backdropFilter: "blur(0.75rem)",
+          WebkitBackdropFilter: "blur(0.75rem)",
+          borderBottom: barBorder,
+          boxShadow: CANON_SHADOW_2,
+          padding: `0.25rem calc(0.75rem + ${safeR}) 0.75rem calc(0.75rem + ${safeL})`,
+          animation: "mpPanelIn 0.18s ease",
+        }}
+      >
+        {/* Palace level */}
+        <div style={sectionLabel}>{t("subnavPalace")}</div>
+        <div style={pillRow}>
+          <button
+            onClick={() => setPending({ kind: "palace" })}
+            style={pillFor({ kind: "palace" }, CANON_EMBER)}
+            aria-current={view === "exterior" ? "location" : undefined}
+          >
+            <PalaceIcon size={13} color={view === "exterior" || pending?.kind === "palace" ? CANON_EMBER : CANON_MUTED} />
+            <span>{t("palaceLabel")}</span>
+          </button>
+          <button
+            onClick={() => setPending({ kind: "entrance" })}
+            style={pillFor({ kind: "entrance" }, CANON_EMBER)}
+            aria-current={view === "entrance" ? "location" : undefined}
+          >
+            <TempleIcon size={13} color={view === "entrance" || pending?.kind === "entrance" ? CANON_EMBER : CANON_MUTED} />
+            <span>{t("entranceHallLabel")}</span>
+          </button>
+        </div>
+
+        {/* Wings */}
+        <div style={sectionLabel}>{t("ariaWings")}</div>
+        <div style={pillRow} role="group" aria-label={t("ariaWings")}>
+          {wings.map((w) => {
+            const isCurr = (view === "corridor" || view === "room") && currentWingId === w.id;
+            const isPend = pending?.kind === "wing" && pending.wingId === w.id;
+            return (
+              <button
+                key={w.id}
+                onClick={() => setPending({ kind: "wing", wingId: w.id })}
+                style={isCurr ? currentPill(w.accent) : isPend ? pendingPill(w.accent) : pillBase}
+                aria-current={isCurr ? "location" : undefined}
+              >
+                <WingIcon wingId={w.id} size={12} color={isCurr || isPend ? w.accent : CANON_MUTED} />
+                <span style={{ maxWidth: "calc(9rem * var(--a11y-scale, 1))", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {translateWingName(w, tWings)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Rooms of the focused wing */}
+        <div style={sectionLabel}>
+          {focusWing ? `${t("subnavRoomsIn")} — ${translateWingName(focusWing, tWings)}` : t("ariaRooms")}
+        </div>
+        <div style={pillRow} role="group" aria-label={t("ariaRooms")}>
+          {focusRooms.length === 0 && (
+            <span style={{ fontSize: "0.75rem", fontFamily: T.font.body, color: CANON_MUTED, fontStyle: "italic", padding: "0.25rem 0.125rem" }}>
+              {t("selectAWing")}
+            </span>
+          )}
+          {focusWingId && focusRooms.map((r) => {
+            const isCurr = view === "room" && currentWingId === focusWingId && roomId === r.id;
+            const isPend = pending?.kind === "room" && pending.roomId === r.id;
+            return (
+              <button
+                // key includes focus wing so pills remount (and fade in) on wing switch
+                key={`${focusWingId}-${r.id}`}
+                className="mp-fade-in"
+                onClick={() => setPending({ kind: "room", wingId: focusWingId, roomId: r.id })}
+                style={isCurr ? currentPill(accent) : isPend ? pendingPill(accent) : pillBase}
+                aria-current={isCurr ? "location" : undefined}
+              >
+                <RoomIcon roomId={r.id} size={12} color={isCurr || isPend ? accent : CANON_MUTED} />
+                <span style={{ maxWidth: "calc(9rem * var(--a11y-scale, 1))", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {translateRoomName(r, tWings)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer: full-width Enter — commits the pending selection */}
+        <button
+          onClick={commitEnter}
+          disabled={!pending}
+          data-mp-palace-enter="1"
+          aria-label={t("enterAction")}
+          style={{
+            width: "100%",
+            minHeight: "2.75rem",
+            marginTop: "0.625rem",
+            borderRadius: "0.5rem",
+            border: pending ? "none" : `0.0625rem solid ${CANON_HAIRLINE}`,
+            background: pending ? CANON_EMBER : `${T.color.cream}80`,
+            color: pending ? T.color.cream : `${CANON_MUTED}99`,
+            fontFamily: T.font.body,
+            fontSize: "0.6875rem",
+            fontWeight: 700,
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            cursor: pending ? "pointer" : "not-allowed",
+            boxShadow: pending ? `0 0.25rem 1rem ${CANON_EMBER}44` : "none",
+            transition: "all 0.2s ease",
+            WebkitTapHighlightColor: "transparent",
+            WebkitAppearance: "none" as const,
+          }}
+        >
+          {t("enterAction")}
+        </button>
+      </div>
+    </>)}
 
     {/* Passcode + Publish buttons — mobile corridor/room only */}
     {onPasscode && (view === "corridor" || view === "room") && (
@@ -1239,7 +1445,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         aria-label={t("passcodeAction")}
         style={{
           position: "fixed",
-          top: `calc(${safeT} + ${BAR_H} * 3 + 0.5rem)`,
+          top: `calc(${safeT} + ${BAR_H} + 0.5rem)`,
           right: `calc(${safeR} + ${onPublish ? "4.25rem" : "0.75rem"})`,
           zIndex: 43,
           width: "2.75rem",
@@ -1270,7 +1476,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         aria-label={t("publishAction")}
         style={{
           position: "fixed",
-          top: `calc(${safeT} + ${BAR_H} * 3 + 0.5rem)`,
+          top: `calc(${safeT} + ${BAR_H} + 0.5rem)`,
           right: `calc(${safeR} + 0.75rem)`,
           zIndex: 43,
           width: "2.75rem",
@@ -1297,88 +1503,8 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
       </button>
     )}
 
-    {/* Enter button: fixed on right, spans 3 bars — Tuscan arched portico */}
-    <button
-      onClick={commitEnter}
-      disabled={!pending}
-      data-mp-palace-enter="1"
-      aria-label={t("enterAction")}
-      style={{
-        position: "fixed",
-        top: bar1Top,
-        right: safeR,
-        width: ENTER_W,
-        height: `calc(${BAR_H} * 3)`,
-        zIndex: 43,
-        border: "none",
-        // Interactive commit control → EMBER, not ceremonial gold. A hairline
-        // gold seam is kept only as a thin left border accent.
-        borderLeft: `0.125rem solid ${pending ? `${T.color.gold}88` : `${CANON_HAIRLINE}`}`,
-        background: pending
-          ? `linear-gradient(180deg, ${CANON_EMBER} 0%, ${T.color.rustDeep} 100%)`
-          : `${T.color.linen}d6`,
-        color: pending ? T.color.cream : `${CANON_MUTED}99`,
-        cursor: pending ? "pointer" : "not-allowed",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "0.25rem",
-        padding: "0.5rem 0",
-        fontFamily: T.font.display,
-        fontSize: "0.6875rem",
-        fontWeight: 600,
-        fontStyle: "italic",
-        letterSpacing: "0.16em",
-        textTransform: "uppercase",
-        boxShadow: pending
-          ? `inset 0.125rem 0 0.625rem rgba(64,59,54,0.25), inset 0 0.25rem 0.5rem rgba(255,240,200,0.18), -0.25rem 0 1.25rem ${CANON_EMBER}55`
-          : `inset 0.125rem 0 0.375rem rgba(64,59,54,0.06)`,
-        transition: "all 0.3s ease",
-        overflow: "hidden",
-      }}
-    >
-      {/* Decorative top ornament — Tuscan rosette */}
-      <span aria-hidden style={{
-        position: "absolute", top: "0.375rem", left: "50%", transform: "translateX(-50%)",
-        width: "0.75rem", height: "0.75rem", borderRadius: "50%",
-        background: pending ? `radial-gradient(circle, ${T.color.cream} 0%, ${CANON_EMBER}00 70%)` : "transparent",
-        opacity: pending ? 0.8 : 0,
-        boxShadow: pending ? `0 0 0.5rem ${T.color.cream}aa` : "none",
-      }} />
-
-      {/* Classical arched portico icon — larger, ornate */}
-      <svg width="40" height="46" viewBox="0 0 40 46" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ marginTop: "0.375rem" }}>
-        {/* Stepped stylobate (base) */}
-        <line x1="1" y1="44" x2="39" y2="44" strokeWidth="2" />
-        <line x1="3" y1="42" x2="37" y2="42" strokeWidth="1.2" opacity="0.75" />
-        <line x1="5" y1="40" x2="35" y2="40" strokeWidth="1" opacity="0.55" />
-
-        {/* Outer arched frame with cornice */}
-        <path d="M5 40 L5 16 Q5 4 20 4 Q35 4 35 16 L35 40" strokeWidth="1.6" />
-        {/* Cornice line */}
-        <path d="M3 16 Q20 10 37 16" strokeWidth="1" opacity="0.55" />
-
-        {/* Inner arch */}
-        <path d="M9 40 L9 17 Q9 8 20 8 Q31 8 31 17 L31 40" strokeWidth="1.1" opacity="0.5" />
-
-        {/* Keystone at apex */}
-        <path d="M18 7 L22 7 L21.5 10 L18.5 10 Z" strokeWidth="0.9" opacity="0.7" />
-
-        {/* Forward-through arrow */}
-        <path d="M14 26 L26 26" strokeWidth="2.2" />
-        <path d="M21 20 L27 26 L21 32" strokeWidth="2.2" />
-      </svg>
-      {/* Long locale labels (DE "Betreten") ellipsize instead of hard-clipping
-          against the button's overflow:hidden edge. */}
-      <span style={{ marginTop: "0.125rem", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 0.125rem" }}>
-        {t("enterAction")}
-      </span>
-    </button>
-
-    {/* Spacer to push 3d content below the 3 bars — MemoryPalace's main tree
-        is absolute-positioned, so no layout spacer is strictly needed, but the
-        total height is ~calc(3 * 2.5rem + safe-area-top) if any caller needs it. */}
-    <div aria-hidden style={{ height: totalH, pointerEvents: "none", visibility: "hidden" }} />
+    {/* Spacer — total collapsed chrome height (single bar + safe-area) if any
+        caller needs it; MemoryPalace's main tree is absolute-positioned. */}
+    <div aria-hidden style={{ height: `calc(${safeT} + ${BAR_H})`, pointerEvents: "none", visibility: "hidden" }} />
   </>);
 }

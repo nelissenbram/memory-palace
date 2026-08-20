@@ -30,9 +30,9 @@ export interface ArtworkOptions {
    *  molding lip that overhangs the photo edge → a real rabbet + shadow gap.
    *  Off by default so every existing caller (hall, interior) is unchanged. */
   rabbet?: boolean;
-  /** OPT-IN (corridor W3C, F16): a brass gallery picture-light — a bracket
-   *  arm over the frame with a shade tube, plus a BAKED warm down-wash on the
-   *  top of the canvas (no dynamic light — canon ≤4). Off by default. */
+  /** OPT-IN (corridor W3C, F16): a matte-bronze gallery picture-light — a
+   *  bracket arm over the frame with a shade tube, plus a BAKED warm down-wash
+   *  on the top of the canvas (no dynamic light — canon ≤4). Off by default. */
   pictureLight?: boolean;
   /** OPT-IN (corridor W3C): a refined dark-walnut moulding with a thin gilt
    *  inner slip, instead of the solid-gold slab (owner: gold border too tacky).
@@ -85,6 +85,16 @@ function getRefinedSlipMat() {
   return refinedSlipMat;
 }
 
+// Picture-light hardware — MAT BRONZE, never gold (owner rule after several
+// rounds): the corridor lamp riser/arm/shade read as aged bronze like the door
+// plaques/sconces, not a polished-gold slab. Separate from getFrameMat so the
+// hall/interior canon gold FRAMES stay exactly as designed.
+let lampBronzeMat: THREE.MeshStandardMaterial | null = null;
+function getLampBronzeMat() {
+  if (!lampBronzeMat) lampBronzeMat = new THREE.MeshStandardMaterial({ color: "#C9A87C", roughness: 0.55, metalness: 0.4 });
+  return lampBronzeMat;
+}
+
 function getLinerMat() {
   if (!linerMat) linerMat = new THREE.MeshStandardMaterial({ color: PLASTER, roughness: 0.9 });
   return linerMat;
@@ -100,9 +110,10 @@ function getLampGlowMat() {
   c.height = 128;
   const ctx = c.getContext("2d")!;
   const g = ctx.createLinearGradient(0, 0, 0, 128);
-  g.addColorStop(0, "rgba(255,224,176,0.55)");
-  g.addColorStop(0.4, "rgba(255,224,176,0.16)");
-  g.addColorStop(1, "rgba(255,224,176,0)");
+  // Warm-white/parchment spill (owner: the old amber wash read as gold paint)
+  g.addColorStop(0, "rgba(255,241,224,0.4)");
+  g.addColorStop(0.4, "rgba(255,241,224,0.12)");
+  g.addColorStop(1, "rgba(255,241,224,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 4, 128);
   const tex = new THREE.CanvasTexture(c);
@@ -110,7 +121,7 @@ function getLampGlowMat() {
   lampGlowMat = new THREE.MeshBasicMaterial({
     map: tex,
     transparent: true,
-    opacity: 0.6,
+    opacity: 0.5,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
@@ -291,27 +302,28 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
     }
   }
 
-  // F16 (opt-in): brass gallery picture-light over the frame. A short riser off
-  // the frame top, an arm reaching up-and-forward, a horizontal shade tube, and
-  // a baked warm down-wash on the top of the canvas — all in the group's local
-  // frame (front +Z), disposed with the artwork. No dynamic light (canon ≤4).
+  // F16 (opt-in): matte-bronze gallery picture-light over the frame. A short
+  // riser off the frame top, an arm reaching up-and-forward, a horizontal shade
+  // tube, and a baked warm down-wash on the top of the canvas — all in the
+  // group's local frame (front +Z), disposed with the artwork. No dynamic light
+  // (canon ≤4).
   if (opts.pictureLight) {
-    const brass = getFrameMat();
+    const bronze = getLampBronzeMat();
     const topY = h / 2;
     const riserGeo = new THREE.BoxGeometry(0.05, 0.15, 0.05);
-    const riser = new THREE.Mesh(riserGeo, brass);
+    const riser = new THREE.Mesh(riserGeo, bronze);
     riser.position.set(0, topY + 0.075, 0.03);
     ownedGeos.push(riserGeo);
     group.add(riser);
     const armGeo = new THREE.BoxGeometry(0.045, 0.045, 0.36);
-    const arm = new THREE.Mesh(armGeo, brass);
+    const arm = new THREE.Mesh(armGeo, bronze);
     arm.position.set(0, topY + 0.17, 0.2);
     arm.rotation.x = -0.55; // reach up and out over the canvas
     ownedGeos.push(armGeo);
     group.add(arm);
     const shadeLen = Math.min(w * 0.72, 1.1);
     const shadeGeo = new THREE.CylinderGeometry(0.05, 0.05, shadeLen, 12);
-    const shade = new THREE.Mesh(shadeGeo, brass);
+    const shade = new THREE.Mesh(shadeGeo, bronze);
     shade.position.set(0, topY + 0.25, 0.36);
     shade.rotation.z = Math.PI / 2; // tube axis runs along the wall
     ownedGeos.push(shadeGeo);

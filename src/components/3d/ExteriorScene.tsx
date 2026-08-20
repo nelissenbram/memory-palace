@@ -18,7 +18,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadSandstoneTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField, createSharedWheatMaterial } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
-import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
+import { getQuality, getGPUTier, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { loadModel, warmDracoDecoder } from "@/lib/3d/modelLoader";
@@ -88,6 +88,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const dlPreset=getLightingPreset();
     const Q=getQuality();
     const isMobileQ=Q.maxEagerTextureSets<=6;
+    // Potato sub-tier (matches the GLB LOD picks below): mobile-not-potato gets
+    // modest instanced-scenery bumps (owner 2026-08-20 "level of detail"), potato keeps the floor.
+    const isPotatoQ=Q.maxEagerTextureSets<=3;
     // MUSEO VIVO Wave-1 exterior pass (WS3-4 retunes, WS2-1/3/4 terrain + shared
     // field materials, emissive-lerp kill). Staging ON / prod OFF via flags3d.
     const W1=flag3d("w1_exterior");
@@ -105,7 +108,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const W3=W2&&flag3d("w3_exterior");
     // W3 (owner): the view opens from the BOTTOM of the hill — low, far, looking
     // up the cypress road at the palace crowning the ridge (Gladiator arrival).
-    if(W3){camO.current.phi=camOT.current.phi=Math.PI*0.484;camD.current=252;}
+    if(W3){camO.current.phi=camOT.current.phi=Math.PI*0.484;camD.current=252;
+      // Portrait (owner 2026-08-20 "starting position not good vs desktop"): the
+      // 32° lens on a tall ~0.46 aspect crops the wide corps hard at 252 — start
+      // closer + a touch higher so dome/entrance massing + road fill the frame.
+      if(w/h<1){camO.current.phi=camOT.current.phi=Math.PI*0.470;camD.current=185;}}
     // W3: keep the Gladiator approach corridor clear of stray random scenery
     // (nothing lands on the dusty road / avenue). Hoisted above ALL scatter loops.
     const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
@@ -279,14 +286,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     let bgMapHDRI: THREE.Texture|null=null;
     if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_EXTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=ENV_INT;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=ENV_INT_HDRI;}}).catch(()=>{});}
     // Background panorama — the old tuscan_landscape file is actually an ALPS
-    // village photo (out of context); it stays for !W3. Skipped on mobile —
-    // procedural sky suffices.
+    // village photo (out of context); it stays for !W3.
     // W3 backdrop = OWNER-SUPPLIED photographic 360 pano (2026-08-12): real
     // Tuscan summer far-view, golden fields to the horizon. LDR equirect JPG
     // → TextureLoader + equirect mapping + sRGB, NOT the RGBE loader.
     // Desktop gets the native 7096x3548 source (needs 8192 texture support,
-    // ~100MB GPU); mobile stays on 4096x2048 (GPU texture cap).
-    if(W3&&!isMobileGPU()){
+    // ~100MB GPU); mobile gets 4096x2048 (owner 2026-08-20: mobile had NO photo
+    // backdrop at all — flat procedural sky = "background not good"; the 1.3MB
+    // static texture is cheap on GPU). Only potato keeps the procedural sky.
+    if(W3&&getGPUTier()!=="potato"){
       // Core W3 visual — gate on the NATIVE tier, not Q (a governor demotion
       // flips Q.loadBackgroundHDRI off and the backdrop silently vanished).
       // Progressive: the 1.2MB 4k shows almost immediately; full desktops
@@ -304,8 +312,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_4k.jpg",
         (tex)=>{if(hiLoaded){tex.dispose();}else{setBg(tex);}},undefined,()=>{});
       if(wantHi){
-        new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_7k.jpg",
-          (tex)=>{hiLoaded=true;setBg(tex);},undefined,()=>{});
+        // Launch de-fracture: the multi-MB 7k swap is pure polish — push it past
+        // the GLB/texture burst instead of competing with it on the wire.
+        const loadHi=()=>{new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_7k.jpg",
+          (tex)=>{hiLoaded=true;setBg(tex);},undefined,()=>{});};
+        if(typeof requestIdleCallback==="function")requestIdleCallback(loadHi,{timeout:8000});else setTimeout(loadHi,4000);
       }
     } else if(Q.loadBackgroundHDRI&&!W3){
       loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});
@@ -4759,7 +4770,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if(Math.random()>.3)cypressPositions.push([rx+4.5+Math.random()*1.5,rz+Math.random()*2]);
     }
     // Hilltop clusters
-    const hilltopClusterCount=isMobileQ?8:35;
+    const hilltopClusterCount=isMobileQ?(isPotatoQ?8:12):35;
     for(let ci=0;ci<hilltopClusterCount;ci++){
       const angle=Math.random()*Math.PI*2,dist=55+Math.random()*(isMobileQ?120:280);
       cypressPositions.push([Math.cos(angle)*dist,Math.sin(angle)*dist-50]);
@@ -4774,7 +4785,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
     }}
     // Farmhouse accompaniment (fewer on mobile)
-    const farmCypressCount=isMobileQ?5:20;
+    const farmCypressCount=isMobileQ?(isPotatoQ?5:8):20;
     for(let f=0;f<farmCypressCount;f++){
       const angle=Math.random()*Math.PI*2,dist=100+Math.random()*(isMobileQ?120:250);
       for(let t=0;t<2+Math.floor(Math.random()*3);t++){
@@ -4903,7 +4914,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       ];
       extraDisposables.push(...groveMats);
       const groves: [number, number, number][] = isMobileQ
-        ? [[-70, -100, 0.35], [85, -130, -0.5]]
+        ? (isPotatoQ ? [[-70, -100, 0.35], [85, -130, -0.5]] : [[-70, -100, 0.35], [85, -130, -0.5], [-125, -185, 0.9]])
         : [[-70, -100, 0.35], [85, -130, -0.5], [-125, -185, 0.9], [135, -215, 0.2]];
       groves.forEach(([gcx, gcz, gRot]) => {
         for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
@@ -4940,7 +4951,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── STONE PINES (umbrella pines) ──
-    const stonePineCount=isMobileQ?4:18;
+    const stonePineCount=isMobileQ?(isPotatoQ?4:6):18;
     for(let pi=0;pi<stonePineCount;pi++){
       const angle=Math.random()*Math.PI*2,dist=70+Math.random()*200;
       const px=Math.cos(angle)*dist,pz=Math.sin(angle)*dist-50;
@@ -5531,7 +5542,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
     }
     // On mobile, skip far wheat fields entirely and reduce near-field density
-    const wheatSubset=isMobileQ?wheatPositions.slice(0,8):(W3?wheatPositions.filter(p=>p[4]!==0):wheatPositions);
+    // (mobile-not-potato keeps 14 approach-flank cells — 8 left the hills bare)
+    const wheatSubset=isMobileQ?wheatPositions.slice(0,isPotatoQ?8:14):(W3?wheatPositions.filter(p=>p[4]!==0):wheatPositions);
     // W1 (WS2-4): ONE shared wheat shader material for every field (~45 ShaderMaterials → 1);
     // per-field hsl uniforms are replaced by per-instance variation baked into the shared shader.
     const W1_WHEAT_STALK_H=1.7;
@@ -5795,6 +5807,27 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
     let _lastHovId:string|null=null;
+    // ── W3 ARRIVAL-BY-CART (owner 2026-08-20): a palace tap from the FAR stance
+    // (camD>100, i.e. the initial framing) rides a low Catmull-Rom approach OVER
+    // the road — cart height above the dust, entrance/tympanum centred so the
+    // owner's name is legible in the final seconds — then fires the ORIGINALLY
+    // tapped roomId via the existing arrival contract. Near taps keep today's
+    // behaviors (camD<45 direct, 45-100 the __entrance__ autoWalk).
+    // Same θ/φ/dist orbit representation + the shared MAX_YAW_DEG_S cap below;
+    // prefersReducedMotion() never reaches here (guarded at the trigger).
+    let approachFlight:{t0:number,target:string,wp:[number,number,number][]}|null=null;
+    const AP_DUR=7.0; // seconds road-ride before the arrival handoff
+    const startApproachFlight=(target:string)=>{
+      // Camera y = dist*cos(φ)+5: the three road beats all sit at y≈13 — a cart
+      // seat over the descending road (ground 8→0) — before the arrival rise.
+      approachFlight={t0:clock.getElapsedTime(),target,wp:[
+        [camO.current.theta,camO.current.phi,camD.current],            // wherever the far stance is
+        [Math.PI*1.5,Math.PI*0.487,Math.max(140,camD.current*0.75)],   // settle low onto the road axis
+        [Math.PI*1.5,Math.PI*0.478,112],                               // low ride up the hill, palace looming
+        [Math.PI*1.5,Math.PI*0.455,60],                                // name beat — tympanum name legible overhead
+        [Math.PI*1.5,Math.PI*0.220,35],                                // rise into the existing arrival framing
+      ]};
+    };
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);
       // Skip the entire animation pass (emissive lerps, particles, render) when
@@ -5850,7 +5883,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         });
       }
       // ── Onboarding cinematic: WP1 (hold + prompt) → WP2-5 flyover → zoom to entrance ──
-      if (onboardingModeRef.current && !autoWalkToRef.current && !camDebugRef.current) {
+      if (onboardingModeRef.current && !autoWalkToRef.current && !approachFlight && !camDebugRef.current) {
         const rawT = clock.getElapsedTime();
         const HOLD_DUR = 1.5; // seconds to drift to WP1 before showing prompt
 
@@ -5977,6 +6010,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           }
         }
       }
+      // ── Arrival-by-cart: low road dolly, then fire the tapped target ──
+      if(approachFlight){
+        const ap=approachFlight;
+        const p=Math.min((t-ap.t0)/AP_DUR,1);
+        if(p<1){
+          const n=ap.wp.length-1;
+          const scaled=p*n;
+          const seg=Math.min(Math.floor(scaled),n-1);
+          const local=scaled-seg;
+          const lt=local*local*(3-2*local);
+          const p0=ap.wp[Math.max(seg-1,0)],p1=ap.wp[seg],p2=ap.wp[Math.min(seg+1,n)],p3=ap.wp[Math.min(seg+2,n)];
+          const cr=(a:number,b:number,c:number,d:number,tt:number)=>
+            0.5*((2*b)+(-a+c)*tt+(2*a-5*b+4*c-d)*tt*tt+(-a+3*b-3*c+d)*tt*tt*tt);
+          camOT.current.theta=cr(p0[0],p1[0],p2[0],p3[0],lt);
+          camOT.current.phi=cr(p0[1],p1[1],p2[1],p3[1],lt);
+          camD.current+=(cr(p0[2],p1[2],p2[2],p3[2],lt)-camD.current)*_sm(5.0029); // f=.08 @60fps
+        }else{
+          // Handoff: same arrival behavior/framing as the __entrance__ autoWalk
+          camOT.current.theta=Math.PI*1.5;camOT.current.phi=Math.PI*0.22;
+          camD.current+=(35-camD.current)*_sm(2.4493); // f=.04 @60fps
+          if(camD.current<40){approachFlight=null;onRoomClickRef.current(ap.target);}
+        }
+      }
       // Auto-walk: zoom toward entrance (fast exponential approach)
       if(autoWalkToRef.current==="__entrance__"){
         camOT.current.theta=Math.PI*1.5;
@@ -5987,12 +6043,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           onRoomClickRef.current("__entrance__");
         }
       }
-      const camLerp=_sm(onboardingModeRef.current?0.9068:autoWalkToRef.current?1.2122:2.4493); // f=.015/.02/.04 @60fps
+      const camLerp=_sm((autoWalkToRef.current||approachFlight)?1.2122:onboardingModeRef.current?0.9068:2.4493); // f=.02/.015/.04 @60fps
       let _dTh=(camOT.current.theta-camO.current.theta)*camLerp;
       let _dPh=(camOT.current.phi-camO.current.phi)*camLerp;
       // W1 (WS8-2, WS12-5): automatic pans (cinematic/autoWalk) obey the shared
       // MAX_YAW_DEG_S cap; user drags stay direct-manipulation (legacy when flag off).
-      if(W1&&(onboardingModeRef.current||autoWalkToRef.current)){
+      if(W1&&(onboardingModeRef.current||autoWalkToRef.current||approachFlight)){
         const _yawCap=MAX_YAW_DEG_S*(Math.PI/180)*dt;
         _dTh=THREE.MathUtils.clamp(_dTh,-_yawCap,_yawCap);
         _dPh=THREE.MathUtils.clamp(_dPh,-_yawCap,_yawCap);
@@ -6168,6 +6224,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);onRoomHover(hits.length>0?hits[0].object.userData.roomId:null);};
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0){hapticLight();const hitId=hits[0].object.userData.roomId;
+      // Arrival-by-cart (owner 2026-08-20): ANY palace tap from the far initial
+      // stance rides the low road approach in first, then fires the tapped id.
+      // A tap DURING the flight only retargets it (no double navigation).
+      if(W2&&approachFlight){approachFlight.target=hitId;return;}
+      if(W2&&camD.current>100&&!prefersReducedMotion()){startApproachFlight(hitId);return;}
       // W2 (WS3-11): tap-is-travel — an entrance tap from any distance first
       // runs the existing comfort-capped camD approach (the __entrance__
       // autoWalk path fires the same onRoomClick contract on arrival);
@@ -6176,7 +6237,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       onRoomClickRef.current(hitId);}};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(280,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
-    el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=aspect<1?115:140;};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
+    el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=aspect<1?(W3?185:115):(W3?252:140);};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
 
     // ── TOUCH SUPPORT ──
     let touchStartDist=0,touchStartCamD=camD.current,touchTap=true;
@@ -6204,6 +6265,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const hitId=hits[0].object.userData.roomId;
           onRoomHover(hitId);
           hapticLight();
+          // Arrival-by-cart: same far-tap road approach as the mouse path;
+          // a tap during the flight only retargets it (no double navigation)
+          if(W2&&approachFlight){approachFlight.target=hitId;return;}
+          if(W2&&camD.current>100&&!prefersReducedMotion()){startApproachFlight(hitId);return;}
           // W2 (WS3-11): tap-is-travel — same walk-then-enter as the mouse path
           if(W2&&hitId==="__entrance__"&&camD.current>45&&!prefersReducedMotion()){autoWalkToRef.current="__entrance__";return;}
           onRoomClickRef.current(hitId);
