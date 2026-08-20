@@ -2786,6 +2786,13 @@ function EntranceHallScene({
     let hovAWTarget: FocusTarget | null = null;
     const _isMobile = window.innerWidth < 768 || window.innerHeight < 500;
     let _frameCount = 0;
+    // First frame of every build always presents, even when document.hidden —
+    // on a hidden/occluded tab rAF is never serviced, so the synchronous
+    // animate() call below is the only render this build gets. The old
+    // unconditional `if (document.hidden) return` before composer.render()
+    // defeated the "first frame still runs so onReady fires" intent stated in
+    // the pause block below (2026-08-20, ExteriorScene _firstFrameDone parity).
+    let _presented = false;
     // ── Hover-raycast hygiene: onMove only records the cursor position; the actual
     // raycast runs at most once per frame inside animate() (same behavior, less work).
     const _hoverPt = { x: 0, y: 0 };
@@ -3270,9 +3277,11 @@ function EntranceHallScene({
         if (w2PoolTex) { w2PoolTex.rotation = t * 0.015; }
       }
 
-      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
-      if (document.hidden) return;
+      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile) — but
+      // the first frame of every build always presents (see _presented above).
+      if (document.hidden && _presented) return;
       composer.render();
+      _presented = true;
       if (!readyFiredRef.current) { readyFiredRef.current = true; try { onReadyRef.current?.(); } catch {} }
     };
     animate();

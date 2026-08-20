@@ -2521,6 +2521,15 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const clock=new THREE.Clock();
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
+    // Has this build presented at least one frame? (2026-08-20 "room never
+    // paints" root cause): on a hidden/occluded tab (background tab, CDP
+    // screenshot session, Windows native-occlusion marking the window hidden)
+    // the browser never services rAF, so the ONLY render this build ever gets
+    // is the synchronous animate() call at the end of this effect — and the
+    // old unconditional `if(document.hidden)return` skipped exactly that one,
+    // leaving a bare clear-color canvas and onReady never firing. The first
+    // frame now always presents (ExteriorScene _firstFrameDone parity).
+    let _presented=false;
     // W2 (WS6-10/WS7-14): one-shot staging budget assert after the salon mounts
     // and the first real render — dev/staging only via the w1_assert flag.
     let _w2AssertDone=!W2;
@@ -2791,9 +2800,11 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         if(rdG){const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>rH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;(rdG.attributes.position as any).updateRange={offset:0,count:rdN*3};}
         dust.update(t,dt);
       }
-      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
-      if(document.hidden)return;
+      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile) — but
+      // the first frame of every build always presents (see _presented above).
+      if(document.hidden&&_presented)return;
       composer.render();
+      _presented=true;
       if(!_w2AssertDone&&_frameCount>=2){
         _w2AssertDone=true;
         try{
@@ -2812,6 +2823,16 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       }
       if(!readyFiredRef.current){readyFiredRef.current=true;try{onReadyRef.current?.();}catch{}}
     };animate();
+    // Defensive watchdog (2026-08-20): if the first frame STILL hasn't
+    // presented ~1.5s after mount (rAF starved, or a silently dead loop),
+    // warn and restart the loop once — cancelling any pending rAF first so
+    // the loop can never double-schedule. Cleared in cleanup.
+    const firstFrameWatchdog=setTimeout(()=>{
+      if(!alive||_presented)return;
+      console.warn("[InteriorScene] no frame presented within 1.5s of mount — restarting render loop");
+      if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);
+      animate();
+    },1500);
 
     // Do NOT auto-open media bars — they are now driven by the MemoryPalace
     // top-side toggle buttons via useRoomMediaBarStore.
@@ -2983,7 +3004,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     return()=>{alive=false;if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);
       window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);disposeFit();
       el.removeEventListener("touchstart",onTS2);el.removeEventListener("touchmove",onTM2);el.removeEventListener("touchend",onTE2);el.removeEventListener("touchcancel",onTC2);
-      clearInterval(touchTick2);clearInterval(mediaPoll);
+      clearInterval(touchTick2);clearInterval(mediaPoll);clearTimeout(firstFrameWatchdog);
       videoElRef.current=null;audioElRef.current=null;setShowMedia({video:false,audio:false});
       try{useRoomMediaBarStore.getState().setOpen(null);}catch{}
       if(vinylAudio){vinylAudio.pause();vinylAudio.src="";}

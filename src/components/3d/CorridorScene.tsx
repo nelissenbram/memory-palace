@@ -2529,6 +2529,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     };
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
+    // First frame of every build always presents, even when document.hidden —
+    // on a hidden/occluded tab rAF is never serviced, so the synchronous
+    // animate() call below is the only render this build gets; skipping it
+    // left a bare clear-color canvas and onReady never fired (2026-08-20,
+    // ExteriorScene _firstFrameDone parity).
+    let _presented=false;
     let _cinStep=-1;
     let w3cCinT=0; // F04: stall-proof cinematic time (accumulated clamped dt)
     const animate=()=>{
@@ -2777,9 +2783,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         if(rdG){const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>cH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;(rdG.attributes.position as any).updateRange={offset:0,count:rdN*3};}
         dust.update(t,dt);
       }
-      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
-      if(document.hidden)return;
+      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile) — but
+      // the first frame of every build always presents (see _presented above).
+      if(document.hidden&&_presented)return;
       composer.render();
+      _presented=true;
       if(!readyFiredRef.current){readyFiredRef.current=true;try{onReadyRef.current?.();}catch{}}
     };animate();
     const onDown=(e: MouseEvent)=>{drag.v=false;prev.x=e.clientX;prev.y=e.clientY;};
