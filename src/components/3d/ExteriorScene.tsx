@@ -108,11 +108,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const W3=W2&&flag3d("w3_exterior");
     // W3 (owner): the view opens from the BOTTOM of the hill — low, far, looking
     // up the cypress road at the palace crowning the ridge (Gladiator arrival).
-    if(W3){camO.current.phi=camOT.current.phi=Math.PI*0.484;camD.current=252;
-      // Portrait (owner 2026-08-20 "starting position not good vs desktop"): the
-      // 32° lens on a tall ~0.46 aspect crops the wide corps hard at 252 — start
-      // closer + a touch higher so dome/entrance massing + road fill the frame.
-      if(w/h<1){camO.current.phi=camOT.current.phi=Math.PI*0.470;camD.current=185;}}
+    // Owner r2 2026-08-20 ("zoom out start moet ook op mobile"): portrait now
+    // opens from the SAME zoomed-out stance as desktop (φ=0.484π, camD 252) —
+    // the closer 185/0.470π portrait reframe from r1 is retired.
+    if(W3){camO.current.phi=camOT.current.phi=Math.PI*0.484;camD.current=252;}
     // W3: keep the Gladiator approach corridor clear of stray random scenery
     // (nothing lands on the dusty road / avenue). Hoisted above ALL scatter loops.
     const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
@@ -4451,7 +4450,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // (terrain already created above via createTuscanTerrain)
 
     // ── INSTANCED GRASS — dense wind-animated shader grass on the hilltop ──
-    // Mobile: 25% density (3750 blades), Desktop: 15000 blades
+    // Owner r2 2026-08-20 vegetation parity: mobile = desktop 15000 blades
+    // (vegetationDensity 1); potato keeps 0.
     const grassSystem = createGrassSystem(scene, {
       count: Math.round(15000*Q.vegetationDensity),
       radius: 90,
@@ -4564,7 +4564,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // brown rectangle from the arrival; the Gladiator vista is pure wheat) ──
     if(!W3){
       const vineRowMat=new THREE.MeshStandardMaterial({color:W1?"#4C5A30":"#3A5828",roughness:.84});
-      const vineRowCount=isMobileQ?5:14;
+      const vineRowCount=isPotatoQ?5:14; // r2 parity: mobile = desktop, potato keeps the floor
       for(let row=0;row<vineRowCount;row++){
         const vx=35+row*2.2;const vz=35+Math.sin(row*.3)*3;
         const vBaseY=getHeightAt(vx,vz);
@@ -4655,8 +4655,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       geo.setAttribute("color",new THREE.BufferAttribute(arr,3));
       bucket.push(geo);
     };
-    // VERY dense field coverage — 500 patches for a sea of golden wheat (60 on mobile)
-    const fieldPatchCount=isMobileQ?60:500;
+    // VERY dense field coverage — 500 patches for a sea of golden wheat
+    // (r2 parity: mobile = desktop 500; potato keeps 60)
+    const fieldPatchCount=isPotatoQ?60:500;
     for(let fi=0;fi<fieldPatchCount;fi++){
       const angle=Math.random()*Math.PI*2;
       const dist=65+Math.random()*480;
@@ -4726,7 +4727,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     extraDisposables.push(...vineM);
     // W3: no vineyards at all — from the arrival they read as odd brown
     // striped rectangles on the hills; the Gladiator vista is pure wheat.
-    const vineyardCount=W3?0:(isMobileQ?3:14);
+    const vineyardCount=W3?0:(isPotatoQ?3:14); // r2 parity: mobile = desktop
     for(let vi=0;vi<vineyardCount;vi++){
       const vAngle=Math.random()*Math.PI*2;
       const vDist=90+vi*28+Math.random()*25;
@@ -4758,25 +4759,26 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── CYPRESS TREES: dense Tuscan signature ──
-    // Mobile: ~75% fewer trees (only road avenue + 8 hilltop clusters)
+    // r2 parity 2026-08-20: mobile plants the FULL desktop counts (instanced /
+    // merged — draw-call cheap); only potato keeps the reduced floor.
     const cypressPositions: number[][]=[];
     // Along winding road — dense avenue
     // W3 (owner): drop this second winding cypress avenue — the Gladiator approach
     // is ONE clean cypress road on the axis. !W3 keeps it.
-    const roadCypressCount=W3?0:(isMobileQ?15:50);
+    const roadCypressCount=W3?0:(isPotatoQ?15:50);
     for(let ri=0;ri<roadCypressCount;ri++){
       const rz=-45-ri*7;const rx=Math.sin(ri*.22)*28;
       if(Math.random()>.3)cypressPositions.push([rx-4.5+Math.random()*1.5,rz+Math.random()*2]);
       if(Math.random()>.3)cypressPositions.push([rx+4.5+Math.random()*1.5,rz+Math.random()*2]);
     }
     // Hilltop clusters
-    const hilltopClusterCount=isMobileQ?(isPotatoQ?8:12):35;
+    const hilltopClusterCount=isPotatoQ?8:35;
     for(let ci=0;ci<hilltopClusterCount;ci++){
-      const angle=Math.random()*Math.PI*2,dist=55+Math.random()*(isMobileQ?120:280);
+      const angle=Math.random()*Math.PI*2,dist=55+Math.random()*(isPotatoQ?120:280);
       cypressPositions.push([Math.cos(angle)*dist,Math.sin(angle)*dist-50]);
     }
-    // Iconic ridge lines of 4-8 trees (skip on mobile)
-    if(!isMobileQ){for(let g=0;g<12;g++){
+    // Iconic ridge lines of 4-8 trees (skip on potato only — r2 parity)
+    if(!isPotatoQ){for(let g=0;g<12;g++){
       const gx=-250+Math.random()*500,gz=-60-Math.random()*320;
       const gCount=4+Math.floor(Math.random()*5);
       const gAngle=Math.random()*Math.PI;
@@ -4784,10 +4786,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         cypressPositions.push([gx+Math.cos(gAngle)*t*4+Math.random()*1.5,gz+Math.sin(gAngle)*t*4+Math.random()*1.5]);
       }
     }}
-    // Farmhouse accompaniment (fewer on mobile)
-    const farmCypressCount=isMobileQ?(isPotatoQ?5:8):20;
+    // Farmhouse accompaniment (fewer on potato)
+    const farmCypressCount=isPotatoQ?5:20;
     for(let f=0;f<farmCypressCount;f++){
-      const angle=Math.random()*Math.PI*2,dist=100+Math.random()*(isMobileQ?120:250);
+      const angle=Math.random()*Math.PI*2,dist=100+Math.random()*(isPotatoQ?120:250);
       for(let t=0;t<2+Math.floor(Math.random()*3);t++){
         cypressPositions.push([Math.cos(angle)*dist+Math.random()*6-3,Math.sin(angle)*dist-50+Math.random()*6-3]);
       }
@@ -4913,8 +4915,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         new THREE.MeshStandardMaterial({ color: "#72804F", roughness: 0.86 }),
       ];
       extraDisposables.push(...groveMats);
-      const groves: [number, number, number][] = isMobileQ
-        ? (isPotatoQ ? [[-70, -100, 0.35], [85, -130, -0.5]] : [[-70, -100, 0.35], [85, -130, -0.5], [-125, -185, 0.9]])
+      // r2 parity: mobile = desktop 4 groves; potato keeps 2
+      const groves: [number, number, number][] = isPotatoQ
+        ? [[-70, -100, 0.35], [85, -130, -0.5]]
         : [[-70, -100, 0.35], [85, -130, -0.5], [-125, -185, 0.9], [135, -215, 0.2]];
       groves.forEach(([gcx, gcz, gRot]) => {
         for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
@@ -4935,7 +4938,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       });
     } else {
-      const oliveCount=isMobileQ?10:40;
+      const oliveCount=isPotatoQ?10:40; // r2 parity: mobile = desktop
       for(let oi=0;oi<oliveCount;oi++){
         const angle=Math.random()*Math.PI*2,dist=38+Math.random()*120;
         const ox=Math.cos(angle)*dist,oz=Math.sin(angle)*dist-20;
@@ -4951,7 +4954,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── STONE PINES (umbrella pines) ──
-    const stonePineCount=isMobileQ?(isPotatoQ?4:6):18;
+    const stonePineCount=isPotatoQ?4:18; // r2 parity: mobile = desktop 18
     for(let pi=0;pi<stonePineCount;pi++){
       const angle=Math.random()*Math.PI*2,dist=70+Math.random()*200;
       const px=Math.cos(angle)*dist,pz=Math.sin(angle)*dist-50;
@@ -5351,7 +5354,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── SUNFLOWER/WHEAT FIELDS: dense textured golden patches ──
     const sunflowerTones=["#D8B848","#C8A840","#E4C050","#B89838","#D0B048","#DCC058","#C4A040","#E0C460"];
-    const sunflowerCount=isMobileQ?4:25;
+    const sunflowerCount=isPotatoQ?4:25; // r2 parity: mobile = desktop
     for(let sf=0;sf<sunflowerCount;sf++){
       const angle=Math.random()*Math.PI*2,dist=100+Math.random()*180;
       const sx=Math.cos(angle)*dist,sz=Math.sin(angle)*dist-30;
@@ -5502,9 +5505,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       [-200, -300, 50, 38], [170, -310, 45, 32], [-80, -360, 48, 35],
       [50, -380, 42, 30], [-160, -340, 50, 38],
     ];
-    // Add many procedurally generated fields across wider area (skip on mobile;
+    // Add many procedurally generated fields across wider area (skip on potato;
     // W3's blanket grid above already covers the whole vista)
-    const extraFieldCount=(isMobileQ||W3)?0:35;
+    const extraFieldCount=(isPotatoQ||W3)?0:35;
     for(let extra=0;extra<extraFieldCount;extra++){
       const angle=Math.random()*Math.PI*2;
       const dist=120+Math.random()*250;
@@ -5519,16 +5522,16 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // continuous golden harvest (owner: "full grown crops all over the hills").
     if (W3) {
       wheatPositions.length = 0;
-      // (a) approach flanking — first entries so mobile's slice(0,8) keeps them
+      // (a) approach flanking — first entries so potato's slice(0,8) keeps them
       for (let a = 1; a < 35; a += 2) {
         const x = Math.sin(a * 0.16) * (a * 0.55), z = -48 - a * 7;
-        for (const sx of [-1, 1]) wheatPositions.push([x + sx * 17, z, 28, 20, 0]); // 0 = mobile-only (desktop sea covers this; the extra dense 28x20 blocks read as rectangles)
+        for (const sx of [-1, 1]) wheatPositions.push([x + sx * 17, z, 28, 20, 0]); // 0 = potato-only (the sea covers this on desktop AND mobile; the extra dense 28x20 blocks read as rectangles)
       }
       // (b) ONE CONTIGUOUS GOLDEN SEA (owner: "echt grote aaneengesloten
       // graanvelden") — edge-to-edge cells with NO jitter and NO gaps, tiled
       // over the whole hill out to the terrain rim. The 5th tuple entry is an
       // ABSOLUTE density (stalks/m²), tiered by distance so huge cells stay
-      // payable; mobile is untouched (slice(0,8) keeps the approach flanks).
+      // payable; potato is untouched (slice(0,8) keeps the approach flanks).
       for (let gx = -366; gx <= 366; gx += 61) {
         for (let gz = 366; gz >= -366; gz -= 61) {
           if (Math.abs(gx) < 78 && Math.abs(gz) < 58) continue;  // palace pad
@@ -5541,9 +5544,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       }
     }
-    // On mobile, skip far wheat fields entirely and reduce near-field density
-    // (mobile-not-potato keeps 14 approach-flank cells — 8 left the hills bare)
-    const wheatSubset=isMobileQ?wheatPositions.slice(0,isPotatoQ?8:14):(W3?wheatPositions.filter(p=>p[4]!==0):wheatPositions);
+    // r2 parity 2026-08-20: mobile renders the SAME wheat sea as desktop
+    // (W3: all density-carrying sea cells; flank cells p[4]===0 are covered by
+    // the sea, exactly like desktop). Only potato keeps the 8-cell approach slice.
+    const wheatSubset=isPotatoQ?wheatPositions.slice(0,8):(W3?wheatPositions.filter(p=>p[4]!==0):wheatPositions);
     // W1 (WS2-4): ONE shared wheat shader material for every field (~45 ShaderMaterials → 1);
     // per-field hsl uniforms are replaced by per-instance variation baked into the shared shader.
     const W1_WHEAT_STALK_H=1.7;
@@ -5926,7 +5930,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           if(si===2&&local>=SHOT){
             veil.style.opacity="0";
             onboardingModeRef.current=false;
-            onRoomClickRef.current("__entrance__");
+            onRoomClickRef.current("__entrance__",true); // cinematic arrival → direct enter
           }
         } else if (W1 && prefersReducedMotion()) {
           // W1 (WS12-1): prefers-reduced-motion skips the WP2-5 flyover pans —
@@ -5936,7 +5940,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           camO.current.phi   = camOT.current.phi   = Math.PI * 0.22;
           camD.current = 35;
           onboardingModeRef.current = false;
-          onRoomClickRef.current("__entrance__");
+          onRoomClickRef.current("__entrance__", true); // cinematic arrival → direct enter
         } else {
           // Resumed — compute time since resume
           const ot = rawT - cinematicResumeTimeRef.current;
@@ -6005,7 +6009,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             camD.current += ((entrD + (lastWP[2] - entrD) * (1 - accel)) - camD.current) * _sm(5.0029); // f=.08 @60fps
             if (camD.current < 40) {
               onboardingModeRef.current = false;
-              onRoomClickRef.current("__entrance__");
+              onRoomClickRef.current("__entrance__", true); // cinematic arrival → direct enter
             }
           }
         }
@@ -6027,10 +6031,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           camOT.current.phi=cr(p0[1],p1[1],p2[1],p3[1],lt);
           camD.current+=(cr(p0[2],p1[2],p2[2],p3[2],lt)-camD.current)*_sm(5.0029); // f=.08 @60fps
         }else{
-          // Handoff: same arrival behavior/framing as the __entrance__ autoWalk
+          // Handoff: same arrival behavior/framing as the __entrance__ autoWalk.
+          // arrived=true (owner r2 2026-08-20): the ride ends AT the door, so the
+          // parent enters directly — mobile must NOT park this in the pending
+          // pre-enter selection (that left the owner staring at a door + Enter tap).
           camOT.current.theta=Math.PI*1.5;camOT.current.phi=Math.PI*0.22;
           camD.current+=(35-camD.current)*_sm(2.4493); // f=.04 @60fps
-          if(camD.current<40){approachFlight=null;onRoomClickRef.current(ap.target);}
+          if(camD.current<40){approachFlight=null;onRoomClickRef.current(ap.target,true);}
         }
       }
       // Auto-walk: zoom toward entrance (fast exponential approach)
@@ -6040,7 +6047,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         camD.current+=(35-camD.current)*_sm(2.4493); // f=.04 @60fps
         if(Math.abs(camD.current-35)<2){
           autoWalkToRef.current=null;
-          onRoomClickRef.current("__entrance__");
+          onRoomClickRef.current("__entrance__",true); // arrived at the door → parent enters (also on mobile)
         }
       }
       const camLerp=_sm((autoWalkToRef.current||approachFlight)?1.2122:onboardingModeRef.current?0.9068:2.4493); // f=.02/.015/.04 @60fps
@@ -6229,6 +6236,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // A tap DURING the flight only retargets it (no double navigation).
       if(W2&&approachFlight){approachFlight.target=hitId;return;}
       if(W2&&camD.current>100&&!prefersReducedMotion()){startApproachFlight(hitId);return;}
+      // Reduced-motion far tap: skip the ride but still auto-enter (arrived=true)
+      // so mobile doesn't park the tap in the pending pre-enter selection.
+      if(W2&&camD.current>100){onRoomClickRef.current(hitId,true);return;}
       // W2 (WS3-11): tap-is-travel — an entrance tap from any distance first
       // runs the existing comfort-capped camD approach (the __entrance__
       // autoWalk path fires the same onRoomClick contract on arrival);
@@ -6237,7 +6247,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       onRoomClickRef.current(hitId);}};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(280,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
-    el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=aspect<1?(W3?185:115):(W3?252:140);};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
+    el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=W3?252:(aspect<1?115:140);};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
 
     // ── TOUCH SUPPORT ──
     let touchStartDist=0,touchStartCamD=camD.current,touchTap=true;
@@ -6269,6 +6279,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // a tap during the flight only retargets it (no double navigation)
           if(W2&&approachFlight){approachFlight.target=hitId;return;}
           if(W2&&camD.current>100&&!prefersReducedMotion()){startApproachFlight(hitId);return;}
+          // Reduced-motion far tap: skip the ride but still auto-enter (arrived=true)
+          if(W2&&camD.current>100){onRoomClickRef.current(hitId,true);return;}
           // W2 (WS3-11): tap-is-travel — same walk-then-enter as the mouse path
           if(W2&&hitId==="__entrance__"&&camD.current>45&&!prefersReducedMotion()){autoWalkToRef.current="__entrance__";return;}
           onRoomClickRef.current(hitId);

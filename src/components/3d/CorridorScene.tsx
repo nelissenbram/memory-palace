@@ -92,7 +92,7 @@ function getPaintingPlaceholderTex(): THREE.DataTexture {
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo,onboardingMode,onCinematicStep,isMobile:isMobileProp,corridorEnterClicked,onReady}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string, size?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: ()=>void,autoWalkTo?: string|null,onboardingMode?: boolean,onCinematicStep?: (step: number)=>void,isMobile?: boolean,corridorEnterClicked?: boolean,onReady?: ()=>void}){
+function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo,onboardingMode,onCinematicStep,isMobile:isMobileProp,corridorEnterClicked,onReady}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string, size?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: (slotKey?: string)=>void,autoWalkTo?: string|null,onboardingMode?: boolean,onCinematicStep?: (step: number)=>void,isMobile?: boolean,corridorEnterClicked?: boolean,onReady?: ()=>void}){
   const { t } = useTranslation("corridor3d");
   const { t: tWings } = useTranslation("wings");
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
@@ -2379,7 +2379,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           hemiLight.intensity*=f;
           scene.environmentIntensity*=f; // async HDRI swap may reset this mid-focus: ≤2% drift, self-heals on next undim
         },
-        openMemory:()=>{onPaintingClick?.();},
+        openMemory:(tg2)=>{const d=tg2?.data;onPaintingClick?.(typeof d==="string"&&d.startsWith("paint:")?d.slice(6):undefined);},
         floorY:0,
       });
     }
@@ -2483,7 +2483,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const fireAwClick=(id: string)=>{
       if(id==="__portal__")onDoorClickRef.current("__portal__");
       else if(id==="__inlay__")onInlayClick?.();
-      else if(id.startsWith("paint:"))onPaintingClick?.();
+      else if(id.startsWith("paint:"))onPaintingClick?.(id.slice(6));
       else onDoorClickRef.current(id);
     };
     // Shared W1 picker for mouse click + touch tap: nearest hit wins; near → enter
@@ -2508,15 +2508,16 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
       if(w2Focus){
         if(b.id.startsWith("paint:")){
-          const tg=w2FocusTargets.get(b.id.slice(6));
-          if(tg){
-            // W2 (WS5-8) dolly-to-frame state machine: idle→glide→focused;
-            // second tap on the same piece opens the existing memory flow.
-            // A re-tap on the SAME piece MID-GLIDE also opens (handleTap would
-            // CANCEL the glide, so an eager double tap read as a dead click).
+          // Owner R2 item 4: a tap on a HUNG painting opens the full-screen
+          // viewer IMMEDIATELY (RoomMediaPlayer-first, room/Library parity).
+          // The old two-tap dolly-to-frame (first tap glide, second tap open)
+          // read as a dead click on mobile — the glide is skipped; the focus
+          // controller stays for cancel bookkeeping only. Empty slot (no focus
+          // target) keeps the legacy walk/open flow → gallery panel.
+          if(w2FocusTargets.has(b.id.slice(6))){
             awClick.id=null;
-            if(w2Focus.state()==="gliding"&&w2Focus.current()?.data===tg.data)fireAwClick(b.id);
-            else w2Focus.handleTap(tg);
+            if(w2Focus.state()!=="idle")w2Focus.cancel();
+            fireAwClick(b.id);
             return true;
           }
           if(w2Focus.state()!=="idle")w2Focus.cancel(); // empty slot → legacy walk/open (gallery panel)
@@ -2815,7 +2816,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         let inlHit=false;inlayClickMeshes.forEach(im=>{const h=_rc.intersectObject(im);if(h.length>0&&h[0].distance<5)inlHit=true;});
         if(inlHit){onInlayClick?.();return;}
         // Check painting slot clicks
-        paintingClickMeshes.forEach(pm=>{const h=_rc.intersectObject(pm.mesh);if(h.length>0){onPaintingClick?.();}});
+        paintingClickMeshes.forEach(pm=>{const h=_rc.intersectObject(pm.mesh);if(h.length>0){onPaintingClick?.(pm.slotKey);}});
       }};
 
     const _cMap:Record<string,string>={"KeyW":"w","KeyA":"a","KeyS":"s","KeyD":"d","ShiftLeft":"shift","ShiftRight":"shift","ArrowUp":"arrowup","ArrowDown":"arrowdown","ArrowLeft":"arrowleft","ArrowRight":"arrowright"};

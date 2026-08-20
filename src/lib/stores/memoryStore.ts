@@ -83,7 +83,27 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     const inflight = _inflightRoomFetches.get(roomId);
     if (inflight) return inflight;
     const p = (async () => {
-    const { memories } = await fetchMemories(roomId);
+    // Owner R2 #5: the FIRST fetch after (mobile) app start can race the auth
+    // session — the server action then answers `{ memories: [] }` (its `!user` /
+    // `!room` guards) or throws outright, and the room sat "empty" until a 30s
+    // poll finally landed data (~1 min on device). A failed/empty first load is
+    // retried twice (2s / 5s) before we accept it; a thrown action never
+    // rejects this promise (callers fire-and-forget from effects).
+    const firstLoad = get().userMems[roomId] === undefined;
+    const delays = firstLoad ? [0, 2000, 5000] : [0];
+    let memories: any[] | null = null;
+    for (const delay of delays) {
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+      try {
+        const res = await fetchMemories(roomId);
+        if (res && !("error" in res && res.error) && res.memories) memories = res.memories;
+      } catch (e) {
+        console.error("[memoryStore] fetchRoomMemories failed:", e);
+      }
+      if (memories && memories.length > 0) break;
+    }
+    // All attempts failed → keep this room UNDEFINED (not []) so the UI keeps
+    // its loading affordance and the fast retry / 30s poll can still fill it.
     if (memories) {
       const mapped: Mem[] = memories.map((m: any) => ({
         id: m.id, title: m.title, hue: m.hue, s: m.saturation, l: m.lightness,
@@ -119,7 +139,17 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
 
   fetchAllRoomMemories: async () => {
     if (!isSupabaseReady()) return;
-    const { roomMemories } = await fetchAllMemories();
+    let roomMemories: Record<string, any[]>;
+    try {
+      ({ roomMemories } = await fetchAllMemories());
+    } catch (e) {
+      console.error("[memoryStore] fetchAllRoomMemories failed:", e);
+      return;
+    }
+    // Owner R2 #5: an EMPTY snapshot (auth-session race → the action's `!user`
+    // guard) must never clobber rooms that already hold data — that made the
+    // in-room media pill vanish until the next successful poll.
+    if (Object.keys(roomMemories).length === 0 && Object.keys(get().userMems).length > 0) return;
     const allMapped: Record<string, Mem[]> = {};
     for (const [roomId, mems] of Object.entries(roomMemories)) {
       allMapped[roomId] = mems.map((m: any) => ({

@@ -18,7 +18,9 @@ import * as THREE from "three";
  * from the user gesture.
  *
  * Fallback: any load error (or metadata timeout) fires `onError` exactly once
- * — the scene KEEPS its existing canvas/poster path and disposes this handle.
+ * — the scene KEEPS its existing canvas/poster path. If metadata still lands
+ * later (slow buffered stream), `onReady` fires anyway (late recovery) — the
+ * consumer may swap the live texture back in.
  *
  * Decode budget: the browser decodes at the source's native size — pass a
  * tier-appropriate rendition URL (1024-class mobile / 2048 desktop per the
@@ -105,7 +107,12 @@ export function makeVideoArtwork(opts: VideoArtworkOptions): VideoArtwork {
     });
 
   const onMeta = () => {
-    if (disposed || failed) return;
+    if (disposed) return;
+    // Late recovery (owner R2 #6): on slow links (the Supabase fallback buffers the
+    // whole file before first byte) metadata can land AFTER the deadline already
+    // fired onError. The scene keeps its poster fallback until then — but a live
+    // texture arriving late is strictly better, so `failed` does not block onReady.
+    failed = false;
     ready = true;
     clearTimeout(timer);
     const w = video.videoWidth, h = video.videoHeight;

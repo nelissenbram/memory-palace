@@ -239,7 +239,7 @@ async function streamFromR2(
     const { r2Download } = await import("@/lib/storage/r2");
     const rangeHeader = request.headers.get("range") || undefined;
     const { data, contentType, contentLength, contentRange } = await r2Download(bucket, filePath, rangeHeader);
-    const ct = contentType || inferContentType(filePath);
+    const ct = resolveContentType(contentType, filePath);
     const headers: Record<string, string> = {
       "Content-Type": ct,
       "Accept-Ranges": "bytes",
@@ -255,6 +255,21 @@ async function streamFromR2(
     console.error("[media] R2 stream error:", err);
     return NextResponse.json({ error: "Storage error" }, { status: 500 });
   }
+}
+
+/**
+ * Resolve a trustworthy Content-Type. Storage backends report generic/wrong
+ * types for files uploaded without explicit metadata — Supabase Storage
+ * defaults to `text/plain;charset=UTF-8`, S3/R2 to `application/octet-stream`.
+ * Mobile <video>/<audio> REFUSES to play media served under those types, so
+ * the file extension wins over any generic reported type (owner R2 #6).
+ */
+function resolveContentType(provided: string | null | undefined, filePath: string): string {
+  const p = (provided || "").toLowerCase();
+  if (!p || p === "application/octet-stream" || p.startsWith("text/plain") || p === "application/json" || p === "binary/octet-stream") {
+    return inferContentType(filePath);
+  }
+  return provided as string;
 }
 
 /** Infer Content-Type from file extension when storage doesn't provide one. */
@@ -302,7 +317,9 @@ async function streamFromSupabase(
 
     const arrayBuf = await data.arrayBuffer();
     const buf = Buffer.from(arrayBuf);
-    const ct = data.type || inferContentType(filePath);
+    // Supabase reports text/plain for uploads without explicit contentType —
+    // mobile <video> refuses those; the file extension wins (owner R2 #6).
+    const ct = resolveContentType(data.type, filePath);
     const size = buf.byteLength;
     const rangeHeader = request.headers.get("range");
 
@@ -314,10 +331,27 @@ async function streamFromSupabase(
     };
 
     if (rangeHeader) {
-      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
-      if (match) {
-        const start = parseInt(match[1], 10);
-        const end = match[2] ? parseInt(match[2], 10) : size - 1;
+      // Full single-range grammar incl. suffix form (`bytes=-N` = last N bytes);
+      // out-of-range starts get a proper 416 instead of a 200 full-body reply
+      // (mobile players treat that as a broken stream).
+      const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+      if (match && (match[1] || match[2])) {
+        let start: number;
+        let end: number;
+        if (match[1]) {
+          start = parseInt(match[1], 10);
+          end = match[2] ? Math.min(parseInt(match[2], 10), size - 1) : size - 1;
+        } else {
+          const suffix = Math.min(parseInt(match[2], 10), size);
+          start = size - suffix;
+          end = size - 1;
+        }
+        if (start >= size || start > end || Number.isNaN(start)) {
+          return new NextResponse(null, {
+            status: 416,
+            headers: { "Content-Range": `bytes */${size}`, "Accept-Ranges": "bytes" },
+          });
+        }
         headers["Content-Range"] = `bytes ${start}-${end}/${size}`;
         headers["Content-Length"] = String(end - start + 1);
         const slice = buf.subarray(start, end + 1);

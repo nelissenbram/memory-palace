@@ -160,7 +160,10 @@ const MOBILE_QUALITY: QualitySettings = {
   dof: false,
   bloom: false,
   smaa: true,
-  vegetationDensity: 0.5,
+  // Owner r2 2026-08-20 ("mobile vegetatie niet zelfde als desktop"): mobile
+  // gets FULL desktop vegetation density — grass/wheat are instanced (draw-call
+  // cheap); potato keeps its 0 floor.
+  vegetationDensity: 1,
   // Mobile skips the 6.5 MB background HDRI (the procedural sky sphere stands
   // in) — it was documented as skipped but the flag was still true, so phones
   // were silently downloading + decoding it on exterior entry. Env HDRI (small,

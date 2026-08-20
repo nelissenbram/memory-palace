@@ -149,11 +149,13 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         if(slot==="text")slot="document";
         if(buckets[slot])buckets[slot].push(m);
       }
+      // Ledger parity (binary Shown/Archive): shown = displayed !== false.
+      // Explicit picks lead, never-toggled (undefined/null) fill in behind —
+      // one archived item must NOT suppress its unmarked neighbours.
       const pick=(arr: any[])=>{
         const explicit=arr.filter((m: any)=>m.displayed===true);
-        const hidden=arr.filter((m: any)=>m.displayed===false);
-        if(explicit.length>0||hidden.length>0)return explicit;
-        return arr.filter((m: any)=>m.displayed===undefined||m.displayed===null);
+        const unmarked=arr.filter((m: any)=>m.displayed===undefined||m.displayed===null);
+        return [...explicit,...unmarked];
       };
       const seen=new Set<string>();let n=0;
       for(const slot of ["painting","photo","frame"] as const)for(const m of pick(buckets[slot])){
@@ -1261,14 +1263,18 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       slotBuckets[targetSlot].push(m);
     });
 
+    // Ledger parity (binary Shown/Archive, owner R2 #6): shown = displayed!==false,
+    // exactly like RoomStewardLedger's isShown. The old curation semantics ("any
+    // explicit/hidden mark in a bucket → only explicit ones show") silently DROPPED
+    // every never-toggled memory the moment one sibling was archived — e.g. one
+    // archived video hid all other videos from the cinema wall ("komen niet door").
+    // Explicit picks keep priority; unmarked ones fill the remaining slots.
     const pickDisplayed=(slot: string)=>{
       const all=slotBuckets[slot]||[];
       const limit=SLOT_COUNTS[slot]||4;
       const explicit=all.filter((m: any)=>m.displayed===true);
       const unmarked=all.filter((m: any)=>m.displayed===undefined||m.displayed===null);
-      const hidden=all.filter((m: any)=>m.displayed===false);
-      if(explicit.length>0||hidden.length>0) return explicit.slice(0,limit);
-      return unmarked.slice(0,limit);
+      return [...explicit,...unmarked].slice(0,limit);
     };
 
     const frameMems=pickDisplayed("frame");
@@ -1286,11 +1292,10 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // only by the tier texture budget.
     const pickAllW2=(slot: string)=>{
       const all=slotBuckets[slot]||[];
+      // Ledger parity: shown = displayed!==false (see pickDisplayed above).
       const explicit=all.filter((m: any)=>m.displayed===true);
       const unmarked=all.filter((m: any)=>m.displayed===undefined||m.displayed===null);
-      const hidden=all.filter((m: any)=>m.displayed===false);
-      if(explicit.length>0||hidden.length>0)return explicit;
-      return unmarked;
+      return [...explicit,...unmarked];
     };
     const wallMems: any[]=[];
     if(W2){
@@ -1722,6 +1727,14 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
           vctx.fillText(t("loadingVideo"),192,128);vtex.needsUpdate=true;
           const vidSrc=vm.dataUrl.startsWith("/api/media/")?vm.dataUrl+(vm.dataUrl.includes("?")?"&":"?")+"stream=1":vm.dataUrl;
           w2Vid.enabled=true;
+          // Owner R2 #6: poster-first — the memory's THUMBNAIL fills the screen the
+          // moment the room builds (blit-loop sImg branch) instead of the abstract
+          // hue gradient, and STAYS up if the stream never delivers metadata. The
+          // screen's existence/appearance no longer depends on video metadata.
+          if(vm.thumbnailUrl&&!vm.thumbnailUrl.startsWith("data:video")){
+            const posterSrc=vm.thumbnailUrl.startsWith("/api/media/")?vm.thumbnailUrl+(vm.thumbnailUrl.includes("?")?"&":"?")+"stream=1":vm.thumbnailUrl;
+            const si=new Image();si.crossOrigin="anonymous";si.onload=()=>{screenImg=si;};si.src=posterSrc;
+          }
           // Ember play affordance — shown only when the browser blocks autoplay.
           const affC=document.createElement("canvas");affC.width=96;affC.height=96;
           const affCtx=affC.getContext("2d")!;
@@ -1755,6 +1768,12 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
               w2Vid.active=false;
               const mat=scrMesh.material as THREE.MeshBasicMaterial;
               if(mat.map!==vtex){mat.map=vtex;mat.needsUpdate=true;scrMesh.scale.set(1,1,1);}
+              // Owner R2 #6: the wall texture failed, but the MEMORY still plays in
+              // RoomMediaPlayer — surface the play badge and route its tap through
+              // the normal memory-click path (drop isPlayAffordance: a retried
+              // in-scene play() would just fail again on a broken stream).
+              affordance.userData={memory:vm};
+              affordance.visible=true;
               if(process.env.NODE_ENV!=="production")console.warn("[InteriorScene] W2 VideoTexture fell back to canvas:",err);
             },
           });

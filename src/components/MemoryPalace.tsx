@@ -360,25 +360,72 @@ export default function MemoryPalace(){
   // memories — not their own (or demo/empty). Keyed to activeRoomId below.
   const [sharedRoomMems, setSharedRoomMems] = useState<Mem[] | null>(null);
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
+  // Corridor full-screen viewer (owner R2 item 4): index into corridorFeed.mems
+  // (the hung paintings in slot order), or null. Same RoomMediaPlayer-first
+  // pattern as rooms/Library; Edit/chips step into MemoryDetail.
+  const [corridorViewerIdx, setCorridorViewerIdx] = useState<number | null>(null);
   // w3_corridor (F09): merge the user's curated corridor paintings with an
   // auto-seed — each room's newest displayed photo — so a corridor is never a
   // wall of empty frames. Manual curation (corridorPaintings) OVERRIDES the
   // seed. Only the OWNER's own wing (visitor/shared corridors get server-
   // filtered public data on a separate branch and are never seeded here).
+  // Owner R2 item 3: rooms are read REACTIVELY (getWingRooms selector +
+  // customRooms dep) — the old getState() read went stale when custom rooms
+  // arrived AFTER the last userMems update (slow-network/mobile ordering), so
+  // the seed permanently missed those rooms and the corridor kept empty frames.
+  // memId/roomId ride along so the corridor viewer can resolve the real Mem.
   const corridorPaintingsSeeded = useMemo(() => {
     if (!w3Corridor || !activeWing || activeWing.startsWith("shared:")) return corridorPaintings;
-    const rs = useRoomStore.getState();
     const seed: CorridorPaintings = {};
-    for (const room of rs.getWingRooms(activeWing)) {
+    for (const room of getWingRooms(activeWing)) {
       let best: Mem | undefined;
       for (const m of (userMemsMap[room.id] || [])) {
         if (m?.type !== "photo" || !m.dataUrl || m.displayed === false) continue;
         if (!best || (m.createdAt || "") > (best.createdAt || "")) best = m;
       }
-      if (best) seed[room.id] = { url: best.dataUrl || undefined, title: best.title };
+      if (best) seed[room.id] = { url: best.dataUrl || undefined, title: best.title, memId: best.id, roomId: room.id };
     }
     return { ...seed, ...corridorPaintings };
-  }, [w3Corridor, activeWing, corridorPaintings, userMemsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- customRooms is read via getWingRooms
+  }, [w3Corridor, activeWing, corridorPaintings, userMemsMap, customRooms, getWingRooms]);
+  // Owner R2 item 4: the corridor viewer feed — every HUNG painting in slot
+  // (wing-room) order, resolved to its real Mem from the store when possible
+  // (memId first, then dataUrl match) so prev/next + Edit work on live data;
+  // unresolvable curated urls (e.g. device-local uploads) get a minimal
+  // read-only Mem so the viewer still opens.
+  const corridorFeed = useMemo(() => {
+    const mems: Mem[] = [];
+    const idxBySlot: Record<string, number> = {};
+    if (!activeWing || activeWing.startsWith("shared:")) return { mems, idxBySlot };
+    for (const room of getWingRooms(activeWing)) {
+      const pd = corridorPaintingsSeeded[room.id];
+      if (!pd?.url) continue;
+      const pool = userMemsMap[pd.roomId || room.id] || [];
+      const real = (pd.memId ? pool.find((m) => m.id === pd.memId) : undefined)
+        || pool.find((m) => m.dataUrl === pd.url);
+      idxBySlot[room.id] = mems.length;
+      mems.push(real || { id: `corridor-${room.id}`, title: pd.title || "", hue: 35, s: 40, l: 60, type: "photo", desc: "", dataUrl: pd.url });
+    }
+    return { mems, idxBySlot };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- customRooms is read via getWingRooms
+  }, [activeWing, corridorPaintingsSeeded, userMemsMap, customRooms, getWingRooms]);
+  // Corridor painting tap → hung painting opens the full-screen viewer at that
+  // slot; empty frame keeps the existing add/assign flow (CorridorGalleryPanel).
+  const corridorPaintingClick = useCallback((slotKey?: string) => {
+    if (slotKey && corridorFeed.idxBySlot[slotKey] !== undefined) {
+      setCorridorViewerIdx(corridorFeed.idxBySlot[slotKey]);
+      return;
+    }
+    setShowCorridorGallery(true);
+  }, [corridorFeed, setShowCorridorGallery]);
+  // Viewer inline edits (title/desc) from the corridor have no activeRoomId, so
+  // resolve the memory's owning room and persist through the store directly.
+  const corridorUpdateMemory = useCallback((memId: string, updates: Partial<Mem>) => {
+    const ms = useMemoryStore.getState();
+    for (const [rid, mems] of Object.entries(ms.userMems)) {
+      if (mems.some((m) => m.id === memId)) { ms.updateMemory(rid, memId, updates); return; }
+    }
+  }, []);
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [showTools, setShowTools] = useState(false);
   const [showNotificationsPage, setShowNotificationsPage] = useState(() => {
@@ -1258,7 +1305,26 @@ export default function MemoryPalace(){
   useEffect(() => {
     if (activeWing) setCorridorPaintings(loadCorridorPaintings(activeWing));
     else setCorridorPaintings({});
+    setCorridorViewerIdx(null); // viewer feed is per-wing — never carry an index across wings
   }, [activeWing]);
+  // Owner R2 item 3: GUARANTEE the F09 seed has data when the corridor shows.
+  // The app-mount bulk fetch is deferred behind syncSettingsFromServer +
+  // requestIdleCallback and can be skipped/slow (mobile cold start straight
+  // into the 3D palace) — so on corridor entry, fetch any wing room whose
+  // memories aren't in the store yet. fetchRoomMemories dedupes in-flight
+  // requests; each arrival recomputes the seed, and CorridorScene re-applies
+  // paintings in place via its fingerprint effect (no remount needed).
+  useEffect(() => {
+    if (view !== "corridor" || !activeWing || activeWing.startsWith("shared:")) return;
+    const ms = useMemoryStore.getState();
+    for (const room of useRoomStore.getState().getWingRooms(activeWing)) {
+      if (!ms.userMems[room.id]) ms.fetchRoomMemories(room.id).catch(() => {});
+    }
+  }, [view, activeWing, customRooms]);
+  // Close the corridor viewer whenever we leave the corridor (door/portal nav).
+  useEffect(() => {
+    if (view !== "corridor") setCorridorViewerIdx(null);
+  }, [view]);
 
   // Clear shared context when leaving shared wing (navigating back to entrance/exterior)
   useEffect(() => {
@@ -1419,14 +1485,19 @@ export default function MemoryPalace(){
           key={dlKey}
           onReady={() => { sceneReadyRef.current = true; markSceneReady("exterior"); preloadNextScene("exterior"); beginVeilFade(); hideSceneOverlay(); }}
           onRoomHover={setHovWing}
-          onRoomClick={(wingId: string) => {
+          onRoomClick={(wingId: string, arrived?: boolean) => {
             if (walkthroughActive && wingId !== "__entrance__") return;
-            // Mobile: tap selects (pre-enter); Enter button in PalaceSubNav commits.
-            if (isMobile) {
+            // Mobile: a plain tap selects (pre-enter); Enter in PalaceSubNav commits.
+            // arrived=true = an ARRIVAL handoff (approach-flight/autoWalk/cinematic
+            // end, or reduced-motion far tap): the camera is at the door, so enter
+            // directly on every device (owner r2 2026-08-20: mobiel gebouw-tap →
+            // zoom tot ingangsdeur → automatisch openen).
+            if (isMobile && !arrived) {
               if (wingId === "__entrance__") setPalacePending({ kind: "entrance" });
               else setPalacePending({ kind: "wing", wingId });
               return;
             }
+            if (arrived) setPalacePending(null); // clear any stale pre-enter selection
             if (wingId === "__entrance__") { if (nudgeHL.entrance) nudgeDismiss(); enterEntrance(); }
             else { enterCorridor(wingId); }
           }}
@@ -1562,7 +1633,7 @@ export default function MemoryPalace(){
         {warmPalaceScene}
         {warmHallScene}
         {!persistHall && view==="entrance" && hallSceneNode}
-        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintingsSeeded} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
+        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintingsSeeded} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={corridorPaintingClick} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
         {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+effStyleEra} roomId={activeWing} actualRoomId={activeRoomId} onReady={() => handleSceneReady("room")} memories={effectiveRoomMems} onMemoryClick={roomMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={effStyleEra}/></Suspense>}
       </div>
 
@@ -1688,7 +1759,10 @@ export default function MemoryPalace(){
       {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} roomId={activeRoomId} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>{updateSharing(activeRoomId,u);markChecklistItem("share_room");}} onClose={()=>setShowSharing(false)}/>}
       {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>{setShowRoomManager(false);markChecklistItem("customize_room");}} onEnterRoom={enterRoom}/>}
       {showWingManager&&<WingManagerPanel onClose={()=>setShowWingManager(false)}/>}
-      {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>{setSelMem(null);setSelMemAction(undefined);}} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory} initialAction={selMemAction}/>}
+      {/* onUpdate: outside a room (corridor viewer → Edit) handleUpdateMemory is
+          activeRoomId-bound and would silently no-op — fall back to the
+          owning-room resolver so corridor edits persist (owner R2 item 4). */}
+      {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>{setSelMem(null);setSelMemAction(undefined);}} onDelete={handleDeleteMemory} onUpdate={activeRoomId?handleUpdateMemory:corridorUpdateMemory} initialAction={selMemAction}/>}
       {/* Library-parity room media viewer — RoomMediaPlayer first, Edit/chips → MemoryDetail */}
       {roomViewerIdx!==null&&!selMem&&allRoomMems.length>0&&<Suspense fallback={null}><RoomMediaPlayerView
         memories={allRoomMems}
@@ -1800,6 +1874,25 @@ export default function MemoryPalace(){
         </button>
       )}
       {showCorridorGallery&&activeWing&&wingData&&<CorridorGalleryPanel wing={wingData} rooms={getWingRooms(activeWing)} onClose={()=>setShowCorridorGallery(false)} onPaintingsChange={setCorridorPaintings} currentPaintings={corridorPaintings}/>}
+      {/* Owner R2 item 4: corridor painting tap → full-screen media viewer
+          (Library/room parity). Feed = hung paintings in slot order; Edit/chips
+          step into MemoryDetail; the Media pill / empty frames keep the
+          CorridorGalleryPanel manage flow reachable. */}
+      {view==="corridor"&&corridorViewerIdx!==null&&!selMem&&corridorFeed.mems.length>0&&<Suspense fallback={null}><RoomMediaPlayerView
+        memories={corridorFeed.mems}
+        initialIndex={Math.min(corridorViewerIdx,corridorFeed.mems.length-1)}
+        onClose={()=>setCorridorViewerIdx(null)}
+        onEdit={(m)=>{setCorridorViewerIdx(null);setSelMemAction(undefined);setSelMem(m);}}
+        onUpdate={corridorUpdateMemory}
+        storedIn={(memId)=>{
+          if(!activeWing||!wingData)return null;
+          for(const r of getWingRooms(activeWing)){
+            if((userMemsMap[r.id]||[]).some(m=>m.id===memId))return {wing:(wingData.nameKey?(tWings(wingData.nameKey)||wingData.name):wingData.name),room:(r.nameKey?(tWings(r.nameKey)||r.name):r.name),accent:wingData.accent||"#B85C38"};
+          }
+          return null;
+        }}
+        onQuickAction={(m,actionId)=>{setCorridorViewerIdx(null);setSelMemAction(actionId);setSelMem(m);}}
+      /></Suspense>}
       {view==="corridor"&&wingData&&!showCorridorGallery&&(
         <button
           data-mp-corridor-media="1"

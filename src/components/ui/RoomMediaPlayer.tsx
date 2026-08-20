@@ -287,7 +287,14 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 preload="auto"
                 onPlaying={() => setVidBlocked(false)}
                 onError={() => setVidError(true)}
-                src={mem.dataUrl?.startsWith("/api/media/") ? mem.dataUrl + (mem.dataUrl.includes("?") ? "&" : "?") + "stream=1" : mem.dataUrl}
+                /* Owner R2 #6: plain dataUrl, NO ?stream=1 — same path as the Library/
+                   Ledger players that work: /api/media 302-redirects to a presigned R2
+                   URL (CDN + native Range). ?stream=1 proxied every byte through the
+                   API route, which mobile <video> stalled on. A <video> draws to no
+                   canvas, so the same-origin/tainting reason for stream=1 never
+                   applied here. (Supabase-legacy files stream from the route either
+                   way, with Range support.) */
+                src={mem.dataUrl}
                 style={{
                   maxWidth: "92%", maxHeight: "88%",
                   borderRadius: "0.5rem",

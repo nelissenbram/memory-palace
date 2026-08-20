@@ -16,6 +16,16 @@ export function useRoomMemories() {
     setFilterType(null);
   }, [activeRoomId, fetchRoomMemories, setSearchQuery, setFilterType]);
 
+  // Owner R2 #5: if the first fetch (incl. its in-store retries) landed NOTHING
+  // for this room — server action threw / auth session not ready — retry after
+  // 5s instead of leaving the room empty until the 30s poll (~1 min on device).
+  const roomHasData = !activeRoomId || userMems[activeRoomId] !== undefined;
+  useEffect(() => {
+    if (!activeRoomId || roomHasData) return;
+    const t = setTimeout(() => fetchRoomMemories(activeRoomId), 5000);
+    return () => clearTimeout(t);
+  }, [activeRoomId, roomHasData, fetchRoomMemories]);
+
   // Poll every 30s while room is active (picks up Kep captures in real-time)
   useEffect(() => {
     if (!activeRoomId) return;
