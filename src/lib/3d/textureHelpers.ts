@@ -39,33 +39,43 @@ export function devCheckArtworkAspect(
   }
 }
 
-// ── Shared image loader (owner 2026-08-20, "media heel traag") ──
+// ── Shared image FETCH (owner 2026-08-20, "media heel traag") ──
 // Every painting canvas used to fire its OWN fetch of the FULL-RES original —
 // and a memory shown on two units (hero + photo-book, screen fill, …) or a
 // quick scene rebuild fetched the same URL again. One module-level in-flight
-// promise per URL means each source is fetched + decoded exactly once per
-// session, shared by every consumer (each still draws to its own canvas).
-const _imgCache = new Map<string, Promise<HTMLImageElement>>();
-const IMG_CACHE_MAX = 200; // FIFO cap — thumbnails are small, keep it simple
-function loadImageShared(streamUrl: string): Promise<HTMLImageElement> {
-  const hit = _imgCache.get(streamUrl);
+// promise per URL means each source crosses the NETWORK exactly once per
+// session, shared by every consumer.
+//
+// REGRESSION FIX (2026-08-20): the first version of this cache stored a
+// Promise<HTMLImageElement> whose blob object-URL was revoked inside onload,
+// BEFORE any consumer had drawn it. An HTMLImageElement is lazily decoded: a
+// later drawImage() on a canvas can need the (already revoked) source again —
+// on prod every painting canvas stayed on its placeholder gradient forever
+// while the network tab showed the originals arriving 200 OK, and any consumer
+// registering after a failure inherited the poisoned rejection with no retry.
+// The cache now stores the raw Blob (cheap, still one fetch per URL); EVERY
+// consumer decodes its own Image from a fresh object URL and revokes it only
+// AFTER its own draw — the exact per-consumer sequence that shipped before the
+// cache existed — so multiple consumers of one URL each repaint their canvas.
+const _blobCache = new Map<string, Promise<Blob>>();
+const BLOB_CACHE_MAX = 200; // FIFO cap — thumbnails are small, keep it simple
+function fetchBlobShared(streamUrl: string): Promise<Blob> {
+  const hit = _blobCache.get(streamUrl);
   if (hit) return hit;
   const p = fetch(streamUrl, { credentials: "same-origin" })
-    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
-    .then(blob => new Promise<HTMLImageElement>((resolve, reject) => {
-      const objUrl = URL.createObjectURL(blob);
-      const img = new Image();
-      img.onload = () => { URL.revokeObjectURL(objUrl); resolve(img); }; // decoded bitmap survives revoke
-      img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error("image decode failed")); };
-      img.src = objUrl;
-    }));
-  p.catch(() => _imgCache.delete(streamUrl)); // a failed load may retry later
-  if (_imgCache.size >= IMG_CACHE_MAX) {
-    const oldest = _imgCache.keys().next().value;
-    if (oldest !== undefined) _imgCache.delete(oldest);
+    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); });
+  p.catch(() => _blobCache.delete(streamUrl)); // a failed load may retry later
+  if (_blobCache.size >= BLOB_CACHE_MAX) {
+    const oldest = _blobCache.keys().next().value;
+    if (oldest !== undefined) _blobCache.delete(oldest);
   }
-  _imgCache.set(streamUrl, p);
+  _blobCache.set(streamUrl, p);
   return p;
+}
+
+/** `?stream=1` keeps /api/media same-origin (a cross-origin redirect would taint the canvas and block WebGL). */
+function toStreamUrl(u: string): string {
+  return u.startsWith("/api/media/") ? u + (u.includes("?") ? "&" : "?") + "stream=1" : u;
 }
 
 /** The smallest sufficient source for a ≤512px painting canvas: the memory's
@@ -174,21 +184,42 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
       ctx.fillStyle = v2; ctx.fillRect(0, 0, w, h);
       tex.needsUpdate = true;
     };
+    // Per-consumer decode + draw. The blob is fetched once per URL (shared
+    // cache); THIS canvas gets its own Image and repaints in onload — the
+    // object URL is revoked only after the draw, never before.
+    const loadAndDraw = (url: string, onFail?: () => void) => {
+      fetchBlobShared(toStreamUrl(url))
+        .then(blob => {
+          if (signal?.aborted) return;
+          const objUrl = URL.createObjectURL(blob);
+          const img = new Image();
+          img.onload = () => {
+            try { if (!signal?.aborted) drawImg(img); } finally { URL.revokeObjectURL(objUrl); }
+          };
+          img.onerror = () => { URL.revokeObjectURL(objUrl); onFail?.(); };
+          img.src = objUrl;
+        })
+        .catch(() => { onFail?.(); });
+    };
     // Data URIs and blob URLs: load directly (fetch+blob would taint or fail)
     if (src.startsWith("data:") || src.startsWith("blob:")) {
       const img = new Image();
       img.onload = () => drawImg(img);
       img.src = src;
     } else {
-      // Fetch as blob via ?stream=1 to avoid cross-origin redirect (tainted
-      // canvas blocks WebGL) — shared + deduped via the module-level cache so
-      // every URL is fetched at most once per session.
-      const streamUrl = src.startsWith("/api/media/")
-        ? src + (src.includes("?") ? "&" : "?") + "stream=1"
-        : src;
-      loadImageShared(streamUrl)
-        .then(img => { if (!signal?.aborted) drawImg(img); })
-        .catch(() => {});
+      // Thumbnails stay preferred (src) — but a broken/missing thumbnail must
+      // not leave the placeholder up forever: fall back to the original once.
+      const orig = m.dataUrl;
+      const canFallback = !!orig && orig !== src && !orig.startsWith("blob:");
+      loadAndDraw(src, canFallback
+        ? () => {
+            if (orig!.startsWith("data:")) {
+              const img = new Image();
+              img.onload = () => { if (!signal?.aborted) drawImg(img); };
+              img.src = orig!;
+            } else loadAndDraw(orig!);
+          }
+        : undefined);
     }
   }
   return tex;

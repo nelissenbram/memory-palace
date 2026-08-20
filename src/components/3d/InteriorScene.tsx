@@ -2837,22 +2837,18 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // Do NOT auto-open media bars — they are now driven by the MemoryPalace
     // top-side toggle buttons via useRoomMediaBarStore.
 
-    // ── W2 (WS6-7): tap-is-travel routing for artworks — far tap auto-walks to
-    // the museum viewing pose then hands to focus mode; near tap dollies
-    // directly; second tap on the focused piece opens the memory panel
-    // (onMemoryClick contract). Reduced-motion cuts (with fade) instead.
+    // ── Memory tap routing — app-wide contract (Library, and since 2026-08-20
+    // the corridor too): ONE click/tap on a hung memory opens the fullscreen
+    // RoomMediaPlayer viewer IMMEDIATELY. The old W2 "tap-is-travel" flow
+    // (auto-walk → dolly-to-frame → SECOND tap opens) is skipped for opening,
+    // mirroring the corridor fix where the glide is skipped when opening. The
+    // focus/auto-walk machinery stays for its other duties (drag cancel,
+    // empty-space tap exits focus, reduced-motion fades); any pending walk or
+    // glide is cancelled so the camera stops moving under the opened viewer.
     const routeMemoryTap=(m: any)=>{
-      const ft=W2&&focus&&m?focusTargets.get(String(m.id??m.title)):undefined;
-      if(!ft||!focus){onMemoryClickRef.current(m);return;}
-      const cur=focus.current();
-      if(focus.state()==="focused"&&cur&&cur.data===m){focus.handleTap(ft);return;} // second tap → open
-      aw.active=false;aw.target=null;
-      if(!RM2){
-        const pose=computeFocusPose(ft,0);
-        const ddx=pose.position.x-posT.current.x,ddz=pose.position.z-posT.current.z;
-        if(Math.sqrt(ddx*ddx+ddz*ddz)>2.6){focus.cancel();startAutoWalk(ft);return;} // walk first, dolly on arrival
-      }
-      focus.handleTap(ft); // close by (or reduced motion): dolly/cut directly
+      if(!m)return;
+      if(W2){aw.active=false;aw.target=null;try{focus?.cancel();}catch{}}
+      onMemoryClickRef.current(m);
     };
     const cancelFocusOnDrag=()=>{if(W2){aw.active=false;aw.target=null;focus?.cancel();}};
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
