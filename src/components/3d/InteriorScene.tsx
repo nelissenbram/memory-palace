@@ -91,11 +91,24 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
   const rawDisplayFP=useMemo(()=>mems.map((m:any)=>`${m.displayed}:${m.displayUnit||""}`).join("|"),[mems]);
   const [debouncedDisplayFP,setDebouncedDisplayFP]=useState(rawDisplayFP);
   const displayDebounceRef=useRef<ReturnType<typeof setTimeout>|null>(null);
-  const isFirstDisplayRender=useRef(true);
+  const prevStructuralFPRef=useRef(structuralFingerprint);
+  // Owner 2026-08-20 ("media heel traag"): when the STRUCTURAL fingerprint
+  // changes (memories just loaded / added / removed) a full rebuild happens
+  // anyway — fold the display half in during THE SAME render (React's
+  // render-phase derived-state pattern re-renders before effects run) so the
+  // scene effect fires ONCE with both halves fresh. The old unconditional
+  // 800ms debounce fired a SECOND full rebuild right after the structural one,
+  // re-fetching every painting texture over the network — the "every image
+  // loads twice / media heel traag" the owner saw on every room entry.
+  if(prevStructuralFPRef.current!==structuralFingerprint){
+    prevStructuralFPRef.current=structuralFingerprint;
+    if(debouncedDisplayFP!==rawDisplayFP) setDebouncedDisplayFP(rawDisplayFP);
+  }
   useEffect(()=>{
-    // On first render apply immediately so the scene builds without delay
-    if(isFirstDisplayRender.current) { isFirstDisplayRender.current=false; setDebouncedDisplayFP(rawDisplayFP); return; }
-    if(displayDebounceRef.current) clearTimeout(displayDebounceRef.current);
+    // Debounce PURE display toggles only (Ledger shown/archive sweeps) —
+    // coalesces rapid toggles so WebGL contexts aren't exhausted by
+    // teardown/rebuild cycles. Structural changes are handled above.
+    if(displayDebounceRef.current){clearTimeout(displayDebounceRef.current);displayDebounceRef.current=null;}
     displayDebounceRef.current=setTimeout(()=>setDebouncedDisplayFP(rawDisplayFP),800);
     return()=>{if(displayDebounceRef.current)clearTimeout(displayDebounceRef.current);};
   },[rawDisplayFP]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -219,6 +232,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     const composer=createPostProcessing(ren,scene,camera,"interior",{ssao:false});
+    if(typeof window!=="undefined")(window as any).__mpDbg={scene,camera,ren,composer,THREE};
     const disposeFit=autoFit(el,{camera,renderer:ren,composer});
 
     // ── ATMOSPHERIC FOG ──
@@ -397,7 +411,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       rugN:new THREE.MeshStandardMaterial({color:"#1A2438",roughness:.9}),
       sconce:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.28,metalness:.55}),
       glassG:new THREE.MeshStandardMaterial({color:"#FFF8E0",emissive:"#FFE8B0",emissiveIntensity:.5,transparent:true,opacity:.6}),
-      screen:new THREE.MeshStandardMaterial({color:"#1A1A1A",roughness:.3,metalness:.1}),
+      // owner 2026-08-20: the screen-niche slab reads as an inert matte panel —
+      // non-reflective (it doubles as the empty niche's face when a room has no video).
+      screen:new THREE.MeshStandardMaterial({color:"#1A1A1A",roughness:.85,metalness:0}),
       vinyl:new THREE.MeshStandardMaterial({color:"#1A1A1A",roughness:.15,metalness:.3}),
       vinylL:new THREE.MeshStandardMaterial({color:wing?.accent||"#C66B3D",roughness:.3}),
       pot:new THREE.MeshStandardMaterial({color:"#B8926A",roughness:.6}),
@@ -1672,7 +1688,11 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // box. The wider dark panel just off the wall reads as the recess; the video
       // sits in front of it; a slim flush trim ring frames the opening.
       const fw=scrPlaneW,fh=scrPlaneH;
-      scene.add(mk(new THREE.BoxGeometry(0.05,fh+0.16,fw+0.16),MS.screen,scrX+0.03,scrY,scrZ));          // dark recess panel (at the wall, wider than the screen)
+      // (z-fight r4, owner 2026-08-20: the old 0.05-thick "dark recess panel" at
+      // scrX+0.03 was fully occluded by the .08-deep backing slab below AND its
+      // front face sat exactly coplanar with the trim backs — deleted. The slab
+      // at scrX IS the recess; niche depth order is now strictly: slab front
+      // scrX-0.04 → video plane scrX-0.06 → play affordance scrX-0.14.)
       scene.add(mk(new THREE.BoxGeometry(0.05,0.05,fw+0.2),MS.trim,scrX-0.02,scrY+fh/2+0.085,scrZ));     // flush trim top
       scene.add(mk(new THREE.BoxGeometry(0.05,0.05,fw+0.2),MS.trim,scrX-0.02,scrY-fh/2-0.085,scrZ));     // flush trim bottom
       scene.add(mk(new THREE.BoxGeometry(0.05,fh+0.2,0.05),MS.trim,scrX-0.02,scrY,scrZ+fw/2+0.085));     // flush trim +z
@@ -1687,15 +1707,12 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       scene.add(mk(new THREE.BoxGeometry(.08,2,3),MS.screen,scrX,scrY,scrZ));
       scene.add(mk(new THREE.BoxGeometry(.04,.15,.15),MS.iron,scrX,1.15,scrZ));
     }
-    // owner #15 (adaptive slot): with NO moving media, the screen niche shows a
-    // PAINTING instead of a dark/idle screen — the slot is never empty.
-    if(W3&&videoMems.length===0){
-      const pm=wallMems[1]||wallMems[0]||paintingMems[0]||photoMems[0];
-      if(pm){
-        const pl=new THREE.Mesh(new THREE.PlaneGeometry(scrPlaneW,scrPlaneH),new THREE.MeshBasicMaterial({map:paintTex(pm)}));
-        pl.rotation.y=-Math.PI/2;pl.position.set(scrX-0.04,scrY,scrZ);pl.userData={memory:pm};scene.add(pl);memMeshes.current.push(pl);
-      }
-    }
+    // owner 2026-08-20 (retires owner #15's "adaptive slot"): with NO video
+    // memories the niche shows NOTHING — no borrowed photo, no idle canvas.
+    // The projected photo sat exactly coplanar with the backing slab's front
+    // face (striped z-fighting across the whole screen) and the owner was
+    // explicit: photos must never be projected on the video screen. The niche
+    // stays a quiet dark inset panel (matte slab + flush trim, built above).
     // W2 (WS7-8) VideoTexture state — `active` flips true once metadata lands
     // and the blit loop stands down; onError flips it back (canvas fallback).
     const w2Vid={enabled:false,active:false};
@@ -1706,7 +1723,11 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       vctx.fillStyle="#1A1510";vctx.fillRect(0,0,384,256);
       const vtex=new THREE.CanvasTexture(vc);vtex.colorSpace=THREE.SRGBColorSpace;
       const scrMesh=new THREE.Mesh(new THREE.PlaneGeometry(scrPlaneW,scrPlaneH),new THREE.MeshBasicMaterial({map:vtex}));
-      scrMesh.rotation.y=-Math.PI/2;scrMesh.position.set(scrX-(W3?0.0:.06),scrY,scrZ);
+      // z-fight r4 (owner 2026-08-20): W3 offset was literally 0.0 — the video
+      // plane sat buried IN the .08-deep backing slab (front face scrX-0.04),
+      // interleaving with it. 0.06 puts the content plane 0.02 proud of the
+      // slab face; the play affordance sits further out at scrX-0.14.
+      scrMesh.rotation.y=-Math.PI/2;scrMesh.position.set(scrX-.06,scrY,scrZ);
       scrMesh.userData={memory:videoMems[0]};
       scrMeshRef.current=scrMesh;
       scene.add(scrMesh);memMeshes.current.push(scrMesh);
@@ -1832,7 +1853,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       if(!W2&&!isMobileGPU()){const scrGl=new THREE.PointLight(`hsl(${vm.hue},40%,60%)`,.15,4);scrGl.position.set(scrX-.5,scrY,scrZ);scene.add(scrGl);} // W2 (WS6-9): deleted — off-canon hsl() glow
     }
     // (The legacy dark "No videos yet" idle screen is retired — with no video the
-    // niche stays adaptive: a painting fills it under W3, see above.)
+    // W3 niche stays an intentional dark inset panel, see above.)
 
     // ═══════════════════════════════════════════
     // VINYL RECORD PLAYER (right wall, near front)
@@ -2413,7 +2434,16 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     }
 
     const camY=EYE_HEIGHT; // dogma 5: the one shared eye height (2.0 through Wave 2)
-    const camZ=initialCameraZ!=null?initialCameraZ:rL/2-2.5;
+    // W3 spawn (owner 2026-08-20): start at the STEM MOUTH, just inside the open
+    // hall volume — NOT deep inside the narrow entry stem. The old rL/2-2.5 put
+    // the eye 1.4m from the mouth in the smallest (Intimate) tier with bare
+    // plaster stem walls only 2.4m to each side, so the slightest sideways look
+    // filled the frame with featureless beige wall and the room read as "never
+    // loaded". From the mouth every tier has metres of clear air straight to the
+    // hero wall (Intimate ≈9m) and the nearest side walls are the hall walls at
+    // ±rW/2. Legacy (flag-off) keeps rL/2-2.5; explicit initialCameraZ
+    // (onboarding) still wins.
+    const camZ=initialCameraZ!=null?initialCameraZ:(W3?Math.max(-rL/2+4,rL/2-stemLen-0.6):rL/2-2.5);
     pos.current.set(0,camY,camZ);posT.current.set(0,camY,camZ);
     lookT.current={yaw:0,pitch:0};lookA.current={yaw:0,pitch:0};
 

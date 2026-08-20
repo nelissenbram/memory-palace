@@ -39,6 +39,44 @@ export function devCheckArtworkAspect(
   }
 }
 
+// ── Shared image loader (owner 2026-08-20, "media heel traag") ──
+// Every painting canvas used to fire its OWN fetch of the FULL-RES original —
+// and a memory shown on two units (hero + photo-book, screen fill, …) or a
+// quick scene rebuild fetched the same URL again. One module-level in-flight
+// promise per URL means each source is fetched + decoded exactly once per
+// session, shared by every consumer (each still draws to its own canvas).
+const _imgCache = new Map<string, Promise<HTMLImageElement>>();
+const IMG_CACHE_MAX = 200; // FIFO cap — thumbnails are small, keep it simple
+function loadImageShared(streamUrl: string): Promise<HTMLImageElement> {
+  const hit = _imgCache.get(streamUrl);
+  if (hit) return hit;
+  const p = fetch(streamUrl, { credentials: "same-origin" })
+    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
+    .then(blob => new Promise<HTMLImageElement>((resolve, reject) => {
+      const objUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(objUrl); resolve(img); }; // decoded bitmap survives revoke
+      img.onerror = () => { URL.revokeObjectURL(objUrl); reject(new Error("image decode failed")); };
+      img.src = objUrl;
+    }));
+  p.catch(() => _imgCache.delete(streamUrl)); // a failed load may retry later
+  if (_imgCache.size >= IMG_CACHE_MAX) {
+    const oldest = _imgCache.keys().next().value;
+    if (oldest !== undefined) _imgCache.delete(oldest);
+  }
+  _imgCache.set(streamUrl, p);
+  return p;
+}
+
+/** The smallest sufficient source for a ≤512px painting canvas: the memory's
+ *  thumbnail when it has one (full-screen viewers keep using dataUrl at full
+ *  resolution), else the original. data:video posters are never paintable. */
+function paintingSrc(m: { dataUrl?: string | null; thumbnailUrl?: string | null }): string | null {
+  const thumb = (m as { thumbnailUrl?: string | null }).thumbnailUrl;
+  if (typeof thumb === "string" && thumb && !thumb.startsWith("data:video")) return thumb;
+  return m.dataUrl || null;
+}
+
 function isMemLocked(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }): boolean {
   if (!('revealDate' in m) || !m.revealDate) return false;
   const todayStr = new Date().toISOString().split("T")[0];
@@ -116,7 +154,11 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
   ctx.fillText(m.title, w / 2, h / 2 + 4);
   tex.needsUpdate = true;
 
-  if (m.dataUrl) {
+  // Owner 2026-08-20: paint from the THUMBNAIL when the memory has one — the
+  // painting canvas is at most 512×384, so streaming the full-res original was
+  // pure waste (the fullscreen RoomMediaPlayer keeps the original).
+  const src = paintingSrc(m as { dataUrl?: string | null; thumbnailUrl?: string | null });
+  if (src) {
     const drawImg = (img: HTMLImageElement) => {
       ctx.clearRect(0, 0, w, h);
       const iw = img.width, ih = img.height, scale = Math.max(w / iw, h / ih);
@@ -133,24 +175,19 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
       tex.needsUpdate = true;
     };
     // Data URIs and blob URLs: load directly (fetch+blob would taint or fail)
-    if (m.dataUrl.startsWith("data:") || m.dataUrl.startsWith("blob:")) {
+    if (src.startsWith("data:") || src.startsWith("blob:")) {
       const img = new Image();
       img.onload = () => drawImg(img);
-      img.src = m.dataUrl;
+      img.src = src;
     } else {
-      // Fetch as blob via ?stream=1 to avoid cross-origin redirect (tainted canvas blocks WebGL)
-      const streamUrl = m.dataUrl.startsWith("/api/media/")
-        ? m.dataUrl + (m.dataUrl.includes("?") ? "&" : "?") + "stream=1"
-        : m.dataUrl;
-      fetch(streamUrl, { credentials: "same-origin", signal })
-        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
-        .then(blob => {
-          const objUrl = URL.createObjectURL(blob);
-          const img = new Image();
-          img.onload = () => { drawImg(img); URL.revokeObjectURL(objUrl); };
-          img.onerror = () => URL.revokeObjectURL(objUrl);
-          img.src = objUrl;
-        })
+      // Fetch as blob via ?stream=1 to avoid cross-origin redirect (tainted
+      // canvas blocks WebGL) — shared + deduped via the module-level cache so
+      // every URL is fetched at most once per session.
+      const streamUrl = src.startsWith("/api/media/")
+        ? src + (src.includes("?") ? "&" : "?") + "stream=1"
+        : src;
+      loadImageShared(streamUrl)
+        .then(img => { if (!signal?.aborted) drawImg(img); })
         .catch(() => {});
     }
   }
