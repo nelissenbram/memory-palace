@@ -901,7 +901,6 @@ export default function HomeView() {
         { key: "timeline", title: t("relay.tileTimeline"), desc: t("relay.tileTimelineDesc"), onClick: () => setShowTimeline(true), datum: yearRange },
         { key: "insights", title: t("relay.tileHighlights"), desc: t("relay.tileHighlightsDesc"), onClick: () => setShowStatistics(true) },
         { key: "family", title: t("relay.tileFamilyTree"), desc: t("relay.tileFamilyTreeDesc"), onClick: () => setShowFamilyTree(true) },
-        { key: "gallery", title: t("relay.tileGallery"), desc: t("relay.tileGalleryDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "create-gallery"); handleNavigateLibrary(); } },
         { key: "organize", title: t("relay.tileOrganize"), desc: t("relay.tileOrganizeDesc"), dest: t("relay.destPalace"), onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
         { key: "explore", title: t("relay.tileExplore"), desc: t("relay.tileExploreDesc"), dest: t("relay.destExplore"), onClick: () => router.push("/explore") },
         { key: "lifestory", title: t("relay.tileLifeStory"), desc: t("relay.tileLifeStoryDesc"), onClick: () => setShowLifeStory(true) },

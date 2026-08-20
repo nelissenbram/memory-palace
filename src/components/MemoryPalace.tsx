@@ -61,10 +61,8 @@ const StatisticsPanel = lazy(() => import("@/components/ui/StatisticsPanel"));
 const PublishModal = lazy(() => import("@/components/social/PublishModal"));
 const PasscodeModal = lazy(() => import("@/components/social/PasscodeModal"));
 // MassImportPanel removed — all import flows now use ImportHub in Library mode
-import RoomGallery from "@/components/ui/RoomGallery";
-const RoomMediaPanel = lazy(() => import("@/components/ui/RoomMediaPanel"));
 const RoomStewardLedger = lazy(() => import("@/components/ui/RoomStewardLedger"));
-// Library-parity media viewer for the room (w1_roomui): clicking a memory in 3D
+// Library-parity media viewer for the room: clicking a memory in 3D
 // or in the Ledger opens RoomMediaPlayer first; Edit/chips step into MemoryDetail.
 const RoomMediaPlayerView = lazy(() => import("@/components/ui/RoomMediaPlayer"));
 import StoragePlayerPanel from "@/components/ui/StoragePlayerPanel";
@@ -81,7 +79,6 @@ import MobileJoystick from "@/components/ui/MobileJoystick";
 // ActionMenu removed — replaced by PalaceSubNav
 // StatusBar removed — no longer shown in Palace view
 import { useInterviewStore } from "@/lib/stores/interviewStore";
-import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 import { useTutorialStore } from "@/lib/stores/tutorialStore";
 import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpotlight";
 const GettingStartedChecklist = lazy(() => import("@/components/ui/GettingStartedChecklist"));
@@ -152,7 +149,6 @@ export default function MemoryPalace(){
   const { t: tPalace } = useTranslation("palace");
   const { t: tRoom } = useTranslation("roomMedia");
   const { t: tWings } = useTranslation("wings");
-  const { t: tLayout } = useTranslation("roomLayouts");
   const { daylightEnabled, daylightMode, resolvedHour } = useDaylight();
   // Reduced-motion gate — drops the portal flash + toast/celebration entrance
   // animations for users who ask the OS to minimise motion.
@@ -181,8 +177,6 @@ export default function MemoryPalace(){
   // gallery (F09: no more "hall of empty gold frames"). Flag-gated so prod is
   // byte-identical until the wave promotes.
   const [w3Corridor, setW3Corridor] = useState(false);
-  // "The Steward's Ledger" room-media UI (staging-ON / prod-OFF until the wave promotes).
-  const [w1RoomUI, setW1RoomUI] = useState(false);
   // Library-parity room viewer: index into allRoomMems, or null; + the pre-opened
   // ActionCard when a viewer quick-action chip steps into MemoryDetail.
   const [roomViewerIdx, setRoomViewerIdx] = useState<number | null>(null);
@@ -191,7 +185,6 @@ export default function MemoryPalace(){
     setW2Veil(flag3d("w2_veil"));
     setW2Shell(flag3d("w2_shell"));
     setW3Corridor(flag3d("w3_corridor"));
-    setW1RoomUI(flag3d("w1_roomui"));
   }, []);
   // Key fragment for scene remounting when daylight mode changes manually
   // Only remount scene when daylight is toggled on/off or mode changes — NOT on slider changes.
@@ -224,7 +217,6 @@ export default function MemoryPalace(){
   const hovDoor = usePalaceStore((s) => s.hovDoor);
   const opacity = usePalaceStore((s) => s.opacity);
   const portalAnim = usePalaceStore((s) => s.portalAnim);
-  const roomLayouts = usePalaceStore((s) => s.roomLayouts);
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const setHovWing = usePalaceStore((s) => s.setHovWing);
   const setHovDoor = usePalaceStore((s) => s.setHovDoor);
@@ -232,7 +224,6 @@ export default function MemoryPalace(){
   const enterCorridor = usePalaceStore((s) => s.enterCorridor);
   const enterRoom = usePalaceStore((s) => s.enterRoom);
   const enterWingRoom = usePalaceStore((s) => s.enterWingRoom);
-  const setRoomLayout = usePalaceStore((s) => s.setRoomLayout);
   const exitToPalace = usePalaceStore((s) => s.exitToPalace);
   const exitToCorridor = usePalaceStore((s) => s.exitToCorridor);
   const exitToEntrance = usePalaceStore((s) => s.exitToEntrance);
@@ -327,9 +318,6 @@ export default function MemoryPalace(){
   const setShowImportHub = useUIPanelStore((s) => s.setShowImportHub);
   const showGallery = useUIPanelStore((s) => s.showGallery);
   const setShowGallery = useUIPanelStore((s) => s.setShowGallery);
-  const galleryInitialMemId = useUIPanelStore((s) => s.galleryInitialMemId);
-  const galleryInitialTab = useUIPanelStore((s) => s.galleryInitialTab);
-  const galleryAutoAssignUnit = useUIPanelStore((s) => s.galleryAutoAssignUnit);
   const setGalleryAutoAssignUnit = useUIPanelStore((s) => s.setGalleryAutoAssignUnit);
   const showInvites = useUIPanelStore((s) => s.showInvites);
   const setShowInvites = useUIPanelStore((s) => s.setShowInvites);
@@ -457,15 +445,15 @@ export default function MemoryPalace(){
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings } = useNavigation();
   const { roomMems, allRoomMems, roomMemsLoading, handleAddMemory, addMemoryToRoom, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
-  // w1_roomui: a 3D memory click opens the Library-parity viewer (RoomMediaPlayer)
-  // instead of the old gallery panel; stations/strings fall through unchanged.
+  // A 3D memory click opens the Library-parity viewer (RoomMediaPlayer);
+  // stations/strings fall through to handleMemClick unchanged.
   const roomMemClick = useCallback((m: unknown) => {
-    if (w1RoomUI && m && typeof m === "object" && (m as Mem).id) {
+    if (m && typeof m === "object" && (m as Mem).id) {
       const i = allRoomMems.findIndex((x) => x.id === (m as Mem).id);
       if (i >= 0) { setRoomViewerIdx(i); return; }
     }
     handleMemClick(m);
-  }, [w1RoomUI, allRoomMems, handleMemClick]);
+  }, [allRoomMems, handleMemClick]);
   // Top media bar open state (drives InteriorScene video/audio bar)
   const roomMediaBarOpen = useRoomMediaBarStore(s => s.open);
   const setRoomMediaBarOpen = useRoomMediaBarStore(s => s.setOpen);
@@ -1179,13 +1167,13 @@ export default function MemoryPalace(){
   useEffect(() => {
     const t = setTimeout(() => {
       checkAchievements(
-        userMems, customRooms, roomLayouts, roomSharingData,
+        userMems, customRooms, roomSharingData,
         kepSocialStats ? { captures: kepSocialStats.kepCaptureCount, audioCaptures: kepSocialStats.kepAudioCaptures } : undefined,
         kepSocialStats ? { published: kepSocialStats.hasPublishedPalace, followers: kepSocialStats.followerCount, following: kepSocialStats.followingCount, comments: kepSocialStats.commentsLeft, visits: kepSocialStats.palacesVisited } : undefined,
       );
     }, 300);
     return () => clearTimeout(t);
-  }, [userMems, customRooms, roomLayouts, roomSharingData, kepSocialStats, checkAchievements]);
+  }, [userMems, customRooms, roomSharingData, kepSocialStats, checkAchievements]);
 
   // ── In-app rating prompt (after 3rd achievement or 25th memory) ──
   const earnedAchCount = useAchievementStore((s) => s.earnedIds.length);
@@ -1299,7 +1287,7 @@ export default function MemoryPalace(){
     const ks = kepSocialStats;
     const t = setTimeout(() => {
       runProgressCheck({
-        userMems, customRooms, roomLayouts, roomSharing: roomSharingData,
+        userMems, customRooms, roomSharing: roomSharingData,
         visitedWings, customWings,
         legacyContactCount: 0, // updated after server fetch
         legacyWingAccessConfigured: false,
@@ -1316,7 +1304,7 @@ export default function MemoryPalace(){
       });
     }, 500);
     return () => clearTimeout(t);
-  }, [userMems, customRooms, roomLayouts, roomSharingData, visitedWings, customWings, legacyReviewed, hasUsedMassImport, kepSocialStats, runProgressCheck]);
+  }, [userMems, customRooms, roomSharingData, visitedWings, customWings, legacyReviewed, hasUsedMassImport, kepSocialStats, runProgressCheck]);
 
   useEffect(() => {
     if (!trackToast) return;
@@ -1575,7 +1563,7 @@ export default function MemoryPalace(){
         {warmHallScene}
         {!persistHall && view==="entrance" && hallSceneNode}
         {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+effStyleEra} wingId={activeWing} onReady={() => handleSceneReady("corridor")} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintingsSeeded} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={effStyleEra} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
-        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+effStyleEra} roomId={activeWing} actualRoomId={activeRoomId} onReady={() => handleSceneReady("room")} layoutOverride={roomLayouts[activeRoomId]} memories={effectiveRoomMems} onMemoryClick={roomMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={effStyleEra}/></Suspense>}
+        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+effStyleEra} roomId={activeWing} actualRoomId={activeRoomId} onReady={() => handleSceneReady("room")} memories={effectiveRoomMems} onMemoryClick={roomMemClick} onMemoryUpdate={effectiveUpdateMemory} wingData={wingData||undefined} styleEra={effStyleEra}/></Suspense>}
       </div>
 
       <PerfHud />
@@ -1701,7 +1689,7 @@ export default function MemoryPalace(){
       {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>{setShowRoomManager(false);markChecklistItem("customize_room");}} onEnterRoom={enterRoom}/>}
       {showWingManager&&<WingManagerPanel onClose={()=>setShowWingManager(false)}/>}
       {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>{setSelMem(null);setSelMemAction(undefined);}} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory} initialAction={selMemAction}/>}
-      {/* w1_roomui: Library-parity room media viewer — RoomMediaPlayer first, Edit/chips → MemoryDetail */}
+      {/* Library-parity room media viewer — RoomMediaPlayer first, Edit/chips → MemoryDetail */}
       {roomViewerIdx!==null&&!selMem&&allRoomMems.length>0&&<Suspense fallback={null}><RoomMediaPlayerView
         memories={allRoomMems}
         initialIndex={Math.min(roomViewerIdx,allRoomMems.length-1)}
@@ -1717,9 +1705,7 @@ export default function MemoryPalace(){
       {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=wingForRoom(roomId);setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
       {showFamilyTree&&<Suspense fallback={lazyFallback}><FamilyTreePanel onClose={()=>setShowFamilyTree(false)}/></Suspense>}
       {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
-      {showGallery&&activeRoomId&&(w1RoomUI
-        ? <Suspense fallback={null}><RoomStewardLedger mems={allRoomMems} wing={wingData} room={activeRoomData} loading={roomMemsLoading} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={handleAddMemory} onSelect={(mem)=>{setShowGallery(false);const i=allRoomMems.findIndex(x=>x.id===mem.id);if(i>=0)setRoomViewerIdx(i);else setSelMem(mem);}} canEdit/></Suspense>
-        : <RoomMediaPanel mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={(mem)=>{handleAddMemory(mem);if(galleryAutoAssignUnit){setTimeout(()=>{handleUpdateMemory(mem.id,{displayed:true,displayUnit:galleryAutoAssignUnit});setGalleryAutoAssignUnit(null);},100);}}} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} initialMemId={galleryInitialMemId} initialTab={galleryInitialTab} roomLayout={roomLayouts[activeRoomId]||""} onRoomLayoutChange={(id)=>setRoomLayout(activeRoomId,id)}/>)}
+      {showGallery&&activeRoomId&&<Suspense fallback={null}><RoomStewardLedger mems={allRoomMems} wing={wingData} room={activeRoomData} loading={roomMemsLoading} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={handleAddMemory} onSelect={(mem)=>{setShowGallery(false);const i=allRoomMems.findIndex(x=>x.id===mem.id);if(i>=0)setRoomViewerIdx(i);else setSelMem(mem);}} canEdit/></Suspense>}
       {/* ─── Room memories loading pill — while the first fetch is in flight the
            3D room would otherwise show its empty-room prompts for a beat ─── */}
       {view==="room"&&roomMemsLoading&&allRoomMems.length===0&&!showGallery&&!selMem&&(
@@ -1776,7 +1762,7 @@ export default function MemoryPalace(){
           </button>
         );
       })()}
-      {/* ─── Media pill — opens RoomMediaPanel ─── */}
+      {/* ─── Media pill — opens the Steward's Ledger room manager ─── */}
       {view==="room"&&wingData&&!showGallery&&(
         <button
           data-mp-room-media="1"

@@ -28,6 +28,9 @@ export interface PalaceStats {
   memoriesWithDesc: number;
   roomsRenamed: number;
   roomsAdded: number;
+  /** Retired metric (room-layout overrides removed) — always 0 now. The
+   *  "decorator" definition stays so previously earned badges keep rendering;
+   *  it can simply no longer be newly earned. */
   layoutsChanged: number;
   totalRoomsInPalace: number;
   roomsVisited: number;
@@ -101,7 +104,6 @@ interface AchievementState {
   checkAchievements: (
     mems: Record<string, Mem[]>,
     customRooms: Record<string, WingRoom[]>,
-    roomLayouts: Record<string, string>,
     roomSharing: Record<string, { shared: boolean; sharedWith: string[] }>,
     kepStats?: { captures: number; audioCaptures: number },
     socialStats?: { published: boolean; followers: number; following: number; comments: number; visits: number },
@@ -195,7 +197,7 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
     }
   },
 
-  checkAchievements: (mems, customRooms, roomLayouts, roomSharing, kepStats, socialStats) => {
+  checkAchievements: (mems, customRooms, roomSharing, kepStats, socialStats) => {
     const { earnedIds, visitedWings, visitedRooms, activeDays } = get();
 
     // Compute stats
@@ -244,7 +246,7 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
       memoriesWithDesc: allMems.filter((m) => m.desc && m.desc.trim().length > 0).length,
       roomsRenamed,
       roomsAdded,
-      layoutsChanged: Object.keys(roomLayouts).length,
+      layoutsChanged: 0, // layout overrides retired — kept for the legacy "decorator" badge
       totalRoomsInPalace: allRooms.length,
       roomsVisited: visitedRooms.length,
       kepCaptures: kepStats?.captures ?? 0,

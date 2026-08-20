@@ -5,7 +5,7 @@
  * so they stay consistent across devices.
  *
  * Synced keys:
- *   mp_custom_rooms, mp_custom_wings, mp_room_layouts,
+ *   mp_custom_rooms, mp_custom_wings,
  *   mp_important_dates, mp_demos_hidden, mp_deleted_demos,
  *   mp_persona_type, mp_persona_scores
  */
@@ -16,7 +16,6 @@ const SYNCED_KEYS = [
   "mp_custom_rooms",
   "mp_custom_wings",
   "mp_extra_wings",
-  "mp_room_layouts",
   "mp_important_dates",
   "mp_demos_hidden",
   "mp_deleted_demos",

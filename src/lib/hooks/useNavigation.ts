@@ -17,7 +17,7 @@ export function useNavigation() {
   const exitToPalace = usePalaceStore((s) => s.exitToPalace);
   const exitToCorridor = usePalaceStore((s) => s.exitToCorridor);
   const exitToEntrance = usePalaceStore((s) => s.exitToEntrance);
-  const { setShowGallery, setGalleryInitialMemId, setGalleryInitialTab, setGalleryAutoAssignUnit } = useUIPanelStore();
+  const { setShowGallery, setGalleryInitialMemId, setGalleryAutoAssignUnit } = useUIPanelStore();
   const { getWingRooms, getWings } = useRoomStore();
   // Underlying slices getWings() derives from — used as memo keys below
   const customWings = useRoomStore((s) => s.customWings);
@@ -60,13 +60,14 @@ export function useNavigation() {
   if (activeRoomData)
     crumbs.push({ label: `${activeRoomData.icon} ${activeRoomData.name}`, action: null });
 
-  // InteriorScene sends "__back__", "__upload__", "__upload_painting__", or a memory object
+  // InteriorScene sends "__back__", "__upload__", "__upload_painting__", or a memory object.
+  // The mantel path ("__upload_painting__") keeps galleryAutoAssignUnit="painting" so the
+  // onboarding first-portrait flow auto-hangs the new memory above the fireplace.
   const handleMemClick = useCallback((m: any) => {
     if (m === "__back__") exitToCorridor();
-    else if (m === "__upload_painting__") { setGalleryInitialMemId(null); setGalleryInitialTab("library"); setGalleryAutoAssignUnit("painting"); setShowGallery(true); }
-    else if (m === "__upload__") { setGalleryInitialMemId(null); setGalleryInitialTab("library"); setShowGallery(true); }
-    else { setGalleryInitialMemId(null); setGalleryInitialTab("gallery"); setShowGallery(true); }
-  }, [exitToCorridor, setShowGallery, setGalleryInitialMemId, setGalleryInitialTab, setGalleryAutoAssignUnit]);
+    else if (m === "__upload_painting__") { setGalleryInitialMemId(null); setGalleryAutoAssignUnit("painting"); setShowGallery(true); }
+    else { setGalleryInitialMemId(null); setShowGallery(true); }
+  }, [exitToCorridor, setShowGallery, setGalleryInitialMemId, setGalleryAutoAssignUnit]);
 
   return { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings };
 }

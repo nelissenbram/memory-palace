@@ -10,8 +10,6 @@ export interface TrackCheckState {
   userMems: Record<string, Mem[]>;
   /** Custom rooms per wing */
   customRooms: Record<string, WingRoom[]>;
-  /** Room layout overrides */
-  roomLayouts: Record<string, string>;
   /** Room sharing info */
   roomSharing: Record<string, SharingInfo>;
   /** Wings the user has visited */
@@ -199,7 +197,6 @@ export function checkAllTrackProgress(state: TrackCheckState): CompletedStepsMap
   const visualize: string[] = [];
   if (state.visitedWings.length >= 5) visualize.push("v_visit_5_wings");
   if (hasCustomizedWing(state.customWings)) visualize.push("v_customize_wing");
-  if (Object.keys(state.roomLayouts).length > 0) visualize.push("v_change_layout");
   if (countRoomsAdded(state.customRooms) > 0) visualize.push("v_create_room");
   if (countRoomsRenamed(state.customRooms) >= 3) visualize.push("v_rename_3_rooms");
   // Check hue customization — count memories where hue was likely customized

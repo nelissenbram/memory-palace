@@ -2,12 +2,13 @@
 // Every layout includes ALL memory furniture (bookshelf, low table, desk,
 // painting wall, screen, vinyl player, vitrine, orbs) so every memory type
 // is always reachable. Variation is in room size, decorative style, and
-// optional extra furniture.
+// optional extra furniture. The base is picked deterministically per room
+// (roomId hash) — the old room-type picker/override and the exhibition-hall
+// concept are retired (masterplan §9).
 
 export interface RoomLayout {
   id: string;
   name: string;
-  nameKey: string;
   rW: number; rL: number; rH: number;
   // optional extras (on top of mandatory furniture)
   piano: boolean;        // grand piano near front-right
@@ -18,9 +19,6 @@ export interface RoomLayout {
   windowCount: 1 | 2;
   plantCorners: number[];  // 0=back-left, 1=back-right, 2=front-left, 3=front-right
   extraSconces: boolean;
-  // Exhibition hall — grand museum room with 20 painting slots + 1 video screen
-  isExhibition?: boolean;
-  paintingSlots?: number;   // number of wall paintings (default 1)
   // "The Enfilade" scalable rooms (w3_interior): a room grows by adding depth
   // BAYS as more photos hang. rW/rH stay frozen (they carry the proportions);
   // only rL lengthens, snapped to a tier. These are filled in by sizeForRoom().
@@ -68,80 +66,60 @@ export function sizeForRoom(base: RoomLayout, count: number): RoomLayout {
   return { ...base, rL, tier, bays: b };
 }
 
-export const ROOM_LAYOUTS: RoomLayout[] = [
+// Base layouts eligible for automatic (hash-based) assignment. Every room gets
+// one of these deterministically — there is no picker/override any more.
+const BASE_LAYOUTS: RoomLayout[] = [
   {
     // 0: Den — the original cosy room, medium size
-    id: "den", name: "Den", nameKey: "roomLayouts.den",
+    id: "den", name: "Den",
     rW: 12, rL: 10, rH: 4.5,
     piano: false, readingChair: false, globe: false,
     rugStyle: "persian", windowCount: 1, plantCorners: [0, 1, 2], extraSconces: false,
   },
   {
     // 1: Study — square room with globe, reading chair, 2 windows
-    id: "study", name: "Study", nameKey: "roomLayouts.study",
+    id: "study", name: "Study",
     rW: 11, rL: 11, rH: 4,
     piano: false, readingChair: true, globe: true,
     rugStyle: "round", windowCount: 2, plantCorners: [0, 3], extraSconces: true,
   },
   {
     // 2: Parlour — wide + tall, 2 windows, extra sconces
-    id: "parlour", name: "Parlour", nameKey: "roomLayouts.parlour",
+    id: "parlour", name: "Parlour",
     rW: 14, rL: 9, rH: 5,
     piano: false, readingChair: false, globe: false,
     rugStyle: "persian", windowCount: 2, plantCorners: [0, 1, 2, 3], extraSconces: true,
   },
   {
     // 3: Salon — deeper + taller, grand piano, elegant
-    id: "salon", name: "Salon", nameKey: "roomLayouts.salon",
+    id: "salon", name: "Salon",
     rW: 12, rL: 13, rH: 4.8,
     piano: true, readingChair: false, globe: false,
     rugStyle: "persian", windowCount: 1, plantCorners: [0, 1], extraSconces: false,
   },
   {
     // 4: Nook — small cosy room, reading chair, round rug
-    id: "nook", name: "Nook", nameKey: "roomLayouts.nook",
+    id: "nook", name: "Nook",
     rW: 10, rL: 9, rH: 3.8,
     piano: false, readingChair: true, globe: false,
     rugStyle: "round", windowCount: 1, plantCorners: [2], extraSconces: false,
   },
-  {
-    // 5: Peristylium — open-air Roman courtyard garden with colonnades
-    // 30×25 open courtyard. Height 6 (open sky, columns frame the space).
-    id: "peristylium", name: "Peristylium", nameKey: "roomLayouts.peristylium",
-    rW: 30, rL: 25, rH: 6,
-    piano: false, readingChair: false, globe: false,
-    rugStyle: "persian", windowCount: 2, plantCorners: [0, 1, 2, 3], extraSconces: true,
-    isExhibition: true, paintingSlots: 20,
-  },
 ];
 
-// Layouts eligible for automatic (hash-based) assignment.
-// Exhibition Hall is excluded — it must be chosen explicitly via layoutOverride.
-const AUTO_LAYOUTS = ROOM_LAYOUTS.filter(l => !l.isExhibition);
-
-function pickBaseLayout(roomId: string, layoutOverride?: string): RoomLayout {
-  if (layoutOverride) {
-    const found = ROOM_LAYOUTS.find(l => l.id === layoutOverride);
-    if (found) return found;
-  }
+function pickBaseLayout(roomId: string): RoomLayout {
   let h = 0;
   for (const c of roomId) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return AUTO_LAYOUTS[h % AUTO_LAYOUTS.length];
+  return BASE_LAYOUTS[h % BASE_LAYOUTS.length];
 }
 
 /**
- * Pick a room's STYLE variant by id-hash (or explicit override), then — when a
- * displayed-wall-photo `count` is supplied (w3_interior ON) — grow only its
- * depth (rL) to the media tier via sizeForRoom. `count` omitted → the legacy
- * fixed-size layout, byte-identical to before (flag-off path). Exhibition rooms
- * keep their fixed footprint (no tiered growth).
+ * Pick a room's STYLE variant by id-hash, then — when a displayed-wall-photo
+ * `count` is supplied (w3_interior ON) — grow only its depth (rL) to the media
+ * tier via sizeForRoom. `count` omitted → the legacy fixed-size layout,
+ * byte-identical to before (flag-off path).
  */
-export function layoutForRoom(roomId: string, layoutOverride?: string, count?: number): RoomLayout {
-  let base = pickBaseLayout(roomId, layoutOverride);
-  if (count === undefined) return base; // legacy fixed size (w3_interior OFF), incl. exhibition
-  // W3 "Enfilade": the Peristylium is retired — a room pinned to it becomes a
-  // scalable Salon; its wall assignments re-home as ordinary salon-hang art and
-  // the count naturally lands it in the Gallery / Grand-Enfilade tier.
-  if (base.isExhibition) base = ROOM_LAYOUTS.find(l => l.id === "salon") || base;
+export function layoutForRoom(roomId: string, count?: number): RoomLayout {
+  const base = pickBaseLayout(roomId);
+  if (count === undefined) return base; // legacy fixed size (w3_interior OFF)
   return sizeForRoom(base, count);
 }

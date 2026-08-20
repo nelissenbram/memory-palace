@@ -37,7 +37,7 @@ import { hapticMedium } from "@/lib/native/haptics";
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
-function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void}){
+function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady}: {roomId: any,actualRoomId?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void}){
   const { t } = useTranslation("interior3d");
   const { getWingRooms } = useRoomStore();
   const userName = useUserStore((s) => s.userName);
@@ -168,7 +168,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // (the exit door sits behind the spawn, so straight-ahead can't show it).
     const _rcam=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("rcam"):null;
     const wallCount=W3?(Number.isFinite(_wcOverride)?_wcOverride:displayedWallCount(mems)):undefined;
-    const layout=layoutForRoom(actualRoomId||roomId,layoutOverride,wallCount);
+    const layout=layoutForRoom(actualRoomId||roomId,wallCount);
     if(W3&&typeof process!=="undefined"&&process.env.NODE_ENV!=="production")console.debug(`[rooms] tier=${layout.tier} deeper-by=${layout.bays} rL=${layout.rL} rW=${layout.rW} (walls=${wallCount})`);
     const dlPresetRaw=getLightingPreset();
     // Interior rooms have artificial lighting — enforce minimum brightness
@@ -183,9 +183,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       envBrightness:Math.max(dlPresetRaw.envBrightness,W1?0.3:0.35),
       exposure:Math.max(dlPresetRaw.exposure,0.9),
     };
-    // Warm canon background at mount (MUSEO VIVO): golden sky for open-air
-    // exhibition rooms, golden interior haze otherwise — the cool blue is dead.
-    const scene=new THREE.Scene();scene.background=new THREE.Color(layout.isExhibition?GOLDEN.skyColor:dlPreset.fogColor);
+    // Warm canon background at mount (MUSEO VIVO): golden interior haze —
+    // the cool blue is dead.
+    const scene=new THREE.Scene();scene.background=new THREE.Color(dlPreset.fogColor);
     // z-fight sweep r3 (W1): near 0.1 → 0.3. Depth precision is ~proportional to
     // near, so 0.1 against far 60/120 spent most of the buffer on the first
     // 30 cm and left the floor layers (mm apart, 2-15 m away) shimmering — the
@@ -198,7 +198,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // the first 0.3 m. Legacy (flag off) keeps 0.1. NOTE: do NOT reach for
     // ren.logarithmicDepthBuffer instead — the renderer is pool-shared
     // (rendererPool.ts) across exterior/corridor scenes.
-    const camera=new THREE.PerspectiveCamera(58,w/h,W1?0.3:0.1,layout.isExhibition?120:60);
+    const camera=new THREE.PerspectiveCamera(58,w/h,W1?0.3:0.1,60);
     const Q=getQuality();
     const ren=borrowRenderer(w,h);
     ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.NoToneMapping;ren.toneMappingExposure=EXPOSURE;// grade lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE)
@@ -220,29 +220,27 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const disposeFit=autoFit(el,{camera,renderer:ren,composer});
 
     // ── ATMOSPHERIC FOG ──
-    const isExhibition=!!layout.isExhibition;
-    // Owner feedback r2 (W1): fogFar 22→30 / 65→85 — the dense golden haze read as
+    // Owner feedback r2 (W1): fogFar 22→30 — the dense golden haze read as
     // "gouden melk"; a longer falloff gives the far wall its depth back.
     // W3: fog-far scales with the room's depth so a Grand Enfilade's far bay
     // resolves out of the haze instead of being swallowed (base tiers unchanged).
     const baseFogFar=(W1?30:22)/dlPreset.fogDensity;
-    const fogFar=isExhibition?(W1?85:65)/dlPreset.fogDensity:(W3?Math.max(baseFogFar,(layout.rL/13)*baseFogFar):baseFogFar);
-    scene.fog=new THREE.Fog(isExhibition?GOLDEN.skyColor:dlPreset.fogColor,isExhibition?8:3,fogFar);
+    const fogFar=W3?Math.max(baseFogFar,(layout.rL/13)*baseFogFar):baseFogFar;
+    scene.fog=new THREE.Fog(dlPreset.fogColor,3,fogFar);
 
     // Warm sky + terracotta ground bounce (WS1-6)
     // Owner feedback r2 (W1): hemi .7→.45 / .4→.26 and sun 1.1→1.55 — same ratio
     // shift as the exterior; the key light carves the room instead of the wash.
-    const hemi=new THREE.HemisphereLight(isExhibition?GOLDEN.skyColor:dlPreset.ambientColor,dlPreset.groundBounceColor,isExhibition?(W1?.45:.7):(W1?.26:.4)*dlPreset.ambientIntensity/0.5);
+    const hemi=new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?.26:.4)*dlPreset.ambientIntensity/0.5);
     scene.add(hemi);
-    const sun=new THREE.DirectionalLight(dlPreset.sunColor,(W1?1.55:1.1)*dlPreset.sunIntensity);sun.position.set(isExhibition?18:10,isExhibition?20:14,-4);sun.castShadow=true;sun.shadow.mapSize.set(Math.min(Q.shadowMapSize,isExhibition?2048:1024),Math.min(Q.shadowMapSize,isExhibition?2048:1024));
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,(W1?1.55:1.1)*dlPreset.sunIntensity);sun.position.set(10,14,-4);sun.castShadow=true;sun.shadow.mapSize.set(Math.min(Q.shadowMapSize,1024),Math.min(Q.shadowMapSize,1024));
     // r2 (W1): den shadow frustum shrink-wraps the room — more texels/m² = crisper shadows
-    const shCam=isExhibition?20:(W1?Math.min(12,Math.max(layout.rW,layout.rL)/2+2):12);
-    sun.shadow.camera.near=0.5;sun.shadow.camera.far=isExhibition?60:30;sun.shadow.camera.left=-shCam;sun.shadow.camera.right=shCam;sun.shadow.camera.top=shCam;sun.shadow.camera.bottom=-shCam;
+    const shCam=W1?Math.min(12,Math.max(layout.rW,layout.rL)/2+2):12;
+    sun.shadow.camera.near=0.5;sun.shadow.camera.far=30;sun.shadow.camera.left=-shCam;sun.shadow.camera.right=shCam;sun.shadow.camera.top=shCam;sun.shadow.camera.bottom=-shCam;
     scene.add(sun);
     // W2 (WS6-9 light budget law): the den runs hemi + sun + fire ONLY (≤4);
-    // the point fill is deleted there (hemi covers it). Exhibition keeps its
-    // fill as the one "≤1 more" light (hemi + sun + fill = 3).
-    const ambL=new THREE.PointLight(dlPreset.fillColor,(W1?.16:.3)*dlPreset.fillIntensity/0.35,isExhibition?30:15);ambL.position.set(0,isExhibition?6:4,0);if(!W2||isExhibition)scene.add(ambL); // r2 (W1): point fill .3→.16
+    // the point fill is deleted there (hemi covers it).
+    const ambL=new THREE.PointLight(dlPreset.fillColor,(W1?.16:.3)*dlPreset.fillIntensity/0.35,15);ambL.position.set(0,4,0);if(!W2)scene.add(ambL); // r2 (W1): point fill .3→.16
     // ── W2 (WS7-8/WS6-7): dolly-to-frame focus mode — ONE camera authority.
     // The rig maps onto the scene's own posT/lookT targets so glides ride the
     // existing smoothing; setDimmed dims hemi/sun/env 15% (photos and plaques
@@ -283,8 +281,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           requestAnimationFrame(()=>{veil.style.opacity="1";});
           setTimeout(()=>{applyCut();veil.style.opacity="0";setTimeout(()=>{veil.parentNode&&veil.parentNode.removeChild(veil);},220);},180);
         },
-        // Exhibition walks at eye 2.1 — offset floorY so focus never dips the camera.
-        floorY:layout.isExhibition?0.1:0,
+        floorY:0,
       });
     }
     // ── W2 (WS8-6): autoWalk integrator state — straight line (one optional
@@ -515,282 +512,6 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // SHELL: floor, ceiling, walls, wainscoting
     // ═══════════════════════════════════════════
-    if(isExhibition){
-      // ═══ ROMAN PERISTYLIUM: open-air courtyard with colonnaded porches ═══
-      // Layout: rW=30, rL=25, rH=6
-      // Portico depth 3.5 on each side. Courtyard interior ~23 x 18.
-      const porticoD=3.5; // depth of covered walkway
-      const colR=0.2; // column radius (Tuscan — smooth, simple)
-      const colRBase=0.24;
-      const colSpacingX=3.2; // spacing along X axis
-      const colSpacingZ=3.4; // spacing along Z axis
-      const entabH=0.7; // entablature height (architrave+frieze+cornice)
-
-      // ── Materials specific to peristylium ──
-      const terraMat=new THREE.MeshStandardMaterial({color:"#C4854A",roughness:.75,metalness:.04});
-      const terraLightMat=new THREE.MeshStandardMaterial({color:"#D4A06A",roughness:.7,metalness:.03});
-      const stoneMat=new THREE.MeshStandardMaterial({color:"#E0D8C8",roughness:.55,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.2,.2)});
-      const stoneWarmMat=new THREE.MeshStandardMaterial({color:"#E8DCC8",roughness:.6,metalness:.04});
-      const waterMat=mkPhys(THREE,{color:"#4A7A8A",roughness:.05,metalness:.15,transparent:true,opacity:.7,clearcoat:1,clearcoatRoughness:.05});
-      const mosaicDarkMat=new THREE.MeshStandardMaterial({color:"#8A6040",roughness:.6});
-      const mosaicLightMat=new THREE.MeshStandardMaterial({color:"#E8D8B8",roughness:.55});
-      const hedgeMat=new THREE.MeshStandardMaterial({color:"#3A6828",roughness:.9});
-      const hedgeLightMat=new THREE.MeshStandardMaterial({color:"#4A8038",roughness:.85});
-      const roofTileMat=new THREE.MeshStandardMaterial({color:"#B06838",roughness:.8,metalness:.02});
-
-      // ── FLOOR: terracotta tile with mosaic border ──
-      // Main courtyard floor
-      const fl=new THREE.Mesh(new THREE.PlaneGeometry(rW,rL),terraMat);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
-      // Portico floor — slightly lighter stone
-      for(let s=-1;s<=1;s+=2){
-        scene.add(mk(new THREE.BoxGeometry(rW,0.01,porticoD),stoneWarmMat,0,.005,s*(rL/2-porticoD/2)));
-        scene.add(mk(new THREE.BoxGeometry(porticoD,0.01,rL-porticoD*2),stoneWarmMat,s*(rW/2-porticoD/2),.005,0));
-      }
-      // Mosaic border around courtyard opening — z-fight sweep r2: the dark band's
-      // top (0.012) tied the portico slab top (0.01) within 2mm; lifted clear.
-      const courtInX=rW/2-porticoD, courtInZ=rL/2-porticoD;
-      for(let s=-1;s<=1;s+=2){
-        scene.add(mk(new THREE.BoxGeometry(courtInX*2+0.4,0.008,0.25),mosaicDarkMat,0,.014,s*courtInZ));
-        scene.add(mk(new THREE.BoxGeometry(0.25,0.008,courtInZ*2),mosaicDarkMat,s*courtInX,.014,0));
-        scene.add(mk(new THREE.BoxGeometry(courtInX*2-0.2,0.009,0.12),mosaicLightMat,0,.019,s*(courtInZ-0.18)));
-        scene.add(mk(new THREE.BoxGeometry(0.12,0.009,courtInZ*2-0.2),mosaicLightMat,s*(courtInX-0.18),.019,0));
-      }
-      // Decorative mosaic diamond pattern in courtyard center
-      for(let dx=-3;dx<=3;dx++){
-        for(let dz=-2;dz<=2;dz++){
-          const tileMat=(dx+dz)%2===0?mosaicDarkMat:mosaicLightMat;
-          const tile=mk(new THREE.BoxGeometry(0.5,0.006,0.5),tileMat,dx*1.2,.007,dz*1.2);
-          tile.rotation.y=Math.PI/4;scene.add(tile);
-        }
-      }
-
-      // ── BACK WALLS (behind colonnades) — where paintings hang ──
-      // These are the outer perimeter walls at the very edge
-      for(let s=-1;s<=1;s+=2){
-        const wm=new THREE.Mesh(new THREE.PlaneGeometry(rL,rH),MS.wall);wm.rotation.y=s*(-Math.PI/2);wm.position.set(s*(rW/2),rH/2,0);wm.receiveShadow=true;scene.add(wm);
-      }
-      scene.add(mk(new THREE.PlaneGeometry(rW,rH),MS.wall,0,rH/2,-rL/2));
-      const bw=new THREE.Mesh(new THREE.PlaneGeometry(rW,rH),MS.wall);bw.rotation.y=Math.PI;bw.position.set(0,rH/2,rL/2);bw.receiveShadow=true;scene.add(bw);
-      // Warm plaster dado on back walls
-      const dadoH=1.2;
-      for(let s=-1;s<=1;s+=2){
-        scene.add(mk(new THREE.BoxGeometry(.06,dadoH,rL-.2),terraMat,s*(rW/2-.03),dadoH/2,0));
-        scene.add(mk(new THREE.BoxGeometry(.07,.06,rL-.1),MS.gold,s*(rW/2-.035),dadoH+.03,0));
-      }
-      scene.add(mk(new THREE.BoxGeometry(rW-.2,dadoH,.06),terraMat,0,dadoH/2,-rL/2+.03));
-      scene.add(mk(new THREE.BoxGeometry(rW-.1,.06,.07),MS.gold,0,dadoH+.03,-rL/2+.035)); // gold trim on back dado
-      // Front wall dado
-      scene.add(mk(new THREE.BoxGeometry(rW-.2,dadoH,.06),terraMat,0,dadoH/2,rL/2-.03));
-      scene.add(mk(new THREE.BoxGeometry(rW-.1,.06,.07),MS.gold,0,dadoH+.03,rL/2-.035)); // gold trim on front dado
-
-      // ── PORTICO ROOF (covered walkways, NOT over the courtyard center) ──
-      // Roof slabs on all 4 sides
-      for(let s=-1;s<=1;s+=2){
-        // Long sides (along X)
-        const roofZ=s*(rL/2-porticoD/2);
-        scene.add(mk(new THREE.BoxGeometry(rW,0.12,porticoD+0.3),MS.ceil,0,rH,roofZ));
-        // Roof tiles on top
-        scene.add(mk(new THREE.BoxGeometry(rW,0.06,porticoD+0.4),roofTileMat,0,rH+0.09,roofZ));
-        // Short sides (along Z) — avoid overlap at corners
-        const roofX=s*(rW/2-porticoD/2);
-        scene.add(mk(new THREE.BoxGeometry(porticoD+0.3,0.12,rL-porticoD*2),MS.ceil,roofX,rH,0));
-        scene.add(mk(new THREE.BoxGeometry(porticoD+0.4,0.06,rL-porticoD*2),roofTileMat,roofX,rH+0.09,0));
-      }
-      // Underside beams for portico roofs (wooden rafters)
-      for(let s=-1;s<=1;s+=2){
-        // Beams along long sides
-        for(let bx=-rW/2+1.5;bx<rW/2;bx+=2.5){
-          scene.add(mk(new THREE.BoxGeometry(0.12,0.15,porticoD),MS.ltW,bx,rH-0.08,s*(rL/2-porticoD/2)));
-        }
-        // Beams along short sides
-        for(let bz=-rL/2+porticoD+1;bz<rL/2-porticoD;bz+=2.5){
-          scene.add(mk(new THREE.BoxGeometry(porticoD,0.15,0.12),MS.ltW,s*(rW/2-porticoD/2),rH-0.08,bz));
-        }
-      }
-
-      // ── OPEN SKY (no ceiling in center) — use a sky-colored plane far above ──
-      // W1 (canon): golden-hour sky, not the off-canon #87CEEB blue
-      const skyMat=new THREE.MeshBasicMaterial({color:W1?GOLDEN.skyColor:"#87CEEB"});
-      const sky=new THREE.Mesh(new THREE.PlaneGeometry(rW+20,rL+20),skyMat);
-      sky.rotation.x=Math.PI/2;sky.position.y=rH+8;scene.add(sky);
-      // Soft cloud wisps
-      const cloudMat=new THREE.MeshBasicMaterial({color:"#FFFFFF",transparent:true,opacity:0.3});
-      for(let ci=0;ci<5;ci++){
-        const cx2=-8+ci*4+Math.sin(ci)*2, cz2=-4+ci*2.5;
-        const cloud=new THREE.Mesh(new THREE.PlaneGeometry(3+ci*0.5,1.5),cloudMat);
-        cloud.rotation.x=Math.PI/2;cloud.position.set(cx2,rH+7.5,cz2);scene.add(cloud);
-      }
-
-      // ── COLONNADE: Tuscan columns along all 4 sides ──
-      // Columns stand at the inner edge of the portico, supporting the roof
-      const colY=rH/2-entabH/2; // column shaft center Y
-      const colShaftH=rH-entabH-0.4; // shaft height (minus base + capital)
-      // Column positions stored for painting collision avoidance
-      const colPositions: [number,number][]=[];
-
-      // Long sides (along X, at z = +-courtInZ)
-      for(let s=-1;s<=1;s+=2){
-        const cz=s*courtInZ;
-        for(let cx=-rW/2+porticoD;cx<=rW/2-porticoD;cx+=colSpacingX){
-          colPositions.push([cx,cz]);
-          // Plinth/base
-          scene.add(mk(new THREE.BoxGeometry(0.6,0.2,0.6),stoneMat,cx,0.1,cz));
-          scene.add(mk(new THREE.CylinderGeometry(colRBase+0.02,colRBase+0.05,0.12,12),stoneMat,cx,0.26,cz));
-          // Shaft (smooth Tuscan — no fluting)
-          scene.add(mk(new THREE.CylinderGeometry(colR,colRBase,colShaftH,12),stoneMat,cx,0.32+colShaftH/2,cz));
-          // Neck ring
-          scene.add(mk(new THREE.CylinderGeometry(colR+0.03,colR,0.06,12),stoneMat,cx,0.32+colShaftH+0.03,cz));
-          // Echinus (curved capital element)
-          scene.add(mk(new THREE.CylinderGeometry(colR+0.12,colR+0.03,0.12,12),stoneMat,cx,0.32+colShaftH+0.12,cz));
-          // Abacus (square slab on top)
-          scene.add(mk(new THREE.BoxGeometry(0.55,0.08,0.55),stoneMat,cx,0.32+colShaftH+0.22,cz));
-        }
-      }
-      // Short sides (along Z, at x = +-courtInX) — skip corners (already placed)
-      for(let s=-1;s<=1;s+=2){
-        const cx2=s*courtInX;
-        for(let cz=-courtInZ+colSpacingZ;cz<courtInZ;cz+=colSpacingZ){
-          colPositions.push([cx2,cz]);
-          scene.add(mk(new THREE.BoxGeometry(0.6,0.2,0.6),stoneMat,cx2,0.1,cz));
-          scene.add(mk(new THREE.CylinderGeometry(colRBase+0.02,colRBase+0.05,0.12,12),stoneMat,cx2,0.26,cz));
-          scene.add(mk(new THREE.CylinderGeometry(colR,colRBase,colShaftH,12),stoneMat,cx2,0.32+colShaftH/2,cz));
-          scene.add(mk(new THREE.CylinderGeometry(colR+0.03,colR,0.06,12),stoneMat,cx2,0.32+colShaftH+0.03,cz));
-          scene.add(mk(new THREE.CylinderGeometry(colR+0.12,colR+0.03,0.12,12),stoneMat,cx2,0.32+colShaftH+0.12,cz));
-          scene.add(mk(new THREE.BoxGeometry(0.55,0.08,0.55),stoneMat,cx2,0.32+colShaftH+0.22,cz));
-        }
-      }
-
-      // ── ENTABLATURE (architrave + frieze + cornice) running along colonnade ──
-      // Continuous stone band above columns on all 4 sides
-      for(let s=-1;s<=1;s+=2){
-        // Long sides
-        const ez=s*courtInZ;
-        scene.add(mk(new THREE.BoxGeometry(rW-porticoD*2+colSpacingX,0.18,0.45),stoneMat,0,rH-entabH+0.09,ez)); // architrave
-        scene.add(mk(new THREE.BoxGeometry(rW-porticoD*2+colSpacingX,0.22,0.35),stoneWarmMat,0,rH-entabH+0.29,ez)); // frieze
-        scene.add(mk(new THREE.BoxGeometry(rW-porticoD*2+colSpacingX+0.3,0.12,0.55),stoneMat,0,rH-entabH+0.46,ez)); // cornice
-        // Dentil blocks on cornice
-        for(let dx=-rW/2+porticoD;dx<=rW/2-porticoD;dx+=0.5){
-          scene.add(mk(new THREE.BoxGeometry(0.12,0.08,0.08),stoneMat,dx,rH-entabH+0.35,ez+(s>0?-0.22:0.22)));
-        }
-        // Short sides
-        const ex=s*courtInX;
-        scene.add(mk(new THREE.BoxGeometry(0.45,0.18,rL-porticoD*2),stoneMat,ex,rH-entabH+0.09,0));
-        scene.add(mk(new THREE.BoxGeometry(0.35,0.22,rL-porticoD*2),stoneWarmMat,ex,rH-entabH+0.29,0));
-        scene.add(mk(new THREE.BoxGeometry(0.55,0.12,rL-porticoD*2+0.3),stoneMat,ex,rH-entabH+0.46,0));
-        for(let dz=-rL/2+porticoD;dz<=rL/2-porticoD;dz+=0.5){
-          scene.add(mk(new THREE.BoxGeometry(0.08,0.08,0.12),stoneMat,ex+(s>0?-0.22:0.22),rH-entabH+0.35,dz));
-        }
-      }
-
-      // ── IMPLUVIUM: shallow reflecting pool in the center ──
-      const poolW=5, poolL=3.5, poolDepth=0.2;
-      addCol(0,0,poolW/2+0.4,poolL/2+0.4); // WS6-8: impluvium + fountain
-      // Pool basin (sunken)
-      scene.add(mk(new THREE.BoxGeometry(poolW+0.3,0.08,poolL+0.3),stoneMat,0,0.01,0)); // rim
-      scene.add(mk(new THREE.BoxGeometry(poolW,poolDepth,poolL),stoneMat,0,-poolDepth/2+0.01,0)); // basin walls
-      // Water surface
-      const water=new THREE.Mesh(new THREE.PlaneGeometry(poolW-0.1,poolL-0.1),waterMat);
-      water.rotation.x=-Math.PI/2;water.position.set(0,0.005,0);scene.add(water);
-      animTex.push({type:"water" as any,mesh:water});
-      // Decorative stone edge with moulding
-      for(let s=-1;s<=1;s+=2){
-        scene.add(mk(new THREE.BoxGeometry(poolW+0.5,0.12,0.2),MS.marble,0,0.06,s*(poolL/2+0.15)));
-        scene.add(mk(new THREE.BoxGeometry(0.2,0.12,poolL+0.2),MS.marble,s*(poolW/2+0.15),0.06,0));
-      }
-
-      // ── FOUNTAIN in center of impluvium (ornate Roman style) ──
-      // Stepped base
-      scene.add(mk(new THREE.CylinderGeometry(0.5,0.55,0.08,16),MS.marble,0,0.04,0));
-      scene.add(mk(new THREE.CylinderGeometry(0.4,0.45,0.10,16),stoneMat,0,0.13,0));
-      // Fluted column
-      scene.add(mk(new THREE.CylinderGeometry(0.10,0.14,0.7,12),stoneMat,0,0.53,0));
-      // Column rings
-      scene.add(mk(new THREE.CylinderGeometry(0.13,0.13,0.04,12),MS.gold,0,0.35,0));
-      scene.add(mk(new THREE.CylinderGeometry(0.12,0.12,0.03,12),MS.gold,0,0.65,0));
-      // Upper scalloped basin
-      scene.add(mk(new THREE.CylinderGeometry(0.50,0.25,0.14,12),stoneMat,0,0.97,0));
-      scene.add(mk(new THREE.CylinderGeometry(0.52,0.52,0.03,12),MS.marble,0,1.05,0)); // rim
-      // Water in upper basin
-      scene.add(mk(new THREE.CylinderGeometry(0.44,0.44,0.03,12),waterMat,0,1.04,0));
-      // Upper column rising from basin
-      scene.add(mk(new THREE.CylinderGeometry(0.06,0.08,0.35,10),stoneMat,0,1.25,0));
-      // Small top basin
-      scene.add(mk(new THREE.CylinderGeometry(0.18,0.12,0.08,10),stoneMat,0,1.47,0));
-      scene.add(mk(new THREE.CylinderGeometry(0.14,0.14,0.02,10),waterMat,0,1.52,0));
-      // Decorative finial — acorn or pine cone shape
-      scene.add(mk(new THREE.CylinderGeometry(0.03,0.06,0.10,8),MS.bronze,0,1.58,0));
-      scene.add(mk(new THREE.SphereGeometry(0.04,8,8),MS.bronze,0,1.65,0));
-      // Subtle water shimmer light
-      if(!W2&&!isMobileGPU()){const fountainLight=new THREE.PointLight("#B0D8E8",0.2,4);fountainLight.position.set(0,1.1,0);scene.add(fountainLight);} // W2 (WS6-9): deleted — off-canon cool light
-
-      // ── GARDEN ELEMENTS: potted plants, low hedges, small statues ──
-      // Low hedges along the courtyard inner perimeter
-      const hedgeInset=1.5; // inset from colonnade
-      for(let s=-1;s<=1;s+=2){
-        addCol(0,s*(courtInZ-hedgeInset),courtInX-2,0.4); // WS6-8: long hedge
-        addCol(s*(courtInX-hedgeInset),0,0.4,courtInZ-2); // WS6-8: short hedge
-        // Along long sides
-        scene.add(mk(new THREE.BoxGeometry(courtInX*2-4,0.6,0.5),hedgeMat,0,0.3,s*(courtInZ-hedgeInset)));
-        scene.add(mk(new THREE.BoxGeometry(courtInX*2-4.2,0.15,0.55),hedgeLightMat,0,0.68,s*(courtInZ-hedgeInset)));
-        // Along short sides (shorter segments)
-        scene.add(mk(new THREE.BoxGeometry(0.5,0.6,courtInZ*2-4),hedgeMat,s*(courtInX-hedgeInset),0.3,0));
-        scene.add(mk(new THREE.BoxGeometry(0.55,0.15,courtInZ*2-4.2),hedgeLightMat,s*(courtInX-hedgeInset),0.68,0));
-      }
-
-      // Terracotta pots with plants at corners of hedge arrangement
-      const potPositions: [number,number][]=[
-        [-courtInX+hedgeInset,-courtInZ+hedgeInset],[courtInX-hedgeInset,-courtInZ+hedgeInset],
-        [-courtInX+hedgeInset,courtInZ-hedgeInset],[courtInX-hedgeInset,courtInZ-hedgeInset]
-      ];
-      for(const[ppx,ppz] of potPositions){
-        // Terracotta pot
-        scene.add(mk(new THREE.CylinderGeometry(0.25,0.2,0.4,10),terraMat,ppx,0.2,ppz));
-        scene.add(mk(new THREE.CylinderGeometry(0.27,0.27,0.04,10),terraMat,ppx,0.42,ppz));
-        // Topiary/bush
-        scene.add(mk(new THREE.SphereGeometry(0.35,8,8),hedgeMat,ppx,0.8,ppz));
-        scene.add(mk(new THREE.SphereGeometry(0.22,8,8),hedgeLightMat,ppx,1.15,ppz));
-      }
-
-      // Small cypress trees flanking the impluvium
-      for(let s=-1;s<=1;s+=2){
-        const cyX=s*3.5, cyZ=0;
-        addCol(cyX,cyZ,0.45,0.45); // WS6-8: cypress
-        scene.add(mk(new THREE.CylinderGeometry(0.06,0.08,0.5,6),MS.dkW,cyX,0.25,cyZ)); // trunk
-        scene.add(mk(new THREE.ConeGeometry(0.35,2.0,8),hedgeMat,cyX,1.5,cyZ)); // foliage
-        scene.add(mk(new THREE.ConeGeometry(0.25,1.5,8),hedgeLightMat,cyX,2.1,cyZ)); // top
-      }
-
-      // ── STATUES on pedestals flanking the impluvium ──
-      for(let s=-1;s<=1;s+=2){
-        const stX=s*1.5, stZ=poolL/2+1.5;
-        addCol(stX,stZ,0.45,0.45); // WS6-8: statue pedestal
-        // Tiered pedestal with moulding
-        scene.add(mk(new THREE.BoxGeometry(0.7,0.06,0.7),MS.marble,stX,0.03,stZ));   // base slab
-        scene.add(mk(new THREE.BoxGeometry(0.6,0.06,0.6),stoneMat,stX,0.09,stZ));     // lower plinth
-        scene.add(mk(new THREE.BoxGeometry(0.5,0.7,0.5),stoneMat,stX,0.47,stZ));      // main shaft
-        scene.add(mk(new THREE.BoxGeometry(0.55,0.04,0.55),MS.gold,stX,0.84,stZ));    // gold band
-        scene.add(mk(new THREE.BoxGeometry(0.58,0.06,0.58),MS.marble,stX,0.91,stZ));  // cap
-        // More detailed figure — draped toga style
-        scene.add(mk(new THREE.CylinderGeometry(0.10,0.16,0.55,10),MS.marble,stX,1.21,stZ)); // torso (tapered)
-        scene.add(mk(new THREE.CylinderGeometry(0.06,0.10,0.12,8),MS.marble,stX,1.55,stZ));  // neck
-        scene.add(mk(new THREE.SphereGeometry(0.11,12,12),MS.marble,stX,1.70,stZ));            // head
-        // Arms suggestion (slight protrusions)
-        for(const as2 of[-1,1]){
-          scene.add(mk(new THREE.CylinderGeometry(0.03,0.04,0.3,6),MS.marble,stX+as2*0.14,1.15,stZ));
-        }
-      }
-
-      // ── Stone benches in the courtyard (for contemplation) ──
-      for(const bz2 of[-3,3]){
-        addCol(0,bz2,1.5,0.35); // WS6-8: courtyard bench
-        // Wider, more elegant bench with curved legs
-        scene.add(mk(new THREE.BoxGeometry(2.8,0.06,0.55),MS.marble,0,0.46,bz2)); // seat
-        scene.add(mk(new THREE.BoxGeometry(2.9,0.03,0.58),MS.gold,0,0.48,bz2));   // gilded edge
-        for(const blx of[-1.15,0,1.15]){
-          scene.add(mk(new THREE.BoxGeometry(0.12,0.40,0.50),stoneMat,blx,0.23,bz2)); // legs
-        }
-      }
-    }else{
     if(W3){
       // T-SHAPE floor + ceiling: a full-width back HALL + a narrow entry STEM.
       const backD=widenZ+rL/2, backCz=(-rL/2+widenZ)/2, stemCz=(widenZ+rL/2)/2;
@@ -970,7 +691,6 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // reading-nook / gallery-bench block was stripped in full — no mid-floor
     // architecture, no added furniture. Enclosure comes from close continuous
     // walls; display comes from the length-aware salon runs (see salon-hang).
-    } // end shell isExhibition branch
 
     // ── ERA-SPECIFIC ROOM MODIFICATIONS ──
     if (styleEra === "renaissance") {
@@ -1361,10 +1081,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     }
 
     // ═══════════════════════════════════════════
-    // FIREPLACE (back wall center) — skipped in exhibition mode
+    // FIREPLACE (back wall center)
     // ═══════════════════════════════════════════
     const fpX=0,fpZ=-rL/2+.3;
-    if(!isExhibition){
+    {
     addCol(fpX,fpZ,1.4,0.55,true); // WS6-8: fireplace + hearth slab (solid — you can't walk through it)
     if(W3){
       // ── carved marble chimneypiece: jamb pilasters, friezed breast with corbels,
@@ -1409,7 +1129,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.BoxGeometry(.2,.3,.12),MS.bronze,fpX,1.45,fpZ+.15));
       scene.add(mk(new THREE.CylinderGeometry(.12,.12,.02,16),MS.gold,fpX,1.62,fpZ+.15));
     }
-    } // end !isExhibition fireplace
+    } // end fireplace
 
     // ═══════════════════════════════════════════
     // CHESTERFIELD SOFA (center-right area, facing fireplace)
@@ -1419,7 +1139,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // instead of a sofa marooned at the far end. rug + coffee table derive from
     // sofaZ, so they follow.
     const sofaZ=W3?(-rL/2+5.6):(rL/2-3.5);
-    if(!isExhibition){
+    {
     addCol(0,sofaZ,1.25,0.55); // WS6-8: chesterfield
     const legProfS=[new THREE.Vector2(.045,0),new THREE.Vector2(.052,.03),new THREE.Vector2(.028,.1),new THREE.Vector2(.04,.16),new THREE.Vector2(.02,.21)];
     // turned bun legs
@@ -1439,14 +1159,14 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // a throw pillow at each end
     scene.add(mk(new THREE.BoxGeometry(.34,.3,.14),new THREE.MeshStandardMaterial({color:"#8A5838",roughness:.85}),-0.72,.66,sofaZ+.16));
     scene.add(mk(new THREE.BoxGeometry(.34,.3,.14),new THREE.MeshStandardMaterial({color:wing?.accent||"#C66B3D",roughness:.9}),.72,.66,sofaZ+.16));
-    } // end !isExhibition sofa
+    } // end sofa
 
     // ═══════════════════════════════════════════
     // ARMCHAIRS (flanking fireplace — skip left if reading chair present)
     // ═══════════════════════════════════════════
     // owner 2026-08-18 #13: NO armchairs under W3 — the chesterfield is the one
     // seat, flanked by two small backless benches (viewing-bench style) instead.
-    if(!isExhibition&&W3){
+    if(W3){
       for(const s of[-1,1]){
         const bx2=s*1.9, bz2=sofaZ-1.5;
         for(const lz of[-0.42,0.42])for(const lx of[-0.18,0.18])scene.add(mk(new THREE.BoxGeometry(.06,.34,.06),MS.dkW,bx2+lx,.17,bz2+lz));
@@ -1454,7 +1174,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         scene.add(mk(new THREE.BoxGeometry(.46,.11,1.02),MS.leather,bx2,.46,bz2));
       }
     }
-    if(!isExhibition&&!W3){
+    if(!W3){
     for(let s=-1;s<=1;s+=2){
       if(s===-1&&layout.readingChair)continue; // reading chair occupies this spot
       const ax=s*Math.min(3.5,rW/2-2.5),az=fpZ+2.5;
@@ -1472,18 +1192,18 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // rolled arms
       for(let as=-1;as<=1;as+=2){scene.add(mk(new THREE.BoxGeometry(.16,.44,.72),MS.leatherD,ax+as*.46,.46,az));const ra=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.72,12),MS.leatherD);ra.rotation.x=Math.PI/2;ra.position.set(ax+as*.46,.66,az);scene.add(ra);}
     }
-    } // end !isExhibition armchairs
+    } // end armchairs
 
     // ═══════════════════════════════════════════
     // COFFEE TABLE / LOW TABLE (between sofa and fireplace)
     // ═══════════════════════════════════════════
     const ctZ=sofaZ-1.7;
-    if(!isExhibition){
+    {
     addCol(0,ctZ,0.65,0.4); // WS6-8: coffee table
     scene.add(mk(new THREE.BoxGeometry(1.2,.04,.6),MS.dkW,0,.52,ctZ));
     for(let cx of[-1,1])for(let cz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.03,.03,.5,6),MS.dkW,cx*.5,.25,ctZ+cz*.22));
     scene.add(mk(new THREE.BoxGeometry(1.1,.02,.5),MS.gold,0,.54,ctZ));
-    } // end !isExhibition coffee table
+    } // end coffee table
 
     // ═══════════════════════════════════════════
     // WRITING DESK / SCRIBE TABLE (front-left corner, facing back wall)
@@ -1492,7 +1212,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // table in the bookcase (owner #3). dkX/dkZ retarget there so the scribe
     // papers + hit area land on the built-in table.
     const dkX=W3?(-rW/2+0.55):(-rW/2+1.8), dkZ=W3?bookC:(rL/2-2.2);
-    if(!isExhibition&&!W3){
+    if(!W3){
     addCol(dkX,dkZ+.35,0.85,0.85); // WS6-8: writing desk + chair
     scene.add(mk(new THREE.BoxGeometry(1.6,.06,.75),MS.dkW,dkX,.78,dkZ));
     for(let dx of[-1,1])for(let dz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.035,.04,.75,8),MS.dkW,dkX+dx*.65,.38,dkZ+dz*.28));
@@ -1508,18 +1228,16 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const dkShade=mk(new THREE.CylinderGeometry(.05,.09,.12,8,1,true),MS.lamp,dkX-.6,1.12,dkZ-.15);scene.add(dkShade);
     if(!W2&&!isMobileGPU()){const dkLight=new THREE.PointLight("#FFE8C0",.25,3);dkLight.position.set(dkX-.6,1.15,dkZ-.15);scene.add(dkLight);} // W2 (WS6-9): deleted
     if(W2)addGlowCard(dkX-.6,1.14,dkZ-.05,0.45);
-    } // end !isExhibition desk
+    } // end desk
     // Clickable hit area for desk (opens upload when empty — placed after memory routing below)
 
     // ═══════════════════════════════════════════
     // MEMORY PLACEMENT — type routing
     // Only show memories marked for display (or first N if no flag set)
     // ═══════════════════════════════════════════
-    const SLOT_COUNTS: Record<string,number>=isExhibition
-      ?{painting:20,frame:0,photo:0,album:0,video:1,audio:0,case:0,document:0,orb:0}
-      // W3: the L-vitrine holds up to 12 keepsakes and the scroll cubbies 6 written
-      // notes (count reconciliation with the Ledger — masterplan §9).
-      :{painting:1,frame:1,photo:1,album:3,video:1,audio:W3?6:3,case:W3?12:3,document:W3?6:5,orb:4};
+    // W3: the L-vitrine holds up to 12 keepsakes and the scroll cubbies 6 written
+    // notes (count reconciliation with the Ledger — masterplan §9).
+    const SLOT_COUNTS: Record<string,number>={painting:1,frame:1,photo:1,album:3,video:1,audio:W3?6:3,case:W3?12:3,document:W3?6:5,orb:4};
 
     // Route memories to display slots based on displayUnit (if set) or type
     // "frame" and "painting" are SEPARATE slots to avoid painting-fallback ambiguity
@@ -1565,8 +1283,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
     // ── W2 (WS6-6/WS7-5): the wall cap dies in the den — EVERY display-eligible
     // painting/photo/frame memory hangs (fireplace hero + salon walls), capped
-    // only by the tier texture budget. Exhibition keeps its 18-slot system
-    // (WS6 acceptance: the exhibition wall behaves exactly as before).
+    // only by the tier texture budget.
     const pickAllW2=(slot: string)=>{
       const all=slotBuckets[slot]||[];
       const explicit=all.filter((m: any)=>m.displayed===true);
@@ -1576,7 +1293,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       return unmarked;
     };
     const wallMems: any[]=[];
-    if(W2&&!isExhibition){
+    if(W2){
       const seen=new Set<string>();
       for(const m of [...pickAllW2("painting"),...pickAllW2("photo"),...pickAllW2("frame")]){
         const id=String(m.id??m.title);
@@ -1591,170 +1308,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     allVideoMems.current=mems.filter((m: any)=>m.displayUnit==="screen"||(m.type==="video"&&m.displayUnit!=="vinyl"));
     allAudioMems.current=mems.filter((m: any)=>(m.displayUnit==="vinyl"&&m.dataUrl)||((m.type==="audio"||(m.type==="voice")||(m.type==="interview"))&&m.dataUrl&&m.displayUnit!=="screen"));
 
-    // ── PAINTING: large painting above fireplace (or museum grid in exhibition) ──
-    if(isExhibition){
-      // ═══ PERISTYLIUM: paintings on colonnade back walls ═══
-      // Paintings hang on the outer perimeter walls, visible from under the portico.
-      // Back wall (z=-rL/2): 6 paintings, split 3+3 to leave center clear for the screen
-      // Front wall (z=+rL/2): 4 paintings, split 2+2 to leave center clear for the door
-      // Short walls (x=+-rW/2): 4 paintings each, positioned between column projections
-      // Total: 6 + 4 + 4 + 4 = 18 slots (slot count remains 20)
-      const exPaintings=paintingMems.slice(0,20);
-      const paintW=1.6,paintH=1.2,frameDepth=0.12;
-      const eyeHeight=2.8; // comfortable eye level for outdoor courtyard
-      let paintIdx=0;
-
-      // Redeclare colonnade constants (originally in shell block scope)
-      const exPorticoD=3.5, exColSpacingX=3.2, exColSpacingZ=3.4;
-      const exCourtInX=rW/2-exPorticoD, exCourtInZ=rL/2-exPorticoD;
-      // Column X positions on long walls for collision avoidance
-      const colXPositions: number[]=[];
-      for(let cx=-rW/2+exPorticoD;cx<=rW/2-exPorticoD;cx+=exColSpacingX) colXPositions.push(cx);
-      // Column Z positions on short walls for collision avoidance
-      const colZPositions: number[]=[];
-      for(let cz=-exCourtInZ+exColSpacingZ;cz<exCourtInZ;cz+=exColSpacingZ) colZPositions.push(cz);
-
-      // Helper: nudge position p away from nearest column if too close
-      // Returns adjusted position. dir=1 or -1 indicates preferred nudge direction.
-      const nudgeFromColumns=(p: number,colPositions: number[],dir: number,margin=0.7): number=>{
-        for(const c of colPositions){
-          if(Math.abs(p-c)<margin){
-            // Move to clear the margin in the preferred direction
-            return c+dir*margin;
-          }
-        }
-        return p;
-      };
-
-      // Helper to place a single painting on a wall
-      const placePainting=(px: number,py: number,pz: number,facingDir: "x"|"z",facingSign: number)=>{
-        const isZ=facingDir==="z";
-        const mem=exPaintings[paintIdx];
-        // W1 hero spot (WS7-3/WS6-5): the shared makeArtwork replaces the inline
-        // frame boxes + stretched canvas + per-painting SpotLight. Aspect-correct
-        // plane, gold frame, Fraunces plaque, baked art light — identical on every
-        // tier (mobile finally gets lit art). Raycast contract preserved via
-        // mountArtwork (userData.memory on every mesh, registered in memMeshes).
-        if(W1&&mem){
-          const tex=paintTex(mem);
-          const rotY=isZ?(facingSign<0?Math.PI:0):(facingSign>0?-Math.PI/2:Math.PI/2);
-          const ax=isZ?px:px+facingSign*frameDepth;
-          const az=isZ?pz+facingSign*frameDepth:pz;
-          mountArtwork(mem,tex,ax,py,az,rotY,paintW);
-          paintIdx++;
-          return;
-        }
-        // Frame (thick outline + gold inner)
-        if(isZ){
-          scene.add(mk(new THREE.BoxGeometry(paintW+0.18,paintH+0.18,0.08),MS.fG,px,py,pz-facingSign*0.02));
-          scene.add(mk(new THREE.BoxGeometry(paintW+0.04,paintH+0.04,0.02),MS.gold,px,py,pz-facingSign*0.06));
-        }else{
-          scene.add(mk(new THREE.BoxGeometry(0.08,paintH+0.18,paintW+0.18),MS.fG,px-facingSign*0.02,py,pz));
-          scene.add(mk(new THREE.BoxGeometry(0.02,paintH+0.04,paintW+0.04),MS.gold,px-facingSign*0.06,py,pz));
-        }
-        // Warm spotlight (deleted under W1 — makeArtwork's baked light replaces it; skip on mobile)
-        if(!W1&&!isMobileGPU()){
-        const pSpot=new THREE.SpotLight("#FFF5E0",0.5,5,Math.PI/8,0.5,1.2);
-        if(isZ){
-          pSpot.position.set(px,rH-0.3,pz+facingSign*1);
-          pSpot.target.position.set(px,py,pz);
-        }else{
-          pSpot.position.set(px+facingSign*1,rH-0.3,pz);
-          pSpot.target.position.set(px,py,pz);
-        }
-        scene.add(pSpot);scene.add(pSpot.target);}
-        // Canvas or empty station
-        if(mem){
-          const tex=paintTex(mem);
-          const canvas=new THREE.Mesh(new THREE.PlaneGeometry(paintW,paintH),new THREE.MeshStandardMaterial({map:tex,roughness:0.8}));
-          if(isZ){
-            canvas.position.set(px,py,pz+facingSign*frameDepth);
-            if(facingSign<0) canvas.rotation.y=Math.PI;
-          }else{
-            canvas.position.set(px+facingSign*frameDepth,py,pz);
-            canvas.rotation.y=facingSign>0?-Math.PI/2:Math.PI/2;
-          }
-          canvas.userData={memory:mem};scene.add(canvas);memMeshes.current.push(canvas);
-          devCheckArtworkAspect(tex,paintW,paintH,"exhibition painting (legacy)");
-        }else{
-          const emptyMat=new THREE.Mesh(new THREE.PlaneGeometry(paintW-0.1,paintH-0.1),MS.matF);
-          if(isZ){
-            emptyMat.position.set(px,py,pz+facingSign*frameDepth);
-            if(facingSign<0) emptyMat.rotation.y=Math.PI;
-          }else{
-            emptyMat.position.set(px+facingSign*frameDepth,py,pz);
-            emptyMat.rotation.y=facingSign>0?-Math.PI/2:Math.PI/2;
-          }
-          emptyMat.userData={isStation:true};scene.add(emptyMat);memMeshes.current.push(emptyMat);
-        }
-        // Small nameplate below painting
-        if(isZ){
-          scene.add(mk(new THREE.BoxGeometry(0.35,0.05,0.03),MS.bronze,px,py-paintH/2-0.12,pz-facingSign*0.04));
-        }else{
-          scene.add(mk(new THREE.BoxGeometry(0.03,0.05,0.35),MS.bronze,px-facingSign*0.04,py-paintH/2-0.12,pz));
-        }
-        paintIdx++;
-      };
-
-      // ── Back wall (z=-rL/2): 3 paintings on each side of screen gap ──
-      // Screen is centered at x=0, z=-rL/2+0.2 with total frame width ~4.6
-      // Place 3 paintings on left side (x < -3) and 3 on right side (x > 3)
-      const backWallZ=-rL/2+0.15; // actual back wall surface
-      const screenGapHalf=2.8; // half-width of screen reserved zone
-      const backSideWidth=rW/2-2-screenGapHalf; // available width per side (~9.2)
-      const backPaintingsPerSide=3;
-      const backSpacing=backSideWidth/backPaintingsPerSide;
-      for(let side=-1;side<=1;side+=2){
-        const startX=side>0?screenGapHalf+backSpacing*0.5:-(screenGapHalf+backSpacing*0.5);
-        for(let i=0;i<backPaintingsPerSide;i++){
-          let px=startX+side*i*backSpacing;
-          px=nudgeFromColumns(px,colXPositions,side);
-          placePainting(px,eyeHeight,backWallZ,"z",1);
-        }
-      }
-
-      // ── Front wall (z=+rL/2): 4 paintings, 2 per side of door gap ──
-      // Door centered at x=0 extends ~x=-1.5 to +1.5; windows at x=+-10
-      // Place 2 paintings per side, avoiding door center and window positions
-      const frontWallZ=rL/2-0.15; // actual front wall surface
-      const doorGapHalf=2.0; // reserved zone for door
-      const frontSideWidth=rW/2-2-doorGapHalf; // available width per side (~11)
-      const frontPaintingsPerSide=2;
-      const frontSpacing=frontSideWidth/frontPaintingsPerSide;
-      for(let side=-1;side<=1;side+=2){
-        const startX=side>0?doorGapHalf+frontSpacing*0.5:-(doorGapHalf+frontSpacing*0.5);
-        for(let i=0;i<frontPaintingsPerSide;i++){
-          let px=startX+side*i*frontSpacing;
-          px=nudgeFromColumns(px,colXPositions,side);
-          // Avoid window positions (x=+-10) — wider margin to prevent frame overlap
-          if(Math.abs(Math.abs(px)-10)<1.8){px+=side*2.0;}
-          placePainting(px,eyeHeight,frontWallZ,"z",-1);
-        }
-      }
-
-      // Short walls: 4 paintings each (x = +-rW/2), positioned between columns
-      // Columns on short walls at z: [-5.6, -2.2, 1.2, 4.6, 8.0]
-      // Place paintings in midpoints between adjacent columns for even spacing
-      const shortWallPaintings=4;
-      for(let wall=-1;wall<=1;wall+=2){
-        const wX=wall*(-rW/2+0.15);
-        // Compute midpoints between column z-positions for optimal placement
-        const sortedColZ=[...colZPositions].sort((a,b)=>a-b);
-        // Add wall endpoints for first/last gaps
-        const allZ=[-exCourtInZ,...sortedColZ,exCourtInZ];
-        // Pick the widest gaps for paintings
-        const gaps: {mid: number,width: number}[]=[];
-        for(let gi=0;gi<allZ.length-1;gi++){
-          gaps.push({mid:(allZ[gi]+allZ[gi+1])/2,width:allZ[gi+1]-allZ[gi]});
-        }
-        gaps.sort((a,b)=>b.width-a.width);
-        // Take the 4 widest gaps
-        const paintingZs=gaps.slice(0,shortWallPaintings).map(g=>g.mid).sort((a,b)=>a-b);
-        for(const pz of paintingZs){
-          placePainting(wX,eyeHeight,pz,"x",-wall);
-        }
-      }
-    }else{
+    // ── PAINTING: large painting above fireplace ──
     // Priority: explicit painting assignment > unassigned photo fallback.
     // W2: the hero is simply the oldest wall memory — "1 photo = one large piece".
     // W3 (Ledger "Mantelpiece"): the hero is the memory the user FEATURED
@@ -1913,10 +1467,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       addCol(2.2,-rL/2+1.2,0.7,0.5); // WS6-8: easel
     }
     // Wall paintings removed — only the big fireplace painting is shown
-    } // end !isExhibition painting block
 
     // ── ALBUM: elegant open photo albums on coffee table ──
-    if(!isExhibition){
+    {
     const albumCover=new THREE.MeshStandardMaterial({color:"#5A2215",roughness:.45,metalness:.06});
     const albumPage=new THREE.MeshStandardMaterial({color:"#F5F0E8",roughness:.92});
     const albumSpineMat=new THREE.MeshStandardMaterial({color:"#3E1A0E",roughness:.5,metalness:.08});
@@ -1949,12 +1502,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       }
       scene.add(aGrp);
     });
-    } // end !isExhibition album
+    } // end album
 
     // ═══════════════════════════════════════════
     // BOOKSHELVES (left wall, floor to ceiling)
     // ═══════════════════════════════════════════
-    if(!isExhibition){
+    {
     const bsX=-rW/2+.35; // library bookcase runs along the back-left of the left hall wall (W3 and legacy alike)
     const bookPalette=["#6B1A1A","#1A2744","#2A4A2A","#4A1A2A","#8B6914","#3A2010","#1A3A4A","#5A2A3A","#2A3A1A","#6A4A2A","#3A1A3A","#1A4A3A","#7A3A1A","#2A2A4A","#4A3A1A","#5A1A1A"];
     let bSeed=0;for(const c of (actualRoomId||roomId))bSeed=(bSeed*31+c.charCodeAt(0))>>>0;
@@ -2100,39 +1653,16 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     bsHit.position.set(bsX,rH/2,bC);
     bsHit.userData=docMems.length>0?{memory:docMems[0],isHitArea:true}:{isStation:true};
     scene.add(bsHit);hitAreaMeshes.current.push(bsHit);
-    } // end !isExhibition bookshelf
+    } // end bookshelf
 
     // ═══════════════════════════════════════════
     // CINEMA SCREEN (right wall)
     // ═══════════════════════════════════════════
-    // Peristylium: screen centered on back wall (z=-rL/2), paintings split to left/right sides
-    // Screen sits at eye level on the clear center section of the back wall
-    const scrX=isExhibition?0:(rW/2-(W3?0.05:0.2)); // W3 (owner): sit near the wall so the screen reads INSET, not proud
-    const scrZ=isExhibition?-rL/2+0.2:0;
-    const scrY=isExhibition?3.2:2.2;
-    const scrPlaneW=isExhibition?3.2:2.8, scrPlaneH=isExhibition?1.8:1.8;
-    if(isExhibition){
-      // Elegant marble-framed screen niche on back wall center — paintings are split 3+3 around it
-      // Dark backing panel
-      scene.add(mk(new THREE.BoxGeometry(scrPlaneW+0.4,scrPlaneH+0.4,0.1),MS.screen,scrX,scrY,scrZ));
-      // Marble frame elements
-      scene.add(mk(new THREE.BoxGeometry(scrPlaneW+0.8,0.14,0.18),MS.marble,scrX,scrY+scrPlaneH/2+0.15,scrZ)); // top cornice
-      scene.add(mk(new THREE.BoxGeometry(scrPlaneW+0.6,0.06,0.14),MS.gold,scrX,scrY+scrPlaneH/2+0.26,scrZ)); // gilded cornice cap
-      scene.add(mk(new THREE.BoxGeometry(scrPlaneW+0.8,0.10,0.18),MS.marble,scrX,scrY-scrPlaneH/2-0.12,scrZ)); // bottom ledge
-      for(const sx of [-1,1]){
-        // Fluted pilaster sides
-        scene.add(mk(new THREE.BoxGeometry(0.14,scrPlaneH+0.5,0.14),MS.marble,scrX+sx*(scrPlaneW/2+0.28),scrY,scrZ));
-        // Small capitals on pilasters
-        scene.add(mk(new THREE.BoxGeometry(0.22,0.08,0.22),MS.marble,scrX+sx*(scrPlaneW/2+0.28),scrY+scrPlaneH/2+0.08,scrZ));
-      }
-      // Warm accent light on screen — W2 (WS6-9): deleted (screen content is
-      // MeshBasic/unlit; the marble frame reads via hemi+sun)
-      if(!W2){
-      const scrAccent=new THREE.SpotLight("#FFF5E0",0.4,6,Math.PI/6,0.5,1.2);
-      scrAccent.position.set(scrX,rH-0.3,scrZ+1.5);scrAccent.target.position.set(scrX,scrY,scrZ);
-      scene.add(scrAccent);scene.add(scrAccent.target);
-      }
-    }else if(W3){
+    const scrX=rW/2-(W3?0.05:0.2); // W3 (owner): sit near the wall so the screen reads INSET, not proud
+    const scrZ=0;
+    const scrY=2.2;
+    const scrPlaneW=2.8, scrPlaneH=1.8;
+    if(W3){
       // owner: SINK the screen flush into the wall — a shallow inset, not a proud
       // box. The wider dark panel just off the wall reads as the recess; the video
       // sits in front of it; a slim flush trim ring frames the opening.
@@ -2154,7 +1684,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     }
     // owner #15 (adaptive slot): with NO moving media, the screen niche shows a
     // PAINTING instead of a dark/idle screen — the slot is never empty.
-    if(W3&&!isExhibition&&videoMems.length===0){
+    if(W3&&videoMems.length===0){
       const pm=wallMems[1]||wallMems[0]||paintingMems[0]||photoMems[0];
       if(pm){
         const pl=new THREE.Mesh(new THREE.PlaneGeometry(scrPlaneW,scrPlaneH),new THREE.MeshBasicMaterial({map:paintTex(pm)}));
@@ -2171,8 +1701,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       vctx.fillStyle="#1A1510";vctx.fillRect(0,0,384,256);
       const vtex=new THREE.CanvasTexture(vc);vtex.colorSpace=THREE.SRGBColorSpace;
       const scrMesh=new THREE.Mesh(new THREE.PlaneGeometry(scrPlaneW,scrPlaneH),new THREE.MeshBasicMaterial({map:vtex}));
-      if(isExhibition){scrMesh.position.set(scrX,scrY,scrZ+0.06);}
-      else{scrMesh.rotation.y=-Math.PI/2;scrMesh.position.set(scrX-(W3?0.0:.06),scrY,scrZ);}
+      scrMesh.rotation.y=-Math.PI/2;scrMesh.position.set(scrX-(W3?0.0:.06),scrY,scrZ);
       scrMesh.userData={memory:videoMems[0]};
       scrMeshRef.current=scrMesh;
       scene.add(scrMesh);memMeshes.current.push(scrMesh);
@@ -2200,8 +1729,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           affCtx.beginPath();affCtx.moveTo(38,30);affCtx.lineTo(38,66);affCtx.lineTo(68,48);affCtx.closePath();affCtx.fillStyle=PLASTER;affCtx.fill();
           const affTex=new THREE.CanvasTexture(affC);affTex.colorSpace=THREE.SRGBColorSpace;
           const affordance=new THREE.Mesh(new THREE.PlaneGeometry(.55,.55),new THREE.MeshBasicMaterial({map:affTex,transparent:true}));
-          if(isExhibition){affordance.position.set(scrX,scrY,scrZ+0.14);}
-          else{affordance.rotation.y=-Math.PI/2;affordance.position.set(scrX-.14,scrY,scrZ);}
+          affordance.rotation.y=-Math.PI/2;affordance.position.set(scrX-.14,scrY,scrZ);
           affordance.visible=false;
           affordance.userData={isPlayAffordance:true,memory:vm};
           scene.add(affordance);memMeshes.current.push(affordance);
@@ -2282,16 +1810,10 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const vidEntry={type:"video",canvas:vc,ctx:vctx,tex:vtex,mem:vm,w:384,h:256,phase:Math.random()*100,screenImg:()=>screenImg,videoEl:()=>videoEl,w2:w2Vid};
       animTex.push(vidEntry);
       vidAnimEntry.current=vidEntry;
-      if(!W2&&!isMobileGPU()){const scrGl=new THREE.PointLight(`hsl(${vm.hue},40%,60%)`,isExhibition?.3:.15,isExhibition?8:4);scrGl.position.set(isExhibition?scrX:scrX-.5,scrY,isExhibition?scrZ+1:scrZ);scene.add(scrGl);} // W2 (WS6-9): deleted — off-canon hsl() glow
-    }else{
-      const idleC=document.createElement("canvas");idleC.width=384;idleC.height=256;const ic=idleC.getContext("2d")!;
-      ic.fillStyle="#1A1A1A";ic.fillRect(0,0,384,256);ic.fillStyle="#333";ic.font="24px Georgia,serif";ic.textAlign="center";ic.fillText(t("noVideos"),192,128);
-      const idleTex=new THREE.CanvasTexture(idleC);idleTex.colorSpace=THREE.SRGBColorSpace;
-      const idleMesh=new THREE.Mesh(new THREE.PlaneGeometry(scrPlaneW,scrPlaneH),new THREE.MeshBasicMaterial({map:idleTex}));
-      if(isExhibition){idleMesh.position.set(scrX,scrY,scrZ+0.06);}
-      else{idleMesh.rotation.y=-Math.PI/2;idleMesh.position.set(scrX-.06,scrY,scrZ);}
-      idleMesh.userData={isStation:true};scene.add(idleMesh);memMeshes.current.push(idleMesh);
+      if(!W2&&!isMobileGPU()){const scrGl=new THREE.PointLight(`hsl(${vm.hue},40%,60%)`,.15,4);scrGl.position.set(scrX-.5,scrY,scrZ);scene.add(scrGl);} // W2 (WS6-9): deleted — off-canon hsl() glow
     }
+    // (The legacy dark "No videos yet" idle screen is retired — with no video the
+    // niche stays adaptive: a painting fills it under W3, see above.)
 
     // ═══════════════════════════════════════════
     // VINYL RECORD PLAYER (right wall, near front)
@@ -2301,7 +1823,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // removed; audio + its clickable records live at the gramophone instead.
     const vpX=W3?(rW/2-1.15):(rW/2-1.5),vpZ=W3?(-rL/2+1.1):(rL/2-2);
     let vinylAudio: HTMLAudioElement|null=null;
-    if(!isExhibition){
+    {
     if(!W3){
       addCol(vpX,vpZ,0.5,0.4); // WS6-8: vinyl player table
       scene.add(mk(new THREE.BoxGeometry(.8,.04,.6),MS.dkW,vpX,.78,vpZ));
@@ -2331,12 +1853,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       vinylAudio.src=audioMems[0].dataUrl;vinylAudio.loop=true;vinylAudio.volume=1;
       audioElRef.current=vinylAudio;
     }
-    } // end !isExhibition vinyl
+    } // end vinyl
 
     // ═══════════════════════════════════════════
     // VITRINE / GLASS DISPLAY CASE (left of fireplace, against back wall)
     // ═══════════════════════════════════════════
-    if(!isExhibition){
+    {
     // owner 2026-08-17: the vitrine is an L-SHAPED corner cabinet — two glass arms
     // hugging the FRONT-RIGHT corner (one along the right wall, one along the
     // shoulder), meeting at the corner. buildGlassCase draws one axis-aligned arm.
@@ -2431,12 +1953,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(vitArmLen>0)buildGlassCase(rW/2-0.38, widenZ-0.2-vitArmLen/2, 0.64, vitArmLen, caseMems.slice(0,6));   // right-wall arm (tier-scaled)
       buildGlassCase(vShCx, widenZ-0.38, vShCw, 0.64, vitArmLen>0?caseMems.slice(6,12):caseMems.slice(0,6));     // shoulder arm (aligned to the stem wall)
     }else buildGlassCase(-rW/2+2, -rL/2+0.7, 1.4, 0.7, caseMems.slice(0,3));
-    } // end !isExhibition vitrine
+    } // end vitrine
 
     // ═══════════════════════════════════════════
     // SCRIBE DESK — document memories as scrolls/papers on desk
     // ═══════════════════════════════════════════
-    if(!isExhibition){
+    {
     const scribeMems=docMems.slice(5,8);
     const albumOverflow=albumMems.slice(3,5);
     const deskItems=[...scribeMems,...albumOverflow];
@@ -2451,12 +1973,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     dkHit.position.set(dkX,W3?1.0:.85,dkZ);
     dkHit.userData=deskItems.length>0?{memory:deskItems[0],isHitArea:true}:{isStation:true};
     scene.add(dkHit);hitAreaMeshes.current.push(dkHit);
-    } // end !isExhibition scribe desk
+    } // end scribe desk
 
     // ═══════════════════════════════════════════
     // RUG (center of seating area)
     // ═══════════════════════════════════════════
-    if(!isExhibition){
+    {
     const rugZ=(sofaZ+fpZ)/2+.2;
     // z-fight sweep r2: rug bottom sat exactly on the floor inlay — lifted onto it.
     if(layout.rugStyle==="persian"){
@@ -2465,7 +1987,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const rr=Math.min(rW,rL)*0.2;
     scene.add(mk(new THREE.CylinderGeometry(rr,rr,.012,24),MS.rug,0,.012,rugZ));
     }
-    } // end !isExhibition rug
+    } // end rug
 
     // ═══════════════════════════════════════════
     // TABLE LAMPS
@@ -2473,7 +1995,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // W3: the legacy floor lamp stood exactly in the gramophone corner (owner #10:
     // "ornament onder/rond de gramofoon te veel") — skipped; the room's light cues
     // are the sconces, hearth and the built-in reading lamp.
-    if(!isExhibition&&!W3){
+    if(!W3){
     for(const[lx,lz] of [[rW/2-1.5,-rL/2+1.5]]){
       addCol(lx,lz,0.32,0.32); // WS6-8: floor lamp
       scene.add(mk(new THREE.CylinderGeometry(.2,.25,.6,8),MS.dkW,lx,.3,lz));
@@ -2484,58 +2006,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(W2)addGlowCard(lx,1.15,lz+0.18,0.5);
       const halo=new THREE.Mesh(new THREE.SphereGeometry(.25,8,8),MS.lampG);halo.position.set(lx,1.1,lz);scene.add(halo);
     }
-    } // end !isExhibition table lamps
+    } // end table lamps
 
     // ═══════════════════════════════════════════
     // WALL SCONCES
     // ═══════════════════════════════════════════
-    const sconceH=isExhibition?3.5:3; // peristylium: wall-mounted oil lamps
-    if(isExhibition){
-      // ═══ PERISTYLIUM: Roman oil lamp sconces on perimeter walls ═══
-      // Sconces are placed high (3.5m) above painting eye height (2.8m) to avoid overlap.
-      // Back wall: 4 sconces, 2 per side — skipping center screen zone (|x| < 3)
-      // Front wall: 6 sconces evenly spaced
-      // Short walls: 2 sconces each, between the 3 paintings
-      const addSconce=(sx2: number,sz2: number,dir: number)=>{
-        // Wall bracket (bronze arm with rosette)
-        scene.add(mk(new THREE.BoxGeometry(.08,.12,.08),MS.bronze,sx2,sconceH,sz2));
-        scene.add(mk(new THREE.CylinderGeometry(.05,.05,.02,8),MS.gold,sx2,sconceH-.08,sz2)); // rosette
-        // Oil lamp bowl
-        scene.add(mk(new THREE.CylinderGeometry(.06,.04,.05,8),MS.bronze,sx2,sconceH+.12,sz2+dir*0.04));
-        // Flame
-        const fl3=new THREE.Mesh(new THREE.SphereGeometry(.025,5,5),MS.glassG);fl3.position.set(sx2,sconceH+.18,sz2+dir*0.04);scene.add(fl3);
-        if(!W2&&!isMobileGPU()){const sl3=new THREE.PointLight("#FFE0B0",.15,3.5);sl3.position.set(sx2,sconceH+.1,sz2+dir*0.15);scene.add(sl3);} // W2 (WS6-9): deleted
-        if(W2)addGlowCard(sx2,sconceH+.16,sz2+dir*0.12,0.4,dir<0?Math.PI:0);
-      };
-      // Back wall sconces (z=-rL/2): skip center screen zone (|x|<3)
-      for(const bsx of [-10,-5,5,10]){
-        addSconce(bsx,-rL/2+0.06,1);
-      }
-      // Front wall sconces (z=+rL/2): skip center door zone (|x|<2.5)
-      for(const fsx of [-10,-5.5,5.5,10]){
-        addSconce(fsx,rL/2-0.06,-1);
-      }
-      // Short wall sconces: 3 per wall, evenly spaced between paintings
-      for(let s=-1;s<=1;s+=2){
-        for(const fsz of[-6,0,6]){
-          const sx3=s*(-rW/2+0.06);
-          scene.add(mk(new THREE.BoxGeometry(.08,.12,.08),MS.bronze,sx3,sconceH,fsz));
-          scene.add(mk(new THREE.CylinderGeometry(.05,.05,.02,8),MS.gold,sx3,sconceH-.08,fsz));
-          scene.add(mk(new THREE.CylinderGeometry(.06,.04,.05,8),MS.bronze,sx3+s*0.04,sconceH+.12,fsz));
-          const fl4=new THREE.Mesh(new THREE.SphereGeometry(.025,5,5),MS.glassG);fl4.position.set(sx3+s*0.04,sconceH+.18,fsz);scene.add(fl4);
-          if(!W2&&!isMobileGPU()){const sl4=new THREE.PointLight("#FFE0B0",.12,3);sl4.position.set(sx3+s*0.12,sconceH+.1,fsz);scene.add(sl4);} // W2 (WS6-9): deleted
-          if(W2)addGlowCard(sx3+s*0.1,sconceH+.16,fsz,0.4,s>0?Math.PI/2:-Math.PI/2);
-        }
-      }
-      // Sunlight pouring into the open courtyard — W2 (WS6-9): the SECOND SUN is
-      // deleted (dogma 2: one sun) along with the floor uplight; hemi + the one
-      // sun + fill stay within the ≤4 budget.
-      if(!W2&&!isMobileGPU()){const courtyardSun=new THREE.DirectionalLight("#FFF5E0",0.8);
-      courtyardSun.position.set(5,rH+6,-3);courtyardSun.target.position.set(0,0,0);
-      scene.add(courtyardSun);scene.add(courtyardSun.target);}
-      // Warm ambient uplighting from courtyard floor
-      if(!W2&&!isMobileGPU()){const courtAmbient=new THREE.PointLight("#FFE8D0",0.3,15);courtAmbient.position.set(0,1,0);scene.add(courtAmbient);}
-    }else if(W3){
+    const sconceH=3;
+    if(W3){
       // owner #6: cleaner, quieter wall lights high above the salon hang — a
       // bronze backplate + a frosted alabaster shade (soft warm glow, sub-unity so
       // it never blooms) + one baked wall wash. Evenly pitched, they light the wall
@@ -2584,8 +2061,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // WINDOWS
     // ═══════════════════════════════════════════
-    // Peristylium (exhibition) is an outdoor scene — no windows needed
-    const winPositions: [number,number][]=isExhibition||W3   // W3: arched windows are placed by addArchWindow (wings + hall + back flanks)
+    const winPositions: [number,number][]=W3   // W3: arched windows are placed by addArchWindow (wings + hall + back flanks)
       ?[]
       :layout.windowCount===2
       ?[[rW/2-2,-rL/2+.01],[-rW/2+2,-rL/2+.01]]
@@ -2645,135 +2121,6 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       scene.add(mk(new THREE.SphereGeometry(.12,6,6),MS.plant,px2,.5,pz2));
     }
 
-    // ═══════════════════════════════════════════
-    // EXHIBITION: museum benches + decorative columns
-    // ═══════════════════════════════════════════
-    if(isExhibition){
-      // ═══ PERISTYLIUM: additional courtyard ornaments ═══
-
-      // ── Mosaic floor detail: Greek key / meander pattern border around impluvium ──
-      // z-fight sweep r3: y .012→.015 — the segments overlap the courtyard diamond
-      // tiles (top .010); the old bottom (.0095) poked 0.5mm into them and the tops
-      // sat only 4.5mm apart. Now: bottom .0125 (2.5mm clear), top .0175 (7.5mm sep).
-      for(let s=-1;s<=1;s+=2){
-        for(let mx=-3;mx<=3;mx++){
-          const keyMat=mx%2===0?MS.bronze:MS.marble;
-          scene.add(mk(new THREE.BoxGeometry(0.3,0.005,0.12),keyMat,mx*0.55,0.015,s*2.8));
-          scene.add(mk(new THREE.BoxGeometry(0.12,0.005,0.3),keyMat,s*3.5,0.015,mx*0.55));
-        }
-      }
-
-      // ── Terracotta urns along portico walkways ──
-      // Positioned in portico areas away from columns and screen/door centers
-      const urnPositions: [number,number][]=[
-        [-rW/2+1.5,-6],[-rW/2+1.5,0],[-rW/2+1.5,6],  // left portico (3 urns)
-        [rW/2-1.5,-6],[rW/2-1.5,0],[rW/2-1.5,6],      // right portico (3 urns)
-        [-7,-rL/2+1.5],[7,-rL/2+1.5],                   // back portico, flanking screen
-        [-5,rL/2-1.5],[5,rL/2-1.5],                      // front portico, flanking door
-      ];
-      for(const[ux,uz] of urnPositions){
-        addCol(ux,uz,0.35,0.35); // WS6-8: portico urn
-        // Elegant amphora on a stone base
-        scene.add(mk(new THREE.BoxGeometry(0.4,0.06,0.4),MS.marble,ux,0.03,uz)); // stone base
-        scene.add(mk(new THREE.CylinderGeometry(0.15,0.18,0.5,8),MS.pot,ux,0.31,uz));
-        scene.add(mk(new THREE.CylinderGeometry(0.18,0.12,0.15,8),MS.pot,ux,0.64,uz));
-        scene.add(mk(new THREE.CylinderGeometry(0.08,0.15,0.1,8),MS.pot,ux,0.68,uz));
-        // Trailing vine with more leaves
-        for(let lf=0;lf<6;lf++){
-          const la=lf*Math.PI/3;
-          scene.add(mk(new THREE.SphereGeometry(0.05,5,5),MS.plant,ux+Math.cos(la)*0.16,0.72+Math.sin(lf)*0.04,uz+Math.sin(la)*0.16));
-        }
-      }
-
-      // ── Sundial on a pedestal (offset to avoid fountain) ──
-      const sdX=3, sdZ=-3;
-      addCol(sdX,sdZ,0.35,0.35); // WS6-8: sundial
-      scene.add(mk(new THREE.BoxGeometry(0.5,0.06,0.5),MS.marble,sdX,0.03,sdZ)); // base slab
-      scene.add(mk(new THREE.CylinderGeometry(0.2,0.25,0.5,8),MS.marble,sdX,0.31,sdZ)); // pedestal
-      scene.add(mk(new THREE.CylinderGeometry(0.3,0.3,0.04,12),MS.marble,sdX,0.58,sdZ)); // dial face
-      // Hour lines etched on dial
-      for(let hi=0;hi<12;hi++){
-        const ha=hi*Math.PI/6;
-        scene.add(mk(new THREE.BoxGeometry(0.01,0.005,0.18),MS.bronze,sdX+Math.cos(ha)*0.08,0.605,sdZ+Math.sin(ha)*0.08));
-      }
-      scene.add(mk(new THREE.BoxGeometry(0.02,0.18,0.02),MS.bronze,sdX,0.69,sdZ)); // gnomon
-
-      // ── Stone viewing benches in the portico (for contemplating paintings) ──
-      // Two benches on each long side portico, positioned between columns
-      for(let s=-1;s<=1;s+=2){
-        for(const bx of [-6,6]){
-          const benchZ=s*(rL/2-1.8);
-          addCol(bx,benchZ,1.2,0.32); // WS6-8: portico bench
-          // Bench slab
-          scene.add(mk(new THREE.BoxGeometry(2.2,0.08,0.45),MS.marble,bx,0.42,benchZ));
-          // Bench legs (stone plinths)
-          for(const blx of [-0.85,0.85]){
-            scene.add(mk(new THREE.BoxGeometry(0.18,0.38,0.45),MS.marble,bx+blx,0.19,benchZ));
-          }
-          // Scrollwork on bench ends
-          for(const blx of [-0.85,0.85]){
-            scene.add(mk(new THREE.CylinderGeometry(0.06,0.06,0.42,8),MS.marble,bx+blx,0.42,benchZ));
-          }
-        }
-      }
-      // Additional benches along side porticos (facing inward)
-      for(let s=-1;s<=1;s+=2){
-        const benchX=s*(rW/2-1.8);
-        addCol(benchX,0,0.32,1.2); // WS6-8: side portico bench
-        scene.add(mk(new THREE.BoxGeometry(0.45,0.08,2.2),MS.marble,benchX,0.42,0));
-        for(const blz of [-0.85,0.85]){
-          scene.add(mk(new THREE.BoxGeometry(0.45,0.38,0.18),MS.marble,benchX,0.19,blz));
-        }
-      }
-
-      // ── Garland swags between columns (rope draped festoons) ──
-      // Redeclare colonnade layout constants for this scope
-      const garPorticoD=3.5, garColSpacingX=3.2, garEntabH=0.7;
-      const garCourtInX=rW/2-garPorticoD, garCourtInZ=rL/2-garPorticoD;
-      // Long sides (z=+-courtInZ)
-      for(let s=-1;s<=1;s+=2){
-        const gz=s*garCourtInZ;
-        const colXsOnSide: number[]=[];
-        for(let cx=-rW/2+garPorticoD;cx<=rW/2-garPorticoD;cx+=garColSpacingX) colXsOnSide.push(cx);
-        for(let gi=0;gi<colXsOnSide.length-1;gi++){
-          const gx1=colXsOnSide[gi], gx2=colXsOnSide[gi+1];
-          const gmx=(gx1+gx2)/2;
-          // Garland drape (center hangs lower)
-          scene.add(mk(new THREE.CylinderGeometry(0.015,0.015,gx2-gx1-0.6,4),MS.plant,gmx,rH-garEntabH-0.3,gz));
-          // The drape cylinder is horizontal
-          const garland=scene.children[scene.children.length-1];
-          garland.rotation.z=Math.PI/2;
-          // Small leaf clusters at drape points
-          scene.add(mk(new THREE.SphereGeometry(0.04,5,5),MS.plant,gx1+0.3,rH-garEntabH-0.15,gz));
-          scene.add(mk(new THREE.SphereGeometry(0.04,5,5),MS.plant,gx2-0.3,rH-garEntabH-0.15,gz));
-        }
-      }
-      // Short sides (x=+-courtInX) — garlands between columns on short walls
-      const garColSpacingZ=3.4;
-      for(let s=-1;s<=1;s+=2){
-        const gx=s*garCourtInX;
-        const colZsOnSide: number[]=[];
-        for(let cz=-garCourtInZ+garColSpacingZ;cz<garCourtInZ;cz+=garColSpacingZ) colZsOnSide.push(cz);
-        for(let gi=0;gi<colZsOnSide.length-1;gi++){
-          const gz1=colZsOnSide[gi], gz2=colZsOnSide[gi+1];
-          const gmz=(gz1+gz2)/2;
-          const garland2=mk(new THREE.CylinderGeometry(0.015,0.015,gz2-gz1-0.6,4),MS.plant,gx,rH-garEntabH-0.3,gmz);
-          garland2.rotation.x=Math.PI/2;scene.add(garland2);
-          scene.add(mk(new THREE.SphereGeometry(0.04,5,5),MS.plant,gx,rH-garEntabH-0.15,gz1+0.3));
-          scene.add(mk(new THREE.SphereGeometry(0.04,5,5),MS.plant,gx,rH-garEntabH-0.15,gz2-0.3));
-        }
-      }
-
-      // ── Decorative wall niches with small busts on back wall ──
-      // Placed above the screen, on the back wall between screen and roof
-      for(const nx of [-8,8]){
-        // Arched niche recess
-        scene.add(mk(new THREE.BoxGeometry(0.6,0.8,0.08),new THREE.MeshStandardMaterial({color:"#C8B8A0",roughness:.7}),nx,4.8,-rL/2+0.04));
-        // Small bust in niche
-        scene.add(mk(new THREE.CylinderGeometry(0.08,0.12,0.3,8),MS.marble,nx,4.55,-rL/2+0.08));
-        scene.add(mk(new THREE.SphereGeometry(0.08,10,10),MS.marble,nx,4.82,-rL/2+0.08));
-      }
-    }
 
     // ═══════════════════════════════════════════
     // OPTIONAL: READING CHAIR (wingback by fireplace)
@@ -2793,7 +2140,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // ═══════════════════════════════════════════
     // CHRISTMAS TREE — special decoration for Christmas Traditions room
     // ═══════════════════════════════════════════
-    if(currentRoomName.toLowerCase().includes("christmas")&&!isExhibition){
+    if(currentRoomName.toLowerCase().includes("christmas")){
       const txX=-rW/2+1.8,txZ=-rL/2+1.8;
       addCol(txX,txZ,0.95,0.95); // WS6-8: christmas tree
       // ── Elegant tree stand — turned walnut base with brass rim ──
@@ -3040,19 +2387,19 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // createDustParticles below is the single canonical dust system per scene.
     let rdN=0,rdG: THREE.BufferGeometry|null=null;
     if(!W1){
-    rdN=isExhibition?180:70;rdG=new THREE.BufferGeometry();const rdP=new Float32Array(rdN*3);
+    rdN=70;rdG=new THREE.BufferGeometry();const rdP=new Float32Array(rdN*3);
     for(let i=0;i<rdN;i++){rdP[i*3]=(Math.random()-.5)*rW;rdP[i*3+1]=.5+Math.random()*rH;rdP[i*3+2]=(Math.random()-.5)*rL;}
     rdG.setAttribute("position",new THREE.BufferAttribute(rdP,3));
     scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.03,transparent:true,opacity:.25*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
     }
 
-    const camY=isExhibition?2.1:EYE_HEIGHT; // dogma 5: the one shared eye height (2.0 through Wave 2)
-    const camZ=initialCameraZ!=null?initialCameraZ:isExhibition?rL/2-4:rL/2-2.5;
+    const camY=EYE_HEIGHT; // dogma 5: the one shared eye height (2.0 through Wave 2)
+    const camZ=initialCameraZ!=null?initialCameraZ:rL/2-2.5;
     pos.current.set(0,camY,camZ);posT.current.set(0,camY,camZ);
     lookT.current={yaw:0,pitch:0};lookA.current={yaw:0,pitch:0};
 
     // ── DUST PARTICLES ──
-    const dust=createDustParticles({count:isExhibition?250:100,bounds:{x:rW/2-.5,y:rH/2,z:rL/2-.5},center:new THREE.Vector3(0,rH/2,0),opacity:0.25,size:isExhibition?0.035:0.025});
+    const dust=createDustParticles({count:100,bounds:{x:rW/2-.5,y:rH/2,z:rL/2-.5},center:new THREE.Vector3(0,rH/2,0),opacity:0.25,size:0.025});
     scene.add(dust.points);
 
     // ── Optimize: deduplicate materials to reduce GPU state changes ──
@@ -3321,7 +2668,6 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       animTex.forEach(a=>{
         if(a.type==="fire"){a.light.intensity=.5+Math.sin(t*5)*.15+Math.sin(t*7.3)*.1;}
         if(a.type==="doorGlow"){a.mesh.material.opacity=.03+Math.sin(t*2)*.02;}
-        if((a as any).type==="water"){const wm=(a as any).mesh;wm.material.opacity=.65+Math.sin(t*1.2)*.05;wm.position.y=0.005+Math.sin(t*0.8)*0.002;}
         if(a.type==="flame"){a.mesh.position.y=a.baseY+Math.sin(t*4+a.phase)*.06;a.mesh.scale.y=.8+Math.sin(t*6+a.phase)*.3;a.mesh.material.opacity=.5+Math.sin(t*5+a.phase)*.2;}
         if(a.type==="orb"){a.mesh.position.y=a.baseY+Math.sin(t*1.5+a.phase)*.1;a.inner.position.y=a.mesh.position.y;a.light.position.y=a.mesh.position.y;a.mesh.material.emissiveIntensity=.3+Math.sin(t*2+a.phase)*.15;}
         if(a.type==="disc"){a.mesh.rotation.y=t*.5;a.label.rotation.y=t*.5;
@@ -3332,7 +2678,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         if(a.type==="video"){
           const cx=a.ctx,cw=a.w,ch=a.h,m=a.mem,ph=t*.5+a.phase;
           const vEl=a.videoEl?a.videoEl():null;
-          if(vEl&&!vEl.muted){const vo=volOverride.current.video;vEl.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_screenPos.current.set(scrX,scrY,scrZ))/(isExhibition?20:10)));}
+          if(vEl&&!vEl.muted){const vo=volOverride.current.video;vEl.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_screenPos.current.set(scrX,scrY,scrZ))/10));}
           // W2 (WS7-8): VideoTexture live — the per-frame canvas blit stands down.
           if((a as any).w2&&(a as any).w2.active)return;
           const sImg=a.screenImg?a.screenImg():null;
@@ -3432,7 +2778,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(focus.state()==="focused"&&cur&&cur.data===m){focus.handleTap(ft);return;} // second tap → open
       aw.active=false;aw.target=null;
       if(!RM2){
-        const pose=computeFocusPose(ft,layout.isExhibition?0.1:0);
+        const pose=computeFocusPose(ft,0);
         const ddx=pose.position.x-posT.current.x,ddz=pose.position.z-posT.current.z;
         if(Math.sqrt(ddx*ddx+ddz*ddz)>2.6){focus.cancel();startAutoWalk(ft);return;} // walk first, dolly on arrival
       }
@@ -3634,7 +2980,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       returnRenderer(ren);
       // Null out scene references to help GC reclaim GPU-backed objects sooner
       scene.environment=null;scene.background=null;scene.fog=null;};
-  },[roomId,actualRoomId,layoutOverride,displayFingerprint]);
+  },[roomId,actualRoomId,displayFingerprint]);
 
   // ═══════════════════════════════════════════════════════════════
   // MEDIA REMOTE CONTROL — clean rewrite

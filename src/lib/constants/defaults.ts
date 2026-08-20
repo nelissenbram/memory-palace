@@ -20,7 +20,6 @@ export interface Mem {
   locationName?: string; // e.g. "Rome, Italy"
   displayed?: boolean; // whether this memory is shown as a 3D object in the room (default true for first N items)
   displayUnit?: string; // which display unit this memory is assigned to (e.g. "frame", "screen", "vinyl")
-  displayOrder?: number; // position index within the display unit (used for exhibition/peristylium individual painting slots)
   historicalContext?: string; // AI-generated historical context for the memory's time period
   resolution?: { goal: string; targetDate?: string; progress?: number; reminders?: boolean; }; // goal/resolution tracking for time capsules
   visibility?: "private" | "shared" | "family" | "public"; // memory visibility level (default: "shared" if room is shared, else "private")

@@ -24,9 +24,6 @@ interface UIPanelState {
 
   // Gallery initial memory — when clicking a 3D object, open gallery at that memory
   galleryInitialMemId: string | null;
-  // Gallery initial tab — "gallery" when clicking furniture in 3D, "library" otherwise
-  galleryInitialTab: "library" | "gallery";
-  setGalleryInitialTab: (tab: "library" | "gallery") => void;
   // Auto-assign display unit after upload (e.g. clicking empty painting frame → auto-assign "painting")
   galleryAutoAssignUnit: string | null;
   setGalleryAutoAssignUnit: (unit: string | null) => void;
@@ -66,8 +63,6 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   showMassImport: false,
   showGallery: false,
   galleryInitialMemId: null,
-  galleryInitialTab: "library" as "library" | "gallery",
-  setGalleryInitialTab: (tab) => set({ galleryInitialTab: tab }),
   galleryAutoAssignUnit: null,
   setGalleryAutoAssignUnit: (unit) => set({ galleryAutoAssignUnit: unit }),
   showBustBuilder: false,
@@ -90,7 +85,7 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   setShowTimeline: (v) => set({ showTimeline: v }),
   setShowStatistics: (v) => set({ showStatistics: v }),
   setShowMassImport: (v) => set({ showMassImport: v }),
-  setShowGallery: (v) => set({ showGallery: v, ...(v ? {} : { galleryInitialMemId: null, galleryInitialTab: "library" as "library" | "gallery", galleryAutoAssignUnit: null }) }),
+  setShowGallery: (v) => set({ showGallery: v, ...(v ? {} : { galleryInitialMemId: null, galleryAutoAssignUnit: null }) }),
   setGalleryInitialMemId: (id) => set({ galleryInitialMemId: id }),
   setShowBustBuilder: (v) => set({ showBustBuilder: v }),
   setShowInvites: (v) => set({ showInvites: v }),
@@ -116,7 +111,6 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
       showMassImport: false,
       showGallery: false,
       galleryInitialMemId: null,
-      galleryInitialTab: "library" as "library" | "gallery",
       galleryAutoAssignUnit: null,
       showBustBuilder: false,
       showInvites: false,
