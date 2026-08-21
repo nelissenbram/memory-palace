@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
-import { isIOS } from "@/lib/native/platform";
+import { isIOS, isNative } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -18,6 +18,7 @@ import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, GOLD, SHADOW, TOP_HIGH
 const OnboardingSceneHost = lazy(() => import("@/components/ui/OnboardingSceneHost"));
 const OnboardingCelebration = lazy(() => import("@/components/ui/OnboardingCelebration"));
 const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
+const OnboardingWingOrientStep = lazy(() => import("@/components/ui/OnboardingWingOrientStep"));
 
 /* ── State machine ──
    Surviving flow: lang_a11y -> name -> style_era(confirmation) -> celebration(threshold)
@@ -28,14 +29,15 @@ type Phase =
   | "lang_a11y"        // Language + legibility (warm-cream card)
   | "name"             // Name input
   | "style_era"        // Roman Tuscany confirmation
+  | "wing_orient"      // "One palace, five wings" orientation (step 4/4)
   | "upload"           // Seeded room + ImportHub (first memory)
   | "celebration"      // Gold ceremonial threshold
   | "paywall"          // Soft trial offer (non-iOS only)
   | "done";
 
-const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "style_era"];
+const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "style_era", "wing_orient"];
 const PHASE_ORDER: Phase[] = [
-  "video_intro", "lang_a11y", "name", "style_era", "upload", "celebration", "paywall", "done",
+  "video_intro", "lang_a11y", "name", "style_era", "wing_orient", "upload", "celebration", "paywall", "done",
 ];
 
 /* Retired phases from the old flow -> nearest surviving phase, so any stale saved
@@ -52,15 +54,27 @@ const RETIRED_PHASE_MAP: Record<string, Phase> = {
 const STORAGE_KEY = "mp_onboarding_phase";
 const WALK_DONE_KEY = "mp_onboarding_walk_done";
 
+/* Centralized paywall platform gate (canon — mirrors MemoryPalace's upgrade
+   gate): web always; iOS only when IAP is live (Apple 3.1.1 — /pricing drives
+   StoreKit there); Android native NEVER (no Play Billing — routing the
+   Capacitor Android app to Stripe would violate Play's payments policy). */
+function paywallAllowed(): boolean {
+  return !isNative() || (isIOS() && IAP_ENABLED);
+}
+
 function persistPhase(p: Phase) { try { localStorage.setItem(STORAGE_KEY, p); } catch {} }
 function loadPhase(): Phase | null {
   try {
     const v = localStorage.getItem(STORAGE_KEY) as string | null;
     if (!v) return null;
-    // iOS purchase gate: the paywall routes to /pricing, which on iOS drives the
-    // Apple IAP flow (never Stripe). When IAP is live (IAP_ENABLED) iOS may resume
-    // the paywall; while IAP is off, a saved 'paywall' remaps to 'done' (3.1.1 seal).
-    if (v === "paywall" && isIOS() && !IAP_ENABLED) return "done";
+    // Paywall platform gate: /pricing drives Apple IAP on iOS (never Stripe)
+    // and Stripe on web. A saved 'paywall' may only resume where the paywall is
+    // allowed (web, or iOS with IAP live) — on iOS while IAP is off (3.1.1
+    // seal) and on Android native (no Play Billing) it remaps to 'done'.
+    if (v === "paywall" && !paywallAllowed()) return "done";
+    // Reduced-motion: a resumed 'video_intro' skips the 12.5s video to the same
+    // phase the fresh-run RM path starts at (initial-phase pick below).
+    if (v === "video_intro" && prefersReducedMotion()) return "lang_a11y";
     if (PHASE_ORDER.includes(v as Phase)) return v as Phase;
     if (RETIRED_PHASE_MAP[v]) return RETIRED_PHASE_MAP[v];
   } catch {}
@@ -84,9 +98,9 @@ type TextSize = ScaleLevel;
 
 /* ── Quiet canon step dots (AtriumRelay lane-dot grammar): filled=EMBER_GLYPH,
    unfilled=HAIRLINE, no numeric total, no growing bar. Intentionally scoped to
-   the 3 form cards (lang_a11y / name / style_era) — the full-screen video intro
-   and the do-first upload/celebration are ceremonial beats, not numbered setup
-   steps, so they carry no dot. ── */
+   the 4 setup cards (lang_a11y 1/4, name 2/4, style_era 3/4, wing_orient 4/4) —
+   the full-screen video intro and the do-first upload/celebration are ceremonial
+   beats, not numbered setup steps, so they carry no dot. ── */
 function StepDots({ current, total, label }: { current: number; total: number; label: string }) {
   return (
     <div
@@ -128,6 +142,7 @@ const KEYFRAMES = `
 @keyframes onb-pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes onb-slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
 @keyframes onb-welcomeIn{0%{opacity:0}30%{opacity:0}100%{opacity:1}}
+@keyframes onb-taglineIn{from{opacity:0;transform:translateY(0.75rem)}to{opacity:1;transform:translateY(0)}}
 `;
 
 interface OnboardingWizardProps {
@@ -137,8 +152,8 @@ interface OnboardingWizardProps {
 export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const isMobile = useIsMobile();
   const isPortrait = useIsPortrait();
-  // Landscape phone: full-screen centered setup cards clip at the top when taller
-  // than the short viewport. Switch to top-aligned + scrollable. Portrait unchanged.
+  // Landscape phone: setup cards now scroll on ALL viewports (R8, pageScrollerStyle);
+  // this flag remains only for the celebration/paywall landscape forks below.
   const isLandscapePhone = isMobile && !isPortrait;
   const { t, setLocaleNoReload } = useTranslation("onboarding");
   // Selector: subscribe ONLY to userName (the sole reactive store field this
@@ -212,6 +227,52 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // Own the outro timer's teardown — clear it on unmount so a fast skip/unmount
   // never fires setPhase on a gone component.
   useEffect(() => () => { if (outroTimerRef.current) clearTimeout(outroTimerRef.current); }, []);
+
+  // ── Tagline beat (§3 SPEC A, R3): ONE centered lockup — in @1.2s, out @6s.
+  // Two setTimeouts; cleared on phase leave (skip advances phase → effect
+  // cleanup), on outro (showWelcome effect below), and on unmount. Reduced-motion
+  // users never mount video_intro (initial-phase pick); the guard here is cheap
+  // defense-in-depth only.
+  const [introBeat, setIntroBeat] = useState<"hidden" | "in" | "out">("hidden");
+  const beatTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  useEffect(() => {
+    if (phase !== "video_intro" || prefersReducedMotion()) return;
+    beatTimersRef.current = [
+      setTimeout(() => setIntroBeat("in"), 1200),
+      setTimeout(() => setIntroBeat("out"), 6000),
+    ];
+    return () => { beatTimersRef.current.forEach(clearTimeout); beatTimersRef.current = []; };
+  }, [phase]);
+  // Outro cancels the beat: an early outro (autoplay-blocked path) must never
+  // have the tagline pop in over the welcome title.
+  useEffect(() => {
+    if (showWelcome) {
+      beatTimersRef.current.forEach(clearTimeout);
+      beatTimersRef.current = [];
+      setIntroBeat("out");
+    }
+  }, [showWelcome]);
+
+  // ── Progress hairline (§3 SPEC A.6): rAF-driven fill (`timeupdate` fires ~4Hz
+  // on iOS Safari = visible stutter). Rendered only after loadedmetadata reports
+  // a real duration (no 0-jump mid-video); writes transform directly on the fill
+  // node (no per-frame React state); cancelled on phase leave/unmount.
+  const [videoMetaReady, setVideoMetaReady] = useState(false);
+  const progressFillRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (phase !== "video_intro" || !videoMetaReady) return;
+    let raf = 0;
+    const tick = () => {
+      const v = videoRef.current;
+      const fill = progressFillRef.current;
+      if (v && fill && Number.isFinite(v.duration) && v.duration > 0) {
+        fill.style.transform = `scaleX(${Math.min(v.currentTime / v.duration, 1)})`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phase, videoMetaReady]);
 
   // Force-play on mobile — autoplay can fail silently on iOS/Android. If it's
   // blocked during the intro, skip straight to the first setup card.
@@ -295,11 +356,12 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     setPhase("celebration");
   }, [setPhase]);
 
-  // ── iOS purchase gate: while IAP is off (IAP_ENABLED=false) the paywall must be
-  // UNREACHABLE on iOS (Apple 3.1.1) — coerce any stray 'paywall' to 'done'. When
-  // IAP is live, iOS keeps the paywall (its /pricing CTA drives Apple IAP). ──
+  // ── Paywall platform gate: where the paywall is disallowed (iOS while IAP is
+  // off — Apple 3.1.1; Android native — no Play Billing) it must be UNREACHABLE
+  // — coerce any stray 'paywall' to 'done'. Web (Stripe) and iOS-with-IAP
+  // (Apple IAP via /pricing) keep it. ──
   useEffect(() => {
-    if (phase === "paywall" && isIOS() && !IAP_ENABLED) setPhase("done");
+    if (phase === "paywall" && !paywallAllowed()) setPhase("done");
   }, [phase, setPhase]);
 
   // ── Done ──
@@ -312,9 +374,11 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     }
   }, [phase, onFinish]);
 
-  // ── Preload ImportHub during setup so it's ready when the user reaches the room ──
+  // ── Preload ImportHub + the wing-orient card during setup so they're ready
+  // when the user reaches them (no lazy-chunk spinner between setup cards) ──
   useEffect(() => {
     if (phase === "style_era") {
+      import("@/components/ui/OnboardingWingOrientStep");
       import("@/components/ui/ImportHub");
     }
   }, [phase]);
@@ -331,11 +395,16 @@ ${KEYFRAMES}
 @keyframes onb-spin{to{transform:rotate(360deg)}}
 .onb-cta{transition:transform .16s ease, filter .16s ease}
 .onb-cta:hover{transform:translateY(-1px);filter:brightness(1.06)}
-.onb-focusable:focus-visible{outline:0.1875rem solid ${GOLD};outline-offset:0.1875rem}
+.onb-focusable:focus-visible{outline:0.1875rem solid ${EMBER};outline-offset:0.1875rem}
+@media (prefers-reduced-motion: reduce){.onb-anim,.onb-cta,.onb-orient-in{animation:none!important;transition:none!important;transform:none!important}}
     `}</style>
   );
 
   // Opaque warm-cream card (hairline border, no backdrop blur).
+  // margin:auto (R8): inside the flex-start scroller below this yields the SAME
+  // visual centering as justify-content:center when the card fits the viewport,
+  // but degrades to a scrollable top-aligned card when it doesn't (tall cards on
+  // short phones, keyboard-up name card) — auto margins collapse to 0 on overflow.
   const cardStyle: React.CSSProperties = {
     maxWidth: "30rem", width: "92%",
     padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
@@ -344,12 +413,31 @@ ${KEYFRAMES}
     border: `0.0625rem solid ${HAIRLINE}`,
     boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
     animation: "onb-fadeUp .5s ease",
+    margin: "auto",
   };
 
   const pageStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
-    width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative",
-    overflow: isMobile ? "auto" : "hidden", background: CREAM, ...extra,
+    // height:100dvh ONLY — a 100vh minHeight floor exceeds the VISIBLE viewport
+    // while mobile URL-bar chrome is expanded, so the inner 100% scroller thinks
+    // its content fits and won't scroll, hiding the card bottom / skip link
+    // behind the browser chrome (R8).
+    width: "100vw", height: "100dvh", position: "relative",
+    overflow: "hidden", background: CREAM, ...extra,
   });
+
+  // Universal setup-card scroller (R8): flex-start + overflowY:auto on EVERY
+  // viewport (not just landscape phones) so no card can ever clip off-screen;
+  // cardStyle's margin:auto restores centering whenever content fits. Top
+  // padding clears the absolute StepDots row; bottom padding respects the
+  // home-indicator safe area.
+  const pageScrollerStyle: React.CSSProperties = {
+    position: "relative", zIndex: 2,
+    width: "100%", height: "100%",
+    display: "flex", flexDirection: "column", alignItems: "center",
+    justifyContent: "flex-start",
+    overflowY: "auto",
+    padding: "calc(3.5rem + env(safe-area-inset-top, 0px)) 0 calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+  };
 
   // Canon overline: 0.6875rem / 700 / 0.12em / uppercase / ember-glyph ink.
   const Overline = ({ children }: { children: React.ReactNode }) => (
@@ -365,7 +453,7 @@ ${KEYFRAMES}
     </div>
   );
 
-  // One primary EMBER CTA (ctaGrad, GOLD focus ring via .onb-focusable, >=3.25rem).
+  // One primary EMBER CTA per card (ctaGrad, EMBER focus ring via .onb-focusable, >=3.25rem).
   const primaryCtaStyle: React.CSSProperties = {
     fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
     padding: "0 1.25rem", borderRadius: "0.75rem", border: "none",
@@ -441,7 +529,16 @@ ${KEYFRAMES}
   if (phase === "video_intro") {
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", overflow: "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
+        {/* Full canon style block (not bare KEYFRAMES): the skip chip needs the
+            .onb-focusable EMBER focus ring in this phase too. */}
+        {canonStyle}
+
+        {/* Warm-dark fallback UNDER the video — covers decode/network gaps so a
+            slow start never shows a flat black frame (§3.1). */}
+        <div aria-hidden style={{
+          position: "fixed", inset: 0, zIndex: 0,
+          background: "radial-gradient(ellipse at 50% 40%, #2A2622 0%, #1a1917 70%)",
+        }} />
 
         {/* Background video */}
         <video
@@ -451,7 +548,14 @@ ${KEYFRAMES}
           loop={videoPlayed}
           playsInline
           preload="metadata"
+          poster="/video/hero-ob-poster.jpg"
           onEnded={beginOutro}
+          onLoadedMetadata={(e) => {
+            // Progress hairline gate: only a real duration may drive the fill —
+            // rendering before this fires would 0-jump mid-video (§3.6).
+            const d = e.currentTarget.duration;
+            if (Number.isFinite(d) && d > 0) setVideoMetaReady(true);
+          }}
           style={{
             position: "fixed", inset: 0,
             width: "100%", height: "100%",
@@ -473,24 +577,69 @@ ${KEYFRAMES}
           zIndex: 1,
         }} />
 
+        {/* Tagline beat (§3.3, R3) — the ONE text lockup of the playing state:
+            centered overline + tagline, in @1.2s, out @6s, inert to pointer/SR
+            timing (decorative brand beat). Never rendered once the outro owns
+            the frame. */}
+        {introBeat !== "hidden" && !showWelcome && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 12,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            gap: "0.75rem", textAlign: "center", pointerEvents: "none", padding: "0 1.5rem",
+            ...(introBeat === "in" && !prefersReducedMotion()
+              ? { animation: "onb-taglineIn 1s ease both" }
+              : introBeat === "in"
+                ? {}
+                : { opacity: 0, transition: "opacity 0.9s ease" }),
+          }}>
+            <div style={{
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+              letterSpacing: "0.18em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.72)",
+            }}>
+              {t("appName")}
+            </div>
+            <div style={{
+              fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500,
+              fontSize: isMobile ? "1.1875rem" : "1.5rem",
+              color: "rgba(255,255,255,0.92)", lineHeight: 1.35, maxWidth: "26rem",
+              textShadow: "0 0.125rem 1rem rgba(0,0,0,0.5)",
+            }}>
+              {t("videoTagline") !== "videoTagline" ? t("videoTagline") : "A home for the moments that made you."}
+            </div>
+          </div>
+        )}
+
         {/* Welcome outro — fades in over the last moments of the video, in the
             app's warm gold display voice, so the hand-off to the first menu
             isn't an abrupt cut. */}
         {showWelcome && (
           <div style={{ position: "absolute", inset: 0, zIndex: 15, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 1.5rem", background: "radial-gradient(ellipse at center, rgba(26,25,23,0.35) 0%, rgba(26,25,23,0.72) 100%)", animation: "onb-welcomeIn 1.1s ease both" }}>
-            <div style={{
-              fontFamily: T.font.display, fontStyle: "italic",
-              fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 600,
-              color: GOLD, textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
-              textShadow: "0 0.25rem 1.75rem rgba(0,0,0,0.55)",
-            }}>
-              {t("welcomeToPalace") !== "welcomeToPalace" ? t("welcomeToPalace") : "Welcome to your Memory Palace"}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{
+                fontFamily: T.font.display, fontStyle: "italic",
+                fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 600,
+                color: GOLD, textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
+                textShadow: "0 0.25rem 1.75rem rgba(0,0,0,0.55)",
+              }}>
+                {t("welcomeToPalace") !== "welcomeToPalace" ? t("welcomeToPalace") : "Welcome to your Memory Palace"}
+              </div>
+              {/* Outro subline (R2 — the single subline key) */}
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem",
+                color: "rgba(255,255,255,0.85)", lineHeight: 1.5,
+                marginTop: "0.75rem", maxWidth: "24rem",
+                animation: "onb-subtitleReveal 0.8s ease 0.6s both",
+              }}>
+                {t("welcomeSub") !== "welcomeSub" ? t("welcomeSub") : "Let's make it yours — it takes about two minutes."}
+              </div>
             </div>
           </div>
         )}
 
         {/* Skip button — warm-ink chrome so even the video overlay stays on palette */}
         <button
+          className="onb-focusable"
           onClick={() => {
             outroRef.current = true;
             if (outroTimerRef.current) { clearTimeout(outroTimerRef.current); outroTimerRef.current = null; }
@@ -504,11 +653,30 @@ ${KEYFRAMES}
             color: "rgba(255,255,255,0.9)", background: "rgba(64,59,54,0.45)",
             border: "0.0625rem solid rgba(64,59,54,0.55)",
             borderRadius: "0.5rem", padding: "0.5rem 1rem",
-            cursor: "pointer", backdropFilter: "blur(0.25rem)", minHeight: "2.75rem",
+            cursor: "pointer", backdropFilter: "blur(0.25rem)", minHeight: "2.75rem", minWidth: "2.75rem",
           }}
         >
           {t("cinematicSkip")}
         </button>
+
+        {/* Progress hairline (§3.6) — decorative playback trace, aria-hidden,
+            fill driven by the rAF loop (transform-only, no re-render). Lifted
+            above the home-indicator gesture zone; hidden once the outro owns
+            the frame; rendered only after loadedmetadata reports a duration. */}
+        {videoMetaReady && !showWelcome && (
+          <div aria-hidden style={{
+            position: "fixed", left: 0, right: 0,
+            bottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))",
+            height: "0.125rem", background: "rgba(255,255,255,0.12)",
+            zIndex: 10, overflow: "hidden", pointerEvents: "none",
+          }}>
+            <div ref={progressFillRef} style={{
+              width: "100%", height: "100%",
+              background: "rgba(255,255,255,0.4)",
+              transform: "scaleX(0)", transformOrigin: "left center",
+            }} />
+          </div>
+        )}
 
         {/* Start the welcome outro at ~12.5s (then advance ~2.6s later), so a
             long/looping video still hands off gracefully. */}
@@ -525,16 +693,10 @@ ${KEYFRAMES}
       <div style={pageStyle()}>
         {canonStyle}
 
-        <div style={{
-          position: "relative", zIndex: 2,
-          width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: isLandscapePhone ? "flex-start" : "center",
-          overflowY: isLandscapePhone ? "auto" : undefined,
-        }}>
-          <StepDots current={1} total={3} label={t("stepOf", { current: "1", total: "3" })} />
+        <div style={pageScrollerStyle}>
+          <StepDots current={1} total={4} label={t("stepOf", { current: "1", total: "4" })} />
 
-          <div style={cardStyle}>
+          <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
               <Overline>{t("appName")}</Overline>
@@ -619,13 +781,17 @@ ${KEYFRAMES}
                         tabIndex={active ? 0 : -1}
                         onClick={() => setTextSize(size)}
                         style={{
-                          flex: 1, fontFamily: T.font.body, fontSize: "0.75rem",
+                          // minWidth:0 + minHeight (not fixed height) + wrapping
+                          // label span: long unbreakable labels ("Komfortabel"
+                          // at the Large root scale on 360px) wrap to a second
+                          // line instead of clipping past the button edge.
+                          flex: 1, minWidth: 0, fontFamily: T.font.body, fontSize: "0.75rem",
                           fontWeight: active ? 700 : 500,
                           padding: "0.5rem 0.25rem", borderRadius: "0.5rem",
                           border: `0.125rem solid ${active ? EMBER : HAIRLINE}`,
                           background: active ? `${EMBER}12` : "#FFF",
                           color: active ? EMBER : INK,
-                          cursor: "pointer", transition: "all .2s", height: "3.5rem",
+                          cursor: "pointer", transition: "all .2s", minHeight: "3.5rem",
                           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.125rem",
                           position: "relative",
                         }}
@@ -639,7 +805,7 @@ ${KEYFRAMES}
                           </span>
                         )}
                         <span style={{ fontSize: fz, fontFamily: T.font.display, fontWeight: 400, lineHeight: 1 }}>Aa</span>
-                        <span>{label}</span>
+                        <span style={{ maxWidth: "100%", overflowWrap: "anywhere", lineHeight: 1.15, textAlign: "center" }}>{label}</span>
                       </button>
                     );
                   })}
@@ -673,16 +839,10 @@ ${KEYFRAMES}
       <div style={pageStyle()}>
         {canonStyle}
 
-        <div style={{
-          position: "relative", zIndex: 2,
-          width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: isLandscapePhone ? "flex-start" : "center",
-          overflowY: isLandscapePhone ? "auto" : undefined,
-        }}>
-          <StepDots current={2} total={3} label={t("stepOf", { current: "2", total: "3" })} />
+        <div style={pageScrollerStyle}>
+          <StepDots current={2} total={4} label={t("stepOf", { current: "2", total: "4" })} />
 
-          <div style={cardStyle}>
+          <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
               <Overline>{t("appName")}</Overline>
@@ -691,14 +851,58 @@ ${KEYFRAMES}
                 fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
                 fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
-                {t("nameTitle") !== "nameTitle" ? t("nameTitle") : t("whatToCallYou")}
+                {t("nameTitle") !== "nameTitle" ? t("nameTitle") : "Every palace bears a name"}
               </h2>
               <p style={{
                 fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.9375rem",
                 color: MUTED, maxWidth: "22rem", lineHeight: 1.6, margin: 0,
               }}>
-                {t("nameAside") !== "nameAside" ? t("nameAside") : "So the house knows whose it is."}
+                {t("nameAside") !== "nameAside" ? t("nameAside") : "Tell us yours, and we'll carve it above the door."}
               </p>
+
+              {/* Foundation plaque (§6.5) — live derived-title preview, placed
+                  ABOVE the input so it stays visible while the mobile keyboard
+                  scrolls the focused input into view. Height is ALWAYS reserved
+                  (2-line clamp fits inside 5.75rem) so typing never jumps the
+                  nav row. Plain div — no aria-live (chatty per keystroke); the
+                  empty state is aria-hidden. Title reuses cinematicPalaceName
+                  (R13) — the one source of truth for "{name}'s Palace". */}
+              <div
+                aria-hidden={!nameValid}
+                style={{
+                  minHeight: "5.75rem", width: "100%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <div style={{
+                  width: "100%", maxWidth: "20rem",
+                  padding: "0.75rem 1rem", borderRadius: "0.625rem",
+                  border: `0.0625rem solid ${HAIRLINE}`, background: "#FFFFFF99",
+                  textAlign: "center",
+                  opacity: nameValid ? 1 : 0,
+                  transform: prefersReducedMotion() ? undefined : (nameValid ? "translateY(0)" : "translateY(0.25rem)"),
+                  transition: prefersReducedMotion() ? "opacity .01s linear" : "opacity .3s ease, transform .3s ease",
+                }}>
+                  <div style={{
+                    fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700,
+                    letterSpacing: "0.14em", textTransform: "uppercase", color: EMBER,
+                    marginBottom: "0.375rem",
+                  }}>
+                    {t("namePlaqueOverline") !== "namePlaqueOverline" ? t("namePlaqueOverline") : "Founding deed"}
+                  </div>
+                  <div style={{
+                    fontFamily: T.font.display, fontStyle: "italic", fontSize: "1.125rem",
+                    color: INK, lineHeight: 1.3, overflowWrap: "anywhere",
+                    display: "-webkit-box", WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical", overflow: "hidden",
+                  }}>
+                    {t("cinematicPalaceName", { name: trimmedName }) !== "cinematicPalaceName"
+                      ? t("cinematicPalaceName", { name: trimmedName })
+                      : `${trimmedName}'s Palace`}
+                  </div>
+                </div>
+              </div>
+
               <div style={{ width: "100%", maxWidth: "20rem" }}>
                 <label htmlFor="onb-name-input" style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}>
                   {t("namePlaceholder")}
@@ -710,8 +914,11 @@ ${KEYFRAMES}
                   onChange={(e) => setUserName(e.target.value)}
                   placeholder={t("namePlaceholder")}
                   aria-label={t("namePlaceholder")}
+                  maxLength={40}
                   style={{
-                    fontFamily: T.font.display, fontSize: "1rem", textAlign: "center",
+                    // max(1rem, 16px): stays ≥16px computed even under a11y
+                    // down-scaling — kills the iOS focus auto-zoom (§6.6).
+                    fontFamily: T.font.display, fontSize: "max(1rem, 16px)", textAlign: "center",
                     padding: "0.875rem 1.5rem", border: `0.09375rem solid ${HAIRLINE}`,
                     borderRadius: "0.625rem", background: "#FFF", color: INK,
                     outline: "none", width: "100%", transition: "border-color .2s",
@@ -776,22 +983,16 @@ ${KEYFRAMES}
       <div style={pageStyle()}>
         {canonStyle}
 
-        <div style={{
-          position: "relative", zIndex: 2,
-          width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: isLandscapePhone ? "flex-start" : "center",
-          overflowY: isLandscapePhone ? "auto" : undefined,
-        }}>
-          <StepDots current={3} total={3} label={t("stepOf", { current: "3", total: "3" })} />
+        <div style={pageScrollerStyle}>
+          <StepDots current={3} total={4} label={t("stepOf", { current: "3", total: "4" })} />
 
-          <div style={cardStyle}>
+          <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
               <Overline>{t("appName")}</Overline>
 
               {/* Laurel wreath — Roman identity glyph, ember-glyph ink */}
-              <svg width="52" height="52" viewBox="0 0 44 44" fill="none" aria-hidden>
+              <svg style={{ width: "3.25rem", height: "3.25rem" }} viewBox="0 0 44 44" fill="none" aria-hidden>
                 <path d="M22 6C18 10 14 16 14 22C14 28 17 32 22 34C27 32 30 28 30 22C30 16 26 10 22 6Z"
                   stroke={EMBER_GLYPH} strokeWidth="1.2" fill="none" opacity="0.55" />
                 <path d="M10 20C12 16 16 13 20 12" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.45" strokeLinecap="round" />
@@ -840,7 +1041,7 @@ ${KEYFRAMES}
                   onClick={() => {
                     setStyleEra("roman");
                     updateProfile({ styleEra: "roman" }).catch(() => {});
-                    setPhase("upload");
+                    setPhase("wing_orient");
                   }}
                   style={{ ...primaryCtaStyle, flex: 1 }}
                 >
@@ -854,6 +1055,23 @@ ${KEYFRAMES}
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  /* ── Wing orientation — "One palace, five wings" (step 4/4, §7 SPEC E) ──
+     Self-contained full-page card: brings its own R8 page container, scoped
+     keyframes, EMBER focus ring and RM guard — no wrapper canonStyle needed. */
+  if (phase === "wing_orient") {
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
+        <Suspense fallback={sceneLoadingFallback}>
+          <OnboardingWingOrientStep
+            onBack={() => setPhase("style_era")}
+            onContinue={() => setPhase("upload")}
+            onSkip={handleSkip}
+          />
+        </Suspense>
       </div>
     );
   }
@@ -889,7 +1107,7 @@ ${KEYFRAMES}
 
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
-            onClose={() => { if (!memoryUploadedRef.current) completeAndFinish((isIOS() && !IAP_ENABLED) ? "done" : "paywall"); }}
+            onClose={() => { if (!memoryUploadedRef.current) completeAndFinish(paywallAllowed() ? "paywall" : "done"); }}
             onImportFiles={async (files) => {
               if (files.length === 0) return;
               const f = files[0];
@@ -946,6 +1164,8 @@ ${KEYFRAMES}
             onOpenCloudProvider={() => {}}
             initialRoomId="ro1"
             lockRoom
+            titleOverride={t("firstMemHubTitle") !== "firstMemHubTitle" ? t("firstMemHubTitle") : "Your first memory"}
+            subtitleOverride={t("firstMemHubSubtitle") !== "firstMemHubSubtitle" ? t("firstMemHubSubtitle") : "A photo of yourself, family, or a place you love. You can add everything else later."}
           />
         </Suspense>
       </div>
@@ -955,10 +1175,11 @@ ${KEYFRAMES}
   /* ── Celebration — calm gold threshold echoing the user's name (change 15) ── */
   if (phase === "celebration") {
     // Personalized copy that already exists in all 5 locales; degrade the {name}
-    // token gracefully when empty (change 13). The threshold CTA branches by
-    // platform: on iOS (IAP off) it always ENTERS the palace (celebrationContinue
-    // -> done, no paywall, Apple 3.1.1); on web it offers the soft trial step
-    // (celebrationAtrium "Select your plan" -> paywall).
+    // token gracefully when empty (change 13). The threshold CTA branches on the
+    // centralized paywall gate: where disallowed (iOS with IAP off — Apple
+    // 3.1.1; Android native — no Play Billing) it always ENTERS the palace
+    // (celebrationContinue -> done, no paywall); elsewhere it offers the soft
+    // trial step (celebrationAtrium "Select your plan" -> paywall).
     const displayName = trimmedName || t("namePlaceholder");
     const celebTitle = (t("celebrationTitle") !== "celebrationTitle"
       ? t("celebrationTitle")
@@ -966,6 +1187,11 @@ ${KEYFRAMES}
     const celebSubtitle = t("celebrationSubtitle") !== "celebrationSubtitle"
       ? t("celebrationSubtitle")
       : "Your palace is ready. Every memory you add makes it more yours.";
+    // Tutorial-handoff hint (§9): points at the Atrium nudge tour that follows.
+    // Free-tier-safe copy — passed to BOTH forks and BOTH platform branches.
+    const celebHint = t("celebrationHandoffHint") !== "celebrationHandoffHint"
+      ? t("celebrationHandoffHint")
+      : "Step inside — a short tour of your Atrium is waiting.";
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
         {canonStyle}
@@ -985,7 +1211,7 @@ ${KEYFRAMES}
             alignItems: "center", justifyContent: "flex-start",
             overflowY: "auto", padding: "1.5rem 0",
           }}>
-            <div style={{
+            <div className="onb-anim" style={{
               display: "flex", flexDirection: "column", alignItems: "center",
               textAlign: "center", gap: "1.25rem",
               padding: "2rem 1.5rem", maxWidth: "30rem", width: "92%",
@@ -1011,18 +1237,30 @@ ${KEYFRAMES}
               }}>
                 {celebSubtitle}
               </p>
+              {/* Tutorial-handoff hint (§9 row [4]) — mirrors the shared
+                  OnboardingCelebration hint row; this landscape fork doesn't
+                  use the component, so the row is replicated inline. */}
+              <p style={{
+                fontFamily: T.font.body, fontStyle: "italic", fontSize: "0.9375rem",
+                fontWeight: 400, color: MUTED, lineHeight: 1.5, margin: 0,
+                maxWidth: "22rem", textAlign: "center",
+              }}>
+                <span aria-hidden style={{ color: EMBER, opacity: 0.8, marginRight: "0.375rem" }}>✦</span>
+                {celebHint}
+              </p>
               <button
-                onClick={() => setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall")}
+                className="onb-cta onb-focusable"
+                onClick={() => setPhase(paywallAllowed() ? "paywall" : "done")}
                 style={{
                   fontFamily: T.font.body, fontSize: "1.0625rem", fontWeight: 600,
                   padding: "0 2.75rem", minHeight: "3.25rem", borderRadius: "0.75rem",
                   border: "none",
-                  background: "linear-gradient(135deg, #9A4F2A, #6B3318)",
+                  background: T.land.ctaGrad,
                   color: "#FFFFFF", cursor: "pointer",
                   boxShadow: SHADOW[1], marginTop: "0.5rem",
                 }}
               >
-                {(isIOS() && !IAP_ENABLED) ? t("celebrationContinue") : t("celebrationAtrium")}
+                {paywallAllowed() ? t("celebrationAtrium") : t("celebrationContinue")}
               </button>
             </div>
           </div>
@@ -1031,8 +1269,9 @@ ${KEYFRAMES}
             <OnboardingCelebration
               title={celebTitle}
               subtitle={celebSubtitle}
-              buttonLabel={(isIOS() && !IAP_ENABLED) ? t("celebrationContinue") : t("celebrationAtrium")}
-              onContinue={() => setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall")}
+              buttonLabel={paywallAllowed() ? t("celebrationAtrium") : t("celebrationContinue")}
+              onContinue={() => setPhase(paywallAllowed() ? "paywall" : "done")}
+              hint={celebHint}
               transparent
             />
           </Suspense>
@@ -1043,10 +1282,12 @@ ${KEYFRAMES}
 
   /* ── Paywall — soft trial offer after the celebration ──
      The trial CTA routes to /pricing, which on iOS drives the Apple IAP flow
-     (StoreKit, never Stripe) and on web drives Stripe. While IAP is off
-     (IAP_ENABLED=false) the paywall stays UNREACHABLE on iOS (Apple 3.1.1) via
-     every isIOS()-guard; when IAP is live iOS reaches it and buys through Apple. */
-  if (phase === "paywall" && (!isIOS() || IAP_ENABLED)) {
+     (StoreKit, never Stripe) and on web drives Stripe. The centralized gate
+     (paywallAllowed) keeps it UNREACHABLE on iOS while IAP is off (Apple
+     3.1.1) AND on Android native (no Play Billing — Stripe in the Android app
+     would breach Play's payments policy); when IAP is live iOS reaches it and
+     buys through Apple. */
+  if (phase === "paywall" && paywallAllowed()) {
     const paywallFeatures = [
       t("paywallFeat1"),
       t("paywallFeat2"),
@@ -1061,20 +1302,24 @@ ${KEYFRAMES}
           <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
         </Suspense>
 
-        {/* Warm-cream scrim (matches the calm celebration hand-off, not a dark cut) */}
+        {/* Warm-cream scrim (matches the calm celebration hand-off, not a dark
+            cut). R8 scroller on EVERY viewport — flex-start + overflowY:auto
+            with the card's margin:auto restoring centering when it fits — so a
+            tall card (Comfortable/Large text scale on a short portrait phone)
+            scrolls instead of flex-center clipping the trial CTA and the
+            free-continue link off both edges. */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 10,
           background: "rgba(252,250,245,0.72)",
           backdropFilter: "blur(0.375rem)", WebkitBackdropFilter: "blur(0.375rem)",
-          display: "flex",
-          alignItems: isLandscapePhone ? "flex-start" : "center",
-          justifyContent: "center",
-          overflowY: isLandscapePhone ? "auto" : undefined,
-          padding: isLandscapePhone ? "1.5rem 0" : undefined,
+          display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "flex-start",
+          overflowY: "auto",
+          padding: "calc(1.5rem + env(safe-area-inset-top, 0px)) 0 calc(1.5rem + env(safe-area-inset-bottom, 0px))",
         }}>
           {/* Opaque warm-cream card (Library canon) */}
-          <div style={{
-            maxWidth: "28rem", width: "92%",
+          <div className="onb-anim" style={{
+            maxWidth: "28rem", width: "92%", margin: "auto",
             padding: isMobile ? "2rem 1.5rem" : "2.5rem 2.25rem",
             background: CREAM,
             borderRadius: "1rem",
@@ -1135,16 +1380,26 @@ ${KEYFRAMES}
                 {t("paywallTrialCta")}
               </button>
 
-              {/* Subscription disclosure (Apple Guideline 3.1.2) */}
+              {/* Subscription disclosure — platform-forked: the Apple 3.1.2
+                  wording ("billed to your Apple ID… Settings") only on the
+                  iOS/IAP branch; web (Stripe) gets neutral renewal copy. */}
               <p style={{
                 fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED,
                 lineHeight: 1.5, margin: "-0.5rem 0 0", textAlign: "center", maxWidth: "22rem",
               }}>
-                {t("paywallAutoRenew") !== "paywallAutoRenew" ? t("paywallAutoRenew") : "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings."}{" "}
-                <a href="/terms" className="onb-focusable" style={{ display: "inline-block", padding: "0.375rem 0.25rem", color: EMBER_GLYPH, textDecoration: "underline", textUnderlineOffset: "0.1875rem" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
-                {" · "}
-                <a href="/privacy" className="onb-focusable" style={{ display: "inline-block", padding: "0.375rem 0.25rem", color: EMBER_GLYPH, textDecoration: "underline", textUnderlineOffset: "0.1875rem" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
+                {isIOS()
+                  ? (t("paywallAutoRenew") !== "paywallAutoRenew" ? t("paywallAutoRenew") : "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings.")
+                  : (t("paywallAutoRenewWeb") !== "paywallAutoRenewWeb" ? t("paywallAutoRenewWeb") : "Auto-renewing subscription. Cancel anytime.")}
               </p>
+
+              {/* Legal links — own row with ≥2.75rem targets and a spacer glyph
+                  between them (adjacent inline anchors were ~1.5rem mis-tap
+                  hazards inside the disclosure paragraph). */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", margin: "-1rem 0 -0.75rem" }}>
+                <a href="/terms" className="onb-focusable" style={{ display: "inline-flex", alignItems: "center", minHeight: "2.75rem", padding: "0 0.75rem", fontFamily: T.font.body, fontSize: "0.6875rem", color: EMBER_GLYPH, textDecoration: "underline", textUnderlineOffset: "0.1875rem" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
+                <span aria-hidden style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>·</span>
+                <a href="/privacy" className="onb-focusable" style={{ display: "inline-flex", alignItems: "center", minHeight: "2.75rem", padding: "0 0.75rem", fontFamily: T.font.body, fontSize: "0.6875rem", color: EMBER_GLYPH, textDecoration: "underline", textUnderlineOffset: "0.1875rem" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
+              </div>
 
               {/* Free continue */}
               <button

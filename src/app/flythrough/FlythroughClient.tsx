@@ -5,6 +5,9 @@ import Toast, { type ToastData } from "@/components/ui/Toast";
 import dynamic from "next/dynamic";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
+import { T } from "@/lib/theme";
 
 // Lazy-load scene components to avoid SSR issues with Three.js
 const ExteriorScene = dynamic(() => import("@/components/3d/ExteriorScene"), { ssr: false });
@@ -23,6 +26,15 @@ const MemoryDetail = dynamic(() => import("@/components/ui/MemoryDetail"), { ssr
 // The room's AV transport, standalone — the player must work OUTSIDE the media
 // menu too (stand before the gramophone/screen and play).
 const PlayerCard = dynamic(() => import("@/components/ui/RoomStewardLedger").then((m) => m.PlayerCard), { ssr: false });
+// ── Onboarding preview (scene 4) — ONBOARDING_ELEVATION_PLAN §11 ──
+// Login-free preview of the onboarding cinematic handoffs: exterior WP1-hold →
+// prompt → 5-waypoint flyover + zoom → auto-enter entrance hall → look-around →
+// end card. Mounts the REAL OnboardingSceneHost (unchanged) with local demo
+// state only; NEVER writes any onboarding localStorage key. Lives behind the
+// same prod-404 gate in flythrough/page.tsx (contract 4 — untouched).
+const OnboardingSceneHost = dynamic(() => import("@/components/ui/OnboardingSceneHost"), { ssr: false });
+const CinematicPromptOverlay = dynamic(() => import("@/components/ui/CinematicPromptOverlay"), { ssr: false });
+const CinematicSkipChip = dynamic(() => import("@/components/ui/CinematicPromptOverlay").then((m) => m.CinematicSkipChip), { ssr: false });
 
 // Sample memories for the room scene. A photo-RICH set (viewer-only) so the
 // "Deepening Cabinet" display walls actually fill — the room auto-sizes to its
@@ -118,12 +130,24 @@ const SCENES: SceneDef[] = [
   { name: "Entrance Hall", duration: 6000 },
   { name: "Corridor", duration: 5000 },
   { name: "Room", duration: 6000 },
+  // Viewer-only review scene — NEVER part of the recording (see RECORD_SCENE_COUNT).
+  { name: "Onboarding", duration: 0 },
 ];
+
+// The cinematic recorder covers scenes 0–3 only (byte-identical to before the
+// Onboarding scene was added); scene 4 is a review surface, not footage.
+const RECORD_SCENE_COUNT = 4;
+
+// Onboarding-preview phase machine (plan §11): loading (cream veil, fades on
+// onReady) → hold (WP1 approach runs) → paused (scene fired its one-shot
+// cinematic pause; prompt card shown) → flying (resumed; WP2–5 + zoom run
+// untouched) → hall (look-around; hint chip 5s/pointerdown) → done (end card).
+type ObPhase = "loading" | "hold" | "paused" | "flying" | "hall" | "done";
 
 // Login-free scene viewer: /flythrough?scene=hall opens straight into the
 // entrance hall (analogous to the exterior review link) — also: exterior,
 // corridor, room, or a numeric index.
-const SCENE_ALIASES: Record<string, number> = { exterior: 0, hall: 1, entrance: 1, corridor: 2, room: 3 };
+const SCENE_ALIASES: Record<string, number> = { exterior: 0, hall: 1, entrance: 1, corridor: 2, room: 3, onboarding: 4 };
 function initialSceneFromURL(): number {
   if (typeof window === "undefined") return 0;
   const q = new URLSearchParams(window.location.search).get("scene");
@@ -165,6 +189,54 @@ export default function FlythroughClient() {
   }, [applyFill]);
   const [progress, setProgress] = useState(0);
   const [fadeOpacity, setFadeOpacity] = useState(1);
+
+  // ── Onboarding preview state (scene 4) — plan §11 obPhase machine ──
+  const isMobile = useIsMobile();
+  const [obReduceMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  const { t: tOnb } = useTranslation("onboarding");
+  // "flythrough" is a NEW messages section (plan §12, i18n workstream). The
+  // cast keeps this compiling before the section lands; the try/catch keeps it
+  // WORKING before it lands (t() throws on a missing section) — either way the
+  // plan's EN fallback renders. tr(key, fallback) guard pattern per R10.
+  const { t: tFlyRaw } = useTranslation("flythrough" as unknown as Parameters<typeof useTranslation>[0]);
+  const trOnb = useCallback((k: string, f: string) => {
+    try { const v = tOnb(k); return v === k ? f : v; } catch { return f; }
+  }, [tOnb]);
+  const trFly = useCallback((k: string, f: string) => {
+    try { const v = tFlyRaw(k); return v === k ? f : v; } catch { return f; }
+  }, [tFlyRaw]);
+  const [obPhase, setObPhase] = useState<ObPhase>("loading");
+  const [obScene, setObScene] = useState<"exterior" | "entrance">("exterior");
+  const [obResumed, setObResumed] = useState(false);
+  const [obHallHint, setObHallHint] = useState(true);
+  // Fresh key per (re)entry — the scene's one-shot cinematic refs restart cleanly.
+  const [obKey, setObKey] = useState(0);
+  // The exterior fires onCinematicPause exactly once — mirror with a ref so a
+  // stray re-fire can never bounce a later phase back to "paused".
+  const obPauseFiredRef = useRef(false);
+  const resetOb = useCallback(() => {
+    setObPhase("loading");
+    setObScene("exterior");
+    setObResumed(false);
+    setObHallHint(true);
+    obPauseFiredRef.current = false;
+    setObKey((k) => k + 1);
+  }, []);
+  // Scene-pill switch (or the recorder's reset to scene 0) resets ALL ob-state.
+  useEffect(() => { resetOb(); }, [currentScene, resetOb]);
+  // Hall hint chip: dismiss after 5s or on first pointerdown — never other timers.
+  useEffect(() => {
+    if (obPhase !== "hall") return;
+    const tmo = setTimeout(() => setObHallHint(false), 5000);
+    const dismiss = () => setObHallHint(false);
+    window.addEventListener("pointerdown", dismiss);
+    return () => { clearTimeout(tmo); window.removeEventListener("pointerdown", dismiss); };
+  }, [obPhase]);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -183,7 +255,8 @@ export default function FlythroughClient() {
   }, []);
 
   const advanceScene = useCallback((sceneIdx: number) => {
-    if (sceneIdx >= SCENES.length) {
+    // Recorder iterates 0–3 only — the Onboarding scene (4) is never recorded.
+    if (sceneIdx >= RECORD_SCENE_COUNT) {
       // Done — stop recording
       if (recorderRef.current && recorderRef.current.state === "recording") {
         recorderRef.current.stop();
@@ -267,7 +340,7 @@ export default function FlythroughClient() {
     // Progress ticker
     progressRef.current = setInterval(() => {
       const elapsed = Date.now() - startTimeRef.current;
-      const totalMs = SCENES.reduce((s, sc) => s + sc.duration, 0) + SCENES.length * FADE_MS;
+      const totalMs = SCENES.slice(0, RECORD_SCENE_COUNT).reduce((s, sc) => s + sc.duration, 0) + RECORD_SCENE_COUNT * FADE_MS;
       setProgress(Math.min(elapsed / totalMs, 1));
     }, 100);
 
@@ -335,13 +408,47 @@ export default function FlythroughClient() {
             styleEra="roman"
           />
         );
+      case 4:
+        // Onboarding preview — the REAL onboarding scene host (unchanged
+        // component) driven by the local obPhase machine. Camera choreography
+        // is consumed via its existing contract, never edited (contract 3).
+        return (
+          <OnboardingSceneHost
+            key={`ob-${obKey}`}
+            scene={obScene}
+            onboardingMode
+            isMobile={isMobile}
+            onReady={() => setObPhase((p) => (p === "loading" ? "hold" : p))}
+            onCinematicPause={() => {
+              if (obPauseFiredRef.current) return;
+              obPauseFiredRef.current = true;
+              setObPhase((p) => (p === "loading" || p === "hold" ? "paused" : p));
+            }}
+            cinematicResumed={obResumed}
+            onRoomClick={(id: string, arrived?: boolean) => {
+              // Arrival contract: the cinematic zoom/autoWalk ends AT the door
+              // and fires ("__entrance__", true) → auto-enter the hall. Plain
+              // (non-arrived) taps are ignored — no stranded camera.
+              if (id === "__entrance__" && arrived) {
+                setObScene("entrance");
+                setObPhase("hall");
+              }
+            }}
+            // Hall look-around hands off via onDoorClick("roots") (§10 —
+            // untouched); any door click in the preview ends the tour too.
+            // (No onOnboardingLookDone: the host only wires that prop to
+            // InteriorScene, which this preview never mounts — it could
+            // never fire here.)
+            onDoorClick={() => setObPhase("done")}
+          />
+        );
       default:
         return null;
     }
   };
 
   const sceneName = SCENES[currentScene]?.name ?? "";
-  const totalSec = SCENES.reduce((s, sc) => s + sc.duration, 0) / 1000;
+  const totalSec = SCENES.slice(0, RECORD_SCENE_COUNT).reduce((s, sc) => s + sc.duration, 0) / 1000;
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "#111", position: "relative", overflow: "hidden" }}>
@@ -357,7 +464,9 @@ export default function FlythroughClient() {
         {mounted && renderScene()}
       </div>
 
-      {/* Controls overlay */}
+      {/* Controls overlay — hidden on the Onboarding preview scene (it is
+          never recorded, and its skip chip owns the top-right corner) */}
+      {!(currentScene === 4 && phase === "idle") && (
       <div
         style={{
           position: "absolute",
@@ -480,6 +589,7 @@ export default function FlythroughClient() {
           </div>
         )}
       </div>
+      )}
 
       {/* Scene indicators at bottom — clickable scene switcher while idle
           (the login-free viewer), read-only progress pills while recording */}
@@ -513,7 +623,7 @@ export default function FlythroughClient() {
                 transition: "all 0.3s ease",
               }}
             >
-              {s.name}
+              {i === 4 ? trFly("onbPill", s.name) : s.name}
             </button>
           ))}
         </div>
@@ -602,6 +712,165 @@ export default function FlythroughClient() {
           onUpdate={(id: string, updates: Partial<Mem>) => setDemoMems((ms) => ms.map((m) => (m.id === id ? { ...m, ...updates } as Mem : m)))}
           initialAction={detailMem.initialAction}
         />
+      )}
+
+      {/* ── Onboarding preview chrome (scene 4, plan §11) ──
+          Pure viewer UI over the sealed cinematic: cream loading veil, badge,
+          skip chip (hold→hall, obPhase-driven — never timers), WP1 prompt
+          card, hall hint chip, end card. No onboarding localStorage writes. */}
+      {mounted && currentScene === 4 && phase === "idle" && (
+        <>
+          {/* Loading veil — cream, 400ms fade once the scene reports ready */}
+          <div
+            aria-hidden={obPhase !== "loading"}
+            style={{
+              position: "absolute", inset: 0, zIndex: 40,
+              background: "#FCFAF5",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              opacity: obPhase === "loading" ? 1 : 0,
+              transition: obReduceMotion ? "opacity 200ms linear" : "opacity 400ms ease",
+              pointerEvents: obPhase === "loading" ? "auto" : "none",
+            }}
+          >
+            <span style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "1.0625rem", color: "#716A5E" }}>
+              {trOnb("cinematicLoading", "Preparing your palace…")}
+            </span>
+          </div>
+
+          {/* Badge chip — top-center: this is the onboarding PREVIEW, not the app */}
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(1rem + env(safe-area-inset-top, 0px))",
+              left: "50%", transform: "translateX(-50%)",
+              zIndex: 31,
+              display: "flex", alignItems: "center",
+              minHeight: "1.75rem", padding: "0.375rem 0.875rem",
+              background: "rgba(252,250,245,0.82)",
+              backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+              border: "0.0625rem solid #E3D6BC", borderRadius: "999rem",
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+              letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E",
+              whiteSpace: "nowrap", pointerEvents: "none",
+            }}
+          >
+            {trFly("onbBadge", "Onboarding preview")}
+          </div>
+
+          {/* Skip chip — visible across obPhase hold→hall (shared component) */}
+          {(obPhase === "hold" || obPhase === "paused" || obPhase === "flying" || obPhase === "hall") && (
+            <CinematicSkipChip onSkip={() => setObPhase("done")} label={trFly("onbSkip", "Skip")} />
+          )}
+
+          {/* WP1 pause-prompt card — viewer passes flythrough-section copy */}
+          <CinematicPromptOverlay
+            visible={obPhase === "paused"}
+            isMobile={isMobile}
+            onBegin={() => { setObResumed(true); setObPhase("flying"); }}
+            onSkip={() => setObPhase("done")}
+            title={trFly("onbPromptTitle", "Welcome to your palace")}
+            body={trFly("onbPromptBody", "Every memory you keep will live inside these walls. Ready to take a look?")}
+            ctaLabel={trFly("onbPromptCta", "Show me around")}
+            skipLabel={trFly("onbSkip", "Skip")}
+          />
+
+          {/* Hall hint chip — dismissible extra over the §10 in-scene overlay */}
+          {obPhase === "hall" && obHallHint && (
+            <div
+              role="status"
+              style={{
+                position: "absolute",
+                bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))",
+                left: "50%", transform: "translateX(-50%)",
+                zIndex: 31,
+                width: "max-content", maxWidth: "min(92vw, 24rem)",
+                padding: "0.625rem 1rem",
+                background: "rgba(252,250,245,0.88)",
+                backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+                border: "0.0625rem solid #E3D6BC", borderRadius: "0.75rem",
+                boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
+                textAlign: "center", lineHeight: 1.45,
+                pointerEvents: "none",
+                animation: obReduceMotion ? "obv-fadeIn 200ms linear both" : "obv-riseIn 300ms ease-out both",
+              }}
+            >
+              {trFly("onbHallHint", "Look around — each door leads to a wing of your life.")}
+            </div>
+          )}
+
+          {/* End card — Replay (EMBER pill) + Back-to-scenes (ghost hairline) */}
+          {obPhase === "done" && (
+            <div
+              style={{
+                position: "absolute", inset: 0, zIndex: 45,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: "1.5rem", pointerEvents: "none",
+              }}
+            >
+              <div
+                style={{
+                  pointerEvents: "auto",
+                  width: "100%", maxWidth: "22rem",
+                  background: "rgba(252,250,245,0.92)",
+                  backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+                  border: "0.0625rem solid #E3D6BC", borderRadius: "1rem",
+                  boxShadow: "0 1rem 3rem rgba(64,59,54,0.18)",
+                  padding: "1.75rem 2rem", textAlign: "center",
+                  animation: obReduceMotion ? "obv-fadeIn 200ms linear both" : "obv-riseCard 300ms ease-out both",
+                }}
+              >
+                <h2
+                  style={{
+                    fontFamily: T.font.display, fontWeight: 600,
+                    fontSize: "1.375rem", lineHeight: 1.3,
+                    color: "#403B36", margin: "0 0 1.25rem",
+                  }}
+                >
+                  {trFly("onbDoneTitle", "That's the welcome tour.")}
+                </h2>
+                <button
+                  type="button"
+                  className="obv-cta"
+                  onClick={resetOb}
+                  style={{
+                    width: "100%", minHeight: "2.75rem",
+                    background: "#B85C38", color: "#FFFFFF",
+                    border: "none", borderRadius: "2rem",
+                    fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                    padding: "0.625rem 1.5rem", cursor: "pointer",
+                  }}
+                >
+                  {trFly("onbReplay", "Replay")}
+                </button>
+                <button
+                  type="button"
+                  className="obv-cta"
+                  onClick={() => { resetOb(); setCurrentScene(0); }}
+                  style={{
+                    width: "100%", minHeight: "2.75rem", marginTop: "0.625rem",
+                    background: "transparent", color: "#716A5E",
+                    border: "0.0625rem solid #E3D6BC", borderRadius: "2rem",
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                    padding: "0.625rem 1.5rem", cursor: "pointer",
+                  }}
+                >
+                  {trFly("onbBack", "Back to scenes")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Viewer-chrome keyframes + focus rings (the skip chip's .cpo-chip
+              rule lives in the card's <style>, which unmounts with the card —
+              re-declared here so the chip keeps its EMBER ring standalone). */}
+          <style>{`
+            @keyframes obv-riseIn { from { opacity: 0; transform: translate(-50%, 0.5rem); } to { opacity: 1; transform: translate(-50%, 0); } }
+            @keyframes obv-riseCard { from { opacity: 0; transform: translateY(0.5rem); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes obv-fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            .obv-cta:focus-visible, .cpo-chip:focus-visible { outline: 0.1875rem solid #B85C38; outline-offset: 0.1875rem; }
+          `}</style>
+        </>
       )}
 
       {/* Pulse animation for recording indicator */}

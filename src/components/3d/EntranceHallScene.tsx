@@ -252,6 +252,28 @@ function EntranceHallScene({
   const blinkRef = useRef(0); // updated every frame, React state synced periodically
   const entranceCinematicRef = useRef(!!onboardingMode); // only play cinematic in onboarding
   const [cinematicActive, setCinematicActive] = useState(!!onboardingMode);
+  // ── ONBOARDING ELEVATION §10 — overlay-UI reads at RENDER scope. The sealed
+  // scene-construction effect keeps its own local `reduceMotion` read; this
+  // one exists solely because the JSX overlay can't see that closure variable.
+  const [reduceMotionUi] = useState(() => prefersReducedMotion());
+  // Mobile stack (<48rem width) + short-viewport variant (<26rem height,
+  // landscape phones — gated by HEIGHT, not width). Listeners only armed in
+  // onboarding mode; the overlay never renders outside it.
+  const [narrowCinematicUi, setNarrowCinematicUi] = useState<boolean>(() =>
+    typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(max-width: 48rem)").matches);
+  const [shortCinematicUi, setShortCinematicUi] = useState<boolean>(() =>
+    typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(max-height: 26rem)").matches);
+  useEffect(() => {
+    if (!onboardingMode || typeof window === "undefined" || !window.matchMedia) return;
+    const mqW = window.matchMedia("(max-width: 48rem)");
+    const mqH = window.matchMedia("(max-height: 26rem)");
+    const onW = () => setNarrowCinematicUi(mqW.matches);
+    const onH = () => setShortCinematicUi(mqH.matches);
+    onW(); onH();
+    mqW.addEventListener("change", onW);
+    mqH.addEventListener("change", onH);
+    return () => { mqW.removeEventListener("change", onW); mqH.removeEventListener("change", onH); };
+  }, [onboardingMode]);
   // ── MUSEO VIVO Wave-1 hall flag (WS4 steps 2-5, WS8, WS12-2/3) — read once at
   // mount per flags3d read-at-mount semantics; all visible Wave-1 changes gate on it.
   const [w1] = useState<boolean>(() => { try { return flag3d("w1_hall"); } catch { return false; } });
@@ -3559,75 +3581,115 @@ function EntranceHallScene({
       {blinkOpacity > 0.01 && <div style={{ position: "absolute", inset: 0, background: "#000", opacity: blinkOpacity, pointerEvents: "none", zIndex: 20, transition: "opacity 0.03s linear" }} />}
       {/* Cream veil (WS12-2 / WS7-10 reduced motion) — warm crossfade, never black */}
       {creamFade > 0.01 && <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: PLASTER, opacity: creamFade, pointerEvents: "none", zIndex: 21, transition: "opacity 0.05s linear" }} />}
-      {/* Cinematic title overlay — matches exterior palace onboarding style */}
+      {/* ── ONBOARDING ELEVATION §10 — look-around prompt overlay (UI ONLY;
+          camera choreography untouched). Reachable only under onboardingMode
+          (today: the /flythrough viewer's `hall` phase). ── */}
       {cinematicActive && (
         <>
+          {/* Local keyframes — `onb-*` live only inside OnboardingWizard's
+              <style>; without this scoped copy the declarations silently no-op. */}
+          <style dangerouslySetInnerHTML={{ __html: `
+@keyframes ehc-slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes ehc-titleReveal{0%{opacity:0;letter-spacing:0.6em;transform:scale(0.92)}60%{opacity:1;letter-spacing:0.12em}100%{opacity:1;letter-spacing:0.04em;transform:scale(1)}}
+@keyframes ehc-fadeIn{from{opacity:0}to{opacity:1}}
+.ehc-skip:focus-visible{outline:2px solid #F2EDE7;outline-offset:0.125rem}
+` }} />
+          {/* One-shot SR announcement — the visual choreography is silent. */}
+          <div role="status" aria-live="polite" style={{ position: "absolute", width: "1px", height: "1px", margin: "-1px", padding: 0, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 }}>
+            {(() => { const v = t("cinematicIntroA11y"); return v === "cinematicIntroA11y" ? "A short introduction is playing. Use the Skip intro button to go straight to the Roots Wing." : v; })()}
+          </div>
           {/* Bottom shadow gradient for text readability over 3D scene */}
           <div aria-hidden="true" style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 24 }} />
           <div style={{
-            position: "absolute", bottom: "15%", left: 0, right: 0,
+            position: "absolute",
+            // rem + env, never %-of-viewport (R9 — Android URL-bar collapse).
+            bottom: shortCinematicUi
+              ? "calc(0.75rem + env(safe-area-inset-bottom, 0px))"
+              : narrowCinematicUi
+                ? "calc(2rem + env(safe-area-inset-bottom, 0px))"
+                : "calc(3rem + env(safe-area-inset-bottom, 0px))",
+            left: 0, right: 0,
             display: "flex", flexDirection: "column", alignItems: "center",
             pointerEvents: "none", zIndex: 25,
+            // Reduced motion: ONE static fade for the whole stack, one paint.
+            animation: reduceMotionUi ? "ehc-fadeIn 0.2s linear both" : undefined,
           }}>
-            {/* Decorative divider — same as exterior */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: "0.625rem",
-              marginBottom: "0.625rem",
-              animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
-            }}>
-              <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-              <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
-              <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-            </div>
-            {/* "WELCOME" label — same as exterior */}
-            <p style={{
-              fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-              color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
-              margin: "0 0 0.625rem",
-              textShadow: "0 2px 8px rgba(0,0,0,0.7)",
-              animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
-            }}>
-              {t("welcomeLabel")}
-            </p>
-            {/* Title — gold gradient shimmer */}
+            {/* Decorative divider — EMBER, not terracotta (canon). Hidden on
+                short viewports (landscape phones) to keep the impluvium sightline. */}
+            {!shortCinematicUi && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: "0.625rem",
+                marginBottom: "0.625rem",
+                animation: reduceMotionUi ? undefined : "ehc-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
+              }}>
+                <span style={{ width: "3rem", height: "1px", background: `${EMBER}80` }} />
+                <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: EMBER, opacity: 0.6 }} />
+                <span style={{ width: "3rem", height: "1px", background: `${EMBER}80` }} />
+              </div>
+            )}
+            {/* Kicker — EMBER, em-based tracking */}
+            {!shortCinematicUi && (
+              <p style={{
+                fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
+                color: EMBER, letterSpacing: "0.25em", textTransform: "uppercase",
+                margin: "0 0 0.625rem",
+                textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+                animation: reduceMotionUi ? undefined : "ehc-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
+              }}>
+                {t("welcomeLabel")}
+              </p>
+            )}
+            {/* Title — GOLD shimmer is the ONE ceremonial hall gold (R5-d);
+                reduced motion gets flat cream, no gradient sweep. */}
             <h1 style={{
               fontFamily: T.font.display,
-              fontSize: "clamp(2rem, 5vw, 3.5rem)",
+              fontSize: shortCinematicUi ? "1.5rem" : "clamp(2rem, 5vw, 3.5rem)",
               fontWeight: 300, color: "#F2EDE7",
               lineHeight: 1.05, margin: 0,
               letterSpacing: "0.04em",
-              animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-              backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-              backgroundSize: "200% 100%",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
               filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
+              ...(reduceMotionUi ? {} : {
+                animation: "ehc-titleReveal 2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both",
+                backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
+                backgroundSize: "200% 100%",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }),
             }}>
               {t("title")}
             </h1>
-            {/* Subtitle — same font/style as exterior */}
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem",
-              color: "#D4CBC0", margin: "0.75rem 0 0",
-              lineHeight: 1.5,
-              textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-              animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
-            }}>
-              {t("subtitle")}
-            </p>
+            {/* Subtitle — hidden on short viewports */}
+            {!shortCinematicUi && (
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem",
+                color: "#D4CBC0", margin: "0.75rem 0 0",
+                lineHeight: 1.5, maxWidth: "26rem", textAlign: "center",
+                paddingInline: narrowCinematicUi ? "1.5rem" : 0,
+                textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+                animation: reduceMotionUi ? undefined : "ehc-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
+              }}>
+                {t("subtitle")}
+              </p>
+            )}
           </div>
-          {/* Skip intro button — top right */}
+          {/* Skip intro button — top right, safe-area aware, dark linen glass */}
           <button
+            className="ehc-skip"
             onClick={skipCinematic}
             aria-label={t("skipIntro")}
             style={{
-              position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 30,
+              position: "absolute",
+              top: "calc(1.5rem + env(safe-area-inset-top, 0px))",
+              right: "calc(1.5rem + env(safe-area-inset-right, 0px))",
+              zIndex: 30,
               fontFamily: T.font.body, fontSize: "0.8125rem",
-              color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.2)",
+              color: "rgba(255,255,255,0.9)", background: "rgba(26,25,23,0.45)",
+              border: "1px solid rgba(242,237,231,0.22)",
               borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-              cursor: "pointer", backdropFilter: "blur(8px)", minHeight: "2.75rem",
+              cursor: "pointer",
+              backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+              minHeight: "2.75rem",
               minWidth: "2.75rem",
               pointerEvents: "auto",
               textShadow: "0 1px 3px rgba(0,0,0,0.5)",

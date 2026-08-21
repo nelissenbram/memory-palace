@@ -88,6 +88,13 @@ interface ImportHubProps {
   initialRoomId?: string | null;
   /** When true, hide wing/room selectors — used in onboarding */
   lockRoom?: boolean;
+  /** Onboarding first-memory guidance (ONBOARDING_ELEVATION_PLAN §8): replaces
+      the header title. Its presence also enables the footer skip link. */
+  titleOverride?: string;
+  /** Onboarding first-memory guidance: replaces the header subtitle AND renders
+      on mobile too (the default subtitle is desktop-only) — otherwise the
+      primary guidance would vanish on the primary platform. */
+  subtitleOverride?: string;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -135,10 +142,13 @@ const CLOUD_PROVIDERS = [
    Component
    ═══════════════════════════════════════════════════════ */
 
-export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider, initialRoomId, lockRoom = false }: ImportHubProps) {
+export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider, initialRoomId, lockRoom = false, titleOverride, subtitleOverride }: ImportHubProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
+  // Onboarding-only footer skip label lives in the flat "onboarding" section
+  // (tr-guard pattern: t() returns the bare key when a translation is missing).
+  const { t: tOnb } = useTranslation("onboarding");
   const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const roomStore = useRoomStore();
@@ -414,7 +424,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
         @media (prefers-reduced-motion: reduce) {
           .imp-hub-anim { animation: none !important; transition: none !important; }
         }
-        .imp-hub-focus:focus-visible { outline: 0.1875rem solid #D4AF37; /* Atrium token: gold focus ring */ outline-offset: 0.1875rem; }
+        .imp-hub-focus:focus-visible { outline: 0.1875rem solid #B85C38; /* canon EMBER focus ring (gold fails non-text contrast on cream/linen) */ outline-offset: 0.1875rem; }
       `}</style>
 
       {/* ── Backdrop ───────────────────────── */}
@@ -434,7 +444,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={t("importHubTitle")}
+        aria-label={titleOverride ?? t("importHubTitle")}
         style={{
           position: "fixed", inset: 0, zIndex: 8001,
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -454,7 +464,9 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
             pointerEvents: "auto",
             width: "100%",
             maxWidth: "40rem",
-            maxHeight: "90vh",
+            // dvh + hard 2rem clearance so the footer skip link stays reachable
+            // with the iOS URL bar expanded (ONBOARDING_ELEVATION_PLAN §8).
+            maxHeight: "min(90dvh, calc(100dvh - 2rem))",
             overflow: "auto",
             background: T.color.linen,
             borderRadius: "1rem",
@@ -474,13 +486,16 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                 fontFamily: T.font.display, fontSize: isMobile ? "1.1875rem" : "1.375rem", fontWeight: 600,
                 color: "#403B36", /* Atrium ink */ margin: 0, letterSpacing: "0.01em",
               }}>
-                {t("importHubTitle")}
+                {titleOverride ?? t("importHubTitle")}
               </h2>
-              {!isMobile && <p style={{
+              {/* The default subtitle is desktop-only; an onboarding override
+                  renders on mobile too — it carries the primary first-memory
+                  guidance (ONBOARDING_ELEVATION_PLAN §8 / R15). */}
+              {(subtitleOverride || !isMobile) && <p style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", /* Atrium muted */
                 margin: "0.25rem 0 0", lineHeight: 1.4,
               }}>
-                {t("importHubSubtitle")}
+                {subtitleOverride ?? t("importHubSubtitle")}
               </p>}
             </div>
             <button
@@ -942,6 +957,33 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               </button>
             )}
           </div>
+
+          {/* ═══ ONBOARDING FOOTER SKIP (§8) — only during onboarding (titleOverride
+              present): an explicit, destination-honest skip under the content.
+              Persistent underline (never hover-only on touch), distinct accessible
+              name from the close-X, safe-area padded. onClick = the same onClose
+              path the X uses. ═══ */}
+          {titleOverride && (
+            <div style={{ width: "100%", textAlign: "center" }}>
+              <button
+                onClick={onClose}
+                className="imp-hub-focus"
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.8125rem",
+                  color: "#716A5E", /* Atrium muted */
+                  textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+                  minHeight: "2.75rem",
+                  padding: "0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px))",
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = "#403B36"; /* Atrium ink */ }}
+                onMouseLeave={e => { e.currentTarget.style.color = "#716A5E"; }}
+              >
+                {tOnb("firstMemSkip") !== "firstMemSkip" ? tOnb("firstMemSkip") : "Continue without a photo"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

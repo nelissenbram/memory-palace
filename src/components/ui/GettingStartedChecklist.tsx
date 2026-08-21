@@ -112,6 +112,11 @@ export default function GettingStartedChecklist({
 }: GettingStartedChecklistProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("gettingStarted");
+  // Canon: gate entrance/width animations for motion-sensitive users.
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const [completed, setCompleted] = useState<string[]>([]);
   const [dismissed, setDismissed] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
@@ -172,18 +177,19 @@ export default function GettingStartedChecklist({
           left: isMobile ? "0.75rem" : "1.125rem",
           zIndex: 36,
           background: `${T.color.white}ee`,
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
+          backdropFilter: "blur(0.75rem)" /* canon glass blur, rem */,
+          WebkitBackdropFilter: "blur(0.75rem)",
           border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
           borderRadius: "1rem",
           padding: "0.625rem 1rem",
+          minHeight: "2.75rem" /* canon touch target */,
           cursor: "pointer",
           boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)" /* Atrium token: S1 */,
           display: "flex",
           alignItems: "center",
           gap: "0.625rem",
-          animation: "fadeIn .3s ease",
-          transition: "transform .2s ease, box-shadow .2s ease",
+          animation: reduceMotion ? "none" : "fadeIn .3s ease",
+          transition: reduceMotion ? "none" : "transform .2s ease, box-shadow .2s ease",
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLElement).style.transform = "translateY(-0.1875rem)";
@@ -248,13 +254,13 @@ export default function GettingStartedChecklist({
         width: isMobile ? "calc(100% - 1.5rem)" : "18.75rem",
         maxWidth: "21.25rem",
         background: `${T.color.white}f5`,
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
+        backdropFilter: "blur(0.75rem)" /* canon glass blur, rem */,
+        WebkitBackdropFilter: "blur(0.75rem)",
         borderRadius: "1rem" /* Atrium token: card radius */,
         border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
         boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14), inset 0 0.0625rem 0 rgba(255,255,255,0.5)" /* Atrium token: S2 + top highlight */,
         padding: isMobile ? "1.25rem 1.125rem 1rem" : "1.375rem 1.25rem 1rem",
-        animation: "fadeUp .3s ease",
+        animation: reduceMotion ? "none" : "fadeUp .3s ease",
         overflow: "hidden",
       }}
     >
@@ -334,7 +340,7 @@ export default function GettingStartedChecklist({
               ? "#56683C" /* Atrium token: sage */
               : "linear-gradient(90deg, #9A4F2A, #B85C38)" /* Atrium token: terracotta -> ember */,
             borderRadius: "0.125rem",
-            transition: "width 0.3s ease",
+            transition: reduceMotion ? "none" : "width 0.3s ease",
           }}
         />
       </div>
@@ -359,7 +365,7 @@ export default function GettingStartedChecklist({
                 background: done ? "#EFF2E8" /* Atrium token: sage tray */ : T.color.linen,
                 cursor: done ? "default" : "pointer",
                 textAlign: "left",
-                transition: "all .2s ease",
+                transition: reduceMotion ? "none" : "all .2s ease",
                 width: "100%",
               }}
               onMouseEnter={(e) => {
@@ -456,6 +462,8 @@ export default function GettingStartedChecklist({
             textDecoration: "underline",
             textUnderlineOffset: "0.1875rem",
             padding: "0.375rem 0.75rem",
+            minHeight: "2.75rem" /* canon touch target */,
+            minWidth: "2.75rem",
           }}
         >
           {t("dismissPermanently")}

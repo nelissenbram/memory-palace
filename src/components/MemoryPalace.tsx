@@ -81,7 +81,9 @@ import MobileJoystick from "@/components/ui/MobileJoystick";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { useTutorialStore } from "@/lib/stores/tutorialStore";
 import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpotlight";
-const GettingStartedChecklist = lazy(() => import("@/components/ui/GettingStartedChecklist"));
+// GettingStartedChecklist component is retired (replaced by NudgeTooltip — see
+// the commented mount below); only its helper exports remain in use, so the
+// unused lazy() chunk reference is dropped.
 import { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
 import ContextualTooltip from "@/components/ui/ContextualTooltip";
 import CinematicWalkthrough from "@/components/ui/CinematicWalkthrough";

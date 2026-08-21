@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { INK, EMBER, EMBER_GLYPH, HAIRLINE } from "@/lib/libraryTokens";
 import { TreeBranchIcon } from "./PersonCard";
 
 interface OnboardingWizardProps {
@@ -87,6 +88,9 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
         gap: "2rem",
       }}
     >
+      {/* Canon EMBER focus ring (Tuscan canon — GOLD stays ceremonial) */}
+      <style>{`.ftob-btn:focus-visible{outline:0.1875rem solid ${EMBER};outline-offset:0.1875rem}`}</style>
+
       {/* Tree icon */}
       <div
         style={{
@@ -108,7 +112,7 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
           fontFamily: T.font.display,
           fontSize: isMobile ? "1.5rem" : "1.75rem",
           fontWeight: 600,
-          color: T.color.charcoal,
+          color: INK /* canon display ink */,
           margin: 0,
           textAlign: "center",
         }}
@@ -125,9 +129,10 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
               width: "0.5rem",
               height: "0.5rem",
               borderRadius: "50%",
-              background: i === step ? T.color.terracotta : T.color.sandstone,
-              opacity: i === step ? 1 : 0.4,
-              transition: "all 0.2s ease",
+              /* Canon dot grammar (AtriumRelay lanes): filled=EMBER_GLYPH,
+                 unfilled=HAIRLINE — no opacity dimming */
+              background: i === step ? EMBER_GLYPH : HAIRLINE,
+              transition: "background 0.2s ease",
             }}
           />
         ))}
@@ -165,7 +170,7 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
             fontFamily: T.font.display,
             fontSize: "1.125rem",
             fontWeight: 600,
-            color: T.color.charcoal,
+            color: INK /* canon display ink */,
             margin: "0 0 0.5rem",
           }}
         >
@@ -189,6 +194,7 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
         {step < STEPS.length - 1 ? (
           <>
             <button
+              className="ftob-btn"
               onClick={onSkip}
               style={{
                 padding: "0.625rem 1.25rem",
@@ -206,19 +212,20 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
               {t("onboardingSkip")}
             </button>
             <button
+              className="ftob-btn"
               onClick={() => setStep(step + 1)}
               style={{
                 padding: "0.625rem 1.5rem",
                 borderRadius: "0.75rem",
                 border: "none",
-                background: T.color.terracotta,
+                background: T.land.ctaGrad /* canon EMBER CTA */,
                 fontFamily: T.font.body,
                 fontSize: "0.875rem",
                 fontWeight: 600,
                 color: T.color.white,
                 cursor: "pointer",
                 minHeight: "2.75rem",
-                boxShadow: `0 0.25rem 0.75rem rgba(198,107,61,.25)`,
+                boxShadow: `0 0.25rem 0.75rem rgba(184,92,56,.25)`,
               }}
             >
               {tc("next")}
@@ -227,6 +234,7 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
         ) : (
           <>
             <button
+              className="ftob-btn"
               onClick={onSkip}
               style={{
                 padding: "0.625rem 1.25rem",
@@ -244,19 +252,20 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
               {t("onboardingSkip")}
             </button>
             <button
+              className="ftob-btn"
               onClick={onStart}
               style={{
                 padding: "0.75rem 2rem",
                 borderRadius: "0.75rem",
                 border: "none",
-                background: T.color.sage,
+                background: T.land.ctaGrad /* canon EMBER CTA (was pre-canon sage) */,
                 fontFamily: T.font.body,
                 fontSize: "1rem",
                 fontWeight: 600,
                 color: T.color.white,
                 cursor: "pointer",
                 minHeight: "2.75rem",
-                boxShadow: `0 0.25rem 0.75rem rgba(107,142,89,.25)`,
+                boxShadow: `0 0.25rem 0.75rem rgba(184,92,56,.25)`,
               }}
             >
               {t("onboardingStart")}
