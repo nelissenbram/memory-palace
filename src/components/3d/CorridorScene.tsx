@@ -2383,20 +2383,19 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         floorY:0,
       });
     }
-    // W2 (WS5-9) cinematic framing: ≤6s push-in ending framed on the salon
-    // section nearest the entrance (fallback = the legacy end framing).
+    // Guided-walkthrough anchors (2026-08-21 restore — the retired W2 ~6s
+    // push-in is deleted; the multi-step choreography below is back):
+    // obPaintZ = the FIRST salon slot (slotKey ro1 — where OnboardingSceneHost
+    // hangs the demo "Between Two Hands"): w2Slots sBz for i=0 =
+    // cL/2-5.5-sp/2 (17.5 in the roots wing), solid LEFT wall at
+    // x=-(cW/2-.145). Pre-W2 the choreography paused at z=16.6 — the slot
+    // moved, so the pause point derives from the slot now. w2CinEnd is the
+    // step-6 "Enter the Room" pose: it frames the painting (yaw −1.43 to it)
+    // AND the ro1 door (z=cL/2-5.5=obPaintZ+sp/2, left wall, yaw −2.16)
+    // together at yaw −1.899.
+    const obPaintZ=cL/2-5.5-C.sp*.5;
     const w2CinStart={x:0,z:Math.min(25.5,cL/2-1.5)};
-    let w2CinEnd={x:.4,z:18.2,yaw:-1.899,pitch:-.015};
-    if(W2){
-      let firstSec: W2Slot|null=null;
-      w2Slots.forEach(sl=>{if(!firstSec||sl.secZ>firstSec.secZ)firstSec=sl;});
-      if(firstSec){
-        const fs=firstSec as W2Slot;
-        const ex=fs.side===1?fs.wallX-2.4:fs.wallX+2.4;
-        const ez=fs.secZ+.9;
-        w2CinEnd={x:ex,z:ez,yaw:Math.atan2(fs.wallX-ex,-(fs.secZ-ez)),pitch:-.03};
-      }
-    }
+    const w2CinEnd={x:.4,z:obPaintZ+.7,yaw:-1.899,pitch:-.015};
 
     // ── DUST PARTICLES ──
     const dust=createDustParticles({count:130,bounds:{x:cW/2-.5,y:cH/2,z:cL/2},center:new THREE.Vector3(0,cH/2,-cL/2+cL/2),opacity:0.2,size:0.03});
@@ -2553,97 +2552,89 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // update(dt) returns true, focus mode is the ONE camera authority.
       if(w2Focus&&autoWalkToRef.current&&w2Focus.state()!=="idle")w2Focus.cancel();
       const focusOwns=w2Focus?w2Focus.update(dt):false;
-      // ── Onboarding cinematic: multi-step waypoint sequence ──
-      // Steps: 0=initial pause 3s, 1=walk forward 3s, 2=turn left 1.5s, 3=walk left 1s,
-      //        4=pause 2s, 5=walk back 2s, 6=pause 2s, 7=auto-walk to door
-      // On mobile, each step gets +0.5s extra for readability
+      // ── Onboarding cinematic: multi-step waypoint sequence (guided
+      // walkthrough restore 2026-08-21 — the retired W2 push-in is deleted) ──
+      // Steps: 0=initial pause 3s, 1=walk to the painting bay 4s, 2=turn left
+      // 1.5s, 3=walk to the painting 1s, 4=pause 2s, 5=walk back 2s,
+      // 6=wait for Enter, 7=auto-walk to the ro1 door.
+      // On mobile, each step gets +0.5s extra for readability. The ember Skip
+      // (w2CinSkipRef) hard-cuts to the step-6 pose; reduced motion never
+      // plays the pans and starts there. Both routes still fire
+      // onCinematicStep + the Enter→autoWalk→onDoorClick("ro1") contract.
       if(onboardingModeRef.current&&!autoWalkToRef.current&&!awClick.id&&!focusOwns){
-        if(W2){
-          // ── W2 (WS5-9): ≤6s onboarding cinematic in the hall grammar — one
-          // eased push-in past the first light band, ending framed on the
-          // nearest salon artwork; ember Skip button; reduced-motion jumps
-          // straight to the end framing (W1 behavior kept). onCinematicStep
-          // contract intact: 0=start, 6=wait-for-Enter, 7=enter walk
-          // (intermediate steps 1-5 are retired under W2).
-          const ot=W3C?w3cCinT:clock.getElapsedTime();
-          const CIN=6.0;
-          if(reduceMotion||w2CinSkipRef.current||ot>=CIN){
-            if(_cinStep!==6&&_cinStep!==7){
-              _cinStep=6;onCinematicStepRef.current?.(6);
-              posT.x=w2CinEnd.x;posT.z=w2CinEnd.z;lookT.yaw=w2CinEnd.yaw;lookT.pitch=w2CinEnd.pitch;
-              pos.set(w2CinEnd.x,EYE_HEIGHT,w2CinEnd.z);lookA.yaw=lookT.yaw;lookA.pitch=lookT.pitch;
-            }else if(_cinStep===6){
-              posT.x=w2CinEnd.x;posT.z=w2CinEnd.z;lookT.yaw=w2CinEnd.yaw;lookT.pitch=w2CinEnd.pitch;
-              if(corridorEnterClickedRef.current){_cinStep=7;onCinematicStepRef.current?.(7);autoWalkToRef.current="ro1";}
-            }
-            if(w2CinActiveRef.current){w2CinActiveRef.current=false;setW2CinActive(false);}
-          }else{
-            if(_cinStep!==0){_cinStep=0;onCinematicStepRef.current?.(0);}
-            const p=easeInOutCubic(ot/CIN);
-            posT.x=w2CinStart.x+(w2CinEnd.x-w2CinStart.x)*p;
-            posT.z=w2CinStart.z+(w2CinEnd.z-w2CinStart.z)*p;
-            // yaw eases in over the back ~3.6s: ≈|endYaw|/2s peak ≈ 15-45°/s — inside the comfort cap
-            const yp=easeInOutCubic(Math.min(1,Math.max(0,(ot-CIN*.4)/(CIN*.6))));
-            lookT.yaw=w2CinEnd.yaw*yp;lookT.pitch=w2CinEnd.pitch*yp;
-          }
-        }else if(reduceMotion){
+        if(reduceMotion){
           // W1 (WS12-1): reduced motion skips the forced pan/walk sequence
           // straight to its end framing (step-6 wait state) — no camera motion;
           // the user's Enter click still drives the (comfort-capped) walk.
           if(_cinStep!==6&&_cinStep!==7){
             _cinStep=6;onCinematicStepRef.current?.(6);
-            posT.x=0.4;posT.z=18.2;lookT.yaw=-1.8990;lookT.pitch=-0.0150;
-            pos.set(0.4,EYE_HEIGHT,18.2);lookA.yaw=lookT.yaw;lookA.pitch=lookT.pitch;
+            posT.x=w2CinEnd.x;posT.z=w2CinEnd.z;lookT.yaw=w2CinEnd.yaw;lookT.pitch=w2CinEnd.pitch;
+            pos.set(w2CinEnd.x,EYE_HEIGHT,w2CinEnd.z);lookA.yaw=lookT.yaw;lookA.pitch=lookT.pitch;
           }else if(_cinStep===6){
-            posT.x=0.4;posT.z=18.2;lookT.yaw=-1.8990;lookT.pitch=-0.0150;
+            posT.x=w2CinEnd.x;posT.z=w2CinEnd.z;lookT.yaw=w2CinEnd.yaw;lookT.pitch=w2CinEnd.pitch;
             if(corridorEnterClickedRef.current){_cinStep=7;onCinematicStepRef.current?.(7);autoWalkToRef.current="ro1";}
           }
         }else{
-        const ot=clock.getElapsedTime();
+        // Time runs on w3cCinT (F04: stall-proof accumulated dt). Coordinates
+        // verified against the W3C corridor (roots): spawn 25.5 (portal at
+        // cL/2-1.2=25.8 sits BEHIND it), demo painting "Between Two Hands" on
+        // the solid LEFT wall at z=obPaintZ (17.5, hang centre ≈ eye height —
+        // salon sightline), ro1 door at z=obPaintZ+sp/2 (21.5, left wall).
+        const ot=W3C?w3cCinT:clock.getElapsedTime();
         const d=isMobileProp?0.5:0;
-        if(ot<=3.0+d){
+        const skip=w2CinSkipRef.current;
+        if(!skip&&ot<=3.0+d){
           // Step 0: initial pause — let user take in the corridor
           if(_cinStep!==0){_cinStep=0;onCinematicStepRef.current?.(0);}
-          posT.z=25.5;posT.x=0;lookT.yaw=0;lookT.pitch=0;
-        }else if(ot<=6.0+d*2){
-          // Step 1: walk from pos 0,2,25.5 → 0,2,16.6
+          posT.z=w2CinStart.z;posT.x=0;lookT.yaw=0;lookT.pitch=0;
+        }else if(!skip&&ot<=7.0+d*2){
+          // Step 1: walk to the painting bay (8m over 4s ≈ 2.0m/s — comfort cap)
           if(_cinStep!==1){_cinStep=1;onCinematicStepRef.current?.(1);}
-          const dur=3.0+d;const p=Math.min((ot-(3.0+d))/dur,1);
-          posT.z=25.5+(16.6-25.5)*p;
+          const dur=4.0+d;const p=Math.min((ot-(3.0+d))/dur,1);
+          posT.z=w2CinStart.z+(obPaintZ-w2CinStart.z)*p;
           posT.x=0;lookT.yaw=0;lookT.pitch=0;
-        }else if(ot<=7.5+d*3){
-          // Step 2: turn to face left wall
+        }else if(!skip&&ot<=8.5+d*3){
+          // Step 2: turn to face the demo painting on the left (solid) wall
+          // (pitch level — the salon hang centres pieces at eye height)
           if(_cinStep!==2){_cinStep=2;onCinematicStepRef.current?.(2);}
-          const dur=1.5+d;const p=Math.min((ot-(6.0+d*2))/dur,1);
+          const dur=1.5+d;const p=Math.min((ot-(7.0+d*2))/dur,1);
           const ease=p*p*(3-2*p);
           lookT.yaw=-1.5540*ease;
-          lookT.pitch=-0.0930*ease;
-          posT.z=16.6;posT.x=0;
-        }else if(ot<=8.5+d*4){
-          // Step 3: walk left to -2.1,2,16.6
+          lookT.pitch=0;
+          posT.z=obPaintZ;posT.x=0;
+        }else if(!skip&&ot<=9.5+d*4){
+          // Step 3: walk toward the painting (canvas ≈2.3m away at x=-2.1)
           if(_cinStep!==3){_cinStep=3;onCinematicStepRef.current?.(3);}
-          const dur=1.0+d;const p=Math.min((ot-(7.5+d*3))/dur,1);
+          const dur=1.0+d;const p=Math.min((ot-(8.5+d*3))/dur,1);
           posT.x=-2.1*p;
-          lookT.yaw=-1.5540;lookT.pitch=-0.0930;
-        }else if(ot<=10.5+d*5){
-          // Step 4: pause in front of door
+          lookT.yaw=-1.5540;lookT.pitch=0;
+        }else if(!skip&&ot<=11.5+d*5){
+          // Step 4: pause in front of the painting
           if(_cinStep!==4){_cinStep=4;onCinematicStepRef.current?.(4);}
-          lookT.yaw=-1.5540;lookT.pitch=-0.0930;
-        }else if(ot<=12.5+d*6){
-          // Step 5: walk backwards to 0.4,2,18.2
+          lookT.yaw=-1.5540;lookT.pitch=0;
+        }else if(!skip&&ot<=13.5+d*6){
+          // Step 5: walk backwards to the step-6 pose (frames painting + door)
           if(_cinStep!==5){_cinStep=5;onCinematicStepRef.current?.(5);}
-          const dur=2.0+d;const p=Math.min((ot-(10.5+d*5))/dur,1);
+          const dur=2.0+d;const p=Math.min((ot-(11.5+d*5))/dur,1);
           const ease=p*p*(3-2*p);
-          posT.x=-2.1+(0.4-(-2.1))*ease;
-          posT.z=16.6+(18.2-16.6)*ease;
-          lookT.yaw=-1.5540+(-1.8990-(-1.5540))*ease;
-          lookT.pitch=-0.0930+(-0.0150-(-0.0930))*ease;
+          posT.x=-2.1+(w2CinEnd.x-(-2.1))*ease;
+          posT.z=obPaintZ+(w2CinEnd.z-obPaintZ)*ease;
+          lookT.yaw=-1.5540+(w2CinEnd.yaw-(-1.5540))*ease;
+          lookT.pitch=w2CinEnd.pitch*ease;
         }else{
           // Step 6: pause — show "Enter The Room" button, wait for user click
-          if(_cinStep<6){_cinStep=6;onCinematicStepRef.current?.(6);}
+          if(_cinStep<6){
+            _cinStep=6;onCinematicStepRef.current?.(6);
+            if(skip){
+              // Ember Skip: hard cut to the end framing (no long smoothed glide)
+              pos.set(w2CinEnd.x,EYE_HEIGHT,w2CinEnd.z);
+              lookA.yaw=w2CinEnd.yaw;lookA.pitch=w2CinEnd.pitch;
+            }
+          }
+          if(w2CinActiveRef.current){w2CinActiveRef.current=false;setW2CinActive(false);}
           if(_cinStep===6){
-            posT.x=0.4;posT.z=18.2;
-            lookT.yaw=-1.8990;lookT.pitch=-0.0150;
+            posT.x=w2CinEnd.x;posT.z=w2CinEnd.z;
+            lookT.yaw=w2CinEnd.yaw;lookT.pitch=w2CinEnd.pitch;
             // Step 7: user clicked "Enter Room" → auto-walk to door
             if(corridorEnterClickedRef.current){
               _cinStep=7;onCinematicStepRef.current?.(7);

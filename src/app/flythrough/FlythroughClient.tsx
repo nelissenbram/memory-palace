@@ -1,13 +1,18 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, type CSSProperties } from "react";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import dynamic from "next/dynamic";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
+import { locales, localeNames, type Locale } from "@/i18n/config";
 import { T } from "@/lib/theme";
+// The wizard's REAL walkthrough caption system (overline/gold title/caption +
+// prompt children) — reused verbatim so the viewer's captions read exactly like
+// the real flow's.
+import WalkCinematicCaption, { WalkCtaButton } from "@/components/ui/OnboardingWalkCaption";
 
 // Lazy-load scene components to avoid SSR issues with Three.js
 const ExteriorScene = dynamic(() => import("@/components/3d/ExteriorScene"), { ssr: false });
@@ -26,15 +31,18 @@ const MemoryDetail = dynamic(() => import("@/components/ui/MemoryDetail"), { ssr
 // The room's AV transport, standalone — the player must work OUTSIDE the media
 // menu too (stand before the gramophone/screen and play).
 const PlayerCard = dynamic(() => import("@/components/ui/RoomStewardLedger").then((m) => m.PlayerCard), { ssr: false });
-// ── Onboarding preview (scene 4) — ONBOARDING_ELEVATION_PLAN §11 ──
-// Login-free preview of the onboarding cinematic handoffs: exterior WP1-hold →
-// prompt → 5-waypoint flyover + zoom → auto-enter entrance hall → look-around →
-// end card. Mounts the REAL OnboardingSceneHost (unchanged) with local demo
-// state only; NEVER writes any onboarding localStorage key. Lives behind the
-// same prod-404 gate in flythrough/page.tsx (contract 4 — untouched).
+// ── Onboarding preview (scene 4) — full walkthrough replay ──
+// Login-free preview of the ENTIRE rebuilt onboarding (mirrors OnboardingWizard
+// PHASE_ORDER: video_intro → lang_a11y → name → cinematic → hall blink-walk →
+// corridor steps → room walk → upload → celebration → paywall → end card).
+// Mounts the REAL OnboardingSceneHost / WalkCinematicCaption / ImportHub /
+// OnboardingCelebration (all unchanged) with local demo state only; NEVER
+// writes any onboarding/locale/a11y localStorage key. Lives behind the same
+// prod-404 gate in flythrough/page.tsx (contract 4 — untouched).
 const OnboardingSceneHost = dynamic(() => import("@/components/ui/OnboardingSceneHost"), { ssr: false });
-const CinematicPromptOverlay = dynamic(() => import("@/components/ui/CinematicPromptOverlay"), { ssr: false });
 const CinematicSkipChip = dynamic(() => import("@/components/ui/CinematicPromptOverlay").then((m) => m.CinematicSkipChip), { ssr: false });
+const ImportHub = dynamic(() => import("@/components/ui/ImportHub"), { ssr: false });
+const OnboardingCelebration = dynamic(() => import("@/components/ui/OnboardingCelebration"), { ssr: false });
 
 // Sample memories for the room scene. A photo-RICH set (viewer-only) so the
 // "Deepening Cabinet" display walls actually fill — the room auto-sizes to its
@@ -138,11 +146,22 @@ const SCENES: SceneDef[] = [
 // Onboarding scene was added); scene 4 is a review surface, not footage.
 const RECORD_SCENE_COUNT = 4;
 
-// Onboarding-preview phase machine (plan §11): loading (cream veil, fades on
-// onReady) → hold (WP1 approach runs) → paused (scene fired its one-shot
-// cinematic pause; prompt card shown) → flying (resumed; WP2–5 + zoom run
-// untouched) → hall (look-around; hint chip 5s/pointerdown) → done (end card).
-type ObPhase = "loading" | "hold" | "paused" | "flying" | "hall" | "done";
+// Onboarding-preview phase machine — mirrors the wizard's PHASE_ORDER with
+// viewer-local names: video (skippable intro) → card_lang (language + text
+// size, demo-local) → card_name (name, demo-local) → loading (cream veil,
+// fades on onReady) → hold (WP1 approach) → paused (one-shot cinematic pause;
+// prompt shown IN the caption, like the wizard) → flying (5-waypoint flyover)
+// → hall (blink look-around) → corridor (steps 0-7, step-6 room prompt) →
+// room (steps 0-9, upload-painting tap) → upload (ImportHub, demo-local) →
+// celebration (confetti threshold) → paywall (view-only card) → done (end
+// card). All state is local; zero localStorage writes.
+type ObPhase =
+  | "video" | "card_lang" | "card_name"
+  | "loading" | "hold" | "paused" | "flying"
+  | "hall" | "corridor" | "room"
+  | "upload" | "celebration" | "paywall" | "done";
+type ObSceneName = "exterior" | "entrance" | "corridor" | "room";
+type ObTextSize = "standard" | "comfortable" | "large";
 
 // Login-free scene viewer: /flythrough?scene=hall opens straight into the
 // entrance hall (analogous to the exterior review link) — also: exterior,
@@ -204,31 +223,66 @@ export default function FlythroughClient() {
   // WORKING before it lands (t() throws on a missing section) — either way the
   // plan's EN fallback renders. tr(key, fallback) guard pattern per R10.
   const { t: tFlyRaw } = useTranslation("flythrough" as unknown as Parameters<typeof useTranslation>[0]);
-  const trOnb = useCallback((k: string, f: string) => {
-    try { const v = tOnb(k); return v === k ? f : v; } catch { return f; }
+  // trOnb supports {var} interpolation like the wizard's tr(): a resolved key
+  // interpolates via t(); a missing key interpolates the EN fallback by hand.
+  const trOnb = useCallback((k: string, f: string, vars?: Record<string, string>) => {
+    try {
+      const v = (tOnb as unknown as (key: string, vars?: Record<string, string>) => string)(k, vars);
+      if (v !== k) return v;
+    } catch { /* fall through to the EN fallback */ }
+    if (!vars) return f;
+    return Object.entries(vars).reduce((s, [key, val]) => s.split(`{${key}}`).join(val), f);
   }, [tOnb]);
   const trFly = useCallback((k: string, f: string) => {
     try { const v = tFlyRaw(k); return v === k ? f : v; } catch { return f; }
   }, [tFlyRaw]);
-  const [obPhase, setObPhase] = useState<ObPhase>("loading");
-  const [obScene, setObScene] = useState<"exterior" | "entrance">("exterior");
+  // Reduced motion mirrors the wizard's initial-phase pick: skip the 12.5s
+  // autoplaying video straight to the first setup card.
+  const [obPhase, setObPhase] = useState<ObPhase>(obReduceMotion ? "card_lang" : "video");
+  const [obScene, setObScene] = useState<ObSceneName>("exterior");
   const [obResumed, setObResumed] = useState(false);
   const [obHallHint, setObHallHint] = useState(true);
+  // ── Demo-local question-card state (never persisted anywhere) ──
+  const [obName, setObName] = useState("");
+  const [obLocale, setObLocale] = useState<Locale>(() => detectBrowserLocale());
+  const [obTextSize, setObTextSize] = useState<ObTextSize>("standard");
+  // ── Walk-leg step state (mirrors the wizard's corridorStep/roomStep) ──
+  const [obCorridorStep, setObCorridorStep] = useState(-1);
+  const [obRoomStep, setObRoomStep] = useState(-1);
+  const [obCorridorEnter, setObCorridorEnter] = useState(false);
+  // The demo first memory (upload phase) — local object, never persisted.
+  const [obMem, setObMem] = useState<Mem | null>(null);
+  // Video intro outro beat (mirrors the wizard's beginOutro welcome fade).
+  const [obVideoWelcome, setObVideoWelcome] = useState(false);
+  const obOutroFiredRef = useRef(false);
   // Fresh key per (re)entry — the scene's one-shot cinematic refs restart cleanly.
   const [obKey, setObKey] = useState(0);
   // The exterior fires onCinematicPause exactly once — mirror with a ref so a
   // stray re-fire can never bounce a later phase back to "paused".
   const obPauseFiredRef = useRef(false);
+  // Exterior arrival: 3s door beat before the hall cut (wizard contract).
+  const obArrivalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resetOb = useCallback(() => {
-    setObPhase("loading");
+    setObPhase(obReduceMotion ? "card_lang" : "video");
     setObScene("exterior");
     setObResumed(false);
     setObHallHint(true);
+    setObName("");
+    setObLocale(detectBrowserLocale());
+    setObTextSize("standard");
+    setObCorridorStep(-1);
+    setObRoomStep(-1);
+    setObCorridorEnter(false);
+    setObMem(null);
+    setObVideoWelcome(false);
+    obOutroFiredRef.current = false;
     obPauseFiredRef.current = false;
+    if (obArrivalRef.current) { clearTimeout(obArrivalRef.current); obArrivalRef.current = null; }
     setObKey((k) => k + 1);
-  }, []);
+  }, [obReduceMotion]);
   // Scene-pill switch (or the recorder's reset to scene 0) resets ALL ob-state.
   useEffect(() => { resetOb(); }, [currentScene, resetOb]);
+  useEffect(() => () => { if (obArrivalRef.current) clearTimeout(obArrivalRef.current); }, []);
   // Hall hint chip: dismiss after 5s or on first pointerdown — never other timers.
   useEffect(() => {
     if (obPhase !== "hall") return;
@@ -237,6 +291,109 @@ export default function FlythroughClient() {
     window.addEventListener("pointerdown", dismiss);
     return () => { clearTimeout(tmo); window.removeEventListener("pointerdown", dismiss); };
   }, [obPhase]);
+  // ── Video intro: force-play (autoplay-block → graceful outro) + the wizard's
+  // 12.5s auto-outro; the outro welcome holds 2.6s then advances to the cards.
+  const obVideoRef = useRef<HTMLVideoElement>(null);
+  const beginObOutro = useCallback(() => {
+    if (obOutroFiredRef.current) return;
+    obOutroFiredRef.current = true;
+    const v = obVideoRef.current;
+    if (v) { v.loop = true; v.play().catch(() => {}); }
+    setObVideoWelcome(true);
+  }, []);
+  useEffect(() => {
+    if (currentScene !== 4 || obPhase !== "video") return;
+    obVideoRef.current?.play().catch(() => beginObOutro());
+    const tmo = setTimeout(beginObOutro, 12500);
+    return () => clearTimeout(tmo);
+  }, [currentScene, obPhase, beginObOutro]);
+  useEffect(() => {
+    if (!obVideoWelcome) return;
+    const tmo = setTimeout(() => setObPhase((p) => (p === "video" ? "card_lang" : p)), 2600);
+    return () => clearTimeout(tmo);
+  }, [obVideoWelcome]);
+  // ── Wizard safety ceilings, mirrored: 8s WP1-prompt fallback, 20s flyover
+  // ceiling → hall, 14s hall ceiling → corridor, 30s room invite → upload.
+  useEffect(() => {
+    if (currentScene !== 4) return;
+    let tmo: ReturnType<typeof setTimeout> | null = null;
+    if (obPhase === "hold") {
+      tmo = setTimeout(() => { obPauseFiredRef.current = true; setObPhase("paused"); }, 8000);
+    } else if (obPhase === "flying") {
+      tmo = setTimeout(() => { setObScene("entrance"); setObPhase("hall"); }, 20000);
+    } else if (obPhase === "hall") {
+      tmo = setTimeout(() => { setObScene("corridor"); setObPhase("corridor"); }, 14000);
+    } else if (obPhase === "room") {
+      tmo = setTimeout(() => setObPhase("upload"), 30000);
+    }
+    return () => { if (tmo) clearTimeout(tmo); };
+  }, [currentScene, obPhase]);
+  // "Enter The Room" 4s fallback (wizard: corridor ro1-arrival may never fire).
+  useEffect(() => {
+    if (currentScene !== 4 || obPhase !== "corridor" || !obCorridorEnter) return;
+    const tmo = setTimeout(() => { setObScene("room"); setObPhase("room"); }, 4000);
+    return () => clearTimeout(tmo);
+  }, [currentScene, obPhase, obCorridorEnter]);
+  // Warm the 3D module cache while the owner types the demo name (wizard §preload).
+  useEffect(() => {
+    if (currentScene !== 4 || obPhase !== "card_name") return;
+    import("@/lib/3d/scenePreloader")
+      .then(({ preloadScene }) => { preloadScene("exterior"); preloadScene("entrance"); })
+      .catch(() => {});
+  }, [currentScene, obPhase]);
+  // ── Per-leg skip (mirrors the wizard's skipWalkLeg: next leg, never the end) ──
+  const obSkipLeg = useCallback(() => {
+    if (obPhase === "video") { obOutroFiredRef.current = true; setObPhase("card_lang"); }
+    else if (obPhase === "hold" || obPhase === "paused" || obPhase === "flying") {
+      if (obArrivalRef.current) { clearTimeout(obArrivalRef.current); obArrivalRef.current = null; }
+      setObScene("entrance"); setObPhase("hall");
+    }
+    else if (obPhase === "hall") { setObScene("corridor"); setObPhase("corridor"); }
+    else if (obPhase === "corridor") { setObScene("room"); setObPhase("room"); }
+    else if (obPhase === "room") setObPhase("upload");
+  }, [obPhase]);
+  const obDisplayName = obName.trim() || trOnb("namePlaceholder", "Your first name");
+  // ── Viewer-local canon tokens for the card/paywall chrome (visual mirror of
+  // the wizard's warm-cream Library canon — its style consts are private) ──
+  const OB_CREAM = "#FCFAF5", OB_INK = "#403B36", OB_MUTED = "#716A5E", OB_HAIRLINE = "#E3D6BC", OB_EMBER = "#B85C38";
+  const obCardPageStyle: CSSProperties = { position: "absolute", inset: 0, zIndex: 25, background: OB_CREAM, overflow: "hidden" };
+  const obCardScrollerStyle: CSSProperties = {
+    position: "relative", width: "100%", height: "100%",
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
+    overflowY: "auto",
+    padding: "calc(3.5rem + env(safe-area-inset-top, 0px)) 0 calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+  };
+  const obCardStyle: CSSProperties = {
+    maxWidth: "30rem", width: "92%",
+    padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
+    background: OB_CREAM, borderRadius: "1rem",
+    border: `0.0625rem solid ${OB_HAIRLINE}`,
+    boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", margin: "auto",
+  };
+  const obCtaStyle: CSSProperties = {
+    fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
+    padding: "0 1.25rem", borderRadius: "0.75rem", border: "none",
+    background: T.land.ctaGrad, color: "#FFF", cursor: "pointer", minHeight: "3.25rem",
+  };
+  const obOverlineStyle: CSSProperties = {
+    fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+    color: OB_EMBER, letterSpacing: "0.12em", textTransform: "uppercase",
+  };
+  const obH2Style: CSSProperties = {
+    fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
+    fontWeight: 600, color: OB_INK, lineHeight: 1.25, margin: 0,
+  };
+  const obSectionLabelStyle: CSSProperties = {
+    fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+    color: OB_EMBER, textAlign: "left", margin: "0 0 0.5rem",
+    textTransform: "uppercase", letterSpacing: "0.12em",
+  };
+  const obPromptTextStyle: CSSProperties = {
+    fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+    color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+    textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
+  };
+  const obDemoNote = trFly("onbDemoNote", "Preview only — nothing is saved.");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -408,16 +565,29 @@ export default function FlythroughClient() {
             styleEra="roman"
           />
         );
-      case 4:
+      case 4: {
         // Onboarding preview — the REAL onboarding scene host (unchanged
         // component) driven by the local obPhase machine. Camera choreography
         // is consumed via its existing contract, never edited (contract 3).
+        // Video/cards phases mount no 3D (the wizard's cream cards carry those
+        // beats); upload/celebration/paywall re-key the host so each mounts a
+        // FRESH plain room, exactly like the wizard's per-phase host mounts.
+        if (obPhase === "video" || obPhase === "card_lang" || obPhase === "card_name") return null;
+        const hostEpoch =
+          obPhase === "upload" ? "upload" :
+          obPhase === "celebration" ? "celebration" :
+          obPhase === "paywall" || obPhase === "done" ? "paywall" : "walk";
+        const walkMode = hostEpoch === "walk";
         return (
           <OnboardingSceneHost
-            key={`ob-${obKey}`}
+            key={`ob-${obKey}-${hostEpoch}`}
             scene={obScene}
-            onboardingMode
+            onboardingMode={walkMode}
             isMobile={isMobile}
+            wingId="roots"
+            roomId="ro1"
+            memories={obPhase === "celebration" && obMem ? [obMem] : []}
+            initialCameraZ={obPhase === "celebration" ? 0 : undefined}
             onReady={() => setObPhase((p) => (p === "loading" ? "hold" : p))}
             onCinematicPause={() => {
               if (obPauseFiredRef.current) return;
@@ -425,23 +595,34 @@ export default function FlythroughClient() {
               setObPhase((p) => (p === "loading" || p === "hold" ? "paused" : p));
             }}
             cinematicResumed={obResumed}
+            corridorEnterClicked={obCorridorEnter}
+            onCinematicStep={
+              obPhase === "corridor" ? setObCorridorStep :
+              obPhase === "room" ? setObRoomStep :
+              undefined
+            }
             onRoomClick={(id: string, arrived?: boolean) => {
               // Arrival contract: the cinematic zoom/autoWalk ends AT the door
-              // and fires ("__entrance__", true) → auto-enter the hall. Plain
-              // (non-arrived) taps are ignored — no stranded camera.
-              if (id === "__entrance__" && arrived) {
-                setObScene("entrance");
-                setObPhase("hall");
+              // and fires ("__entrance__", true) → 3s door beat (wizard) →
+              // enter the hall. Plain (non-arrived) taps are ignored.
+              if (id === "__entrance__" && arrived && (obPhase === "hold" || obPhase === "paused" || obPhase === "flying")) {
+                if (obArrivalRef.current) clearTimeout(obArrivalRef.current);
+                obArrivalRef.current = setTimeout(() => { setObScene("entrance"); setObPhase("hall"); }, 3000);
               }
             }}
-            // Hall look-around hands off via onDoorClick("roots") (§10 —
-            // untouched); any door click in the preview ends the tour too.
-            // (No onOnboardingLookDone: the host only wires that prop to
-            // InteriorScene, which this preview never mounts — it could
-            // never fire here.)
-            onDoorClick={() => setObPhase("done")}
+            // The wizard's door contract, phase-gated: hall look-around ends
+            // with onDoorClick("roots") → corridor; the corridor auto-walk
+            // fires "ro1" on arrival → room; the room's empty painting fires
+            // "__upload_painting__" (via the host's onMemoryClick wiring) →
+            // upload. Any hall door advances the preview too.
+            onDoorClick={(id: string) => {
+              if (obPhase === "hall") { setObScene("corridor"); setObPhase("corridor"); }
+              else if (obPhase === "corridor" && id === "ro1") { setObScene("room"); setObPhase("room"); }
+              else if (obPhase === "room" && id === "__upload_painting__") setObPhase("upload");
+            }}
           />
         );
+      }
       default:
         return null;
     }
@@ -714,10 +895,13 @@ export default function FlythroughClient() {
         />
       )}
 
-      {/* ── Onboarding preview chrome (scene 4, plan §11) ──
-          Pure viewer UI over the sealed cinematic: cream loading veil, badge,
-          skip chip (hold→hall, obPhase-driven — never timers), WP1 prompt
-          card, hall hint chip, end card. No onboarding localStorage writes. */}
+      {/* ── Onboarding preview chrome (scene 4) — FULL walkthrough replay ──
+          Pure viewer UI mirroring the rebuilt OnboardingWizard flow with
+          demo-local state: video intro → lang/a11y + name cards → cinematic
+          captions + WP1 prompt → hall → corridor steps → room walk → ImportHub
+          → celebration → view-only paywall → end card. Reuses the wizard's
+          REAL components (WalkCinematicCaption/WalkCtaButton, ImportHub,
+          OnboardingCelebration). No onboarding/locale/a11y localStorage writes. */}
       {mounted && currentScene === 4 && phase === "idle" && (
         <>
           {/* Loading veil — cream, 400ms fade once the scene reports ready */}
@@ -757,22 +941,424 @@ export default function FlythroughClient() {
             {trFly("onbBadge", "Onboarding preview")}
           </div>
 
-          {/* Skip chip — visible across obPhase hold→hall (shared component) */}
-          {(obPhase === "hold" || obPhase === "paused" || obPhase === "flying" || obPhase === "hall") && (
-            <CinematicSkipChip onSkip={() => setObPhase("done")} label={trFly("onbSkip", "Skip")} />
+          {/* ── Video intro (wizard video_intro, demo-local): tagline beat,
+              welcome outro, 12.5s auto-advance, skippable. ── */}
+          {obPhase === "video" && (
+            <div style={{ position: "absolute", inset: 0, zIndex: 20, background: "#1a1917", overflow: "hidden" }}>
+              <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, #2A2622 0%, #1a1917 70%)" }} />
+              <video
+                ref={obVideoRef}
+                autoPlay
+                muted
+                playsInline
+                preload="metadata"
+                poster="/video/hero-ob-poster.jpg"
+                onEnded={beginObOutro}
+                style={{
+                  position: "absolute", inset: 0, width: "100%", height: "100%",
+                  objectFit: "cover", objectPosition: isMobile ? "60% center" : "center center",
+                  opacity: 0.65, filter: "saturate(0.7) brightness(1.1)",
+                }}
+              >
+                <source src="/video/hero-ob.mp4" type="video/mp4" />
+              </video>
+              <div aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(26,25,23,0.15) 0%, rgba(26,25,23,0.3) 50%, rgba(26,25,23,0.7) 100%)", pointerEvents: "none" }} />
+              {!obVideoWelcome && (
+                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", textAlign: "center", pointerEvents: "none", padding: "0 1.5rem" }}>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.72)" }}>
+                    {trOnb("appName", "The Memory Palace")}
+                  </div>
+                  <div style={{ fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500, fontSize: isMobile ? "1.1875rem" : "1.5rem", color: "rgba(255,255,255,0.92)", lineHeight: 1.35, maxWidth: "26rem", textShadow: "0 0.125rem 1rem rgba(0,0,0,0.5)" }}>
+                    {trOnb("videoTagline", "A home for the moments that made you.")}
+                  </div>
+                </div>
+              )}
+              {obVideoWelcome && (
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 1.5rem", background: "radial-gradient(ellipse at center, rgba(26,25,23,0.35) 0%, rgba(26,25,23,0.72) 100%)", animation: "obv-fadeIn 1.1s ease both" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                    <div style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 600, color: "#D4AF37", lineHeight: 1.2, letterSpacing: "0.01em", textShadow: "0 0.25rem 1.75rem rgba(0,0,0,0.55)" }}>
+                      {trOnb("welcomeToPalace", "Welcome to your Memory Palace")}
+                    </div>
+                    <div style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginTop: "0.75rem", maxWidth: "24rem" }}>
+                      {trOnb("welcomeSub", "Let's make it yours — it takes about two minutes.")}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
-          {/* WP1 pause-prompt card — viewer passes flythrough-section copy */}
-          <CinematicPromptOverlay
-            visible={obPhase === "paused"}
-            isMobile={isMobile}
-            onBegin={() => { setObResumed(true); setObPhase("flying"); }}
-            onSkip={() => setObPhase("done")}
-            title={trFly("onbPromptTitle", "Welcome to your palace")}
-            body={trFly("onbPromptBody", "Every memory you keep will live inside these walls. Ready to take a look?")}
-            ctaLabel={trFly("onbPromptCta", "Show me around")}
-            skipLabel={trFly("onbSkip", "Skip")}
-          />
+          {/* ── Setup cards (wizard lang_a11y + name) — demo-local stand-ins.
+              The wizard's cards are inline JSX (not exported), and its real
+              handlers persist (mp_locale / AccessibilityProvider / profile
+              writes) — so the viewer re-renders the SAME layout with local
+              state only and a "nothing is saved" note. ── */}
+          {(obPhase === "card_lang" || obPhase === "card_name") && (
+            <div style={obCardPageStyle}>
+              <div style={obCardScrollerStyle}>
+                <div style={obCardStyle}>
+                  {obPhase === "card_lang" ? (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                        <span style={obOverlineStyle}>{trOnb("appName", "The Memory Palace")}</span>
+                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                      </div>
+                      <h2 style={obH2Style}>{trOnb("langA11yTitle", "Let's make this comfortable to read")}</h2>
+                      {/* Language grid — selection is visual-only demo state */}
+                      <div style={{ width: "100%" }}>
+                        <h3 style={obSectionLabelStyle}>{trOnb("chooseLangSubtitle", "Choose your language and text size. You can change these anytime in settings.")}</h3>
+                        <div role="radiogroup" aria-label={trOnb("chooseLangSubtitle", "Choose your language")} style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)", gap: "0.4375rem" }}>
+                          {locales.map((loc) => {
+                            const active = loc === obLocale;
+                            return (
+                              <button
+                                key={loc}
+                                role="radio"
+                                aria-checked={active}
+                                onClick={() => setObLocale(loc)}
+                                style={{
+                                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: active ? 700 : 500,
+                                  padding: "0.6875rem 0.5rem", borderRadius: "0.5rem",
+                                  border: `0.125rem solid ${active ? OB_EMBER : OB_HAIRLINE}`,
+                                  background: active ? `${OB_EMBER}12` : "#FFF",
+                                  color: active ? OB_EMBER : OB_INK,
+                                  cursor: "pointer", minHeight: "2.75rem",
+                                }}
+                              >
+                                {localeNames[loc]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div aria-hidden style={{ width: "100%", height: "1px", background: OB_HAIRLINE }} />
+                      {/* Text size — visual-only demo state (real card writes AccessibilityProvider) */}
+                      <div style={{ width: "100%" }}>
+                        <h3 style={obSectionLabelStyle}>{trOnb("textSizeTitle", "Text Size")}</h3>
+                        <div role="radiogroup" aria-label={trOnb("textSizeTitle", "Text Size")} style={{ display: "flex", gap: "0.375rem" }}>
+                          {(["standard", "comfortable", "large"] as ObTextSize[]).map((size) => {
+                            const active = size === obTextSize;
+                            const label = trOnb(`textSize${size.charAt(0).toUpperCase() + size.slice(1)}`, size.charAt(0).toUpperCase() + size.slice(1));
+                            const fz = size === "standard" ? "0.9375rem" : size === "comfortable" ? "1.0625rem" : "1.25rem";
+                            return (
+                              <button
+                                key={size}
+                                role="radio"
+                                aria-checked={active}
+                                onClick={() => setObTextSize(size)}
+                                style={{
+                                  flex: 1, minWidth: 0, fontFamily: T.font.body, fontSize: "0.75rem",
+                                  fontWeight: active ? 700 : 500,
+                                  padding: "0.5rem 0.25rem", borderRadius: "0.5rem",
+                                  border: `0.125rem solid ${active ? OB_EMBER : OB_HAIRLINE}`,
+                                  background: active ? `${OB_EMBER}12` : "#FFF",
+                                  color: active ? OB_EMBER : OB_INK,
+                                  cursor: "pointer", minHeight: "3.5rem",
+                                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.125rem",
+                                }}
+                              >
+                                <span style={{ fontSize: fz, fontFamily: T.font.display, fontWeight: 400, lineHeight: 1 }}>Aa</span>
+                                <span style={{ maxWidth: "100%", overflowWrap: "anywhere", lineHeight: 1.15, textAlign: "center" }}>{label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <button onClick={() => setObPhase("card_name")} style={{ ...obCtaStyle, width: "100%" }}>
+                        {trOnb("continueButton", "Continue")}
+                      </button>
+                      <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: OB_MUTED, margin: 0 }}>{obDemoNote}</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                        <span style={obOverlineStyle}>{trOnb("appName", "The Memory Palace")}</span>
+                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                      </div>
+                      <h2 style={obH2Style}>{trOnb("nameTitle", "Every palace bears a name")}</h2>
+                      <p style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.9375rem", color: OB_MUTED, maxWidth: "22rem", lineHeight: 1.6, margin: 0 }}>
+                        {trOnb("nameAside", "Tell us yours, and we'll carve it above the door.")}
+                      </p>
+                      {/* Foundation plaque — live derived-title preview (wizard §6.5) */}
+                      <div aria-hidden={obName.trim().length === 0} style={{ minHeight: "5.75rem", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{
+                          width: "100%", maxWidth: "20rem", padding: "0.75rem 1rem", borderRadius: "0.625rem",
+                          border: `0.0625rem solid ${OB_HAIRLINE}`, background: "#FFFFFF99", textAlign: "center",
+                          opacity: obName.trim() ? 1 : 0, transition: "opacity .3s ease",
+                        }}>
+                          <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: OB_EMBER, marginBottom: "0.375rem" }}>
+                            {trOnb("namePlaqueOverline", "Founding deed")}
+                          </div>
+                          <div style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "1.125rem", color: OB_INK, lineHeight: 1.3, overflowWrap: "anywhere" }}>
+                            {trOnb("cinematicPalaceName", "{name}'s Palace", { name: obName.trim() })}
+                          </div>
+                        </div>
+                      </div>
+                      <input
+                        value={obName}
+                        onChange={(e) => setObName(e.target.value)}
+                        placeholder={trOnb("namePlaceholder", "Your first name")}
+                        aria-label={trOnb("namePlaceholder", "Your first name")}
+                        maxLength={40}
+                        onKeyDown={(e) => { if (e.key === "Enter" && obName.trim()) setObPhase("loading"); }}
+                        style={{
+                          fontFamily: T.font.display, fontSize: "max(1rem, 16px)", textAlign: "center",
+                          padding: "0.875rem 1.5rem", border: `0.09375rem solid ${OB_HAIRLINE}`,
+                          borderRadius: "0.625rem", background: "#FFF", color: OB_INK,
+                          outline: "none", width: "100%", maxWidth: "20rem",
+                        }}
+                      />
+                      <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
+                        <button
+                          onClick={() => setObPhase("card_lang")}
+                          style={{
+                            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
+                            padding: "0 1.25rem", borderRadius: "0.75rem", minHeight: "3.25rem",
+                            border: `0.0625rem solid ${OB_HAIRLINE}`, background: "#FFF", color: OB_MUTED, cursor: "pointer",
+                          }}
+                        >
+                          {"←"} {trOnb("backButton", "Back")}
+                        </button>
+                        <button
+                          onClick={() => { if (obName.trim()) setObPhase("loading"); }}
+                          disabled={!obName.trim()}
+                          style={{ ...obCtaStyle, flex: 1, opacity: obName.trim() ? 1 : 0.5, cursor: obName.trim() ? "pointer" : "not-allowed" }}
+                        >
+                          {trOnb("continueButton", "Continue")} {"→"}
+                        </button>
+                      </div>
+                      <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: OB_MUTED, margin: 0 }}>{obDemoNote}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Cinematic captions (wizard 'cinematic' phase): the REAL
+              WalkCinematicCaption, with the WP1 prompt rendered inline as
+              children — exactly the wizard's layout. ── */}
+          {(obPhase === "hold" || obPhase === "paused" || obPhase === "flying") && (
+            <WalkCinematicCaption
+              isMobile={isMobile}
+              overline={trOnb("welcomeTitle", "Welcome to")}
+              title={trOnb("cinematicPalaceName", "{name}'s Palace", { name: obDisplayName })}
+              caption={trOnb("walkExterior", "This is your Memory Palace — a beautiful place to store everything you treasure.")}
+            >
+              {obPhase === "paused" && !obResumed && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
+                  <p style={obPromptTextStyle}>
+                    {trOnb("cinematicPrompt", "Ready to visit your palace and fill it with your memories?")}
+                  </p>
+                  <WalkCtaButton
+                    label={trOnb("cinematicYes", "Yes, let's go!")}
+                    onClick={() => { setObResumed(true); setObPhase("flying"); }}
+                  />
+                </div>
+              )}
+            </WalkCinematicCaption>
+          )}
+
+          {/* ── Hall leg: the scene renders its own look-around overlay; SR-only
+              caption mirrors the wizard's walk_entrance announcement. ── */}
+          {obPhase === "hall" && (
+            <div role="status" aria-live="polite" style={{ position: "absolute", width: "1px", height: "1px", margin: "-1px", padding: 0, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 }}>
+              {trOnb("walkEntrance", "Through the entrance, you'll find wings for each part of your life.")}
+            </div>
+          )}
+
+          {/* ── Corridor leg: steps 0-7 with the step-6 "Me, Over Time" prompt ── */}
+          {obPhase === "corridor" && obCorridorStep >= 0 && (
+            <WalkCinematicCaption
+              isMobile={isMobile}
+              overline={trOnb("welcomeTitle", "Welcome to")}
+              title={trOnb("cinematicPossessive", "{name}'s {thing}", { name: obDisplayName, thing: trOnb("corridorWingName", "Roots Wing") })}
+              caption={
+                obCorridorStep >= 2
+                  ? trOnb("corridorSubtitle", "Every Wing has Rooms — small spaces within a larger one, each for a chapter with memories of you.")
+                  : trOnb("walkCorridor", "Each wing has rooms for your memories — photos, videos, stories.")
+              }
+            >
+              {obCorridorStep >= 6 && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                  <p style={obPromptTextStyle}>
+                    {trOnb("corridorRoomPromptPrefix", "Your personal Room is")}{" "}
+                    <span style={{ color: OB_EMBER, fontWeight: 600 }}>{trOnb("corridorRoomName", "Me, Over Time")}</span>
+                  </p>
+                  <WalkCtaButton
+                    label={obCorridorEnter ? `${trOnb("corridorEnterRoom", "Enter The Room")}…` : trOnb("corridorEnterRoom", "Enter The Room")}
+                    onClick={() => setObCorridorEnter(true)}
+                    disabled={obCorridorEnter}
+                  />
+                </div>
+              )}
+            </WalkCinematicCaption>
+          )}
+
+          {/* ── Room leg: steps 0-9 → hang-the-first-memory prompt ── */}
+          {obPhase === "room" && obRoomStep >= 0 && (
+            <WalkCinematicCaption
+              isMobile={isMobile}
+              overline={trOnb("welcomeTitle", "Welcome to")}
+              title={trOnb("cinematicPossessive", "{name}'s {thing}", { name: obDisplayName, thing: trOnb("roomTitle", "Me, Over Time Room") })}
+              caption={
+                obRoomStep >= 4
+                  ? trOnb("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more.")
+                  : trOnb("walkRoom", "This is your first room. Ready to place your first memory?")
+              }
+            >
+              {obRoomStep >= 9 && (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+                  <p style={obPromptTextStyle}>{trOnb("roomHangPrompt", "Let's hang your first memory on the wall.")}</p>
+                  <span style={{
+                    display: "inline-block", fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
+                    letterSpacing: "0.04em", padding: "0.5rem 1.5rem",
+                    background: "rgba(255,255,255,0.08)", color: "rgba(250,250,247,0.65)",
+                    border: "0.0625rem solid rgba(255,255,255,0.14)", borderRadius: "0.5rem",
+                    whiteSpace: "nowrap", pointerEvents: "none",
+                  }}>
+                    {trOnb("roomClickPainting", "Click on the empty painting")}
+                  </span>
+                  <WalkCtaButton
+                    label={trOnb("walkAddMemory", "Add a Memory")}
+                    onClick={() => setObPhase("upload")}
+                  />
+                </div>
+              )}
+            </WalkCinematicCaption>
+          )}
+
+          {/* Skip chip — per-leg skip (wizard's skipWalkLeg), video → room legs */}
+          {(["video", "hold", "paused", "flying", "hall", "corridor", "room"] as ObPhase[]).includes(obPhase) && (
+            <CinematicSkipChip
+              onSkip={obSkipLeg}
+              label={obPhase === "video" ? trOnb("cinematicSkip", "Skip intro") : trOnb("walkSkip", "Skip tour")}
+            />
+          )}
+
+          {/* ── Upload: the REAL ImportHub over the plain room, demo-local
+              persistence (the wizard's addMemory store path needs auth — the
+              viewer keeps the memory in local state instead). Close = skip
+              to the paywall, exactly like the wizard's onClose. ── */}
+          {obPhase === "upload" && (
+            <ImportHub
+              onClose={() => setObPhase("paywall")}
+              onImportFiles={async (files) => {
+                if (files.length === 0) return;
+                const f = files[0];
+                let dataUrl = f.previewUrl || f.url || "";
+                if (f.file) {
+                  try {
+                    dataUrl = await new Promise<string>((res, rej) => {
+                      const reader = new FileReader();
+                      reader.onload = () => res(reader.result as string);
+                      reader.onerror = rej;
+                      reader.readAsDataURL(f.file!);
+                    });
+                  } catch { /* previewUrl fallback */ }
+                }
+                if (!dataUrl) return;
+                setObMem({
+                  id: `ob-demo-${Date.now()}`, title: f.name, type: "photo", dataUrl,
+                  hue: 18, s: 50, l: 60, displayed: true, createdAt: new Date().toISOString(),
+                } as Mem);
+                setObPhase("celebration");
+              }}
+              onOpenCloudProvider={() => {}}
+              initialRoomId="ro1"
+              lockRoom
+              titleOverride={trOnb("firstMemHubTitle", "Your first memory")}
+              subtitleOverride={trOnb("firstMemHubSubtitle", "A photo of yourself, family, or a place you love. You can add everything else later.")}
+            />
+          )}
+
+          {/* ── Celebration: the REAL gold threshold + confetti over the room
+              scene showing the just-hung demo memory. ── */}
+          {obPhase === "celebration" && (
+            <OnboardingCelebration
+              title={trOnb("celebrationTitle2", "Congratulations!")}
+              subtitle={trOnb("celebrationSubtitle2", "Now continue exploring your Memory Palace")}
+              buttonLabel={trOnb("celebrationAtrium", "Select your plan")}
+              onContinue={() => setObPhase("paywall")}
+              hint={trOnb("celebrationHandoffHint", "Step inside — a short tour of your Atrium is waiting.")}
+              transparent
+            />
+          )}
+
+          {/* ── Paywall (VIEW-ONLY): visual mirror of the wizard's soft trial
+              card — both buttons only end the preview, nothing purchases or
+              navigates. ── */}
+          {obPhase === "paywall" && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 40,
+              background: "rgba(252,250,245,0.72)",
+              backdropFilter: "blur(0.375rem)", WebkitBackdropFilter: "blur(0.375rem)",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
+              overflowY: "auto",
+              padding: "calc(1.5rem + env(safe-area-inset-top, 0px)) 0 calc(3.5rem + env(safe-area-inset-bottom, 0px))",
+            }}>
+              <div style={{
+                maxWidth: "28rem", width: "92%", margin: "auto",
+                padding: isMobile ? "2rem 1.5rem" : "2.5rem 2.25rem",
+                background: OB_CREAM, borderRadius: "1rem",
+                border: `0.0625rem solid ${OB_HAIRLINE}`,
+                boxShadow: "0 1rem 3rem rgba(64,59,54,0.18)",
+              }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                    <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                    <span style={obOverlineStyle}>{trOnb("appName", "The Memory Palace")}</span>
+                    <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                  </div>
+                  <h2 style={{ ...obH2Style, fontSize: isMobile ? "1.375rem" : "1.625rem" }}>
+                    {trOnb("paywallTitle", "You've built {name}'s Palace", { name: obDisplayName })}
+                  </h2>
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: OB_MUTED, maxWidth: "24rem", lineHeight: 1.6, margin: 0 }}>
+                    {trOnb("paywallSubtitle", "Unlock 25 GB of storage and bring your whole life story together.")}
+                  </p>
+                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
+                    {[
+                      trOnb("paywallFeat1", "25 GB for all your memories"),
+                      trOnb("paywallFeat2", "Unlimited AI interviews"),
+                      trOnb("paywallFeat3", "Collaborate with family & friends"),
+                      trOnb("paywallFeat4", "Import from Google, Dropbox & more"),
+                    ].map((feat) => (
+                      <div key={feat} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                        <span aria-hidden style={{ width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: `${OB_EMBER}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <svg aria-hidden width="0.75rem" height="0.75rem" viewBox="0 0 16 16" fill="none" style={{ display: "block" }}>
+                            <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke={OB_EMBER} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </span>
+                        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: OB_INK, lineHeight: 1.4 }}>{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={() => setObPhase("done")} style={{ ...obCtaStyle, width: "100%" }}>
+                    {trOnb("paywallTrialCta", "Start 7-day free trial")}
+                  </button>
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: OB_MUTED, lineHeight: 1.5, margin: "-0.5rem 0 0", maxWidth: "22rem" }}>
+                    {trOnb("paywallAutoRenewWeb", "Auto-renewing subscription. Cancel anytime.")}
+                  </p>
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontStyle: "italic", color: OB_MUTED, margin: "-0.75rem 0 0" }}>
+                    {trFly("onbPaywallNote", "Preview — buttons don't purchase or navigate.")}
+                  </p>
+                  <button
+                    onClick={() => setObPhase("done")}
+                    style={{
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: OB_MUTED,
+                      background: "none", border: "none", cursor: "pointer",
+                      textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+                      minHeight: "2.75rem", padding: "0.5rem",
+                    }}
+                  >
+                    {trOnb("paywallContinueFree", "Continue with Free plan")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Hall hint chip — dismissible extra over the §10 in-scene overlay */}
           {obPhase === "hall" && obHallHint && (
@@ -827,7 +1413,7 @@ export default function FlythroughClient() {
                     color: "#403B36", margin: "0 0 1.25rem",
                   }}
                 >
-                  {trFly("onbDoneTitle", "That's the welcome tour.")}
+                  {trFly("onbDoneTitle", "That's the full onboarding flow.")}
                 </h2>
                 <button
                   type="button"

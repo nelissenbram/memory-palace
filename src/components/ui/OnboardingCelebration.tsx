@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { CREAM, INK, MUTED, HAIRLINE, EMBER, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
@@ -14,11 +14,90 @@ interface OnboardingCelebrationProps {
   /** Tutorial-handoff hint rendered above the CTA when non-empty
       (ONBOARDING_ELEVATION_PLAN §9). Backwards compatible: absent = no row. */
   hint?: string;
+  /** Canvas confetti burst (walkthrough restore). Default true — the wizard's
+      celebration fires it over the just-hung memory; reduced-motion = static
+      (no confetti, the settled gold threshold stands on its own). */
+  confetti?: boolean;
 }
 
 /* The one licensed gold moment in the whole app: the ceremonial threshold.
- * A calm, dignified beat — not a party. No confetti; a single gold divider
- * tick above an ink/gold headline, one EMBER call-to-action into the palace. */
+ * A dignified beat over the just-hung first memory — a single gold divider
+ * tick above an ink/gold headline, one EMBER call-to-action into the palace,
+ * crowned by ONE falling confetti burst (terracotta/gold/green/cream) restored
+ * from the original walkthrough celebration. Reduced motion keeps the frame
+ * fully static: no confetti, no entrance animations. */
+
+/* ── Canvas confetti (restored from 297c354) — 120 pieces in the house
+ * palette, gravity + rotation, self-terminating rAF loop. Exported so the
+ * wizard's landscape celebration fork can fire the same burst. ── */
+export function ConfettiBurst() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Honor Reduce Motion (Apple Guideline 4 accessibility) — skip the confetti.
+    if (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Terracotta / gold / green / walnut / cream — the house palette.
+    const colors = ["#C66B3D", "#D4AF37", "#4A6741", "#8B7355", "#F2EDE7", "#B85C38"];
+    const pieces: { x: number; y: number; w: number; h: number; c: string; vx: number; vy: number; rot: number; vr: number }[] = [];
+
+    for (let i = 0; i < 120; i++) {
+      pieces.push({
+        x: Math.random() * canvas.width,
+        y: -Math.random() * canvas.height * 0.5,
+        w: 4 + Math.random() * 6,
+        h: 8 + Math.random() * 10,
+        c: colors[Math.floor(Math.random() * colors.length)],
+        vx: (Math.random() - 0.5) * 3,
+        vy: 1.5 + Math.random() * 3,
+        rot: Math.random() * Math.PI * 2,
+        vr: (Math.random() - 0.5) * 0.15,
+      });
+    }
+
+    let raf: number;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const p of pieces) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+        p.vy += 0.02; // gravity
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      }
+      if (pieces.some((p) => p.y < canvas.height + 20)) {
+        raf = requestAnimationFrame(draw);
+      }
+    };
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+    />
+  );
+}
 
 // Ember → walnut CTA gradient — the canon theme token, not a hand-typed copy.
 const ctaGrad = T.land.ctaGrad;
@@ -43,6 +122,7 @@ export default function OnboardingCelebration({
   onContinue,
   transparent = false,
   hint,
+  confetti = true,
 }: OnboardingCelebrationProps) {
   const isMobile = useIsMobile();
   // Resolve once per mount — reduced-motion users get a static, already-settled frame.
@@ -66,6 +146,9 @@ export default function OnboardingCelebration({
       }}
     >
       <style>{KEYFRAMES}</style>
+      {/* Confetti layer UNDER the threshold copy (zIndex 0 vs content 1) —
+          falls over the room scene showing the just-hung memory. */}
+      {confetti && !reduce && <ConfettiBurst />}
       <div
         style={{
           position: "relative",

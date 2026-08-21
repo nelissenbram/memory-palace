@@ -1334,7 +1334,13 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // W2: the hero is simply the oldest wall memory — "1 photo = one large piece".
     // W3 (Ledger "Mantelpiece"): the hero is the memory the user FEATURED
     // (mem.hero===true, set via the ★ in the Steward's Ledger); fallback = oldest.
-    const bigPaintMem=W2?((W3&&wallMems.find((m:any)=>m.hero===true))||wallMems[0]||null):paintingMems.length>0?paintingMems[0]:photoMems.length>0?photoMems[0]:null;
+    // Guided walkthrough (2026-08-21): during onboarding the mantel MUST hold
+    // the empty "upload" placeholder (the wizard's final step is clicking it) —
+    // never a hero memory. OnboardingSceneHost's demo set contains a frame
+    // photo that would otherwise win the W2 hero slot and delete the
+    // isUploadPainting mesh, stalling the wizard (onboarding clicks are
+    // filtered to isUploadPainting only).
+    const bigPaintMem=onboardingModeRef.current?null:(W2?((W3&&wallMems.find((m:any)=>m.hero===true))||wallMems[0]||null):paintingMems.length>0?paintingMems[0]:photoMems.length>0?photoMems[0]:null);
     const bigPaintUsedPhoto=!W2&&paintingMems.length===0&&photoMems.length>0;// track if we borrowed an unassigned photo
     if(bigPaintMem&&(W1||W2)){
       // W1 hero spot (WS7-3): the big painting over the fireplace becomes a
@@ -1362,11 +1368,18 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       const omc=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),new THREE.MeshStandardMaterial({map:t,roughness:.8}));
       omc.position.set(fpX,2.4,fpZ+.12);omc.userData={memory:om};scene.add(omc);memMeshes.current.push(omc);
       devCheckArtworkAspect(t,1.6,1.1,"fireplace painting (legacy)");
-    }else if((actualRoomId||roomId)==="ro1"){
-      // "Me, Over Time" placeholder — ornate frame with personalised title
-      scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
-      scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,2.4,fpZ+.08));
-      if(!isMobileGPU()){const fpSp2=new THREE.SpotLight("#FFF5E0",.6,5,Math.PI/7,.5,1.2);fpSp2.position.set(fpX,rH-.2,fpZ+.5);fpSp2.target.position.set(fpX,2.4,fpZ);scene.add(fpSp2);scene.add(fpSp2.target);}
+    }else if(onboardingModeRef.current||(actualRoomId||roomId)==="ro1"){
+      // "Me, Over Time" placeholder — ornate frame with personalised title.
+      // Onboarding always gets the placeholder regardless of the room id the
+      // wizard passes — its final step is clicking this isUploadPainting mesh.
+      // W3 (guided walkthrough 2026-08-21): sit EXACTLY in the mantel-hero
+      // zone (hero hangs at y=2.72, canvas fpZ+.17 — plaque/frame clear the
+      // mantel shelf at 1.6 and the chimney-breast face at fpZ+.09; the old
+      // 2.4/fpZ+.02-.12 buried the frame inside the W3 breast).
+      const phY=W3?2.72:2.4;
+      scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,phY,W3?fpZ+.10:fpZ+.02));
+      scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,phY,W3?fpZ+.145:fpZ+.08));
+      if(!isMobileGPU()){const fpSp2=new THREE.SpotLight("#FFF5E0",.6,5,Math.PI/7,.5,1.2);fpSp2.position.set(fpX,rH-.2,fpZ+.5);fpSp2.target.position.set(fpX,phY,fpZ);scene.add(fpSp2);scene.add(fpSp2.target);}
       const cvs=document.createElement("canvas");cvs.width=512;cvs.height=352;
       const ctx=cvs.getContext("2d")!;
       // W1 (WS6-4): placeholder regraded to canon Fraunces ink-on-cream
@@ -1383,7 +1396,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       const tex=new THREE.CanvasTexture(cvs);tex.colorSpace=THREE.SRGBColorSpace;
       const placeholderMat=new THREE.MeshStandardMaterial({map:tex,roughness:.85});
       const phMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),placeholderMat);
-      phMesh.position.set(fpX,2.4,fpZ+.12);phMesh.userData={isUploadPainting:true};scene.add(phMesh);hitAreaMeshes.current.push(phMesh);
+      phMesh.position.set(fpX,phY,W3?fpZ+.17:fpZ+.12);phMesh.userData={isUploadPainting:true};scene.add(phMesh);hitAreaMeshes.current.push(phMesh);
     }
 
     // ── PHOTO FRAMES: small fireplace frame ──
@@ -1418,7 +1431,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         {cx:rW/2-0.12,cz:-(scrHalf+(rL/2-cornerIn-scrHalf)/2),rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
         {cx:rW/2-0.12,cz:scrHalf+(rL/2-cornerIn-scrHalf)/2,rotY:-Math.PI/2,width:rL/2-cornerIn-scrHalf,nx:-1,nz:0},
       ]).filter(r=>r.width>1.6);
-      const heroSel=(W3&&wallMems.find((m:any)=>m.hero===true))||wallMems[0];
+      // Onboarding: the mantel holds the upload placeholder (heroSel null) —
+      // every wall memory salon-hangs instead of one being lifted to the hero.
+      const heroSel=onboardingModeRef.current?null:((W3&&wallMems.find((m:any)=>m.hero===true))||wallMems[0]);
       const salonRest=wallMems.filter((m:any)=>m!==heroSel); // hero already above the fireplace
       // Tier budget: ~24 live CanvasTextures on mobile (WS6-6), minus the hero.
       const texBudget=Q.paintingResWidth>=512?31:Q.paintingResWidth>=256?23:11;
@@ -2580,6 +2595,18 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // and the first real render — dev/staging only via the w1_assert flag.
     let _w2AssertDone=!W2;
     let _cinStep=-1;
+    // Guided-walkthrough landing (2026-08-21): stand between the coffee table
+    // (ctZ=sofaZ-1.7=fpZ+3.9-1.7) and the hearth, square to the mantel; pitch
+    // lifts the gaze to the hero/upload-painting centre (y=2.72 under W3,
+    // canvas at fpZ+.17). The walk starts from the ACTUAL spawn (camZ — stem
+    // mouth under W3, or an explicit initialCameraZ from the wizard), not the
+    // legacy hardcoded 2.0/-1.5 of the pre-T-shape room. Seating furniture on
+    // the x=0 line (sofa 1.07, table 0.54) tops out well below EYE_HEIGHT, so
+    // the pass-over never clips the near plane; interior colliders are skipped
+    // during onboarding.
+    const obLandZ=fpZ+2.6;
+    const obPitch=Math.atan2((W3?2.72:2.4)-EYE_HEIGHT,obLandZ-(fpZ+.17));
+    let obCinT=0; // stall-proof cinematic clock (corridor F04 parity)
     // WS10-4 (W1): footsteps as procedural marble taps — fired from the walk
     // integrator on real position delta (playFootstep cadence-caps at ~340ms).
     const w1StepPrev={x:pos.current.x,z:pos.current.z};
@@ -2603,14 +2630,15 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // ── Onboarding cinematic: multi-step waypoint sequence ──
       // On mobile, each step gets +0.5s extra for readability
       if (onboardingModeRef.current) {
-        const ot = clock.getElapsedTime();
+        obCinT+=dt; // stall-proof: a compile stall advances ≤0.05s/frame
+        const ot = obCinT;
         const d=isMobileProp?0.5:0;
         if(reduceMotion){
           // WS12-1 (W1): reduced motion — skip the forced look/walk pans and
-          // jump straight to the end framing (step 9: at the painting, gaze
-          // level), then wait for the painting click exactly like step 9.
+          // jump straight to the end framing (step 9: at the mantel, gaze on
+          // the upload painting), then wait for the painting click.
           if(_cinStep!==9){_cinStep=9;onCinematicStepRef.current?.(9);}
-          posT.current.z=-1.5;lookT.current.yaw=0;lookT.current.pitch=0;
+          posT.current.z=obLandZ;lookT.current.yaw=0;lookT.current.pitch=obPitch;
         }else if(ot<=1.0+d){
           // Step 0: look down
           if(_cinStep!==0){_cinStep=0;onCinematicStepRef.current?.(0);}
@@ -2650,16 +2678,18 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
           // Step 7: brief pause
           if(_cinStep!==7){_cinStep=7;onCinematicStepRef.current?.(7);}
           lookT.current.yaw=0;lookT.current.pitch=0;
-        }else if(ot<=18.0+d*9){
-          // Step 8: walk forward to painting
+        }else if(ot<=20.5+d*9){
+          // Step 8: walk forward to the mantel (from the ACTUAL spawn camZ —
+          // ≈6.6m over 4.5s: smoothstep peak ≈2.2m/s, at the comfort cap),
+          // easing the gaze up onto the upload painting
           if(_cinStep!==8){_cinStep=8;onCinematicStepRef.current?.(8);}
-          const dur=2.0+d;const p=Math.min((ot-(16.0+d*8))/dur,1);const ease=p*p*(3-2*p);
-          posT.current.z=2.0+(-1.5-2.0)*ease;
-          lookT.current.yaw=0;lookT.current.pitch=0;
+          const dur=4.5+d;const p=Math.min((ot-(16.0+d*8))/dur,1);const ease=p*p*(3-2*p);
+          posT.current.z=camZ+(obLandZ-camZ)*ease;
+          lookT.current.yaw=0;lookT.current.pitch=obPitch*ease;
         }else{
-          // Step 9: waiting for painting click
+          // Step 9: at the mantel, waiting for the painting click
           if(_cinStep!==9){_cinStep=9;onCinematicStepRef.current?.(9);}
-          posT.current.z=-1.5;lookT.current.yaw=0;lookT.current.pitch=0;
+          posT.current.z=obLandZ;lookT.current.yaw=0;lookT.current.pitch=obPitch;
         }
         // Skip normal movement when in onboarding mode
       } else {

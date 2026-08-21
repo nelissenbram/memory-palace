@@ -2889,15 +2889,15 @@ function EntranceHallScene({
       }
 
       // ── Entrance cinematic (onboarding only) ──
+      // Guided-walkthrough restore (2026-08-21): the owner explicitly wants the
+      // BLINK choreography back (settle → look left → blink ×2 → look right →
+      // blink → walk to the roots door), so branch selection is reduced-motion
+      // only — the retired W1 ~6s push-in variant is deleted. Both paths end by
+      // firing onDoorClick("roots"), exactly like skipCinematic().
       if (entranceCinematicRef.current && !autoWalkToRef.current && !awClick.id) {
-        if (W1) {
-          // w1_hall (WS4-2, WS12-2/3): ONE ~6s graceful push-in toward the hall
-          // centre/impluvium — ZERO blink blackouts, ends with doors in view.
-          // Contract preserved (plan §7 risk 5): onboardingMode still fires
-          // onDoorClick("roots") at the end, exactly like skipCinematic().
-          const ot = W3H ? w3hCinT : clock.getElapsedTime();
-          const CIN_DUR = 6.0;
-          const START_Z = 7.3, END_Z = 3.2;
+        const ot = w3hCinT; // stall-proof accumulated time (W3H audit) — a compile stall advances ≤0.05s/frame
+        const CIN_DUR = 6.0;
+        const START_Z = 7.3, END_Z = 3.2;
           if (reduceMotion) {
             // Reduced motion: crossfade sequence of the same two composed shots
             // (spawn framing → final push-in framing) via a CREAM veil — no
@@ -2929,25 +2929,14 @@ function EntranceHallScene({
               }
             }
           } else {
-            // Push-in: ~4m over 6s eased (peak ~1.0 m/s, yaw held ≈0 — well
-            // inside the ≤25°/s / ≤2.2 m/s comfort caps).
-            const p = easeInOutCubic(Math.min(ot / CIN_DUR, 1));
-            posT.current.x = 0;
-            posT.current.z = START_Z + (END_Z - START_Z) * p;
-            lookT.current.yaw = 0;
-            lookT.current.pitch = 0.036 + (0.02 - 0.036) * p;
-            if (ot >= CIN_DUR) {
-              entranceCinematicRef.current = false;
-              setCinematicActive(false);
-              if (onboardingModeRef.current) {
-                onboardingModeRef.current = false;
-                onDoorClickRef.current("roots");
-              }
-            }
-          }
-        } else {
-        // (pre-Wave-1): look around with blinks → 12s walk to roots door
-        const ot = clock.getElapsedTime();
+        // Guided walkthrough: look around with blinks → slow walk to the roots
+        // door. Geometry verified against the CURRENT hall (2026-08-21): spawn
+        // is (0, EYE_HEIGHT, START_Z=7.3); roots door = doorDefs[0] at angle
+        // −π/2 with the approach point at (0, −(RADIUS−4)) — the formulas below
+        // are radius-relative so they track RADIUS/NUM_DOORS; the centre
+        // impluvium is WADABLE by owner decree (no collider), so the straight
+        // walk through the water is intentional; benches (±π/4 diagonals) and
+        // amphorae (skipped near door angles) never sit on the x=0 path.
         // Single blink helper — slow, deliberate (x2 original speed: close 0.4s, hold 0.2s, open 0.4s)
         const singleBlink = (localT: number): number => {
           const bClose = 0.4, bHold = 0.2, bOpen = 0.4, bTotal = bClose + bHold + bOpen;
@@ -3020,7 +3009,7 @@ function EntranceHallScene({
           const wp = Math.min((ot - LOOK_DUR) / WALK_DUR, 1);
           const wEase = wp * wp * (3 - 2 * wp);
           posT.current.x = ss(0, targetX, wEase);
-          posT.current.z = ss(7.3, targetZ, wEase);
+          posT.current.z = ss(START_Z, targetZ, wEase);
           const faceDoorAngle = Math.atan2(targetX - posT.current.x, -(targetZ - posT.current.z));
           lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * 0.04;
           lookT.current.pitch += (0 - lookT.current.pitch) * 0.03;
@@ -3034,7 +3023,7 @@ function EntranceHallScene({
             onDoorClickRef.current("roots");
           }
         }
-        } // end pre-Wave-1 cinematic branch
+        } // end blink cinematic branch
       }
 
       // ── W2 (WS7-10): focus mode owns the camera while active — ONE camera

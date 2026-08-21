@@ -14,41 +14,54 @@ import { updateProfile } from "@/lib/auth/profile-actions";
 import { track } from "@/lib/analytics";
 import { useAccessibility, type ScaleLevel } from "@/components/providers/AccessibilityProvider";
 import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
+import WalkCinematicCaption, { WalkCaptionPill, WalkCtaButton } from "@/components/ui/OnboardingWalkCaption";
 
 const OnboardingSceneHost = lazy(() => import("@/components/ui/OnboardingSceneHost"));
 const OnboardingCelebration = lazy(() => import("@/components/ui/OnboardingCelebration"));
+const ConfettiBurst = lazy(() =>
+  import("@/components/ui/OnboardingCelebration").then((m) => ({ default: m.ConfettiBurst })),
+);
 const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
-const OnboardingWingOrientStep = lazy(() => import("@/components/ui/OnboardingWingOrientStep"));
 
-/* ── State machine ──
-   Surviving flow: lang_a11y -> name -> style_era(confirmation) -> celebration(threshold)
-   -> done (lands the user into the seeded room to place their first memory). The
-   intro video, quiz, cinematic pre-roll, 4-leg auto-walk gauntlet and paywall are cut. */
+/* ── State machine (WALKTHROUGH RESTORE) ──
+   video_intro -> lang_a11y -> name -> guided walkthrough (cinematic exterior
+   flyover, entrance-hall look-around+blinks, corridor procession, room reveal)
+   -> upload (first memory) -> celebration (gold threshold + confetti) ->
+   paywall (gated) -> done. The walkthrough teaches wings physically — the
+   style_era confirmation and wing_orient card are unrouted (components kept
+   for settings/reuse; saved phases remapped below). */
 type Phase =
   | "video_intro"      // Intro video plays first (full-screen)
   | "lang_a11y"        // Language + legibility (warm-cream card)
   | "name"             // Name input
-  | "style_era"        // Roman Tuscany confirmation
-  | "wing_orient"      // "One palace, five wings" orientation (step 4/4)
+  | "cinematic"        // Live 3D exterior — WP1 hold -> prompt -> 5-waypoint flyover
+  | "walk_exterior"    // Skip-path exterior leg: direct auto-walk to the entrance
+  | "walk_entrance"    // Hall look-around + blinks -> slow walk to the roots door
+  | "walk_corridor"    // Corridor steps 0-7: demo painting -> room prompt -> door
+  | "walk_room"        // Room steps 0-9: look-around -> empty painting prompt
   | "upload"           // Seeded room + ImportHub (first memory)
-  | "celebration"      // Gold ceremonial threshold
-  | "paywall"          // Soft trial offer (non-iOS only)
+  | "celebration"      // Gold ceremonial threshold + confetti
+  | "paywall"          // Soft trial offer (web / iOS-with-IAP only)
   | "done";
 
-const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "style_era", "wing_orient"];
+const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name"];
+const WALK_PHASES: Phase[] = ["walk_exterior", "walk_entrance", "walk_corridor", "walk_room"];
 const PHASE_ORDER: Phase[] = [
-  "video_intro", "lang_a11y", "name", "style_era", "wing_orient", "upload", "celebration", "paywall", "done",
+  "video_intro", "lang_a11y", "name",
+  "cinematic", "walk_exterior", "walk_entrance", "walk_corridor", "walk_room",
+  "upload", "celebration", "paywall", "done",
 ];
 
-/* Retired phases from the old flow -> nearest surviving phase, so any stale saved
-   state resolves instead of resurrecting a removed phase. */
+/* Retired phases -> nearest surviving phase, so any stale saved state resolves
+   instead of resurrecting a removed phase. quiz sat between name and style_era
+   (resume at name — its inputs may be missing); style_era/wing_orient sat after
+   name (resume at the walkthrough, which now teaches the wings physically).
+   cinematic/walk_* are LIVE phases again and resume in place — each leg's scene
+   replays its own choreography from the top of that leg on mount. */
 const RETIRED_PHASE_MAP: Record<string, Phase> = {
   quiz: "name",
-  cinematic: "name",
-  walk_exterior: "name",
-  walk_entrance: "name",
-  walk_corridor: "name",
-  walk_room: "name",
+  style_era: "cinematic",
+  wing_orient: "cinematic",
 };
 
 const STORAGE_KEY = "mp_onboarding_phase";
@@ -98,8 +111,8 @@ type TextSize = ScaleLevel;
 
 /* ── Quiet canon step dots (AtriumRelay lane-dot grammar): filled=EMBER_GLYPH,
    unfilled=HAIRLINE, no numeric total, no growing bar. Intentionally scoped to
-   the 4 setup cards (lang_a11y 1/4, name 2/4, style_era 3/4, wing_orient 4/4) —
-   the full-screen video intro and the do-first upload/celebration are ceremonial
+   the 2 setup cards (lang_a11y 1/2, name 2/2) — the full-screen video intro,
+   the guided walkthrough and the do-first upload/celebration are ceremonial
    beats, not numbered setup steps, so they carry no dot. ── */
 function StepDots({ current, total, label }: { current: number; total: number; label: string }) {
   return (
@@ -156,6 +169,19 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // this flag remains only for the celebration/paywall landscape forks below.
   const isLandscapePhone = isMobile && !isPortrait;
   const { t, setLocaleNoReload } = useTranslation("onboarding");
+  // tr(): inline EN-fallback lookup. t() returns the key itself when a key is
+  // missing from every locale (the restored walkthrough keys land in a
+  // follow-up i18n pass); tr() then falls back to English copy, applying
+  // {var} interpolation to the fallback by hand (a missing key can't).
+  const tr = useCallback(
+    (key: string, fallback: string, vars?: Record<string, string>): string => {
+      const v = t(key as any, vars);
+      if (v !== key) return v;
+      if (!vars) return fallback;
+      return Object.entries(vars).reduce((s, [k, val]) => s.split(`{${k}}`).join(val), fallback);
+    },
+    [t],
+  );
   // Selector: subscribe ONLY to userName (the sole reactive store field this
   // render reads). Setters are stable action references, pulled once via
   // getState() so the wizard no longer re-renders on every unrelated store write
@@ -190,6 +216,14 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const memoryUploadedRef = useRef(false);
   const [uploadedMemory, setUploadedMemory] = useState<any>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // ── Walkthrough leg state (restored from the guided walk) ──
+  const [cinematicPaused, setCinematicPaused] = useState(false);
+  const [cinematicResumed, setCinematicResumed] = useState(false);
+  const [corridorStep, setCorridorStep] = useState(-1);
+  const [roomStep, setRoomStep] = useState(-1);
+  const [corridorEnterClicked, setCorridorEnterClicked] = useState(false);
+
 
   // ── Language / A11y state ──
   // Check localStorage directly — the hook's `locale` hasn't hydrated yet on first render
@@ -314,6 +348,95 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     completeAndFinish();
   }, [completeAndFinish, phase]);
 
+  // ── Per-leg skip: every walkthrough leg is skippable to the NEXT phase in
+  // order (cinematic -> walk_exterior -> walk_entrance -> ...); the final leg's
+  // skip lands on upload. Nobody re-walks a skipped leg, nobody strands. ──
+  const skipWalkLeg = useCallback(() => {
+    track("onboarding_walk_leg_skipped", { phase });
+    const idx = PHASE_ORDER.indexOf(phase);
+    setPhase(idx >= 0 && idx < PHASE_ORDER.length - 1 ? PHASE_ORDER[idx + 1] : "upload");
+  }, [phase, setPhase]);
+
+  // ── Scene arrival handlers (restored walkthrough contract) ──
+  // Exterior arrival: the flyover (or the walk_exterior auto-walk) reaches the
+  // entrance and fires onRoomClick("__entrance__") — hold the door beat 3s,
+  // then cut to the entrance hall. Timer owned by a ref so a fast skip/unmount
+  // never fires setPhase on a gone component.
+  const arrivalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (arrivalTimerRef.current) clearTimeout(arrivalTimerRef.current); }, []);
+  const handleExteriorRoomClick = useCallback((id: string) => {
+    if (id === "__entrance__" && (phase === "cinematic" || phase === "walk_exterior")) {
+      if (arrivalTimerRef.current) clearTimeout(arrivalTimerRef.current);
+      arrivalTimerRef.current = setTimeout(() => setPhase("walk_entrance"), 3000);
+    }
+  }, [phase, setPhase]);
+
+  // Entrance hall: the look-around + blink cinematic ends (or its in-scene skip
+  // fires) with onDoorClick("roots") at the roots door -> corridor leg.
+  const handleEntranceDoorClick = useCallback((id: string) => {
+    if (id === "roots" && phase === "walk_entrance") setPhase("walk_corridor");
+  }, [phase, setPhase]);
+
+  // Corridor: after "Enter The Room", the scene auto-walks to ro1 and fires
+  // onDoorClick("ro1") on arrival -> room leg.
+  const handleCorridorDoorClick = useCallback((id: string) => {
+    if (id === "ro1" && phase === "walk_corridor") setPhase("walk_room");
+  }, [phase, setPhase]);
+
+  // Room: tapping the empty painting over the mantel fires
+  // onMemoryClick("__upload_painting__") — honored immediately (no step gate,
+  // a dead-feeling painting reads as "unresponsive") -> upload.
+  const handleRoomPaintingClick = useCallback((id: string) => {
+    if (id === "__upload_painting__" && phase === "walk_room") setPhase("upload");
+  }, [phase, setPhase]);
+
+  // Cinematic prompt fallback: the exterior scene fires onCinematicPause at the
+  // WP1 hold; if it never does (stalled GL, reduced-motion stills path), surface
+  // the prompt card anyway after 8s so the walk can always be started.
+  useEffect(() => {
+    if (phase !== "cinematic" || cinematicPaused) return;
+    const timer = setTimeout(() => setCinematicPaused(true), 8000);
+    return () => clearTimeout(timer);
+  }, [phase, cinematicPaused]);
+
+  // Cinematic flyover ceiling: once resumed, the 5-waypoint flyover ends in the
+  // arrival callback; if the scene stalls mid-flight, advance after 20s.
+  useEffect(() => {
+    if (phase === "cinematic" && cinematicResumed) {
+      const timer = setTimeout(() => setPhase("walk_entrance"), 20000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, cinematicResumed, setPhase]);
+
+  // Safety fallback: 4s after "Enter The Room" is clicked the room opens even
+  // if the corridor scene never fires the ro1 arrival callback.
+  useEffect(() => {
+    if (corridorEnterClicked && phase === "walk_corridor") {
+      const timer = setTimeout(() => setPhase("walk_room"), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [corridorEnterClicked, phase, setPhase]);
+
+  // Safety fallback for the auto-walk legs (restored 14s/14s/30s ceilings): the
+  // exterior/entrance scenes advance only when their WebGL loop fires a
+  // callback. If a scene stalls (GL context loss, throttled rAF), never strand
+  // the user — advance after a ceiling. walk_room invites a tap on the upload
+  // painting; if it's never found, surface the upload step after 30s.
+  useEffect(() => {
+    if (phase === "walk_exterior") {
+      const timer = setTimeout(() => setPhase("walk_entrance"), 14000);
+      return () => clearTimeout(timer);
+    }
+    if (phase === "walk_entrance") {
+      const timer = setTimeout(() => setPhase("walk_corridor"), 14000);
+      return () => clearTimeout(timer);
+    }
+    if (phase === "walk_room") {
+      const timer = setTimeout(() => setPhase("upload"), 30000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, setPhase]);
+
   // ── Paywall trial CTA (change 2): completing onboarding and routing to /pricing
   // must be ONE coherent flow — never fire setPhase('done') (which lands the user
   // in the atrium via onFinish) alongside navigation, which races the route/tab.
@@ -374,11 +497,19 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     }
   }, [phase, onFinish]);
 
-  // ── Preload ImportHub + the wing-orient card during setup so they're ready
-  // when the user reaches them (no lazy-chunk spinner between setup cards) ──
+  // ── Preload the 3D scene modules while the user types their name — perfect
+  // time to warm the module cache before the cinematic; preload ImportHub
+  // during the corridor/room legs so the painting tap opens it instantly. ──
   useEffect(() => {
-    if (phase === "style_era") {
-      import("@/components/ui/OnboardingWingOrientStep");
+    if (phase === "name") {
+      import("@/lib/3d/scenePreloader")
+        .then(({ preloadScene }) => {
+          preloadScene("exterior");
+          preloadScene("entrance");
+        })
+        .catch(() => {});
+    }
+    if (phase === "walk_corridor" || phase === "walk_room") {
       import("@/components/ui/ImportHub");
     }
   }, [phase]);
@@ -466,6 +597,19 @@ ${KEYFRAMES}
     color: MUTED, background: "none", border: "none",
     cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
     minHeight: "2.75rem", padding: "0.5rem",
+  };
+
+  // Warm-ink glass skip chip for the walkthrough legs — same chrome/anchor as
+  // the video skip chip, so "skip" reads as one gesture across the whole flow.
+  const walkSkipChipStyle: React.CSSProperties = {
+    position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))",
+    right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
+    fontFamily: T.font.body, fontSize: "0.75rem",
+    color: "rgba(255,255,255,0.9)", background: "rgba(64,59,54,0.45)",
+    border: "0.0625rem solid rgba(64,59,54,0.55)",
+    borderRadius: "0.5rem", padding: "0.5rem 1rem",
+    cursor: "pointer", backdropFilter: "blur(0.25rem)",
+    minHeight: "2.75rem", minWidth: "2.75rem",
   };
 
   // Visible fallback for lazy 3D scenes / panels: a spinner plus an always-clickable
@@ -694,7 +838,7 @@ ${KEYFRAMES}
         {canonStyle}
 
         <div style={pageScrollerStyle}>
-          <StepDots current={1} total={4} label={t("stepOf", { current: "1", total: "4" })} />
+          <StepDots current={1} total={2} label={t("stepOf", { current: "1", total: "2" })} />
 
           <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -834,13 +978,23 @@ ${KEYFRAMES}
   /* ── Name screen — warm-cream card, validated + labeled ── */
   if (phase === "name") {
     const nameValid = trimmedName.length > 0;
-    const advanceFromName = () => { if (nameValid) { setUserName(trimmedName); setPhase("style_era"); } };
+    // Advancing from name enters the walkthrough. The style-era confirmation is
+    // unrouted (walkthrough teaches the palace physically; era stays editable in
+    // Settings) — persist the Roman default here, exactly where the old
+    // style_era card used to write it.
+    const advanceFromName = () => {
+      if (!nameValid) return;
+      setUserName(trimmedName);
+      setStyleEra("roman");
+      updateProfile({ styleEra: "roman" }).catch(() => {});
+      setPhase("cinematic");
+    };
     return (
       <div style={pageStyle()}>
         {canonStyle}
 
         <div style={pageScrollerStyle}>
-          <StepDots current={2} total={4} label={t("stepOf", { current: "2", total: "4" })} />
+          <StepDots current={2} total={2} label={t("stepOf", { current: "2", total: "2" })} />
 
           <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -977,101 +1131,208 @@ ${KEYFRAMES}
     );
   }
 
-  /* ── Style confirmation — one calm Roman-Tuscany confirmation, not a choice ── */
-  if (phase === "style_era") {
+  /* ── Cinematic — "Welcome to [Name]'s Palace" over the live exterior ──
+     The scene holds at WP1 (onboardingMode); onCinematicPause surfaces the
+     prompt card ("Ready to visit your palace…?" + Yes); cinematicResumed sends
+     the camera on the 5-waypoint low flyover from the path to the entrance;
+     the arrival fires onRoomClick("__entrance__") -> 3s door beat ->
+     walk_entrance. Reduced motion: the scene swaps the flyover for composed
+     stills/instant cuts; the 8s prompt fallback + 20s flyover ceiling
+     guarantee forward motion even if a callback never fires. */
+  if (phase === "cinematic") {
+    const displayName = trimmedName || tr("namePlaceholder", "Your name");
     return (
-      <div style={pageStyle()}>
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
         {canonStyle}
+        <Suspense fallback={sceneLoadingFallback}>
+          <OnboardingSceneHost
+            scene="exterior"
+            onboardingMode
+            onRoomClick={handleExteriorRoomClick}
+            onCinematicPause={() => setCinematicPaused(true)}
+            cinematicResumed={cinematicResumed}
+          />
+        </Suspense>
 
-        <div style={pageScrollerStyle}>
-          <StepDots current={3} total={4} label={t("stepOf", { current: "3", total: "4" })} />
-
-          <div className="onb-anim" style={cardStyle}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
-
-              <Overline>{t("appName")}</Overline>
-
-              {/* Laurel wreath — Roman identity glyph, ember-glyph ink */}
-              <svg style={{ width: "3.25rem", height: "3.25rem" }} viewBox="0 0 44 44" fill="none" aria-hidden>
-                <path d="M22 6C18 10 14 16 14 22C14 28 17 32 22 34C27 32 30 28 30 22C30 16 26 10 22 6Z"
-                  stroke={EMBER_GLYPH} strokeWidth="1.2" fill="none" opacity="0.55" />
-                <path d="M10 20C12 16 16 13 20 12" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.45" strokeLinecap="round" />
-                <path d="M34 20C32 16 28 13 24 12" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.45" strokeLinecap="round" />
-                <path d="M8 26C11 22 15 20 19 19" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
-                <path d="M36 26C33 22 29 20 25 19" stroke={EMBER_GLYPH} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
-                <line x1="16" y1="36" x2="28" y2="36" stroke={EMBER_GLYPH} strokeWidth="1.2" opacity="0.65" />
-                <line x1="18" y1="38" x2="26" y2="38" stroke={EMBER_GLYPH} strokeWidth="0.8" opacity="0.45" />
-              </svg>
-
-              <h2 style={{
-                fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
-                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
-              }}>
-                {t("styleConfirmTitle") !== "styleConfirmTitle" ? t("styleConfirmTitle") : "Your palace style: Roman Tuscany"}
-              </h2>
+        <WalkCinematicCaption
+          isMobile={isMobile}
+          overline={tr("welcomeTitle", "Welcome to")}
+          title={tr("cinematicPalaceName", "{name}'s Palace", { name: displayName })}
+          caption={tr("walkExterior", "This is your Memory Palace — a beautiful place to store everything you treasure.")}
+        >
+          {cinematicPaused && !cinematicResumed && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
               <p style={{
-                fontFamily: T.font.display, fontStyle: "italic", fontSize: "1rem",
-                color: MUTED, maxWidth: "24rem", lineHeight: 1.6, margin: 0,
+                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
               }}>
-                {t("styleConfirmAside") !== "styleConfirmAside" ? t("styleConfirmAside") : "Marble atriums, colonnaded gardens — we'll build it around you."}
+                {tr("cinematicPrompt", "Ready to visit your palace and fill it with your memories?")}
               </p>
-              <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem",
-                color: MUTED, maxWidth: "24rem", lineHeight: 1.5, margin: 0,
-              }}>
-                {t("styleConfirmReversible") !== "styleConfirmReversible" ? t("styleConfirmReversible") : "You can change this anytime."}
-              </p>
-
-              {/* Buttons */}
-              <div style={{ display: "flex", gap: "0.75rem", width: "100%", marginTop: "0.25rem" }}>
-                <button
-                  className="onb-focusable"
-                  onClick={() => setPhase("name")}
-                  style={{
-                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-                    padding: "0 1.25rem", borderRadius: "0.75rem", minHeight: "3.25rem",
-                    border: `0.0625rem solid ${HAIRLINE}`, background: "#FFF",
-                    color: MUTED, cursor: "pointer",
-                  }}
-                >
-                  {"←"} {t("backButton")}
-                </button>
-                <button
-                  className="onb-cta onb-focusable"
-                  onClick={() => {
-                    setStyleEra("roman");
-                    updateProfile({ styleEra: "roman" }).catch(() => {});
-                    setPhase("wing_orient");
-                  }}
-                  style={{ ...primaryCtaStyle, flex: 1 }}
-                >
-                  {t("continueButton")} {"→"}
-                </button>
-              </div>
-
-              <button className="onb-focusable" onClick={handleSkip} style={skipLinkStyle}>
-                {t("skipExploreOwn")}
-              </button>
+              <WalkCtaButton
+                label={tr("cinematicYes", "Yes, let's go!")}
+                onClick={() => setCinematicResumed(true)}
+              />
             </div>
-          </div>
-        </div>
+          )}
+        </WalkCinematicCaption>
+
+        {/* Skip chip -> the fast exterior leg (direct auto-walk to the door) */}
+        <button className="onb-focusable" onClick={skipWalkLeg} style={walkSkipChipStyle}>
+          {t("cinematicSkip")}
+        </button>
       </div>
     );
   }
 
-  /* ── Wing orientation — "One palace, five wings" (step 4/4, §7 SPEC E) ──
-     Self-contained full-page card: brings its own R8 page container, scoped
-     keyframes, EMBER focus ring and RM guard — no wrapper canonStyle needed. */
-  if (phase === "wing_orient") {
+  /* ── Walk legs (restored guided walkthrough, canon captions) ── */
+  if (WALK_PHASES.includes(phase)) {
+    const sceneMap: Record<string, "exterior" | "entrance" | "corridor" | "room"> = {
+      walk_exterior: "exterior",
+      walk_entrance: "entrance",
+      walk_corridor: "corridor",
+      walk_room: "room",
+    };
+    const currentScene = sceneMap[phase] || "exterior";
+    // Exterior skip-leg: direct auto-walk to the entrance. The entrance and
+    // corridor scenes drive their own choreography internally (the corridor
+    // auto-walks to ro1 at step 7 once corridorEnterClicked flips).
+    const autoWalkTarget = phase === "walk_exterior" ? "__entrance__" : null;
+    const displayName = trimmedName || tr("namePlaceholder", "Your name");
+
     return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
+        {canonStyle}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingWingOrientStep
-            onBack={() => setPhase("style_era")}
-            onContinue={() => setPhase("upload")}
-            onSkip={handleSkip}
+          <OnboardingSceneHost
+            scene={currentScene}
+            autoWalkTo={autoWalkTarget}
+            onboardingMode
+            onRoomClick={handleExteriorRoomClick}
+            onDoorClick={
+              phase === "walk_entrance" ? handleEntranceDoorClick :
+              phase === "walk_corridor" ? handleCorridorDoorClick :
+              phase === "walk_room" ? handleRoomPaintingClick :
+              undefined
+            }
+            onCinematicStep={
+              phase === "walk_corridor" ? setCorridorStep :
+              phase === "walk_room" ? setRoomStep :
+              undefined
+            }
+            roomName={onboardingRoomName}
+            isMobile={isMobile}
+            corridorEnterClicked={corridorEnterClicked}
           />
         </Suspense>
+
+        {/* ── Exterior leg: warm-ink glass caption pill (walking to the door) ── */}
+        {phase === "walk_exterior" && (
+          <WalkCaptionPill
+            isMobile={isMobile}
+            message={tr("walkExterior", "This is your Memory Palace — a beautiful place to store everything you treasure.")}
+            nextLabel={tr("walkNext", "Next")}
+            onNext={skipWalkLeg}
+            skipLabel={tr("walkSkip", "Skip tour")}
+            onSkip={skipWalkLeg}
+          />
+        )}
+
+        {/* ── Entrance leg: the hall scene renders its own canon look-around
+            overlay + blinks + skip (legacy pre-Wave-1 cinematic branch,
+            selected by onboardingMode through OnboardingSceneHost). The wizard
+            adds only an SR caption so the leg is announced without doubling
+            the on-screen text. ── */}
+        {phase === "walk_entrance" && (
+          <div role="status" aria-live="polite" style={{ position: "absolute", width: "1px", height: "1px", margin: "-1px", padding: 0, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 }}>
+            {tr("walkEntrance", "Through the entrance, you'll find wings for each part of your life.")}
+          </div>
+        )}
+
+        {/* ── Corridor leg: cinematic caption overlay, steps 0-7 ── */}
+        {phase === "walk_corridor" && corridorStep >= 0 && (
+          <WalkCinematicCaption
+            isMobile={isMobile}
+            overline={tr("welcomeTitle", "Welcome to")}
+            title={tr("cinematicPossessive", "{name}'s {thing}", { name: displayName, thing: tr("corridorWingName", "Roots Wing") })}
+            caption={
+              corridorStep >= 2
+                ? tr("corridorSubtitle", "Every Wing has Rooms — small spaces within a larger one, each for a chapter with memories of you.")
+                : tr("walkCorridor", "Each wing has rooms for your memories — photos, videos, stories.")
+            }
+          >
+            {corridorStep >= 6 && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                <p style={{
+                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                  color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                  textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
+                }}>
+                  {tr("corridorRoomPromptPrefix", "Your personal Room is")}{" "}
+                  <span style={{ color: EMBER, fontWeight: 600 }}>{tr("corridorRoomName", "Me, Over Time")}</span>
+                </p>
+                <WalkCtaButton
+                  label={corridorEnterClicked ? `${tr("corridorEnterRoom", "Enter The Room")}…` : tr("corridorEnterRoom", "Enter The Room")}
+                  onClick={() => setCorridorEnterClicked(true)}
+                  disabled={corridorEnterClicked}
+                />
+              </div>
+            )}
+          </WalkCinematicCaption>
+        )}
+
+        {/* ── Room leg: cinematic caption overlay, steps 0-9 ── */}
+        {phase === "walk_room" && roomStep >= 0 && (
+          <WalkCinematicCaption
+            isMobile={isMobile}
+            overline={tr("welcomeTitle", "Welcome to")}
+            title={tr("cinematicPossessive", "{name}'s {thing}", { name: displayName, thing: tr("roomTitle", "Me, Over Time Room") })}
+            caption={
+              roomStep >= 4
+                ? tr("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more.")
+                : tr("walkRoom", "This is your first room. Ready to place your first memory?")
+            }
+          >
+            {roomStep >= 9 && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+                <p style={{
+                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                  color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                  textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
+                }}>
+                  {tr("roomHangPrompt", "Let's hang your first memory on the wall.")}
+                </p>
+                {/* Instructional hint chip — points at the empty painting, not a button */}
+                <span style={{
+                  display: "inline-block",
+                  fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  padding: "0.5rem 1.5rem",
+                  background: "rgba(255,255,255,0.08)",
+                  color: "rgba(250,250,247,0.65)",
+                  border: "0.0625rem solid rgba(255,255,255,0.14)",
+                  borderRadius: "0.5rem",
+                  whiteSpace: "nowrap",
+                  pointerEvents: "none",
+                }}>
+                  {tr("roomClickPainting", "Click on the empty painting")}
+                </span>
+                <WalkCtaButton
+                  label={tr("walkAddMemory", "Add a Memory")}
+                  onClick={() => setPhase("upload")}
+                />
+              </div>
+            )}
+          </WalkCinematicCaption>
+        )}
+
+        {/* Skip chip on the exterior + room legs (the entrance and corridor
+            scenes carry their own in-scene skip buttons at this anchor). */}
+        {(phase === "walk_exterior" || phase === "walk_room") && (
+          <button className="onb-focusable" onClick={skipWalkLeg} style={walkSkipChipStyle}>
+            {tr("walkSkip", "Skip tour")}
+          </button>
+        )}
       </div>
     );
   }
@@ -1172,21 +1433,15 @@ ${KEYFRAMES}
     );
   }
 
-  /* ── Celebration — calm gold threshold echoing the user's name (change 15) ── */
+  /* ── Celebration — gold threshold + restored confetti over the room scene
+     showing the just-hung memory (walkthrough finale keys). The threshold CTA
+     branches on the centralized paywall gate: where disallowed (iOS with IAP
+     off — Apple 3.1.1; Android native — no Play Billing) it always ENTERS the
+     palace (celebrationContinue -> done, no paywall); elsewhere it offers the
+     soft trial step (celebrationAtrium "Select your plan" -> paywall). ── */
   if (phase === "celebration") {
-    // Personalized copy that already exists in all 5 locales; degrade the {name}
-    // token gracefully when empty (change 13). The threshold CTA branches on the
-    // centralized paywall gate: where disallowed (iOS with IAP off — Apple
-    // 3.1.1; Android native — no Play Billing) it always ENTERS the palace
-    // (celebrationContinue -> done, no paywall); elsewhere it offers the soft
-    // trial step (celebrationAtrium "Select your plan" -> paywall).
-    const displayName = trimmedName || t("namePlaceholder");
-    const celebTitle = (t("celebrationTitle") !== "celebrationTitle"
-      ? t("celebrationTitle")
-      : "Welcome home, {name}!").replace("{name}", displayName);
-    const celebSubtitle = t("celebrationSubtitle") !== "celebrationSubtitle"
-      ? t("celebrationSubtitle")
-      : "Your palace is ready. Every memory you add makes it more yours.";
+    const celebTitle = tr("celebrationTitle2", "Congratulations!");
+    const celebSubtitle = tr("celebrationSubtitle2", "Now continue exploring your Memory Palace");
     // Tutorial-handoff hint (§9): points at the Atrium nudge tour that follows.
     // Free-tier-safe copy — passed to BOTH forks and BOTH platform branches.
     const celebHint = t("celebrationHandoffHint") !== "celebrationHandoffHint"
@@ -1211,6 +1466,10 @@ ${KEYFRAMES}
             alignItems: "center", justifyContent: "flex-start",
             overflowY: "auto", padding: "1.5rem 0",
           }}>
+            {/* Restored confetti burst — self-guards under reduced motion */}
+            <Suspense fallback={null}>
+              <ConfettiBurst />
+            </Suspense>
             <div className="onb-anim" style={{
               display: "flex", flexDirection: "column", alignItems: "center",
               textAlign: "center", gap: "1.25rem",
