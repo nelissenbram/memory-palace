@@ -1929,7 +1929,7 @@ export default function MemoryPalace(){
           {tRoom("media")}
         </button>
       )}
-      {showCorridorGallery&&activeWing&&wingData&&<CorridorGalleryPanel wing={wingData} rooms={getWingRooms(activeWing)} onClose={()=>setShowCorridorGallery(false)} onPaintingsChange={setCorridorPaintings} currentPaintings={corridorPaintings}/>}
+      {showCorridorGallery&&activeWing&&wingData&&<CorridorGalleryPanel wing={wingData} rooms={getWingRooms(activeWing)} onClose={()=>setShowCorridorGallery(false)} onPaintingsChange={setCorridorPaintings} currentPaintings={corridorPaintings} effectivePaintings={corridorPaintingsSeeded}/>}
       {/* Owner R2 item 4: corridor painting tap → full-screen media viewer
           (Library/room parity). Feed = hung paintings in slot order; Edit/chips
           step into MemoryDetail; the Media pill / empty frames keep the

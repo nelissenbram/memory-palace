@@ -63,6 +63,17 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const videoRef = useRef<HTMLVideoElement>(null);
   const [vidBlocked, setVidBlocked] = useState(false);
   const [vidError, setVidError] = useState(false);
+  /* Owner bug "video is silent": muted autoplay used to WIN silently with no
+     unmute affordance. Now the nudge tries UNMUTED first (the opening tap gives
+     Chromium sticky activation, so sound usually just works); when the browser
+     refuses, we fall back to muted and show a "Tap for sound" pill that unmutes
+     inside the tap gesture. `soundIntentRef` carries the user's intent across
+     prev/next remounts (never force-reset to muted once they chose sound);
+     `expectedMutedRef` tells our own programmatic mute/unmute apart from the
+     user toggling the native controls (volumechange fires for both). */
+  const [vidMutedFallback, setVidMutedFallback] = useState(false);
+  const soundIntentRef = useRef(true);
+  const expectedMutedRef = useRef(true);
 
   const mem: Mem | undefined = memories[index];
   const total = memories.length;
@@ -144,14 +155,30 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   }, [autoPlay, memories.length]);
 
   /* ─── Video autoplay nudge + blocked detection ─── */
-  useEffect(() => { setVidBlocked(false); setVidError(false); }, [mem?.id]);
+  useEffect(() => {
+    setVidBlocked(false); setVidError(false); setVidMutedFallback(false);
+    // Each item's <video> remounts (key) with the muted attribute — realign the
+    // "expected" mirror so the first volumechange isn't read as a user action.
+    expectedMutedRef.current = true;
+  }, [mem?.id]);
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    // Give the muted autoPlay attribute a beat; if still paused, retry play()
-    // and show the tap-to-play overlay when the browser refuses.
+    // Give the muted autoPlay attribute a beat, then honour sound intent:
+    // try UNMUTED first (the tap that opened/navigated grants activation on
+    // Chromium); if the browser refuses, keep playing muted and surface the
+    // "Tap for sound" pill; if even muted play fails, show tap-to-play.
     const id = setTimeout(() => {
-      if (v.paused && !v.ended) v.play().catch(() => setVidBlocked(true));
+      if (v.ended) return;
+      if (soundIntentRef.current) {
+        expectedMutedRef.current = false; v.muted = false;
+        v.play().then(() => setVidMutedFallback(false)).catch(() => {
+          expectedMutedRef.current = true; v.muted = true;
+          v.play().then(() => setVidMutedFallback(true)).catch(() => setVidBlocked(true));
+        });
+      } else if (v.paused) {
+        v.play().catch(() => setVidBlocked(true));
+      }
     }, 400);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -159,12 +186,31 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const tapToPlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
-    // In-gesture: try with sound first, fall back to muted (native controls unmute)
-    v.muted = false;
-    v.play().then(() => setVidBlocked(false)).catch(() => {
-      v.muted = true;
-      v.play().then(() => setVidBlocked(false)).catch(() => {});
+    // In-gesture: try with sound first, fall back to muted (+ pill to unmute)
+    expectedMutedRef.current = false; v.muted = false;
+    v.play().then(() => { setVidBlocked(false); setVidMutedFallback(false); soundIntentRef.current = true; }).catch(() => {
+      expectedMutedRef.current = true; v.muted = true;
+      v.play().then(() => { setVidBlocked(false); setVidMutedFallback(true); }).catch(() => {});
     });
+  }, []);
+  /* "Tap for sound" pill — unmute inside the user gesture (always allowed). */
+  const tapForSound = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    soundIntentRef.current = true;
+    expectedMutedRef.current = false;
+    v.muted = false;
+    if (v.paused) v.play().catch(() => {});
+    setVidMutedFallback(false);
+  }, []);
+  /* Native-controls mute/unmute → adopt as intent for prev/next; our own
+     programmatic changes echo back matching expectedMutedRef and are ignored. */
+  const onVolumeChange = useCallback((e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = e.currentTarget;
+    if (v.muted === expectedMutedRef.current) return;
+    expectedMutedRef.current = v.muted;
+    soundIntentRef.current = !v.muted;
+    setVidMutedFallback(false);
   }, []);
 
   /* ─── Scroll active thumb into view ─── */
@@ -287,6 +333,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 preload="auto"
                 onPlaying={() => setVidBlocked(false)}
                 onError={() => setVidError(true)}
+                onVolumeChange={onVolumeChange}
                 /* Owner R2 #6: plain dataUrl, NO ?stream=1 — same path as the Library/
                    Ledger players that work: /api/media 302-redirects to a presigned R2
                    URL (CDN + native Range). ?stream=1 proxied every byte through the
@@ -312,6 +359,32 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                   <TypeIcon type="video" size={40} color="rgba(255,255,255,0.45)" />
                   <span>{t("mediaPlayerVideoError") !== "mediaPlayerVideoError" ? t("mediaPlayerVideoError") : "This video couldn't be loaded"}</span>
                 </div>
+              )}
+              {/* Playing muted (unmuted autoplay refused) — "Tap for sound" pill;
+                  the unmute happens inside the tap gesture, so it always works. */}
+              {vidMutedFallback && !vidBlocked && !vidError && (
+                <button
+                  onClick={tapForSound}
+                  aria-label={t("mediaPlayerTapForSound") !== "mediaPlayerTapForSound" ? t("mediaPlayerTapForSound") : "Tap for sound"}
+                  style={{
+                    position: "absolute", top: "1rem", left: "50%", transform: "translateX(-50%)",
+                    display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                    minHeight: "2.75rem", padding: "0.5rem 1.125rem",
+                    borderRadius: "2rem",
+                    background: T.color.terracotta, border: "none", cursor: "pointer",
+                    color: "#fff", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                    letterSpacing: "0.02em",
+                    boxShadow: "0 0.25rem 1rem rgba(36,28,21,0.45)",
+                    zIndex: 5,
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor" />
+                    <line x1="23" y1="9" x2="17" y2="15" />
+                    <line x1="17" y1="9" x2="23" y2="15" />
+                  </svg>
+                  <span>{t("mediaPlayerTapForSound") !== "mediaPlayerTapForSound" ? t("mediaPlayerTapForSound") : "Tap for sound"}</span>
+                </button>
               )}
               {/* Autoplay blocked — visible tap-to-play affordance (user gesture) */}
               {vidBlocked && !vidError && (

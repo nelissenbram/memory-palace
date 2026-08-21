@@ -115,6 +115,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.created_at ? { createdAt: m.created_at } : {}),
         ...(m.displayed != null ? { displayed: m.displayed } : {}),
         ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
+        ...(m.display_scale ? { displayScale: m.display_scale } : {}),
       }));
       set((s) => ({ userMems: { ...s.userMems, [roomId]: mapped } }));
 
@@ -162,6 +163,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.created_at ? { createdAt: m.created_at } : {}),
         ...(m.displayed != null ? { displayed: m.displayed } : {}),
         ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
+        ...(m.display_scale ? { displayScale: m.display_scale } : {}),
       }));
     }
     set({ userMems: allMapped });
@@ -354,11 +356,22 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       ...(updates.lng !== undefined ? { lng: updates.lng } : {}),
       ...("displayed" in updates ? { displayed: updates.displayed ?? null } : {}),
       ...("displayUnit" in updates ? { display_unit: updates.displayUnit ?? null } : {}),
+      ...("displayScale" in updates ? { display_scale: (updates as { displayScale?: string | null }).displayScale ?? null } : {}),
     };
     try {
-      const result = await updateMemoryAction(memId, supaUpdates);
-      if ((result as { error?: string } | null)?.error) {
-        console.error("[memoryStore] updateMemory failed:", (result as { error?: string }).error);
+      let result = await updateMemoryAction(memId, supaUpdates);
+      let err = (result as { error?: string } | null)?.error;
+      // display_scale ships ahead of its migration (20260821_display_scale.sql):
+      // if the column doesn't exist yet, retry without it — the size sticks
+      // optimistically for the session and persists once the owner migrates.
+      if (err && "display_scale" in supaUpdates && /display_scale/i.test(err)) {
+        const { display_scale: _dropped, ...rest } = supaUpdates as Record<string, unknown>;
+        if (Object.keys(rest).length === 0) return true; // nothing else to persist
+        result = await updateMemoryAction(memId, rest as Parameters<typeof updateMemoryAction>[1]);
+        err = (result as { error?: string } | null)?.error;
+      }
+      if (err) {
+        console.error("[memoryStore] updateMemory failed:", err);
         return false;
       }
       return true;

@@ -194,7 +194,7 @@ export async function createMemory(data: {
 
 export async function updateMemoryAction(
   memoryId: string,
-  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string; thumbnail_url?: string; location_name?: string; lat?: number; lng?: number; displayed?: boolean | null; display_unit?: string | null }
+  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string; thumbnail_url?: string; location_name?: string; lat?: number; lng?: number; displayed?: boolean | null; display_unit?: string | null; display_scale?: string | null }
 ) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||

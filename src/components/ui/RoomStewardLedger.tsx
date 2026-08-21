@@ -148,11 +148,7 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
     onUpdate(mem.id, { displayed: false });
     showUndo(tr("archivedToast", "Kept safe in the archive"), () => onUpdate(mem.id, { displayed: true, displayUnit: prevUnit || impliedUnit(mem) }));
   };
-  const setPhotoStation = (mem: Mem, to: "wall" | "vitrine") => onUpdate(mem.id, { displayed: true, displayUnit: to === "vitrine" ? "vitrine" : "painting" });
-  const featureHero = (mem: Mem) => {
-    mems.forEach((m) => { if (isHero(m) && m.id !== mem.id) onUpdate(m.id, { hero: false } as unknown as Partial<Mem>); });
-    onUpdate(mem.id, { hero: true, displayed: true, displayUnit: "painting" } as unknown as Partial<Mem>);
-  };
+  const setScale = (mem: Mem, v: "sm" | "md" | "lg") => onUpdate(mem.id, { displayScale: v } as unknown as Partial<Mem>);
 
   const toggleSelect = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const bulkHide = () => { const ids = [...selected]; ids.forEach((id) => onUpdate(id, { displayed: false })); setSelected(new Set()); setSelectMode(false); showUndo(tr("archivedNToast", "{n} kept safe").replace("{n}", String(ids.length)), () => ids.forEach((id) => { const m = mems.find((x) => x.id === id); if (m) onUpdate(id, { displayed: true, displayUnit: impliedUnit(m) }); })); };
@@ -265,7 +261,7 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
           </div>
           <Card mem={hero} station="portraits" tr={tr} canEdit={canEdit} selectMode={selectMode} selected={selected.has(hero.id)}
             onToggleSelect={() => toggleSelect(hero.id)} shown onShown={(v) => setShown(hero, v)}
-            onPhotoStation={(to) => setPhotoStation(hero, to)} onOpen={() => onSelect?.(hero)} heroCard />
+            onOpen={() => onSelect?.(hero)} heroCard />
         </section>
       )}
 
@@ -284,9 +280,9 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
                 <Card key={m.id} mem={m} station={s.id} tr={tr} canEdit={canEdit} selectMode={selectMode}
                   selected={selected.has(m.id)} onToggleSelect={() => toggleSelect(m.id)}
                   shown onShown={(v) => setShown(m, v)}
-                  onPhotoStation={(to) => setPhotoStation(m, to)} onOpen={() => onSelect?.(m)}
+                  onOpen={() => onSelect?.(m)}
                   onPlay={isPlayable(m) ? () => setTrackIdx(Math.max(0, playables.indexOf(m))) : undefined}
-                  onFeature={s.id === "portraits" && isPhotoLike(m) ? () => featureHero(m) : undefined} />
+                  onScale={s.id === "portraits" && isPhotoLike(m) ? (v) => setScale(m, v) : undefined} />
               ))}
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.5rem" }}>
@@ -308,7 +304,7 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
               <Card key={m.id} mem={m} station={stationOf(m)} tr={tr} canEdit={canEdit} selectMode={selectMode}
                 selected={selected.has(m.id)} onToggleSelect={() => toggleSelect(m.id)}
                 shown={false} onShown={(v) => setShown(m, v)}
-                onPhotoStation={(to) => setPhotoStation(m, to)} onOpen={() => onSelect?.(m)} />
+                onOpen={() => onSelect?.(m)} />
             ))}
           </div>
         </section>
@@ -348,8 +344,11 @@ export function PlayerCard({ tracks, index, onIndex, tr }: { tracks: Mem[]; inde
   const [cur, setCur] = useState(0); const [dur, setDur] = useState(0);
   const [vol, setVol] = useState(1); const [loop, setLoop] = useState(false);
 
-  useEffect(() => { const a = mRef.current; if (a) a.volume = vol; }, [vol]);
-  useEffect(() => { const a = mRef.current; if (a) a.loop = loop; }, [loop]);
+  // Re-apply on mem?.id too: the media element remounts per track (key), so a
+  // fresh element would otherwise ignore the user's slider/loop and play at the
+  // default volume. Also force muted OFF — this transport is always audible.
+  useEffect(() => { const a = mRef.current; if (a) { a.volume = vol; a.muted = false; } }, [vol, mem?.id]);
+  useEffect(() => { const a = mRef.current; if (a) a.loop = loop; }, [loop, mem?.id]);
   useEffect(() => { setCur(0); setDur(0); setPlaying(false); }, [mem?.id]);
   const fmt = (s: number) => { if (!isFinite(s)) return "0:00"; const m = Math.floor(s / 60); const ss = Math.floor(s % 60); return `${m}:${ss < 10 ? "0" : ""}${ss}`; };
   const toggle = () => { const a = mRef.current; if (!a) return; if (a.paused) { a.play().then(() => setPlaying(true)).catch(() => setPlaying(false)); } else { a.pause(); setPlaying(false); } };
@@ -411,37 +410,50 @@ function Thumb({ mem }: { mem: Mem }) {
 }
 
 // ── one memory row ──
-function Card({ mem, station, tr, canEdit, selectMode, selected, onToggleSelect, shown, onShown, onPhotoStation, onOpen, onPlay, onFeature, heroCard }: {
+const SIZE_STEPS = ["sm", "md", "lg"] as const;
+export type DisplayScale = (typeof SIZE_STEPS)[number];
+const scaleOf = (m: Mem): DisplayScale => { const v = (m as unknown as { displayScale?: string }).displayScale; return v === "sm" || v === "lg" ? v : "md"; };
+
+function Card({ mem, station, tr, canEdit, selectMode, selected, onToggleSelect, shown, onShown, onOpen, onPlay, onScale, heroCard }: {
   mem: Mem; station: StationId; tr: (k: string, f: string) => string; canEdit: boolean; selectMode: boolean; selected: boolean;
-  onToggleSelect: () => void; shown: boolean; onShown: (v: boolean) => void; onPhotoStation: (to: "wall" | "vitrine") => void; onOpen: () => void; onPlay?: () => void; onFeature?: () => void; heroCard?: boolean;
+  onToggleSelect: () => void; shown: boolean; onShown: (v: boolean) => void; onOpen: () => void; onPlay?: () => void; onScale?: (v: DisplayScale) => void; heroCard?: boolean;
 }) {
+  const scale = scaleOf(mem);
+  const sizeWord = (v: DisplayScale) => v === "sm" ? tr("sizeSmall", "Small") : v === "lg" ? tr("sizeLarge", "Large") : tr("sizeMedium", "Medium");
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: T.space.sm, padding: "0.5rem", borderRadius: T.radius.md, background: T.color.white, border: `0.0625rem solid ${selected ? EMBER : heroCard ? BRONZE : "rgba(64,59,54,0.08)"}` }}>
-      {selectMode && (
-        <button aria-label="select" onClick={onToggleSelect} style={{ width: "1.25rem", height: "1.25rem", borderRadius: "0.3rem", flexShrink: 0, cursor: "pointer", border: `0.125rem solid ${selected ? EMBER : SAND}`, background: selected ? EMBER : "transparent", color: "#fff", fontSize: "0.8rem", lineHeight: 1 }}>{selected ? "✓" : ""}</button>
-      )}
-      <button onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: T.space.sm, flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
-        <Thumb mem={mem} />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mem.title || tr("untitled", "Untitled")}</div>
-          {!shown && <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>{tr("wasAt", "From")} {tr(`station_${station}`, station)}</div>}
-        </div>
-      </button>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}>
-        {onPlay && <button onClick={onPlay} aria-label={tr("play", "Play")} style={{ width: "1.8rem", height: "1.8rem", borderRadius: "50%", border: "none", background: EMBER, color: "#fff", cursor: "pointer", fontSize: "0.8rem" }}>▶</button>}
-        {canEdit && onFeature && !heroCard && (
-          <button onClick={onFeature} title={tr("featureAboveFireplace", "Feature above the fireplace")} style={chip()}>★</button>
+    <div style={{ padding: "0.5rem", borderRadius: T.radius.md, background: T.color.white, border: `0.0625rem solid ${selected ? EMBER : heroCard ? BRONZE : "rgba(64,59,54,0.08)"}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: T.space.sm }}>
+        {selectMode && (
+          <button aria-label="select" onClick={onToggleSelect} style={{ width: "1.25rem", height: "1.25rem", borderRadius: "0.3rem", flexShrink: 0, cursor: "pointer", border: `0.125rem solid ${selected ? EMBER : SAND}`, background: selected ? EMBER : "transparent", color: "#fff", fontSize: "0.8rem", lineHeight: 1 }}>{selected ? "✓" : ""}</button>
         )}
-        {canEdit && station === "portraits" && isPhotoLike(mem) && shown && !heroCard && (
-          <button onClick={() => onPhotoStation("vitrine")} title={tr("moveToVitrine", "Move to the vitrine")} style={chip()}>{tr("toVitrine", "▸ Vitrine")}</button>
-        )}
-        {canEdit && (
-          <div style={{ display: "inline-flex", borderRadius: T.radius.pill, overflow: "hidden", border: `0.0625rem solid ${SAND}` }}>
-            <button onClick={() => onShown(true)} style={seg(shown)}>{tr("shownHere", "Shown")}</button>
-            <button onClick={() => onShown(false)} style={seg(!shown)}>{tr("archived", "Archive")}</button>
+        <button onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: T.space.sm, flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+          <Thumb mem={mem} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mem.title || tr("untitled", "Untitled")}</div>
+            {!shown && <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>{tr("wasAt", "From")} {tr(`station_${station}`, station)}</div>}
           </div>
-        )}
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}>
+          {onPlay && <button onClick={onPlay} aria-label={tr("play", "Play")} style={{ width: "1.8rem", height: "1.8rem", borderRadius: "50%", border: "none", background: EMBER, color: "#fff", cursor: "pointer", fontSize: "0.8rem" }}>▶</button>}
+          {canEdit && (
+            <div style={{ display: "inline-flex", borderRadius: T.radius.pill, overflow: "hidden", border: `0.0625rem solid ${SAND}` }}>
+              <button onClick={() => onShown(true)} style={seg(shown)}>{tr("shownHere", "Shown")}</button>
+              <button onClick={() => onShown(false)} style={seg(!shown)}>{tr("archived", "Archive")}</button>
+            </div>
+          )}
+        </div>
       </div>
+      {/* per-painting wall size (owner item 3): S · M · L, persists as displayScale */}
+      {canEdit && onScale && shown && (
+        <div role="group" aria-label={tr("paintingSize", "Painting size")} style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.35rem" }}>
+          <div style={{ display: "inline-flex", borderRadius: T.radius.pill, overflow: "hidden", border: `0.0625rem solid ${SAND}` }}>
+            {SIZE_STEPS.map((v) => (
+              <button key={v} onClick={() => onScale(v)} aria-pressed={scale === v} aria-label={sizeWord(v)} title={sizeWord(v)}
+                style={{ ...seg(scale === v), minWidth: "2.75rem", minHeight: "2.75rem" }}>{v === "sm" ? "S" : v === "lg" ? "L" : "M"}</button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

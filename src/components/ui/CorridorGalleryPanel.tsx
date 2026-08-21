@@ -52,9 +52,15 @@ interface CorridorGalleryPanelProps {
   onClose: () => void;
   onPaintingsChange: (paintings: CorridorPaintings) => void;
   currentPaintings: CorridorPaintings;
+  /** The EFFECTIVE per-slot list the 3D corridor actually renders (F09 auto-seed
+   *  merged under manual curation — see corridorPaintingsSeeded in MemoryPalace).
+   *  Display reads this so the panel matches the wall; persistence still only
+   *  writes the manual map (currentPaintings), so clearing a manual entry falls
+   *  back to the seed. Optional for older call sites. */
+  effectivePaintings?: CorridorPaintings;
 }
 
-export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintingsChange, currentPaintings }: CorridorGalleryPanelProps) {
+export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintingsChange, currentPaintings, effectivePaintings }: CorridorGalleryPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("corridorGallery");
   const { t: tWings } = useTranslation("wings");
@@ -83,6 +89,23 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   // Painting slots — 1 per room (one painting next to each door). Stable identity
   // so it doesn't rebuild on every unrelated render.
   const slots = useMemo(() => rooms.map((r) => r.id), [rooms]);
+
+  // What each slot ACTUALLY shows on the 3D wall: manual curation wins, the
+  // F09 seed fills the rest. Falls back to the manual map when the parent
+  // doesn't provide the merged view (older call sites).
+  const effective = effectivePaintings ?? paintings;
+
+  // roomId → display name, for the "source room" line under each hung painting.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- customRooms is read via getWingRooms
+  const roomNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    WINGS.forEach((w) => {
+      getWingRooms(w.id).forEach((room) => {
+        map[room.id] = (room.nameKey && tWings(room.nameKey)) || room.name;
+      });
+    });
+    return map;
+  }, [customRooms, getWingRooms, tWings]);
 
   // Get all memories with images from ALL wings (not just current wing).
   // Memoized on the actual data it reads (userMems + customRooms via getWingRooms,
@@ -164,14 +187,18 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
   const handleSize = useCallback((slotRoomId: string, size: CorridorPaintingSize) => {
     setPaintings((prev) => {
-      const cur = prev[slotRoomId];
+      // Sizing a seed-only slot promotes the seeded photo into a manual entry
+      // (the merge in MemoryPalace is per-slot, so a size-only override would
+      // blank the painting). memId/roomId ride along, so the viewer still
+      // resolves the real Mem.
+      const cur = prev[slotRoomId]?.url ? prev[slotRoomId] : effectivePaintings?.[slotRoomId];
       if (!cur?.url) return prev; // size only applies to a hung photo
       const next: CorridorPaintings = { ...prev, [slotRoomId]: { ...cur, size } };
       saveCorridorPaintings(wing.id, next);
       onPaintingsChange(next);
       return next;
     });
-  }, [wing.id, onPaintingsChange]);
+  }, [wing.id, onPaintingsChange, effectivePaintings]);
 
   const handleClear = useCallback((slotRoomId: string) => {
     setPaintings((prev) => {
@@ -265,7 +292,8 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
           gap: "0.75rem",
         }}>
           {slots.map((roomId, idx) => {
-            const override = paintings[roomId];
+            const override = paintings[roomId]; // manual curation only — drives the clear (✕) action
+            const shown = effective[roomId] ?? override; // what the 3D wall renders (seed merged under manual)
             const isPicking = pickingSlot === roomId;
             return (
               <div
@@ -302,12 +330,12 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                     width: "100%", aspectRatio: "4 / 3", borderRadius: "0.625rem",
                     border: `0.0625rem solid ${HAIRLINE}`,
                     overflow: "hidden", position: "relative",
-                    background: override?.url
-                      ? `url(${override.url}) center/cover no-repeat`
+                    background: shown?.url
+                      ? `url(${shown.url}) center/cover no-repeat`
                       : `linear-gradient(135deg, ${accent}35, ${accent}15)`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    {!override?.url && (
+                    {!shown?.url && (
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
                         <rect x="3" y="4" width="18" height="14" rx="1.5"/>
                         <circle cx="8.5" cy="9.5" r="1.5"/>
@@ -324,18 +352,20 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                     </div>
                     <div style={{
                       fontFamily: T.font.body, fontSize: "0.625rem",
-                      color: override ? accent : T.color.muted,
+                      color: shown ? accent : T.color.muted,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
-                      {override?.title || t("tapToChoose")}
+                      {shown
+                        ? [shown.title, shown.roomId ? roomNameById[shown.roomId] : undefined].filter(Boolean).join(" · ") || t("tapToChoose")
+                        : t("tapToChoose")}
                     </div>
                   </div>
                 </button>
                 {/* Frame size — small/normal/large per slot (owner 2026-08-06 #1) */}
-                {override?.url && (
+                {shown?.url && (
                   <div role="radiogroup" aria-label={t("sizeLabel")} style={{ display: "flex", gap: "0.25rem", marginTop: "0.5rem" }}>
                     {(["small", "normal", "large"] as const).map((sz) => {
-                      const active = (override.size || "normal") === sz;
+                      const active = (shown.size || "normal") === sz;
                       return (
                         <button
                           key={sz}
@@ -482,7 +512,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                   contain: "layout",
                 }}>
                   {filteredMems.map(({ mem, room: memRoom, wingName }) => {
-                    const selected = paintings[pickingSlot]?.memId === mem.id;
+                    const selected = effective[pickingSlot]?.memId === mem.id;
                     return (
                       <button key={mem.id} onClick={() => handleAssign(pickingSlot, mem, memRoom.id)} className="corridor-focusable" style={{
                         display: "flex", alignItems: "center", gap: "0.75rem",

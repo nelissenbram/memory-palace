@@ -88,7 +88,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
   // window (800ms) to prevent rapid teardown/rebuild cycles that exhaust WebGL
   // contexts and cause a pitch-dark scene. The debounce also coalesces multiple
   // rapid toggles (common when the user assigns furniture in RoomMediaPanel).
-  const rawDisplayFP=useMemo(()=>mems.map((m:any)=>`${m.displayed}:${m.displayUnit||""}`).join("|"),[mems]);
+  const rawDisplayFP=useMemo(()=>mems.map((m:any)=>`${m.displayed}:${m.displayUnit||""}:${m.displayScale||""}`).join("|"),[mems]);
   const [debouncedDisplayFP,setDebouncedDisplayFP]=useState(rawDisplayFP);
   const displayDebounceRef=useRef<ReturnType<typeof setTimeout>|null>(null);
   const prevStructuralFPRef=useRef(structuralFingerprint);
@@ -1349,6 +1349,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // → the museum plaque was z-buried and invisible. +.17 gives it real clearance.
       // owner 2026-08-18 #5: 2.5 put the plaque INSIDE the mantel shelf — 2.72
       // clears it (frame bottom ~1.97, plaque ~1.8 > shelf top 1.6).
+      // displayScale (S/M/L, 2026-08-21) intentionally NOT applied here: the
+      // hero's y/width are tuned to the mantel (plaque clears the shelf at
+      // 2.72) — lg would sink the plaque back into the mantel. Salon walls only.
       mountArtwork(om,t,fpX,W3?2.72:2.4,W3?fpZ+.17:fpZ+.09,0,W2?2.0:1.7);
     }else if(bigPaintMem){
       // Frame only shown when there's actual content
@@ -1429,6 +1432,48 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       let omittedCount=salonRest.length-nHang;
       let ptr=0;
       const salonTexMap=new Map<string,THREE.Texture>();
+      // ── Owner 2026-08-21 (Ledger S/M/L): per-painting displayScale ──
+      // Post-layout pass over computeSalonHang placements: sm=0.75×, md=1×,
+      // lg=1.3× on width+height (mountSalonHang builds frame+photo+plaque from
+      // placement width, so the whole artwork group scales). Clamp rules:
+      //  (1) a row never overflows its usable run (run.width − 2×0.5m margin):
+      //      lg growth is pulled back toward 1× proportionally; sm/md never move;
+      //  (2) pieces grow AWAY from the shared sightline seam (row 0 keeps its
+      //      top edge, upper rows their bottom edge) and never breach the
+      //      floor/ceiling clears (0.8m+0.35m plaque below, 0.3m above);
+      //  (3) at 3 salon rows lg extra height caps at 0.25m (ROW_GAP is 0.45m).
+      const SCALE_K:Record<string,number>={sm:0.75,md:1,lg:1.3};
+      const applyDisplayScale=(lay:ReturnType<typeof computeSalonHang>,memOf:(id:string)=>any)=>{
+        const usable=Math.max(0,lay.wall.width-1);const MIN_GAP=0.15;
+        const byRow=new Map<number,typeof lay.placements>();
+        for(const p of lay.placements){const a=byRow.get(p.row);a?a.push(p):byRow.set(p.row,[p]);}
+        for(const rp of byRow.values()){
+          rp.sort((a,b)=>a.x-b.x);
+          const gaps=rp.slice(1).map((p,i)=>Math.max(MIN_GAP,(p.x-p.width/2)-(rp[i].x+rp[i].width/2)));
+          const gapSum=gaps.reduce((a,b)=>a+b,0);
+          let ks=rp.map(p=>{
+            let k=SCALE_K[memOf(p.memory.id)?.displayScale as string]??1;
+            if(k>1&&lay.rows>=3)k=Math.min(k,1+0.25/p.height); // protect the inter-row gap
+            return k;
+          });
+          const wSum=rp.reduce((a,p,i)=>a+p.width*ks[i],0);
+          if(wSum+gapSum>usable){ // dense run: pull lg back toward 1×
+            const growSum=rp.reduce((a,p,i)=>a+(ks[i]>1?p.width*(ks[i]-1):0),0);
+            const r=growSum>0?Math.max(0,1-(wSum+gapSum-usable)/growSum):0;
+            ks=ks.map(k=>k>1?1+(k-1)*r:k);
+          }
+          if(ks.every(k=>k===1))continue; // untouched row — keep the exact original hang
+          const total=rp.reduce((a,p,i)=>a+p.width*ks[i],0)+gapSum;
+          let x=-total/2;
+          rp.forEach((p,i)=>{
+            const k=ks[i],w=p.width*k,h=p.height*k;
+            let y=lay.rows>1?(p.row===0?(p.y+p.height/2)-h/2:(p.y-p.height/2)+h/2):p.y;
+            y=Math.min(y,lay.wall.yBase+lay.wall.height-0.3-h/2);
+            y=Math.max(y,lay.wall.yBase+0.8+0.35+h/2);
+            p.width=w;p.height=h;p.y=y;p.x=x+w/2;x+=w+(gaps[i]??0);
+          });
+        }
+      };
       salonRuns.forEach((run,ri)=>{
         const slice=salonRest.slice(ptr,ptr+counts[ri]);ptr+=counts[ri];
         if(slice.length===0)return;
@@ -1444,6 +1489,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         // is confined to that band and reads as an intentional picture-rail row.
         const bandBottom=W3?0.5:0, bandTop=W3?(rH-0.55):(rH-0.2);
         const lay=computeSalonHang(refs,{width:run.width,height:bandTop-bandBottom,yBase:bandBottom},{seed:(salonSeed^(ri*0x9e3779b9))>>>0,maxPieces:slice.length});
+        applyDisplayScale(lay,(id)=>byId.get(id)); // per-painting S/M/L before mount
         omittedCount+=lay.omitted.length;
         const mount=mountSalonHang(lay,{
           getTexture:(ref)=>salonTexMap.get(ref.id)!,
