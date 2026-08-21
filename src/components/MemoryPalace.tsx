@@ -84,7 +84,6 @@ import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpot
 const GettingStartedChecklist = lazy(() => import("@/components/ui/GettingStartedChecklist"));
 import { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
 import ContextualTooltip from "@/components/ui/ContextualTooltip";
-const FirstMemoryPrompt = lazy(() => import("@/components/ui/FirstMemoryPrompt"));
 import CinematicWalkthrough from "@/components/ui/CinematicWalkthrough";
 import DiscoveryMenu from "@/components/ui/DiscoveryMenu";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
@@ -948,6 +947,30 @@ export default function MemoryPalace(){
   //    layout thrash and blank-frame flashes. ──
   const [palaceHost, setPalaceHost] = useState<HTMLDivElement | null>(null);
   const [palacePending, setPalacePending] = useState<PalacePending>(null);
+
+  // Track that we just finished onboarding — suppress tutorial auto-start
+  // (declared here, above the scene-tour effects, because the §5.4 suppression
+  // gate below reads it; consumed further down by the wizard early-return).
+  const justOnboardedRef = useRef(false);
+
+  // STAGING-ONLY: treat every login as a first-time login so onboarding can be
+  // reviewed on preview builds. HARD-GATED to non-production hosts — the real
+  // domain (thememorypalace.ai / www) is NEVER forced. Escape hatch: append
+  // ?onboarding=off to browse the rest of staging without the wizard.
+  const [forceOnboarding, setForceOnboarding] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const h = window.location.hostname;
+    if (h === "thememorypalace.ai" || h === "www.thememorypalace.ai") return; // production: never force
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("onboarding") === "off") sessionStorage.setItem("mp_stg_onb_off", "1");
+      if (params.get("onboarding") === "on") sessionStorage.removeItem("mp_stg_onb_off");
+      if (sessionStorage.getItem("mp_stg_onb_off") === "1") return;
+    } catch { /* ignore */ }
+    setForceOnboarding(true);
+  }, []);
+
   const palaceTourOpen = usePalaceTourStore((s) => s.open);
   const setPalaceTourOpen = usePalaceTourStore((s) => s.setOpen);
   const entranceTourOpen = useEntranceTourStore((s) => s.open);
@@ -956,58 +979,104 @@ export default function MemoryPalace(){
   const setCorridorTourOpen = useCorridorTourStore((s) => s.setOpen);
   const roomTourOpen = useRoomTourStore((s) => s.open);
   const setRoomTourOpen = useRoomTourStore((s) => s.setOpen);
+  // Stable onClose handlers for the four scene tours. These MUST be memoized:
+  // the tutorials' Escape/focus-restore effects depend on onClose, and an
+  // inline arrow (new identity every MemoryPalace render) made those effects
+  // tear down/re-run mid-tour — yanking focus off the tour's primary button
+  // and corrupting the focus-restore target on close.
+  const closePalaceTour = useCallback(() => setPalaceTourOpen(false), [setPalaceTourOpen]);
+  const closeEntranceTour = useCallback(() => setEntranceTourOpen(false), [setEntranceTourOpen]);
+  const closeCorridorTour = useCallback(() => setCorridorTourOpen(false), [setCorridorTourOpen]);
+  const closeRoomTour = useCallback(() => setRoomTourOpen(false), [setRoomTourOpen]);
   // Track which tour auto-opens have already fired this session
   const tourFired = useRef<Record<string, boolean>>({});
 
-  // Auto-open room tutorial on first room visit
+  // ── §5.4 scene-tour auto-fire suppression ──
+  // Scene tours must never auto-fire while the onboarding wizard/cinematic, the
+  // cinematic walkthrough (incl. its discovery menu), a nudge (cutout), or any
+  // modal/panel/Sheet is up. Suppression DEFERS: the effects below return
+  // BEFORE consuming the seen flag and re-run (via this dep) when the blocking
+  // state clears, so the one-shot fires at the next eligible moment.
+  // NOTE: justOnboardedRef is a ref (no re-render on flip), but it only flips
+  // inside handleFinishOnboarding which also sets navMode — the effects re-run
+  // on that same commit, so the read below is never stale when it matters.
+  const anyBlockingPanelOpen =
+    !!selMem || showUpload || showSharing || showSharingSettings ||
+    showRoomManager || showCorridorGallery || showGallery || showPublishModal ||
+    showPasscodeModal || showEraPicker || showUpgradePrompt || showStoragePlayer ||
+    showFamilyTree || showMemoryMap || showTimeline || showImportHub ||
+    showInvites || showSharedWithMe || showNotificationsPage || showSettings ||
+    showTools || showSpotlight || roomViewerIdx !== null || corridorViewerIdx !== null;
+  const sceneTourSuppressed =
+    onboarded === false || (forceOnboarding && !justOnboardedRef.current) ||
+    walkthroughActive || showDiscoveryMenu ||
+    nudgeActiveNudge !== null || anyBlockingPanelOpen;
+
+  // Auto-open room tutorial on first room visit (3D only — every tour bullet
+  // describes the 3D interior and would be false in other nav modes, §5.1)
   useEffect(() => {
-    if (view !== "room") {
+    if (navMode !== "3d" || view !== "room") {
       // Left the room view: reset the store so a tour that auto-opened on a
       // now-stale view (e.g. the 800ms delay fired after the user backed out)
       // cannot leak into the next room visit.
       setRoomTourOpen(false);
       return;
     }
-    const key = "mp_room_tour_seen_v1";
+    const key = "mp_room_tour_seen_v2";
     if (tourFired.current[key]) return;
     // Globally muted (user skipped a scene tutorial): no auto-fire, and leave
     // the seen flag + session marker untouched so un-muting resumes the sequence.
     if (tutorialsMuted()) return;
+    if (sceneTourSuppressed) return; // §5.4 defer — do not consume the seen flag
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
-        tourFired.current[key] = true;
-        window.localStorage.setItem(key, "1");
         // Store the timeout id + clear it on teardown so leaving the view
         // mid-delay cannot flip the store open on a view that no longer renders.
-        const id = setTimeout(() => setRoomTourOpen(true), 800);
+        // The seen flag is consumed at OPEN time (inside the callback), not at
+        // schedule time: a timer cancelled by suppression onset or a view change
+        // defers the tour instead of silently burning the one-shot (§5.4).
+        const id = setTimeout(() => {
+          tourFired.current[key] = true;
+          try { window.localStorage.setItem(key, "1"); } catch {}
+          setRoomTourOpen(true);
+        }, 800);
         return () => clearTimeout(id);
       } else {
         tourFired.current[key] = true;
       }
     } catch {}
-  }, [view, setRoomTourOpen]);
+  }, [navMode, view, sceneTourSuppressed, setRoomTourOpen]);
 
   useEffect(() => {
     if (navMode !== "3d" || view !== "corridor") {
       setCorridorTourOpen(false);
       return;
     }
-    const key = "mp_corridor_tour_seen_v1";
+    const key = "mp_corridor_tour_seen_v2";
     if (tourFired.current[key]) return;
     if (tutorialsMuted()) return; // global mute — see room-tour effect above
+    if (sceneTourSuppressed) return; // §5.4 defer — see room-tour effect above
+    // Shared-wing corridors (visiting someone else's wing) defer too: there is
+    // no auto-seeded painting wall there, painting taps open the gallery panel
+    // (not the fullscreen viewer), and the Media pill may not render — every
+    // line of the tour's copy would be untrue. Deferring (not consuming the
+    // seen flag) keeps the one-shot for the user's own first corridor.
+    if (activeWing?.startsWith("shared:")) return;
     try {
       if (!window.localStorage.getItem(key)) {
-        tourFired.current[key] = true;
-        window.localStorage.setItem(key, "1");
-        // No delay here, but a stored id keeps the pattern uniform and lets the
-        // cleanup cancel a pending open if the view tears down first.
-        const id = setTimeout(() => setCorridorTourOpen(true), 0);
+        // 800ms delay for consistency with the other scene tours (§5.1); seen
+        // flag consumed at open time — see room-tour effect above.
+        const id = setTimeout(() => {
+          tourFired.current[key] = true;
+          try { window.localStorage.setItem(key, "1"); } catch {}
+          setCorridorTourOpen(true);
+        }, 800);
         return () => clearTimeout(id);
       } else {
         tourFired.current[key] = true;
       }
     } catch {}
-  }, [navMode, view, setCorridorTourOpen]);
+  }, [navMode, view, activeWing, sceneTourSuppressed, setCorridorTourOpen]);
 
   useEffect(() => {
     // Manual open — always works and lifts the global tutorial mute so the
@@ -1022,20 +1091,24 @@ export default function MemoryPalace(){
       setEntranceTourOpen(false);
       return;
     }
-    const key = "mp_entrance_tour_seen_v1";
+    const key = "mp_entrance_tour_seen_v2";
     if (tourFired.current[key]) return;
     if (tutorialsMuted()) return; // global mute — see room-tour effect above
+    if (sceneTourSuppressed) return; // §5.4 defer — see room-tour effect above
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
-        tourFired.current[key] = true;
-        window.localStorage.setItem(key, "1");
-        const id = setTimeout(() => setEntranceTourOpen(true), 800);
+        // Seen flag consumed at open time — see room-tour effect above.
+        const id = setTimeout(() => {
+          tourFired.current[key] = true;
+          try { window.localStorage.setItem(key, "1"); } catch {}
+          setEntranceTourOpen(true);
+        }, 800);
         return () => clearTimeout(id);
       } else {
         tourFired.current[key] = true;
       }
     } catch {}
-  }, [navMode, view, setEntranceTourOpen]);
+  }, [navMode, view, sceneTourSuppressed, setEntranceTourOpen]);
 
   // Listen for help-button-triggered palace tour open
   useEffect(() => {
@@ -1058,20 +1131,24 @@ export default function MemoryPalace(){
       setPalaceTourOpen(false);
       return;
     }
-    const key = "mp_palace_tour_seen_v1";
+    const key = "mp_palace_tour_seen_v2";
     if (tourFired.current[key]) return;
     if (tutorialsMuted()) return; // global mute — see room-tour effect above
+    if (sceneTourSuppressed) return; // §5.4 defer — see room-tour effect above
     try {
       if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
-        tourFired.current[key] = true;
-        window.localStorage.setItem(key, "1");
-        const id = setTimeout(() => setPalaceTourOpen(true), 800);
+        // Seen flag consumed at open time — see room-tour effect above.
+        const id = setTimeout(() => {
+          tourFired.current[key] = true;
+          try { window.localStorage.setItem(key, "1"); } catch {}
+          setPalaceTourOpen(true);
+        }, 800);
         return () => clearTimeout(id);
       } else {
         tourFired.current[key] = true;
       }
     } catch {}
-  }, [navMode, view, setPalaceTourOpen]);
+  }, [navMode, view, sceneTourSuppressed, setPalaceTourOpen]);
   // Lazy 3D warm-up: the WebGL context + ExteriorScene graph (+ its HDRI/PBR
   // downloads) must NOT build during the first atrium/library paint. Build it
   // the moment the user enters 3D — sessions that never open the palace pay
@@ -1411,27 +1488,6 @@ export default function MemoryPalace(){
     }
   }, [onboarded, view, tutorialActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Track that we just finished onboarding — suppress tutorial auto-start
-  const justOnboardedRef = useRef(false);
-
-  // STAGING-ONLY: treat every login as a first-time login so onboarding can be
-  // reviewed on preview builds. HARD-GATED to non-production hosts — the real
-  // domain (thememorypalace.ai / www) is NEVER forced. Escape hatch: append
-  // ?onboarding=off to browse the rest of staging without the wizard.
-  const [forceOnboarding, setForceOnboarding] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const h = window.location.hostname;
-    if (h === "thememorypalace.ai" || h === "www.thememorypalace.ai") return; // production: never force
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("onboarding") === "off") sessionStorage.setItem("mp_stg_onb_off", "1");
-      if (params.get("onboarding") === "on") sessionStorage.removeItem("mp_stg_onb_off");
-      if (sessionStorage.getItem("mp_stg_onb_off") === "1") return;
-    } catch { /* ignore */ }
-    setForceOnboarding(true);
-  }, []);
-
   const handleFinishOnboarding=async(memoryUploaded?: boolean)=>{
     // Atomic: if the DB write fails, finishOnboarding throws — keep the wizard
     // mounted so the write retries rather than navigating away with a half-
@@ -1638,10 +1694,10 @@ export default function MemoryPalace(){
       </div>
 
       <PerfHud />
-      {view==="exterior"&&<PalaceExteriorTutorial open={palaceTourOpen} onClose={()=>setPalaceTourOpen(false)} />}
-      {view==="entrance"&&<EntranceHallTutorial open={entranceTourOpen} onClose={()=>setEntranceTourOpen(false)} />}
-      {view==="corridor"&&<CorridorTutorial open={corridorTourOpen} onClose={()=>setCorridorTourOpen(false)} />}
-      {view==="room"&&<RoomTutorial open={roomTourOpen} onClose={()=>setRoomTourOpen(false)} />}
+      {view==="exterior"&&<PalaceExteriorTutorial open={palaceTourOpen} onClose={closePalaceTour} />}
+      {view==="entrance"&&<EntranceHallTutorial open={entranceTourOpen} onClose={closeEntranceTour} />}
+      {view==="corridor"&&<CorridorTutorial open={corridorTourOpen} onClose={closeCorridorTour} />}
+      {view==="room"&&<RoomTutorial open={roomTourOpen} onClose={closeRoomTour} />}
 
       {/* Scene loading overlay — fades out when the mounted scene fires onReady
           (sceneReadyFade restarts the fade with zero delay); the fixed fadeDelay
@@ -1944,14 +2000,12 @@ export default function MemoryPalace(){
       {/* Getting Started checklist — disabled, replaced by NudgeTooltip system */}
       {/* <GettingStartedChecklist ... /> */}
 
-      {/* First memory prompt — disabled, onboarding + nudge system handles guidance */}
-      {/* {view==="room"&&activeRoomId&&allRoomMems.length===0&&!showUpload&&!selMem&&!showSharing&&!tutorialActive&&
-        <FirstMemoryPrompt wing={wingData} room={activeRoomData} onUpload={()=>setShowUpload(true)} />} */}
+      {/* FirstMemoryPrompt purged (PALACE_TUTORIAL_SPEC §4.2) — onboarding +
+          nudge system handles first-memory guidance */}
 
       {/* Contextual tooltips — shown once per context */}
       <ContextualTooltip tooltipId="corridor_click_door" show={view==="corridor"&&!tutorialActive&&!showSpotlight&&!walkthroughActive} />
       <ContextualTooltip tooltipId="room_click_furniture" show={view==="room"&&!tutorialActive&&!showSpotlight&&!walkthroughActive&&roomMems.length>0} />
-      {/* room_empty_upload tooltip removed — replaced by FirstMemoryPrompt */}
 
       {/* Cinematic walkthrough overlay — narration + directional indicator */}
       {walkthroughActive && <CinematicWalkthrough />}

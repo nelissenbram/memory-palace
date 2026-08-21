@@ -6243,7 +6243,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // runs the existing comfort-capped camD approach (the __entrance__
       // autoWalk path fires the same onRoomClick contract on arrival);
       // reduced-motion keeps the direct enter.
-      if(W2&&hitId==="__entrance__"&&camD.current>45&&!prefersReducedMotion()){autoWalkToRef.current="__entrance__";return;}
+      if(W2&&hitId==="__entrance__"&&camD.current>45){
+        // Reduced-motion mid-range entrance tap: no autoWalk ride, but still an
+        // arrival (arrived=true) — matching the >100 branch — so mobile enters
+        // directly instead of parking the tap in the pending Enter selection.
+        if(prefersReducedMotion()){onRoomClickRef.current(hitId,true);return;}
+        autoWalkToRef.current="__entrance__";return;}
       onRoomClickRef.current(hitId);}};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(280,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
@@ -6282,7 +6287,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // Reduced-motion far tap: skip the ride but still auto-enter (arrived=true)
           if(W2&&camD.current>100){onRoomClickRef.current(hitId,true);return;}
           // W2 (WS3-11): tap-is-travel — same walk-then-enter as the mouse path
-          if(W2&&hitId==="__entrance__"&&camD.current>45&&!prefersReducedMotion()){autoWalkToRef.current="__entrance__";return;}
+          if(W2&&hitId==="__entrance__"&&camD.current>45){
+        // Reduced-motion mid-range entrance tap: no autoWalk ride, but still an
+        // arrival (arrived=true) — matching the >100 branch — so mobile enters
+        // directly instead of parking the tap in the pending Enter selection.
+        if(prefersReducedMotion()){onRoomClickRef.current(hitId,true);return;}
+        autoWalkToRef.current="__entrance__";return;}
           onRoomClickRef.current(hitId);
         }else{
           onRoomHover(null);

@@ -9,8 +9,7 @@ const STORAGE_PREFIX = "mp_ctx_tooltip_";
 
 type TooltipId =
   | "corridor_click_door"
-  | "room_click_furniture"
-  | "room_empty_upload";
+  | "room_click_furniture";
 
 interface TooltipConfig {
   id: TooltipId;
@@ -29,11 +28,8 @@ const TOOLTIP_DEFS: Record<string, TooltipConfig> = {
     messageKey: "furnitureHint",
     position: "bottom-center",
   },
-  room_empty_upload: {
-    id: "room_empty_upload",
-    messageKey: "emptyRoomHint",
-    position: "center",
-  },
+  // room_empty_upload retired (PALACE_TUTORIAL_SPEC §4.1) — its copy described
+  // the pre-Steward's-Ledger empty-room flow.
 };
 
 function hasBeenShown(id: string): boolean {

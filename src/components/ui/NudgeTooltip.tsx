@@ -86,7 +86,6 @@ const NUDGE_CONFIG: Record<NudgeId, { messageKey: string; position: "top" | "bot
   palace_click_room:      { messageKey: "clickRoom",           position: "bottom" },
   palace_room_overview:   { messageKey: "palaceRoomOverview",  position: "bottom" },
   palace_room_info:       { messageKey: "palaceRoomInfo",      position: "bottom" },
-  palace_room_layout:     { messageKey: "roomLayout",          position: "bottom" },
   palace_room_upload:     { messageKey: "roomUpload",          position: "bottom" },
   palace_room_memory:     { messageKey: "roomMemory",          position: "bottom" },
   palace_room_share:      { messageKey: "palaceRoomShare",     position: "bottom" },

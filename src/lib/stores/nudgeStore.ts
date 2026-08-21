@@ -46,7 +46,6 @@ export type NudgeId =
   | "palace_click_room"
   | "palace_room_overview"
   | "palace_room_info"
-  | "palace_room_layout"
   | "palace_room_upload"
   | "palace_room_memory"
   | "palace_room_share";
@@ -82,7 +81,9 @@ const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
     "palace_entrance_info", "palace_click_wing",
     "palace_corridor_info", "palace_click_room",
     "palace_room_overview",
-    "palace_room_info", "palace_room_layout",
+    // palace_room_layout retired (PALACE_TUTORIAL_SPEC §3.1) — the room-type/
+    // layout picker no longer exists; stations place memories automatically.
+    "palace_room_info",
     "palace_room_upload", "palace_room_memory", "palace_room_share",
   ],
 };

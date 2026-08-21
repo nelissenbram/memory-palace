@@ -140,7 +140,7 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
   }, [filtered, hero]);
 
   const stationLabel = (id: StationId) => tr(`station_${id}`, { portraits: "Portraits", vitrine: "Vitrine", library: "Library", gramophone: "Gramophone", screen: "Screen" }[id]);
-  const stationWhere = (id: StationId) => tr(`stationWhere_${id}`, { portraits: "Along the hall", vitrine: "Front-right corner", library: "Front-left corner", gramophone: "Back-right corner", screen: "Recessed over the mantel" }[id]);
+  const stationWhere = (id: StationId) => tr(`stationWhere_${id}`, { portraits: "Along the hall", vitrine: "Front-right corner", library: "Front-left corner", gramophone: "Back-right corner", screen: "Set into the right wall" }[id]);
 
   const setShown = (mem: Mem, shown: boolean) => {
     if (shown) { onUpdate(mem.id, { displayed: true, displayUnit: impliedUnit(mem) }); return; }

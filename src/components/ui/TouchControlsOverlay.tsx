@@ -3,6 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { T } from "@/lib/theme";
 import { INK, MUTED, CREAM, HAIRLINE, EMBER, SAGE, SHADOW, RT } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+// Store-only imports (same pattern as MemoryPalace.tsx:100-106) — §5.4: the
+// touch hint must never render while a scene tour is open.
+import { usePalaceTourStore } from "@/components/ui/PalaceExteriorTutorial";
+import { useEntranceTourStore } from "@/components/ui/EntranceHallTutorial";
+import { useCorridorTourStore } from "@/components/ui/CorridorTutorial";
+import { useRoomTourStore } from "@/components/ui/RoomTutorial";
 
 // Per-context keys so the room diagram is guaranteed to show on first room
 // entry even after the corridor/entrance hint has already been dismissed.
@@ -24,10 +30,30 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
   // Accumulated non-paused time already spent showing the hint (ms).
   const elapsedRef = useRef(0);
 
-  // corridor + entrance share the "corridorHint" (drag-to-look) copy & LS key;
-  // only the room view renders the move/look diagram.
-  const isCorridor = view === "corridor" || view === "entrance";
-  const lsKey = isCorridor ? LS_KEY_CORRIDOR : LS_KEY_ROOM;
+  // Scene-tour suppression (PALACE_TUTORIAL_SPEC §5.4): the touch hint must
+  // never render on top of an open scene tour. It may appear after dismissal —
+  // its own timer/LS keys are unchanged; while suppressed the timer is held
+  // (like focus-pause) so remaining reading time carries over.
+  // Each hook is called unconditionally (no short-circuit chain — that would
+  // skip hooks and break the rules of hooks once one store reports open).
+  const palaceTourOpen = usePalaceTourStore((s) => s.open);
+  const entranceTourOpen = useEntranceTourStore((s) => s.open);
+  const corridorTourOpen = useCorridorTourStore((s) => s.open);
+  const roomTourOpen = useRoomTourStore((s) => s.open);
+  const anySceneTourOpen = palaceTourOpen || entranceTourOpen || corridorTourOpen || roomTourOpen;
+
+  // corridor + entrance share the LS key, but the copy is split (§2.6): the
+  // hall has no tappable paintings, so it gets its own `entranceHint`; only
+  // the room view renders the move/look diagram.
+  const isHallOrCorridor = view === "corridor" || view === "entrance";
+  const lsKey = isHallOrCorridor ? LS_KEY_CORRIDOR : LS_KEY_ROOM;
+
+  // Graceful fallback for the NEW entranceHint key until all 5 locale files
+  // carry it (flat, per-section).
+  const tr = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.matchMedia) {
@@ -45,8 +71,10 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
 
   useEffect(() => {
     if (!visible) return;
-    // While focused, hold the timer: don't schedule an auto-hide.
-    if (paused) return;
+    // While focused OR while a scene tour is up, hold the timer: don't
+    // schedule an auto-hide (§5.4 — the hint may appear after tour dismissal
+    // with its remaining time intact).
+    if (paused || anySceneTourOpen) return;
     // Auto-hide, but only PERSIST on explicit dismissal. Under reduced-motion
     // give more reading time (cognitive pacing). Time already spent (before a
     // focus-pause) is carried over so blur/re-focus doesn't reset the clock.
@@ -60,14 +88,14 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
       // when we were unpaused, i.e. this branch).
       elapsedRef.current += Date.now() - startedAt;
     };
-  }, [visible, paused, reducedMotion]);
+  }, [visible, paused, reducedMotion, anySceneTourOpen]);
 
   const dismiss = () => {
     setVisible(false);
     localStorage.setItem(lsKey, "1");
   };
 
-  if (!visible) return null;
+  if (!visible || anySceneTourOpen) return null;
 
   return (
     <div
@@ -117,11 +145,15 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
             letterSpacing: "0.0125rem",
           }}
         >
-          {isCorridor ? t("corridorHint") : t("roomHint")}
+          {view === "entrance"
+            ? tr("entranceHint", "Drag to look around · Tap a door to walk there")
+            : view === "corridor"
+              ? t("corridorHint")
+              : t("roomHint")}
         </div>
 
         {/* Diagram for room view */}
-        {!isCorridor && (
+        {!isHallOrCorridor && (
           <div
             style={{
               display: "flex",
