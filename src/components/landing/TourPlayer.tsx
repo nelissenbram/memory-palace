@@ -17,7 +17,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 
 const CREAM = "#FCFAF5";
 const UMBER = "#241C15";
@@ -209,17 +208,49 @@ export default function TourPlayer({
         @keyframes lv2tp-cap-right { from { opacity: 0; transform: translateX(0.75rem); } to { opacity: 1; transform: none; } }
         .lv2tp-video { animation: lv2tp-settle 1.6s ease-out; }
         @keyframes lv2tp-settle { from { transform: scale(1.04); } to { transform: scale(1); } }
+        /* Idle emblem: the play triangle (with the real palace logo inside)
+           flips around its axis once every ~2s (owner 2026-08-23). */
+        .lv2tp-spin { transform-origin: 50% 50%; animation: lv2tp-spin 2s cubic-bezier(0.62,0,0.38,1) infinite; }
+        @keyframes lv2tp-spin { 0% { transform: rotateY(0deg); } 58% { transform: rotateY(360deg); } 100% { transform: rotateY(360deg); } }
         @media (prefers-reduced-motion: reduce) {
-          .lv2tp-cap, .lv2tp-cap-left, .lv2tp-cap-right, .lv2tp-video { animation: none !important; }
+          .lv2tp-cap, .lv2tp-cap-left, .lv2tp-cap-right, .lv2tp-video, .lv2tp-spin { animation: none !important; }
         }
       `}</style>
 
-      {/* Idle poster — the tailored black thumbnail already carries the play
-          button + intertwined Memory Palace logo, so it shows at full opacity
-          and IS the clickable target (no separate doorway ring — that was
-          redundant with the poster's own play mark). */}
-      {mode !== "playing" ? (
-        <Image src={posterSrc} alt="" fill sizes="100vw" style={{ objectFit: "cover" }} priority />
+      {/* Idle emblem — the play triangle with the REAL Memory Palace temple
+          logo inside, flipping around its axis every ~2s. Transparent bg so the
+          section's umber (L.dark) shows through seamlessly — no separate box.
+          The whole area is the click target (button below). */}
+      {mode === "idle" ? (
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "clamp(1.25rem, 3vw, 2rem)" }}>
+          <div className="lv2tp-emblem" style={{ position: "relative", width: "clamp(11rem, 26vw, 17rem)", aspectRatio: "1", perspective: "1000px" }}>
+            {/* static play ring */}
+            <svg viewBox="0 0 300 300" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+              <defs><linearGradient id="lv2gR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E8C766" /><stop offset="1" stopColor="#B8912F" /></linearGradient></defs>
+              <circle cx="150" cy="150" r="132" fill="none" stroke="url(#lv2gR)" strokeWidth="4" opacity="0.9" />
+              <circle cx="150" cy="150" r="122" fill="none" stroke="url(#lv2gR)" strokeWidth="1" opacity="0.4" />
+            </svg>
+            {/* flipping triangle + real temple logo */}
+            <svg className="lv2tp-spin" viewBox="0 0 300 300" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+              <defs><linearGradient id="lv2gT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E8C766" /><stop offset="1" stopColor="#B8912F" /></linearGradient></defs>
+              <g transform="translate(150,150)">
+                <path d="M -58 -74 L -58 74 L 92 0 Z" fill="rgba(212,175,55,0.08)" stroke="url(#lv2gT)" strokeWidth="3" strokeLinejoin="round" />
+                <g transform="translate(-50,-38) scale(0.8)" fill="url(#lv2gT)">
+                  <path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z" />
+                  <rect x="18" y="40" width="8" height="32" />
+                  <rect x="32" y="40" width="8" height="32" />
+                  <rect x="46" y="40" width="8" height="32" />
+                  <rect x="60" y="40" width="8" height="32" />
+                  <ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7" />
+                  <rect x="10" y="72" width="80" height="4" />
+                  <rect x="6" y="78" width="88" height="4" />
+                  <rect x="2" y="84" width="96" height="4" />
+                </g>
+              </g>
+            </svg>
+          </div>
+          <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: "clamp(1.25rem, 2.4vw, 1.75rem)", letterSpacing: "0.22em", textTransform: "uppercase", color: "#EBDCBB" }}>The Memory Palace</span>
+        </div>
       ) : null}
 
       {/* ── PLAYING: full-bleed video + reading-lane + captions + controls ── */}
@@ -237,6 +268,7 @@ export default function TourPlayer({
             className="lv2tp-video"
             playsInline
             preload="auto"
+            poster={posterSrc}
             aria-label={labels.dialog}
             onClick={togglePause}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", cursor: "pointer", background: "#000" }}
