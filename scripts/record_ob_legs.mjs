@@ -93,7 +93,9 @@ const waitFile = async (fname, timeoutMs = 25000) => {
   return false;
 };
 
-await p.goto("http://localhost:3000/flythrough?scene=onboarding&name=Guillaume", { waitUntil: "domcontentloaded", timeout: 60000 });
+// &mantelDemo=1 (tour item 5, owner 2026-08-23): the room leg records with the
+// demo hero photo (graduation.jpg) already hung in the mantel frame.
+await p.goto("http://localhost:3000/flythrough?scene=onboarding&name=Guillaume&mantelDemo=1", { waitUntil: "domcontentloaded", timeout: 60000 });
 log("loaded");
 await sleep(6000);
 await clickText("Skip intro"); log("skipped intro");
@@ -132,6 +134,12 @@ log(`Enter The Room clicked=${clicked} @ +${off()}s`);
 // beat: room leg begun (distinctive early room caption)
 const roomSeen = await waitBeat(/This is your first room/i, 25000);
 log(`BEAT room @ +${off()}s (${roomSeen ? "seen" : "TIMEOUT"})`);
+
+// beat: room step 4 — the caption flips to "Every Room in your Palace holds"
+// exactly when the LEFT-WALL pan begins (choreography t=7.0s into the room
+// clock) — anchors the ffmpeg room cuts (tour item 3: left pan must be in).
+const step4Seen = await waitBeat(/Every Room in your Palace holds/i, 30000);
+log(`BEAT room-step4-leftpan @ +${off()}s (${step4Seen ? "seen" : "TIMEOUT"})`);
 
 // beat: hang prompt (or ImportHub if a ceiling advanced) ends the take
 const hangSeen = await waitBeat(/hang your first memory|Click on the empty painting|Drop your phot|Drop phot/i, 45000);

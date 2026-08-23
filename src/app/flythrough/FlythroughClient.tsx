@@ -98,6 +98,23 @@ function nameFromURL(): string {
   return (new URLSearchParams(window.location.search).get("name") || "").trim().slice(0, 40);
 }
 
+// ── ?mantelDemo=1 (dev-tool-only, owner 2026-08-23 tour item 5) ──
+// Recording-pass helper for the ONBOARDING preview (scene 4): hangs the demo
+// hero photo in the mantel's walnut+bronze frame from the START of the room
+// walk leg, so the tour footage shows a filled hero picture over the plaque
+// instead of the empty upload placeholder. Uses the existing celebration
+// payoff path (uploadedMemory → InteriorScene's in-place mantel swap) — no
+// scene-code changes. Param absent ⇒ null ⇒ byte-identical empty-mantel
+// onboarding (the real wizard never passes this).
+function mantelDemoFromURL(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("mantelDemo") === "1";
+}
+const MANTEL_DEMO_MEM: Mem = {
+  id: "demo-mantel-hero", title: "A Beautiful Smile", hue: 40, s: 40, l: 60,
+  type: "photo", dataUrl: "/demo/graduation.jpg", displayed: true, createdAt: "2026-08-23",
+} as Mem;
+
 // A second demo room so the Ledger's "From another room" flow can be reviewed.
 const OTHER_ROOM_FEED = [{
   id: "ro2", name: "Sunday Lunches",
@@ -221,6 +238,9 @@ export default function FlythroughClient() {
     setCurrentScene(initialSceneFromURL());
     applyFill(fillFromURL());
     setDemoName(nameFromURL());
+    // ?mantelDemo=1 — recording-pass mantel fill for the onboarding room leg
+    // (hydration-safe, applied after mount like ?scene=/?fill=/?name=).
+    setObMantelDemo(mantelDemoFromURL());
     setMounted(true);
   }, [applyFill]);
   const [progress, setProgress] = useState(0);
@@ -312,6 +332,8 @@ export default function FlythroughClient() {
   }, [obScene]);
   // The demo first memory (upload phase) — local object, never persisted.
   const [obMem, setObMem] = useState<Mem | null>(null);
+  // ?mantelDemo=1 — tour-recording mantel fill (see mantelDemoFromURL above).
+  const [obMantelDemo, setObMantelDemo] = useState(false);
   // Video intro outro beat (mirrors the wizard's beginOutro welcome fade).
   const [obVideoWelcome, setObVideoWelcome] = useState(false);
   const obOutroFiredRef = useRef(false);
@@ -801,7 +823,11 @@ export default function FlythroughClient() {
             // `onboardingAudioRef.current===true`); re-enable by restoring
             // demoAudio={obPhase !== "upload" && obPhase !== "celebration"}.
             demoAudio={false}
-            uploadedMemory={obPhase === "celebration" ? obMem : null}
+            // ?mantelDemo=1 (recording passes only): the demo hero photo hangs
+            // in the mantel frame from the START of the room leg via the same
+            // in-place swap the celebration uses. Param absent ⇒ exactly the
+            // old expression (empty mantel until celebration).
+            uploadedMemory={obPhase === "celebration" ? obMem : obMantelDemo && obScene === "room" ? MANTEL_DEMO_MEM : null}
             onReady={handleObHostReady}
             onSceneReady={handleObSceneReady}
             onCinematicPause={() => {

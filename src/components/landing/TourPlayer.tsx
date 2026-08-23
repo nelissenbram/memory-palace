@@ -91,6 +91,17 @@ export default function TourPlayer({
     setMode("playing");
   }, []);
 
+  // ITEM 1 (owner 2026-08-23): ONE click starts the tour. The hero's
+  // "See it in motion" anchor scrolls to #tour AND dispatches this event so
+  // the player opens + autoplays (muted, off a real user gesture) without a
+  // second doorway click. Reduced-motion / save-data users still get the
+  // static storyboard with its explicit click-to-play via start()'s guard.
+  useEffect(() => {
+    const onOpen = () => { start(); };
+    window.addEventListener("lv2:tour-start", onOpen);
+    return () => window.removeEventListener("lv2:tour-start", onOpen);
+  }, [start]);
+
   // Configure + play only AFTER the <video> has mounted (mode → playing).
   // Doing this in a click-time rAF races React's commit and leaves the element
   // unmuted → autoplay is blocked.

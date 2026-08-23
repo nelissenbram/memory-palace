@@ -1334,6 +1334,10 @@ export default function LandingV2Client({
                 <a
                   href="#tour"
                   className="lv2-navlink"
+                  // ITEM 1 (owner 2026-08-23): one click = scroll to the tour AND
+                  // start it playing (TourPlayer listens for this event and
+                  // autoplays muted — no second doorway click needed).
+                  onClick={() => { window.dispatchEvent(new Event("lv2:tour-start")); }}
                   style={{ color: T.color.cream, fontSize: L.type.body, textDecoration: "underline", textUnderlineOffset: "0.25em" }}
                 >
                   <span aria-hidden="true">▶ </span>{v2.hero.secondary}
