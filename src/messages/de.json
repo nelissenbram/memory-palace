@@ -219,6 +219,7 @@
   },
   "onboarding": {
     "cinematicPalaceName": "{name}s Palast",
+    "cinematicPalaceNameNeutral": "Dein Palast",
     "appName": "The Memory Palace",
     "skipExploreOwn": "Ich erkunde selbst",
     "namePlaceholder": "Dein Vorname",
@@ -3484,7 +3485,8 @@
     "emptyEasel": "Hänge deine erste Erinnerung auf",
     "backToCorridor": "← Zurück zum Korridor",
     "close": "Schließen",
-    "paintingTitle": "{name}s Wunderschones Lacheln",
+    "paintingTitle": "{name}s wunderschönes Lächeln",
+    "paintingTitleNeutral": "Ein wunderschönes Lächeln",
     "paintingDate": "anno {date}",
     "sceneLabel": "3D-Szene des Rauminneren — mit Tastatur navigieren",
     "videoFallback": "Video",

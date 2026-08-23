@@ -2588,10 +2588,14 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           if(_cinStep!==0){_cinStep=0;onCinematicStepRef.current?.(0);}
           posT.z=w2CinStart.z;posT.x=0;lookT.yaw=0;lookT.pitch=0;
         }else if(!skip&&ot<=7.0+d*2){
-          // Step 1: walk to the painting bay (8m over 4s ≈ 2.0m/s — comfort cap)
+          // Step 1: walk to the painting bay (8m over 4s, smoothstep peak ≈3.0m/s)
+          // ITEM 2: was LINEAR — instant 2m/s at the step-0 boundary and a hard
+          // stop into step 2 read as jerks; smoothstep = zero velocity at both
+          // boundaries (C1 with the flanking pause/turn steps).
           if(_cinStep!==1){_cinStep=1;onCinematicStepRef.current?.(1);}
           const dur=4.0+d;const p=Math.min((ot-(3.0+d))/dur,1);
-          posT.z=w2CinStart.z+(obPaintZ-w2CinStart.z)*p;
+          const ease=p*p*(3-2*p);
+          posT.z=w2CinStart.z+(obPaintZ-w2CinStart.z)*ease;
           posT.x=0;lookT.yaw=0;lookT.pitch=0;
         }else if(!skip&&ot<=8.5+d*3){
           // Step 2: turn to face the demo painting on the left (solid) wall
@@ -2604,9 +2608,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           posT.z=obPaintZ;posT.x=0;
         }else if(!skip&&ot<=9.5+d*4){
           // Step 3: walk toward the painting (canvas ≈2.3m away at x=-2.1)
+          // ITEM 2: was LINEAR (see step 1) — smoothstep for C1 boundaries.
           if(_cinStep!==3){_cinStep=3;onCinematicStepRef.current?.(3);}
           const dur=1.0+d;const p=Math.min((ot-(8.5+d*3))/dur,1);
-          posT.x=-2.1*p;
+          posT.x=-2.1*(p*p*(3-2*p));
           lookT.yaw=-1.5540;lookT.pitch=0;
         }else if(!skip&&ot<=11.5+d*5){
           // Step 4: pause in front of the painting
@@ -2662,7 +2667,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           if(dist>0.5){
             // W1 (WS8-1/2 mercy): autoWalk clamps to MAX_WALK_SPEED and the
             // MAX_YAW_DEG_S yaw cap — no per-scene speed numbers
-            const speed=(W1?MAX_WALK_SPEED:5.0)*dt;
+            // ITEM 2: easeInOutCubic deceleration into arrival (awClick parity) —
+            // the constant speed hard-stopped at the 0.5m gate (onboarding step 7).
+            const speed=(W1?Math.max(.5,MAX_WALK_SPEED*easeInOutCubic(Math.min(1,dist/2.5))):5.0)*dt;
             posT.x+=(dx2/dist)*speed;
             posT.z+=(dz2/dist)*speed;
             const targetYaw=Math.atan2(dm.x-posT.x,-(dm.z-posT.z));

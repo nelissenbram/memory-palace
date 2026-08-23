@@ -33,10 +33,26 @@ interface OnboardingSceneHostProps {
   wingId?: string;
   roomId?: string;
   roomName?: string;
+  /** Store-less callers (the /flythrough onboarding preview): the real name
+   * typed on the demo name card, threaded to InteriorScene's mantel plaque
+   * ("{name}'s Beautiful Smile"). In-app the wizard omits it — the scene reads
+   * the user store, which the name card already populated. */
+  demoUserName?: string;
   memories?: any[];
   isMobile?: boolean;
   corridorEnterClicked?: boolean;
   initialCameraZ?: number;
+  /** Guided-walk gramophone music (owner item 4, 2026-08-23). Default (undefined)
+   * = play the demo audio mem softly during the onboarding room scene (the
+   * "Begin the walk" click earlier granted the audio gesture). The wizard's
+   * upload/celebration mounts pass false so the music stops when the room leg
+   * ends WITHOUT tearing down the still-mounted walk scene. */
+  demoAudio?: boolean;
+  /** Celebration payoff (owner item 6, 2026-08-23): the just-uploaded first
+   * memory. Injected into the LIVE room scene in place of the mantel upload
+   * placeholder — no remount/rebuild, so the confetti falls over a visible
+   * room + photo instead of seconds of blank beige. */
+  uploadedMemory?: any | null;
 }
 
 /* ── Reduced-motion + WebGL capability, resolved once ── */
@@ -150,10 +166,13 @@ export default function OnboardingSceneHost({
   wingId = "roots",
   roomId = "ro1",
   roomName,
+  demoUserName,
   memories = [],
   isMobile = false,
   corridorEnterClicked = false,
   initialCameraZ,
+  demoAudio,
+  uploadedMemory = null,
 }: OnboardingSceneHostProps) {
   const styleEra = useUserStore((s) => s.styleEra) || "roman";
   const userName = useUserStore((s) => s.userName);
@@ -267,18 +286,28 @@ export default function OnboardingSceneHost({
     [onboardingMode],
   );
 
-  // Demo room memories — non-photo types so the upload placeholder painting stays
-  // visible. Memoized so InteriorScene's memories prop keeps a stable identity
-  // (a fresh array each render defeats R3F memoization and can trigger scene-graph
-  // rebuilds). The demo objects hold new Date().toISOString() timestamps, but those
-  // are already frozen at first compute — behavior/output is unchanged, just stable.
+  // Demo room memories (owner item 4, 2026-08-23) — the walk must arrive in a
+  // LIVED-IN room: the gramophone plays the demo audio softly (wired in
+  // InteriorScene via the demoAudio prop) and 3 generic pictures hang together
+  // on the LEFT wall (portraits side; displayed:true frame photos — the mantel
+  // stays EMPTY for the upload placeholder because InteriorScene's onboarding
+  // guard never lifts a hero there). Fixed createdAt dates keep the
+  // chronological salon hang deterministic. Memoized so InteriorScene's
+  // memories prop keeps a stable identity (a fresh array each render defeats
+  // memoization and can trigger scene-graph rebuilds) — and so the walk_room →
+  // upload → celebration mounts share ONE structural fingerprint (no rebuild).
+  // NOTE: /demo has no dedicated piano audio (piano-recital.mp4 is video-only,
+  // no audio track) — song-of-summer.mp3 is the bundled demo music and plays
+  // at the gramophone.
   const demoRoomMemories = useMemo(
     () =>
       onboardingMode && memories.length === 0
         ? [
-            { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "audio", dataUrl: "/demo/song-of-summer.mp3", createdAt: new Date().toISOString(), hue: 200, s: 50, l: 55 },
-            { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/demo/piano-recital.mp4", createdAt: new Date().toISOString(), hue: 30, s: 45, l: 50 },
-            { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", dataUrl: "/demo/quiet-morning.jpg", createdAt: new Date().toISOString(), hue: 18, s: 40, l: 60 },
+            { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "vinyl", displayed: true, dataUrl: "/demo/song-of-summer.mp3", createdAt: "2024-06-21T15:00:00.000Z", hue: 200, s: 50, l: 55 },
+            { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/demo/piano-recital.mp4", createdAt: "2024-11-02T19:30:00.000Z", hue: 30, s: 45, l: 50 },
+            { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/quiet-morning.jpg", createdAt: "2023-04-09T08:00:00.000Z", hue: 18, s: 40, l: 60 },
+            { id: "demo-frame-2", title: "Edge of the Water", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/edge-of-water.jpg", createdAt: "2024-07-18T17:00:00.000Z", hue: 200, s: 35, l: 55 },
+            { id: "demo-frame-3", title: "Graduation Day", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/graduation.jpg", createdAt: "2025-06-28T14:00:00.000Z", hue: 42, s: 45, l: 55 },
           ]
         : memories,
     [onboardingMode, memories],
@@ -358,6 +387,7 @@ export default function OnboardingSceneHost({
         <InteriorScene
           roomId={wingId}
           actualRoomId={roomId}
+          userNameOverride={demoUserName}
           memories={demoRoomMemories}
           onMemoryClick={onDoorClick || noop}
           styleEra={styleEra}
@@ -367,6 +397,8 @@ export default function OnboardingSceneHost({
           onCinematicStep={onCinematicStep}
           isMobile={isMobile}
           initialCameraZ={initialCameraZ}
+          onboardingAudio={demoAudio}
+          onboardingUploadedMemory={uploadedMemory}
         />
       )}
     </Suspense>

@@ -2798,6 +2798,7 @@ function EntranceHallScene({
     }
 
     let _lastCream = 0; // cream veil state throttle (reduced-motion crossfade)
+    let _lastBlink = 0; // blink overlay state throttle (ITEM 2: no per-frame setState re-render jank)
     let w3hCinT = 0;    // W3H: stall-proof cinematic time (accumulated clamped dt)
     // Touch-move vector — hoisted above animate() so the w1_hall movement block
     // can read it directly per frame (replaces the 16ms synthetic-WASD poll).
@@ -2950,9 +2951,12 @@ function EntranceHallScene({
           const gap = 0.5; // gap between blinks
           return Math.min(Math.max(singleBlink(localT), singleBlink(localT - 1.0 - gap)), 1);
         };
-        // Timings: settle(0.8) → look left(1.5) → blink 2x(2.5) → look right(1.5) → blink 1x(1.0) → center(0.4)
-        const T1 = 0.8, T2 = T1 + 1.5, T3 = T2 + 2.5, T4 = T3 + 1.5, T5 = T4 + 1.0, T6 = T5 + 0.4;
-        const LOOK_DUR = T6; // ~7.7s
+        // Timings (ITEM 3, owner: slow the look-around by ~2.5s): settle(0.8) →
+        // look left(2.6) → blink 2x + hold(2.7) → look right(2.6) → blink 1x +
+        // hold(1.2) → center(0.4). Holds at the extremes are slightly longer
+        // than the blink envelopes (2.5s/1.0s) so the doors actually register.
+        const T1 = 0.8, T2 = T1 + 2.6, T3 = T2 + 2.7, T4 = T3 + 2.6, T5 = T4 + 1.2, T6 = T5 + 0.4;
+        const LOOK_DUR = T6; // ~10.3s (was 7.7) → leg total ≈ 22.3s with the 12s walk
         const WALK_DUR = 12.0; // x3 slower walk to door
         // Smoothstep helper
         const ss = (a: number, b: number, p: number) => { const t2 = p * p * (3 - 2 * p); return a + (b - a) * t2; };
@@ -2963,45 +2967,51 @@ function EntranceHallScene({
             lookT.current.yaw = 0.0270;
             lookT.current.pitch = 0.0360;
           }
-          // Step 2 (0.8-2.3s): slowly look left
+          // Step 2 (0.8-3.4s): slowly look left
           else if (ot < T2) {
-            const p = Math.min((ot - T1) / 1.5, 1);
+            const p = Math.min((ot - T1) / 2.6, 1);
             lookT.current.yaw = ss(0.0270, -0.9090, p);
             lookT.current.pitch = ss(0.0360, 0.3240, p);
           }
-          // Step 3 (2.3-4.8s): blink twice while holding left gaze
+          // Step 3 (3.4-6.1s): blink twice while holding left gaze
           else if (ot < T3) {
             lookT.current.yaw = -0.9090;
             lookT.current.pitch = 0.3240;
             blinkRef.current = twoBlinks(ot - T2);
           }
-          // Step 4 (4.8-6.3s): slowly look right
+          // Step 4 (6.1-8.7s): slowly look right
           else if (ot < T4) {
             blinkRef.current = 0;
-            const p = Math.min((ot - T3) / 1.5, 1);
+            const p = Math.min((ot - T3) / 2.6, 1);
             lookT.current.yaw = ss(-0.9090, 1.0380, p);
             lookT.current.pitch = ss(0.3240, 0.3510, p);
           }
-          // Step 5 (6.3-7.3s): blink once while holding right gaze
+          // Step 5 (8.7-9.9s): blink once while holding right gaze
           else if (ot < T5) {
             lookT.current.yaw = 1.0380;
             lookT.current.pitch = 0.3510;
             blinkRef.current = singleBlink(ot - T4);
           }
-          // Step 6 (7.3-7.7s): readjust gaze to center
+          // Step 6 (9.9-10.3s): readjust gaze to center
           else {
             blinkRef.current = 0;
             const p = Math.min((ot - T5) / 0.4, 1);
             lookT.current.yaw = ss(1.0380, 0.0360, p);
             lookT.current.pitch = ss(0.3510, 0.0540, p);
           }
-          // Sync blink opacity to React state
-          setBlinkOpacity(blinkRef.current);
+          // Sync blink opacity to React state — thresholded (ITEM 2): a raw
+          // per-frame setState re-rendered the whole component tree at 60fps
+          // during the look phase, and those main-thread hitches read as
+          // camera shake. _lastCream pattern; endpoints (0/1) always land.
+          const bo = blinkRef.current;
+          if (Math.abs(bo - _lastBlink) > 0.02 || (bo === 0 && _lastBlink !== 0) || (bo === 1 && _lastBlink !== 1)) {
+            _lastBlink = bo; setBlinkOpacity(bo);
+          }
         }
         // Walk phase: slow walk to roots door (12s)
         else if (ot < LOOK_DUR + WALK_DUR) {
           blinkRef.current = 0;
-          setBlinkOpacity(0);
+          if (_lastBlink !== 0) { _lastBlink = 0; setBlinkOpacity(0); }
           const rootsDoorAngle = (0 / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
           const approachR = RADIUS - 4;
           const targetX = Math.cos(rootsDoorAngle) * approachR;
@@ -3011,11 +3021,14 @@ function EntranceHallScene({
           posT.current.x = ss(0, targetX, wEase);
           posT.current.z = ss(START_Z, targetZ, wEase);
           const faceDoorAngle = Math.atan2(targetX - posT.current.x, -(targetZ - posT.current.z));
-          lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * 0.04;
-          lookT.current.pitch += (0 - lookT.current.pitch) * 0.03;
+          // ITEM 2: the raw per-frame factors (.04/.03) were framerate-dependent —
+          // at 120Hz the gaze snapped twice as fast, at fps dips it lagged then
+          // jumped. Framerate-independent 1-exp(-k*dt), same feel at 60fps.
+          lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * (1 - Math.exp(-2.4487 * dt)); // f=.04 @60fps
+          lookT.current.pitch += (0 - lookT.current.pitch) * (1 - Math.exp(-1.8271 * dt)); // f=.03 @60fps
         } else {
           blinkRef.current = 0;
-          setBlinkOpacity(0);
+          if (_lastBlink !== 0) { _lastBlink = 0; setBlinkOpacity(0); }
           entranceCinematicRef.current = false;
           setCinematicActive(false);
           if (onboardingModeRef.current) {
@@ -3063,12 +3076,15 @@ function EntranceHallScene({
 
           if (dist > 0.8) {
             // WS12-5 (w1_hall): comfort-capped — legacy ran 5.0 m/s
-            const speed = (W1 ? MAX_WALK_SPEED : 5.0) * dt;
+            // ITEM 2: easeInOutCubic deceleration into arrival (awClick-integrator
+            // parity) — the constant speed hard-stopped at the 0.8m gate.
+            const speed = (W1 ? Math.max(0.5, MAX_WALK_SPEED * easeInOutCubic(Math.min(1, dist / 2.5))) : 5.0) * dt;
             posT.current.x += (dx / dist) * speed;
             posT.current.z += (dz / dist) * speed;
             // Face the door using atan2 (look toward target position)
             const faceDoorAngle = Math.atan2(targetX - posT.current.x, -(targetZ - posT.current.z));
-            lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * 0.06;
+            // ITEM 2: framerate-independent (was a raw per-frame .06 factor)
+            lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * (1 - Math.exp(-3.7123 * dt)); // f=.06 @60fps
           } else {
             autoWalkToRef.current = null;
             onDoorClickRef.current(awTarget);
@@ -3616,34 +3632,30 @@ function EntranceHallScene({
                 <span style={{ width: "3rem", height: "1px", background: `${EMBER}80` }} />
               </div>
             )}
-            {/* Kicker — EMBER, em-based tracking */}
+            {/* Kicker — canon Eyebrow grammar (body font 0.6875rem/700/0.14em),
+                matching OnboardingWalkCaption/landing. */}
             {!shortCinematicUi && (
               <p style={{
-                fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-                color: EMBER, letterSpacing: "0.25em", textTransform: "uppercase",
+                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+                color: EMBER, letterSpacing: "0.14em", textTransform: "uppercase",
                 margin: "0 0 0.625rem",
-                textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+                textShadow: "0 2px 8px rgba(26,25,23,0.7)",
                 animation: reduceMotionUi ? undefined : "ehc-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
               }}>
                 {t("welcomeLabel")}
               </p>
             )}
-            {/* Title — GOLD shimmer is the ONE ceremonial hall gold (R5-d);
-                reduced motion gets flat cream, no gradient sweep. */}
+            {/* Title — canon walk-caption treatment: Fraunces 500, flat cream
+                #FCFAF5, no gold-sheen (gold stays licensed to the celebration). */}
             <h1 style={{
               fontFamily: T.font.display,
               fontSize: shortCinematicUi ? "1.5rem" : "clamp(2rem, 5vw, 3.5rem)",
-              fontWeight: 300, color: "#F2EDE7",
-              lineHeight: 1.05, margin: 0,
-              letterSpacing: "0.04em",
-              filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
+              fontWeight: 500, color: "#FCFAF5",
+              lineHeight: 1.08, margin: 0,
+              letterSpacing: "0.02em",
+              filter: "drop-shadow(0 2px 8px rgba(26,25,23,0.6))",
               ...(reduceMotionUi ? {} : {
                 animation: "ehc-titleReveal 2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both",
-                backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-                backgroundSize: "200% 100%",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
               }),
             }}>
               {t("title")}

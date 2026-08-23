@@ -219,6 +219,7 @@
   },
   "onboarding": {
     "cinematicPalaceName": "{name}’s Palace",
+    "cinematicPalaceNameNeutral": "Your Palace",
     "appName": "The Memory Palace",
     "skipExploreOwn": "I'll explore on my own",
     "namePlaceholder": "Your first name",
@@ -3485,6 +3486,7 @@
     "backToCorridor": "← Back to corridor",
     "close": "Close",
     "paintingTitle": "{name}'s Beautiful Smile",
+    "paintingTitleNeutral": "A Beautiful Smile",
     "paintingDate": "anno {date}",
     "sceneLabel": "Room interior 3D scene — use keyboard to navigate",
     "videoFallback": "Video",

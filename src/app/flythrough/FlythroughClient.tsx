@@ -445,7 +445,12 @@ export default function FlythroughClient() {
   const handleObHostReady = useCallback(() => {
     setObPhase((p) => (p === "loading" ? "hold" : p));
   }, []);
-  const obDisplayName = obName.trim() || trOnb("namePlaceholder", "Your first name");
+  // Trimmed real name for possessive titles + the plaque plumbing; captions
+  // fall back to NEUTRAL forms when empty (never "Your first name's Palace" —
+  // the "Your's" bug family). obDisplayName keeps the placeholder fallback for
+  // the non-possessive paywall headline only.
+  const obNameTrimmed = obName.trim();
+  const obDisplayName = obNameTrimmed || trOnb("namePlaceholder", "Your first name");
   // ── Viewer-local canon tokens for the card/paywall chrome (visual mirror of
   // the wizard's warm-cream Library canon — its style consts are private) ──
   const OB_CREAM = "#FCFAF5", OB_INK = "#403B36", OB_MUTED = "#716A5E", OB_HAIRLINE = "#E3D6BC", OB_EMBER = "#B85C38";
@@ -484,7 +489,7 @@ export default function FlythroughClient() {
   const obPromptTextStyle: CSSProperties = {
     fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
     color: "#D4CBC0", margin: 0, lineHeight: 1.5,
-    textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
+    textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
   };
   const obDemoNote = trFly("onbDemoNote", "Preview only — nothing is saved.");
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -663,12 +668,14 @@ export default function FlythroughClient() {
         // component) driven by the local obPhase machine. Camera choreography
         // is consumed via its existing contract, never edited (contract 3).
         // Video/cards phases mount no 3D (the wizard's cream cards carry those
-        // beats); upload/celebration/paywall re-key the host so each mounts a
-        // FRESH plain room, exactly like the wizard's per-phase host mounts.
+        // beats). Item 6 (owner 2026-08-23): upload/celebration now SHARE the
+        // walk epoch (same key, same demo set, onboardingMode stays true) so
+        // the live walk-room scene never remounts/rebuilds — the uploaded
+        // photo is injected in place into the mantel placeholder and the
+        // confetti falls over a visible room (mirrors the wizard's mounts).
+        // Only the paywall re-keys to a fresh plain room, like the wizard.
         if (obPhase === "video" || obPhase === "card_lang" || obPhase === "card_name") return null;
         const hostEpoch =
-          obPhase === "upload" ? "upload" :
-          obPhase === "celebration" ? "celebration" :
           obPhase === "paywall" || obPhase === "done" ? "paywall" : "walk";
         const walkMode = hostEpoch === "walk";
         return (
@@ -679,8 +686,15 @@ export default function FlythroughClient() {
             isMobile={isMobile}
             wingId="roots"
             roomId="ro1"
-            memories={obPhase === "celebration" && obMem ? [obMem] : []}
-            initialCameraZ={obPhase === "celebration" ? 0 : undefined}
+            // Real demo name for the room's mantel plaque ("{name}'s Beautiful
+            // Smile") — the viewer has no user store, so the name card's obName
+            // is threaded through; empty ⇒ the scene's neutral plaque title.
+            demoUserName={obName.trim() || undefined}
+            // Item 4: the gramophone demo music plays during the walk legs and
+            // stops the moment the room leg ends (upload/celebration), without
+            // tearing down the still-mounted scene.
+            demoAudio={obPhase !== "upload" && obPhase !== "celebration"}
+            uploadedMemory={obPhase === "celebration" ? obMem : null}
             onReady={handleObHostReady}
             onSceneReady={handleObSceneReady}
             onCinematicPause={() => {
@@ -1059,10 +1073,10 @@ export default function FlythroughClient() {
               <div aria-hidden style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(26,25,23,0.15) 0%, rgba(26,25,23,0.3) 50%, rgba(26,25,23,0.7) 100%)", pointerEvents: "none" }} />
               {!obVideoWelcome && (
                 <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", textAlign: "center", pointerEvents: "none", padding: "0 1.5rem" }}>
-                  <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.72)" }}>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.72)" }}>
                     {trOnb("appName", "The Memory Palace")}
                   </div>
-                  <div style={{ fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500, fontSize: isMobile ? "1.1875rem" : "1.5rem", color: "rgba(255,255,255,0.92)", lineHeight: 1.35, maxWidth: "26rem", textShadow: "0 0.125rem 1rem rgba(0,0,0,0.5)" }}>
+                  <div style={{ fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500, fontSize: isMobile ? "1.1875rem" : "1.5rem", color: "rgba(255,255,255,0.92)", lineHeight: 1.35, maxWidth: "26rem", textShadow: "0 0.125rem 1rem rgba(26,25,23,0.5)" }}>
                     {trOnb("videoTagline", "A home for the moments that made you.")}
                   </div>
                 </div>
@@ -1070,7 +1084,8 @@ export default function FlythroughClient() {
               {obVideoWelcome && (
                 <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 1.5rem", background: "radial-gradient(ellipse at center, rgba(26,25,23,0.35) 0%, rgba(26,25,23,0.72) 100%)", animation: "obv-fadeIn 1.1s ease both" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                    <div style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 600, color: "#D4AF37", lineHeight: 1.2, letterSpacing: "0.01em", textShadow: "0 0.25rem 1.75rem rgba(0,0,0,0.55)" }}>
+                    {/* Cream landing-hero voice (wizard mirror) — GOLD text is licensed to the celebration only */}
+                    <div style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 500, color: "#FCFAF5", lineHeight: 1.2, letterSpacing: "0.01em", textShadow: "0 0.25rem 1.75rem rgba(26,25,23,0.55)" }}>
                       {trOnb("welcomeToPalace", "Welcome to your Memory Palace")}
                     </div>
                     <div style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginTop: "0.75rem", maxWidth: "24rem" }}>
@@ -1238,7 +1253,9 @@ export default function FlythroughClient() {
             <WalkCinematicCaption
               isMobile={isMobile}
               overline={trOnb("welcomeTitle", "Welcome to")}
-              title={trOnb("cinematicPalaceName", "{name}'s Palace", { name: obDisplayName })}
+              title={obNameTrimmed
+                ? trOnb("cinematicPalaceName", "{name}'s Palace", { name: obNameTrimmed })
+                : trOnb("cinematicPalaceNameNeutral", "Your Palace")}
               caption={trOnb("walkExterior", "This is your Memory Palace — a beautiful place to store everything you treasure.")}
             >
               {obPhase === "paused" && !obResumed && (
@@ -1268,7 +1285,9 @@ export default function FlythroughClient() {
             <WalkCinematicCaption
               isMobile={isMobile}
               overline={trOnb("welcomeTitle", "Welcome to")}
-              title={trOnb("cinematicPossessive", "{name}'s {thing}", { name: obDisplayName, thing: trOnb("corridorWingName", "Roots Wing") })}
+              title={obNameTrimmed
+                ? trOnb("cinematicPossessive", "{name}'s {thing}", { name: obNameTrimmed, thing: trOnb("corridorWingName", "Roots Wing") })
+                : trOnb("corridorWingName", "Roots Wing")}
               caption={
                 obCorridorStep >= 2
                   ? trOnb("corridorSubtitle", "Every Wing has Rooms — small spaces within a larger one, each for a chapter with memories of you.")
@@ -1296,7 +1315,9 @@ export default function FlythroughClient() {
             <WalkCinematicCaption
               isMobile={isMobile}
               overline={trOnb("welcomeTitle", "Welcome to")}
-              title={trOnb("cinematicPossessive", "{name}'s {thing}", { name: obDisplayName, thing: trOnb("roomTitle", "Me, Over Time Room") })}
+              title={obNameTrimmed
+                ? trOnb("cinematicPossessive", "{name}'s {thing}", { name: obNameTrimmed, thing: trOnb("roomTitle", "Me, Over Time Room") })
+                : trOnb("roomTitle", "Me, Over Time Room")}
               caption={
                 obRoomStep >= 4
                   ? trOnb("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more.")
@@ -1307,8 +1328,8 @@ export default function FlythroughClient() {
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
                   <p style={obPromptTextStyle}>{trOnb("roomHangPrompt", "Let's hang your first memory on the wall.")}</p>
                   <span style={{
-                    display: "inline-block", fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                    letterSpacing: "0.04em", padding: "0.5rem 1.5rem",
+                    display: "inline-block", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                    padding: "0.5rem 1.5rem",
                     background: "rgba(255,255,255,0.08)", color: "rgba(250,250,247,0.65)",
                     border: "0.0625rem solid rgba(255,255,255,0.14)", borderRadius: "0.5rem",
                     whiteSpace: "nowrap", pointerEvents: "none",
@@ -1379,6 +1400,7 @@ export default function FlythroughClient() {
               onContinue={() => setObPhase("paywall")}
               hint={trOnb("celebrationHandoffHint", "Step inside — a short tour of your Atrium is waiting.")}
               transparent
+              photoUrl={obMem?.dataUrl || null}
             />
           )}
 

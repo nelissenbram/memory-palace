@@ -37,10 +37,14 @@ import { hapticMedium } from "@/lib/native/haptics";
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
-function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady}: {roomId: any,actualRoomId?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void}){
+function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady,userNameOverride,onboardingAudio,onboardingUploadedMemory}: {roomId: any,actualRoomId?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void,userNameOverride?: string|null,onboardingAudio?: boolean,onboardingUploadedMemory?: any|null}){
   const { t } = useTranslation("interior3d");
   const { getWingRooms } = useRoomStore();
-  const userName = useUserStore((s) => s.userName);
+  // Mantel-plaque name: store-less hosts (the /flythrough onboarding preview)
+  // pass the demo name as userNameOverride; in-app the user store is canonical
+  // (the wizard's name card writes it before any room scene mounts).
+  const storeUserName = useUserStore((s) => s.userName);
+  const userName = userNameOverride ?? storeUserName;
   const roomMediaBarOpen = useRoomMediaBarStore(s => s.open);
   const setRoomMediaBarOpen = useRoomMediaBarStore(s => s.setOpen);
   const currentRoomName = getWingRooms(roomId).find(r => r.id === (actualRoomId || roomId))?.name || "";
@@ -69,6 +73,22 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
   const allAudioMems=useRef<any[]>([]);
   const onboardingModeRef=useRef(onboardingMode);
   useEffect(()=>{onboardingModeRef.current=onboardingMode;},[onboardingMode]);
+  // Guided-walk gramophone (owner item 4, 2026-08-23): undefined = play during
+  // the onboarding room leg; false = leg over (upload/celebration) — pause the
+  // demo music WITHOUT tearing down the still-mounted scene. Declared before
+  // the scene effect so the ref is fresh when the build reads it.
+  const onboardingAudioRef=useRef(onboardingAudio);
+  useEffect(()=>{
+    onboardingAudioRef.current=onboardingAudio;
+    if(onboardingModeRef.current&&onboardingAudio===false){
+      const a=audioElRef.current;
+      if(a&&!a.paused){try{a.pause();}catch{}}
+    }
+  },[onboardingAudio]);
+  // Celebration payoff (owner item 6, 2026-08-23): set by the scene build while
+  // the onboarding upload placeholder exists; swaps the just-uploaded photo
+  // into the placeholder frame IN PLACE (no rebuild). Cleared on every rebuild.
+  const obUploadSwapRef=useRef<((mem: any)=>void)|null>(null);
   const onOnboardingLookDoneRef=useRef(onOnboardingLookDone);
   useEffect(()=>{onOnboardingLookDoneRef.current=onOnboardingLookDone;},[onOnboardingLookDone]);
   const onCinematicStepRef=useRef(onCinematicStep);
@@ -118,6 +138,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;
     hapticMedium();
+    // Any (re)build invalidates the in-place celebration swap hook — it closes
+    // over meshes of the scene graph built below.
+    obUploadSwapRef.current=null;
     // Cancellation guard — prevents async work (HDRI loading, etc.) from
     // writing into a scene that has already been torn down.
     let alive=true;
@@ -1386,10 +1409,13 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       ctx.fillStyle=W1?PLASTER:"#F5F0E6";ctx.fillRect(0,0,512,352);
       for(let i=0;i<800;i++){ctx.fillStyle=`rgba(180,160,130,${Math.random()*0.04})`;ctx.fillRect(Math.random()*512,Math.random()*352,2,2);}
       ctx.textAlign="center";ctx.textBaseline="middle";
-      const displayName=userName||"Your";
+      // Plaque title: the REAL name ("{name}'s Beautiful Smile") when known;
+      // empty ⇒ the NEUTRAL form ("A Beautiful Smile") — never a possessive
+      // built on a filler word (the old "Your"+"'s" = "Your's" bug).
+      const plaqueName=(userName||"").trim();
       const now=new Date();const month=now.toLocaleString("en",{month:"long"});const year=now.getFullYear();
       ctx.fillStyle=W1?INK:"#8B7355";ctx.font=W1?"italic 22px Fraunces, Georgia, serif":"italic 22px Georgia, serif";
-      ctx.fillText(t("paintingTitle",{name:displayName}),256,150);
+      ctx.fillText(plaqueName?t("paintingTitle",{name:plaqueName}):t("paintingTitleNeutral"),256,150);
       ctx.fillStyle=W1?INK:"#A09889";ctx.font=W1?"italic 16px Fraunces, Georgia, serif":"italic 16px Georgia, serif";
       ctx.fillText(t("paintingDate",{date:`${month} ${year}`}),256,195);
       ctx.strokeStyle=W1?INK:"#C8B898";ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(160,225);ctx.lineTo(352,225);ctx.stroke();
@@ -1397,6 +1423,32 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       const placeholderMat=new THREE.MeshStandardMaterial({map:tex,roughness:.85});
       const phMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),placeholderMat);
       phMesh.position.set(fpX,phY,W3?fpZ+.17:fpZ+.12);phMesh.userData={isUploadPainting:true};scene.add(phMesh);hitAreaMeshes.current.push(phMesh);
+      // ── Celebration payoff (owner item 6, 2026-08-23): swap the uploaded
+      // first memory INTO this placeholder frame in place — no scene rebuild.
+      // The onboarding step-9 framing already holds the camera on the mantel,
+      // so the photo is visible the instant the (local dataURL) image decodes,
+      // and the confetti falls over a live room, never blank beige. Contain-fit
+      // on the cream canvas so any aspect sits matted inside the gold frame.
+      obUploadSwapRef.current=(mem: any)=>{
+        const src=mem?.dataUrl;if(!src)return;
+        const img=new Image();
+        img.onload=()=>{
+          if(!alive)return;
+          const c2=document.createElement("canvas");c2.width=512;c2.height=352;
+          const cx2=c2.getContext("2d");if(!cx2)return;
+          cx2.fillStyle=W1?PLASTER:"#F5F0E6";cx2.fillRect(0,0,512,352);
+          const sc=Math.min(492/(img.width||1),332/(img.height||1));
+          const dw=(img.width||1)*sc,dh=(img.height||1)*sc;
+          cx2.drawImage(img,(512-dw)/2,(352-dh)/2,dw,dh);
+          const t2=new THREE.CanvasTexture(c2);t2.colorSpace=THREE.SRGBColorSpace;
+          const old=placeholderMat.map;
+          placeholderMat.map=t2;placeholderMat.needsUpdate=true;
+          try{old?.dispose();}catch{}
+          // Now a real hung memory — stop routing taps to the upload flow.
+          phMesh.userData={memory:mem};
+        };
+        img.src=src;
+      };
     }
 
     // ── PHOTO FRAMES: small fireplace frame ──
@@ -1435,12 +1487,19 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // every wall memory salon-hangs instead of one being lifted to the hero.
       const heroSel=onboardingModeRef.current?null:((W3&&wallMems.find((m:any)=>m.hero===true))||wallMems[0]);
       const salonRest=wallMems.filter((m:any)=>m!==heroSel); // hero already above the fireplace
+      // ── Guided walkthrough (owner item 4, 2026-08-23): the demo pictures hang
+      // TOGETHER on the LEFT wall (portraits side) — restrict the hang to the
+      // widest left-facing run (nx===1: left hall wall under W3). The mantel
+      // keeps the upload placeholder and the other walls stay clear. Non-W3
+      // layouts have no left-facing run — normal allocation stands. ──
+      const obLeftRuns=onboardingModeRef.current?salonRuns.filter(r=>r.nx===1):[];
+      const hangRuns=obLeftRuns.length?[obLeftRuns.reduce((a,b)=>b.width>a.width?b:a)]:salonRuns;
       // Tier budget: ~24 live CanvasTextures on mobile (WS6-6), minus the hero.
       const texBudget=Q.paintingResWidth>=512?31:Q.paintingResWidth>=256?23:11;
       const nHang=Math.min(salonRest.length,texBudget);
-      const totW=salonRuns.reduce((a,r)=>a+r.width,0)||1;
+      const totW=hangRuns.reduce((a,r)=>a+r.width,0)||1;
       // Proportional-by-width allocation, largest-remainder rounding.
-      const raw=salonRuns.map(r=>nHang*r.width/totW);
+      const raw=hangRuns.map(r=>nHang*r.width/totW);
       const counts=raw.map(Math.floor);
       let left=nHang-counts.reduce((a,b)=>a+b,0);
       raw.map((v,i)=>({i,f:v-Math.floor(v)})).sort((a,b)=>b.f-a.f).forEach(({i})=>{if(left>0){counts[i]++;left--;}});
@@ -1489,7 +1548,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
           });
         }
       };
-      salonRuns.forEach((run,ri)=>{
+      hangRuns.forEach((run,ri)=>{
         const slice=salonRest.slice(ptr,ptr+counts[ri]);ptr+=counts[ri];
         if(slice.length===0)return;
         const byId=new Map<string,any>();
@@ -1953,6 +2012,18 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       vinylAudio=document.createElement("audio");
       vinylAudio.src=audioMems[0].dataUrl;vinylAudio.loop=true;vinylAudio.volume=1;
       audioElRef.current=vinylAudio;
+      // ── Guided walkthrough (owner item 4, 2026-08-23): the gramophone plays
+      // the demo recital softly during the room leg. Autoplay is gesture-granted
+      // ("Begin the walk" click earlier); play() rejection (muted tab, strict
+      // autoplay policy, reduced capability) is swallowed — the walk continues
+      // silent. Paused by the onboardingAudio prop watcher on leg end/skip and
+      // by this effect's cleanup on rebuild/unmount. Fixed soft volume: the
+      // camera spends the walk far from the gramophone corner, so the normal
+      // 8m distance falloff would render the music inaudible.
+      if(onboardingModeRef.current&&onboardingAudioRef.current!==false){
+        vinylAudio.volume=.35;
+        try{vinylAudio.play()?.catch?.(()=>{});}catch{}
+      }
     }
     } // end vinyl
 
@@ -2805,7 +2876,8 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         if(a.type==="flame"){a.mesh.position.y=a.baseY+Math.sin(t*4+a.phase)*.06;a.mesh.scale.y=.8+Math.sin(t*6+a.phase)*.3;a.mesh.material.opacity=.5+Math.sin(t*5+a.phase)*.2;}
         if(a.type==="orb"){a.mesh.position.y=a.baseY+Math.sin(t*1.5+a.phase)*.1;a.inner.position.y=a.mesh.position.y;a.light.position.y=a.mesh.position.y;a.mesh.material.emissiveIntensity=.3+Math.sin(t*2+a.phase)*.15;}
         if(a.type==="disc"){a.mesh.rotation.y=t*.5;a.label.rotation.y=t*.5;
-          if(vinylAudio){const vo=volOverride.current.audio;vinylAudio.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_vinylPos.current.set(vpX,1,vpZ))/8));}
+          // Onboarding (item 4): cap the falloff at the soft walk volume (0.35).
+          if(vinylAudio){const vo=volOverride.current.audio;vinylAudio.volume=vo!==null?vo:Math.max(0,Math.min(onboardingModeRef.current?.35:1,1-pos.current.distanceTo(_vinylPos.current.set(vpX,1,vpZ))/8));}
         }
         if(a.type==="globe"){a.mesh.rotation.y=t*.15;}
         if((a as any).type==="xmasTree"){const xl=(a as any).light as THREE.PointLight|null;if(xl)xl.intensity=.7+Math.sin(t*1.2)*.15;const sl=(a as any).star as THREE.PointLight;if(sl)sl.intensity=.5+Math.sin(t*2)*.2;const sm=(a as any).mesh;if(sm)sm.rotation.y=t*.3;}
@@ -3123,6 +3195,17 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // Null out scene references to help GC reclaim GPU-backed objects sooner
       scene.environment=null;scene.background=null;scene.fog=null;};
   },[roomId,actualRoomId,displayFingerprint]);
+
+  // ── Celebration payoff (owner item 6, 2026-08-23): when the wizard/viewer
+  // hands over the just-uploaded first memory, inject it into the LIVE scene's
+  // mantel placeholder (hook registered by the build above). Declared AFTER the
+  // scene effect so a mount that starts with the memory already set (rare
+  // resume) still finds the hook registered. No-op when the scene fell back
+  // (no WebGL) or rebuilt without the onboarding placeholder — the celebration
+  // card's photo keeps the payoff visible there.
+  useEffect(()=>{
+    if(onboardingUploadedMemory)obUploadSwapRef.current?.(onboardingUploadedMemory);
+  },[onboardingUploadedMemory]);
 
   // ═══════════════════════════════════════════════════════════════
   // MEDIA REMOTE CONTROL — clean rewrite

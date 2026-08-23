@@ -219,6 +219,7 @@
   },
   "onboarding": {
     "cinematicPalaceName": "Het Paleis van {name}",
+    "cinematicPalaceNameNeutral": "Jouw Paleis",
     "appName": "The Memory Palace",
     "skipExploreOwn": "Ik verken het zelf wel",
     "namePlaceholder": "Je voornaam",
@@ -3492,6 +3493,7 @@
     "switchToAudio": "Wisselen naar audio",
     "switchToVideo": "Wisselen naar video",
     "paintingTitle": "{name}'s Mooie Glimlach",
+    "paintingTitleNeutral": "Een Mooie Glimlach",
     "paintingDate": "anno {date}",
     "sceneLabel": "Kamer interieur 3D-scène — gebruik toetsenbord om te navigeren",
     "tapForSound": "Tik voor geluid"

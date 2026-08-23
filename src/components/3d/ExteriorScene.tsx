@@ -5829,6 +5829,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // not dropping in from above. (Onboarding-only; the R2 approachFlight and
     // normal-click paths above/below are untouched.)
     let obGate:{th0:number,ph0:number}|null=null;
+    // ITEM 2 (walk fluidity): stall-proof onboarding cinematic clock — the
+    // flyover ran on absolute wall-clock while all camera smoothing runs on
+    // clamped dt, so any hitch JUMPED the spline parameter (stutter-jump)
+    // against smoothers that only advanced one clamped step. Accumulate the
+    // clamped dt instead (hall w3hCinT / corridor w3cCinT / room obCinT parity).
+    let obCinT=0;
     // Look-target override (world y) — non-null ONLY during the onboarding
     // gate approach (and its reduced-motion gate still); every other frame
     // keeps the shared dome-crown look target below.
@@ -5901,7 +5907,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
       // ── Onboarding cinematic: WP1 (hold + prompt) → WP2-5 flyover → zoom to entrance ──
       if (onboardingModeRef.current && !autoWalkToRef.current && !approachFlight && !camDebugRef.current) {
-        const rawT = clock.getElapsedTime();
+        obCinT += dt; // ITEM 2: same clamped-dt clock as the camera smoothing (see decl)
+        const rawT = obCinT;
         const HOLD_DUR = 1.5; // seconds to drift to WP1 before showing prompt
 
         // Detect cinematicResumed prop becoming true → capture clock time
@@ -5989,12 +5996,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const ZOOM_DUR = W2 ? 2.5 : 3.8; // W2: 5+2.5 = the vlotter road dolly + gate approach; legacy: extended zoom
 
           if (ot < FLY_DUR) {
+            // ITEM 2: the smoothstep used to be applied PER SEGMENT (lt), so the
+            // spline parameter's velocity hit zero at every waypoint — the camera
+            // pumped to a near-stop 3× mid-flyover ("pretty shaky"). One global
+            // ease over the whole leg + the raw local parameter keeps Catmull-Rom
+            // C1-continuous across waypoints: ease-in at start, ease-out into the
+            // gate-approach handoff (whose aD=p² also starts at zero velocity).
             const progress = ot / FLY_DUR;
+            const gEase = progress * progress * (3 - 2 * progress);
             const n = WP.length - 1;
-            const scaled = progress * n;
+            const scaled = gEase * n;
             const seg = Math.min(Math.floor(scaled), n - 1);
             const local = scaled - seg;
-            const lt = local * local * (3 - 2 * local);
+            const lt = local;
             const p0 = WP[Math.max(seg - 1, 0)];
             const p1 = WP[seg];
             const p2 = WP[Math.min(seg + 1, n)];

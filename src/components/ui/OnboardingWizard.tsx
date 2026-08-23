@@ -829,8 +829,9 @@ ${KEYFRAMES}
                 : { opacity: 0, transition: "opacity 0.9s ease" }),
           }}>
             <div style={{
+              // Canon on-dark Eyebrow grammar (landing hero): 0.6875rem/700/0.14em
               fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
-              letterSpacing: "0.18em", textTransform: "uppercase",
+              letterSpacing: "0.14em", textTransform: "uppercase",
               color: "rgba(255,255,255,0.72)",
             }}>
               {t("appName")}
@@ -839,7 +840,7 @@ ${KEYFRAMES}
               fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500,
               fontSize: isMobile ? "1.1875rem" : "1.5rem",
               color: "rgba(255,255,255,0.92)", lineHeight: 1.35, maxWidth: "26rem",
-              textShadow: "0 0.125rem 1rem rgba(0,0,0,0.5)",
+              textShadow: "0 0.125rem 1rem rgba(26,25,23,0.5)",
             }}>
               {t("videoTagline") !== "videoTagline" ? t("videoTagline") : "A home for the moments that made you."}
             </div>
@@ -847,16 +848,17 @@ ${KEYFRAMES}
         )}
 
         {/* Welcome outro — fades in over the last moments of the video, in the
-            app's warm gold display voice, so the hand-off to the first menu
-            isn't an abrupt cut. */}
+            app's cream display voice (landing-hero treatment: Fraunces 500,
+            flat cream — GOLD text is licensed to the celebration threshold
+            only), so the hand-off to the first menu isn't an abrupt cut. */}
         {showWelcome && (
           <div style={{ position: "absolute", inset: 0, zIndex: 15, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 1.5rem", background: "radial-gradient(ellipse at center, rgba(26,25,23,0.35) 0%, rgba(26,25,23,0.72) 100%)", animation: "onb-welcomeIn 1.1s ease both" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               <div style={{
                 fontFamily: T.font.display, fontStyle: "italic",
-                fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 600,
-                color: GOLD, textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
-                textShadow: "0 0.25rem 1.75rem rgba(0,0,0,0.55)",
+                fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 500,
+                color: "#FCFAF5", textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
+                textShadow: "0 0.25rem 1.75rem rgba(26,25,23,0.55)",
               }}>
                 {t("welcomeToPalace") !== "welcomeToPalace" ? t("welcomeToPalace") : "Welcome to your Memory Palace"}
               </div>
@@ -1232,7 +1234,9 @@ ${KEYFRAMES}
      stills/instant cuts; the 8s prompt fallback + 30s flyover ceiling
      guarantee forward motion even if a callback never fires. */
   if (phase === "cinematic") {
-    const displayName = trimmedName || tr("namePlaceholder", "Your name");
+    // Empty-name fallback: a NEUTRAL title ("Your Palace"), never a possessive
+    // built on placeholder copy ("Your name's Palace" — the "Your's" bug family).
+    const displayName = trimmedName;
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
         {canonStyle}
@@ -1250,7 +1254,9 @@ ${KEYFRAMES}
         <WalkCinematicCaption
           isMobile={isMobile}
           overline={tr("welcomeTitle", "Welcome to")}
-          title={tr("cinematicPalaceName", "{name}'s Palace", { name: displayName })}
+          title={displayName
+            ? tr("cinematicPalaceName", "{name}'s Palace", { name: displayName })
+            : tr("cinematicPalaceNameNeutral", "Your Palace")}
           caption={tr("walkExterior", "This is your Memory Palace — a beautiful place to store everything you treasure.")}
         >
           {cinematicPaused && !cinematicResumed && (
@@ -1258,7 +1264,7 @@ ${KEYFRAMES}
               <p style={{
                 fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
                 color: "#D4CBC0", margin: 0, lineHeight: 1.5,
-                textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
+                textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
               }}>
                 {tr("cinematicPrompt", "Ready to visit your palace and fill it with your memories?")}
               </p>
@@ -1291,7 +1297,9 @@ ${KEYFRAMES}
     // corridor scenes drive their own choreography internally (the corridor
     // auto-walks to ro1 at step 7 once corridorEnterClicked flips).
     const autoWalkTarget = phase === "walk_exterior" ? "__entrance__" : null;
-    const displayName = trimmedName || tr("namePlaceholder", "Your name");
+    // Empty-name fallback: neutral titles (the bare wing/room name), never a
+    // possessive built on placeholder copy (the "Your's" bug family).
+    const displayName = trimmedName;
 
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
@@ -1348,7 +1356,9 @@ ${KEYFRAMES}
           <WalkCinematicCaption
             isMobile={isMobile}
             overline={tr("welcomeTitle", "Welcome to")}
-            title={tr("cinematicPossessive", "{name}'s {thing}", { name: displayName, thing: tr("corridorWingName", "Roots Wing") })}
+            title={displayName
+              ? tr("cinematicPossessive", "{name}'s {thing}", { name: displayName, thing: tr("corridorWingName", "Roots Wing") })
+              : tr("corridorWingName", "Roots Wing")}
             caption={
               corridorStep >= 2
                 ? tr("corridorSubtitle", "Every Wing has Rooms — small spaces within a larger one, each for a chapter with memories of you.")
@@ -1360,7 +1370,7 @@ ${KEYFRAMES}
                 <p style={{
                   fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
                   color: "#D4CBC0", margin: 0, lineHeight: 1.5,
-                  textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
+                  textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
                 }}>
                   {tr("corridorRoomPromptPrefix", "Your personal Room is")}{" "}
                   <span style={{ color: EMBER, fontWeight: 600 }}>{tr("corridorRoomName", "Me, Over Time")}</span>
@@ -1380,7 +1390,9 @@ ${KEYFRAMES}
           <WalkCinematicCaption
             isMobile={isMobile}
             overline={tr("welcomeTitle", "Welcome to")}
-            title={tr("cinematicPossessive", "{name}'s {thing}", { name: displayName, thing: tr("roomTitle", "Me, Over Time Room") })}
+            title={displayName
+              ? tr("cinematicPossessive", "{name}'s {thing}", { name: displayName, thing: tr("roomTitle", "Me, Over Time Room") })
+              : tr("roomTitle", "Me, Over Time Room")}
             caption={
               roomStep >= 4
                 ? tr("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more.")
@@ -1392,15 +1404,15 @@ ${KEYFRAMES}
                 <p style={{
                   fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
                   color: "#D4CBC0", margin: 0, lineHeight: 1.5,
-                  textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
+                  textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
                 }}>
                   {tr("roomHangPrompt", "Let's hang your first memory on the wall.")}
                 </p>
-                {/* Instructional hint chip — points at the empty painting, not a button */}
+                {/* Instructional hint chip — points at the empty painting, not a
+                    button. BODY font (canon chip grammar — display is titles). */}
                 <span style={{
                   display: "inline-block",
-                  fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                  letterSpacing: "0.04em",
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                   padding: "0.5rem 1.5rem",
                   background: "rgba(255,255,255,0.08)",
                   color: "rgba(250,250,247,0.65)",
@@ -1436,8 +1448,13 @@ ${KEYFRAMES}
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
         {canonStyle}
+        {/* Item 6 (owner 2026-08-23): SAME host mount position + SAME demo set
+            as the walk_room leg — React keeps the live walk scene mounted (no
+            remount, no fingerprint rebuild) behind the ImportHub, so the later
+            celebration can inject the photo into the visible room instantly.
+            demoAudio=false: the room leg is over — the gramophone stops. */}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onboardingMode demoAudio={false} />
         </Suspense>
 
         {/* No seeded-memory tooltip here — the ImportHub's own upload prompt is
@@ -1544,8 +1561,14 @@ ${KEYFRAMES}
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
         {canonStyle}
+        {/* Item 6 (owner 2026-08-23): keep the SAME live walk-room mount (same
+            position, same demo set → no remount/rebuild — the old
+            memories=[mem] + initialCameraZ=0 forced a cold scene rebuild:
+            seconds of blank beige under the confetti). The uploaded photo is
+            injected IN PLACE into the mantel placeholder via uploadedMemory;
+            the walk's step-9 framing already has the camera on the mantel. */}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} memories={uploadedMemory ? [uploadedMemory] : []} initialCameraZ={0} />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onboardingMode demoAudio={false} uploadedMemory={uploadedMemory} />
         </Suspense>
         {/* Ceremonial threshold. On short landscape phones the bottom-anchored
             fixed overlay inside OnboardingCelebration can push the CTA past the
@@ -1574,6 +1597,20 @@ ${KEYFRAMES}
               boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
               animation: "onb-fadeUp .6s ease",
             }}>
+              {/* Item 6: instant polaroid payoff — mirrors the shared
+                  OnboardingCelebration photo row (this fork is inline). */}
+              {uploadedMemory?.dataUrl && (
+                <div aria-hidden style={{
+                  background: "#FFFFFF", padding: "0.375rem 0.375rem 1rem",
+                  border: `0.0625rem solid ${HAIRLINE}`, borderRadius: "0.25rem",
+                  boxShadow: SHADOW[2], transform: "rotate(-2.5deg)",
+                }}>
+                  <img src={uploadedMemory.dataUrl} alt="" style={{
+                    display: "block", width: "5.5rem", height: "5.5rem",
+                    objectFit: "cover", borderRadius: "0.125rem",
+                  }} />
+                </div>
+              )}
               <span aria-hidden style={{
                 display: "block", width: "3rem", height: "0.125rem",
                 background: GOLD, borderRadius: "0.0625rem", opacity: 0.7,
@@ -1626,6 +1663,7 @@ ${KEYFRAMES}
               onContinue={() => setPhase(paywallAllowed() ? "paywall" : "done")}
               hint={celebHint}
               transparent
+              photoUrl={uploadedMemory?.dataUrl || null}
             />
           </Suspense>
         )}

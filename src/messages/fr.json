@@ -219,6 +219,7 @@
   },
   "onboarding": {
     "cinematicPalaceName": "Le Palais de {name}",
+    "cinematicPalaceNameNeutral": "Votre Palais",
     "appName": "The Memory Palace",
     "skipExploreOwn": "J'explorerai par moi-même",
     "namePlaceholder": "Votre prénom",
@@ -3485,6 +3486,7 @@
     "backToCorridor": "← Retour au couloir",
     "close": "Fermer",
     "paintingTitle": "Le Beau Sourire de {name}",
+    "paintingTitleNeutral": "Un Beau Sourire",
     "paintingDate": "anno {date}",
     "sceneLabel": "Scène 3D intérieure de la salle — utilisez le clavier pour naviguer",
     "videoFallback": "Vidéo",

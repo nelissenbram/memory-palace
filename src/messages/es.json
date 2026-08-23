@@ -219,6 +219,7 @@
   },
   "onboarding": {
     "cinematicPalaceName": "El Palacio de {name}",
+    "cinematicPalaceNameNeutral": "Tu Palacio",
     "appName": "The Memory Palace",
     "skipExploreOwn": "Exploraré por mi cuenta",
     "namePlaceholder": "Tu nombre",
@@ -3485,6 +3486,7 @@
     "backToCorridor": "← Volver al corredor",
     "close": "Cerrar",
     "paintingTitle": "La Hermosa Sonrisa de {name}",
+    "paintingTitleNeutral": "Una Hermosa Sonrisa",
     "paintingDate": "anno {date}",
     "sceneLabel": "Escena 3D interior de la sala — usa el teclado para navegar",
     "videoFallback": "Vídeo",

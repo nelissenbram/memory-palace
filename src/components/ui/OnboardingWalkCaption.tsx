@@ -1,15 +1,18 @@
 "use client";
 import React, { useMemo } from "react";
 import { T } from "@/lib/theme";
-import { EMBER, GOLD } from "@/lib/libraryTokens";
+import { EMBER } from "@/lib/libraryTokens";
 
 /* ── Walkthrough caption system (ONBOARDING WALKTHROUGH RESTORE) ──
  * Unifies the two legacy caption mechanisms of the 297c354 guided walk:
  *   1. WalkCinematicCaption — the bottom-center cinematic overlay (divider
- *      line+dot, small-caps kicker, gold-sheen display title, caption line,
- *      optional prompt children). Restyled to today's canon: EMBER accents
- *      (not terracotta), Fraunces display voice, rem + safe-area units,
- *      GOLD sheen reserved for the title, reduced-motion = one static fade.
+ *      line+dot, small-caps kicker, display title, caption line, optional
+ *      prompt children). Restyled to today's canon: EMBER accents (not
+ *      terracotta), Fraunces display voice mirroring the landing hero title
+ *      (flat cream, weight 500 — NO gold-sheen gradient; GOLD is licensed to
+ *      the celebration threshold only), body-font small-caps overline (the
+ *      landing Eyebrow grammar), rem + safe-area units, warm-ink text
+ *      shadows (never cold black), reduced-motion = one static fade.
  *   2. WalkCaptionPill — the dark-glass tooltip pill used on the exterior
  *      leg. Restyled to warm-ink linen glass with an EMBER primary action.
  * Mirrors EntranceHallScene's in-scene cinematic overlay so all four legs
@@ -49,16 +52,16 @@ export function WalkCtaButton({
       onClick={onClick}
       disabled={disabled}
       style={{
-        fontFamily: T.font.display,
+        // Canon CTA grammar (wizard primaryCtaStyle): BODY font, 600, ctaGrad.
+        fontFamily: T.font.body,
         fontSize: "0.9375rem",
         fontWeight: 600,
-        letterSpacing: "0.02em",
         padding: "0 1.75rem",
         minHeight: "2.75rem",
         background: T.land.ctaGrad,
         color: "#FFFFFF",
         border: "none",
-        borderRadius: "0.625rem",
+        borderRadius: "0.75rem",
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.8 : 1,
         boxShadow: `0 0.25rem 1rem ${EMBER}40`,
@@ -154,18 +157,19 @@ export default function WalkCinematicCaption({
           <span style={{ width: "3rem", height: "0.0625rem", background: `${EMBER}80` }} />
         </div>
 
-        {/* Small-caps kicker — EMBER, Fraunces, em-tracked */}
+        {/* Small-caps kicker — canon Eyebrow grammar (landing/wizard cards):
+            BODY font, 0.6875rem, 700, 0.14em tracking, EMBER accent */}
         {overline && (
           <p
             style={{
-              fontFamily: T.font.display,
-              fontSize: "0.625rem",
-              fontWeight: 500,
+              fontFamily: T.font.body,
+              fontSize: "0.6875rem",
+              fontWeight: 700,
               color: EMBER,
-              letterSpacing: "0.25em",
+              letterSpacing: "0.14em",
               textTransform: "uppercase",
               margin: "0 0 0.625rem",
-              textShadow: "0 0.125rem 0.5rem rgba(0,0,0,0.7)",
+              textShadow: "0 0.125rem 0.5rem rgba(26,25,23,0.7)",
               animation: reduce
                 ? undefined
                 : "onbw-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
@@ -175,26 +179,23 @@ export default function WalkCinematicCaption({
           </p>
         )}
 
-        {/* Gold-sheen display title — reduced motion gets flat cream, no sweep */}
+        {/* Display title — mirrors the landing hero: Fraunces 500, flat cream,
+            warm-ink shadow. NO gold-sheen gradient (landing doesn't; GOLD is
+            the celebration's licensed moment). Reduced motion = no reveal. */}
         <h1
           style={{
             fontFamily: T.font.display,
             fontSize: isMobile ? "1.75rem" : "clamp(2rem, 5vw, 3.5rem)",
-            fontWeight: 300,
-            color: "#F2EDE7",
-            lineHeight: 1.05,
+            fontWeight: 500,
+            color: "#FCFAF5",
+            lineHeight: 1.08,
             margin: 0,
             letterSpacing: "0.04em",
-            filter: "drop-shadow(0 0.125rem 0.5rem rgba(0,0,0,0.6))",
+            filter: "drop-shadow(0 0.125rem 0.5rem rgba(26,25,23,0.6))",
             ...(reduce
               ? {}
               : {
                   animation: "onbw-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-                  backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${GOLD} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-                  backgroundSize: "200% 100%",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
                 }),
           }}
         >
@@ -212,7 +213,7 @@ export default function WalkCinematicCaption({
               color: "#D4CBC0",
               margin: "0.75rem 0 0",
               lineHeight: 1.5,
-              textShadow: "0 0.125rem 0.75rem rgba(0,0,0,0.9), 0 0.0625rem 0.1875rem rgba(0,0,0,0.7)",
+              textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
               animation: reduce
                 ? undefined
                 : "onbw-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
