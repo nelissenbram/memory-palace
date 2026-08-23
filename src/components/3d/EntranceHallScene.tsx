@@ -256,6 +256,14 @@ function EntranceHallScene({
   const camDebug = false; // set true to show camera debug overlay
   const [blinkOpacity, setBlinkOpacity] = useState(0);
   const blinkRef = useRef(0); // updated every frame, React state synced periodically
+  // Last value actually PUSHED to setBlinkOpacity. Component-level ref (NOT an
+  // animate()-closure local) so it can never desync from the real React state
+  // across effect rebuilds or skipCinematic — a desynced shadow made the
+  // guarded zero-writes no-op and left a permanent semi-opaque BLACK curtain
+  // over the hall (owner: "the entrance hall became very dark", 2026-08-23).
+  // Every blinkOpacity write MUST go through pushBlink.
+  const blinkPushedRef = useRef(0);
+  const pushBlink = (v: number) => { blinkPushedRef.current = v; setBlinkOpacity(v); };
   const entranceCinematicRef = useRef(!!onboardingMode); // only play cinematic in onboarding
   const [cinematicActive, setCinematicActive] = useState(!!onboardingMode);
   // ── ONBOARDING ELEVATION §10 — overlay-UI reads at RENDER scope. The sealed
@@ -401,12 +409,57 @@ function EntranceHallScene({
     });
     const disposeFit = autoFit(el, { camera, renderer: ren, composer });
 
+    // ══ ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23, ExteriorScene parity) ══
+    // The hall streams the dome/column hero GLBs, the eager PBR sets and the
+    // lunette photo canvases asynchronously, so the rotunda visibly assembled
+    // piece by piece after the overlay lifted. Every async attach with visible
+    // pop-in registers its promise here; onReady (the overlay/veil-lift
+    // contract MemoryPalace/the viewer use) now fires only when the FIRST
+    // FRAME has rendered AND this barrier has settled (Promise.allSettled —
+    // a single failed load must never strand the reveal) OR the 8s cap has
+    // elapsed (slow networks reveal what's there). All loads stay exactly as
+    // parallel as before — only the reveal moment moves. Deliberately NOT
+    // gated: loadHDRIProgressive above (the procedural env shows from frame 0;
+    // the full-HDR swap is a subtle lighting shift, not a pop-in).
+    const revealGates: Promise<unknown>[] = [];
+    let revealBarrierDone = false;
+    // Painting canvases (paintTex) fill in async per image — a canvas gains
+    // userData.naturalWidth on its first photo draw. Register each canvas that
+    // WILL draw a photo (unlocked + paintable src, mirroring paintTex's own
+    // source pick); the bounded poll registered before animate() caps at ~9s
+    // so one dead image can never stall past the 8s barrier cap.
+    const paintGateTexes: THREE.Texture[] = [];
+    const gatePaintTex = <T extends THREE.Texture>(m: { dataUrl?: string | null; thumbnailUrl?: string | null; revealDate?: string } | undefined | null, tx: T): T => {
+      if (m && !(m.revealDate && m.revealDate > new Date().toISOString().split("T")[0])) {
+        const thumb = m.thumbnailUrl;
+        const src = (typeof thumb === "string" && thumb && !thumb.startsWith("data:video")) ? thumb : m.dataUrl;
+        if (src) paintGateTexes.push(tx);
+      }
+      return tx;
+    };
     // ── REAL PBR TEXTURES (from Poly Haven) ──
     const marbleTex = loadMarbleTextures([6, 6]);
     const floorTileTex = loadFloorTileTextures([4, 4]);
     const woodDoorTex = loadDarkWoodTextures([2, 3]);
     const wallTex = loadPlasterWallTextures([4, 4]);
     const allTexSets: PBRTextureSet[] = [marbleTex, floorTileTex, woodDoorTex, wallTex];
+    // Reveal gate: the eager PBR sets visibly RETEXTURE the biggest surfaces
+    // (floor/walls/doors flip from flat colour to full maps). The sets are
+    // sync clone-sharing textures (assetLoader loadPBRSet) with no promise
+    // API, but a clone's `version` stays 0 until its base image lands
+    // (cloneTex/finishBaseLoad) — poll that marker. Bounded: ~9s of attempts,
+    // then resolve regardless (the 8s barrier cap fires first anyway).
+    {
+      const _gateTexes = allTexSets.flatMap((s) => [s.map, s.normalMap, s.roughnessMap, s.aoMap]);
+      revealGates.push(new Promise<void>((resolve) => {
+        let _tries = 0;
+        const check = () => {
+          if (_tries++ > 60 || _gateTexes.every((tx) => tx.version > 0)) resolve();
+          else setTimeout(check, 150);
+        };
+        check();
+      }));
+    }
     // W3H (audit F03): the hall was the ONLY major scene with zero anisotropic
     // filtering — floor/wall maps smeared at grazing angles.
     if (W3H) {
@@ -776,7 +829,7 @@ function EntranceHallScene({
     // proud frames, CPU-baked AO folded into the albedo. DRACO, 271KB, ~8k
     // tris. Canary pattern: procedural dome stays as the load-failure path.
     if (W3H) {
-      loadModel("/models/hall/dome_hall_w3.glb?v=1").then((g) => {
+      revealGates.push(loadModel("/models/hall/dome_hall_w3.glb?v=1").then((g) => {
         g.traverse((c) => {
           const m = c as THREE.Mesh;
           if (!m.isMesh) return;
@@ -809,7 +862,7 @@ function EntranceHallScene({
         ren.shadowMap.needsUpdate = true;
       }).catch((err) => {
         console.warn("[W3H] dome GLB load failed, keeping procedural dome", err);
-      });
+      }));
     }
     // Oculus ring (thicker)
     const oculusRing = new THREE.Mesh(
@@ -927,7 +980,7 @@ function EntranceHallScene({
     // Two child meshes → two InstancedMeshes over the same validColAngles.
     // Canary: the 5 procedural instanced meshes hide only on load success.
     if (W3H) {
-      loadModel("/models/hall/column_hall_w3.glb?v=1").then((g) => {
+      revealGates.push(loadModel("/models/hall/column_hall_w3.glb?v=1").then((g) => {
         const parts: THREE.Mesh[] = [];
         g.updateMatrixWorld(true);
         g.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh) parts.push(m); });
@@ -964,7 +1017,7 @@ function EntranceHallScene({
         ren.shadowMap.needsUpdate = true;
       }).catch((err) => {
         console.warn("[W3H] column GLB load failed, keeping procedural columns", err);
-      });
+      }));
     }
 
     // ── 7 GRAND DOORS ──
@@ -1217,7 +1270,7 @@ function EntranceHallScene({
         const lunMem = !isPlaceholderLocked && !isSharedDoor ? lunettePhotos?.[doorDef.id] : undefined;
         let lunMat: THREE.Material;
         if (lunMem) {
-          const ltex = paintTex(lunMem);
+          const ltex = gatePaintTex(lunMem, paintTex(lunMem)); // reveal gate: lunette photo draw
           lunetteTextures.push(ltex);
           const pm = new THREE.MeshBasicMaterial({ map: ltex });
           pm.color.setRGB(1.12, 1.12, 1.12);
@@ -2341,7 +2394,7 @@ function EntranceHallScene({
       awHitMat = new THREE.MeshBasicMaterial({ visible: false }); // raycast-only — zero draw calls
       awMountHandle = mountSalonHang(awLayout, {
         getTexture: (ref) => {
-          const tex = paintTex(awById.get(ref.id)!);
+          const tex = gatePaintTex(awById.get(ref.id)!, paintTex(awById.get(ref.id)!)); // reveal gate: AW photo draw
           awTextures.push(tex);
           return tex;
         },
@@ -2804,7 +2857,13 @@ function EntranceHallScene({
     }
 
     let _lastCream = 0; // cream veil state throttle (reduced-motion crossfade)
-    let _lastBlink = 0; // blink overlay state throttle (ITEM 2: no per-frame setState re-render jank)
+    // Blink hygiene at (re)build: force the curtain fully open and re-sync the
+    // shared shadow (blinkPushedRef) — a rebuild mid-blink otherwise inherited
+    // a stuck nonzero blinkOpacity that no guarded write would ever clear.
+    // (The per-frame throttle itself lives on blinkPushedRef, component-level.)
+    blinkRef.current = 0;
+    pushBlink(0);
+    setCreamFade(0);
     let w3hCinT = 0;    // W3H: stall-proof cinematic time (accumulated clamped dt)
     // Touch-move vector — hoisted above animate() so the w1_hall movement block
     // can read it directly per frame (replaces the 16ms synthetic-WASD poll).
@@ -2851,6 +2910,16 @@ function EntranceHallScene({
         // W2 (WS7-10): a hidden→shown cycle resets to the spawn — never resume
         // a stale focus hold (undims via cancel's setDimmed(false)).
         focus?.cancel();
+        // A mid-flight cinematic from an ABORTED onboarding leg must not
+        // resume on a later re-entry (persistent hall: the wizard can advance
+        // past the leg without skipCinematic; a fresh mount only arms the
+        // cinematic from onboardingMode). Active onboarding resumes normally;
+        // anything else cancels — the blink-curtain failsafe below then clears
+        // any leftover black overlay on this same frame.
+        if (entranceCinematicRef.current && !onboardingModeRef.current) {
+          entranceCinematicRef.current = false;
+          setCinematicActive(false);
+        }
         pos.current.set(0, EYE_HEIGHT, 7.3); posT.current.set(0, EYE_HEIGHT, 7.3);
         lookT.current = { yaw: 0.0270, pitch: 0.0360 };
         lookA.current = { yaw: 0.0270, pitch: 0.0360 };
@@ -3010,14 +3079,16 @@ function EntranceHallScene({
           // during the look phase, and those main-thread hitches read as
           // camera shake. _lastCream pattern; endpoints (0/1) always land.
           const bo = blinkRef.current;
-          if (Math.abs(bo - _lastBlink) > 0.02 || (bo === 0 && _lastBlink !== 0) || (bo === 1 && _lastBlink !== 1)) {
-            _lastBlink = bo; setBlinkOpacity(bo);
+          if (Math.abs(bo - blinkPushedRef.current) > 0.02 || (bo === 0 && blinkPushedRef.current !== 0) || (bo === 1 && blinkPushedRef.current !== 1)) {
+            pushBlink(bo);
           }
         }
         // Walk phase: slow walk to roots door (12s)
         else if (ot < LOOK_DUR + WALK_DUR) {
           blinkRef.current = 0;
-          if (_lastBlink !== 0) { _lastBlink = 0; setBlinkOpacity(0); }
+          // Phase boundary: the zero endpoint ALWAYS lands (threshold applies
+          // to mid-animation frames only; the shared shadow can't desync).
+          if (blinkPushedRef.current !== 0) pushBlink(0);
           const rootsDoorAngle = (0 / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
           const approachR = RADIUS - 4;
           const targetX = Math.cos(rootsDoorAngle) * approachR;
@@ -3034,7 +3105,8 @@ function EntranceHallScene({
           lookT.current.pitch += (0 - lookT.current.pitch) * (1 - Math.exp(-1.8271 * dt)); // f=.03 @60fps
         } else {
           blinkRef.current = 0;
-          if (_lastBlink !== 0) { _lastBlink = 0; setBlinkOpacity(0); }
+          // Leg end: the zero endpoint ALWAYS lands before the roots handoff.
+          if (blinkPushedRef.current !== 0) pushBlink(0);
           entranceCinematicRef.current = false;
           setCinematicActive(false);
           if (onboardingModeRef.current) {
@@ -3043,6 +3115,17 @@ function EntranceHallScene({
           }
         }
         } // end blink cinematic branch
+      } else if (blinkRef.current !== 0 || blinkPushedRef.current !== 0 || _lastCream !== 0) {
+        // FAILSAFE (owner "hall became very dark", 2026-08-23): the cinematic
+        // is NOT driving this frame — finished, skipped, or interrupted
+        // mid-blink by an autoWalk/door-tap (awClick)/external cancel. The
+        // black blink curtain and the reduced-motion cream veil must never
+        // survive it: an interruption while the eyes were "closed" previously
+        // left a permanent semi-opaque black overlay over the hall. Keyed on
+        // _lastCream (not creamFade) so the focus-mode cream cut is untouched.
+        blinkRef.current = 0;
+        if (blinkPushedRef.current !== 0) pushBlink(0);
+        if (_lastCream !== 0) { _lastCream = 0; setCreamFade(0); }
       }
 
       // ── W2 (WS7-10): focus mode owns the camera while active — ONE camera
@@ -3314,9 +3397,43 @@ function EntranceHallScene({
       // the first frame of every build always presents (see _presented above).
       if (document.hidden && _presented) return;
       composer.render();
-      _presented = true;
-      if (!readyFiredRef.current) { readyFiredRef.current = true; try { onReadyRef.current?.(); } catch {} }
+      if (!_presented) { _presented = true; console.log("[hall] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
+      if (!readyFiredRef.current) fireRevealWhenAssembled();
     };
+    // ASSEMBLE-BEFORE-REVEAL: onReady (the overlay/veil-lift contract) fires
+    // only when the first frame has rendered AND the reveal barrier is done —
+    // GLBs/lunettes/eager textures settled (see revealGates) or the 8s cap.
+    // The first-frame _presented guarantee above is untouched, and so is the
+    // hidden→shown onReady re-fire (readyFiredRef is already true by then).
+    // Nothing about the loads themselves is serialized or delayed.
+    if (paintGateTexes.length) {
+      revealGates.push(new Promise<void>((resolve) => {
+        let _tries = 0;
+        const check = () => {
+          if (_tries++ > 60 || paintGateTexes.every((tx) => tx.userData.naturalWidth !== undefined)) resolve();
+          else setTimeout(check, 150);
+        };
+        check();
+      }));
+    }
+    const fireRevealWhenAssembled = () => {
+      if (readyFiredRef.current || !_presented || !revealBarrierDone) return;
+      readyFiredRef.current = true;
+      try { onReadyRef.current?.(); } catch {}
+      console.log("[hall] reveal (assembled) at", Math.round(performance.now() - _mountStart), "ms");
+    };
+    if (readyFiredRef.current) {
+      // Effect re-run on an already-revealed mount (persistent hall rebuild):
+      // the barrier is moot — never park a rebuild behind it.
+      revealBarrierDone = true;
+    } else {
+      const REVEAL_CAP_MS = 8000; // slow networks: reveal what's there (MemoryPalace WS9-7 watchdog parity)
+      Promise.race([
+        Promise.allSettled(revealGates),
+        new Promise((res) => setTimeout(res, REVEAL_CAP_MS)),
+      ]).then(() => { if (!alive) return; revealBarrierDone = true; fireRevealWhenAssembled(); });
+    }
+    const _mountStart = performance.now();
     animate();
 
     // ── MOUSE CONTROLS (first-person look + click) ──
@@ -3578,7 +3695,8 @@ function EntranceHallScene({
     entranceCinematicRef.current = false;
     setCinematicActive(false);
     blinkRef.current = 0;
-    setBlinkOpacity(0);
+    pushBlink(0); // shared write path — keeps the throttle shadow in sync
+    setCreamFade(0); // reduced-motion path: never leave the cream veil up either
     if (onboardingModeRef.current) {
       onboardingModeRef.current = false;
       onDoorClickRef.current("roots");

@@ -208,20 +208,22 @@ export default function FlythroughClient() {
   }, [applyFill]);
   const [progress, setProgress] = useState(0);
   const [fadeOpacity, setFadeOpacity] = useState(1);
-  // ── Exterior viewer veil (assemble-before-reveal, owner 2026-08-23) ──
-  // Scene 0 mounts the bare ExteriorScene with no cover, so the palace used to
-  // visibly assemble (GLBs/pano/textures popping in). A cream veil now holds
-  // until the scene's onReady — which ExteriorScene only fires once fully
-  // assembled (reveal barrier, ≤8s cap) — with a 10s viewer-side safety
-  // ceiling so a never-firing scene (WebGL init failure) can't strand it.
-  const [extReady, setExtReady] = useState(false);
-  const handleExtReady = useCallback(() => setExtReady(true), []);
-  useEffect(() => { if (currentScene !== 0) setExtReady(false); }, [currentScene]);
+  // ── Scene viewer veil (assemble-before-reveal, owner 2026-08-23) ──
+  // Scenes 0–3 mount the bare 3D scenes with no cover, so they used to
+  // visibly assemble (GLBs/PBR sets/painting canvases popping in). A cream
+  // veil now holds until the mounted scene's onReady — which every scene only
+  // fires once fully assembled (per-scene reveal barrier, ≤8s cap) — with a
+  // 10s viewer-side safety ceiling so a never-firing scene (WebGL init
+  // failure) can't strand it. Scene 4 (onboarding preview) keeps the
+  // OnboardingSceneHost's own ready-gated reveal instead.
+  const [viewerSceneReady, setViewerSceneReady] = useState(false);
+  const handleViewerSceneReady = useCallback(() => setViewerSceneReady(true), []);
+  useEffect(() => { setViewerSceneReady(false); }, [currentScene]);
   useEffect(() => {
-    if (currentScene !== 0 || extReady) return;
-    const tmo = setTimeout(() => setExtReady(true), 10000);
+    if (currentScene >= RECORD_SCENE_COUNT || viewerSceneReady) return;
+    const tmo = setTimeout(() => setViewerSceneReady(true), 10000);
     return () => clearTimeout(tmo);
-  }, [currentScene, extReady]);
+  }, [currentScene, viewerSceneReady]);
 
   // ── Onboarding preview state (scene 4) — plan §11 obPhase machine ──
   const isMobile = useIsMobile();
@@ -641,7 +643,7 @@ export default function FlythroughClient() {
             onRoomClick={noop}
             hoveredRoom={null}
             styleEra="roman"
-            onReady={handleExtReady}
+            onReady={handleViewerSceneReady}
           />
         );
       case 1:
@@ -650,6 +652,7 @@ export default function FlythroughClient() {
             onDoorClick={noop}
             styleEra="roman"
             lunettePhotos={DEMO_LUNETTES}
+            onReady={handleViewerSceneReady}
           />
         );
       case 2:
@@ -662,6 +665,7 @@ export default function FlythroughClient() {
             onDoorClick={noop}
             hoveredDoor={null}
             styleEra="roman"
+            onReady={handleViewerSceneReady}
           />
         );
       case 3:
@@ -679,6 +683,7 @@ export default function FlythroughClient() {
               else setLightboxId(mem.id);
             }}
             styleEra="roman"
+            onReady={handleViewerSceneReady}
           />
         );
       case 4: {
@@ -715,10 +720,12 @@ export default function FlythroughClient() {
             // the scenes read the GLOBAL locale by default, which the viewer
             // never touches — obLocale pins them to the chosen language.
             localeOverride={obLocale}
-            // Item 4: the gramophone demo music plays during the walk legs and
-            // stops the moment the room leg ends (upload/celebration), without
-            // tearing down the still-mounted scene.
-            demoAudio={obPhase !== "upload" && obPhase !== "celebration"}
+            // Item 4 REVISED (owner 2026-08-23): NO audio in the room during
+            // onboarding — the gramophone demo music must not auto-play. The
+            // wiring stays dormant (InteriorScene autoplay is opt-in via
+            // `onboardingAudioRef.current===true`); re-enable by restoring
+            // demoAudio={obPhase !== "upload" && obPhase !== "celebration"}.
+            demoAudio={false}
             uploadedMemory={obPhase === "celebration" ? obMem : null}
             onReady={handleObHostReady}
             onSceneReady={handleObSceneReady}
@@ -778,18 +785,18 @@ export default function FlythroughClient() {
         {mounted && renderScene()}
       </div>
 
-      {/* Exterior viewer veil — cream cover until the exterior's assembled
+      {/* Scene viewer veil — cream cover until the mounted scene's assembled
           reveal (onReady); idle viewing only, never over a recording pass */}
-      {mounted && currentScene === 0 && phase === "idle" && (
+      {mounted && currentScene < RECORD_SCENE_COUNT && phase === "idle" && (
         <div
-          aria-hidden={extReady}
+          aria-hidden={viewerSceneReady}
           style={{
             position: "absolute", inset: 0, zIndex: 40,
             background: "#FCFAF5",
             display: "flex", alignItems: "center", justifyContent: "center",
-            opacity: extReady ? 0 : 1,
+            opacity: viewerSceneReady ? 0 : 1,
             transition: "opacity 400ms ease",
-            pointerEvents: extReady ? "none" : "auto",
+            pointerEvents: viewerSceneReady ? "none" : "auto",
           }}
         >
           <span style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "1.0625rem", color: "#716A5E" }}>

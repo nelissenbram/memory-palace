@@ -22,10 +22,11 @@ interface OnboardingSceneHostProps {
   onRoomClick?: (id: string) => void;
   onDoorClick?: (id: string) => void;
   onReady?: () => void;
-  /** REAL scene readiness (first rendered frame of the named scene, or the
-   * no-WebGL/error fallback where no 3D ready will ever come). Unlike onReady,
-   * this is NEVER fired by the host's internal 4s reveal-timeout — callers use
-   * it to arm anti-stranding ceilings only once choreography can actually run. */
+  /** REAL scene readiness (the named scene's own onReady — first rendered
+   * frame + assembled reveal barrier — or the no-WebGL/error fallback where no
+   * 3D ready will ever come). Unlike onReady, this is NEVER fired by the
+   * host's internal 10s reveal-timeout — callers use it to arm anti-stranding
+   * ceilings only once choreography can actually run. */
   onSceneReady?: (scene: OnboardingScene) => void;
   onOnboardingLookDone?: () => void;
   onCinematicPause?: () => void;
@@ -50,11 +51,13 @@ interface OnboardingSceneHostProps {
   isMobile?: boolean;
   corridorEnterClicked?: boolean;
   initialCameraZ?: number;
-  /** Guided-walk gramophone music (owner item 4, 2026-08-23). Default (undefined)
-   * = play the demo audio mem softly during the onboarding room scene (the
-   * "Begin the walk" click earlier granted the audio gesture). The wizard's
-   * upload/celebration mounts pass false so the music stops when the room leg
-   * ends WITHOUT tearing down the still-mounted walk scene. */
+  /** Guided-walk gramophone music — DISABLED by default (owner 2026-08-23
+   * revision: "no audio in the room during onboarding"). InteriorScene's
+   * autoplay is opt-in: ONLY an explicit true plays the demo audio mem softly
+   * during the onboarding room scene; undefined/false = silent (false also
+   * pauses a playing gramophone without tearing down the still-mounted walk
+   * scene). No caller passes true today — the wiring is dormant; see
+   * InteriorScene's vinyl block for the one-line re-enable. */
   demoAudio?: boolean;
   /** Celebration payoff (owner item 6, 2026-08-23): the just-uploaded first
    * memory. Injected into the LIVE room scene in place of the mantel upload
@@ -218,9 +221,10 @@ export default function OnboardingSceneHost({
   }, [onReady]);
 
   // REAL readiness notification (anti-stranding ceilings): fired once per
-  // active scene, ONLY from the scene's own onReady (first rendered frame) or
-  // the no-3D fallback path — never from the 4s reveal-timeout below, which
-  // exists purely so a slow scene doesn't strand the user on a cream veil.
+  // active scene, ONLY from the scene's own onReady (first rendered frame +
+  // assembled reveal barrier) or the no-3D fallback path — never from the 10s
+  // reveal-timeout below, which exists purely so a slow scene doesn't strand
+  // the user on a cream veil.
   // onSceneReady is kept in a ref so parent inline-callback identity churn
   // can neither re-fire it nor reset the once-guard.
   const onSceneReadyRef = useRef(onSceneReady);
@@ -251,8 +255,13 @@ export default function OnboardingSceneHost({
       return;
     }
     // Ceiling timeout: a stalled/never-firing onReady still surfaces the scene
-    // (reveal only — deliberately NOT a scene-ready signal).
-    const ceiling = setTimeout(() => handleReady(), 4000);
+    // (reveal only — deliberately NOT a scene-ready signal). 10s (was 4s):
+    // the scenes' assemble-before-reveal barrier (owner 2026-08-23) fires
+    // onReady only once GLBs/textures/painting canvases have settled, capped
+    // at 8s scene-side — a 4s ceiling would undercut the barrier and reveal a
+    // half-assembled scene. The real onReady is always preferred (handleReady
+    // fires the moment it lands); this ceiling is pure anti-stranding.
+    const ceiling = setTimeout(() => handleReady(), 10000);
     return () => clearTimeout(ceiling);
   }, [activeScene, noWebGL, boundaryFailed, handleReady, notifySceneReady]);
 
@@ -296,8 +305,9 @@ export default function OnboardingSceneHost({
   );
 
   // Demo room memories (owner item 4, 2026-08-23) — the walk must arrive in a
-  // LIVED-IN room: the gramophone plays the demo audio softly (wired in
-  // InteriorScene via the demoAudio prop) and 3 generic pictures hang together
+  // LIVED-IN room: the gramophone displays the demo audio mem (auto-play
+  // DISABLED per owner 2026-08-23 revision — demoAudio prop wiring is
+  // dormant, see the prop doc) and 3 generic pictures hang together
   // on the LEFT wall (portraits side; displayed:true frame photos — the mantel
   // stays EMPTY for the upload placeholder because InteriorScene's onboarding
   // guard never lifts a hero there). Fixed createdAt dates keep the

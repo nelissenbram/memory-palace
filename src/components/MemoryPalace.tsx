@@ -726,13 +726,16 @@ export default function MemoryPalace(){
   const persistHallRef = useRef(false);
   // Destination name for the cold-load card (WS9-3 destination line).
   const [overlayDest, setOverlayDest] = useState<string | undefined>(undefined);
-  // ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23): a COLD exterior load streams six
-  // hero GLBs + pano + textures and only fires onReady once fully assembled
-  // (ExteriorScene reveal barrier, ≤8s cap). The overlay's natural CSS fade
-  // (fadeDelay 0.8s) would reveal the half-built palace long before that — a
-  // held overlay keeps its fade parked at 8s (== the barrier cap / WS9-7
-  // watchdog) so only onReady (via sceneReadyFade) starts it early. Scoped to
-  // cold exterior loads; every other scene keeps the canon 0.8/1.2s pacing.
+  // ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23): a COLD scene load streams its
+  // hero GLBs/textures/painting canvases and only fires onReady once fully
+  // assembled (per-scene reveal barrier, ≤8s cap) — the exterior first, and
+  // since the owner's "same piecemeal pop-in" report also the entrance hall,
+  // corridor and room. The overlay's natural CSS fade (fadeDelay 0.8/1.2s)
+  // would reveal a half-built scene long before that — a held overlay keeps
+  // its fade parked at 8s (== the barrier cap / WS9-7 watchdog) so only
+  // onReady (via sceneReadyFade) starts it early. Scoped to COLD loads
+  // (exterior: never fired onReady this session; interior scenes: not in the
+  // warmth ledger); warm/persistent remounts keep the snappy canon pacing.
   const [overlayHold, setOverlayHold] = useState(false);
   const overlayHoldRef = useRef(false);
   const beginVeilFade = useCallback(() => {
@@ -929,10 +932,15 @@ export default function MemoryPalace(){
           const rt = persistentTarget ? setTimeout(beginVeilFade, 250) : null;
           return () => { if (rt) clearTimeout(rt); };
         }
-        // COLD exterior (never fired onReady this session) holds the overlay
-        // until the assembled reveal; warm hops/other scenes keep canon pacing.
-        const coldExterior = view === "exterior" && !sceneReadyRef.current;
-        showSceneOverlay(dest, coldExterior);
+        // COLD load holds the overlay until the assembled reveal — exterior
+        // when it never fired onReady this session, entrance/corridor/room on
+        // their first load of the session (not yet in the warmth ledger; their
+        // reveal barriers fire onReady only once GLBs/textures/paintings have
+        // settled, ≤8s cap). Warm hops/persistent remounts keep canon pacing.
+        const coldLoad = view === "exterior"
+          ? !sceneReadyRef.current
+          : !!targetScene && !isWarm(targetScene);
+        showSceneOverlay(dest, coldLoad);
         // The warm persistent ExteriorScene never re-fires onReady — when
         // returning to it, signal readiness ourselves once the overlay painted.
         const rt = (view === "exterior" && sceneReadyRef.current)
@@ -941,8 +949,8 @@ export default function MemoryPalace(){
         // Safety fallback only — the mounted scene's onReady dismisses earlier.
         // Under w2_veil the blind 2s hide is retired: onReady lifts the card
         // (WS9-7 "lift only onto ready scenes"), the 8s watchdog is the cap.
-        // A held cold-exterior overlay gets the 9s safety instead (8s park + fade).
-        const t = flag3d("w2_veil") ? null : setTimeout(hideSceneOverlay, coldExterior ? 9000 : 2000);
+        // A held cold-load overlay gets the 9s safety instead (8s park + fade).
+        const t = flag3d("w2_veil") ? null : setTimeout(hideSceneOverlay, coldLoad ? 9000 : 2000);
         return () => { if (rt) clearTimeout(rt); if (t) clearTimeout(t); };
       }
     }
@@ -951,6 +959,21 @@ export default function MemoryPalace(){
     // Library→3D loading overlay (view changes mid-transition due to fade).
     if (!sceneLoadFromLibraryRef.current) {
       hideSceneOverlay();
+    } else if (sceneLoadingRef.current && navMode === "3d") {
+      // Library→3D COLD load (owner 2026-08-23): the target view lands a
+      // couple of frames AFTER the overlay went up (palaceStore fade), so the
+      // hold decision happens here, once the destination is known. A cold
+      // entrance/corridor/room (or cold exterior) parks the overlay fade at 8s
+      // — the 1.2s library pacing would reveal it half-assembled — and only
+      // the scene's assembled-reveal onReady (via sceneReadyFade) starts the
+      // fade early. Warm targets keep the snappy 1.2s pacing. The fade is
+      // still within its delay window at this point, so extending it never
+      // restarts a visible animation.
+      const targetScene = viewToSceneId(view);
+      const coldLoad = view === "exterior"
+        ? !sceneReadyRef.current
+        : !!targetScene && !isWarm(targetScene);
+      if (coldLoad && !overlayHoldRef.current) { overlayHoldRef.current = true; setOverlayHold(true); }
     }
   }, [view, navMode, showSceneOverlay, hideSceneOverlay, handleSceneReady, showVeil, beginVeilFade]);
 
@@ -1725,9 +1748,11 @@ export default function MemoryPalace(){
       {/* Scene loading overlay — fades out when the mounted scene fires onReady
           (sceneReadyFade restarts the fade with zero delay); the fixed fadeDelay
           values are the fallback pacing when no readiness signal arrives. A HELD
-          overlay (cold exterior — assemble-before-reveal) parks its fade at 8s
-          (== the barrier cap) so only onReady starts it early. */}
-      {(sceneLoading||(portalAnim&&!(w2Veil&&veil)))&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneReadyFade ? 0 : (sceneLoadFromLibraryRef.current ? 1.2 : (overlayHold ? 8 : 0.8))) : 0.2} destination={w2Veil && sceneLoading ? overlayDest : undefined} />}
+          overlay (COLD exterior/entrance/corridor/room — assemble-before-reveal)
+          parks its fade at 8s (== the barrier cap) so only onReady starts it
+          early; the hold outranks the library 1.2s pacing (a cold Library→3D
+          load is upgraded to a hold once the destination view lands). */}
+      {(sceneLoading||(portalAnim&&!(w2Veil&&veil)))&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneReadyFade ? 0 : (overlayHold ? 8 : sceneLoadFromLibraryRef.current ? 1.2 : 0.8)) : 0.2} destination={w2Veil && sceneLoading ? overlayDest : undefined} />}
 
       {/* WS9-8 golden veil (w2_veil) — covers warm hops; cold loads keep the card */}
       {w2Veil && veil && !sceneLoading && <GoldenVeil destination={veil.dest} fading={veil.fading} />}

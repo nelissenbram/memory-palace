@@ -385,6 +385,33 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // Room bounds for the integrator — filled in once the layout shell is known.
     const rWRef={w:20,l:20};
 
+    // ══ ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23, ExteriorScene parity) ══
+    // The room streams its eager PBR sets (herringbone/fabric/velvet/…) and
+    // every painting canvas (paintTex — hero, salon hang, mantel, photo book,
+    // vitrine, orbs) asynchronously, so the den visibly assembled piece by
+    // piece after the overlay lifted. Async attaches with visible pop-in
+    // register here; onReady (the overlay/veil-lift contract) now fires only
+    // when the FIRST FRAME has rendered AND this barrier has settled
+    // (Promise.allSettled) OR the 8s cap has elapsed. Loads stay exactly as
+    // parallel as before — only the reveal moment moves. Deliberately NOT
+    // gated: loadHDRIProgressive (subtle env swap) and video textures (they
+    // start paused on their poster/thumbnail frame).
+    const revealGates: Promise<unknown>[] = [];
+    let revealBarrierDone = false;
+    // Painting canvases (paintTex) fill in async per image — a canvas gains
+    // userData.naturalWidth on its first photo draw. Register each canvas that
+    // WILL draw a photo (unlocked + paintable src, mirroring paintTex's own
+    // source pick); the bounded poll registered before animate() caps at ~9s
+    // so one dead image can never stall past the 8s barrier cap.
+    const paintGateTexes: THREE.Texture[] = [];
+    const gatePaintTex = <T extends THREE.Texture>(m: { dataUrl?: string | null; thumbnailUrl?: string | null; revealDate?: string } | undefined | null, tx: T): T => {
+      if (m && !(m.revealDate && m.revealDate > new Date().toISOString().split("T")[0])) {
+        const thumb = m.thumbnailUrl;
+        const src = (typeof thumb === "string" && thumb && !thumb.startsWith("data:video")) ? thumb : m.dataUrl;
+        if (src) paintGateTexes.push(tx);
+      }
+      return tx;
+    };
     // ── REAL PBR TEXTURES (Poly Haven) ──
     const marbleTex=loadMarbleTextures([3,3]);
     const woodTex=loadHerringboneTextures([4,4]);
@@ -392,6 +419,22 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const rugTex=loadFabricTextures([2,2]);
     const velvetTex=loadVelvetTextures([2,2]);
     const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallTex,rugTex,velvetTex];
+    // Reveal gate: the eager PBR sets visibly RETEXTURE the biggest surfaces
+    // (herringbone floor/walls/rug flip from flat colour to full maps). No
+    // promise API — a clone's `version` stays 0 until its base image lands
+    // (assetLoader cloneTex/finishBaseLoad); poll that marker, bounded at ~9s
+    // (the 8s barrier cap fires first anyway).
+    {
+      const _gateTexes=allTexSets.flatMap((s)=>[s.map,s.normalMap,s.roughnessMap,s.aoMap]);
+      revealGates.push(new Promise<void>((resolve)=>{
+        let _tries=0;
+        const check=()=>{
+          if(_tries++>60||_gateTexes.every((tx)=>tx.version>0))resolve();
+          else setTimeout(check,150);
+        };
+        check();
+      }));
+    }
     // W1 (WS2-1 slice): anisotropic filtering on floor/wall sets — 8 desktop / 4
     // mobile, clamped to hardware caps. Kills the grazing-angle floor blur.
     if(W1){
@@ -1388,7 +1431,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // makeArtwork piece — aspect-correct plane (no more 1.6×1.1 stretch of the
       // 4:3 canvas), canon gold frame, Fraunces brass plaque, baked art light.
       // The per-painting SpotLight is deleted (zero dynamic lights per artwork).
-      const om=bigPaintMem;const t=paintTex(om);
+      const om=bigPaintMem;const t=gatePaintTex(om,paintTex(om)); // reveal gate: hero photo draw
       // z-fight sweep r2: +.06 put the makeArtwork glow plane (z −0.035) 5mm off the
       // chimney-breast face (fpZ+.02) — shimmer; +.09 gives it real clearance.
       // W3 (owner): raise the hero so its plaque clears the mantel clock/ornaments.
@@ -1406,7 +1449,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fWalnut,fpX,2.4,fpZ+.02));
       scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.fSlip,fpX,2.4,fpZ+.08));
       if(!isMobileGPU()){const fpSp=new THREE.SpotLight("#FFF5E0",.8,5,Math.PI/7,.5,1.2);fpSp.position.set(fpX,rH-.2,fpZ+.5);fpSp.target.position.set(fpX,2.4,fpZ);scene.add(fpSp);scene.add(fpSp.target);}
-      const om=bigPaintMem;const t=paintTex(om);
+      const om=bigPaintMem;const t=gatePaintTex(om,paintTex(om)); // reveal gate: hero photo draw (legacy)
       const omc=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),new THREE.MeshStandardMaterial({map:t,roughness:.8}));
       omc.position.set(fpX,2.4,fpZ+.12);omc.userData={memory:om};scene.add(omc);memMeshes.current.push(omc);
       devCheckArtworkAspect(t,1.6,1.1,"fireplace painting (legacy)");
@@ -1478,9 +1521,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const framePhoto=W2?null:frameMems.length>0?frameMems[0]:(bigPaintUsedPhoto?photoMems.slice(1):photoMems)[0]||null;
     if(framePhoto&&W1){
       // W1 hero spot: mantle photo frame via makeArtwork (aspect-correct, plaqued)
-      const pm=paintTex(framePhoto);
+      const pm=gatePaintTex(framePhoto,paintTex(framePhoto)); // reveal gate: mantle photo draw
       mountArtwork(framePhoto,pm,fpX-.5,1.46,fpZ+.16,0,.3);
-    }else if(framePhoto){const pm=paintTex(framePhoto);const pf=new THREE.Mesh(new THREE.PlaneGeometry(.25,.2),new THREE.MeshStandardMaterial({map:pm,roughness:.8}));pf.position.set(fpX-.5,1.46,fpZ+.18);pf.userData={memory:framePhoto};scene.add(pf);memMeshes.current.push(pf);scene.add(mk(new THREE.BoxGeometry(.32,.27,.04),MS.fB,fpX-.5,1.46,fpZ+.15));devCheckArtworkAspect(pm,.25,.2,"mantle frame (legacy)");}
+    }else if(framePhoto){const pm=gatePaintTex(framePhoto,paintTex(framePhoto));const pf=new THREE.Mesh(new THREE.PlaneGeometry(.25,.2),new THREE.MeshStandardMaterial({map:pm,roughness:.8}));pf.position.set(fpX-.5,1.46,fpZ+.18);pf.userData={memory:framePhoto};scene.add(pf);memMeshes.current.push(pf);scene.add(mk(new THREE.BoxGeometry(.32,.27,.04),MS.fB,fpX-.5,1.46,fpZ+.15));devCheckArtworkAspect(pm,.25,.2,"mantle frame (legacy)");}
     // ── W2 (WS6-6/WS7-5): salon-hang the remaining wall memories over the four
     // free wall runs (front wall flanking the door, right wall flanking the
     // cinema screen; back wall keeps fireplace+windows, left wall = bookshelf).
@@ -1575,7 +1618,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         const byId=new Map<string,any>();
         const refs: SalonMemoryRef[]=slice.map((m: any)=>{
           const id=String(m.id??m.title);
-          const tx=paintTex(m);salonTexMap.set(id,tx);salonTexs.push(tx);byId.set(id,m);
+          const tx=gatePaintTex(m,paintTex(m));salonTexMap.set(id,tx);salonTexs.push(tx);byId.set(id,m); // reveal gate: salon photo draws
           return {id,aspect:(tx.userData?.aspect as number)||4/3,title:m.title,year:memYear(m)};
         });
         // W3 (owner 2026-08-17): the portraits must sit WITHIN the decorative wall
@@ -1636,7 +1679,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const albumPage=new THREE.MeshStandardMaterial({color:"#F5F0E8",roughness:.92});
     const albumSpineMat=new THREE.MeshStandardMaterial({color:"#3E1A0E",roughness:.5,metalness:.08});
     albumMems.slice(0,3).forEach((m: any,i: any)=>{
-      const t=paintTex(m);
+      const t=gatePaintTex(m,paintTex(m)); // reveal gate: album photo draw
       const ax=-.4+i*.4,ay=.555,az=ctZ;
       const aGrp=new THREE.Group();aGrp.position.set(ax,0,az);
       aGrp.rotation.y=i===1?.08:i===2?-.06:0;
@@ -1797,7 +1840,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // photo-book: a thick album with a cover image, standing at the shelf end
       const pbMem=wallMems[0]||photoMems[0]||paintingMems[0];
       if(pbMem){
-        const pbY=1.88, pbz=bC+bL/2-0.4, pbTex=paintTex(pbMem);
+        const pbY=1.88, pbz=bC+bL/2-0.4, pbTex=gatePaintTex(pbMem,paintTex(pbMem)); // reveal gate: photo-book cover
         scene.add(mk(new THREE.BoxGeometry(.17,.5,.4),new THREE.MeshStandardMaterial({color:"#5A3A28",roughness:.5}),bsX+.14,pbY+.25,pbz)); // album body
         scene.add(mk(new THREE.BoxGeometry(.03,.5,.4),MS.bronze,bsX+.055,pbY+.25,pbz));                                                      // bronze cover edge
         const cover=new THREE.Mesh(new THREE.PlaneGeometry(.32,.44),new THREE.MeshStandardMaterial({map:pbTex,roughness:.5}));
@@ -2025,7 +2068,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // title canvas → read as a "weird text object" beside the gramophone (owner
     // #10); the gramophone's hit area carries the audio interaction instead.
     if(!W3)audioMems.slice(0,3).forEach((m: any,i: any)=>{
-      const recTex=paintTex(m);
+      const recTex=gatePaintTex(m,paintTex(m)); // reveal gate: record sleeve draw (legacy)
       const rec=new THREE.Mesh(new THREE.PlaneGeometry(.32,.32),new THREE.MeshStandardMaterial({map:recTex,roughness:.6}));
       rec.position.set(vpX+.5,.15+i*.01,vpZ-.3+i*.12);rec.rotation.z=.1+i*.05;rec.rotation.y=-Math.PI/4;
       rec.userData={memory:m};scene.add(rec);memMeshes.current.push(rec);
@@ -2039,15 +2082,17 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       vinylAudio=document.createElement("audio");
       vinylAudio.src=audioMems[0].dataUrl;vinylAudio.loop=true;vinylAudio.volume=1;
       audioElRef.current=vinylAudio;
-      // ── Guided walkthrough (owner item 4, 2026-08-23): the gramophone plays
-      // the demo recital softly during the room leg. Autoplay is gesture-granted
-      // ("Begin the walk" click earlier); play() rejection (muted tab, strict
-      // autoplay policy, reduced capability) is swallowed — the walk continues
-      // silent. Paused by the onboardingAudio prop watcher on leg end/skip and
-      // by this effect's cleanup on rebuild/unmount. Fixed soft volume: the
-      // camera spends the walk far from the gramophone corner, so the normal
-      // 8m distance falloff would render the music inaudible.
-      if(onboardingModeRef.current&&onboardingAudioRef.current!==false){
+      // ── Guided walkthrough gramophone — DISABLED (owner 2026-08-23 revision:
+      // "no audio in the room during onboarding"). The wiring stays dormant:
+      // autoplay is now OPT-IN (`===true`) and no caller passes true (the
+      // wizard's walk mount omits demoAudio; FlythroughClient passes false), so
+      // the room is silent for the whole onboarding — the piano video stays
+      // muted as already enforced elsewhere. ONE-LINE RE-ENABLE: flip the
+      // condition below back to `onboardingAudioRef.current!==false` (and/or
+      // pass demoAudio on the OnboardingSceneHost mounts). When enabled:
+      // gesture-granted autoplay, play() rejection swallowed, paused by the
+      // onboardingAudio prop watcher on leg end/skip, fixed soft volume 0.35.
+      if(onboardingModeRef.current&&onboardingAudioRef.current===true){
         vinylAudio.volume=.35;
         try{vinylAudio.play()?.catch?.(()=>{});}catch{}
       }
@@ -2097,7 +2142,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       if(!W2&&!isMobileGPU()){const l=new THREE.PointLight("#FFF5E0",.7,3);l.position.set(vtX,vtTopY-.06,vtZ);scene.add(l);}
       const vtLevels=W3?[...vtShelfYs].reverse().slice(vtShelfYs.length>2?1:0):[vtGBot+vtGlassH*.35];
       mems.slice(0,vtLevels.length).forEach((m:any,i:number)=>{
-        const rec=new THREE.Mesh(new THREE.PlaneGeometry(.42,.42),new THREE.MeshStandardMaterial({map:paintTex(m),roughness:.4,metalness:.05}));
+        const rec=new THREE.Mesh(new THREE.PlaneGeometry(.42,.42),new THREE.MeshStandardMaterial({map:gatePaintTex(m,paintTex(m)),roughness:.4,metalness:.05})); // reveal gate: vitrine photo draw
         // face INTO the room (owner 2026-08-18 #2: photos were invisible — they
         // faced the wall after the L-move): shoulder arm faces -Z, wall arm faces -X.
         if(along){rec.position.set(vtX,(vtLevels[i]||vtGBot)+0.24,vtZ-0.06);rec.rotation.y=Math.PI;}
@@ -2162,7 +2207,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const albumOverflow=albumMems.slice(3,5);
     const deskItems=[...scribeMems,...albumOverflow];
     deskItems.slice(0,W3?2:3).forEach((m: any,i: any)=>{
-      const t=paintTex(m);
+      const t=gatePaintTex(m,paintTex(m)); // reveal gate: desk paper draw
       const paper=new THREE.Mesh(new THREE.PlaneGeometry(.28,.36),new THREE.MeshStandardMaterial({map:t,roughness:.85}));
       paper.rotation.x=-Math.PI/2+.02;paper.rotation.z=(i-1)*.15;
       if(W3)paper.position.set(dkX,0.985,dkZ-0.62-i*0.05);else paper.position.set(dkX-.3+i*.35,.82,dkZ-.05); // W3: loose papers on the built-in table beside the open book
@@ -2449,7 +2494,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     if(!W1)orbMems.forEach((m: any,i: any)=>{
       const ox=-2+i*2,oy=1.5+Math.random()*.5,oz=rL/2-2-i;
       let orbMat;
-      if(m.dataUrl){const orbTex=paintTex(m);orbMat=new THREE.MeshStandardMaterial({map:orbTex,emissive:`hsl(${m.hue},${m.s}%,${m.l-15}%)`,emissiveIntensity:.3,transparent:true,opacity:.9,roughness:.15,metalness:.15});}
+      if(m.dataUrl){const orbTex=gatePaintTex(m,paintTex(m));/* reveal gate: orb photo draw */orbMat=new THREE.MeshStandardMaterial({map:orbTex,emissive:`hsl(${m.hue},${m.s}%,${m.l-15}%)`,emissiveIntensity:.3,transparent:true,opacity:.9,roughness:.15,metalness:.15});}
       else{orbMat=new THREE.MeshStandardMaterial({color:`hsl(${m.hue},${m.s}%,${m.l}%)`,emissive:`hsl(${m.hue},${m.s}%,${m.l-15}%)`,emissiveIntensity:.4,transparent:true,opacity:.85,roughness:.1,metalness:.2});}
       const sphere=new THREE.Mesh(new THREE.SphereGeometry(.16,14,14),orbMat);sphere.position.set(ox,oy,oz);sphere.userData={memory:m};scene.add(sphere);memMeshes.current.push(sphere);
       const inner=new THREE.Mesh(new THREE.SphereGeometry(.08,10,10),new THREE.MeshBasicMaterial({color:`hsl(${m.hue},${m.s+10}%,${m.l+15}%)`,transparent:true,opacity:.5}));inner.position.set(ox,oy,oz);scene.add(inner);
@@ -2983,7 +3028,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // the first frame of every build always presents (see _presented above).
       if(document.hidden&&_presented)return;
       composer.render();
-      _presented=true;
+      if(!_presented){_presented=true;console.log("[room] first frame at",Math.round(performance.now()-_mountStart),"ms");}
       if(!_w2AssertDone&&_frameCount>=2){
         _w2AssertDone=true;
         try{
@@ -3000,8 +3045,42 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
           }
         }catch{}
       }
-      if(!readyFiredRef.current){readyFiredRef.current=true;try{onReadyRef.current?.();}catch{}}
-    };animate();
+      if(!readyFiredRef.current)fireRevealWhenAssembled();
+    };
+    // ASSEMBLE-BEFORE-REVEAL: onReady (the overlay/veil-lift contract) fires
+    // only when the first frame has rendered AND the reveal barrier is done —
+    // eager PBR sets + painting canvases settled (see revealGates), or the 8s
+    // cap. The first-frame _presented guarantee above (and its 1.5s watchdog
+    // below) is untouched; nothing about the loads is serialized or delayed.
+    if(paintGateTexes.length){
+      revealGates.push(new Promise<void>((resolve)=>{
+        let _tries=0;
+        const check=()=>{
+          if(_tries++>60||paintGateTexes.every((tx)=>tx.userData.naturalWidth!==undefined))resolve();
+          else setTimeout(check,150);
+        };
+        check();
+      }));
+    }
+    const fireRevealWhenAssembled=()=>{
+      if(readyFiredRef.current||!_presented||!revealBarrierDone)return;
+      readyFiredRef.current=true;
+      try{onReadyRef.current?.();}catch{}
+      console.log("[room] reveal (assembled) at",Math.round(performance.now()-_mountStart),"ms");
+    };
+    if(readyFiredRef.current){
+      // Effect re-run on an already-revealed mount (fingerprint rebuild) —
+      // the barrier is moot; never park a rebuild behind it.
+      revealBarrierDone=true;
+    }else{
+      const REVEAL_CAP_MS=8000; // slow networks: reveal what's there (MemoryPalace WS9-7 watchdog parity)
+      Promise.race([
+        Promise.allSettled(revealGates),
+        new Promise((res)=>setTimeout(res,REVEAL_CAP_MS)),
+      ]).then(()=>{if(!alive)return;revealBarrierDone=true;fireRevealWhenAssembled();});
+    }
+    const _mountStart=performance.now();
+    animate();
     // Defensive watchdog (2026-08-20): if the first frame STILL hasn't
     // presented ~1.5s after mount (rAF starved, or a silently dead loop),
     // warn and restart the loop once — cancelling any pending rAF first so

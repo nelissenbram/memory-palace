@@ -263,6 +263,19 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       sun.shadow.camera.far=cL+40;sun.shadow.camera.updateProjectionMatrix();
     }
 
+    // ══ ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23, ExteriorScene parity) ══
+    // The corridor streams its eager PBR sets and the salon-painting photo
+    // decodes asynchronously, so the gallery visibly assembled piece by piece
+    // after the overlay lifted. Every async attach with visible pop-in
+    // registers its promise here; onReady (the overlay/veil-lift contract)
+    // now fires only when the FIRST FRAME has rendered AND this barrier has
+    // settled (Promise.allSettled — a failed load must never strand the
+    // reveal) OR the 8s cap has elapsed. All loads stay exactly as parallel
+    // as before — only the reveal moment moves. Deliberately NOT gated:
+    // loadHDRIProgressive (procedural env from frame 0; the swap is a subtle
+    // lighting shift). Statues/portal/coffer-fresco are procedural (sync).
+    const revealGates: Promise<unknown>[] = [];
+    let revealBarrierDone = false;
     // ── REAL PBR TEXTURES (Poly Haven) ──
     const marbleTex=loadMarbleTextures([4,4]);
     const woodTex=loadDarkWoodTextures([3,4]);
@@ -272,6 +285,22 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const rugFabricTex=loadFabricTextures([2,2]);
     const velvetTex=loadVelvetTextures([2,2]);
     const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallStoneTex,floorTileTex,rugFabricTex,velvetTex];
+    // Reveal gate: the eager PBR sets visibly RETEXTURE the biggest surfaces
+    // (floor/walls flip from flat colour to full maps). No promise API — a
+    // clone's `version` stays 0 until its base image lands (assetLoader
+    // cloneTex/finishBaseLoad); poll that marker, bounded at ~9s (the 8s
+    // barrier cap fires first anyway).
+    {
+      const _gateTexes=allTexSets.flatMap((s)=>[s.map,s.normalMap,s.roughnessMap,s.aoMap]);
+      revealGates.push(new Promise<void>((resolve)=>{
+        let _tries=0;
+        const check=()=>{
+          if(_tries++>60||_gateTexes.every((tx)=>tx.version>0))resolve();
+          else setTimeout(check,150);
+        };
+        check();
+      }));
+    }
     // W1 (WS2-1 slice): anisotropic filtering on floor/wall sets — 8 desktop /
     // 4 mobile, clamped to hardware caps. Kills the grazing-angle floor blur.
     if(W1){
@@ -1423,6 +1452,19 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     if(W2)w2Deferred.push(()=>applyPaintings(corridorPaintingsRef.current)); // after optimizeMaterials — see w2Deferred note
     else applyPaintings(corridorPaintingsRef.current);
     applyPaintingsRef.current=applyPaintings;
+    // Reveal gate: the INITIAL batch of salon-painting decodes. loadPaintingTexture
+    // shares one in-flight promise per url (module cache), so these are the very
+    // promises whose .then swaps the canvas maps in the appliers above — gating on
+    // them means the reveal shows finished paintings, not placeholder swaps. A
+    // per-image 6.5s race cap keeps one dead image from stalling the whole barrier.
+    if(corridorPaintingsRef.current){
+      for(const pd of Object.values(corridorPaintingsRef.current)){
+        if(pd?.url)revealGates.push(Promise.race([
+          loadPaintingTexture(pd.url).catch(()=>{}),
+          new Promise((res)=>setTimeout(res,6500)),
+        ]));
+      }
+    }
 
     // (Plants at ends are included with the side tables above)
 
@@ -2800,9 +2842,32 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // the first frame of every build always presents (see _presented above).
       if(document.hidden&&_presented)return;
       composer.render();
-      _presented=true;
-      if(!readyFiredRef.current){readyFiredRef.current=true;try{onReadyRef.current?.();}catch{}}
-    };animate();
+      if(!_presented){_presented=true;console.log("[corridor] first frame at",Math.round(performance.now()-_mountStart),"ms");}
+      if(!readyFiredRef.current)fireRevealWhenAssembled();
+    };
+    // ASSEMBLE-BEFORE-REVEAL: onReady (the overlay/veil-lift contract) fires
+    // only when the first frame has rendered AND the reveal barrier is done —
+    // eager PBR sets + initial painting decodes settled (see revealGates), or
+    // the 8s cap. The first-frame _presented guarantee above is untouched;
+    // nothing about the loads themselves is serialized or delayed.
+    const fireRevealWhenAssembled=()=>{
+      if(readyFiredRef.current||!_presented||!revealBarrierDone)return;
+      readyFiredRef.current=true;
+      try{onReadyRef.current?.();}catch{}
+      console.log("[corridor] reveal (assembled) at",Math.round(performance.now()-_mountStart),"ms");
+    };
+    if(readyFiredRef.current){
+      // Effect re-run on an already-revealed mount — the barrier is moot.
+      revealBarrierDone=true;
+    }else{
+      const REVEAL_CAP_MS=8000; // slow networks: reveal what's there (MemoryPalace WS9-7 watchdog parity)
+      Promise.race([
+        Promise.allSettled(revealGates),
+        new Promise((res)=>setTimeout(res,REVEAL_CAP_MS)),
+      ]).then(()=>{revealBarrierDone=true;fireRevealWhenAssembled();});
+    }
+    const _mountStart=performance.now();
+    animate();
     const onDown=(e: MouseEvent)=>{drag.v=false;prev.x=e.clientX;prev.y=e.clientY;};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.x,dy=e.clientY-prev.y;if(Math.abs(dx)>2||Math.abs(dy)>2)drag.v=true;
       if(e.buttons===1){if(drag.v)w2Focus?.cancel();lookT.yaw-=dx*.003;lookT.pitch=Math.max(-.85,Math.min(.5,lookT.pitch+dy*.003));prev.x=e.clientX;prev.y=e.clientY;}
