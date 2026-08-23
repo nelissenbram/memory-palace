@@ -43,7 +43,6 @@ export default function TourPlayer({
   ctaLabel,
   ctaHref,
   doorwayLabel,
-  tourNote,
   watchAgain,
   labels,
 }: {
@@ -53,7 +52,6 @@ export default function TourPlayer({
   ctaLabel: string;
   ctaHref: string;
   doorwayLabel: string;
-  tourNote: string;
   watchAgain: string;
   labels: { pause: string; play: string; close: string; dialog: string; playTour: string };
 }) {
@@ -216,12 +214,12 @@ export default function TourPlayer({
         }
       `}</style>
 
-      {/* Poster (idle + static fallback) */}
+      {/* Idle poster — the tailored black thumbnail already carries the play
+          button + intertwined Memory Palace logo, so it shows at full opacity
+          and IS the clickable target (no separate doorway ring — that was
+          redundant with the poster's own play mark). */}
       {mode !== "playing" ? (
-        <Image src={posterSrc} alt="" fill sizes="100vw" style={{ objectFit: "cover", opacity: 0.55 }} />
-      ) : null}
-      {mode !== "playing" ? (
-        <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 70% 60% at 50% 46%, rgba(36,28,21,0.05) 0%, rgba(36,28,21,0.62) 62%, rgba(36,28,21,0.97) 100%)" }} />
+        <Image src={posterSrc} alt="" fill sizes="100vw" style={{ objectFit: "cover" }} priority />
       ) : null}
 
       {/* ── PLAYING: full-bleed video + reading-lane + captions + controls ── */}
@@ -334,24 +332,16 @@ export default function TourPlayer({
         </div>
       ) : null}
 
-      {/* ── IDLE: the inviting doorway ── */}
+      {/* ── IDLE: the poster IS the button — click anywhere to play ── */}
       {mode === "idle" ? (
-        <div style={{ position: "relative", zIndex: 2, display: "flex", justifyContent: "center", padding: "clamp(3rem, 8vw, 5rem) 1.5rem" }}>
-          <button
-            ref={doorwayRef}
-            type="button"
-            onClick={start}
-            className="lv2-cta lv2-tour-door"
-            aria-label={doorwayLabel}
-            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.125rem", background: "none", border: "none", cursor: "pointer", padding: "0.5rem 1rem" }}
-          >
-            <span className="lv2-tour-ring" style={{ width: "clamp(6.5rem, 12vw, 8.5rem)", height: "clamp(6.5rem, 12vw, 8.5rem)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(36,28,21,0.35)", WebkitBackdropFilter: "blur(6px)", backdropFilter: "blur(6px)", border: "1px solid rgba(212,175,55,0.75)", boxShadow: "0 0 0 0.5rem rgba(212,175,55,0.12), 0 16px 48px rgba(0,0,0,0.55)" }}>
-              <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true" style={{ marginLeft: "0.25rem" }}><path d="M6 3l14 9-14 9V3z" fill={CREAM} /></svg>
-            </span>
-            <span style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: "1.125rem", color: CREAM }}>▶ {doorwayLabel}</span>
-            <span style={{ fontFamily: FONT_NOTE, fontStyle: NOTE_ITALIC, fontWeight: 500, fontSize: "1.25rem", color: GOLD }}>{tourNote}</span>
-          </button>
-        </div>
+        <button
+          ref={doorwayRef}
+          type="button"
+          onClick={start}
+          className="lv2-tour-door"
+          aria-label={doorwayLabel}
+          style={{ position: "absolute", inset: 0, zIndex: 2, background: "none", border: "none", cursor: "pointer", padding: 0, width: "100%", height: "100%" }}
+        />
       ) : null}
 
     </div>

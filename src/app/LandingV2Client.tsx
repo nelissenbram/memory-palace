@@ -1401,7 +1401,6 @@ export default function LandingV2Client({
                 ctaLabel={v2.showcase.capCloseCta}
                 ctaHref="/register"
                 doorwayLabel={v2.hero.secondary}
-                tourNote={v2.showcase.tourNote}
                 watchAgain={v2.hero.secondary}
                 labels={{ pause: v2.a11y.pause, play: v2.a11y.play, close: v2.a11y.close, dialog: v2.a11y.tourDialog, playTour: v2.hero.secondary }}
                 scenes={[
