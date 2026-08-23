@@ -36,15 +36,6 @@ const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 type Side = "left" | "right" | "center";
 type Scene = { key: string; side: Side; start: number; end: number; eyebrow?: string; line: string };
 
-function prefersReducedMotion() {
-  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-function connectionConstrained() {
-  if (typeof navigator === "undefined") return false;
-  const c = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-  return !!c && (!!c.saveData || /(^|\b)(slow-2g|2g|3g)\b/.test(c.effectiveType ?? ""));
-}
-
 export default function TourPlayer({
   videoSrc,
   posterSrc,
@@ -74,18 +65,22 @@ export default function TourPlayer({
   // and Tab is trapped inside it while playing.
   const dialogRef = useRef<HTMLDivElement>(null);
   const pauseBtnRef = useRef<HTMLButtonElement>(null);
-  const [mode, setMode] = useState<"idle" | "static" | "playing">("idle");
+  const [mode, setMode] = useState<"idle" | "playing">("idle");
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
   const [ended, setEnded] = useState(false);
   const [progress, setProgress] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
+  // ITEM 4 (owner 2026-08-23): the film opens with a fade FROM BLACK. This is
+  // false the instant we enter "playing" (black cover opaque) and flips true on
+  // the video's first painted frame ("playing" event) → the cover fades out.
+  const [revealed, setRevealed] = useState(false);
 
   const start = useCallback(() => {
-    if (prefersReducedMotion() || connectionConstrained()) {
-      setMode("static");
-      return;
-    }
+    // ITEM 3 (owner 2026-08-23): one press = play. No intermediate storyboard/
+    // text screen — clicking always opens the film directly (the tour is muted,
+    // decorative, and user-initiated, so it's shown even under reduced-motion;
+    // the scale-settle animation is still RM-gated in CSS).
     setEnded(false);
     setPaused(false);
     setMode("playing");
@@ -109,13 +104,17 @@ export default function TourPlayer({
     if (mode !== "playing") return;
     const v = videoRef.current;
     if (!v) return;
+    setRevealed(false);            // black cover opaque until the first frame paints
     v.muted = true;
-    v.playbackRate = 0.55;
+    v.playbackRate = 1;            // ITEM 1: natural 30fps — 0.55x slow-mo read as laggy
     v.currentTime = 0;
+    const onPlaying = () => setRevealed(true); // ITEM 4: fade the black cover out
+    v.addEventListener("playing", onPlaying);
     v.play().catch(() => {});
     // Move focus into the dialog (the pause control) so screen-reader / keyboard
     // users land inside the player rather than on document.body.
     requestAnimationFrame(() => pauseBtnRef.current?.focus());
+    return () => v.removeEventListener("playing", onPlaying);
   }, [mode]);
 
   const close = useCallback(() => {
@@ -239,13 +238,16 @@ export default function TourPlayer({
             ref={videoRef}
             className="lv2tp-video"
             playsInline
-            preload="none"
+            preload="auto"
             aria-label={labels.dialog}
             onClick={togglePause}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", cursor: "pointer", background: "#000" }}
           >
             <source src={videoSrc} type="video/mp4" />
           </video>
+
+          {/* ITEM 4: fade FROM BLACK — opaque until the first frame paints */}
+          <span aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 6, background: "#000", opacity: revealed ? 0 : 1, transition: "opacity 0.9s ease", pointerEvents: "none" }} />
 
           {/* reading-lane vignette + directional scrim for the active side */}
           <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 68% 82% at 50% 50%, rgba(36,28,21,0) 45%, rgba(36,28,21,0.38) 100%), linear-gradient(90deg, rgba(36,28,21,0.6) 0%, rgba(36,28,21,0) 24%, rgba(36,28,21,0) 76%, rgba(36,28,21,0.6) 100%)" }} />
@@ -352,22 +354,6 @@ export default function TourPlayer({
         </div>
       ) : null}
 
-      {/* ── STATIC (reduced-motion / saveData): poster + caption storyboard ── */}
-      {mode === "static" ? (
-        <div style={{ position: "relative", zIndex: 2, maxWidth: "44rem", margin: "0 auto", padding: "clamp(3rem, 8vw, 5rem) 1.5rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {scenes.map((s) => (
-            <div key={s.key} style={{ textAlign: "center" }}>
-              {s.eyebrow ? <span style={{ display: "block", fontFamily: FONT_NOTE, fontStyle: NOTE_ITALIC, fontWeight: 500, fontSize: "1.05rem", color: GOLD, marginBottom: "0.25rem" }}>{s.eyebrow}</span> : null}
-              <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: "clamp(1.375rem, 3vw, 2rem)", lineHeight: 1.2, color: CREAM }}>{s.line}</span>
-            </div>
-          ))}
-          <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
-            <button type="button" onClick={() => { setMode("playing"); requestAnimationFrame(() => { const v = videoRef.current; if (v) { v.muted = true; v.playbackRate = 0.55; v.play().catch(() => {}); } }); }} style={{ background: "none", border: "1px solid rgba(212,175,55,0.5)", borderRadius: "999px", color: CREAM, fontFamily: FONT_BODY, fontWeight: 600, fontSize: "1rem", padding: "0.625rem 1.5rem", cursor: "pointer" }}>
-              ▶ {labels.playTour}
-            </button>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
