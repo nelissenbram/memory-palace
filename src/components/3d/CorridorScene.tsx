@@ -24,7 +24,8 @@ import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
 import { measure, autoFit } from "@/lib/3d/fitRenderer";
 import { optimizeMaterials, mergeBufferGeometries } from "@/lib/3d/geometryOptimizer";
-import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useOverridableTranslation } from "@/lib/hooks/useTranslation";
+import type { Locale } from "@/i18n/config";
 
 // ── Corridor painting texture cache — module-level, URL-keyed (mirrors
 // assetLoader's compressedTextureCache). Decodes off the main thread via
@@ -92,9 +93,13 @@ function getPaintingPlaceholderTex(): THREE.DataTexture {
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo,onboardingMode,onCinematicStep,isMobile:isMobileProp,corridorEnterClicked,onReady}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string, size?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: (slotKey?: string)=>void,autoWalkTo?: string|null,onboardingMode?: boolean,onCinematicStep?: (step: number)=>void,isMobile?: boolean,corridorEnterClicked?: boolean,onReady?: ()=>void}){
-  const { t } = useTranslation("corridor3d");
-  const { t: tWings } = useTranslation("wings");
+function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo,onboardingMode,onCinematicStep,isMobile:isMobileProp,corridorEnterClicked,onReady,localeOverride}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string, size?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: (slotKey?: string)=>void,autoWalkTo?: string|null,onboardingMode?: boolean,onCinematicStep?: (step: number)=>void,isMobile?: boolean,corridorEnterClicked?: boolean,onReady?: ()=>void,localeOverride?: Locale}){
+  // localeOverride (demo hosts, e.g. the /flythrough onboarding preview):
+  // canvas-baked texts — door name plates (wings.roomMeOverTime etc.), the
+  // wing plaque — resolve in the demo-local language instead of the global
+  // stored locale. In-app (undefined) behavior is unchanged.
+  const { t } = useOverridableTranslation("corridor3d", localeOverride);
+  const { t: tWings } = useOverridableTranslation("wings", localeOverride);
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const camDebugRef = useRef<HTMLPreElement | null>(null);
   const camDebug = false; // set true to show camera debug overlay

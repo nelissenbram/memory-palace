@@ -30,15 +30,21 @@ import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useRoomMediaBarStore } from "@/lib/stores/roomMediaBarStore";
-import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useOverridableTranslation } from "@/lib/hooks/useTranslation";
+import type { Locale } from "@/i18n/config";
 import { T } from "@/lib/theme";
 import { hapticMedium } from "@/lib/native/haptics";
 
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
-function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady,userNameOverride,onboardingAudio,onboardingUploadedMemory}: {roomId: any,actualRoomId?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void,userNameOverride?: string|null,onboardingAudio?: boolean,onboardingUploadedMemory?: any|null}){
-  const { t } = useTranslation("interior3d");
+function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady,userNameOverride,localeOverride,onboardingAudio,onboardingUploadedMemory}: {roomId: any,actualRoomId?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void,userNameOverride?: string|null,localeOverride?: Locale,onboardingAudio?: boolean,onboardingUploadedMemory?: any|null}){
+  // localeOverride (demo hosts, e.g. the /flythrough onboarding preview):
+  // canvas-baked texts — the mantel plaque "{name}'s Beautiful Smile"
+  // (interior3d.paintingTitle/paintingTitleNeutral) — resolve in the
+  // demo-local language instead of the global stored locale. In-app
+  // (undefined) behavior is unchanged.
+  const { t } = useOverridableTranslation("interior3d", localeOverride);
   const { getWingRooms } = useRoomStore();
   // Mantel-plaque name: store-less hosts (the /flythrough onboarding preview)
   // pass the demo name as userNameOverride; in-app the user store is canonical

@@ -454,6 +454,9 @@ export default function FlythroughClient() {
   // ── Viewer-local canon tokens for the card/paywall chrome (visual mirror of
   // the wizard's warm-cream Library canon — its style consts are private) ──
   const OB_CREAM = "#FCFAF5", OB_INK = "#403B36", OB_MUTED = "#716A5E", OB_HAIRLINE = "#E3D6BC", OB_EMBER = "#B85C38";
+  // Ember-glyph ink (= wizard EMBER_GLYPH / landing accentLight) — at-rest
+  // overline/section-label accent on light surfaces; OB_EMBER stays interactive.
+  const OB_EMBER_GLYPH = "#9A4F2A";
   const obCardPageStyle: CSSProperties = { position: "absolute", inset: 0, zIndex: 25, background: OB_CREAM, overflow: "hidden" };
   const obCardScrollerStyle: CSSProperties = {
     position: "relative", width: "100%", height: "100%",
@@ -475,7 +478,7 @@ export default function FlythroughClient() {
   };
   const obOverlineStyle: CSSProperties = {
     fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
-    color: OB_EMBER, letterSpacing: "0.12em", textTransform: "uppercase",
+    color: OB_EMBER_GLYPH, letterSpacing: "0.14em", textTransform: "uppercase",
   };
   const obH2Style: CSSProperties = {
     fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
@@ -483,8 +486,8 @@ export default function FlythroughClient() {
   };
   const obSectionLabelStyle: CSSProperties = {
     fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
-    color: OB_EMBER, textAlign: "left", margin: "0 0 0.5rem",
-    textTransform: "uppercase", letterSpacing: "0.12em",
+    color: OB_EMBER_GLYPH, textAlign: "left", margin: "0 0 0.5rem",
+    textTransform: "uppercase", letterSpacing: "0.14em",
   };
   const obPromptTextStyle: CSSProperties = {
     fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
@@ -686,10 +689,17 @@ export default function FlythroughClient() {
             isMobile={isMobile}
             wingId="roots"
             roomId="ro1"
-            // Real demo name for the room's mantel plaque ("{name}'s Beautiful
-            // Smile") — the viewer has no user store, so the name card's obName
-            // is threaded through; empty ⇒ the scene's neutral plaque title.
+            // Real demo name for the canvas-baked texts — the exterior tympanum
+            // name and the room's mantel plaque ("{name}'s Beautiful Smile").
+            // The viewer has no user store, so the name card's obName is
+            // threaded through; empty ⇒ each scene's neutral fallback
+            // (localized "Entrance Hall" / "A Beautiful Smile").
             demoUserName={obName.trim() || undefined}
+            // Demo-local language for the same canvas-baked texts (tympanum
+            // fallback, hall wing doors, corridor door plates, mantel plaque):
+            // the scenes read the GLOBAL locale by default, which the viewer
+            // never touches — obLocale pins them to the chosen language.
+            localeOverride={obLocale}
             // Item 4: the gramophone demo music plays during the walk legs and
             // stops the moment the room leg ends (upload/celebration), without
             // tearing down the still-mounted scene.
@@ -1084,8 +1094,8 @@ export default function FlythroughClient() {
               {obVideoWelcome && (
                 <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 1.5rem", background: "radial-gradient(ellipse at center, rgba(26,25,23,0.35) 0%, rgba(26,25,23,0.72) 100%)", animation: "obv-fadeIn 1.1s ease both" }}>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                    {/* Cream landing-hero voice (wizard mirror) — GOLD text is licensed to the celebration only */}
-                    <div style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 500, color: "#FCFAF5", lineHeight: 1.2, letterSpacing: "0.01em", textShadow: "0 0.25rem 1.75rem rgba(26,25,23,0.55)" }}>
+                    {/* Cream landing-hero voice (wizard mirror): Fraunces 500 flat cream, upright — no gold text anywhere */}
+                    <div style={{ fontFamily: T.font.display, fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 500, color: "#FCFAF5", lineHeight: 1.2, letterSpacing: "0.01em", textShadow: "0 0.25rem 1.75rem rgba(26,25,23,0.55)" }}>
                       {trOnb("welcomeToPalace", "Welcome to your Memory Palace")}
                     </div>
                     <div style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginTop: "0.75rem", maxWidth: "24rem" }}>
@@ -1109,9 +1119,9 @@ export default function FlythroughClient() {
                   {obPhase === "card_lang" ? (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER_GLYPH}40` }} />
                         <span style={obOverlineStyle}>{trOnb("appName", "The Memory Palace")}</span>
-                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER_GLYPH}40` }} />
                       </div>
                       <h2 style={obH2Style}>{trOnb("langA11yTitle", "Let's make this comfortable to read")}</h2>
                       {/* Language grid — selection is visual-only demo state */}
@@ -1182,9 +1192,9 @@ export default function FlythroughClient() {
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER_GLYPH}40` }} />
                         <span style={obOverlineStyle}>{trOnb("appName", "The Memory Palace")}</span>
-                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                        <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER_GLYPH}40` }} />
                       </div>
                       <h2 style={obH2Style}>{trOnb("nameTitle", "Every palace bears a name")}</h2>
                       <p style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.9375rem", color: OB_MUTED, maxWidth: "22rem", lineHeight: 1.6, margin: 0 }}>
@@ -1390,8 +1400,9 @@ export default function FlythroughClient() {
             />
           )}
 
-          {/* ── Celebration: the REAL gold threshold + confetti over the room
-              scene showing the just-hung demo memory. ── */}
+          {/* ── Celebration: the REAL ceremonial threshold (gold tick glyph
+              only — text is canon INK) + confetti over the room scene showing
+              the just-hung demo memory. ── */}
           {obPhase === "celebration" && (
             <OnboardingCelebration
               title={trOnb("celebrationTitle2", "Congratulations!")}
@@ -1425,9 +1436,9 @@ export default function FlythroughClient() {
               }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                    <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                    <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER_GLYPH}40` }} />
                     <span style={obOverlineStyle}>{trOnb("appName", "The Memory Palace")}</span>
-                    <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER}40` }} />
+                    <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER_GLYPH}40` }} />
                   </div>
                   <h2 style={{ ...obH2Style, fontSize: isMobile ? "1.375rem" : "1.625rem" }}>
                     {trOnb("paywallTitle", "You've built {name}'s Palace", { name: obDisplayName })}
@@ -1445,7 +1456,7 @@ export default function FlythroughClient() {
                       <div key={feat} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                         <span aria-hidden style={{ width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: `${OB_EMBER}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <svg aria-hidden width="0.75rem" height="0.75rem" viewBox="0 0 16 16" fill="none" style={{ display: "block" }}>
-                            <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke={OB_EMBER} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke={OB_EMBER_GLYPH} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </span>
                         <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: OB_INK, lineHeight: 1.4 }}>{feat}</span>

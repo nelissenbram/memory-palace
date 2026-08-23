@@ -22,7 +22,8 @@ import { getQuality, getGPUTier, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { loadModel, warmDracoDecoder } from "@/lib/3d/modelLoader";
-import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useOverridableTranslation } from "@/lib/hooks/useTranslation";
+import type { Locale } from "@/i18n/config";
 import { hapticLight } from "@/lib/native/haptics";
 
 // ── Wing SVG icon strings for hover labels (matches WingRoomIcons.tsx) ──
@@ -36,10 +37,17 @@ const WING_SVG_STRINGS: Record<string,string> = {
 };
 
 // ═══ EXTERIOR — Fantasy Castle ═══
-function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo,onReady,onboardingMode,onCinematicPause,cinematicResumed}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null,onReady?: () => void,onboardingMode?: boolean,onCinematicPause?: () => void,cinematicResumed?: boolean}){
+function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo,onReady,onboardingMode,onCinematicPause,cinematicResumed,userNameOverride,localeOverride}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null,onReady?: () => void,onboardingMode?: boolean,onCinematicPause?: () => void,cinematicResumed?: boolean,userNameOverride?: string|null,localeOverride?: Locale}){
   const WINGS = wingsProp || DEFAULT_WINGS;
-  const ownerName = useUserStore((s) => s.userName);
-  const { t } = useTranslation("exterior3d");
+  // Tympanum name: store-less hosts (the /flythrough onboarding preview) pass
+  // the demo name as userNameOverride; in-app the user store is canonical
+  // (the wizard's name card writes it before the cinematic mounts). Same
+  // pattern as InteriorScene's mantel plaque.
+  const storeUserName = useUserStore((s) => s.userName);
+  const ownerName = userNameOverride ?? storeUserName;
+  // localeOverride (demo hosts only): baked canvas labels resolve in the
+  // demo-local language instead of the global stored locale.
+  const { t } = useOverridableTranslation("exterior3d", localeOverride);
   const entranceHallLabel = t("entranceHall");
   const entranceHallLabelRef = useRef(entranceHallLabel);
   entranceHallLabelRef.current = entranceHallLabel;
@@ -47,7 +55,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
   // refs let a late store hydration (or name change) redraw it in place.
   const ownerNameRef = useRef(ownerName);
   const tymNameRedrawRef = useRef<(() => void) | null>(null);
-  useEffect(() => { ownerNameRef.current = ownerName; tymNameRedrawRef.current?.(); }, [ownerName]);
+  // entranceHallLabel in the deps: the localized fallback (and a late
+  // locale-message load under localeOverride) redraws the tympanum in place too.
+  useEffect(() => { ownerNameRef.current = ownerName; tymNameRedrawRef.current?.(); }, [ownerName, entranceHallLabel]);
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const camDebugRef=useRef<HTMLPreElement|null>(null);
   const camDebug=false; // set true to show camera debug overlay

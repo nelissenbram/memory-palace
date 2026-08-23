@@ -2,6 +2,7 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useUserStore } from "@/lib/stores/userStore";
+import type { Locale } from "@/i18n/config";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import { INK, HAIRLINE } from "@/lib/libraryTokens";
@@ -35,9 +36,16 @@ interface OnboardingSceneHostProps {
   roomName?: string;
   /** Store-less callers (the /flythrough onboarding preview): the real name
    * typed on the demo name card, threaded to InteriorScene's mantel plaque
-   * ("{name}'s Beautiful Smile"). In-app the wizard omits it — the scene reads
-   * the user store, which the name card already populated. */
+   * ("{name}'s Beautiful Smile") AND ExteriorScene's tympanum name. In-app the
+   * wizard omits it — the scenes read the user store, which the name card
+   * already populated. */
   demoUserName?: string;
+  /** Store-less callers (the /flythrough onboarding preview): the demo-local
+   * language (obLocale), threaded into every scene's canvas-baked texts
+   * (tympanum fallback, hall wing doors, corridor door plates, mantel plaque)
+   * so they resolve in the chosen language. In-app the wizard omits it — the
+   * language card already set the global locale before any scene mounts. */
+  localeOverride?: Locale;
   memories?: any[];
   isMobile?: boolean;
   corridorEnterClicked?: boolean;
@@ -167,6 +175,7 @@ export default function OnboardingSceneHost({
   roomId = "ro1",
   roomName,
   demoUserName,
+  localeOverride,
   memories = [],
   isMobile = false,
   corridorEnterClicked = false,
@@ -348,6 +357,8 @@ export default function OnboardingSceneHost({
           onboardingMode={onboardingMode}
           onCinematicPause={onCinematicPause}
           cinematicResumed={cinematicResumed}
+          userNameOverride={demoUserName}
+          localeOverride={localeOverride}
         />
       )}
       {activeScene === "entrance" && (
@@ -364,6 +375,7 @@ export default function OnboardingSceneHost({
           bustProportions={bustProportions}
           bustName={bustName || userName || null}
           bustGender={bustGender || null}
+          localeOverride={localeOverride}
         />
       )}
       {activeScene === "corridor" && (
@@ -381,6 +393,7 @@ export default function OnboardingSceneHost({
           isMobile={isMobile}
           corridorEnterClicked={corridorEnterClicked}
           corridorPaintings={demoPaintings}
+          localeOverride={localeOverride}
         />
       )}
       {activeScene === "room" && (
@@ -388,6 +401,7 @@ export default function OnboardingSceneHost({
           roomId={wingId}
           actualRoomId={roomId}
           userNameOverride={demoUserName}
+          localeOverride={localeOverride}
           memories={demoRoomMemories}
           onMemoryClick={onDoorClick || noop}
           styleEra={styleEra}

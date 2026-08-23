@@ -27,7 +27,7 @@ const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
 /* ── State machine (WALKTHROUGH RESTORE) ──
    video_intro -> lang_a11y -> name -> guided walkthrough (cinematic exterior
    flyover, entrance-hall look-around+blinks, corridor procession, room reveal)
-   -> upload (first memory) -> celebration (gold threshold + confetti) ->
+   -> upload (first memory) -> celebration (threshold + confetti) ->
    paywall (gated) -> done. The walkthrough teaches wings physically — the
    style_era confirmation and wing_orient card are unrouted (components kept
    for settings/reuse; saved phases remapped below). */
@@ -41,7 +41,7 @@ type Phase =
   | "walk_corridor"    // Corridor steps 0-7: demo painting -> room prompt -> door
   | "walk_room"        // Room steps 0-9: look-around -> empty painting prompt
   | "upload"           // Seeded room + ImportHub (first memory)
-  | "celebration"      // Gold ceremonial threshold + confetti
+  | "celebration"      // Ceremonial threshold + confetti
   | "paywall"          // Soft trial offer (web / iOS-with-IAP only)
   | "done";
 
@@ -662,13 +662,14 @@ ${KEYFRAMES}
     padding: "calc(3.5rem + env(safe-area-inset-top, 0px)) 0 calc(1.5rem + env(safe-area-inset-bottom, 0px))",
   };
 
-  // Canon overline: 0.6875rem / 700 / 0.12em / uppercase / ember-glyph ink.
+  // Canon overline (landing Eyebrow grammar): 0.6875rem / 700 / 0.14em /
+  // uppercase / ember-glyph ink (= landing accentLight on light surfaces).
   const Overline = ({ children }: { children: React.ReactNode }) => (
     <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
       <span style={{ width: "2rem", height: "1px", background: `${EMBER_GLYPH}40` }} />
       <span style={{
         fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
-        color: EMBER_GLYPH, letterSpacing: "0.12em", textTransform: "uppercase",
+        color: EMBER_GLYPH, letterSpacing: "0.14em", textTransform: "uppercase",
       }}>
         {children}
       </span>
@@ -849,13 +850,15 @@ ${KEYFRAMES}
 
         {/* Welcome outro — fades in over the last moments of the video, in the
             app's cream display voice (landing-hero treatment: Fraunces 500,
-            flat cream — GOLD text is licensed to the celebration threshold
-            only), so the hand-off to the first menu isn't an abrupt cut. */}
+            flat cream, upright — NO gold text anywhere in onboarding), so the
+            hand-off to the first menu isn't an abrupt cut. */}
         {showWelcome && (
           <div style={{ position: "absolute", inset: 0, zIndex: 15, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 1.5rem", background: "radial-gradient(ellipse at center, rgba(26,25,23,0.35) 0%, rgba(26,25,23,0.72) 100%)", animation: "onb-welcomeIn 1.1s ease both" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               <div style={{
-                fontFamily: T.font.display, fontStyle: "italic",
+                // True landing-hero treatment: Fraunces 500, flat cream, upright
+                // (the landing hero is not italic — no italic-script drift).
+                fontFamily: T.font.display,
                 fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 500,
                 color: "#FCFAF5", textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
                 textShadow: "0 0.25rem 1.75rem rgba(26,25,23,0.55)",
@@ -951,7 +954,7 @@ ${KEYFRAMES}
                 <h3 style={{
                   fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
                   color: EMBER_GLYPH, textAlign: "left", margin: "0 0 0.5rem",
-                  textTransform: "uppercase", letterSpacing: "0.12em",
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                 }}>
                   {langLabel}
                 </h3>
@@ -999,7 +1002,7 @@ ${KEYFRAMES}
                 <h3 style={{
                   fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
                   color: EMBER_GLYPH, textAlign: "left", margin: "0 0 0.5rem",
-                  textTransform: "uppercase", letterSpacing: "0.12em",
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                 }}>
                   {sizeLabel}
                 </h3>
@@ -1544,7 +1547,8 @@ ${KEYFRAMES}
     );
   }
 
-  /* ── Celebration — gold threshold + restored confetti over the room scene
+  /* ── Celebration — ceremonial threshold (gold divider-tick GLYPH only; all
+     text is canon INK) + restored confetti over the room scene
      showing the just-hung memory (walkthrough finale keys). The threshold CTA
      branches on the centralized paywall gate: where disallowed (iOS with IAP
      off — Apple 3.1.1; Android native — no Play Billing) it always ENTERS the
@@ -1616,8 +1620,10 @@ ${KEYFRAMES}
                 background: GOLD, borderRadius: "0.0625rem", opacity: 0.7,
               }} />
               <h2 style={{
-                fontFamily: T.font.display, fontSize: "1.875rem", fontWeight: 600,
-                color: INK, lineHeight: 1.15, margin: 0, fontStyle: "italic",
+                // Mirrors OnboardingCelebration's canon headline: Fraunces 500,
+                // flat INK — no gold gradient, no italic (owner: no gold letters).
+                fontFamily: T.font.display, fontSize: "1.875rem", fontWeight: 500,
+                color: INK, lineHeight: 1.15, margin: 0,
               }}>
                 {celebTitle}
               </h2>

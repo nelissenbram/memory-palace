@@ -32,7 +32,8 @@ import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
 import { measure, autoFit } from "@/lib/3d/fitRenderer";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
-import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useOverridableTranslation } from "@/lib/hooks/useTranslation";
+import type { Locale } from "@/i18n/config";
 import { T } from "@/lib/theme";
 
 /** Shared wing data from wing_shares table */
@@ -169,6 +170,7 @@ function EntranceHallScene({
   ancestralMemories,
   ancestralPublicOnly,
   onAncestralMemoryClick,
+  localeOverride,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
@@ -199,9 +201,13 @@ function EntranceHallScene({
   /** Second tap on a focused Ancestral Wall piece opens the existing memory
    *  interaction (WS7-10) — wire to MemoryPalace's memory viewer. */
   onAncestralMemoryClick?: (mem: Mem) => void;
+  /** Demo hosts (the /flythrough onboarding preview): pin canvas-baked texts
+   *  (wing door labels via wings.*, plaques) to the demo-local language
+   *  instead of the global stored locale. In-app (undefined) = unchanged. */
+  localeOverride?: Locale;
 }) {
-  const { t } = useTranslation("entranceHall");
-  const { t: tw } = useTranslation("wings");
+  const { t } = useOverridableTranslation("entranceHall", localeOverride);
+  const { t: tw } = useOverridableTranslation("wings", localeOverride);
   const WINGS = wingsProp || DEFAULT_WINGS;
   // ── MUSEO VIVO Wave-2 hall flag (WS4-6..10, WS7-7/10/15): Ancestral Wall,
   // bust plaque, living water/oculus pool, focus mode. Read once at mount
@@ -3627,9 +3633,9 @@ function EntranceHallScene({
                 marginBottom: "0.625rem",
                 animation: reduceMotionUi ? undefined : "ehc-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
               }}>
-                <span style={{ width: "3rem", height: "1px", background: `${EMBER}80` }} />
+                <span style={{ width: "3rem", height: "0.0625rem", background: `${EMBER}80` }} />
                 <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: EMBER, opacity: 0.6 }} />
-                <span style={{ width: "3rem", height: "1px", background: `${EMBER}80` }} />
+                <span style={{ width: "3rem", height: "0.0625rem", background: `${EMBER}80` }} />
               </div>
             )}
             {/* Kicker — canon Eyebrow grammar (body font 0.6875rem/700/0.14em),
@@ -3639,7 +3645,7 @@ function EntranceHallScene({
                 fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
                 color: EMBER, letterSpacing: "0.14em", textTransform: "uppercase",
                 margin: "0 0 0.625rem",
-                textShadow: "0 2px 8px rgba(26,25,23,0.7)",
+                textShadow: "0 0.125rem 0.5rem rgba(26,25,23,0.7)",
                 animation: reduceMotionUi ? undefined : "ehc-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
               }}>
                 {t("welcomeLabel")}
@@ -3652,8 +3658,10 @@ function EntranceHallScene({
               fontSize: shortCinematicUi ? "1.5rem" : "clamp(2rem, 5vw, 3.5rem)",
               fontWeight: 500, color: "#FCFAF5",
               lineHeight: 1.08, margin: 0,
-              letterSpacing: "0.02em",
-              filter: "drop-shadow(0 2px 8px rgba(26,25,23,0.6))",
+              // 0.04em mirrors WalkCinematicCaption (and the titleReveal
+              // keyframe's resting state) exactly — one hand across all legs.
+              letterSpacing: "0.04em",
+              filter: "drop-shadow(0 0.125rem 0.5rem rgba(26,25,23,0.6))",
               ...(reduceMotionUi ? {} : {
                 animation: "ehc-titleReveal 2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both",
               }),
@@ -3667,7 +3675,8 @@ function EntranceHallScene({
                 color: "#D4CBC0", margin: "0.75rem 0 0",
                 lineHeight: 1.5, maxWidth: "26rem", textAlign: "center",
                 paddingInline: narrowCinematicUi ? "1.5rem" : 0,
-                textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+                // Warm-ink shadow (canon, mirrors WalkCinematicCaption) — never cold black.
+                textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
                 animation: reduceMotionUi ? undefined : "ehc-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
               }}>
                 {t("subtitle")}

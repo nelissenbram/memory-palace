@@ -9,8 +9,8 @@ import { EMBER } from "@/lib/libraryTokens";
  *      line+dot, small-caps kicker, display title, caption line, optional
  *      prompt children). Restyled to today's canon: EMBER accents (not
  *      terracotta), Fraunces display voice mirroring the landing hero title
- *      (flat cream, weight 500 — NO gold-sheen gradient; GOLD is licensed to
- *      the celebration threshold only), body-font small-caps overline (the
+ *      (flat cream, weight 500 — NO gold-sheen gradient; onboarding TEXT is
+ *      never gold, anywhere), body-font small-caps overline (the
  *      landing Eyebrow grammar), rem + safe-area units, warm-ink text
  *      shadows (never cold black), reduced-motion = one static fade.
  *   2. WalkCaptionPill — the dark-glass tooltip pill used on the exterior
@@ -77,7 +77,7 @@ export function WalkCtaButton({
 interface WalkCinematicCaptionProps {
   /** Small-caps kicker above the title (e.g. "Welcome to"). */
   overline?: string;
-  /** Gold-sheen display headline (palace / wing / room name). */
+  /** Display headline (palace / wing / room name) — Fraunces 500 flat cream. */
   title: string;
   /** Caption line under the title — announced politely to screen readers. */
   caption?: string;
@@ -180,8 +180,8 @@ export default function WalkCinematicCaption({
         )}
 
         {/* Display title — mirrors the landing hero: Fraunces 500, flat cream,
-            warm-ink shadow. NO gold-sheen gradient (landing doesn't; GOLD is
-            the celebration's licensed moment). Reduced motion = no reveal. */}
+            warm-ink shadow. NO gold-sheen gradient (landing doesn't; no gold
+            text anywhere in onboarding). Reduced motion = no reveal. */}
         <h1
           style={{
             fontFamily: T.font.display,
@@ -285,7 +285,8 @@ export function WalkCaptionPill({
         backdropFilter: "blur(0.75rem)",
         WebkitBackdropFilter: "blur(0.75rem)",
         border: `0.0625rem solid rgba(242,237,231,0.14)`,
-        boxShadow: "0 0.5rem 2rem rgba(0,0,0,0.4)",
+        // Warm-ink drop (canon) — never cold black.
+        boxShadow: "0 0.5rem 2rem rgba(26,25,23,0.45)",
         animation: reduce ? "onbw-fadeIn 0.2s linear both" : "onbw-slideUp .4s ease both",
       }}
     >
@@ -313,7 +314,8 @@ export function WalkCaptionPill({
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
-                color: "rgba(255,255,255,0.6)",
+                // Warm linen (canon #F2EDE7), not cold white.
+                color: "rgba(242,237,231,0.75)",
                 background: "none",
                 border: "none",
                 cursor: "pointer",

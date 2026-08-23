@@ -25,12 +25,13 @@ interface OnboardingCelebrationProps {
   photoUrl?: string | null;
 }
 
-/* The one licensed gold moment in the whole app: the ceremonial threshold.
- * A dignified beat over the just-hung first memory — a single gold divider
- * tick above an ink/gold headline, one EMBER call-to-action into the palace,
- * crowned by ONE falling confetti burst (terracotta/gold/green/cream) restored
- * from the original walkthrough celebration. Reduced motion keeps the frame
- * fully static: no confetti, no entrance animations. */
+/* The ceremonial threshold. A dignified beat over the just-hung first
+ * memory — a single gold divider tick (glyph accent only — TEXT stays canon
+ * INK, owner: "mat brons, geen goud" / no gold letters) above the headline,
+ * one EMBER call-to-action into the palace, crowned by ONE falling confetti
+ * burst (terracotta/gold/green/cream) restored from the original walkthrough
+ * celebration. Reduced motion keeps the frame fully static: no confetti, no
+ * entrance animations. */
 
 /* ── Canvas confetti (restored from 297c354) — 120 pieces in the house
  * palette, gravity + rotation, self-terminating rAF loop. Exported so the
@@ -106,8 +107,6 @@ export function ConfettiBurst() {
 
 // Ember → walnut CTA gradient — the canon theme token, not a hand-typed copy.
 const ctaGrad = T.land.ctaGrad;
-// The Atrium steward gold-sage italic name gradient.
-const NAME_GRAD = "linear-gradient(100deg,#3E5230,#56683C,#E8C255,#56683C,#3E5230)";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
@@ -174,7 +173,7 @@ export default function OnboardingCelebration({
           pointerEvents: transparent ? "none" : "auto",
           ...(transparent
             ? {
-                // A subtle warm scrim so ink + gold stay readable over the room.
+                // A subtle warm scrim so the ink copy stays readable over the room.
                 background:
                   "linear-gradient(transparent 0%, rgba(252,250,245,0.55) 42%, rgba(252,250,245,0.9) 100%)",
               }
@@ -235,17 +234,13 @@ export default function OnboardingCelebration({
           style={{
             fontFamily: T.font.display,
             fontSize: isMobile ? "1.875rem" : "2.375rem",
-            fontWeight: 600,
+            fontWeight: 500,
             color: INK,
             lineHeight: 1.15,
             margin: 0,
-            // Gold-sage italic steward gradient on the personalized headline;
-            // readable over the live scene via the warm scrim + shadow.
-            backgroundImage: NAME_GRAD,
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            fontStyle: "italic",
+            // Canon display type on light (landing-hero grammar: Fraunces 500,
+            // flat INK — no gold gradient, no italic; owner: no gold letters).
+            // Readable over the live scene via the warm scrim + cream shadow.
             textShadow: transparent ? "0 0.0625rem 0.125rem rgba(252,250,245,0.6)" : "none",
             animation: enter("0.2s"),
           }}

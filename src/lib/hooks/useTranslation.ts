@@ -197,3 +197,23 @@ export function useLocaleTranslation<S extends Section>(section: S, locale: Loca
 
   return { t };
 }
+
+/**
+ * Translation with an OPTIONAL pinned-locale override — built for the 3D
+ * scenes, which bake text into canvas textures at build time. In-app (no
+ * override) this is exactly useTranslation: the global stored locale, live
+ * broadcasts included. Demo hosts (the /flythrough onboarding preview) pass
+ * their demo-local locale (obLocale) so baked labels resolve in the chosen
+ * language WITHOUT reading or writing mp_locale. Both underlying hooks always
+ * run (rules of hooks); the override only selects which resolver wins.
+ */
+export function useOverridableTranslation<S extends Section>(
+  section: S,
+  localeOverride?: Locale
+) {
+  const global = useTranslation(section);
+  const pinned = useLocaleTranslation(section, localeOverride ?? global.locale);
+  return localeOverride
+    ? { t: pinned.t, locale: localeOverride }
+    : { t: global.t, locale: global.locale };
+}
