@@ -69,7 +69,7 @@ const armRec = async (fname, which) => {
     if (w === "new") canvas = all.find((c) => c !== window.__extCanvas);
     else { canvas = all.pop(); window.__extCanvas = canvas; }
     if (!canvas) return false;
-    const stream = canvas.captureStream(60);
+    const stream = canvas.captureStream(30); // CFR 30 — stable frame pacing (no judder)
     const mime = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((c) => MediaRecorder.isTypeSupported(c));
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
     const chunks = [];
@@ -105,7 +105,7 @@ await sleep(2500);
 await clickText("Continue"); log("name continue (Guillaume prefilled)");
 
 // ── LEG A: approach (exterior canvas) — Begin the walk -> gate -> door beat ──
-if (!(await waitBeat(/Begin the walk/i, 60000, 1000))) { log("ERROR: WP1 prompt never appeared"); await b.close(); process.exit(2); }
+if (!(await waitBeat(/Begin the walk/i, 120000, 1000))) { log("ERROR: WP1 prompt never appeared"); await b.close(); process.exit(2); }
 log("WP1 prompt visible — arming leg A (exterior canvas)");
 await armRec("leg-a-approach.webm", "tagged-exterior");
 await clickText("Begin the walk"); log("Begin clicked — recording approach");
