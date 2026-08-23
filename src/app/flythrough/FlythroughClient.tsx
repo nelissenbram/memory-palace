@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
+import { useTranslation, useLocaleTranslation } from "@/lib/hooks/useTranslation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
 import { T } from "@/lib/theme";
 // The wizard's REAL walkthrough caption system (overline/gold title/caption +
@@ -217,7 +217,16 @@ export default function FlythroughClient() {
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-  const { t: tOnb } = useTranslation("onboarding");
+  // Demo-local locale (owner canon: the language card starts at ENGLISH, not
+  // the browser locale) — declared above the translator so the locale-pinned
+  // hook can consume it. Never persisted: tapping a chip swaps the resolved
+  // messages, live re-rendering every downstream demo string (cards, captions,
+  // buttons) in the chosen language from that moment on.
+  const [obLocale, setObLocale] = useState<Locale>("en");
+  // Guard against ImportHub's self-close after a successful import overwriting
+  // the just-set celebration phase (mirrors the wizard's memoryUploadedRef).
+  const obImportedRef = useRef(false);
+  const { t: tOnb } = useLocaleTranslation("onboarding", obLocale);
   // "flythrough" is a NEW messages section (plan §12, i18n workstream). The
   // cast keeps this compiling before the section lands; the try/catch keeps it
   // WORKING before it lands (t() throws on a missing section) — either way the
@@ -242,14 +251,26 @@ export default function FlythroughClient() {
   const [obScene, setObScene] = useState<ObSceneName>("exterior");
   const [obResumed, setObResumed] = useState(false);
   const [obHallHint, setObHallHint] = useState(true);
-  // ── Demo-local question-card state (never persisted anywhere) ──
+  // ── Demo-local question-card state (never persisted anywhere; obLocale
+  // lives above with the locale-pinned translator) ──
   const [obName, setObName] = useState("");
-  const [obLocale, setObLocale] = useState<Locale>(() => detectBrowserLocale());
   const [obTextSize, setObTextSize] = useState<ObTextSize>("standard");
   // ── Walk-leg step state (mirrors the wizard's corridorStep/roomStep) ──
   const [obCorridorStep, setObCorridorStep] = useState(-1);
   const [obRoomStep, setObRoomStep] = useState(-1);
   const [obCorridorEnter, setObCorridorEnter] = useState(false);
+  // Scene-ready per walk leg (mirrors the wizard's E2E slow-env fix): the
+  // safety ceilings must not burn while a scene is still LOADING (headless/
+  // slow devices: 60s+), or they fire mid-choreography. Set by the host's
+  // onSceneReady — REAL first rendered frame of the named scene (or the
+  // no-WebGL fallback), never its 4s reveal-timeout; the scene-name check
+  // rejects a stray late signal from the previous scene during the 250ms
+  // crossfade. Reset on every scene hop (and in resetOb for re-entry).
+  const [obWalkReady, setObWalkReady] = useState(false);
+  useEffect(() => { setObWalkReady(false); }, [obScene]);
+  const handleObSceneReady = useCallback((readyScene: ObSceneName) => {
+    setObWalkReady((prev) => prev || readyScene === obScene);
+  }, [obScene]);
   // The demo first memory (upload phase) — local object, never persisted.
   const [obMem, setObMem] = useState<Mem | null>(null);
   // Video intro outro beat (mirrors the wizard's beginOutro welcome fade).
@@ -268,11 +289,14 @@ export default function FlythroughClient() {
     setObResumed(false);
     setObHallHint(true);
     setObName("");
-    setObLocale(detectBrowserLocale());
+    setObLocale("en");
+    obImportedRef.current = false;
     setObTextSize("standard");
     setObCorridorStep(-1);
     setObRoomStep(-1);
     setObCorridorEnter(false);
+    // obScene may already be "exterior" (no dep change) — reset readiness explicitly.
+    setObWalkReady(false);
     setObMem(null);
     setObVideoWelcome(false);
     obOutroFiredRef.current = false;
@@ -283,6 +307,23 @@ export default function FlythroughClient() {
   // Scene-pill switch (or the recorder's reset to scene 0) resets ALL ob-state.
   useEffect(() => { resetOb(); }, [currentScene, resetOb]);
   useEffect(() => () => { if (obArrivalRef.current) clearTimeout(obArrivalRef.current); }, []);
+  // ── Demo-local text size ACTUALLY scales the demo typography, mirroring
+  // AccessibilityProvider's mechanism (root font-size ×1 / ×1.125 / ×1.25 —
+  // every rem-sized card/caption scales with it) from the moment a size chip
+  // is tapped. Scene-4-only; the pre-demo root size is captured once and
+  // restored on scene leave/unmount. Never persisted (no localStorage/DB). ──
+  const obRootFontRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (currentScene !== 4) return;
+    const root = document.documentElement;
+    if (obRootFontRef.current === null) obRootFontRef.current = root.style.fontSize;
+    const scale = obTextSize === "comfortable" ? 1.125 : obTextSize === "large" ? 1.25 : 1;
+    root.style.fontSize = scale === 1 ? obRootFontRef.current : `${scale * 100}%`;
+    return () => {
+      root.style.fontSize = obRootFontRef.current ?? "";
+      obRootFontRef.current = null;
+    };
+  }, [currentScene, obTextSize]);
   // Hall hint chip: dismiss after 5s or on first pointerdown — never other timers.
   useEffect(() => {
     if (obPhase !== "hall") return;
@@ -312,26 +353,72 @@ export default function FlythroughClient() {
     const tmo = setTimeout(() => setObPhase((p) => (p === "video" ? "card_lang" : p)), 2600);
     return () => clearTimeout(tmo);
   }, [obVideoWelcome]);
-  // ── Wizard safety ceilings, mirrored: 8s WP1-prompt fallback, 20s flyover
-  // ceiling → hall, 14s hall ceiling → corridor, 30s room invite → upload.
+  // ── Wizard safety ceilings, mirrored — STRICTLY anti-stranding (stalled GL),
+  // never pacing: each = full choreography + ~8s buffer. 8s WP1-prompt
+  // fallback (surfaces the prompt only); 30s flyover ceiling → hall (flyover
+  // 15s + zoom 3s + 3s door beat ≈ 21s natural); 28s hall ceiling → corridor
+  // (look-around 7.7s + walk 12s ≈ 19.7s); 25s corridor ceiling → room,
+  // DISARMED at step 6 (unbounded "Enter The Room" user-wait; steps 0-5 ≈
+  // 16.5s mobile); 33s room ceiling → upload, DISARMED at step 9 (unbounded
+  // painting-click user-wait; steps 0-8 ≈ 25s mobile).
+  // ARMING (E2E slow-env fix, wizard mirror): each ceiling counts only once
+  // the leg is LIVE — obWalkReady (real first frame via onSceneReady) or the
+  // leg's first choreography step — never from phase entry, so scene-load
+  // time can't eat the ceiling and truncate choreography. While not live, the
+  // 90s outer bound below is the only timer. DISARM = HARD CANCEL: a dep flip
+  // (step >= 6/9, phase leave, liveness change) runs the cleanup and clears
+  // the pending timeout — a scheduled advance can never outlive its disarm.
+  const obCorridorWaiting = obCorridorStep >= 6;
+  const obRoomWaiting = obRoomStep >= 9;
+  const obLegLive =
+    obWalkReady ||
+    (obPhase === "corridor" && obCorridorStep >= 0) ||
+    (obPhase === "room" && obRoomStep >= 0);
   useEffect(() => {
     if (currentScene !== 4) return;
     let tmo: ReturnType<typeof setTimeout> | null = null;
     if (obPhase === "hold") {
+      // Prompt-surfacing fallback only (never advances a leg) — stays armed
+      // from phase entry like the wizard's 8s cinematic-prompt fallback.
       tmo = setTimeout(() => { obPauseFiredRef.current = true; setObPhase("paused"); }, 8000);
+    } else if (!obLegLive) {
+      // Scene still loading — no leg ceiling; the outer bound covers stranding.
     } else if (obPhase === "flying") {
-      tmo = setTimeout(() => { setObScene("entrance"); setObPhase("hall"); }, 20000);
+      tmo = setTimeout(() => { setObScene("entrance"); setObPhase("hall"); }, 30000);
     } else if (obPhase === "hall") {
-      tmo = setTimeout(() => { setObScene("corridor"); setObPhase("corridor"); }, 14000);
-    } else if (obPhase === "room") {
-      tmo = setTimeout(() => setObPhase("upload"), 30000);
+      tmo = setTimeout(() => { setObScene("corridor"); setObPhase("corridor"); }, 28000);
+    } else if (obPhase === "corridor" && !obCorridorWaiting) {
+      tmo = setTimeout(() => { setObScene("room"); setObPhase("room"); }, 25000);
+    } else if (obPhase === "room" && !obRoomWaiting) {
+      tmo = setTimeout(() => setObPhase("upload"), 33000);
     }
     return () => { if (tmo) clearTimeout(tmo); };
-  }, [currentScene, obPhase]);
-  // "Enter The Room" 4s fallback (wizard: corridor ro1-arrival may never fire).
+  }, [currentScene, obPhase, obLegLive, obCorridorWaiting, obRoomWaiting]);
+  // OUTER absolute bound (wizard mirror) — purely anti-infinite-loading: if a
+  // leg's scene never goes live, advance 90s after phase entry ("flying" is
+  // already post-resume; the paused prompt wait stays unbounded). Cancelled
+  // the moment the leg goes live — never cuts real choreography, and never
+  // overrides a step>=6/9 user-wait (steps firing imply live).
+  useEffect(() => {
+    if (currentScene !== 4 || obLegLive) return;
+    let tmo: ReturnType<typeof setTimeout> | null = null;
+    if (obPhase === "flying") {
+      tmo = setTimeout(() => { setObScene("entrance"); setObPhase("hall"); }, 90000);
+    } else if (obPhase === "hall") {
+      tmo = setTimeout(() => { setObScene("corridor"); setObPhase("corridor"); }, 90000);
+    } else if (obPhase === "corridor") {
+      tmo = setTimeout(() => { setObScene("room"); setObPhase("room"); }, 90000);
+    } else if (obPhase === "room") {
+      tmo = setTimeout(() => setObPhase("upload"), 90000);
+    }
+    return () => { if (tmo) clearTimeout(tmo); };
+  }, [currentScene, obPhase, obLegLive]);
+  // "Enter The Room" fallback (wizard: corridor ro1-arrival may never fire):
+  // the step-7 auto-walk covers ~4m at the 2.2m/s comfort cap (~2s) — 10s
+  // ceiling (2s natural + 8s buffer) so it can never cut the walk itself.
   useEffect(() => {
     if (currentScene !== 4 || obPhase !== "corridor" || !obCorridorEnter) return;
-    const tmo = setTimeout(() => { setObScene("room"); setObPhase("room"); }, 4000);
+    const tmo = setTimeout(() => { setObScene("room"); setObPhase("room"); }, 10000);
     return () => clearTimeout(tmo);
   }, [currentScene, obPhase, obCorridorEnter]);
   // Warm the 3D module cache while the owner types the demo name (wizard §preload).
@@ -352,6 +439,12 @@ export default function FlythroughClient() {
     else if (obPhase === "corridor") { setObScene("room"); setObPhase("room"); }
     else if (obPhase === "room") setObPhase("upload");
   }, [obPhase]);
+  // Stable host callbacks: the host's ready-gate effect re-arms on onReady
+  // identity change, so inline arrows here would reset its once-per-scene
+  // guards every viewer render (step updates re-render constantly).
+  const handleObHostReady = useCallback(() => {
+    setObPhase((p) => (p === "loading" ? "hold" : p));
+  }, []);
   const obDisplayName = obName.trim() || trOnb("namePlaceholder", "Your first name");
   // ── Viewer-local canon tokens for the card/paywall chrome (visual mirror of
   // the wizard's warm-cream Library canon — its style consts are private) ──
@@ -588,7 +681,8 @@ export default function FlythroughClient() {
             roomId="ro1"
             memories={obPhase === "celebration" && obMem ? [obMem] : []}
             initialCameraZ={obPhase === "celebration" ? 0 : undefined}
-            onReady={() => setObPhase((p) => (p === "loading" ? "hold" : p))}
+            onReady={handleObHostReady}
+            onSceneReady={handleObSceneReady}
             onCinematicPause={() => {
               if (obPauseFiredRef.current) return;
               obPauseFiredRef.current = true;
@@ -1244,9 +1338,10 @@ export default function FlythroughClient() {
               to the paywall, exactly like the wizard's onClose. ── */}
           {obPhase === "upload" && (
             <ImportHub
-              onClose={() => setObPhase("paywall")}
+              onClose={() => { if (!obImportedRef.current) setObPhase("paywall"); }}
               onImportFiles={async (files) => {
                 if (files.length === 0) return;
+                obImportedRef.current = true;
                 const f = files[0];
                 let dataUrl = f.previewUrl || f.url || "";
                 if (f.file) {

@@ -157,3 +157,43 @@ export function useTranslation<S extends Section>(section: S) {
 
   return { t, locale, setLocale, setLocaleNoReload };
 }
+
+/**
+ * Locale-PINNED translator — resolves keys from an explicit locale instead of
+ * the shared/stored one. Purely component-local: never reads or writes
+ * mp_locale / cookies / <html lang>, never broadcasts to other hook instances.
+ * Built for demo surfaces (the /flythrough onboarding preview) where a local
+ * language choice must re-render copy live without persisting anything.
+ * Falls back to English per-key, same as t().
+ */
+export function useLocaleTranslation<S extends Section>(section: S, locale: Locale) {
+  const [messages, setMessages] = useState<Messages>(
+    () => messageCache.get(locale) ?? enMessages
+  );
+
+  useEffect(() => {
+    let alive = true;
+    // Serve cache synchronously to avoid a flash of English on locale switch.
+    const cached = messageCache.get(locale);
+    if (cached) { setMessages(cached); return; }
+    loadMessages(locale).then((msgs) => { if (alive) setMessages(msgs); });
+    return () => { alive = false; };
+  }, [locale]);
+
+  const t = useCallback(
+    (key: keyof Messages[S] | (string & {}), params?: Record<string, string>): string => {
+      const sectionMessages = messages[section] as Record<string, string>;
+      const fallback = enMessages[section] as Record<string, string>;
+      let value = sectionMessages?.[key as string] ?? fallback?.[key as string] ?? (key as string);
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          value = value.split(`{${k}}`).join(v);
+        }
+      }
+      return value;
+    },
+    [messages, section]
+  );
+
+  return { t };
+}

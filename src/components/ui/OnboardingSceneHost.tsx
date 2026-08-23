@@ -21,6 +21,11 @@ interface OnboardingSceneHostProps {
   onRoomClick?: (id: string) => void;
   onDoorClick?: (id: string) => void;
   onReady?: () => void;
+  /** REAL scene readiness (first rendered frame of the named scene, or the
+   * no-WebGL/error fallback where no 3D ready will ever come). Unlike onReady,
+   * this is NEVER fired by the host's internal 4s reveal-timeout — callers use
+   * it to arm anti-stranding ceilings only once choreography can actually run. */
+  onSceneReady?: (scene: OnboardingScene) => void;
   onOnboardingLookDone?: () => void;
   onCinematicPause?: () => void;
   cinematicResumed?: boolean;
@@ -137,6 +142,7 @@ export default function OnboardingSceneHost({
   onRoomClick,
   onDoorClick,
   onReady,
+  onSceneReady,
   onOnboardingLookDone,
   onCinematicPause,
   cinematicResumed,
@@ -183,19 +189,44 @@ export default function OnboardingSceneHost({
     } catch {}
   }, [onReady]);
 
+  // REAL readiness notification (anti-stranding ceilings): fired once per
+  // active scene, ONLY from the scene's own onReady (first rendered frame) or
+  // the no-3D fallback path — never from the 4s reveal-timeout below, which
+  // exists purely so a slow scene doesn't strand the user on a cream veil.
+  // onSceneReady is kept in a ref so parent inline-callback identity churn
+  // can neither re-fire it nor reset the once-guard.
+  const onSceneReadyRef = useRef(onSceneReady);
+  useEffect(() => { onSceneReadyRef.current = onSceneReady; }, [onSceneReady]);
+  const sceneReadyNotifiedRef = useRef(false);
+  const notifySceneReady = useCallback((s: OnboardingScene) => {
+    if (sceneReadyNotifiedRef.current) return;
+    sceneReadyNotifiedRef.current = true;
+    try { onSceneReadyRef.current?.(s); } catch {}
+  }, []);
+  // What the SCENES call: real first-frame readiness → notify + reveal.
+  const handleRealReady = useCallback(() => {
+    notifySceneReady(activeScene);
+    handleReady();
+  }, [activeScene, notifySceneReady, handleReady]);
+
   // Reset the ready gate whenever the scene changes, then arm the ceiling timeout.
   useEffect(() => {
     readyFiredRef.current = false;
+    sceneReadyNotifiedRef.current = false;
     setSceneReady(false);
-    // If the fallback is showing, there is no 3D "ready" — reveal immediately.
+    // If the fallback is showing, there is no 3D "ready" — reveal immediately,
+    // and report scene-ready too (the ceilings ARE the choreography here, so
+    // they must arm right away and keep their original no-WebGL pacing).
     if (noWebGL || boundaryFailed) {
+      notifySceneReady(activeScene);
       handleReady();
       return;
     }
-    // Ceiling timeout: a stalled/never-firing onReady still surfaces the scene.
+    // Ceiling timeout: a stalled/never-firing onReady still surfaces the scene
+    // (reveal only — deliberately NOT a scene-ready signal).
     const ceiling = setTimeout(() => handleReady(), 4000);
     return () => clearTimeout(ceiling);
-  }, [activeScene, noWebGL, boundaryFailed, handleReady]);
+  }, [activeScene, noWebGL, boundaryFailed, handleReady, notifySceneReady]);
 
   // Warm white flash crossfade — feels like a blink, not a cut.
   // Under reduced motion, swap instantly (no animated blink).
@@ -284,7 +315,7 @@ export default function OnboardingSceneHost({
           wings={allWings}
           styleEra={styleEra}
           autoWalkTo={autoWalkTo}
-          onReady={handleReady}
+          onReady={handleRealReady}
           onboardingMode={onboardingMode}
           onCinematicPause={onCinematicPause}
           cinematicResumed={cinematicResumed}
@@ -296,7 +327,7 @@ export default function OnboardingSceneHost({
           wings={allWings}
           styleEra={styleEra}
           autoWalkTo={autoWalkTo}
-          onReady={handleReady}
+          onReady={handleRealReady}
           onboardingMode={onboardingMode}
           bustPedestals={bustPedestals}
           bustTextureUrl={bustTextureUrl}
@@ -315,7 +346,7 @@ export default function OnboardingSceneHost({
           hoveredDoor={null}
           styleEra={styleEra}
           autoWalkTo={autoWalkTo}
-          onReady={handleReady}
+          onReady={handleRealReady}
           onboardingMode={onboardingMode}
           onCinematicStep={onCinematicStep}
           isMobile={isMobile}
@@ -330,7 +361,7 @@ export default function OnboardingSceneHost({
           memories={demoRoomMemories}
           onMemoryClick={onDoorClick || noop}
           styleEra={styleEra}
-          onReady={handleReady}
+          onReady={handleRealReady}
           onboardingMode={onboardingMode}
           onOnboardingLookDone={onOnboardingLookDone}
           onCinematicStep={onCinematicStep}

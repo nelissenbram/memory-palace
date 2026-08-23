@@ -5821,6 +5821,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // prefersReducedMotion() never reaches here (guarded at the trigger).
     let approachFlight:{t0:number,target:string,wp:[number,number,number][]}|null=null;
     const AP_DUR=7.0; // seconds road-ride before the arrival handoff
+    // ── ITEM 3 (owner 2026-08-20): onboarding arrival THROUGH the gate ──
+    // The onboarding cinematic's final approach captures the camera's ACTUAL
+    // orbit at the name beat and dollies it forward along the road axis to eye
+    // height between the poorttorens — the handoff fires as the camera crosses
+    // the gate line, so the hall cut reads as walking in through the poort,
+    // not dropping in from above. (Onboarding-only; the R2 approachFlight and
+    // normal-click paths above/below are untouched.)
+    let obGate:{th0:number,ph0:number}|null=null;
+    // Look-target override (world y) — non-null ONLY during the onboarding
+    // gate approach (and its reduced-motion gate still); every other frame
+    // keeps the shared dome-crown look target below.
+    let obLookY:number|null=null;
     const startApproachFlight=(target:string)=>{
       // Camera y = dist*cos(φ)+5: the three road beats all sit at y≈13 — a cart
       // seat over the descending road (ground 8→0) — before the arrival rise.
@@ -5846,6 +5858,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Framerate-independent smoothing helper: 1-exp(-k*dt) with k=-ln(1-f)*60
       // preserves the old per-frame factors f exactly at 60fps.
       const _sm=(k:number)=>1-Math.exp(-k*dt);
+      obLookY=null; // ITEM 3: look override only lives while a branch below sets it this frame
 
       // Walkthrough highlight
       const hlTarget=highlightDoorRef.current;
@@ -5914,13 +5927,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const stills: [number,number,number][]=[
             [Math.PI*1.4987,Math.PI*0.4387,210],
             [Math.PI*1.5480,Math.PI*0.3060,118], // name-beat (owner review #1): matches the dolly beat — poorttorens ±~13,−13, tall lantern-crowned dome bekroont above
-            [Math.PI*1.5,Math.PI*0.22,35],
+            [Math.PI*1.5,Math.PI*0.392,16], // ITEM 3: gate framing — eye height (y≈9.9) on the road axis at the poorttoren line, portal straight ahead (was the from-above 0.22π/35 arrival)
           ];
           const si=Math.min(Math.floor(ot/SHOT),2);
           const s=stills[si];
           camO.current.theta=camOT.current.theta=s[0];
           camO.current.phi=camOT.current.phi=s[1];
           camD.current=s[2];
+          if(si===2)obLookY=HILL_Y+4; // ITEM 3: look through the portal arch, not up at the dome
           const local=ot-si*SHOT;
           const veil=ensureRmVeil();
           let vo=0;
@@ -5944,33 +5958,26 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         } else {
           // Resumed — compute time since resume
           const ot = rawT - cinematicResumeTimeRef.current;
-          // W2 (WS3-10): ~18s authored establishing dolly INTO the low SW sun —
-          // cypress contre-jour over the fields, TYMPANUM BEAT (owner's name
-          // legible) at ~7.5s, descending to eye level at camD≈35 before the
-          // door. Same Catmull-Rom machinery, same Skip/pause/resume contract;
-          // yaw stays under the shared MAX_YAW_DEG_S clamp applied below.
+          // W2 (WS3-10) → ITEM 3 retune (owner 2026-08-20: "over de weg
+          // aanvliegen en door de poort naar binnen, en vlotter"): the 18s
+          // aerial dolly is condensed to ~7.5s that flies IN OVER THE ROAD —
+          // one tightened sun-side sweep (cypress contre-jour, the tall
+          // lantern-crowned dome crowning the ridge, poorttorens/galerij as
+          // sliding coulisses), then a drop onto the road axis at cart height
+          // exactly like the R2 approachFlight ride (φ≈.45-.47π, y≈13-14),
+          // with the NAME BEAT from the road at dist 58 (tympanum name
+          // legible overhead between the poorttorens, mirroring the R2 beat
+          // at 60). The last 2.5s hand over to the GATE APPROACH below:
+          // forward through the poort at eye height — no more aerial
+          // drop-in at φ=0.22π. Same Catmull-Rom machinery, same
+          // Skip/pause/resume contract; yaw stays far under the shared
+          // MAX_YAW_DEG_S clamp applied below.
           // Legacy (flag off): 5-waypoint flyover, 7s + 3.8s zoom.
-          // Grandeur retune (owner feedback 2026-08-06 #6B-4): the dolly now serves
-          // the raised dome — beats 2-4 ride slightly higher and a touch wider so
-          // the lantern-crowned silhouette dominates the frame; the TYMPANUM BEAT
-          // stays at ~7.5s (name legible), then the descent to the one door.
-          // Grondplan v3 (signature): the WP1→WP2 lateral swing to θ=1.66π sweeps
-          // the camera sun-side across the E poorttoren and the long broad galerij
-          // (B, reaching x≈+92) so the verticals of the wide corps slide past each
-          // other as coulisses — free parallax, no extra waypoints.
-          // ══ Owner review 2026-08-06 #1 retune — the dome is now much HIGHER
-          // (shell apex world ≈36, lantern finial ≈43) and the poorttorens moved
-          // slightly wider ((−15,−13)/(+12,−13), fp8). The whole path is pulled a
-          // touch HIGHER (phi ↑) and the name-beat a touch further + wider so BOTH
-          // widened poorttorens bracket the x=0 tympanum AND the tall lantern-
-          // crowned dome bekroont the frame in one read at ~7.5s. The lookAt
-          // target also rises (below) so the crowning lantern stays in frame.
           const WP: [number,number,number][] = W2 ? [
             [Math.PI*1.4987, Math.PI*0.4387, 215.0], // 0s: seamless from the WP1 hold — starts at the far end of the cypress approach (flies the full avenue in)
-            [Math.PI*1.6600, Math.PI*0.3980, 158.0], // ~3.8s: swing sun-side, cypress contre-jour, tall dome crowning the broad ridge, long galerij sweeping east
-            [Math.PI*1.5480, Math.PI*0.3060, 118.0], // ~7.5s: TYMPANUM BEAT — name framed BETWEEN the two poorttorens (±~13,−13), the high lantern-crowned dome bekroont above; wider + further so both bracket the axis and the tall crown reads in one frame
-            [Math.PI*1.5000, Math.PI*0.2960,  96.0], // ~11.3s: frontal hold — full stacked massing (stair → parapet → two-stage crossing → tall drum → dome → lantern), galerij spread wide
-            [Math.PI*1.5000, Math.PI*0.2620,  63.0], // 15s: descend toward the door
+            [Math.PI*1.6200, Math.PI*0.3980, 152.0], // ~1.7s: condensed sun-side sweep — cypress contre-jour, tall dome crowning the broad ridge, galerij sweeping east
+            [Math.PI*1.5000, Math.PI*0.4700, 100.0], // ~3.3s: settle onto the road axis at cart height (y≈14) — riding the road in, palace looming ahead
+            [Math.PI*1.5000, Math.PI*0.4520,  58.0], // 5s: NAME BEAT from the road — tympanum name legible overhead, both poorttorens bracketing the x=0 axis
           ] : [
             [Math.PI*1.4987, Math.PI*0.4387, 180.0], // 1: wide establishing shot
             [Math.PI*1.6197, Math.PI*0.3967, 175.0], // 2: pan right & up
@@ -5978,8 +5985,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             [Math.PI*1.3854, Math.PI*0.4336, 150.0], // 4: continue left, drop down
             [Math.PI*1.4809, Math.PI*0.4400, 115.0], // 5: settle front, closer
           ];
-          const FLY_DUR = W2 ? 15.0 : 7.0;
-          const ZOOM_DUR = W2 ? 3.0 : 3.8; // W2: 15+3 = the 18s dolly; legacy: extended zoom
+          const FLY_DUR = W2 ? 5.0 : 7.0;
+          const ZOOM_DUR = W2 ? 2.5 : 3.8; // W2: 5+2.5 = the vlotter road dolly + gate approach; legacy: extended zoom
 
           if (ot < FLY_DUR) {
             const progress = ot / FLY_DUR;
@@ -5997,6 +6004,31 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             camOT.current.theta = cr(p0[0],p1[0],p2[0],p3[0],lt);
             camOT.current.phi   = cr(p0[1],p1[1],p2[1],p3[1],lt);
             camD.current += (cr(p0[2],p1[2],p2[2],p3[2],lt) - camD.current) * _sm(5.0029); // f=.08 @60fps
+          } else if (W2) {
+            // ── ITEM 3 GATE APPROACH: dolly FORWARD through the entrance
+            // poort. From the name beat the camera pushes straight down the
+            // road axis (θ pinned to 1.5π), easing from cart height to eye
+            // height (y≈9.8) while the look target sinks dome-crown → portal
+            // arch, and the handoff fires the moment the camera crosses the
+            // poorttoren gate line (camD<15 ⇒ z≈−14) — the hall cut lands
+            // MID-FORWARD-MOTION, like stepping through the door, instead of
+            // the old drop from φ=0.22π/dist 35. camO is written directly
+            // (camOT pinned to match) so the slow onboarding camLerp can't
+            // lag the real camera down into the stair; the φ/θ rates here
+            // (<6°/s) stay far under MAX_YAW_DEG_S.
+            const p = Math.min((ot - FLY_DUR) / ZOOM_DUR, 1.0);
+            if (!obGate) obGate = { th0: camO.current.theta, ph0: camO.current.phi }; // capture the ACTUAL orbit (post-lerp) for a seamless join
+            const aD = p * p;     // dolly: lingers on the name beat (~1s legible), then surges through the gate
+            const aP = p * p * p; // height: holds cart height longer, settles to eye level late
+            const GATE_TH = Math.PI * 1.5, GATE_PH = Math.PI * 0.392, GATE_D = 13.5; // eye height (y≈9.5) centred between the poorttorens, just before the vestibulum plane (z≈−12)
+            camO.current.theta = camOT.current.theta = obGate.th0 + (GATE_TH - obGate.th0) * aD;
+            camO.current.phi   = camOT.current.phi   = obGate.ph0 + (GATE_PH - obGate.ph0) * aP;
+            camD.current += ((GATE_D + (WP[WP.length - 1][2] - GATE_D) * (1 - aD)) - camD.current) * _sm(5.0029); // f=.08 @60fps
+            obLookY = HILL_Y + 13 - 9 * aD; // dome crown → portal arch: the view levels out to look THROUGH the door
+            if (camD.current < 15) { // crossing the gate line between the poorttorens — enter NOW, mid-stride
+              onboardingModeRef.current = false;
+              onRoomClickRef.current("__entrance__", true); // cinematic arrival → direct enter
+            }
           } else {
             const p = Math.min((ot - FLY_DUR) / ZOOM_DUR, 1.0);
             const accel = p * p * p;
@@ -6066,8 +6098,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
       // W2 grandeur (owner review #1): look target rises with the now much higher
       // dome (shell apex world ≈36, lantern finial ≈43) so the lantern-crowned
-      // silhouette bekroont the frame at every distance.
-      camera.lookAt(0,HILL_Y+(W2?13:8),0);
+      // silhouette bekroont the frame at every distance. ITEM 3: the onboarding
+      // gate approach overrides the height (obLookY, dome crown → portal arch)
+      // so the final meters read as looking THROUGH the door; null every other frame.
+      camera.lookAt(0,obLookY!==null?obLookY:HILL_Y+(W2?13:8),0);
 
       // ── Camera debug overlay (activated via ?cam=debug) ──
       if(camDebugRef.current){

@@ -8,13 +8,14 @@ import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
-import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import { track } from "@/lib/analytics";
 import { useAccessibility, type ScaleLevel } from "@/components/providers/AccessibilityProvider";
 import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 import WalkCinematicCaption, { WalkCaptionPill, WalkCtaButton } from "@/components/ui/OnboardingWalkCaption";
+import type { OnboardingScene } from "@/components/ui/OnboardingSceneHost";
 
 const OnboardingSceneHost = lazy(() => import("@/components/ui/OnboardingSceneHost"));
 const OnboardingCelebration = lazy(() => import("@/components/ui/OnboardingCelebration"));
@@ -195,9 +196,10 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     setFirstWing("roots");
   }, [setFirstWing]);
 
-  // Apply the detected/stored locale to the ACTIVE translation on mount, so the
-  // very first onboarding screen renders in the user's language (nl by default)
-  // — not the app's fallback English until they tap a language. Runs once.
+  // Apply the initial locale to the ACTIVE translation on mount, so the whole
+  // flow renders in the starting language from the first screen. Owner canon:
+  // a fresh run STARTS in English (selectedLocale init below) — a mid-flow
+  // resume re-applies whatever the user already picked. Runs once.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setLocaleNoReload(selectedLocale); }, []);
 
@@ -223,16 +225,50 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const [corridorStep, setCorridorStep] = useState(-1);
   const [roomStep, setRoomStep] = useState(-1);
   const [corridorEnterClicked, setCorridorEnterClicked] = useState(false);
+  // Scene-ready per walk leg (E2E slow-env fix): the anti-stranding ceilings
+  // below must NOT burn while a leg's 3D scene is still LOADING (headless/slow
+  // devices: 60s+), or they fire mid-choreography. Each leg's ceiling arms only
+  // once its scene reports REAL readiness — onSceneReady from
+  // OnboardingSceneHost, fired at the scene's first rendered frame (or
+  // immediately on the no-WebGL/error fallback, where the ceilings ARE the
+  // choreography and must keep their original pacing). NEVER fired by the
+  // host's internal 4s reveal-timeout. Reset on every phase change; the
+  // scene-name check rejects a stray late signal from the previous leg's scene
+  // during the host's 250ms crossfade.
+  const [walkSceneReady, setWalkSceneReady] = useState(false);
+  const prevWalkPhaseRef = useRef<Phase>(phase);
+  useEffect(() => {
+    const prev = prevWalkPhaseRef.current;
+    prevWalkPhaseRef.current = phase;
+    // cinematic → walk_exterior (per-leg skip) keeps the SAME live exterior
+    // scene — no fresh onSceneReady will come, so readiness carries over.
+    if (prev === "cinematic" && phase === "walk_exterior") return;
+    setWalkSceneReady(false);
+  }, [phase]);
+  const handleWalkSceneReady = useCallback((readyScene: OnboardingScene) => {
+    const expected =
+      phase === "cinematic" || phase === "walk_exterior" ? "exterior" :
+      phase === "walk_entrance" ? "entrance" :
+      phase === "walk_corridor" ? "corridor" :
+      phase === "walk_room" ? "room" : null;
+    if (readyScene === expected) setWalkSceneReady(true);
+  }, [phase]);
 
 
   // ── Language / A11y state ──
-  // Check localStorage directly — the hook's `locale` hasn't hydrated yet on first render
+  // Owner canon: a FRESH run starts with ENGLISH visibly pre-selected — NOT the
+  // browser/profile locale. Tapping a chip applies + persists immediately
+  // (setLocaleNoReload in the chip handler), so a mid-flow resume (saved phase
+  // in STORAGE_KEY) restores the user's in-wizard pick from mp_locale; without
+  // a saved phase any pre-existing mp_locale is ignored in favor of English.
   const [selectedLocale, setSelectedLocale] = useState<Locale>(() => {
     try {
-      const stored = localStorage.getItem("mp_locale") as Locale | null;
-      if (stored && locales.includes(stored)) return stored;
+      if (localStorage.getItem(STORAGE_KEY)) {
+        const stored = localStorage.getItem("mp_locale") as Locale | null;
+        if (stored && locales.includes(stored)) return stored;
+      }
     } catch {}
-    return detectBrowserLocale();
+    return "en";
   });
   // Text size is owned by the app-wide AccessibilityProvider (persists to
   // localStorage + DB + documentElement, survives unmount). Change here writes
@@ -399,43 +435,99 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     return () => clearTimeout(timer);
   }, [phase, cinematicPaused]);
 
-  // Cinematic flyover ceiling: once resumed, the 5-waypoint flyover ends in the
-  // arrival callback; if the scene stalls mid-flight, advance after 20s.
+  // Cinematic flyover ceiling: once resumed, the flyover + zoom (up to ~18s)
+  // ends in the arrival callback, which holds a 3s door beat before advancing
+  // (~21s natural total). The ceiling is STRICTLY anti-stranding (stalled GL),
+  // never pacing: full choreography + ~8s buffer = 30s, and it only ARMS after
+  // the user resumes (the WP1 prompt wait is unbounded by design) AND the
+  // exterior scene is actually live (walkSceneReady) — on a slow device the 8s
+  // prompt fallback can surface "Yes, let's go!" while the scene is still
+  // loading, and the 30s must not burn during that load. The 90s outer bound
+  // below covers a scene that never goes live.
   useEffect(() => {
-    if (phase === "cinematic" && cinematicResumed) {
-      const timer = setTimeout(() => setPhase("walk_entrance"), 20000);
+    if (phase === "cinematic" && cinematicResumed && walkSceneReady) {
+      const timer = setTimeout(() => setPhase("walk_entrance"), 30000);
       return () => clearTimeout(timer);
     }
-  }, [phase, cinematicResumed, setPhase]);
+  }, [phase, cinematicResumed, walkSceneReady, setPhase]);
 
-  // Safety fallback: 4s after "Enter The Room" is clicked the room opens even
-  // if the corridor scene never fires the ro1 arrival callback.
+  // Safety fallback after "Enter The Room": the step-7 auto-walk to ro1 covers
+  // ~4m at the 2.2m/s comfort cap (~2s) then fires the arrival callback. Only
+  // if that callback never comes (stalled loop), open the room after
+  // ~2s natural + 8s buffer = 10s — never mid-walk.
   useEffect(() => {
     if (corridorEnterClicked && phase === "walk_corridor") {
-      const timer = setTimeout(() => setPhase("walk_room"), 4000);
+      const timer = setTimeout(() => setPhase("walk_room"), 10000);
       return () => clearTimeout(timer);
     }
   }, [corridorEnterClicked, phase, setPhase]);
 
-  // Safety fallback for the auto-walk legs (restored 14s/14s/30s ceilings): the
-  // exterior/entrance scenes advance only when their WebGL loop fires a
-  // callback. If a scene stalls (GL context loss, throttled rAF), never strand
-  // the user — advance after a ceiling. walk_room invites a tap on the upload
-  // painting; if it's never found, surface the upload step after 30s.
+  // Safety ceilings for the auto-walk legs — STRICTLY anti-stranding, never
+  // pacing. The scenes advance only when their WebGL loop fires a callback; if
+  // a scene stalls (GL context loss, throttled rAF), advance after a ceiling
+  // set to the leg's FULL computed choreography duration + ~8s buffer, so it
+  // can never fire mid-animation:
+  //  - walk_exterior: 7s cart ride + 3s door beat = 10s        -> 18s ceiling
+  //  - walk_entrance: 7.7s look-around + 12s walk  = 19.7s     -> 28s ceiling
+  //  - walk_corridor: steps 0-5 = 13.5s (+0.5s/step mobile = 16.5s) -> 25s,
+  //    DISARMED once step 6 shows "Enter The Room" (unbounded user decision;
+  //    the post-click 10s ceiling above covers the step-7 auto-walk)
+  //  - walk_room: steps 0-8 = 20.5s (+0.5s/step mobile = 25s)  -> 33s,
+  //    DISARMED once step 9 shows the painting prompt + "Add a Memory" CTA
+  //    (unbounded user-wait; the visible CTA already prevents stranding)
+  // ARMING (E2E slow-env fix): each ceiling counts from the moment the leg is
+  // LIVE — walkSceneReady (real first frame via onSceneReady) or, belt-and-
+  // braces, the leg's first choreography step callback — never from phase
+  // entry, so scene-load time (60s+ headless) can no longer eat the ceiling
+  // and truncate choreography. While not live, the 90s outer bound below is
+  // the only timer. DISARM = HARD CANCEL: when a dep flips (step >= 6/9
+  // reached, phase leaves, liveness changes), the effect cleanup clears the
+  // pending timeout BEFORE re-evaluating — a scheduled advance can never
+  // outlive its disarm condition.
+  const corridorWaitingForEnter = corridorStep >= 6;
+  const roomWaitingForPainting = roomStep >= 9;
+  const walkLegLive =
+    walkSceneReady ||
+    (phase === "walk_corridor" && corridorStep >= 0) ||
+    (phase === "walk_room" && roomStep >= 0);
   useEffect(() => {
+    if (!walkLegLive) return; // scene still loading — outer bound covers stranding
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (phase === "walk_exterior") {
-      const timer = setTimeout(() => setPhase("walk_entrance"), 14000);
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => setPhase("walk_entrance"), 18000);
+    } else if (phase === "walk_entrance") {
+      timer = setTimeout(() => setPhase("walk_corridor"), 28000);
+    } else if (phase === "walk_corridor" && !corridorWaitingForEnter) {
+      timer = setTimeout(() => setPhase("walk_room"), 25000);
+    } else if (phase === "walk_room" && !roomWaitingForPainting) {
+      timer = setTimeout(() => setPhase("upload"), 33000);
     }
-    if (phase === "walk_entrance") {
-      const timer = setTimeout(() => setPhase("walk_corridor"), 14000);
-      return () => clearTimeout(timer);
+    return () => { if (timer) clearTimeout(timer); };
+  }, [phase, walkLegLive, corridorWaitingForEnter, roomWaitingForPainting, setPhase]);
+
+  // OUTER absolute bound — purely anti-infinite-loading: if a leg's scene
+  // NEVER goes live (chunk never resolves, GL never produces a first frame),
+  // advance 90s after phase entry (cinematic: after resume — the WP1 prompt
+  // wait stays unbounded by design). Cancelled the moment the leg goes live,
+  // when the armed ceilings above take over — so it can never cut real
+  // choreography, and it can never override a step>=6/9 user-wait (steps
+  // firing imply the leg is live, which disables this bound).
+  useEffect(() => {
+    if (walkLegLive) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (phase === "cinematic" && cinematicResumed) {
+      timer = setTimeout(() => setPhase("walk_entrance"), 90000);
+    } else if (phase === "walk_exterior") {
+      timer = setTimeout(() => setPhase("walk_entrance"), 90000);
+    } else if (phase === "walk_entrance") {
+      timer = setTimeout(() => setPhase("walk_corridor"), 90000);
+    } else if (phase === "walk_corridor") {
+      timer = setTimeout(() => setPhase("walk_room"), 90000);
+    } else if (phase === "walk_room") {
+      timer = setTimeout(() => setPhase("upload"), 90000);
     }
-    if (phase === "walk_room") {
-      const timer = setTimeout(() => setPhase("upload"), 30000);
-      return () => clearTimeout(timer);
-    }
-  }, [phase, setPhase]);
+    return () => { if (timer) clearTimeout(timer); };
+  }, [phase, cinematicResumed, walkLegLive, setPhase]);
 
   // ── Paywall trial CTA (change 2): completing onboarding and routing to /pricing
   // must be ONE coherent flow — never fire setPhase('done') (which lands the user
@@ -1137,7 +1229,7 @@ ${KEYFRAMES}
      the camera on the 5-waypoint low flyover from the path to the entrance;
      the arrival fires onRoomClick("__entrance__") -> 3s door beat ->
      walk_entrance. Reduced motion: the scene swaps the flyover for composed
-     stills/instant cuts; the 8s prompt fallback + 20s flyover ceiling
+     stills/instant cuts; the 8s prompt fallback + 30s flyover ceiling
      guarantee forward motion even if a callback never fires. */
   if (phase === "cinematic") {
     const displayName = trimmedName || tr("namePlaceholder", "Your name");
@@ -1149,6 +1241,7 @@ ${KEYFRAMES}
             scene="exterior"
             onboardingMode
             onRoomClick={handleExteriorRoomClick}
+            onSceneReady={handleWalkSceneReady}
             onCinematicPause={() => setCinematicPaused(true)}
             cinematicResumed={cinematicResumed}
           />
@@ -1209,6 +1302,7 @@ ${KEYFRAMES}
             autoWalkTo={autoWalkTarget}
             onboardingMode
             onRoomClick={handleExteriorRoomClick}
+            onSceneReady={handleWalkSceneReady}
             onDoorClick={
               phase === "walk_entrance" ? handleEntranceDoorClick :
               phase === "walk_corridor" ? handleCorridorDoorClick :
