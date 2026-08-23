@@ -308,12 +308,17 @@ export default function OnboardingSceneHost({
   // NOTE: /demo has no dedicated piano audio (piano-recital.mp4 is video-only,
   // no audio track) — song-of-summer.mp3 is the bundled demo music and plays
   // at the gramophone.
+  // Item 4 (owner 2026-08-23): the AV demo files live under /video/demo/, NOT
+  // /demo/ — the middleware matcher exempts image extensions but not .mp4/.mp3,
+  // so on the PUBLIC onboarding preview (/flythrough is unauthenticated)
+  // /demo/*.mp4 307'd to /login and the cinema screen got an HTML page →
+  // MediaError → canvas fallback. /video/ is matcher-exempt + fast-pathed.
   const demoRoomMemories = useMemo(
     () =>
       onboardingMode && memories.length === 0
         ? [
-            { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "vinyl", displayed: true, dataUrl: "/demo/song-of-summer.mp3", createdAt: "2024-06-21T15:00:00.000Z", hue: 200, s: 50, l: 55 },
-            { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/demo/piano-recital.mp4", createdAt: "2024-11-02T19:30:00.000Z", hue: 30, s: 45, l: 50 },
+            { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "vinyl", displayed: true, dataUrl: "/video/demo/song-of-summer.mp3", createdAt: "2024-06-21T15:00:00.000Z", hue: 200, s: 50, l: 55 },
+            { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/video/demo/piano-recital.mp4", thumbnailUrl: "/video/demo/piano-recital-thumb.jpg", createdAt: "2024-11-02T19:30:00.000Z", hue: 30, s: 45, l: 50 },
             { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/quiet-morning.jpg", createdAt: "2023-04-09T08:00:00.000Z", hue: 18, s: 40, l: 60 },
             { id: "demo-frame-2", title: "Edge of the Water", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/edge-of-water.jpg", createdAt: "2024-07-18T17:00:00.000Z", hue: 200, s: 35, l: 55 },
             { id: "demo-frame-3", title: "Graduation Day", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/graduation.jpg", createdAt: "2025-06-28T14:00:00.000Z", hue: 42, s: 45, l: 55 },

@@ -165,17 +165,27 @@ export default function OnboardingCelebration({
           gap: "1.25rem",
           // Safe-area floor (§9): the bottom-anchored threshold must clear the
           // iOS home indicator; the centered card variant keeps its symmetry.
-          padding: transparent
-            ? "2rem 1.75rem calc(2.75rem + env(safe-area-inset-bottom, 0px))"
-            : "2.5rem 2rem",
-          maxWidth: transparent ? "100%" : "30rem",
-          width: transparent ? "100%" : "auto",
+          padding: transparent ? "1.5rem 1.75rem" : "2.5rem 2rem",
+          // Item 6 (owner 2026-08-23): the old transparent variant washed the
+          // whole lower half in a full-width cream gradient — a white haze over
+          // the room. Replaced by a COMPACT linen-glass card hugging just the
+          // copy+CTA: the room stays visible edge-to-edge around it, the card's
+          // blur carries legibility (text-shadows dropped), confetti keeps
+          // falling on the open scene either side.
+          maxWidth: transparent ? "26rem" : "30rem",
+          width: transparent ? "calc(100% - 2.5rem)" : "auto",
+          margin: transparent ? "0 0 calc(1.75rem + env(safe-area-inset-bottom, 0px))" : 0,
           pointerEvents: transparent ? "none" : "auto",
           ...(transparent
             ? {
-                // A subtle warm scrim so the ink copy stays readable over the room.
-                background:
-                  "linear-gradient(transparent 0%, rgba(252,250,245,0.55) 42%, rgba(252,250,245,0.9) 100%)",
+                // Linen glass (paywall-mirror grammar): warm cream at low
+                // opacity + backdrop blur, hairline + house shadow.
+                background: "rgba(252,250,245,0.8)",
+                backdropFilter: "blur(0.75rem)",
+                WebkitBackdropFilter: "blur(0.75rem)",
+                border: `0.0625rem solid ${HAIRLINE}`,
+                borderRadius: "1.25rem",
+                boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
               }
             : {
                 background: "#FFFFFF",
@@ -240,8 +250,7 @@ export default function OnboardingCelebration({
             margin: 0,
             // Canon display type on light (landing-hero grammar: Fraunces 500,
             // flat INK — no gold gradient, no italic; owner: no gold letters).
-            // Readable over the live scene via the warm scrim + cream shadow.
-            textShadow: transparent ? "0 0.0625rem 0.125rem rgba(252,250,245,0.6)" : "none",
+            // Legibility over the live scene comes from the linen-glass card.
             animation: enter("0.2s"),
           }}
         >
@@ -257,7 +266,6 @@ export default function OnboardingCelebration({
             lineHeight: 1.55,
             margin: 0,
             maxWidth: "24rem",
-            textShadow: transparent ? "0 0.0625rem 0.125rem rgba(252,250,245,0.7)" : "none",
             animation: enter("0.35s"),
           }}
         >
@@ -278,7 +286,6 @@ export default function OnboardingCelebration({
               margin: 0,
               maxWidth: "22rem",
               textAlign: "center",
-              textShadow: transparent ? "0 0.0625rem 0.125rem rgba(252,250,245,0.7)" : "none",
               animation: enter("0.5s"),
             }}
           >

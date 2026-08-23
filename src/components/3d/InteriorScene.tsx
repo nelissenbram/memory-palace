@@ -421,7 +421,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       trim:new THREE.MeshStandardMaterial({color:W1?INK:"#CFC3AE",roughness:.55,metalness:.12}),
       // W3 (owner 2026-08-18 #6): NO gold anywhere in the room — every "gold"
       // accent becomes matte bronze (corridor precedent: "mat brons ipv tacky goud").
-      gold:new THREE.MeshStandardMaterial({color:W3?"#8B6B4A":(W1?GOLD:"#C8A868"),roughness:W3?.52:.28,metalness:W3?.42:.6}),
+      // Onboarding item 5 (owner): W3 "gold" = MAT BRONS #C9A87C (canon rule:
+      // never gold; matches corridor makeArtwork lampBronzeMat r.55/m.4).
+      gold:new THREE.MeshStandardMaterial({color:W3?"#C9A87C":(W1?GOLD:"#C8A868"),roughness:W3?.55:.28,metalness:W3?.4:.6}),
       dkW:new THREE.MeshStandardMaterial({color:"#3E2A18",roughness:.5,metalness:.08,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.4,.4),aoMap:woodTex.aoMap,aoMapIntensity:.5}),
       ltW:new THREE.MeshStandardMaterial({color:"#A08060",roughness:.55,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       wain:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.mid:"#B8A890",roughness:.65,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.2,.2),roughnessMap:wallTex.roughnessMap}),
@@ -438,7 +440,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       rug:new THREE.MeshStandardMaterial({color:"#6A2028",roughness:.9,map:rugTex.map,normalMap:rugTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:rugTex.roughnessMap,aoMap:rugTex.aoMap,aoMapIntensity:.5}),
       rugB:new THREE.MeshStandardMaterial({color:"#C8A868",roughness:.8}),
       rugN:new THREE.MeshStandardMaterial({color:"#1A2438",roughness:.9}),
-      sconce:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.28,metalness:.55}),
+      sconce:new THREE.MeshStandardMaterial({color:"#C9A87C",roughness:.55,metalness:.4}), // mat brons (owner: no gold fixtures)
       glassG:new THREE.MeshStandardMaterial({color:"#FFF8E0",emissive:"#FFE8B0",emissiveIntensity:.5,transparent:true,opacity:.6}),
       // owner 2026-08-20: the screen-niche slab reads as an inert matte panel —
       // non-reflective (it doubles as the empty niche's face when a room has no video).
@@ -448,12 +450,14 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       pot:new THREE.MeshStandardMaterial({color:"#B8926A",roughness:.6}),
       plant:new THREE.MeshStandardMaterial({color:"#4A7838",roughness:.85}),
       curtain:mkPhys(THREE,{color:"#8A6848",roughness:.95,side:THREE.DoubleSide,sheen:0.3,sheenRoughness:0.8,sheenColor:new THREE.Color("#D4B896"),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
-      fG:new THREE.MeshStandardMaterial({color:"#B89850",roughness:.28,metalness:.65}),
+      // Onboarding item 5 (owner): the upload-placeholder/mantel frame was bright
+      // polished gold — now mat brons #C9A87C like the corridor bronze family.
+      fG:new THREE.MeshStandardMaterial({color:"#C9A87C",roughness:.55,metalness:.4}),
       fB:new THREE.MeshStandardMaterial({color:"#7A6040",roughness:.38,metalness:.5}),
       matF:new THREE.MeshStandardMaterial({color:"#F2EDE4",roughness:.95}),
       lamp:new THREE.MeshStandardMaterial({color:"#E8D8C0",roughness:.7,transparent:true,opacity:.8}),
       lampG:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity}),
-      handle:mkPhys(THREE,{color:"#C8A858",roughness:.18,metalness:.85,clearcoat:.4,clearcoatRoughness:.1}),
+      handle:mkPhys(THREE,{color:"#C9A87C",roughness:.45,metalness:.45,clearcoat:.15,clearcoatRoughness:.2}), // mat brons, not polished gold
       glass:mkPhys(THREE,{color:"#E8F0F0",transparent:true,opacity:.15,roughness:.02,metalness:.0,transmission:.85,ior:1.5,thickness:.5}),
     }));
     const fMats=[MS.fG,MS.fB,MS.gold];
@@ -2041,7 +2045,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // hugging the FRONT-RIGHT corner (one along the right wall, one along the
     // shoulder), meeting at the corner. buildGlassCase draws one axis-aligned arm.
     const vtBaseH=0.55, vtGlassH=W3?Math.max(1.4,rH-vtBaseH-0.22):1.0;
-    const vtBrassMat=new THREE.MeshStandardMaterial({color:"#8B6B4A",roughness:.5,metalness:.42}); // matte bronze (owner: no gold)
+    const vtBrassMat=new THREE.MeshStandardMaterial({color:"#C9A87C",roughness:.5,metalness:.42}); // mat brons canon #C9A87C (owner: no gold)
     const vtVelvet=new THREE.MeshStandardMaterial({color:"#1A0A2E",roughness:.95,metalness:0});
     const vtGlassMat=mkPhys(THREE,{color:"#E0EEF0",transparent:true,opacity:.07,roughness:.02,metalness:.03,transmission:.94,ior:1.5,thickness:.3,side:THREE.DoubleSide});
     const vtShelfMat=mkPhys(THREE,{color:"#E8F4F4",transparent:true,opacity:.1,roughness:.01,metalness:0,transmission:.95,ior:1.5,thickness:.15});

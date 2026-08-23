@@ -36,15 +36,20 @@ export interface SharingInfo {
 
 export const HERO_IMG = "/palace-hero.jpg";
 
-// Local demo media bundled in /public/demo/
+// Local demo media bundled in /public/demo/ (images) and /public/video/demo/
+// (AV + their thumbs). The split is a middleware constraint: the matcher
+// exempts image extensions and the /video/ prefix, but NOT .mp4/.mp3 under
+// other paths — so /demo/*.mp4 307's to /login on unauthenticated surfaces
+// (public /flythrough onboarding preview) and the cinema screen would get an
+// HTML page → MediaError → dead canvas fallback. ONE canonical copy each.
 const DEMO = {
   graduation: "/demo/graduation.jpg",
   quietMorning: "/demo/quiet-morning.jpg",
   edgeOfWater: "/demo/edge-of-water.jpg",
-  pianoRecital: "/demo/piano-recital.mp4",
-  pianoThumb: "/demo/piano-recital-thumb.jpg",
-  songOfSummer: "/demo/song-of-summer.mp3",
-  songThumb: "/demo/song-of-summer-thumb.jpg",
+  pianoRecital: "/video/demo/piano-recital.mp4",
+  pianoThumb: "/video/demo/piano-recital-thumb.jpg",
+  songOfSummer: "/video/demo/song-of-summer.mp3",
+  songThumb: "/video/demo/song-of-summer-thumb.jpg",
   betweenTwoHands: "/demo/between-two-hands.jpg",
 };
 

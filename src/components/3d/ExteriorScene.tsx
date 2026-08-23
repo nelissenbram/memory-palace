@@ -5839,6 +5839,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // not dropping in from above. (Onboarding-only; the R2 approachFlight and
     // normal-click paths above/below are untouched.)
     let obGate:{th0:number,ph0:number}|null=null;
+    // ── ITEM 1 (owner 2026-08-20): FREE-LOOK during the WP1 prompt hold ──
+    // While the "Begin the walk" prompt is up (pause fired, not yet resumed)
+    // the drag handlers own camOT — mouse + touch rotate with the scene's
+    // normal orbit math. Zoom stays LOCKED (wheel + pinch ignored while
+    // onboardingMode is on; camD keeps easing to the hold distance). On
+    // resume the flyover spline's FIRST control point is re-seeded from the
+    // user's actual pose (obResume) so the walk eases out of wherever they
+    // were looking — global smoothstep = zero start velocity, no snap.
+    let obResume:{th:number,ph:number,d:number}|null=null;
+    let obFreeLook=false; // per-frame: true only during the prompt-hold free-look
+    const OB_FREELOOK_PHI_MIN=Math.PI*0.30;                 // don't rise into a top-down map view mid-prompt
+    const OB_FREELOOK_PHI_MAX=Math.PI*(W3?0.492:0.44);      // scene's normal ground clamp
     // ITEM 2 (walk fluidity): stall-proof onboarding cinematic clock — the
     // flyover ran on absolute wall-clock while all camera smoothing runs on
     // clamped dt, so any hitch JUMPED the spline parameter (stutter-jump)
@@ -5875,6 +5887,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // preserves the old per-frame factors f exactly at 60fps.
       const _sm=(k:number)=>1-Math.exp(-k*dt);
       obLookY=null; // ITEM 3: look override only lives while a branch below sets it this frame
+      obFreeLook=false; // ITEM 1: re-asserted below only while the prompt hold is live
 
       // Walkthrough highlight
       const hlTarget=highlightDoorRef.current;
@@ -5921,15 +5934,32 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         const rawT = obCinT;
         const HOLD_DUR = 1.5; // seconds to drift to WP1 before showing prompt
 
-        // Detect cinematicResumed prop becoming true → capture clock time
+        // Detect cinematicResumed prop becoming true → capture clock time and
+        // (ITEM 1) the user's CURRENT free-look pose as the flyover's seed.
+        // θ is wrapped to the nearest turn of the first flight target so the
+        // spline takes the short way round after a full-circle drag; camOT is
+        // pinned to camO so the slow onboarding lerp starts with zero error.
         if (cinematicResumedRef.current && cinematicResumeTimeRef.current === null && cinematicPauseFiredRef.current) {
           cinematicResumeTimeRef.current = rawT;
+          const thRef = Math.PI * (W2 ? 1.62 : 1.6197); // first post-seed flight waypoint's θ
+          const th = thRef + Math.atan2(Math.sin(camO.current.theta - thRef), Math.cos(camO.current.theta - thRef));
+          camO.current.theta = camOT.current.theta = th;
+          camOT.current.phi = camO.current.phi;
+          obResume = { th, ph: camO.current.phi, d: camD.current };
         }
 
         // Phase 0: drift to waypoint 1 & fire pause callback
         if (cinematicResumeTimeRef.current === null) {
-          camOT.current.theta = Math.PI * 1.4987;
-          camOT.current.phi   = Math.PI * 0.4387;
+          if (!cinematicPauseFiredRef.current) {
+            // Pre-prompt drift: the cinematic still owns the orbit
+            camOT.current.theta = Math.PI * 1.4987;
+            camOT.current.phi   = Math.PI * 0.4387;
+          } else {
+            // ITEM 1 free-look: drag handlers own camOT.theta/phi; only clamp
+            // pitch to a sensible band. Zoom stays locked (camD pinned below).
+            obFreeLook = true;
+            camOT.current.phi = Math.max(OB_FREELOOK_PHI_MIN, Math.min(OB_FREELOOK_PHI_MAX, camOT.current.phi));
+          }
           camD.current += (210 - camD.current) * _sm(3.0776); // f=.05 @60fps — hold at the far end of the approach
           if (rawT >= HOLD_DUR && !cinematicPauseFiredRef.current) {
             cinematicPauseFiredRef.current = true;
@@ -5944,7 +5974,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const stills: [number,number,number][]=[
             [Math.PI*1.4987,Math.PI*0.4387,210],
             [Math.PI*1.5480,Math.PI*0.3060,118], // name-beat (owner review #1): matches the dolly beat — poorttorens ±~13,−13, tall lantern-crowned dome bekroont above
-            [Math.PI*1.5,Math.PI*0.392,16], // ITEM 3: gate framing — eye height (y≈9.9) on the road axis at the poorttoren line, portal straight ahead (was the from-above 0.22π/35 arrival)
+            [Math.PI*1.5,Math.PI*0.392,19], // ITEM 3 gate framing → ITEM 2: dist 19 not 16 — at 16 the 2.5 near plane (camera z≈−15.1, reach ≈−12.6) sliced open the centre portico column (front face z=−12.7); 19 ⇒ z≈−17.9, ~2.4 clear
           ];
           const si=Math.min(Math.floor(ot/SHOT),2);
           const s=stills[si];
@@ -5990,13 +6020,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           // Skip/pause/resume contract; yaw stays far under the shared
           // MAX_YAW_DEG_S clamp applied below.
           // Legacy (flag off): 5-waypoint flyover, 7s + 3.8s zoom.
+          // ITEM 1: WP[0] is seeded from the user's free-look pose captured at
+          // resume (fallback = the WP1 hold pose, value-equal to the old first
+          // point) so the flyover eases out of wherever the user left the camera.
+          const WP0: [number,number,number] = obResume
+            ? [obResume.th, obResume.ph, obResume.d]
+            : [Math.PI*1.4987, Math.PI*0.4387, W2 ? 215.0 : 180.0];
           const WP: [number,number,number][] = W2 ? [
-            [Math.PI*1.4987, Math.PI*0.4387, 215.0], // 0s: seamless from the WP1 hold — starts at the far end of the cypress approach (flies the full avenue in)
+            WP0,                                     // 0s: the user's prompt-hold pose (or the WP1 hold)
             [Math.PI*1.6200, Math.PI*0.3980, 152.0], // ~1.7s: condensed sun-side sweep — cypress contre-jour, tall dome crowning the broad ridge, galerij sweeping east
             [Math.PI*1.5000, Math.PI*0.4700, 100.0], // ~3.3s: settle onto the road axis at cart height (y≈14) — riding the road in, palace looming ahead
             [Math.PI*1.5000, Math.PI*0.4520,  58.0], // 5s: NAME BEAT from the road — tympanum name legible overhead, both poorttorens bracketing the x=0 axis
           ] : [
-            [Math.PI*1.4987, Math.PI*0.4387, 180.0], // 1: wide establishing shot
+            WP0,                                     // 1: wide establishing shot (ITEM 1: user pose when free-looked)
             [Math.PI*1.6197, Math.PI*0.3967, 175.0], // 2: pan right & up
             [Math.PI*1.4910, Math.PI*0.3471, 150.0], // 3: sweep left, higher angle
             [Math.PI*1.3854, Math.PI*0.4336, 150.0], // 4: continue left, drop down
@@ -6031,25 +6067,43 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           } else if (W2) {
             // ── ITEM 3 GATE APPROACH: dolly FORWARD through the entrance
             // poort. From the name beat the camera pushes straight down the
-            // road axis (θ pinned to 1.5π), easing from cart height to eye
-            // height (y≈9.8) while the look target sinks dome-crown → portal
-            // arch, and the handoff fires the moment the camera crosses the
-            // poorttoren gate line (camD<15 ⇒ z≈−14) — the hall cut lands
-            // MID-FORWARD-MOTION, like stepping through the door, instead of
-            // the old drop from φ=0.22π/dist 35. camO is written directly
-            // (camOT pinned to match) so the slow onboarding camLerp can't
-            // lag the real camera down into the stair; the φ/θ rates here
-            // (<6°/s) stay far under MAX_YAW_DEG_S.
+            // road axis (θ pinned to 1.5π), easing from cart height toward eye
+            // height while the look target sinks dome-crown → portal arch, and
+            // the handoff fires as the camera reaches the gate (camD<18 ⇒
+            // z≈−17, still surging toward the poorttoren line z=−14) — the
+            // hall cut lands MID-FORWARD-MOTION, like stepping through the
+            // door, instead of the old drop from φ=0.22π/dist 35. camO is
+            // written directly (camOT pinned to match) so the slow onboarding
+            // camLerp can't lag the real camera down into the stair; the φ/θ
+            // rates here (<6°/s) stay far under MAX_YAW_DEG_S.
             const p = Math.min((ot - FLY_DUR) / ZOOM_DUR, 1.0);
             if (!obGate) obGate = { th0: camO.current.theta, ph0: camO.current.phi }; // capture the ACTUAL orbit (post-lerp) for a seamless join
             const aD = p * p;     // dolly: lingers on the name beat (~1s legible), then surges through the gate
             const aP = p * p * p; // height: holds cart height longer, settles to eye level late
-            const GATE_TH = Math.PI * 1.5, GATE_PH = Math.PI * 0.392, GATE_D = 13.5; // eye height (y≈9.5) centred between the poorttorens, just before the vestibulum plane (z≈−12)
+            // ITEM 2 (owner: "hangs IN a pillar"): the pentastyle portico has a
+            // CENTRE column dead on the road axis (x=0, z=−12, r≈0.7, world y
+            // 9.85–15.35) and the camera near plane is 2.5 — the old end
+            // (GATE_D 13.5 ⇒ z=−12.7, handoff at camD<15 ⇒ z=−14.1) parked the
+            // near plane ~1 unit PAST the column's front face (z=−12.7),
+            // slicing it open on screen. End-dist is nudged out to 17
+            // (z≈−16.0, near-plane reach ≈−13.6, 0.9 clear of the face) and
+            // the handoff fires at camD<18 (z≈−17.0) — still gliding forward
+            // toward the poorttoren line (z=−14), so the cut lands mid-stride,
+            // but the camera can never reach the column. The cream veil below
+            // is fully opaque before the handoff, so no frame ever shows the
+            // column filling the screen (also covers the hall-load frames
+            // after the handoff, when the look target snaps back to the dome).
+            const GATE_TH = Math.PI * 1.5, GATE_PH = Math.PI * 0.392, GATE_D = 17; // eye-ish height (y≈10.7) centred between the poorttorens, short of the centre portico column
             camO.current.theta = camOT.current.theta = obGate.th0 + (GATE_TH - obGate.th0) * aD;
             camO.current.phi   = camOT.current.phi   = obGate.ph0 + (GATE_PH - obGate.ph0) * aP;
             camD.current += ((GATE_D + (WP[WP.length - 1][2] - GATE_D) * (1 - aD)) - camD.current) * _sm(5.0029); // f=.08 @60fps
             obLookY = HILL_Y + 13 - 9 * aD; // dome crown → portal arch: the view levels out to look THROUGH the door
-            if (camD.current < 15) { // crossing the gate line between the poorttorens — enter NOW, mid-stride
+            // ITEM 2: cream veil rises over the last metres (camD 24→18.5, view
+            // still clean — the centre column subtends <15° at those distances)
+            // so the handoff always fires under a fully covered frame.
+            const gateVeil = ensureRmVeil();
+            gateVeil.style.opacity = String(Math.min(1, Math.max(0, (24 - camD.current) / 5.5)));
+            if (camD.current < 18) { // at the gate line, veiled, still mid-stride — enter NOW
               onboardingModeRef.current = false;
               onRoomClickRef.current("__entrance__", true); // cinematic arrival → direct enter
             }
@@ -6106,12 +6160,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           onRoomClickRef.current("__entrance__",true); // arrived at the door → parent enters (also on mobile)
         }
       }
-      const camLerp=_sm((autoWalkToRef.current||approachFlight)?1.2122:onboardingModeRef.current?0.9068:2.4493); // f=.02/.015/.04 @60fps
+      // ITEM 1: during the prompt-hold free-look the camera follows the drag at
+      // the normal-view rate (f=.04), not the slow cinematic glide (f=.015).
+      const camLerp=_sm((autoWalkToRef.current||approachFlight)?1.2122:(onboardingModeRef.current&&!obFreeLook)?0.9068:2.4493); // f=.02/.015/.04 @60fps
       let _dTh=(camOT.current.theta-camO.current.theta)*camLerp;
       let _dPh=(camOT.current.phi-camO.current.phi)*camLerp;
       // W1 (WS8-2, WS12-5): automatic pans (cinematic/autoWalk) obey the shared
-      // MAX_YAW_DEG_S cap; user drags stay direct-manipulation (legacy when flag off).
-      if(W1&&(onboardingModeRef.current||autoWalkToRef.current||approachFlight)){
+      // MAX_YAW_DEG_S cap; user drags stay direct-manipulation (legacy when flag
+      // off) — incl. the ITEM 1 free-look drag during the onboarding hold.
+      if(W1&&(onboardingModeRef.current||autoWalkToRef.current||approachFlight)&&!obFreeLook){
         const _yawCap=MAX_YAW_DEG_S*(Math.PI/180)*dt;
         _dTh=THREE.MathUtils.clamp(_dTh,-_yawCap,_yawCap);
         _dPh=THREE.MathUtils.clamp(_dPh,-_yawCap,_yawCap);
@@ -6308,7 +6365,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if(prefersReducedMotion()){onRoomClickRef.current(hitId,true);return;}
         autoWalkToRef.current="__entrance__";return;}
       onRoomClickRef.current(hitId);}};
-    const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(280,camD.current+e.deltaY*.05));};
+    const onWh=(e: WheelEvent)=>{if(onboardingModeRef.current)return;/* ITEM 1: zoom locked during the onboarding cinematic (rotate-only free-look) */camD.current=Math.max(40,Math.min(280,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=W3?252:(aspect<1?115:140);};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
 
@@ -6325,7 +6382,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(W3?Math.PI*.492:Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:t.clientX,y:t.clientY};
       }
       if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
-        const dist=Math.hypot(dx,dy);if(touchStartDist>0){camD.current=Math.max(40,Math.min(280,touchStartCamD*(touchStartDist/dist)));}
+        const dist=Math.hypot(dx,dy);if(touchStartDist>0&&!onboardingModeRef.current){/* ITEM 1: pinch-zoom locked during the onboarding cinematic */camD.current=Math.max(40,Math.min(280,touchStartCamD*(touchStartDist/dist)));}
       }
     };
     // Single-tap model: tap shows glow + calls onRoomClick (parent decides

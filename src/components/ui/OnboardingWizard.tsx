@@ -1595,7 +1595,12 @@ ${KEYFRAMES}
               display: "flex", flexDirection: "column", alignItems: "center",
               textAlign: "center", gap: "1.25rem",
               padding: "2rem 1.5rem", maxWidth: "30rem", width: "92%",
-              background: "#FFFFFF",
+              // Item 6 (owner 2026-08-23): same compact linen-glass card as the
+              // shared OnboardingCelebration transparent variant — the room
+              // stays visible around it, no cream haze.
+              background: "rgba(252,250,245,0.8)",
+              backdropFilter: "blur(0.75rem)",
+              WebkitBackdropFilter: "blur(0.75rem)",
               border: `0.0625rem solid ${HAIRLINE}`,
               borderRadius: "1.25rem",
               boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,

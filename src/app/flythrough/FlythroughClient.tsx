@@ -59,8 +59,8 @@ const SAMPLE_MEMORIES: Mem[] = [
   ...Array.from({ length: 14 }, (_, i) => _dm(i, {})),
   ...Array.from({ length: 4 }, (_, i) => _dm(100 + i, { type: "photo", displayUnit: "vitrine", title: `Keepsake ${i + 1}` })),
   ...Array.from({ length: 3 }, (_, i) => _dm(200 + i, { type: "text", displayUnit: "bookshelf", title: `Letter ${i + 1}` })),
-  _dm(300, { type: "audio", dataUrl: "/demo/song-of-summer.mp3", displayUnit: "vinyl", title: "Song of Summer" }),
-  _dm(400, { type: "video", dataUrl: "/demo/piano-recital.mp4", displayUnit: "screen", title: "Piano Recital" }),
+  _dm(300, { type: "audio", dataUrl: "/video/demo/song-of-summer.mp3", displayUnit: "vinyl", title: "Song of Summer" }),
+  _dm(400, { type: "video", dataUrl: "/video/demo/piano-recital.mp4", displayUnit: "screen", title: "Piano Recital" }),
 ];
 
 // ── Scalability review viewers (?scene=room&fill=max | min) ──
@@ -71,8 +71,8 @@ const SAMPLE_MEMORIES_MAX: Mem[] = [
   ...Array.from({ length: 100 }, (_, i) => _dm(i, {})),
   ...Array.from({ length: 14 }, (_, i) => _dm(1000 + i, { type: "photo", displayUnit: "vitrine", title: `Keepsake ${i + 1}` })),
   ...Array.from({ length: 6 }, (_, i) => _dm(2000 + i, { type: "text", displayUnit: "bookshelf", title: `Letter ${i + 1}` })),
-  _dm(3000, { type: "audio", dataUrl: "/demo/song-of-summer.mp3", displayUnit: "vinyl", title: "Song of Summer" }),
-  _dm(4000, { type: "video", dataUrl: "/demo/piano-recital.mp4", displayUnit: "screen", title: "Piano Recital" }),
+  _dm(3000, { type: "audio", dataUrl: "/video/demo/song-of-summer.mp3", displayUnit: "vinyl", title: "Song of Summer" }),
+  _dm(4000, { type: "video", dataUrl: "/video/demo/piano-recital.mp4", displayUnit: "screen", title: "Piano Recital" }),
 ];
 // MIN: the smallest tier — one painting on the wall, one photo in the vitrine.
 const SAMPLE_MEMORIES_MIN: Mem[] = [
@@ -91,7 +91,7 @@ const OTHER_ROOM_FEED = [{
   mems: [
     _dm(9001, { title: "Nonna's table" }),
     _dm(9002, { title: "The garden in June" }),
-    _dm(9003, { title: "Uncle's toast", type: "audio", dataUrl: "/demo/song-of-summer.mp3", displayUnit: "vinyl" }),
+    _dm(9003, { title: "Uncle's toast", type: "audio", dataUrl: "/video/demo/song-of-summer.mp3", displayUnit: "vinyl" }),
   ],
 }];
 

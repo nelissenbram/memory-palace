@@ -926,10 +926,20 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     if(W3C){
       const shadeMat=new THREE.MeshStandardMaterial({color:"#FFF3DC",emissive:new THREE.Color("#FFDCA0"),emissiveIntensity:.9,roughness:.6,transparent:true,opacity:.9});
       const washMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.1*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false});
+      // Onboarding item 3 (owner): a wall light landed ON the salon painting the
+      // wizard zooms into (roots ro1 slot, z=cL/2-5.5-sp/2). The W2 salon hangs
+      // live on the SOLID wall (side −1) at z=cL/2-5.5-i*sp-sp/2 with a hang
+      // wall min(sp-2.6,2.9) wide (see w2Slots loop) — lights must sit BETWEEN
+      // slots: skip any side −1 light within hang-half-width + margin of a slot
+      // centre (margin covers the .1 shade radius and the .55 uplight wash).
+      const salonSlotZs:number[]=[];
+      for(let si2=0;si2<rooms.length;si2++){const pz2=cL/2-5.5-si2*C.sp-C.sp*.5;if(pz2<=cL/2-3&&pz2>=-cL/2+3)salonSlotZs.push(pz2);}
+      const slotClear=Math.min(C.sp-2.6,2.9)/2+.4;
       const pitch=cL/Math.max(4,Math.round(cL/5));
       for(let z=-cL/2+pitch*0.7;z<cL/2-1.4;z+=pitch){
         for(const s of[-1,1]){
           if(allDoorZones.some(dz=>Math.abs(z-dz)<1.5))continue;
+          if(s===-1&&salonSlotZs.some(pz2=>Math.abs(z-pz2)<slotClear))continue;
           const wx2=s*(cW/2-.02);
           scene.add(mk(new THREE.BoxGeometry(.05,.34,.13),MS.bronze,wx2-s*.02,2.55,z));           // backplate
           scene.add(mk(new THREE.BoxGeometry(.06,.05,.15),MS.bronze,wx2-s*.07,2.4,z));            // arm
