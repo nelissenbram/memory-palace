@@ -93,7 +93,7 @@ function getPaintingPlaceholderTex(): THREE.DataTexture {
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo,onboardingMode,onCinematicStep,isMobile:isMobileProp,corridorEnterClicked,onReady,localeOverride}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string, size?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: (slotKey?: string)=>void,autoWalkTo?: string|null,onboardingMode?: boolean,onCinematicStep?: (step: number)=>void,isMobile?: boolean,corridorEnterClicked?: boolean,onReady?: ()=>void,localeOverride?: Locale}){
+function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo,onboardingMode,onCinematicStep,isMobile:isMobileProp,corridorEnterClicked,onReady,localeOverride,envHDRI}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string, size?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: (slotKey?: string)=>void,autoWalkTo?: string|null,onboardingMode?: boolean,onCinematicStep?: (step: number)=>void,isMobile?: boolean,corridorEnterClicked?: boolean,onReady?: ()=>void,localeOverride?: Locale,/** false = keep the warm procedural interior env and skip the async ballroom-HDRI swap (washes the golden grade on some GPU paths; pinned false by /flythrough). Default = unchanged. */envHDRI?: boolean}){
   // localeOverride (demo hosts, e.g. the /flythrough onboarding preview):
   // canvas-baked texts — door name plates (wings.roomMeOverTime etc.), the
   // wing plaque — resolve in the demo-local language instead of the global
@@ -196,7 +196,10 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     scene.environment=envMapProc;
     scene.environmentIntensity=0.9;
     let envMapHDRI: THREE.Texture|null=null;
-    loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=0.8;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.9;}}).catch(()=>{});
+    // envHDRI===false (the /flythrough viewer+recorder): stay on the warm
+    // procedural interior env — the ballroom-HDRI swap washes the golden grade
+    // out on some GPU/driver paths. Default (in-app) behavior unchanged.
+    if(envHDRI!==false)loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=0.8;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.9;}}).catch(()=>{});
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     // W3C (WS11 S6A): deepen the vignette so the eye is funnelled down the axis

@@ -171,6 +171,7 @@ function EntranceHallScene({
   ancestralPublicOnly,
   onAncestralMemoryClick,
   localeOverride,
+  envHDRI,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
@@ -205,6 +206,12 @@ function EntranceHallScene({
    *  (wing door labels via wings.*, plaques) to the demo-local language
    *  instead of the global stored locale. In-app (undefined) = unchanged. */
   localeOverride?: Locale;
+  /** Set false to keep the warm procedural interior env map and skip the async
+   *  ballroom-HDRI environment swap (desktop tier only; the swap washes the
+   *  golden grade out to near-white on some GPU/driver paths — the /flythrough
+   *  viewer+recorder pin this false so footage matches the owner-approved warm
+   *  hall). Default (undefined/true) = unchanged in-app behavior. */
+  envHDRI?: boolean;
 }) {
   const { t } = useOverridableTranslation("entranceHall", localeOverride);
   const { t: tw } = useOverridableTranslation("wings", localeOverride);
@@ -388,7 +395,7 @@ function EntranceHallScene({
     scene.environment = envMapProc;
     scene.environmentIntensity = ENV_INT;
     let envMapHDRI: THREE.Texture | null = null;
-    if (Q.loadEnvHDRI) {
+    if (Q.loadEnvHDRI && envHDRI !== false) {
       loadHDRIProgressive(ren, HDRI_INTERIOR, {
         onProcedural: (p) => { if (!alive) return; scene.environment = p; scene.environmentIntensity = ENV_INT; },
         onFull: (hdr) => { if (!alive) { releaseEnvMap(hdr); return; } envMapHDRI = hdr; scene.environment = hdr; scene.environmentIntensity = ENV_INT; },

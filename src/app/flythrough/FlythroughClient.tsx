@@ -85,6 +85,19 @@ function fillFromURL(): "max" | "min" | "default" {
   return q === "max" ? "max" : q === "min" ? "min" : "default";
 }
 
+// ── ?name=Guillaume (dev-tool-only; the prod-404 gate in page.tsx covers it) ──
+// Personalizes every name-bearing baked surface the viewer scenes expose —
+// the exterior tympanum engraving and the room's mantel plaque ("{name}'s
+// Beautiful Smile") — so a recording pass can be made for a specific owner.
+// Hall and corridor have no name surfaces (the hall bust + plaque concept was
+// removed under W3H, owner 2026-08-13). Also prefills the onboarding
+// preview's name card (scene 4), which threads the same name to the host's
+// demoUserName. 40-char cap mirrors the name card's maxLength.
+function nameFromURL(): string {
+  if (typeof window === "undefined") return "";
+  return (new URLSearchParams(window.location.search).get("name") || "").trim().slice(0, 40);
+}
+
 // A second demo room so the Ledger's "From another room" flow can be reviewed.
 const OTHER_ROOM_FEED = [{
   id: "ro2", name: "Sunday Lunches",
@@ -189,6 +202,9 @@ export default function FlythroughClient() {
   const [mounted, setMounted] = useState(false);
   // ── Room demo state (viewer-only): live memory list + fill preset + the Ledger ──
   const [demoFill, setDemoFill] = useState<"max" | "min" | "default">("default");
+  // ?name= — owner name for the viewer scenes' baked surfaces (tympanum,
+  // mantel plaque). Applied after mount like ?scene=/?fill= (hydration-safe).
+  const [demoName, setDemoName] = useState("");
   const [demoMems, setDemoMems] = useState<Mem[]>(SAMPLE_MEMORIES);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
@@ -204,6 +220,7 @@ export default function FlythroughClient() {
   useEffect(() => {
     setCurrentScene(initialSceneFromURL());
     applyFill(fillFromURL());
+    setDemoName(nameFromURL());
     setMounted(true);
   }, [applyFill]);
   const [progress, setProgress] = useState(0);
@@ -217,8 +234,14 @@ export default function FlythroughClient() {
   // failure) can't strand it. Scene 4 (onboarding preview) keeps the
   // OnboardingSceneHost's own ready-gated reveal instead.
   const [viewerSceneReady, setViewerSceneReady] = useState(false);
-  const handleViewerSceneReady = useCallback(() => setViewerSceneReady(true), []);
-  useEffect(() => { setViewerSceneReady(false); }, [currentScene]);
+  // Ref mirror for the RECORDER's ready-gating (assemble-before-capture): the
+  // sequencing callbacks below must read readiness outside the render cycle.
+  const viewerSceneReadyRef = useRef(false);
+  const handleViewerSceneReady = useCallback(() => {
+    viewerSceneReadyRef.current = true;
+    setViewerSceneReady(true);
+  }, []);
+  useEffect(() => { viewerSceneReadyRef.current = false; setViewerSceneReady(false); }, [currentScene]);
   useEffect(() => {
     if (currentScene >= RECORD_SCENE_COUNT || viewerSceneReady) return;
     const tmo = setTimeout(() => setViewerSceneReady(true), 10000);
@@ -304,7 +327,9 @@ export default function FlythroughClient() {
     setObScene("exterior");
     setObResumed(false);
     setObHallHint(true);
-    setObName("");
+    // ?name= prefills the preview's name card (still editable; empty without
+    // the param — byte-identical to before).
+    setObName(nameFromURL());
     setObLocale("en");
     obImportedRef.current = false;
     setObTextSize("standard");
@@ -522,111 +547,142 @@ export default function FlythroughClient() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (progressRef.current) clearInterval(progressRef.current);
-      if (recorderRef.current && recorderRef.current.state === "recording") {
+      if (recorderRef.current && (recorderRef.current.state === "recording" || recorderRef.current.state === "paused")) {
         recorderRef.current.stop();
       }
     };
   }, []);
+
+  // Recorder ready-wait: resolves once the mounted scene fired its assembled
+  // reveal (onReady), or after capMs so a never-firing scene can't strand the
+  // recording (mirrors the idle viewer veil's 10s safety ceiling).
+  const waitForSceneReady = useCallback((capMs = 12000) => new Promise<void>((resolve) => {
+    const t0 = Date.now();
+    const tick = () => {
+      if (viewerSceneReadyRef.current || Date.now() - t0 > capMs) { resolve(); return; }
+      setTimeout(tick, 100);
+    };
+    tick();
+  }), []);
 
   const advanceScene = useCallback((sceneIdx: number) => {
     // Recorder iterates 0–3 only — the Onboarding scene (4) is never recorded.
     if (sceneIdx >= RECORD_SCENE_COUNT) {
       // Done — stop recording
-      if (recorderRef.current && recorderRef.current.state === "recording") {
+      if (recorderRef.current && (recorderRef.current.state === "recording" || recorderRef.current.state === "paused")) {
         recorderRef.current.stop();
       }
       return;
     }
 
-    // Crossfade: fade out
+    // Crossfade: fade out (DOM-only — the canvas capture is unaffected)
     setFadeOpacity(0);
 
     setTimeout(() => {
+      // ── Assemble-before-capture (veil/reveal interplay, 2026-08-23) ──
+      // The idle viewer's cream veil is DOM chrome and phase-gated to "idle",
+      // so it never appears in the capture — but the canvas itself DOES show
+      // the next scene assembling (GLB/texture pop-in) until its reveal
+      // barrier fires onReady. PAUSE the recorder across the hop and RESUME
+      // only once the scene reports assembled: the webm cuts from finished
+      // scene to finished scene with zero assembly frames.
+      try { if (recorderRef.current?.state === "recording") recorderRef.current.pause(); } catch { /* capture keeps rolling */ }
+      viewerSceneReadyRef.current = false;
       setCurrentScene(sceneIdx);
-      // Fade in
-      setTimeout(() => setFadeOpacity(1), 50);
+      void waitForSceneReady().then(() => {
+        // Fade in
+        setTimeout(() => setFadeOpacity(1), 50);
+        try { if (recorderRef.current?.state === "paused") recorderRef.current.resume(); } catch { /* already rolling */ }
 
-      // Schedule next scene
-      timerRef.current = setTimeout(() => {
-        advanceScene(sceneIdx + 1);
-      }, SCENES[sceneIdx].duration);
+        // Schedule next scene
+        timerRef.current = setTimeout(() => {
+          advanceScene(sceneIdx + 1);
+        }, SCENES[sceneIdx].duration);
+      });
     }, FADE_MS);
+  }, [waitForSceneReady]);
+
+  // Per-scene segment recording (2026-08-23): the pooled renderer re-acquires
+  // the canvas on scene hops, which silently ENDS the captureStream track —
+  // one MediaRecorder spanning all scenes only ever contained scene 0. Each
+  // scene now records into its OWN stream/recorder; the four segment webms
+  // download as palace-scene-<i>.webm and the driver concats them (ffmpeg).
+  const recAbortRef = useRef(false);
+
+  const recordSegment = useCallback((durationMs: number, mimeType: string): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const canvas = document.querySelector("canvas") as HTMLCanvasElement | null;
+      if (!canvas) { resolve(null); return; }
+      const stream = canvas.captureStream(60);
+      const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+      const chunks: Blob[] = [];
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      rec.onstop = () => {
+        try { stream.getTracks().forEach((t) => t.stop()); } catch { /* already dead */ }
+        resolve(chunks.length ? new Blob(chunks, { type: "video/webm" }) : null);
+      };
+      rec.start(500);
+      recorderRef.current = rec;
+      setTimeout(() => { try { if (rec.state !== "inactive") rec.stop(); } catch { resolve(null); } }, durationMs);
+    });
   }, []);
 
   const startRecording = useCallback(async () => {
-    // Reset state
-    setCurrentScene(0);
-    setFadeOpacity(1);
-    setProgress(0);
-    chunksRef.current = [];
-
-    // Wait a tick for the first scene to mount
-    await new Promise((r) => setTimeout(r, 200));
-
-    // Find the Three.js canvas
-    const canvas = document.querySelector("canvas") as HTMLCanvasElement | null;
-    if (!canvas) {
-      setToast({ message: "No canvas found — wait for the 3D scene to load and try again.", type: "warning" });
-      return;
-    }
-
-    // Check codec support and pick best available
-    const codecs = [
-      "video/webm;codecs=vp9",
-      "video/webm;codecs=vp8",
-      "video/webm",
-    ];
+    const codecs = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
     const mimeType = codecs.find((c) => MediaRecorder.isTypeSupported(c));
     if (!mimeType) {
       setToast({ message: "Your browser does not support WebM recording.", type: "error" });
       return;
     }
+    recAbortRef.current = false;
+    setProgress(0);
+    setPhase("recording");
+    startTimeRef.current = Date.now();
+    const totalMs = SCENES.slice(0, RECORD_SCENE_COUNT).reduce((s, sc) => s + sc.duration, 0);
+    let doneMs = 0;
+    progressRef.current = setInterval(() => {
+      setProgress(Math.min((doneMs + (Date.now() - startTimeRef.current)) / totalMs, 1));
+    }, 100);
 
-    const stream = canvas.captureStream(60);
-    const recorder = new MediaRecorder(stream, {
-      mimeType,
-      videoBitsPerSecond: 8_000_000,
-    });
+    const segments: Blob[] = [];
+    for (let i = 0; i < RECORD_SCENE_COUNT; i++) {
+      if (recAbortRef.current) break;
+      setFadeOpacity(0);
+      if (i !== 0 || currentScene !== 0) {
+        await new Promise((r) => setTimeout(r, i === 0 ? 0 : FADE_MS));
+        // Only reset the ready-flag when actually switching scenes — an
+        // already-revealed scene 0 would otherwise wait out the 12s cap.
+        viewerSceneReadyRef.current = false;
+        setCurrentScene(i);
+      }
+      await new Promise((r) => setTimeout(r, 200));
+      await waitForSceneReady();
+      setFadeOpacity(1);
+      if (recAbortRef.current) break;
+      startTimeRef.current = Date.now();
+      const blob = await recordSegment(SCENES[i].duration, mimeType);
+      doneMs += SCENES[i].duration;
+      if (blob) segments.push(blob);
+    }
 
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
-
-    recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: "video/webm" });
+    segments.forEach((blob, i) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `palace-flythrough-${Date.now()}.webm`;
+      a.download = `palace-scene-${i}.webm`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      setPhase("done");
-      if (progressRef.current) clearInterval(progressRef.current);
-    };
-
-    recorderRef.current = recorder;
-    recorder.start(500); // collect data every 500ms
-    setPhase("recording");
-    startTimeRef.current = Date.now();
-
-    // Progress ticker
-    progressRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTimeRef.current;
-      const totalMs = SCENES.slice(0, RECORD_SCENE_COUNT).reduce((s, sc) => s + sc.duration, 0) + RECORD_SCENE_COUNT * FADE_MS;
-      setProgress(Math.min(elapsed / totalMs, 1));
-    }, 100);
-
-    // Start scene sequencing — first scene plays immediately
-    timerRef.current = setTimeout(() => {
-      advanceScene(1);
-    }, SCENES[0].duration);
-  }, [advanceScene]);
+    });
+    setPhase("done");
+    if (progressRef.current) clearInterval(progressRef.current);
+  }, [currentScene, recordSegment, waitForSceneReady]);
 
   const stopRecording = useCallback(() => {
+    recAbortRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (recorderRef.current && recorderRef.current.state === "recording") {
+    if (recorderRef.current && (recorderRef.current.state === "recording" || recorderRef.current.state === "paused")) {
       recorderRef.current.stop();
     }
   }, []);
@@ -643,6 +699,9 @@ export default function FlythroughClient() {
             onRoomClick={noop}
             hoveredRoom={null}
             styleEra="roman"
+            // ?name= — the tympanum engraving ("GUILLAUME" over the entrance);
+            // empty ⇒ the scene's neutral localized fallback, as before.
+            userNameOverride={demoName || undefined}
             onReady={handleViewerSceneReady}
           />
         );
@@ -653,6 +712,14 @@ export default function FlythroughClient() {
             styleEra="roman"
             lunettePhotos={DEMO_LUNETTES}
             onReady={handleViewerSceneReady}
+            // Recorder/viewer look-parity (owner 2026-08-23): the async
+            // ballroom-HDRI environment swap (desktop GPU tier only — the
+            // potato tier never loads it, which is why the onboarding-preview
+            // E2E refs render correctly) washes the golden hall to near-white
+            // on the recording rig's GL path. Pin the warm procedural interior
+            // env so idle viewing AND the cinematic recording passes show the
+            // owner-approved warm hall. In-app mounts are untouched.
+            envHDRI={false}
           />
         );
       case 2:
@@ -666,6 +733,8 @@ export default function FlythroughClient() {
             hoveredDoor={null}
             styleEra="roman"
             onReady={handleViewerSceneReady}
+            // Warm-grade parity with the app look — see the hall mount above.
+            envHDRI={false}
           />
         );
       case 3:
@@ -683,7 +752,13 @@ export default function FlythroughClient() {
               else setLightboxId(mem.id);
             }}
             styleEra="roman"
+            // ?name= — the mantel plaque ("{name}'s Beautiful Smile");
+            // empty ⇒ the scene's neutral localized fallback, as before.
+            userNameOverride={demoName || undefined}
             onReady={handleViewerSceneReady}
+            // Warm-grade parity with the app look — the HDRI swap dropped the
+            // bright warm salon into gloom here; see the hall mount above.
+            envHDRI={false}
           />
         );
       case 4: {

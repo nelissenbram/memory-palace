@@ -69,3 +69,5 @@ public/workbox-*.js.map
 tmp/
 _aab_download/
 .tmp_audio/
+
+scripts/hero_rec/

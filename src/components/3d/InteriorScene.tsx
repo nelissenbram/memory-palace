@@ -38,7 +38,7 @@ import { hapticMedium } from "@/lib/native/haptics";
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
-function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady,userNameOverride,localeOverride,onboardingAudio,onboardingUploadedMemory}: {roomId: any,actualRoomId?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void,userNameOverride?: string|null,localeOverride?: Locale,onboardingAudio?: boolean,onboardingUploadedMemory?: any|null}){
+function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady,userNameOverride,localeOverride,onboardingAudio,onboardingUploadedMemory,envHDRI}: {roomId: any,actualRoomId?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void,userNameOverride?: string|null,localeOverride?: Locale,onboardingAudio?: boolean,onboardingUploadedMemory?: any|null,/** false = keep the warm procedural interior env and skip the async ballroom-HDRI swap (drops the warm salon into gloom on some GPU paths; pinned false by /flythrough). Default = unchanged. */envHDRI?: boolean}){
   // localeOverride (demo hosts, e.g. the /flythrough onboarding preview):
   // canvas-baked texts — the mantel plaque "{name}'s Beautiful Smile"
   // (interior3d.paintingTitle/paintingTitleNeutral) — resolve in the
@@ -257,7 +257,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const ENV_INT=W1?0.55:0.8, ENV_INT_PROC=W1?0.5:0.7;
     scene.environmentIntensity=ENV_INT;
     let envMapHDRI: THREE.Texture|null=null;
-    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{if(!alive)return;scene.environment=p;scene.environmentIntensity=ENV_INT_PROC;},onFull:(hdr)=>{if(!alive){releaseEnvMap(hdr);return;}envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=ENV_INT;}}).catch(()=>{});}
+    if(Q.loadEnvHDRI&&envHDRI!==false){loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{if(!alive)return;scene.environment=p;scene.environmentIntensity=ENV_INT_PROC;},onFull:(hdr)=>{if(!alive){releaseEnvMap(hdr);return;}envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=ENV_INT;}}).catch(()=>{});}
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     const composer=createPostProcessing(ren,scene,camera,"interior",{ssao:false});
