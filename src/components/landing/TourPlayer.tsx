@@ -106,7 +106,7 @@ export default function TourPlayer({
     if (!v) return;
     setRevealed(false);            // black cover opaque until the first frame paints
     v.muted = true;
-    v.playbackRate = 1;            // ITEM 1: natural 30fps — 0.55x slow-mo read as laggy
+    v.playbackRate = 0.75;         // owner: 25% slower — contemplative but not the laggy 0.55x
     v.currentTime = 0;
     const onPlaying = () => setRevealed(true); // ITEM 4: fade the black cover out
     v.addEventListener("playing", onPlaying);
