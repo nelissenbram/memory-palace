@@ -2041,11 +2041,26 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           if (ii % 2 === 0) solidWallDoorZs.push(-cL / 2 + 5.5 + ii * C.sp);
         }
       }
+      // Owner report #2 (2026-08-23): the W3C wall-light loop got a salon-slot
+      // clearance rule, but the lamp the owner kept seeing over "Between Two
+      // Hands" came from THIS loop — these oil lamps mount on nicheWall=-1,
+      // the same solid wall the paintings hang on, at y≈2.5 (inside a portrait
+      // canvas). Roots: lamp li=9 at z=17.18 vs slot centre z=17.5 → a lit
+      // dish floating ON the demo canvas the onboarding zooms into. Same rule
+      // as the wall lights, for every wing size: skip any lamp within
+      // hang-half-width + margin of a salon slot centre.
+      const lampSlotZs: number[] = [];
+      for (let si = 0; si < rooms.length; si++) {
+        const pz = cL / 2 - 5.5 - si * C.sp - C.sp * 0.5;
+        if (pz <= cL / 2 - 3 && pz >= -cL / 2 + 3) lampSlotZs.push(pz);
+      }
+      const lampSlotClear = Math.min(C.sp - 2.6, 2.9) / 2 + 0.4;
       for (let li = 1; li <= lampCount; li++) {
         const lz = -cL / 2 + li * lampSpacing;
-        // Skip if too close to a door, niche, or window on this wall
+        // Skip if too close to a door, niche, window, or salon painting slot
         if (solidWallDoorZs.some(dz => Math.abs(lz - dz) < 1.8)) continue;
         if (validWinPositions.some(wz => Math.abs(lz - wz) < winHalfGap + 0.5)) continue;
+        if (lampSlotZs.some(pz => Math.abs(lz - pz) < lampSlotClear)) continue;
         const lx = nicheWall * (cW / 2 - 0.03);
         // Wall bracket arm
         scene.add(mk(new THREE.BoxGeometry(0.04, 0.04, 0.04), lampBracketMat, lx, 2.6, lz));
