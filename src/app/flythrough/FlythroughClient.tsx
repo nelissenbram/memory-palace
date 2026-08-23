@@ -208,6 +208,20 @@ export default function FlythroughClient() {
   }, [applyFill]);
   const [progress, setProgress] = useState(0);
   const [fadeOpacity, setFadeOpacity] = useState(1);
+  // ── Exterior viewer veil (assemble-before-reveal, owner 2026-08-23) ──
+  // Scene 0 mounts the bare ExteriorScene with no cover, so the palace used to
+  // visibly assemble (GLBs/pano/textures popping in). A cream veil now holds
+  // until the scene's onReady — which ExteriorScene only fires once fully
+  // assembled (reveal barrier, ≤8s cap) — with a 10s viewer-side safety
+  // ceiling so a never-firing scene (WebGL init failure) can't strand it.
+  const [extReady, setExtReady] = useState(false);
+  const handleExtReady = useCallback(() => setExtReady(true), []);
+  useEffect(() => { if (currentScene !== 0) setExtReady(false); }, [currentScene]);
+  useEffect(() => {
+    if (currentScene !== 0 || extReady) return;
+    const tmo = setTimeout(() => setExtReady(true), 10000);
+    return () => clearTimeout(tmo);
+  }, [currentScene, extReady]);
 
   // ── Onboarding preview state (scene 4) — plan §11 obPhase machine ──
   const isMobile = useIsMobile();
@@ -627,6 +641,7 @@ export default function FlythroughClient() {
             onRoomClick={noop}
             hoveredRoom={null}
             styleEra="roman"
+            onReady={handleExtReady}
           />
         );
       case 1:
@@ -762,6 +777,26 @@ export default function FlythroughClient() {
       >
         {mounted && renderScene()}
       </div>
+
+      {/* Exterior viewer veil — cream cover until the exterior's assembled
+          reveal (onReady); idle viewing only, never over a recording pass */}
+      {mounted && currentScene === 0 && phase === "idle" && (
+        <div
+          aria-hidden={extReady}
+          style={{
+            position: "absolute", inset: 0, zIndex: 40,
+            background: "#FCFAF5",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            opacity: extReady ? 0 : 1,
+            transition: "opacity 400ms ease",
+            pointerEvents: extReady ? "none" : "auto",
+          }}
+        >
+          <span style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "1.0625rem", color: "#716A5E" }}>
+            {trFly("viewerPreparing", "Preparing the palace…")}
+          </span>
+        </div>
+      )}
 
       {/* Controls overlay — hidden on the Onboarding preview scene (it is
           never recorded, and its skip chip owns the top-right corner) */}
@@ -1411,7 +1446,6 @@ export default function FlythroughClient() {
               onContinue={() => setObPhase("paywall")}
               hint={trOnb("celebrationHandoffHint", "Step inside — a short tour of your Atrium is waiting.")}
               transparent
-              photoUrl={obMem?.dataUrl || null}
             />
           )}
 

@@ -125,6 +125,21 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // W3: keep the Gladiator approach corridor clear of stray random scenery
     // (nothing lands on the dusty road / avenue). Hoisted above ALL scatter loops.
     const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
+    // ══ ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23: "it loads in parts… pre-load
+    // all?") — the W3 exterior streams six hero GLBs, the cypress GLB, the pano
+    // backdrop and the eager PBR sets asynchronously, so the palace visibly
+    // assembled piece by piece after the overlay lifted. Every async attach
+    // with visible pop-in registers its promise here; onReady (the contract
+    // MemoryPalace/the viewer use to drop their overlay/veil) now fires only
+    // when the FIRST FRAME has rendered AND this barrier has settled
+    // (Promise.allSettled — a single failed GLB must never strand the reveal)
+    // OR the 8s cap has elapsed (slow networks reveal what's there). All loads
+    // stay exactly as parallel as before — only the reveal moment moves.
+    // Deliberately NOT gated: the 7k pano hi-res swap (idle-scheduled polish),
+    // the courtyard HDR env-map swap (procedural env shows from frame 0, the
+    // swap is a subtle lighting shift), and distant LOD/instanced vegetation.
+    const revealGates: Promise<unknown>[] = [];
+    let revealBarrierDone = !W3; // non-W3 keeps the legacy first-frame reveal
     // ══════════════════════════════════════════════════════════════════════
     // W2 MASTERPLAN — GRONDPLAN v3: "un corpo unico, cresciuto nei secoli"
     // (owner-APPROVED plan, public/concepts/moodboard.html §3). Replaces the
@@ -318,8 +333,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       };
       const wantHi=!isMobileQ&&ren.capabilities.maxTextureSize>=8192;
       let hiLoaded=false;
-      new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_4k.jpg",
-        (tex)=>{if(hiLoaded){tex.dispose();}else{setBg(tex);}},undefined,()=>{});
+      // Reveal gate: the pano swap flips the whole horizon from procedural sky
+      // to the photo backdrop — hold the reveal for the 4k (error ⇒ resolve;
+      // the 7k idle upgrade stays deliberately outside the barrier).
+      revealGates.push(new Promise<void>((resolve)=>{
+        new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_4k.jpg",
+          (tex)=>{if(hiLoaded){tex.dispose();}else{setBg(tex);}resolve();},undefined,()=>resolve());
+      }));
       if(wantHi){
         // Launch de-fracture: the multi-MB 7k swap is pure polish — push it past
         // the GLB/texture burst instead of competing with it on the wire.
@@ -356,6 +376,23 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // largest visible surface in the scene, so it earns an eager 1k set even on mobile.
     const terrainTex=W1?loadSandstoneTextures([64,64]):null;
     const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,clayPlasterTex,paintedPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex,...(terrainTex?[terrainTex]:[])];
+    // Reveal gate: the eager PBR sets visibly RETEXTURE the biggest surfaces on
+    // arrival (walls/roofs/terrain flip from flat colour to full maps). The
+    // sets are sync clone-sharing textures (assetLoader loadPBRSet) with no
+    // promise API, but a clone's `version` stays 0 until its base image lands
+    // (cloneTex/finishBaseLoad) — poll that marker. Bounded: ~9s of attempts,
+    // then resolve regardless (the 8s barrier cap fires first anyway).
+    if(W3){
+      const _gateTexes=allTexSets.flatMap((s)=>[s.map,s.normalMap,s.roughnessMap,s.aoMap]);
+      revealGates.push(new Promise<void>((resolve)=>{
+        let _tries=0;
+        const check=()=>{
+          if(_tries++>60||_gateTexes.every((tx)=>tx.version>0))resolve();
+          else setTimeout(check,150);
+        };
+        check();
+      }));
+    }
     // WS2-1: anisotropic filtering on ground-plane texture sets (4 mobile / 8 desktop,
     // clamped to hardware max). Grazing-angle floor blur is the most visible cheapness.
     const aniso=W1?Math.min(isMobileQ?4:8,ren.capabilities.getMaxAnisotropy()):0;
@@ -1922,11 +1959,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         centralGroup.add(ribbonR);
       }else{
         // ══ W2 (WS3-5) — the owner's name on the tympanum, in Fraunces ══
-        // Gold leaf over the honed travertine (the tympanum is gold's one
-        // allowed home besides frames — canon dogma 3), with an ink carve
-        // shadow for relief. Redraws when the Fraunces webfont lands or the
-        // store hydrates the name; falls back to the localized hall label so
-        // the pediment never reads blank. Personal by ~0:08 of the dolly.
+        // Owner 2026-08-23 (item 1): NO gold leaf — "find alternative less
+        // tacky". The name now reads CARVED into the honed travertine
+        // (tympanum face = TRAVERTINE_GROUT #E3D6BC): ink-umber #5A4F44 fill a
+        // few tones darker than the stone, a faint shadow above and a subtle
+        // warm-light bevel below each stroke — the classic sun-from-above
+        // incised-letter illusion. Mat-brons canon: no #D4AF37, no sheen.
+        // Redraws when the Fraunces webfont lands or the store hydrates the
+        // name; falls back to the localized hall label so the pediment never
+        // reads blank. Personal by ~0:08 of the dolly.
         const nameC=document.createElement("canvas");nameC.width=1024;nameC.height=160;
         const nameCtx=nameC.getContext("2d")!;
         const nameTex=new THREE.CanvasTexture(nameC);nameTex.colorSpace=THREE.SRGBColorSpace;nameTex.anisotropy=4;
@@ -1938,8 +1979,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           try{
             (nameCtx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing="10px";
           }catch{/* letterSpacing unsupported — plain tracking is fine */}
-          nameCtx.fillStyle=INK;nameCtx.fillText(label,515,84,940);
-          nameCtx.fillStyle=GOLD;nameCtx.fillText(label,512,80,940);
+          nameCtx.fillStyle="rgba(32,26,20,0.4)";nameCtx.fillText(label,512,78,940);   // incision shadow above
+          nameCtx.fillStyle="rgba(255,250,240,0.6)";nameCtx.fillText(label,512,82,940); // light bevel below
+          nameCtx.fillStyle="#5A4F44";nameCtx.fillText(label,512,80,940);               // carved ink-umber stone
           nameTex.needsUpdate=true;
         };
         drawTymName();
@@ -1947,8 +1989,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         tymNameRedrawRef.current=drawTymName;
         // Transparent decal over the tympanum: 0.03 in front of the tym plane
         // (which itself moved to vestZ-1.13), no depth write + late renderOrder
-        // so the gold leaf can never depth-spar with the stone or the window
-        // glass on the long dolly (z-fighting sweep #6).
+        // so the carved lettering can never depth-spar with the stone or the
+        // window glass on the long dolly (z-fighting sweep #6).
         const namePlane=new THREE.Mesh(new THREE.PlaneGeometry(5.6,0.875),new THREE.MeshBasicMaterial({map:nameTex,transparent:true,depthWrite:false}));
         namePlane.position.set(0,8.28,vestZ-1.16);
         namePlane.rotation.y=Math.PI; // face outward with the tympanum (-Z)
@@ -2666,14 +2708,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const domeOrigin = new THREE.Vector3(0, 0, 0);
       // 3 baked LODs by GPU tier (maxEagerTextureSets: desktop 20 / mobile 4 / potato 2)
       const _q = getQuality();
-      const _domeV = "?v=25"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust)
+      const _domeV = "?v=25"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust); keep W3_GLB_V in palace/page.tsx prewarm in sync
       const domePath = (_q.maxEagerTextureSets >= 12
         ? "/models/exterior/dome_w3.glb"         // desktop — full stepped courses
         : _q.maxEagerTextureSets <= 3
         ? "/models/exterior/dome_w3_lod2.glb"    // potato
         : "/models/exterior/dome_w3_lod1.glb")   // mobile
         + _domeV;
-      loadModel(domePath).then((g) => {
+      revealGates.push(loadModel(domePath).then((g) => {
         if (w3Disposed) return;
         g.traverse((c) => {
           const m = c as THREE.Mesh;
@@ -2700,10 +2742,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         rDome.visible = true;
         if (w3RibMesh) w3RibMesh.visible = true;
         console.warn("[W3] dome canary load failed, using procedural dome", err);
-      });
+      }));
       // Wave-2 hero: scanned Corinthian capitals (Sketchfab, CC-BY — credit
       // "fts_ltx") on the 6 entrance columns, replacing the procedural box-caps.
-      loadModel("/models/exterior/entrance_w3.glb" + _domeV).then((g) => {
+      revealGates.push(loadModel("/models/exterior/entrance_w3.glb" + _domeV).then((g) => {
         if (w3Disposed) return;
         g.traverse((c) => {
           const m = c as THREE.Mesh;
@@ -2718,7 +2760,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (w3Disposed) return;
         centralGroup.add(g);
         w3EntranceCaps = g;
-      }).catch(() => { /* columns simply keep no ornate cap on load failure */ });
+      }).catch(() => { /* columns simply keep no ornate cap on load failure */ }));
       // Wave-3 roofs (proof): modeled Tuscan coppi hip-roofs over the two front
       // pavilions, laid ADDITIVELY over the procedural roof slabs (the corps roofs
       // live in a merged bucket that can't be hidden without a step-0 un-merge).
@@ -2727,7 +2769,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         : _q.maxEagerTextureSets <= 3
         ? "/models/exterior/roofs_w3_lod2.glb"   // potato
         : "/models/exterior/roofs_w3_lod1.glb";  // mobile
-      loadModel(roofPath + _domeV).then((g) => {
+      revealGates.push(loadModel(roofPath + _domeV).then((g) => {
         if (w3Disposed) return;
         g.traverse((c) => {
           const m = c as THREE.Mesh;
@@ -2751,12 +2793,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (w3Disposed) return;
         centralGroup.add(g);
         w3Roofs = g;
-      }).catch(() => {});
+      }).catch(() => {}));
       // Rooftop statuary — travertine urns along the central roof balustrade and
       // robed acroteria-figures on its four corner piers, ringing the base of the
       // drum against the sky. Two GLB pieces (Urn, Statue), each drawn as ONE
       // InstancedMesh so all ~18 pieces cost just two draw calls.
-      loadModel("/models/exterior/statuary_w3.glb" + _domeV).then((g) => {
+      revealGates.push(loadModel("/models/exterior/statuary_w3.glb" + _domeV).then((g) => {
         if (w3Disposed) return;
         let urnGeo: THREE.BufferGeometry | null = null, statueGeo: THREE.BufferGeometry | null = null;
         g.traverse((c) => {
@@ -2787,11 +2829,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (w3Disposed) return;
         centralGroup.add(grp);
         w3Statuary = grp;
-      }).catch(() => {});
+      }).catch(() => {}));
       // Cortile fountain — modeled CC-BY fountain (Sketchfab, credit
       // "yorre.detavernier") replacing the simple procedural basin/tazza, seated
       // on the cross-axis over the kept procedural water disc.
-      loadModel("/models/exterior/fountain_w3.glb" + _domeV).then((g) => {
+      revealGates.push(loadModel("/models/exterior/fountain_w3.glb" + _domeV).then((g) => {
         if (w3Disposed) return;
         g.traverse((c) => {
           const m = c as THREE.Mesh;
@@ -2811,10 +2853,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (w3Disposed) return;
         scene.add(g); // WORLD coords — matches the procedural garden, not the palace group
         w3Fountain = g;
-      }).catch(() => {});
+      }).catch(() => {}));
       // A pair of stone obelisks on pedestals flanking the cortile approach — a
       // classic Italian-villa vertical accent framing the axis to the entrance.
-      loadModel("/models/exterior/obelisk_w3.glb" + _domeV).then((g) => {
+      revealGates.push(loadModel("/models/exterior/obelisk_w3.glb" + _domeV).then((g) => {
         if (w3Disposed) return;
         g.traverse((c) => {
           const m = c as THREE.Mesh;
@@ -2827,7 +2869,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (w3Disposed) return;
         scene.add(grp); // WORLD coords — flanks the garden approach
         w3Obelisks = grp;
-      }).catch(() => {});
+      }).catch(() => {}));
     }
     // W2 grandeur: the raised two-stage crossing lifts the dome far higher — the
     // tap-is-travel cylinder grows with it so the whole silhouette (lantern
@@ -5461,7 +5503,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // alpha-cut foliage) for every NEAR tree, one InstancedMesh scaled per tree
         // (GLB is 3 m tall). Far trees stay the cheap procedural columns below.
         nearFoliageGeo.dispose();nearTrunkGeo.dispose();
-        loadModel("/models/exterior/cypress_w3.glb?v=25").then((g)=>{
+        revealGates.push(loadModel("/models/exterior/cypress_w3.glb?v=25").then((g)=>{
           if(w3Disposed||!cypressNear.length)return;
           let geo:THREE.BufferGeometry|null=null,mat:THREE.Material|null=null;
           g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){geo=m.geometry;mat=m.material as THREE.Material;}});
@@ -5479,7 +5521,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             d4.updateMatrix();im.setMatrixAt(i,d4.matrix);
           });
           im.instanceMatrix.needsUpdate=true;im.name="w3_cypress";scene.add(im);
-        }).catch(()=>{});
+        }).catch(()=>{}));
       }
       for(let b=0;b<3;b++){
         const items=cypressFar.filter(c=>c.band===b);
@@ -5930,7 +5972,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
       // ── Onboarding cinematic: WP1 (hold + prompt) → WP2-5 flyover → zoom to entrance ──
       if (onboardingModeRef.current && !autoWalkToRef.current && !approachFlight && !camDebugRef.current) {
-        obCinT += dt; // ITEM 2: same clamped-dt clock as the camera smoothing (see decl)
+        // ASSEMBLE-BEFORE-REVEAL: hold the cinematic clock until the reveal has
+        // fired — the WP1 drift+prompt must not run over a half-built palace
+        // (the wizard/viewer veil lifts on onReady). The camera keeps drifting
+        // to WP1 beneath the veil. Prompt fallbacks stay intact: the viewer's
+        // 8s hold-fallback arms on onReady (loading→hold) so it is unaffected;
+        // the wizard's 8s cinematic fallback arms at phase entry and still
+        // surfaces the prompt at 8s worst-case (== the barrier cap).
+        if (_revealFired) obCinT += dt; // ITEM 2: same clamped-dt clock as the camera smoothing (see decl)
         const rawT = obCinT;
         const HOLD_DUR = 1.5; // seconds to drift to WP1 before showing prompt
 
@@ -6332,9 +6381,28 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       else wheatFields.forEach(wf => wf.update());
 
       composer.render();
-      if (!_firstFrameDone) { _firstFrameDone = true; try { onReady?.(); } catch {} console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
+      if (!_firstFrameDone) { _firstFrameDone = true; console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); fireRevealWhenAssembled(); }
     };
     let _firstFrameDone = false;
+    let _revealFired = false;
+    // ASSEMBLE-BEFORE-REVEAL: onReady (the overlay/veil-lift contract) fires
+    // only when the first frame has rendered AND the reveal barrier is done —
+    // all W3 GLBs/pano/eager textures settled (see revealGates), or the 8s cap.
+    // The overlay above lifts onto a COMPLETE palace instead of watching it
+    // assemble; nothing about the loads themselves is serialized or delayed.
+    const fireRevealWhenAssembled = () => {
+      if (_revealFired || !_firstFrameDone || !revealBarrierDone) return;
+      _revealFired = true;
+      try { onReady?.(); } catch {}
+      console.log("[palace] reveal (assembled) at", Math.round(performance.now() - _mountStart), "ms");
+    };
+    if (!revealBarrierDone) {
+      const REVEAL_CAP_MS = 8000; // slow networks: reveal what's there rather than strand the spinner (MemoryPalace's WS9-7 watchdog is also 8s)
+      Promise.race([
+        Promise.allSettled(revealGates),
+        new Promise((res) => setTimeout(res, REVEAL_CAP_MS)),
+      ]).then(() => { revealBarrierDone = true; fireRevealWhenAssembled(); });
+    }
     const _mountStart = performance.now();
     console.log("[palace] ExteriorScene mount start");
     animate();

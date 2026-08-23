@@ -1606,20 +1606,8 @@ ${KEYFRAMES}
               boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
               animation: "onb-fadeUp .6s ease",
             }}>
-              {/* Item 6: instant polaroid payoff — mirrors the shared
-                  OnboardingCelebration photo row (this fork is inline). */}
-              {uploadedMemory?.dataUrl && (
-                <div aria-hidden style={{
-                  background: "#FFFFFF", padding: "0.375rem 0.375rem 1rem",
-                  border: `0.0625rem solid ${HAIRLINE}`, borderRadius: "0.25rem",
-                  boxShadow: SHADOW[2], transform: "rotate(-2.5deg)",
-                }}>
-                  <img src={uploadedMemory.dataUrl} alt="" style={{
-                    display: "block", width: "5.5rem", height: "5.5rem",
-                    objectFit: "cover", borderRadius: "0.125rem",
-                  }} />
-                </div>
-              )}
+              {/* No inlay polaroid (owner 2026-08-23): the 3D mantel behind the
+                  card shows the uploaded photo itself (uploadedMemory swap). */}
               <span aria-hidden style={{
                 display: "block", width: "3rem", height: "0.125rem",
                 background: GOLD, borderRadius: "0.0625rem", opacity: 0.7,
@@ -1674,7 +1662,6 @@ ${KEYFRAMES}
               onContinue={() => setPhase(paywallAllowed() ? "paywall" : "done")}
               hint={celebHint}
               transparent
-              photoUrl={uploadedMemory?.dataUrl || null}
             />
           </Suspense>
         )}

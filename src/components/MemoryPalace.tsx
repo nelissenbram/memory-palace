@@ -726,6 +726,15 @@ export default function MemoryPalace(){
   const persistHallRef = useRef(false);
   // Destination name for the cold-load card (WS9-3 destination line).
   const [overlayDest, setOverlayDest] = useState<string | undefined>(undefined);
+  // ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23): a COLD exterior load streams six
+  // hero GLBs + pano + textures and only fires onReady once fully assembled
+  // (ExteriorScene reveal barrier, ≤8s cap). The overlay's natural CSS fade
+  // (fadeDelay 0.8s) would reveal the half-built palace long before that — a
+  // held overlay keeps its fade parked at 8s (== the barrier cap / WS9-7
+  // watchdog) so only onReady (via sceneReadyFade) starts it early. Scoped to
+  // cold exterior loads; every other scene keeps the canon 0.8/1.2s pacing.
+  const [overlayHold, setOverlayHold] = useState(false);
+  const overlayHoldRef = useRef(false);
   const beginVeilFade = useCallback(() => {
     if (!veilRef.current) return;
     veilRef.current = false;
@@ -750,8 +759,10 @@ export default function MemoryPalace(){
     sceneLoadingRef.current = false;
     setSceneLoading(false);
     setSceneReadyFade(false);
+    overlayHoldRef.current = false;
+    setOverlayHold(false);
   }, []);
-  const showSceneOverlay = useCallback((dest?: string) => {
+  const showSceneOverlay = useCallback((dest?: string, holdUntilReady?: boolean) => {
     // Cold load wins: retire any (pre-)veil so card + veil never stack.
     veilRef.current = false;
     if (veilTimerRef.current) { clearTimeout(veilTimerRef.current); veilTimerRef.current = null; }
@@ -763,6 +774,8 @@ export default function MemoryPalace(){
     setSceneReadyFade(false);
     setOverlayDest(dest);
     setSceneLoading(true);
+    overlayHoldRef.current = !!holdUntilReady;
+    setOverlayHold(!!holdUntilReady);
     // WS9-7 onReady hardening (w2_veil): overlays lift via onReady; this 8s
     // watchdog is the hard cap when a scene never signals ready.
     if (flag3d("w2_veil")) {
@@ -794,8 +807,10 @@ export default function MemoryPalace(){
     if (sceneReadyTimerRef.current) clearTimeout(sceneReadyTimerRef.current);
     const fadeDelayMs = sceneLoadFromLibraryRef.current ? 1200 : 800;
     const elapsed = performance.now() - sceneLoadStartRef.current;
-    const clear = () => { sceneLoadFromLibraryRef.current = false; sceneLoadingRef.current = false; setSceneLoading(false); setSceneReadyFade(false); };
-    if (elapsed < fadeDelayMs + 350) {
+    const clear = () => { sceneLoadFromLibraryRef.current = false; sceneLoadingRef.current = false; setSceneLoading(false); setSceneReadyFade(false); overlayHoldRef.current = false; setOverlayHold(false); };
+    // A HELD overlay (cold exterior, fade parked at 8s) is still fully opaque
+    // whenever onReady lands before the cap — always restart its fade cleanly.
+    if (elapsed < fadeDelayMs + 350 || overlayHoldRef.current) {
       // Overlay still fully opaque — restart its fade-out with zero delay.
       setSceneReadyFade(true);
       sceneReadyTimerRef.current = setTimeout(clear, 850); // unmount just after the 0.8s fade completes
@@ -872,10 +887,12 @@ export default function MemoryPalace(){
         hideSceneOverlay();
         return;
       }
-      showSceneOverlay(destNamesRef.current.exterior);
+      // Held overlay: only onReady (assembled reveal, ≤8s cap) starts the fade.
+      showSceneOverlay(destNamesRef.current.exterior, true);
       if (flag3d("w2_veil")) return; // onReady lifts it; 8s watchdog is the cap
-      // onReady from ExteriorScene will hide it precisely; 2.5s safety.
-      const t = setTimeout(hideSceneOverlay, 2500);
+      // onReady from ExteriorScene will hide it precisely; 9s safety sits just
+      // past the held fade (8s park + 0.8s fade) for a never-firing scene.
+      const t = setTimeout(hideSceneOverlay, 9000);
       return () => clearTimeout(t);
     }
 
@@ -912,7 +929,10 @@ export default function MemoryPalace(){
           const rt = persistentTarget ? setTimeout(beginVeilFade, 250) : null;
           return () => { if (rt) clearTimeout(rt); };
         }
-        showSceneOverlay(dest);
+        // COLD exterior (never fired onReady this session) holds the overlay
+        // until the assembled reveal; warm hops/other scenes keep canon pacing.
+        const coldExterior = view === "exterior" && !sceneReadyRef.current;
+        showSceneOverlay(dest, coldExterior);
         // The warm persistent ExteriorScene never re-fires onReady — when
         // returning to it, signal readiness ourselves once the overlay painted.
         const rt = (view === "exterior" && sceneReadyRef.current)
@@ -921,7 +941,8 @@ export default function MemoryPalace(){
         // Safety fallback only — the mounted scene's onReady dismisses earlier.
         // Under w2_veil the blind 2s hide is retired: onReady lifts the card
         // (WS9-7 "lift only onto ready scenes"), the 8s watchdog is the cap.
-        const t = flag3d("w2_veil") ? null : setTimeout(hideSceneOverlay, 2000);
+        // A held cold-exterior overlay gets the 9s safety instead (8s park + fade).
+        const t = flag3d("w2_veil") ? null : setTimeout(hideSceneOverlay, coldExterior ? 9000 : 2000);
         return () => { if (rt) clearTimeout(rt); if (t) clearTimeout(t); };
       }
     }
@@ -1703,8 +1724,10 @@ export default function MemoryPalace(){
 
       {/* Scene loading overlay — fades out when the mounted scene fires onReady
           (sceneReadyFade restarts the fade with zero delay); the fixed fadeDelay
-          values are the fallback pacing when no readiness signal arrives */}
-      {(sceneLoading||(portalAnim&&!(w2Veil&&veil)))&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneReadyFade ? 0 : (sceneLoadFromLibraryRef.current ? 1.2 : 0.8)) : 0.2} destination={w2Veil && sceneLoading ? overlayDest : undefined} />}
+          values are the fallback pacing when no readiness signal arrives. A HELD
+          overlay (cold exterior — assemble-before-reveal) parks its fade at 8s
+          (== the barrier cap) so only onReady starts it early. */}
+      {(sceneLoading||(portalAnim&&!(w2Veil&&veil)))&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneReadyFade ? 0 : (sceneLoadFromLibraryRef.current ? 1.2 : (overlayHold ? 8 : 0.8))) : 0.2} destination={w2Veil && sceneLoading ? overlayDest : undefined} />}
 
       {/* WS9-8 golden veil (w2_veil) — covers warm hops; cold loads keep the card */}
       {w2Veil && veil && !sceneLoading && <GoldenVeil destination={veil.dest} fading={veil.fading} />}

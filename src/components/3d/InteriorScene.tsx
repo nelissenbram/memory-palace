@@ -454,6 +454,14 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // polished gold — now mat brons #C9A87C like the corridor bronze family.
       fG:new THREE.MeshStandardMaterial({color:"#C9A87C",roughness:.55,metalness:.4}),
       fB:new THREE.MeshStandardMaterial({color:"#7A6040",roughness:.38,metalness:.5}),
+      // Owner 2026-08-23 (item 4): #C9A87C still read too gold on the mantel —
+      // the upload/mantel frame now reuses the corridor's PROVEN refined-frame
+      // family (makeArtwork refinedFrame recipe): dark-walnut moulding
+      // (walnutFrameMat #3A2A1C r.5 m.15) + thin muted-bronze slip
+      // (refinedSlipMat #9E8455 r.44 m.5). The swap-in celebration photo lives
+      // inside the same meshes, so it inherits this frame automatically.
+      fWalnut:new THREE.MeshStandardMaterial({color:"#3A2A1C",roughness:.5,metalness:.15}),
+      fSlip:new THREE.MeshStandardMaterial({color:"#9E8455",roughness:.44,metalness:.5}),
       matF:new THREE.MeshStandardMaterial({color:"#F2EDE4",roughness:.95}),
       lamp:new THREE.MeshStandardMaterial({color:"#E8D8C0",roughness:.7,transparent:true,opacity:.8}),
       lampG:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity}),
@@ -1393,9 +1401,10 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // 2.72) — lg would sink the plaque back into the mantel. Salon walls only.
       mountArtwork(om,t,fpX,W3?2.72:2.4,W3?fpZ+.17:fpZ+.09,0,W2?2.0:1.7);
     }else if(bigPaintMem){
-      // Frame only shown when there's actual content
-      scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
-      scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,2.4,fpZ+.08));
+      // Frame only shown when there's actual content — refined walnut moulding
+      // + muted-bronze slip (owner item 4: corridor frame family, no gold).
+      scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fWalnut,fpX,2.4,fpZ+.02));
+      scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.fSlip,fpX,2.4,fpZ+.08));
       if(!isMobileGPU()){const fpSp=new THREE.SpotLight("#FFF5E0",.8,5,Math.PI/7,.5,1.2);fpSp.position.set(fpX,rH-.2,fpZ+.5);fpSp.target.position.set(fpX,2.4,fpZ);scene.add(fpSp);scene.add(fpSp.target);}
       const om=bigPaintMem;const t=paintTex(om);
       const omc=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),new THREE.MeshStandardMaterial({map:t,roughness:.8}));
@@ -1410,8 +1419,10 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // mantel shelf at 1.6 and the chimney-breast face at fpZ+.09; the old
       // 2.4/fpZ+.02-.12 buried the frame inside the W3 breast).
       const phY=W3?2.72:2.4;
-      scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,phY,W3?fpZ+.10:fpZ+.02));
-      scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,phY,W3?fpZ+.145:fpZ+.08));
+      // Owner item 4: refined walnut moulding + muted-bronze slip (corridor
+      // family) — the mat-brons slab still read too gold above the mantel.
+      scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fWalnut,fpX,phY,W3?fpZ+.10:fpZ+.02));
+      scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.fSlip,fpX,phY,W3?fpZ+.145:fpZ+.08));
       if(!isMobileGPU()){const fpSp2=new THREE.SpotLight("#FFF5E0",.6,5,Math.PI/7,.5,1.2);fpSp2.position.set(fpX,rH-.2,fpZ+.5);fpSp2.target.position.set(fpX,phY,fpZ);scene.add(fpSp2);scene.add(fpSp2.target);}
       const cvs=document.createElement("canvas");cvs.width=512;cvs.height=352;
       const ctx=cvs.getContext("2d")!;
@@ -1929,12 +1940,18 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
             },
           });
           videoEl=videoHandle.video;
-          videoEl.volume=1;
+          // Owner item 2 (2026-08-23): the onboarding demo recital is SILENT —
+          // muted + volume 0 (makeVideoArtwork already defaults muted:true);
+          // every unmute path (media-bar play, tap-for-sound, distance mixer)
+          // is onboarding-guarded below. The gramophone is the walk's only audio.
+          if(onboardingModeRef.current){videoEl.muted=true;videoEl.volume=0;}
+          else videoEl.volume=1;
           videoEl.addEventListener("play",()=>{affordance.visible=false;});
           videoElRef.current=videoEl;
         }else if(isVidSrc){
           videoEl=document.createElement("video");
-          videoEl.loop=true;videoEl.playsInline=true;videoEl.volume=1;
+          // Owner item 2: silent during onboarding (muted=true set below too).
+          videoEl.loop=true;videoEl.playsInline=true;videoEl.volume=onboardingModeRef.current?0:1;
           videoEl.preload="auto";
           // Some browsers won't decode an unattached media element reliably — attach hidden.
           videoEl.style.position="fixed";videoEl.style.left="-9999px";videoEl.style.top="-9999px";
@@ -2894,7 +2911,11 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         if(a.type==="video"){
           const cx=a.ctx,cw=a.w,ch=a.h,m=a.mem,ph=t*.5+a.phase;
           const vEl=a.videoEl?a.videoEl():null;
-          if(vEl&&!vEl.muted){const vo=volOverride.current.video;vEl.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_screenPos.current.set(scrX,scrY,scrZ))/10));}
+          // Owner item 2: onboarding demo video must NEVER produce sound — hard
+          // per-frame enforcement (covers any gesture/media-bar path that slips
+          // through the guards). The gramophone is the walk's only audio.
+          if(onboardingModeRef.current&&vEl&&(!vEl.muted||vEl.volume>0)){vEl.muted=true;vEl.volume=0;}
+          if(vEl&&!vEl.muted&&!onboardingModeRef.current){const vo=volOverride.current.video;vEl.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_screenPos.current.set(scrX,scrY,scrZ))/10));}
           // W2 (WS7-8): VideoTexture live — the per-frame canvas blit stands down.
           if((a as any).w2&&(a as any).w2.active)return;
           const sImg=a.screenImg?a.screenImg():null;
@@ -3211,8 +3232,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
   // mantel placeholder (hook registered by the build above). Declared AFTER the
   // scene effect so a mount that starts with the memory already set (rare
   // resume) still finds the hook registered. No-op when the scene fell back
-  // (no WebGL) or rebuilt without the onboarding placeholder — the celebration
-  // card's photo keeps the payoff visible there.
+  // (no WebGL) or rebuilt without the onboarding placeholder (owner 2026-08-23:
+  // the celebration card no longer carries an inlay photo — this 3D swap IS
+  // the payoff).
   useEffect(()=>{
     if(onboardingUploadedMemory)obUploadSwapRef.current?.(onboardingUploadedMemory);
   },[onboardingUploadedMemory]);
@@ -3227,12 +3249,14 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     return `${m}:${sec < 10 ? "0" : ""}${sec}`;
   };
 
-  // Play — tries unmuted first (user gesture), falls back to muted
+  // Play — tries unmuted first (user gesture), falls back to muted.
+  // Owner item 2: during onboarding the demo video stays muted even on an
+  // explicit gesture — only the gramophone may sound in the walk.
   const handlePlay = (el: HTMLMediaElement, isVideo: boolean) => {
-    if (isVideo) el.muted = false;
+    if (isVideo && !onboardingModeRef.current) el.muted = false;
     const p = el.play();
     if (p && typeof p.then === "function") {
-      p.then(() => { if (isVideo) setMutedPlaying(false); })
+      p.then(() => { if (isVideo) setMutedPlaying(el.muted); })
        .catch(() => {
          if (isVideo) {
            el.muted = true; setMutedPlaying(true);
@@ -3369,9 +3393,10 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
               </span>
             </div>
 
-            {/* Muted indicator (video) */}
-            {bIsVid && mutedPlaying && bSt.playing && (
-              <button onClick={() => { if (videoElRef.current) { videoElRef.current.muted = false; setMutedPlaying(false); } }}
+            {/* Muted indicator (video) — hidden during onboarding (owner item 2:
+                the demo video is permanently silent; no tap-for-sound). */}
+            {bIsVid && mutedPlaying && bSt.playing && !onboardingMode && (
+              <button onClick={() => { if (videoElRef.current && !onboardingModeRef.current) { videoElRef.current.muted = false; setMutedPlaying(false); } }}
                 aria-label={t("tapForSound")}
                 style={{ width: "2rem", height: "2rem", minWidth: "2.75rem", minHeight: "2.75rem", borderRadius: "50%", background: "rgba(200,50,50,0.15)", border: "none", color: "#C05050", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0 }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>

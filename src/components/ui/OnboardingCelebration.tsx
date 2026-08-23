@@ -18,11 +18,6 @@ interface OnboardingCelebrationProps {
       celebration fires it over the just-hung memory; reduced-motion = static
       (no confetti, the settled gold threshold stands on its own). */
   confetti?: boolean;
-  /** The just-uploaded first memory (owner item 6, 2026-08-23): shown as a
-      small polaroid above the headline so the payoff is INSTANT even while the
-      3D room is still catching up (or fell back to the cream veil). Absent =
-      no polaroid (backwards compatible). */
-  photoUrl?: string | null;
 }
 
 /* The ceremonial threshold. A dignified beat over the just-hung first
@@ -127,7 +122,6 @@ export default function OnboardingCelebration({
   transparent = false,
   hint,
   confetti = true,
-  photoUrl = null,
 }: OnboardingCelebrationProps) {
   const isMobile = useIsMobile();
   // Resolve once per mount — reduced-motion users get a static, already-settled frame.
@@ -195,35 +189,10 @@ export default function OnboardingCelebration({
               }),
         }}
       >
-        {/* The just-hung first memory as a small polaroid (item 6) — instant,
-            DOM-rendered payoff while the 3D mantel behind catches up. Decorative
-            (the room shows the same photo): empty alt, aria-hidden wrapper. */}
-        {photoUrl && (
-          <div
-            aria-hidden
-            style={{
-              background: "#FFFFFF",
-              padding: "0.375rem 0.375rem 1rem",
-              border: `0.0625rem solid ${HAIRLINE}`,
-              borderRadius: "0.25rem",
-              boxShadow: SHADOW[2],
-              transform: reduce ? undefined : "rotate(-2.5deg)",
-              animation: enter("0.1s"),
-            }}
-          >
-            <img
-              src={photoUrl}
-              alt=""
-              style={{
-                display: "block",
-                width: "6.5rem",
-                height: "6.5rem",
-                objectFit: "cover",
-                borderRadius: "0.125rem",
-              }}
-            />
-          </div>
-        )}
+        {/* No inlay polaroid (owner 2026-08-23): the payoff is the ACTUAL 3D
+            mantelpiece behind this card — the uploaded photo is swapped into
+            the mantel frame in place, and the walk's step-9 framing keeps the
+            camera on it. */}
 
         {/* The single ceremonial gold flourish — a divider tick, not confetti. */}
         <span
