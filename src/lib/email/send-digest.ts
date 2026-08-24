@@ -258,10 +258,11 @@ function renderStreakLine(streakWeeks: number, l: Record<string, string>): strin
 function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null, l: Record<string, string>): string {
   if (!memory) return "";
 
+  const siteUrl = getSiteUrl();
   const thumbnail = memory.thumbnailUrl
     ? `<img src="${escapeHtml(memory.thumbnailUrl)}" alt="${escapeHtml(memory.title)}" width="120" height="120" style="display:block;width:120px;height:120px;object-fit:cover;border-radius:3px;border:1px solid ${CARD_BORDER};" />`
-    : `<div style="width:120px;height:120px;border-radius:3px;background:${TRAY};text-align:center;line-height:120px;">
-        <span style="font-size:32px;color:${EMBER_GLYPH};">&#x1f3db;</span>
+    : `<div style="width:120px;height:120px;border-radius:3px;background:${TRAY};text-align:center;">
+        <img src="${siteUrl}/email/palace-ember.png" width="48" height="48" alt="" style="display:inline-block;width:48px;height:48px;margin-top:36px;border:0;outline:none;" />
       </div>`;
 
   return `

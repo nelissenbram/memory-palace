@@ -207,9 +207,7 @@ export function emailLayout(opts: {
       <p class="header-title" style="margin:0;font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:28px;font-weight:600;color:#2E2A26;line-height:1.2;letter-spacing:0.01em;">
         Memory Palace
       </p>
-      <p class="seal-glyph" style="margin:6px 0 0;font-family:'Fraunces',Georgia,serif;font-size:18px;color:#D4AF37;line-height:1;">
-        &#10086;
-      </p>
+      <img src="${SITE_URL}/email/palace-gold.png" width="40" height="40" alt="Memory Palace" style="display:block;margin:10px auto 0;width:40px;height:40px;border:0;outline:none;text-decoration:none;" />
     </td></tr>
     </table>
 
@@ -242,10 +240,8 @@ export function emailLayout(opts: {
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="text-align:center;">
-            <!-- Ember fleuron (footer fleuron is not a seal) -->
-            <p style="margin:0 0 10px;font-family:'Fraunces',Georgia,serif;font-size:16px;color:#9A4F2A;line-height:1;">
-              &#10086;
-            </p>
+            <!-- Ember temple mark (footer) -->
+            <img src="${SITE_URL}/email/palace-ember.png" width="28" height="28" alt="" style="display:block;margin:0 auto 12px;width:28px;height:28px;border:0;outline:none;text-decoration:none;" />
 
             <p style="margin:0 0 6px;font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:16px;font-weight:500;font-style:italic;color:#2E2A26;line-height:1.5;">
               Memory Palace &middot; <a href="${SITE_URL}" style="color:#2E2A26;text-decoration:none;">thememorypalace.ai</a>
