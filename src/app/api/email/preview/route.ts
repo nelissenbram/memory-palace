@@ -32,7 +32,11 @@ const TYPES = [
 const LOCALES = ["en", "nl", "de", "es", "fr"] as const;
 
 async function isAuthorized(request: NextRequest): Promise<boolean> {
-  const secret = new URL(request.url).searchParams.get("secret");
+  const params = new URL(request.url).searchParams;
+  // Dedicated preview key (works regardless of login/session state).
+  const key = params.get("key");
+  if (key && process.env.EMAIL_PREVIEW_KEY && key === process.env.EMAIL_PREVIEW_KEY) return true;
+  const secret = params.get("secret");
   const cronSecret = process.env.CRON_SECRET;
   if (secret && cronSecret) {
     const a = Buffer.from(secret), b = Buffer.from(cronSecret);
@@ -46,8 +50,8 @@ async function isAuthorized(request: NextRequest): Promise<boolean> {
   return false;
 }
 
-function indexHtml(secret: string | null): string {
-  const q = secret ? `&secret=${encodeURIComponent(secret)}` : "";
+function indexHtml(authQ: string): string {
+  const q = authQ;
   const rows = TYPES.map(([type, label]) => {
     const links = LOCALES.map((l) => `<a href="?type=${type}&locale=${l}${q}" style="margin-right:10px;">${l}</a>`).join("");
     return `<tr><td style="padding:8px 16px;border-bottom:1px solid #eee;">${label}</td><td style="padding:8px 16px;border-bottom:1px solid #eee;">${links}</td></tr>`;
@@ -132,10 +136,12 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const type = url.searchParams.get("type");
   const locale = url.searchParams.get("locale") || "nl";
+  const key = url.searchParams.get("key");
   const secret = url.searchParams.get("secret");
+  const authQ = key ? `&key=${encodeURIComponent(key)}` : secret ? `&secret=${encodeURIComponent(secret)}` : "";
 
   if (!type || type === "index") {
-    return new NextResponse(indexHtml(secret), { headers: { "Content-Type": "text/html; charset=utf-8" } });
+    return new NextResponse(indexHtml(authQ), { headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
   const html = render(type, locale);
   if (!html) return NextResponse.json({ error: "Unknown type", types: TYPES.map((t) => t[0]) }, { status: 400 });
