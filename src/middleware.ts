@@ -48,6 +48,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/api/webhooks/") ||
     path.startsWith("/api/stripe/webhook") ||
     path.startsWith("/api/apple/webhook") ||
+    path.startsWith("/api/revenuecat/webhook") ||
     // /api/media/ fully authenticates + authorizes itself (route.ts calls
     // supabase.auth.getUser() plus ownership/share/published-wing checks), so the
     // middleware's updateSession()->getUser() here is pure duplicate cost. A 3D room
