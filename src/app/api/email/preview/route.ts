@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { createClient } from "@/lib/supabase/server";
-import { generateDigestEmailHtml, type DigestEmailParams } from "@/lib/email/send-digest";
-import { generateMonthlyEmailHtml, type MonthlyEmailParams } from "@/lib/email/send-monthly";
-import { generateReminderEmailHtml, type ReminderEmailParams } from "@/lib/email/send-reminder";
-import { generateDripEmailHtml } from "@/lib/email/send-drip";
+import { sendEmail } from "@/lib/email/shared";
+import { generateDigestEmailHtml, generateDigestEmailSubject, type DigestEmailParams } from "@/lib/email/send-digest";
+import { generateMonthlyEmailHtml, generateMonthlyEmailSubject, type MonthlyEmailParams } from "@/lib/email/send-monthly";
+import { generateReminderEmailHtml, generateReminderEmailSubject, type ReminderEmailParams } from "@/lib/email/send-reminder";
+import { generateDripEmailHtml, generateDripEmailSubject } from "@/lib/email/send-drip";
 
 export const dynamic = "force-dynamic";
 
@@ -66,9 +67,9 @@ function indexHtml(authQ: string): string {
     <table>${rows}</table></body></html>`;
 }
 
-function render(type: string, locale: string): string | null {
+function render(type: string, locale: string, to?: string): { html: string; subject: string } | null {
   const displayName = "Bram";
-  const recipientEmail = "bram@elyphont.com";
+  const recipientEmail = to || "bram@elyphont.com";
   const userId = "preview-user";
 
   if (type === "weekly") {
@@ -85,7 +86,7 @@ function render(type: string, locale: string): string | null {
       sharedRoomActivity: [{ roomName: "Familie", contributorName: "Sophie", memoryCount: 2 }],
       trackProgress: { trackName: "Familiegeschiedenis", percentComplete: 62, icon: "\u{1F3DB}", nextStepHint: "Voeg herinneringen toe over je grootouders", nextMilestoneLabel: "Nog 8 herinneringen tot de volgende mijlpaal" },
     };
-    return generateDigestEmailHtml(p);
+    return { html: generateDigestEmailHtml(p), subject: generateDigestEmailSubject(p.displayName, p.streakWeeks, locale) };
   }
   if (type === "monthly") {
     const p: MonthlyEmailParams = {
@@ -107,27 +108,30 @@ function render(type: string, locale: string): string | null {
       forwardLook: { text: "Eén kamer wacht nog: je Reizen-vleugel. Wanneer je er klaar voor bent, staat hij er." },
       crossedMilestone: true,
     };
-    return generateMonthlyEmailHtml(p);
+    return { html: generateMonthlyEmailHtml(p), subject: generateMonthlyEmailSubject(p) };
   }
   if (type === "winback") {
     const p: ReminderEmailParams = { type: "re_engagement", recipientEmail, displayName, locale, daysSinceLogin: 32, memoryCount: 47, userId };
-    return generateReminderEmailHtml(p);
+    return { html: generateReminderEmailHtml(p), subject: generateReminderEmailSubject(p) };
   }
   if (type === "capsule") {
     const p: ReminderEmailParams = { type: "time_capsule_reveal", recipientEmail, displayName, locale, capsuleTitle: "Brief aan mijn toekomstige zelf" };
-    return generateReminderEmailHtml(p);
+    return { html: generateReminderEmailHtml(p), subject: generateReminderEmailSubject(p) };
   }
   if (type === "goal") {
     const p: ReminderEmailParams = { type: "goal_deadline", recipientEmail, displayName, locale, goalTitle: "Familiegeschiedenis afmaken", daysRemaining: 2 };
-    return generateReminderEmailHtml(p);
+    return { html: generateReminderEmailHtml(p), subject: generateReminderEmailSubject(p) };
   }
   const dripMatch = type.match(/^drip(1|3|7|14)$/);
   if (dripMatch) {
     const dripDay = parseInt(dripMatch[1], 10) as 1 | 3 | 7 | 14;
-    return generateDripEmailHtml({ recipientEmail, displayName, locale, dripDay, userId });
+    const p = { recipientEmail, displayName, locale, dripDay, userId };
+    return { html: generateDripEmailHtml(p), subject: generateDripEmailSubject(p) };
   }
   return null;
 }
+
+const SENDABLE = ["weekly", "monthly", "winback", "drip1", "drip3", "drip7", "drip14"];
 
 export async function GET(request: NextRequest) {
   if (!(await isAuthorized(request))) {
@@ -140,10 +144,24 @@ export async function GET(request: NextRequest) {
   const secret = url.searchParams.get("secret");
   const authQ = key ? `&key=${encodeURIComponent(key)}` : secret ? `&secret=${encodeURIComponent(secret)}` : "";
 
+  // Actually SEND a test set/one email: ?send=<to-email> (with ?type=all for the whole set).
+  const send = url.searchParams.get("send");
+  if (send) {
+    const targets = !type || type === "all" || type === "index" ? SENDABLE : [type];
+    const results: Array<{ type: string; ok: boolean; error?: string }> = [];
+    for (const t of targets) {
+      const r = render(t, locale, send);
+      if (!r) { results.push({ type: t, ok: false, error: "unknown type" }); continue; }
+      const res = await sendEmail({ to: send, subject: r.subject, html: r.html, tag: `preview-${t}` });
+      results.push({ type: t, ok: !!res.success, error: res.error });
+    }
+    return NextResponse.json({ sentTo: send, locale, results });
+  }
+
   if (!type || type === "index") {
     return new NextResponse(indexHtml(authQ), { headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
-  const html = render(type, locale);
-  if (!html) return NextResponse.json({ error: "Unknown type", types: TYPES.map((t) => t[0]) }, { status: 400 });
-  return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  const r = render(type, locale);
+  if (!r) return NextResponse.json({ error: "Unknown type", types: TYPES.map((t) => t[0]) }, { status: 400 });
+  return new NextResponse(r.html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
