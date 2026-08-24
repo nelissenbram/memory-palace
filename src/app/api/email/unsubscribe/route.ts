@@ -62,11 +62,16 @@ async function handleUnsubscribe(request: Request) {
     // accepting a raw uid would allow an unauthenticated caller to unsubscribe
     // any victim by UUID (IDOR mass-unsubscribe). All senders emit signed tokens.
     const verified = verifyUnsubscribeToken(uid);
-    if (verified) {
+    // Only accept a valid UUID (real profile id). A signed-but-non-UUID token
+    // (e.g. sample/preview emails) must NOT hit the DB with an invalid uuid —
+    // that throws a Postgres error and shows the scary "something went wrong"
+    // page. Treat it like any unknown recipient: show the generic success page.
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (verified && UUID.test(verified)) {
       userId = verified;
     }
-    // else: invalid/unsigned token — leave userId undefined and fall through to
-    // the generic success page below without mutating anything.
+    // else: invalid/unsigned/non-uuid token — leave userId undefined and fall
+    // through to the generic success page below without mutating anything.
   } else if (email) {
     // Legacy email-based lookup
     const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 });
