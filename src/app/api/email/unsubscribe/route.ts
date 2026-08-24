@@ -34,6 +34,9 @@ async function handleUnsubscribe(request: Request) {
   const unsubscribe = searchParams.get("unsubscribe");
   const email = searchParams.get("email") || "";
   const uid = searchParams.get("uid") || "";
+  // scope=monthly → flip only monthly_highlights (keep weekly). Default/no-scope
+  // → email_digest=false (kill-all, backward compatible).
+  const scope = searchParams.get("scope") === "monthly" ? "monthly" : "all";
 
   if (unsubscribe !== "true" || (!email && !uid)) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -73,27 +76,28 @@ async function handleUnsubscribe(request: Request) {
 
   if (!userId) {
     // Don't reveal whether the email/uid exists — just show success
-    return new NextResponse(renderPage("success", ""), {
+    return new NextResponse(renderPage("success", "", scope), {
       status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   }
 
-  // Update the profile to disable email digest
+  // Flip the scoped preference: monthly → only monthly_highlights; else kill-all.
+  const patch = scope === "monthly" ? { monthly_highlights: false } : { email_digest: false };
   const { error } = await supabase
     .from("profiles")
-    .update({ email_digest: false })
+    .update(patch)
     .eq("id", userId);
 
   if (error) {
     console.error("[Unsubscribe] Failed to update profile:", error);
-    return new NextResponse(renderPage("error", "Something went wrong. Please try again or disable digest emails in your settings."), {
+    return new NextResponse(renderPage("error", "Something went wrong. Please try again or update your email preferences in settings."), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   }
 
-  return new NextResponse(renderPage("success", ""), {
+  return new NextResponse(renderPage("success", "", scope), {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
@@ -109,9 +113,12 @@ export async function POST(request: Request) {
   return handleUnsubscribe(request);
 }
 
-function renderPage(type: "success" | "error", errorMessage: string): string {
+function renderPage(type: "success" | "error", errorMessage: string, scope: "monthly" | "all" = "all"): string {
   const palaceUrl = `${SITE_URL}/palace`;
   const settingsUrl = `${SITE_URL}/settings/notifications`;
+  const confirmLine = scope === "monthly"
+    ? "You&rsquo;ll no longer receive Memory Palace monthly highlights."
+    : "You&rsquo;ll no longer receive Memory Palace update emails.";
 
   if (type === "error") {
     return `<!DOCTYPE html>
@@ -152,7 +159,7 @@ function renderPage(type: "success" | "error", errorMessage: string): string {
       You&rsquo;ve Been Unsubscribed
     </h1>
     <p style="font-family:'Georgia',serif;font-size:15px;color:#8B7355;line-height:1.6;margin:0 0 8px;">
-      You won&rsquo;t receive weekly digest emails anymore.
+      ${confirmLine}
     </p>
     <p style="font-family:'Georgia',serif;font-size:14px;color:#9A9183;line-height:1.6;margin:0 0 28px;">
       You can always re-enable this in your

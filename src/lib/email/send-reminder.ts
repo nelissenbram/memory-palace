@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
+import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider, signUnsubscribeToken } from "./shared";
 
 type Locale = "en" | "nl" | "de" | "es" | "fr";
 
@@ -146,6 +146,68 @@ const rt: Record<string, Record<Locale, string>> = {
     es: "Recordatorio: fecha l\u00edmite de \"{goal}\" es {when}",
     fr: "Rappel : \u00e9ch\u00e9ance de \u00ab {goal} \u00bb est {when}",
   },
+
+  // \u2500\u2500 Win-back (single calm knock \u2014 SPEC \u00a7D). Supersedes the old
+  //    "we miss you" re_engagement copy above for the 30-day win-back path. \u2500\u2500
+  wbSubject: {
+    en: "Your palace is still here",
+    nl: "Je paleis staat er nog",
+    de: "Dein Palast steht noch",
+    es: "Tu palacio sigue aqu\u00ed",
+    fr: "Votre palais est toujours l\u00e0",
+  },
+  wbPreheader: {
+    en: "Everything you kept is exactly where you left it.",
+    nl: "Alles wat je bewaarde staat precies waar je het achterliet.",
+    de: "Alles, was du bewahrt hast, ist genau dort, wo du es zur\u00fcckgelassen hast.",
+    es: "Todo lo que guardaste est\u00e1 exactamente donde lo dejaste.",
+    fr: "Tout ce que vous avez gard\u00e9 est exactement l\u00e0 o\u00f9 vous l\u2019avez laiss\u00e9.",
+  },
+  wbEyebrow: {
+    en: "Still here", nl: "Nog steeds hier", de: "Immer noch da", es: "Sigue aqu\u00ed", fr: "Toujours l\u00e0",
+  },
+  wbTitle: {
+    en: "The door is still open",
+    nl: "De deur staat nog open",
+    de: "Die T\u00fcr ist noch offen",
+    es: "La puerta sigue abierta",
+    fr: "La porte est toujours ouverte",
+  },
+  wbBody: {
+    en: "{name}, it\u2019s been about a month \u2014 that\u2019s alright, the palace doesn\u2019t go anywhere. Everything you built is still standing: {count} across your wings, each one right where you left it. Whenever you\u2019re ready, there\u2019s a door.",
+    nl: "{name}, het is ongeveer een maand geleden \u2014 dat is prima, het paleis gaat nergens heen. Alles wat je bouwde staat er nog: {count} verspreid over je vleugels, elk precies waar je het achterliet. Wanneer je er klaar voor bent, is er een deur.",
+    de: "{name}, es ist etwa ein Monat her \u2014 das ist in Ordnung, der Palast geht nirgendwohin. Alles, was du gebaut hast, steht noch: {count} in deinen Fl\u00fcgeln, jede genau dort, wo du sie zur\u00fcckgelassen hast. Wann immer du bereit bist, es gibt eine T\u00fcr.",
+    es: "{name}, ha pasado alrededor de un mes \u2014 est\u00e1 bien, el palacio no va a ninguna parte. Todo lo que construiste sigue en pie: {count} por tus alas, cada uno justo donde lo dejaste. Cuando est\u00e9s listo, hay una puerta.",
+    fr: "{name}, cela fait environ un mois \u2014 ce n\u2019est rien, le palais ne bouge pas. Tout ce que vous avez b\u00e2ti tient toujours : {count} \u00e0 travers vos ailes, chacun l\u00e0 o\u00f9 vous l\u2019avez laiss\u00e9. Quand vous serez pr\u00eat, il y a une porte.",
+  },
+  wbMemoriesCount: {
+    en: "<strong>{n} memories</strong>",
+    nl: "<strong>{n} herinneringen</strong>",
+    de: "<strong>{n} Erinnerungen</strong>",
+    es: "<strong>{n} recuerdos</strong>",
+    fr: "<strong>{n} souvenirs</strong>",
+  },
+  wbMemoryCountSingular: {
+    en: "<strong>one memory</strong>",
+    nl: "<strong>\u00e9\u00e9n herinnering</strong>",
+    de: "<strong>eine Erinnerung</strong>",
+    es: "<strong>un recuerdo</strong>",
+    fr: "<strong>un souvenir</strong>",
+  },
+  wbCta: {
+    en: "Walk back in",
+    nl: "Loop weer naar binnen",
+    de: "Komm wieder herein",
+    es: "Vuelve a entrar",
+    fr: "Revenez",
+  },
+  wbUnsubNote: {
+    en: "If you\u2019d rather not hear from us, you can unsubscribe below \u2014 no hard feelings.",
+    nl: "Als je liever niets meer van ons hoort, kun je je hieronder uitschrijven \u2014 geen probleem.",
+    de: "Wenn du lieber nichts mehr von uns h\u00f6ren m\u00f6chtest, kannst du dich unten abmelden \u2014 ganz ohne Groll.",
+    es: "Si prefieres no saber m\u00e1s de nosotros, puedes cancelar la suscripci\u00f3n abajo \u2014 sin resentimientos.",
+    fr: "Si vous pr\u00e9f\u00e9rez ne plus recevoir de nos nouvelles, vous pouvez vous d\u00e9sabonner ci-dessous \u2014 sans rancune.",
+  },
 };
 
 function r(key: string, locale: Locale): string {
@@ -175,6 +237,11 @@ interface ReEngagementParams extends BaseReminderParams {
   type: "re_engagement";
   daysSinceLogin: number;
   memoryCount: number;
+  /**
+   * When present, the unsubscribe link is an HMAC-signed token (IDOR-safe per
+   * SPEC §E) instead of the legacy raw-email link. The win-back path passes it.
+   */
+  userId?: string;
 }
 
 export type ReminderEmailParams =
@@ -281,61 +348,58 @@ function getContent(params: ReminderEmailParams): {
     }
 
     case "re_engagement": {
-      const weeks = Math.floor(params.daysSinceLogin / 7);
-      const timeText = weeks === 1 ? r("aWeek", locale) : r("nWeeks", locale).replace("{n}", `${weeks}`);
-      const memoriesText = params.memoryCount === 1
-        ? r("memoryWaiting", locale)
-        : r("memoriesWaiting", locale).replace("{count}", `${params.memoryCount}`);
+      // Restyled to the calm single-knock win-back (SPEC §D + §A tokens).
+      const countPhrase = params.memoryCount === 1
+        ? r("wbMemoryCountSingular", locale)
+        : r("wbMemoriesCount", locale).replace("{n}", `${params.memoryCount}`);
+      const bodyText = r("wbBody", locale)
+        .replace("{name}", displayName)
+        .replace("{count}", countPhrase);
       return {
         locale,
-        subject: r("memoriesWaitingSubject", locale).replace("{name}", params.displayName),
-        preheader: r("beenTime", locale).replace("{time}", timeText).replace("{name}", params.displayName) + " " + memoriesText,
+        subject: r("wbSubject", locale),
+        preheader: r("wbPreheader", locale),
         headerHtml: `
-          <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:600;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
-            ${r("weMissYou", locale)}
+          <p style="margin:0 0 16px;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#716A5E;letter-spacing:0.18em;text-transform:uppercase;">
+            ${r("wbEyebrow", locale)}
           </p>
-          <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond','Playfair Display',Georgia,'Times New Roman',serif;font-size:30px;font-weight:500;color:#2C2C2A;line-height:1.25;">
-            ${r("palaceAwaits", locale)}
+          <h1 class="header-title" style="margin:0;font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:30px;font-weight:400;color:#2E2A26;line-height:1.25;">
+            ${r("wbTitle", locale)}
           </h1>`,
         bodyHtml: `
-          <p class="text-primary" style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
-            ${r("beenTime", locale).replace("{time}", timeText).replace("{name}", displayName)}
-            ${memoriesText}
-          </p>
-
-          <p class="text-secondary" style="margin:0 0 24px;font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;color:#8B7355;line-height:1.7;font-style:italic;">
-            ${r("bestTime", locale)}
+          <p class="text-primary" style="margin:0 0 24px;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;color:#403B36;line-height:1.8;">
+            ${bodyText}
           </p>
 
           ${ornamentalDivider()}
 
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;">
-          <tr><td class="section-bg" style="padding:24px;background-color:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;">
-            <p style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:10px;color:#B8A99A;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;">
-              ${r("quickIdeas", locale)}
-            </p>
-            <p class="text-primary" style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2C2C2A;line-height:1.6;">
-              <span style="color:#D4AF37;margin-right:8px;">&mdash;</span> ${r("ideaPhoto", locale)}
-            </p>
-            <p class="text-primary" style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2C2C2A;line-height:1.6;">
-              <span style="color:#D4AF37;margin-right:8px;">&mdash;</span> ${r("ideaJournal", locale)}
-            </p>
-            <p class="text-primary" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2C2C2A;line-height:1.6;">
-              <span style="color:#D4AF37;margin-right:8px;">&mdash;</span> ${r("ideaCapsule", locale)}
-            </p>
-          </td></tr>
-          </table>`,
-        ctaText: r("returnCta", locale),
+          <p class="text-muted" style="margin:20px 0 0;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;color:#716A5E;line-height:1.7;font-style:italic;text-align:center;">
+            ${r("wbUnsubNote", locale)}
+          </p>`,
+        ctaText: r("wbCta", locale),
         ctaUrl: `${siteUrl}/palace`,
       };
     }
   }
 }
 
+/**
+ * Build the unsubscribe URL. When the caller supplies a userId (win-back path),
+ * use an HMAC-signed token (IDOR-safe, SPEC §E). Otherwise fall back to the
+ * legacy raw-email link that the unsubscribe route still honors.
+ */
+function reminderUnsubUrl(params: ReminderEmailParams): string {
+  const base = `${getSiteUrl()}/api/email/unsubscribe?unsubscribe=true`;
+  if (params.type === "re_engagement" && params.userId) {
+    return `${base}&uid=${signUnsubscribeToken(params.userId)}`;
+  }
+  return `${base}&email=${encodeURIComponent(params.recipientEmail)}`;
+}
+
 export function generateReminderEmailHtml(params: ReminderEmailParams): string {
   const content = getContent(params);
   const { preheader, headerHtml, bodyHtml, ctaText, ctaUrl, locale } = content;
-  const unsubscribeUrl = `${getSiteUrl()}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}`;
+  const unsubscribeUrl = reminderUnsubUrl(params);
 
   return emailLayout({
     preheader,
@@ -345,10 +409,10 @@ export function generateReminderEmailHtml(params: ReminderEmailParams): string {
     ctaUrl,
     locale,
     footerExtra: `
-      <p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#D4C5B2;">
+      <p style="margin:0 0 6px;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:#716A5E;">
         ${r("footerNotice", locale)}
       </p>
-      <a href="${unsubscribeUrl}" style="font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#9A9183;text-decoration:underline;">
+      <a href="${unsubscribeUrl}" style="font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:#716A5E;text-decoration:underline;">
         ${r("unsubscribe", locale)}
       </a>`,
   });
@@ -360,7 +424,7 @@ export function generateReminderEmailSubject(params: ReminderEmailParams): strin
 
 export async function sendReminderEmail(params: ReminderEmailParams): Promise<{ success: boolean; error?: string }> {
   const { subject } = getContent(params);
-  const unsubscribeUrl = `${getSiteUrl()}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}`;
+  const unsubscribeUrl = reminderUnsubUrl(params);
 
   return sendEmail({
     to: params.recipientEmail,

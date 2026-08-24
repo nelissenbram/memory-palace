@@ -79,14 +79,14 @@ export function htmlToPlainText(html: string): string {
     .trim();
 }
 
-/* ── Ornamental divider (gold rule with Roman fleuron) ── */
+/* ── Ornamental divider (HAIRLINE rules + EMBER_GLYPH Roman fleuron) ── */
 function ornamentalDivider(): string {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0;">
       <tr><td style="padding:10px 0;text-align:center;">
-        <span style="display:inline-block;width:56px;height:1px;background:#D4AF37;vertical-align:middle;"></span>
-        <span style="display:inline-block;margin:0 14px;font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;color:#B8922E;vertical-align:middle;line-height:1;">&#10086;</span>
-        <span style="display:inline-block;width:56px;height:1px;background:#D4AF37;vertical-align:middle;"></span>
+        <span style="display:inline-block;width:56px;height:1px;background:#E3D6BC;vertical-align:middle;"></span>
+        <span style="display:inline-block;margin:0 14px;font-family:'Fraunces',Georgia,serif;font-size:16px;color:#9A4F2A;vertical-align:middle;line-height:1;">&#10086;</span>
+        <span style="display:inline-block;width:56px;height:1px;background:#E3D6BC;vertical-align:middle;"></span>
       </td></tr>
     </table>`;
 }
@@ -117,18 +117,18 @@ export function emailLayout(opts: {
 
   const ctaBlock = ctaText && ctaUrl
     ? `
-    <!-- CTA (bulletproof gold button) -->
+    <!-- CTA (bulletproof ember button) -->
     <tr><td class="cta-cell" style="padding:36px 48px 12px;text-align:center;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
-        <tr><td align="center" bgcolor="#D4AF37" style="border-radius:6px;background-color:#D4AF37;">
+        <tr><td align="center" bgcolor="#B85C38" style="border-radius:6px;background-color:#B85C38;">
           <!--[if mso]>
-          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${ctaUrl}" style="height:50px;v-text-anchor:middle;width:280px;" arcsize="12%" fillcolor="#D4AF37" strokecolor="#B8922E" strokeweight="1px">
+          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${ctaUrl}" style="height:50px;v-text-anchor:middle;width:280px;" arcsize="12%" fillcolor="#B85C38" strokecolor="#6B3318" strokeweight="1px">
             <w:anchorlock/>
-            <center style="color:#ffffff;font-family:Georgia,serif;font-size:16px;font-weight:600;letter-spacing:0.6px;">${ctaText}</center>
+            <center style="color:#FCFAF5;font-family:Georgia,serif;font-size:16px;font-weight:600;letter-spacing:0.6px;">${ctaText}</center>
           </v:roundrect>
           <![endif]-->
           <!--[if !mso]><!-->
-          <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;background-color:#D4AF37;color:#FFFFFF;font-family:'Cormorant Garamond',Georgia,'Times New Roman',serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:6px;letter-spacing:0.03em;mso-hide:all;border:1px solid #B8922E;">
+          <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;background-color:#B85C38;background-image:linear-gradient(135deg,#B85C38,#6B3318);color:#FCFAF5;font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:6px;letter-spacing:0.03em;mso-hide:all;border:1px solid #6B3318;">
             ${ctaText}
           </a>
           <!--<![endif]-->
@@ -146,11 +146,12 @@ export function emailLayout(opts: {
   <meta name="color-scheme" content="light dark">
   <meta name="supported-color-schemes" content="light dark">
   <title>Memory Palace</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
   <!--[if mso]>
   <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
   <style>
     table { border-collapse: collapse; }
-    .email-card { border: 1px solid #E8E2DA; }
+    .email-card { border: 1px solid #E7D9C4; }
   </style>
   <![endif]-->
   <style>
@@ -178,42 +179,45 @@ export function emailLayout(opts: {
       .email-header-bg { background: linear-gradient(170deg, #2C2C2A 0%, #1a1917 100%) !important; }
       .email-header-border { border-bottom-color: #3a3835 !important; }
       .text-primary { color: #F2EDE7 !important; }
-      .text-secondary { color: #D4C5B2 !important; }
-      .text-muted { color: #9A9183 !important; }
+      .text-secondary { color: #E7D9C4 !important; }
+      .text-muted { color: #B8A99A !important; }
       .section-bg { background-color: #2e2d2a !important; border-color: #3a3835 !important; }
       .divider { border-color: #3a3835 !important; }
       .header-title { color: #F2EDE7 !important; }
-      .header-subtitle { color: #D4C5B2 !important; }
+      .header-subtitle { color: #B8A99A !important; }
       .footer-divider { border-color: #3a3835 !important; }
+      /* accent overrides — gold survives on umber (legal dark-band exception) */
+      .seal-glyph { color: #D4AF37 !important; }
+      .otd-frame { border-color: #D4AF37 !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:0;background-color:#FAFAF7;font-family:Georgia,'Times New Roman',serif;-webkit-font-smoothing:antialiased;">
+<body style="margin:0;padding:0;background-color:#FCFAF5;font-family:'Source Sans 3',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
   <!-- Preheader (hidden inbox preview text) -->
   <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
     ${escapeHtml(preheader)}${"&zwnj; ".repeat(10)}
   </div>
 
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-bg" style="background-color:#FAFAF7;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-bg" style="background-color:#FCFAF5;">
   <tr><td style="padding:44px 16px 40px;" align="center">
 
     <!-- Brand wordmark -->
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="email-container" style="max-width:600px;width:100%;">
     <tr><td style="padding:0 0 24px;text-align:center;">
-      <p class="header-title" style="margin:0;font-family:'Cormorant Garamond','Playfair Display',Georgia,'Times New Roman',serif;font-size:28px;font-weight:500;color:#5C4733;line-height:1.2;letter-spacing:0.01em;">
+      <p class="header-title" style="margin:0;font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:28px;font-weight:600;color:#2E2A26;line-height:1.2;letter-spacing:0.01em;">
         Memory Palace
       </p>
-      <p style="margin:6px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#B8922E;line-height:1;">
+      <p class="seal-glyph" style="margin:6px 0 0;font-family:'Fraunces',Georgia,serif;font-size:18px;color:#D4AF37;line-height:1;">
         &#10086;
       </p>
     </td></tr>
     </table>
 
-    <!-- Card with gold top border -->
-    <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="email-container email-card" style="max-width:600px;width:100%;background-color:#FFFFFF;border-top:4px solid #D4AF37;border-left:1px solid #E8E2DA;border-right:1px solid #E8E2DA;border-bottom:1px solid #E8E2DA;border-radius:2px;overflow:hidden;box-shadow:0 2px 6px rgba(92,71,51,0.06);">
+    <!-- Card with ember top border (gradient surface; mso solid via .email-card) -->
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="email-container email-card" style="max-width:600px;width:100%;background-color:#FBF2EC;background-image:linear-gradient(160deg,#FBF2EC,#FCFAF5);border-top:3px solid #B85C38;border-left:1px solid #E7D9C4;border-right:1px solid #E7D9C4;border-bottom:1px solid #E7D9C4;border-radius:2px;overflow:hidden;box-shadow:0 2px 6px rgba(64,59,54,0.07);">
 
       <!-- Header -->
-      <tr><td class="email-header email-header-bg email-header-border" style="padding:52px 48px 40px;text-align:center;border-bottom:1px solid #E8E2DA;">
+      <tr><td class="email-header email-header-bg email-header-border" style="padding:52px 48px 40px;text-align:center;border-bottom:1px solid #E7D9C4;">
         ${headerHtml}
       </td></tr>
 
@@ -232,30 +236,30 @@ export function emailLayout(opts: {
         <!-- Thin top line -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="padding:0 0 24px;">
-            <div class="footer-divider" style="border-top:1px solid #EEEAE3;"></div>
+            <div class="footer-divider" style="border-top:1px solid #E3D6BC;"></div>
           </td></tr>
         </table>
 
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
           <tr><td style="text-align:center;">
-            <!-- Gold fleuron -->
-            <p style="margin:0 0 10px;font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;color:#D4AF37;line-height:1;">
+            <!-- Ember fleuron (footer fleuron is not a seal) -->
+            <p style="margin:0 0 10px;font-family:'Fraunces',Georgia,serif;font-size:16px;color:#9A4F2A;line-height:1;">
               &#10086;
             </p>
 
-            <p style="margin:0 0 6px;font-family:'Cormorant Garamond','Playfair Display',Georgia,'Times New Roman',serif;font-size:16px;font-weight:500;font-style:italic;color:#5C4733;line-height:1.5;">
-              Memory Palace &middot; <a href="${SITE_URL}" style="color:#5C4733;text-decoration:none;">thememorypalace.ai</a>
+            <p style="margin:0 0 6px;font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:16px;font-weight:500;font-style:italic;color:#2E2A26;line-height:1.5;">
+              Memory Palace &middot; <a href="${SITE_URL}" style="color:#2E2A26;text-decoration:none;">thememorypalace.ai</a>
             </p>
-            <p style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#8B7355;line-height:1.6;font-style:italic;">
+            <p style="margin:0 0 14px;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:#716A5E;line-height:1.6;font-style:italic;">
               ${tagline}
             </p>
             ${footerExtra || ""}
-            <p style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#B8A99A;line-height:1.6;">
-              <a href="${SITE_URL}/privacy" style="color:#8B7355;text-decoration:none;">Privacy</a>
+            <p style="margin:14px 0 0;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:#716A5E;line-height:1.6;">
+              <a href="${SITE_URL}/privacy" style="color:#716A5E;text-decoration:none;">Privacy</a>
               &nbsp;&middot;&nbsp;
-              <a href="${SITE_URL}/terms" style="color:#8B7355;text-decoration:none;">Terms</a>
+              <a href="${SITE_URL}/terms" style="color:#716A5E;text-decoration:none;">Terms</a>
             </p>
-            <p style="margin:8px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:10px;color:#B8A99A;line-height:1.5;">
+            <p style="margin:8px 0 0;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;color:#716A5E;line-height:1.5;">
               &copy; ${new Date().getFullYear()} Memory Palace &middot; Antwerp, Belgium
             </p>
           </td></tr>

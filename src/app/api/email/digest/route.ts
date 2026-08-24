@@ -11,6 +11,8 @@ import {
 } from "@/lib/email/send-digest";
 import { TRACKS } from "@/lib/constants/tracks";
 import enMessages from "@/messages/en.json";
+import { lifecycleEmailsEnabled } from "@/lib/email/lifecycle-flag";
+import { fetchRecentlyEmailed, logLifecycleSend } from "@/lib/email/send-ledger";
 
 /**
  * POST /api/email/digest
@@ -129,6 +131,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Master kill-switch: send nothing until the owner sets
+  // LIFECYCLE_EMAILS_ENABLED=true and redeploys.
+  if (!lifecycleEmailsEnabled()) {
+    return NextResponse.json(
+      { paused: true, reason: "LIFECYCLE_EMAILS_ENABLED not set" },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
   }
@@ -185,24 +196,39 @@ export async function POST(request: Request) {
     ])
   );
 
-  // Filter to eligible user IDs (digest not explicitly disabled, not active today, account > 7 days old)
+  // ── Active-in-previous-7-days set (memory-creation signal) ──
+  // The true creation signal; last_seen_at (below) catches palace viewers.
+  const activeByMemory = new Set<string>();
+  {
+    const { data: recentCreators } = await supabase
+      .from("memories")
+      .select("user_id")
+      .gte("created_at", weekAgoISO);
+    for (const mrow of (recentCreators || []) as Array<{ user_id: string }>) {
+      activeByMemory.add(mrow.user_id);
+    }
+  }
+
+  // Eligible iff: digest not opted out, account > 7 days old, AND active in the
+  // previous 7 days (SPEC §E — replaces the old "skip if active today" spray).
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const eligibleUserIds = allAuthUsers
     .filter((u) => {
       const profile = profileMap.get(u.id);
+      if (!u.email) return false;
       if (profile?.email_digest === false) return false;
-      // Skip users whose account is less than 7 days old
+      // Skip users whose account is less than 7 days old (onboarding-drip cohort)
       if (profile?.created_at) {
         const createdAt = new Date(profile.created_at);
         if (createdAt > sevenDaysAgo) return false;
       }
-      if (profile?.last_seen_at) {
-        const lastSeen = new Date(profile.last_seen_at);
-        if (lastSeen.toISOString().slice(0, 10) === todayISO) return false;
-      }
-      return !!u.email;
+      // Active in the previous 7 days: seen in the palace OR created a memory.
+      const seenActive = profile?.last_seen_at && new Date(profile.last_seen_at) >= weekAgo;
+      const madeActive = activeByMemory.has(u.id);
+      if (!seenActive && !madeActive) return false;
+      return true;
     })
     .map((u) => u.id);
 
@@ -423,6 +449,9 @@ export async function POST(request: Request) {
     roomNameMap.set(room.id, room.name);
   }
 
+  // ── Ledger: bar users who got any lifecycle email in the last 6 days (§E) ──
+  const { barred, readFailures: ledgerReadFailures } = await fetchRecentlyEmailed(supabase, eligibleUserIds, now);
+
   // ── 5. Send digest to each eligible user ──
   const authUserMap = new Map(allAuthUsers.map((u) => [u.id, u]));
   const skippedFromAuth = allAuthUsers.length - eligibleUserIds.length;
@@ -440,9 +469,22 @@ export async function POST(request: Request) {
       break;
     }
 
+    // Ledger cap: ≤1 lifecycle email per user per rolling window.
+    if (barred.has(userId)) { skipped++; continue; }
+
     const authUser = authUserMap.get(userId);
     const email = authUser?.email;
     if (!email) continue;
+
+    // Content-gate (§E): a hero (OTD / shared / capsule) must exist, OR the user
+    // added something this week (worth a one-line quiet note). Genuinely-empty
+    // sends are suppressed — no manufactured filler.
+    const hasHero =
+      (otdByUser[userId]?.length ?? 0) > 0 ||
+      (activityByUser[userId]?.length ?? 0) > 0 ||
+      (capsulesByUser[userId]?.length ?? 0) > 0;
+    const addedThisWeek = (memoriesThisWeekByUser[userId] ?? 0) > 0;
+    if (!hasHero && !addedThisWeek) { skipped++; continue; }
 
     const profile = profileMap.get(userId);
     const displayName = profile?.display_name || email.split("@")[0];
@@ -515,6 +557,7 @@ export async function POST(request: Request) {
 
     if (result.success) {
       sent++;
+      await logLifecycleSend(supabase, userId, "weekly");
     } else {
       const redactedEmail = `***@${email.split("@")[1]}`;
       console.error(`[Digest] Failed for ${redactedEmail}:`, result.error);
@@ -528,6 +571,7 @@ export async function POST(request: Request) {
     errors,
     totalUsers: allAuthUsers.length,
     eligibleUsers: eligibleUserIds.length,
+    ledgerReadFailures,
     timedOut,
     usersSkipped,
   }, {
