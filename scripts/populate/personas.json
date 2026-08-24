@@ -1,12 +1,12 @@
 [
   {
-    "username": "little-mateo",
-    "displayName": "Mateo Álvarez",
-    "lifeStage": "early-childhood",
-    "featuredCategory": "Little Ones",
+    "username": "sol-alvarez",
+    "displayName": "Sol Álvarez",
+    "lifeStage": "parent",
+    "featuredCategory": "First years",
     "accentColor": "#4FA3D1",
-    "bio": "Our sunny little Mateo, three years old, full of giggles, dulce de leche kisses and tiny running shoes. Argentina's smallest football fan.",
-    "avatarPrompt": "photorealistic portrait of a 3-year-old Argentinian toddler boy with dark curly hair and round cheeks, warm afternoon light, plain soft cream background, wholesome, gentle smile",
+    "bio": "Somewhere between the nappies and the dulce de leche, I'm keeping every small moment of my son Mateo's first years.",
+    "avatarPrompt": "photorealistic portrait of a 34-year-old Argentine woman with dark wavy hair and a warm smile, soft daylight, plain cream background",
     "wings": [
       {
         "slug": "nest",
@@ -332,16 +332,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 70
   },
   {
-    "username": "amara-sunshine",
-    "displayName": "Amara Okafor",
-    "lifeStage": "early-childhood",
-    "featuredCategory": "Little Ones",
+    "username": "chidi-okafor",
+    "displayName": "Chidi Okafor",
+    "lifeStage": "parent",
+    "featuredCategory": "Little dancer",
     "accentColor": "#E8A13C",
-    "bio": "Amara, five, our little sunshine who dances before she walks anywhere. Nigeria's brightest smile in the loudest dress.",
-    "avatarPrompt": "photorealistic portrait of a 5-year-old Nigerian girl with beaded braids and a bright smile, warm golden light, plain soft background, wholesome, colorful hair beads",
+    "bio": "My daughter Amara came out dancing and never stopped. A father, saving the music before it fades.",
+    "avatarPrompt": "photorealistic portrait of a 38-year-old Nigerian man with a broad warm smile, bright daylight, plain background",
     "wings": [
       {
         "slug": "nest",
@@ -655,16 +656,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 8
   },
   {
-    "username": "yuki-and-me",
-    "displayName": "Yuki Tanaka",
-    "lifeStage": "early-childhood",
-    "featuredCategory": "Little Ones",
+    "username": "kenji-tanaka",
+    "displayName": "Kenji Tanaka",
+    "lifeStage": "parent",
+    "featuredCategory": "A boy and his trains",
     "accentColor": "#3E8E7E",
-    "bio": "Yuki, four, who greets every train by name and roars like his dinosaurs. Our curious little conductor from Japan.",
-    "avatarPrompt": "photorealistic portrait of a 4-year-old Japanese boy with straight black hair and bright curious eyes, soft warm light, plain pale background, wholesome, gentle smile",
+    "bio": "Trains, dinosaurs, and a four-year-old expert on both — keeping my son Yuki's world before he outgrows it.",
+    "avatarPrompt": "photorealistic portrait of a 36-year-old Japanese man in a crisp shirt, calm friendly expression, soft daylight, plain background",
     "wings": [
       {
         "slug": "nest",
@@ -984,16 +986,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 86
   },
   {
-    "username": "baby-sofia",
-    "displayName": "Sofia Rossi",
-    "lifeStage": "early-childhood",
-    "featuredCategory": "Little Ones",
+    "username": "giulia-rossi",
+    "displayName": "Giulia Rossi",
+    "lifeStage": "parent",
+    "featuredCategory": "Baby days",
     "accentColor": "#D98BA0",
-    "bio": "Baby Sofia, nearly two, our tiny Florentine with a giggle that echoes down the whole street. Gelato is her love language.",
-    "avatarPrompt": "photorealistic portrait of a 2-year-old Italian baby girl with soft curls and rosy cheeks, warm Tuscan light, plain soft background, wholesome, gentle smile",
+    "bio": "Our tiny Florentine arrived and rearranged everything. Saving baby Sofia's firsts, flour-dusted and all.",
+    "avatarPrompt": "photorealistic portrait of a 33-year-old Italian woman with soft curls and a gentle smile, warm window light, plain background",
     "wings": [
       {
         "slug": "nest",
@@ -1301,16 +1304,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 18
   },
   {
-    "username": "liam-the-brave",
-    "displayName": "Liam O'Connor",
-    "lifeStage": "early-childhood",
-    "featuredCategory": "Little Ones",
+    "username": "siobhan-oconnor",
+    "displayName": "Siobhán O'Connor",
+    "lifeStage": "parent",
+    "featuredCategory": "Brave little man",
     "accentColor": "#2E9E5B",
-    "bio": "Liam, six, freckled, fearless, forever on his bike. Our little Irish adventurer who never met a puddle he didn't like.",
-    "avatarPrompt": "photorealistic portrait of a 6-year-old Irish boy with red hair and freckles and a bright grin, soft daylight, plain green-tinted background, wholesome",
+    "bio": "Freckles, scraped knees, and a hundred questions — keeping my son Liam's small brave adventures.",
+    "avatarPrompt": "photorealistic portrait of a 35-year-old Irish woman with reddish hair and freckles, soft overcast light, plain background",
     "wings": [
       {
         "slug": "nest",
@@ -1624,16 +1628,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 25
   },
   {
-    "username": "aisha-blooms",
-    "displayName": "Aisha Rahman",
-    "lifeStage": "early-childhood",
-    "featuredCategory": "Little Ones",
+    "username": "nadia-rahman",
+    "displayName": "Nadia Rahman",
+    "lifeStage": "parent",
+    "featuredCategory": "Bedtime tales",
     "accentColor": "#C64B8C",
-    "bio": "Aisha, seven, our little storyteller from Dhaka who turns every day into a tale. Full of questions, colour and kindness.",
-    "avatarPrompt": "photorealistic portrait of a 7-year-old Bangladeshi girl with dark braided hair and a warm thoughtful smile, soft golden light, plain soft background, wholesome",
+    "bio": "My Aisha tells stories before she can spell them. A mother, keeping them safe on the page.",
+    "avatarPrompt": "photorealistic portrait of a 37-year-old Bangladeshi woman with an elegant scarf and warm eyes, soft daylight, plain background",
     "wings": [
       {
         "slug": "nest",
@@ -1947,16 +1952,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 44
   },
   {
-    "username": "noah-explores",
-    "displayName": "Noah Andersen",
-    "lifeStage": "early-childhood",
-    "featuredCategory": "Little Ones",
+    "username": "astrid-andersen",
+    "displayName": "Astrid Andersen",
+    "lifeStage": "parent",
+    "featuredCategory": "Out in the wild",
     "accentColor": "#4A7FB5",
-    "bio": "Noah, five, happiest in his rain boots under an open sky. Our little Norwegian explorer of forests, fjords and every puddle in between.",
-    "avatarPrompt": "photorealistic portrait of a 5-year-old Norwegian boy with blond hair and rosy cheeks in a knit sweater, soft cool daylight, plain pale background, wholesome",
+    "bio": "Happiest boy in the biggest puddle. Keeping my son Noah's muddy, wind-bitten Norwegian childhood.",
+    "avatarPrompt": "photorealistic portrait of a 34-year-old Norwegian woman with blonde hair in a knit sweater, crisp northern light, plain background",
     "wings": [
       {
         "slug": "nest",
@@ -2270,16 +2276,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 4
   },
   {
-    "username": "zara-plays-11",
-    "displayName": "Zara Malik",
-    "lifeStage": "teen",
-    "featuredCategory": "Coming of Age",
+    "username": "yasmin-malik",
+    "displayName": "Yasmin Malik",
+    "lifeStage": "parent",
+    "featuredCategory": "Pitch & drums",
     "accentColor": "#E4572E",
-    "bio": "16, South London. Left-back with a mean drum fill. Football boots by day, sticks by night. COYS forever.",
-    "avatarPrompt": "photorealistic portrait of a 16-year-old British Pakistani girl with a high ponytail, soft daylight, plain grey background, wholesome and confident",
+    "bio": "Left-back by day, bedroom drummer by night. Keeping my daughter Zara's loud, brilliant teenage years.",
+    "avatarPrompt": "photorealistic portrait of a 44-year-old British South Asian woman with a warm confident smile, natural daylight, plain background",
     "wings": [
       {
         "slug": "passions",
@@ -2587,16 +2594,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 73
   },
   {
-    "username": "diego-rolls",
-    "displayName": "Diego Fernández",
-    "lifeStage": "teen",
-    "featuredCategory": "Coming of Age",
+    "username": "carmen-fernandez",
+    "displayName": "Carmen Fernández",
+    "lifeStage": "parent",
+    "featuredCategory": "Board & strings",
     "accentColor": "#F2A900",
-    "bio": "17, Sevilla. Kickflips in the plaza, flamenco chords on the roof. Scraped knees and calloused fingers, siempre.",
-    "avatarPrompt": "photorealistic portrait of a 17-year-old Spanish boy with curly dark hair and a slight smile, warm afternoon light, plain sandstone background, wholesome",
+    "bio": "A skateboard, his abuelo's guitar, and the plaza at sunset — my son Diego's Sevilla, kept.",
+    "avatarPrompt": "photorealistic portrait of a 46-year-old Spanish woman with dark hair and a kind smile, warm golden light, plain background",
     "wings": [
       {
         "slug": "passions",
@@ -2904,16 +2912,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 13
   },
   {
-    "username": "mei-builds",
-    "displayName": "Mei Lin Chen",
-    "lifeStage": "teen",
-    "featuredCategory": "Coming of Age",
+    "username": "wei-chen",
+    "displayName": "Wei Chen",
+    "lifeStage": "parent",
+    "featuredCategory": "Maker in the making",
     "accentColor": "#7C4DFF",
-    "bio": "15, Vancouver. I code by night, draw by day, and there's always a robot half-built on my desk. Debugging life.",
-    "avatarPrompt": "photorealistic portrait of a 15-year-old Chinese Canadian girl with glasses and a shy smile, soft window light, plain white background, wholesome",
+    "bio": "She builds apps and paints koi and swears they're the same thing. Keeping my daughter Mei's making years.",
+    "avatarPrompt": "photorealistic portrait of a 47-year-old Chinese-Canadian man with glasses and a gentle smile, soft indoor light, plain background",
     "wings": [
       {
         "slug": "passions",
@@ -3221,16 +3230,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 22
   },
   {
-    "username": "kwame-runs",
-    "displayName": "Kwame Mensah",
-    "lifeStage": "teen",
-    "featuredCategory": "Coming of Age",
+    "username": "ama-mensah",
+    "displayName": "Ama Mensah",
+    "lifeStage": "parent",
+    "featuredCategory": "Run, my son",
     "accentColor": "#00875A",
-    "bio": "18, Accra. Sprinter chasing 10 seconds. First in my family to walk the graduation stage. Every step counts.",
-    "avatarPrompt": "photorealistic portrait of an 18-year-old Ghanaian young man with a bright determined smile, warm golden light, plain background, wholesome",
+    "bio": "First in our family to finish school, and the fastest boy on the track. So proud I had to keep it all.",
+    "avatarPrompt": "photorealistic portrait of a 45-year-old Ghanaian woman with a bold headwrap and proud smile, bright daylight, plain background",
     "wings": [
       {
         "slug": "passions",
@@ -3538,16 +3548,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 59
   },
   {
-    "username": "freya-strings",
-    "displayName": "Freya Lindqvist",
-    "lifeStage": "teen",
-    "featuredCategory": "Coming of Age",
+    "username": "karin-lindqvist",
+    "displayName": "Karin Lindqvist",
+    "lifeStage": "parent",
+    "featuredCategory": "Strings & stables",
     "accentColor": "#4C9AFF",
-    "bio": "14, Sweden. Cello in one hand, horse reins in the other. Happiest in the barn or the practice room. Lagom is a lie, I love both fully.",
-    "avatarPrompt": "photorealistic portrait of a 14-year-old Swedish girl with blonde braids and freckles, soft northern daylight, plain pale background, wholesome",
+    "bio": "Cello in one hand, reins in the other. Keeping my daughter Freya's music and her horses.",
+    "avatarPrompt": "photorealistic portrait of a 48-year-old Swedish woman with light hair and a quiet warm smile, soft Nordic daylight, plain background",
     "wings": [
       {
         "slug": "passions",
@@ -3855,16 +3866,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 84
   },
   {
-    "username": "arjun-at-the-crease",
-    "displayName": "Arjun Patel",
-    "lifeStage": "teen",
-    "featuredCategory": "Coming of Age",
+    "username": "meera-patel",
+    "displayName": "Meera Patel",
+    "lifeStage": "parent",
+    "featuredCategory": "At the crease",
     "accentColor": "#FF7452",
-    "bio": "17, Mumbai. Opening batsman by dawn, board-exam warrior by night. Cover drives and calculus, both need timing.",
-    "avatarPrompt": "photorealistic portrait of a 17-year-old Indian boy with neat dark hair and a hopeful smile, warm daylight, plain background, wholesome",
+    "bio": "Cricket in the gully, chemistry past midnight — a mother keeping my son Arjun's Mumbai boyhood.",
+    "avatarPrompt": "photorealistic portrait of a 46-year-old Indian woman with a warm assured smile, bright daylight, plain background",
     "wings": [
       {
         "slug": "passions",
@@ -4172,16 +4184,17 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 63
   },
   {
-    "username": "isa-moves",
-    "displayName": "Isabella Santos",
-    "lifeStage": "teen",
-    "featuredCategory": "Coming of Age",
+    "username": "luana-santos",
+    "displayName": "Luana Santos",
+    "lifeStage": "parent",
+    "featuredCategory": "Always dancing",
     "accentColor": "#FF5DA2",
-    "bio": "16, São Paulo. Capoeira ginga in the roda, flour on my apron at the family padaria. Always moving, always rising.",
-    "avatarPrompt": "photorealistic portrait of a 16-year-old Brazilian girl with curly hair and a warm laugh, golden afternoon light, plain background, wholesome",
+    "bio": "Always in motion — capoeira, samba, a Saturday job. Keeping my daughter Isabella's São Paulo rhythm.",
+    "avatarPrompt": "photorealistic portrait of a 44-year-old Brazilian woman with curly hair and a lively smile, warm sunlight, plain background",
     "wings": [
       {
         "slug": "passions",
@@ -4495,15 +4508,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 3
   },
   {
     "username": "chloe-tastes-the-world",
     "displayName": "Chloé Dubois",
     "lifeStage": "young-adult",
-    "featuredCategory": "Wanderers",
+    "featuredCategory": "Kitchen & road",
     "accentColor": "#E8623A",
-    "bio": "Chef from Lyon, currently chasing flavor across Asia. If it's fermented, fried, or on a stick, I've probably eaten it. Kitchen is home.",
+    "bio": "Trained in a Lyon kitchen, then chased flavour across Asia. If it's fermented, fried, or on a stick, I've probably eaten it.",
     "avatarPrompt": "photorealistic portrait of a French woman age 26 with short dark curls and a chef's apron, warm smile; natural light, plain background",
     "wings": [
       {
@@ -4812,15 +4826,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 33
   },
   {
     "username": "tom-two-wheels",
     "displayName": "Tom Bakker",
     "lifeStage": "young-adult",
-    "featuredCategory": "Wanderers",
+    "featuredCategory": "City life",
     "accentColor": "#F2A900",
-    "bio": "24, Amsterdam. Just got my first flat, my bike is my car, and my weekends belong to festivals. Living small and loud.",
+    "bio": "First flat, secondhand bike, speakers too big for the room. Amsterdam does the rest.",
     "avatarPrompt": "photorealistic portrait of a Dutch man age 24 with tousled blond hair and a denim jacket, easy grin; natural light, plain background",
     "wings": [
       {
@@ -5123,15 +5138,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 39
   },
   {
     "username": "priya-goes-far",
     "displayName": "Priya Nair",
     "lifeStage": "young-adult",
-    "featuredCategory": "Wanderers",
+    "featuredCategory": "Peaks & pixels",
     "accentColor": "#2E7D7A",
-    "bio": "Bangalore-based software engineer by day, mountain-chaser and marathoner by weekend. Building things and climbing things. 28 and restless.",
+    "bio": "Code on weekdays, mountains on weekends. The Himalaya keep pulling me back.",
     "avatarPrompt": "photorealistic portrait of an Indian woman age 28 with long dark hair in a ponytail and running gear, confident; natural light, plain background",
     "wings": [
       {
@@ -5440,15 +5456,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 81
   },
   {
     "username": "marcus-in-berlin",
     "displayName": "Marcus Johnson",
     "lifeStage": "young-adult",
-    "featuredCategory": "Wanderers",
+    "featuredCategory": "Sound & the city",
     "accentColor": "#6C4AB6",
-    "bio": "Chicago kid, Berlin transplant. Making beats in a Kreuzberg studio and figuring out life in a language I'm still butchering. 27.",
+    "bio": "Left Chicago with two bags and a hard drive of beats. Berlin made me earn it.",
     "avatarPrompt": "photorealistic portrait of a Black American man age 27 with short locs and headphones around his neck, thoughtful; natural light, plain background",
     "wings": [
       {
@@ -5751,15 +5768,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 55
   },
   {
     "username": "sofia-and-bruno",
     "displayName": "Sofia Kovač",
     "lifeStage": "young-adult",
-    "featuredCategory": "Wanderers",
+    "featuredCategory": "New chapters",
     "accentColor": "#3AA76D",
-    "bio": "23, fresh out of uni in Ljubljana, figuring out adult life one mistake at a time. Adopted a giant goofball dog named Bruno. We hike a lot.",
+    "bio": "Freshly graduated, freshly adopted a very large dog. We're learning Ljubljana one walk at a time.",
     "avatarPrompt": "photorealistic portrait of a Slovenian woman age 23 with wavy chestnut hair and a green raincoat, bright smile; natural light, plain background",
     "wings": [
       {
@@ -6062,15 +6080,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 49
   },
   {
     "username": "rafa-chases-waves",
     "displayName": "Rafael Mendes",
     "lifeStage": "young-adult",
-    "featuredCategory": "Wanderers",
+    "featuredCategory": "Salt & film",
     "accentColor": "#0E8FA6",
-    "bio": "25, Lisbon-born, van-living down the coast. I chase swell and light. My office is wherever I park. Surf, shoot, repeat.",
+    "bio": "Home is a van, work is the sea, and the camera catches whatever's left over.",
     "avatarPrompt": "photorealistic portrait of a Portuguese man age 25 with sun-bleached curly hair and a camera strap, salt-tanned skin; natural light, plain background",
     "wings": [
       {
@@ -6379,15 +6398,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 61
   },
   {
     "username": "nadia-writes",
     "displayName": "Nadia Hassan",
     "lifeStage": "young-adult",
-    "featuredCategory": "Wanderers",
+    "featuredCategory": "Notes & cities",
     "accentColor": "#B4436C",
-    "bio": "29, journalist out of Cairo. I travel solo, chase stories, and cook my way into every culture I land in. Notebook always in the bag.",
+    "bio": "I collect cities, strangers' stories, and recipes I wasn't supposed to learn.",
     "avatarPrompt": "photorealistic portrait of an Egyptian woman age 29 with dark curly hair and a patterned scarf, curious eyes; natural light, plain background",
     "wings": [
       {
@@ -6690,15 +6710,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 90
   },
   {
     "username": "emma-and-the-baby",
     "displayName": "Emma Whitfield",
     "lifeStage": "thirties",
-    "featuredCategory": "Building a Home",
+    "featuredCategory": "Building a home",
     "accentColor": "#E4A6B7",
-    "bio": "Manchester mum, wife and terraced-house dreamer. Married Tom, welcomed baby Rosie, and painting our first front door a very bold green.",
+    "bio": "Wife, brand-new mum, terrible sleeper — painting our first front door a very bold green.",
     "avatarPrompt": "photorealistic portrait age 30s; natural light, plain background; smiling white British woman with auburn hair, freckles, soft knit jumper",
     "wings": [
       {
@@ -7007,15 +7028,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 6
   },
   {
     "username": "hiroshi-builds",
     "displayName": "Hiroshi Sato",
     "lifeStage": "thirties",
-    "featuredCategory": "Building a Home",
+    "featuredCategory": "Steady ground",
     "accentColor": "#3A6EA5",
-    "bio": "Software lead in Tokyo. Just made department head, moved into a house in Setagaya, and I ride my road bike at dawn every weekend.",
+    "bio": "New title at work, new house in the suburbs, same old bicycle.",
     "avatarPrompt": "photorealistic portrait age 30s; natural light, plain background; Japanese man with neat short hair, glasses, calm expression, casual collared shirt",
     "wings": [
       {
@@ -7312,15 +7334,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 77
   },
   {
     "username": "lucia-in-bloom",
     "displayName": "Lucia Romano",
     "lifeStage": "thirties",
-    "featuredCategory": "Building a Home",
+    "featuredCategory": "In bloom",
     "accentColor": "#D98324",
-    "bio": "Neapolitan through and through. New wife, brand-new zia, and forever tending the lemon tree on my rooftop above the bay.",
+    "bio": "Just married, newly an aunt, forever with soil under my nails. Naples on every plate.",
     "avatarPrompt": "photorealistic portrait age 30s; natural light, plain background; Italian woman with dark wavy hair, warm olive skin, gold earrings, easy smile",
     "wings": [
       {
@@ -7623,15 +7646,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 65
   },
   {
     "username": "david-tel-aviv",
     "displayName": "David Cohen",
     "lifeStage": "thirties",
-    "featuredCategory": "Building a Home",
+    "featuredCategory": "Three of us",
     "accentColor": "#0E7C86",
-    "bio": "Tel Aviv product manager, brand-new dad to baby Noa, and a devoted morning swimmer. The sea, the startup, the sleepless nights.",
+    "bio": "New dad, product guy, sea-swimmer — running on sunshine and no sleep.",
     "avatarPrompt": "photorealistic portrait age 30s; natural light, plain background; Israeli man with short dark curly hair, light stubble, tanned skin, relaxed t-shirt",
     "wings": [
       {
@@ -7928,15 +7952,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 58
   },
   {
     "username": "grace-builds-nairobi",
     "displayName": "Grace Wangari",
     "lifeStage": "thirties",
-    "featuredCategory": "Building a Home",
+    "featuredCategory": "Builders",
     "accentColor": "#C1440E",
-    "bio": "Nairobi-born, builder of things. This year I finished our family home in Kiambu and grew my little catering business into a real kitchen.",
+    "bio": "Built a house and a business in the same year. Nairobi doesn't do things by halves.",
     "avatarPrompt": "photorealistic portrait age 30s; natural light, plain background; Kenyan woman with short natural hair, bright headwrap, warm confident smile",
     "wings": [
       {
@@ -8233,15 +8258,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 29
   },
   {
     "username": "lars-renovates",
     "displayName": "Lars Eriksen",
     "lifeStage": "thirties",
-    "featuredCategory": "Building a Home",
+    "featuredCategory": "Made by hand",
     "accentColor": "#6B4F3A",
-    "bio": "Copenhagen carpenter-by-heart. Gutting a 1920s flat by day, up all night with baby Alma, and counting weeks till the sommerhus opens.",
+    "bio": "Weekend carpenter, new father, cabin dreamer. There's always one more wall to sand.",
     "avatarPrompt": "photorealistic portrait age 30s; natural light, plain background; Danish man with light brown beard, tousled blond hair, wool sweater, calm eyes",
     "wings": [
       {
@@ -8513,15 +8539,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 68
   },
   {
     "username": "camila-bogota",
     "displayName": "Camila Reyes",
     "lifeStage": "thirties",
-    "featuredCategory": "Building a Home",
+    "featuredCategory": "Us three",
     "accentColor": "#E0A526",
-    "bio": "Bogotana, newly married to Andrés, mamá to a rescue pup named Frijol, and freshly promoted to lead designer. Building our first nest at 2,600m.",
+    "bio": "Newlywed, newly promoted, and outnumbered by one ridiculous three-legged dog.",
     "avatarPrompt": "photorealistic portrait age 30s; natural light, plain background; Colombian woman with long dark hair, warm brown eyes, gold hoop earrings, bright smile",
     "wings": [
       {
@@ -8818,15 +8845,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 35
   },
   {
     "username": "robert-restores",
     "displayName": "Robert Fischer",
     "lifeStage": "mid-life",
-    "featuredCategory": "In Full Stride",
+    "featuredCategory": "The workshop",
     "accentColor": "#8B3A2F",
-    "bio": "Munich engineer who rebuilds vintage cars in the garage and vintage trails in the Alps. Grease under the nails, snow on the boots.",
+    "bio": "If it has a carburettor and a story, I'll bring it back. Grease on the hands, snow on the boots.",
     "avatarPrompt": "photorealistic portrait of a 52-year-old German man with grey-flecked stubble and glasses, mild smile; natural light, plain background",
     "wings": [
       {
@@ -9117,15 +9145,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 50
   },
   {
     "username": "fatima-weaves",
     "displayName": "Fatima El-Amrani",
     "lifeStage": "mid-life",
-    "featuredCategory": "In Full Stride",
+    "featuredCategory": "Threads",
     "accentColor": "#B5651D",
-    "bio": "Casablanca textile-maker turning family looms into a thriving business. Threads of tradition, dreams for my children, faith for the road.",
+    "bio": "Turned my mother's loom into a workshop that now employs thirty women.",
     "avatarPrompt": "photorealistic portrait of a 47-year-old Moroccan woman with warm eyes and a patterned headscarf, gentle smile; natural light, plain background",
     "wings": [
       {
@@ -9422,15 +9451,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 43
   },
   {
     "username": "james-goes-long",
     "displayName": "James Whitaker",
     "lifeStage": "mid-life",
-    "featuredCategory": "In Full Stride",
+    "featuredCategory": "The long way",
     "accentColor": "#1E6091",
-    "bio": "Melbourne dad chasing finish lines and raising two teenagers. Ultramarathons, surf rescue, and a garage full of muddy shoes.",
+    "bio": "Two teenagers, one dodgy knee, and a habit of signing up for things I can't run yet.",
     "avatarPrompt": "photorealistic portrait of a 49-year-old lean Australian man with weathered tan and short greying hair, easy grin; natural light, plain background",
     "wings": [
       {
@@ -9696,15 +9726,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 15
   },
   {
     "username": "ingrid-late-bloom",
     "displayName": "Ingrid Bauer",
     "lifeStage": "mid-life",
-    "featuredCategory": "In Full Stride",
+    "featuredCategory": "Late bloomers",
     "accentColor": "#7A4E8C",
-    "bio": "Vienna architect who learned piano at fifty and bought a crumbling country house at fifty-five. It's never too late to begin again.",
+    "bio": "An architect who finally learned piano at fifty. It's never too late for the good things.",
     "avatarPrompt": "photorealistic portrait of a 55-year-old elegant Austrian woman with silver bob and reading glasses, thoughtful smile; natural light, plain background",
     "wings": [
       {
@@ -9989,15 +10020,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 10
   },
   {
     "username": "samuel-houston",
     "displayName": "Samuel Adeyemi",
     "lifeStage": "mid-life",
-    "featuredCategory": "In Full Stride",
+    "featuredCategory": "From one truck",
     "accentColor": "#2E8B57",
-    "bio": "Built a logistics firm from one truck between Houston and Lagos. Grounded in church, community, and the red soil of home.",
+    "bio": "One truck became forty. Faith, family, and a to-do list that never ends.",
     "avatarPrompt": "photorealistic portrait of a 44-year-old Nigerian man in a crisp shirt with a warm confident smile and short beard; natural light, plain background",
     "wings": [
       {
@@ -10257,15 +10289,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 40
   },
   {
     "username": "mercedes-cocina",
     "displayName": "Mercedes Ibarra",
     "lifeStage": "mid-life",
-    "featuredCategory": "In Full Stride",
+    "featuredCategory": "La fonda",
     "accentColor": "#C1440E",
-    "bio": "Mexico City restaurant owner cooking my grandmother's recipes for a new generation. Two grown daughters, one big heart, endless mole.",
+    "bio": "My little fonda became the best table in the barrio. Feed people well and they never forget you.",
     "avatarPrompt": "photorealistic portrait of a 50-year-old Mexican woman with dark hair in a bun, gold earrings and a generous smile; natural light, plain background",
     "wings": [
       {
@@ -10519,15 +10552,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 75
   },
   {
     "username": "anders-northbound",
     "displayName": "Anders Holm",
     "lifeStage": "mid-life",
-    "featuredCategory": "In Full Stride",
+    "featuredCategory": "Northbound",
     "accentColor": "#3D5A6C",
-    "bio": "Traded the city for a Norwegian fjord, a woodshop, and a rope. At fifty-eight I finally found the quiet I'd been chasing.",
+    "bio": "Traded the city for a fjord, a workshop, and long silences. The mountains don't mind.",
     "avatarPrompt": "photorealistic portrait of a 58-year-old weathered Norwegian man with white beard and knit sweater, calm eyes; natural light, plain background",
     "wings": [
       {
@@ -10756,15 +10790,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 46
   },
   {
     "username": "eleanor-remembers",
     "displayName": "Eleanor Hughes",
     "lifeStage": "elder",
-    "featuredCategory": "A Life Well Lived",
+    "featuredCategory": "A life in chapters",
     "accentColor": "#6B7F5C",
-    "bio": "Seventy-eight years of Welsh valleys, chalk dust, and grandchildren's laughter. I taught the young; now I gather what remains.",
+    "bio": "A Welsh valley girl who taught for forty years. I keep these so my grandchildren will know.",
     "avatarPrompt": "photorealistic portrait of a 78-year-old Welsh woman with silver hair in a soft bun, kind lined face, wearing a knitted cardigan; warm light, plain background, dignified",
     "wings": [
       {
@@ -11160,15 +11195,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 53
   },
   {
     "username": "giovanni-del-mare",
     "displayName": "Giovanni Bruno",
     "lifeStage": "elder",
-    "featuredCategory": "A Life Well Lived",
+    "featuredCategory": "By the sea",
     "accentColor": "#2E5A6E",
-    "bio": "Figlio di pescatore. I crossed an ocean for work and crossed it back for home. Eighty-two years salted by the Sicilian sea.",
+    "bio": "A fisherman's son who crossed an ocean and came home. The sea gave me everything.",
     "avatarPrompt": "photorealistic portrait of an 82-year-old Sicilian man with weathered sun-browned skin, white stubble, deep laugh lines, wearing a linen shirt; warm Mediterranean light, plain background, dignified",
     "wings": [
       {
@@ -11532,15 +11568,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 17
   },
   {
     "username": "rosa-baila",
     "displayName": "Rosa Delgado",
     "lifeStage": "elder",
-    "featuredCategory": "A Life Well Lived",
+    "featuredCategory": "Still dancing",
     "accentColor": "#9E2B4E",
-    "bio": "Seventy-one years, and my feet still remember every step. Tango taught me how to live, love, and let go. Bailamos.",
+    "bio": "I've danced tango since I was seventeen, and I don't intend to stop. Buenos Aires is in my feet.",
     "avatarPrompt": "photorealistic portrait of a 71-year-old Argentine woman with elegant silver-streaked dark hair, expressive dark eyes, red lipstick, poised; warm light, plain background, dignified",
     "wings": [
       {
@@ -11904,15 +11941,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 79
   },
   {
     "username": "henry-the-headmaster",
     "displayName": "Henry Okoro",
     "lifeStage": "elder",
-    "featuredCategory": "A Life Well Lived",
+    "featuredCategory": "The schoolhouse",
     "accentColor": "#1E6E4A",
-    "bio": "Seventy-five years. I helped rebuild after the war and gave thirty of them to the schoolhouse. Education is the road out of the dark.",
+    "bio": "Rebuilt a school from rubble and led it for thirty years. Educate one child, change a line.",
     "avatarPrompt": "photorealistic portrait of a 75-year-old Nigerian man with close-cropped white hair, wise steady eyes, wearing a dignified patterned shirt; warm light, plain background, dignified",
     "wings": [
       {
@@ -12276,15 +12314,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 27
   },
   {
     "username": "margit-garden",
     "displayName": "Margit Nagy",
     "lifeStage": "elder",
-    "featuredCategory": "A Life Well Lived",
+    "featuredCategory": "Garden & thread",
     "accentColor": "#7A6E3A",
-    "bio": "Sixty-nine years stitched together with thread and soil. I sewed for strangers, dug my own earth, and fed my family from both.",
+    "bio": "Seamstress, gardener, keeper of recipes nobody wrote down. Budapest winters made me stubborn.",
     "avatarPrompt": "photorealistic portrait of a 69-year-old Hungarian woman with soft grey hair pinned back, gentle practical face, floral blouse, hands that have worked; warm light, plain background, dignified",
     "wings": [
       {
@@ -12642,15 +12681,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 31
   },
   {
     "username": "arthur-ink",
     "displayName": "Arthur Chen",
     "lifeStage": "elder",
-    "featuredCategory": "A Life Well Lived",
+    "featuredCategory": "Ink & years",
     "accentColor": "#3A3A5E",
-    "bio": "Eighty years, two harbours, one steady hand. I left Hong Kong with a suitcase, built a shop in San Francisco, and kept my brush wet.",
+    "bio": "From a Hong Kong rooftop to a San Francisco shop counter — and in old age, the brush found me.",
     "avatarPrompt": "photorealistic portrait of an 80-year-old Chinese man with thin white hair, calm scholarly eyes behind round glasses, wearing a simple grey cardigan; warm light, plain background, dignified",
     "wings": [
       {
@@ -13008,15 +13048,16 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 82
   },
   {
     "username": "beatrice-provence",
     "displayName": "Béatrice Laurent",
     "lifeStage": "elder",
-    "featuredCategory": "A Life Well Lived",
+    "featuredCategory": "Among the vines",
     "accentColor": "#7A4E6E",
-    "bio": "Quatre-vingt-quatre ans among the vines. I was born to the harvest, married for sixty years, and cooked for everyone I loved.",
+    "bio": "Born among the vines, married among them, still walking them each morning. Provence is my whole heart.",
     "avatarPrompt": "photorealistic portrait of an 84-year-old French Provençal woman with fine white hair, warm creased face, twinkling eyes, wearing a simple blouse and shawl; golden light, plain background, dignified",
     "wings": [
       {
@@ -13374,6 +13415,7 @@
           }
         ]
       }
-    ]
+    ],
+    "joinedDaysAgo": 23
   }
 ]

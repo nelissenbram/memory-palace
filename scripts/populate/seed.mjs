@@ -109,6 +109,11 @@ async function seedPersona(p) {
   const userId = created.user.id;
   const dir = personaMediaDir(p.username);
 
+  // Spread join dates over the past ~3 months; content timestamps fall between join and now.
+  const joinMs = Date.now() - Math.max(1, p.joinedDaysAgo || 30) * 86400000;
+  const joinISO = new Date(joinMs).toISOString();
+  const between = () => new Date(joinMs + Math.random() * (Date.now() - joinMs)).toISOString();
+
   const avatarUrl = await uploadAvatar(userId, path.join(dir, "avatar.jpg"));
   await db.from("profiles").update({
     display_name: p.displayName,
@@ -119,14 +124,16 @@ async function seedPersona(p) {
     onboarded: true,
     goal: "share",
     first_wing: p.wings[0]?.slug || "roots",
+    created_at: joinISO,
   }).eq("id", userId);
 
   let wingOrder = 0, memCount = 0;
   for (const w of p.wings) {
+    const wingDate = between();
     const { data: wing, error: werr } = await db.from("wings").insert({
       user_id: userId, slug: w.slug, custom_name: w.customName || null,
       accent_color: w.accentColor || p.accentColor || null, sort_order: wingOrder++,
-      published_at: new Date().toISOString(), publish_visibility: "public",
+      created_at: wingDate, published_at: wingDate, publish_visibility: "public",
       publish_description: w.customName || null,
     }).select("id").single();
     if (werr) { console.warn(`    wing ${w.slug}: ${werr.message}`); continue; }
@@ -134,10 +141,11 @@ async function seedPersona(p) {
     let roomOrder = 0;
     for (let ri = 0; ri < w.rooms.length; ri++) {
       const room = w.rooms[ri];
+      const roomDate = between();
       const { data: roomRow, error: rerr } = await db.from("rooms").insert({
         wing_id: wing.id, user_id: userId, name: room.name, icon: room.icon || "📁",
         cover_hue: room.coverHue ?? 30, sort_order: roomOrder++,
-        published_at: new Date().toISOString(), publish_visibility: "public",
+        created_at: roomDate, published_at: roomDate, publish_visibility: "public",
       }).select("id").single();
       if (rerr) { console.warn(`    room ${room.name}: ${rerr.message}`); continue; }
 
@@ -156,6 +164,7 @@ async function seedPersona(p) {
           thumbnail_url: up ? up.fileUrl : null,
           storage_backend: up ? "r2" : "supabase",
           hue: room.coverHue ?? 30, sort_order: memOrder++, metadata: {},
+          created_at: between(),
         });
         if (merr) console.warn(`    memory ${m.title}: ${merr.message}`);
         else memCount++;
