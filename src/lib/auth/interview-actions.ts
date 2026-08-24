@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { serverError } from "@/lib/i18n/server-errors";
 import { checkInterviewQuota } from "@/lib/auth/plan-limits";
 import { getTemplate } from "@/lib/constants/interviews";
+import { captureServer } from "@/lib/analytics-server";
 
 const supabaseReady = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
@@ -100,6 +101,7 @@ export async function completeInterview(sessionId: string, narrativeSummary: str
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
+  void captureServer(user.id, "interview_completed", {});
   return { success: true };
 }
 

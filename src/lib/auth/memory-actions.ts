@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { r2Remove, isR2Configured } from "@/lib/storage/r2";
 import { serverError } from "@/lib/i18n/server-errors";
+import { captureServer } from "@/lib/analytics-server";
 
 // Ensure a room exists in the DB, creating it if needed.
 // Maps local room IDs (like "ro1") to Supabase UUIDs.
@@ -127,6 +128,10 @@ export async function createMemory(data: {
     }
     return { error: error.message };
   }
+
+  // Milestone: activation signal. First-party, server-side (covers native, where
+  // the in-app tracker is disabled). Fire-and-forget.
+  void captureServer(user.id, "memory_created", { memoryType: data.type, hasMedia: !!data.fileUrl });
 
   // ── Notify room owner if this is a shared room contribution ──
   try {

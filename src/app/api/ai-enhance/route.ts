@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 import { checkPhotoRestoreQuota, incrementPhotoRestore } from "@/lib/auth/plan-limits";
+import { captureServer } from "@/lib/analytics-server";
 
 // Restore/enhance an OLD photo via Replicate (GFPGAN face+photo restoration).
 // Security posture (learned from the v2 audit):
@@ -99,6 +100,10 @@ export async function POST(request: NextRequest) {
   // Count it only on success.
   await incrementPhotoRestore(user.id);
   const after = await checkPhotoRestoreQuota(user.id);
+
+  // Milestone: a paid-feature usage signal (photo restore drives upgrades). The
+  // used/limit let us see quota-pressure → upgrade in one PostHog funnel.
+  void captureServer(user.id, "photo_restore_used", { used: after.used, limit: after.limit, period: after.period });
 
   // NOTE: restoredUrl is a Replicate-hosted URL valid for ~1h. The client shows the
   // before/after and, on Save, persists it through the normal upload flow.

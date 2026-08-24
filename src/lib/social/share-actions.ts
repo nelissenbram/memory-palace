@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { captureServer } from "@/lib/analytics-server";
 
 /** Ensure the current user's profile is public (called on any publish action) */
 async function ensureProfilePublic(
@@ -73,6 +74,9 @@ export async function publishWing(input: {
 
   // Make profile visible in the directory
   await ensureProfilePublic(supabase, user.id);
+
+  // Milestone: sharing/virality signal (server-side; covers native).
+  void captureServer(user.id, "wing_published", { wing: input.wingId, visibility: input.visibility || "public" });
 
   // Record activity
   try {
