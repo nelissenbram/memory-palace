@@ -11,6 +11,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
+import { track } from "@/lib/analytics";
 import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, CREAM, TRAY, SAGE, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 // EMBER_GLYPH (#9A4F2A) = rgb(154,79,42). The subscription surface tints this
 // at-rest terracotta for its "current plan" / soft-accent chrome, so route
@@ -315,6 +316,7 @@ export default function SubscriptionPage() {
     }
     if (upgradeLoading) return;
     setUpgradeLoading(planId);
+    track("checkout_started", { plan: planId, interval, store: "stripe", source: "settings" });
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",

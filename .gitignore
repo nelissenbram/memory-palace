@@ -72,3 +72,7 @@ _aab_download/
 
 scripts/hero_rec/
 scripts/hero_rec2/
+
+# Generated palace-population media (AI images) + logs — never commit/deploy
+scripts/populate/media/
+scripts/populate/*.log

@@ -215,6 +215,12 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     persistPhase(p);
   }, []);
 
+  // Funnel: one paywall impression when the soft-trial phase is shown (pairs with
+  // the existing paywall_trial_clicked / paywall_skipped click events).
+  useEffect(() => {
+    if (phase === "paywall") track("paywall_viewed", { source: "onboarding" });
+  }, [phase]);
+
   const memoryUploadedRef = useRef(false);
   const [uploadedMemory, setUploadedMemory] = useState<any>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);

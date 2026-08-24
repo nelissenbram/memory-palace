@@ -15,6 +15,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
+import { track } from "@/lib/analytics";
 
 const F = T.font;
 const C = T.color;
@@ -66,6 +67,14 @@ export default function PricingPage() {
   useEffect(() => {
     setCurrency(detectCurrency());
   }, []);
+
+  // Funnel: paywall impression. track() is a no-op in native + without consent,
+  // so this only fires for consenting web viewers (the RC webhook covers native
+  // purchases server-side). Fires once per page view.
+  useEffect(() => {
+    track("paywall_viewed", { source: "pricing" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { t: ts } = useTranslation("subscription");
   const { t: tp } = useTranslation("plans");
   const { t: tc } = useTranslation("common");
@@ -113,6 +122,15 @@ export default function PricingPage() {
       window.location.href = "/register";
       return;
     }
+
+    // Funnel: purchase intent (store dimension). No-op in native (iOS IAP purchases
+    // are captured server-side via the RevenueCat webhook), meaningful on web.
+    track("checkout_started", {
+      plan: planId,
+      interval,
+      store: isApple ? "app_store" : isAndroid() ? "play_store" : "stripe",
+      source: "pricing",
+    });
 
     // Use IAP on iOS
     if (isApple && !iapReady) {
