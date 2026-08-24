@@ -246,7 +246,7 @@ async function fetchExploreRailsUncached(): Promise<ExploreRails> {
 
 const getExploreRailsCached = unstable_cache(
   fetchExploreRailsUncached,
-  ["explore-rails"],
+  ["explore-rails-v2"],
   { revalidate: 300 }
 );
 
