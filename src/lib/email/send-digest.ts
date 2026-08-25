@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider, signUnsubscribeToken } from "./shared";
+import { escapeHtml, emailLayout, emailLink, sendEmail, getSiteUrl, ornamentalDivider, signUnsubscribeToken } from "./shared";
 
 /* ── Canon tokens (SPEC §A) ── */
 const INK = "#403B36";
@@ -450,7 +450,8 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
     headerHtml,
     bodyHtml,
     ctaText,
-    ctaUrl: `${siteUrl}/palace`,
+    ctaUrl: emailLink(`${siteUrl}/palace`, { campaign: "weekly", content: "cta" }),
+    utmCampaign: "weekly",
     footerExtra: `
       <style>${motwMobileStyle}</style>
       <p style="margin:0 0 6px;font-family:${FONT_BODY};font-size:11px;color:${MUTED};">

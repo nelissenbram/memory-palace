@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider, signUnsubscribeToken } from "./shared";
+import { escapeHtml, emailLayout, emailLink, sendEmail, getSiteUrl, ornamentalDivider, signUnsubscribeToken } from "./shared";
 
 type Locale = "en" | "nl" | "de" | "es" | "fr";
 
@@ -396,17 +396,24 @@ function reminderUnsubUrl(params: ReminderEmailParams): string {
   return `${base}&email=${encodeURIComponent(params.recipientEmail)}`;
 }
 
+/** UTM campaign per reminder flavor: the 30-day win-back is its own funnel. */
+function reminderCampaign(params: ReminderEmailParams): string {
+  return params.type === "re_engagement" ? "winback" : "reminder";
+}
+
 export function generateReminderEmailHtml(params: ReminderEmailParams): string {
   const content = getContent(params);
   const { preheader, headerHtml, bodyHtml, ctaText, ctaUrl, locale } = content;
   const unsubscribeUrl = reminderUnsubUrl(params);
+  const campaign = reminderCampaign(params);
 
   return emailLayout({
     preheader,
     headerHtml,
     bodyHtml,
     ctaText,
-    ctaUrl,
+    ctaUrl: emailLink(ctaUrl, { campaign, content: "cta" }),
+    utmCampaign: campaign,
     locale,
     footerExtra: `
       <p style="margin:0 0 6px;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:#716A5E;">

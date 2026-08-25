@@ -3,7 +3,7 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { sendDripEmail, getDripEmailConfig } from "@/lib/email/send-drip";
 import { sendReminderEmail } from "@/lib/email/send-reminder";
 import { lifecycleEmailsEnabled } from "@/lib/email/lifecycle-flag";
-import { logLifecycleSend } from "@/lib/email/send-ledger";
+import { fetchRecentSendsOfType, logLifecycleSend } from "@/lib/email/send-ledger";
 import { sendPush, type PushSubscriptionJSON, type NotificationPayload } from "@/lib/push";
 import { serverT, serverTf } from "@/lib/i18n/server";
 import type { Locale } from "@/i18n/config";
@@ -133,6 +133,20 @@ export async function GET(request: Request) {
     }
   }
 
+  // ── Drip double-send guard (SUCCESS_PLAYBOOK 1.4) ──
+  // A redeploy or overlapping cron run within the same day would re-match the
+  // same users to the same drip day. Check the email_send_log ledger per drip
+  // day (type "drip-day-N") and bar anyone already stamped within the rolling
+  // window; fetchRecentSendsOfType fails CLOSED on read errors.
+  const dripBarred = new Map<DripDay, Set<string>>();
+  for (const { day, dateStart, dateEnd } of dripTargets) {
+    const idsForDay = (dripProfiles || [])
+      .filter((p: { created_at: string }) => p.created_at >= dateStart && p.created_at <= dateEnd)
+      .map((p: { id: string }) => p.id);
+    const { barred } = await fetchRecentSendsOfType(supabase, idsForDay, `drip-day-${day}`, now);
+    dripBarred.set(day, barred);
+  }
+
   // Send drip emails
   const dripPromises: Promise<void>[] = [];
   let dripCount = 0;
@@ -163,6 +177,13 @@ export async function GET(request: Request) {
       continue;
     }
 
+    // Ledger says this drip day already went out (or the ledger was unreadable
+    // — fail closed): never double-send.
+    if (dripBarred.get(matchingDrip.day)?.has(profile.id)) {
+      stats.drip.skipped++;
+      continue;
+    }
+
     dripCount++;
     dripPromises.push(
       sendDripEmail({
@@ -171,9 +192,14 @@ export async function GET(request: Request) {
         locale: profile.preferred_locale || "en",
         dripDay: matchingDrip.day,
         userId: profile.id,
-      }).then((result) => {
-        if (result.success) stats.drip.sent++;
-        else stats.drip.errors++;
+      }).then(async (result) => {
+        if (result.success) {
+          stats.drip.sent++;
+          // Stamp the ledger so an overlapping run cannot re-send this drip day.
+          await logLifecycleSend(supabase, profile.id, `drip-day-${matchingDrip.day}`);
+        } else {
+          stats.drip.errors++;
+        }
       })
     );
   }

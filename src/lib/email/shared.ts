@@ -55,6 +55,26 @@ export function getSiteUrl(): string {
   return SITE_URL;
 }
 
+/* ── UTM tagging for lifecycle links (SUCCESS_PLAYBOOK Pillar 1 §2 / 1.4) ──
+ * Every in-email destination link carries utm_source=email&utm_medium=lifecycle
+ * plus a per-campaign tag so PostHog/analytics can attribute sessions to the
+ * sending campaign. NEVER apply this to unsubscribe links — those must stay
+ * byte-stable for List-Unsubscribe one-click semantics and log noise-free. */
+export function emailLink(
+  url: string,
+  opts: { campaign: string; content?: string },
+): string {
+  const params = new URLSearchParams({
+    utm_source: "email",
+    utm_medium: "lifecycle",
+    utm_campaign: opts.campaign,
+  });
+  if (opts.content) params.set("utm_content", opts.content);
+  const [base, hash] = url.split("#");
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}${params.toString()}${hash ? `#${hash}` : ""}`;
+}
+
 /** Strip HTML tags and decode common entities for plain-text fallback. */
 export function htmlToPlainText(html: string): string {
   return html
@@ -110,10 +130,16 @@ export function emailLayout(opts: {
   ctaUrl?: string;
   footerExtra?: string;
   locale?: string;
+  /** When set, the layout's own footer links (site, privacy, terms) get UTM-tagged
+   *  with this campaign. Callers tag their own ctaUrl/footerExtra links themselves;
+   *  unsubscribe links must stay UTM-free. */
+  utmCampaign?: string;
 }): string {
-  const { preheader, headerHtml, bodyHtml, ctaText, ctaUrl, footerExtra, locale } = opts;
+  const { preheader, headerHtml, bodyHtml, ctaText, ctaUrl, footerExtra, locale, utmCampaign } = opts;
   const lang = locale || "en";
   const tagline = footerTaglines[lang] || footerTaglines.en;
+  const tag = (url: string, content: string) =>
+    utmCampaign ? emailLink(url, { campaign: utmCampaign, content }) : url;
 
   const ctaBlock = ctaText && ctaUrl
     ? `
@@ -244,16 +270,16 @@ export function emailLayout(opts: {
             <img src="${SITE_URL}/email/palace-ember.png" width="28" height="28" alt="" style="display:block;margin:0 auto 12px;width:28px;height:28px;border:0;outline:none;text-decoration:none;" />
 
             <p style="margin:0 0 6px;font-family:'Fraunces',Georgia,'Times New Roman',serif;font-size:16px;font-weight:500;font-style:italic;color:#2E2A26;line-height:1.5;">
-              Memory Palace &middot; <a href="${SITE_URL}" style="color:#2E2A26;text-decoration:none;">thememorypalace.ai</a>
+              Memory Palace &middot; <a href="${tag(SITE_URL, "footer-home")}" style="color:#2E2A26;text-decoration:none;">thememorypalace.ai</a>
             </p>
             <p style="margin:0 0 14px;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;color:#716A5E;line-height:1.6;font-style:italic;">
               ${tagline}
             </p>
             ${footerExtra || ""}
             <p style="margin:14px 0 0;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;color:#716A5E;line-height:1.6;">
-              <a href="${SITE_URL}/privacy" style="color:#716A5E;text-decoration:none;">Privacy</a>
+              <a href="${tag(`${SITE_URL}/privacy`, "footer-privacy")}" style="color:#716A5E;text-decoration:none;">Privacy</a>
               &nbsp;&middot;&nbsp;
-              <a href="${SITE_URL}/terms" style="color:#716A5E;text-decoration:none;">Terms</a>
+              <a href="${tag(`${SITE_URL}/terms`, "footer-terms")}" style="color:#716A5E;text-decoration:none;">Terms</a>
             </p>
             <p style="margin:8px 0 0;font-family:'Source Sans 3',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;font-size:10px;color:#716A5E;line-height:1.5;">
               &copy; ${new Date().getFullYear()} Memory Palace &middot; Antwerp, Belgium
@@ -270,6 +296,35 @@ export function emailLayout(opts: {
 </html>`;
 }
 
+/* ── Bounce/complaint suppression (SUCCESS_PLAYBOOK 1.4) ──
+ * The Resend webhook (/api/email/resend-webhook) upserts hard-bounced and
+ * complaining addresses into email_suppressions. Sending to those addresses
+ * again is what tanks domain reputation, so sendEmail refuses them.
+ * BEST-EFFORT + fail-open: if the table doesn't exist yet, the env is missing,
+ * or the read errors, we send normally — suppression must never become the
+ * reason a legitimate email silently stops. */
+async function isSuppressed(to: string): Promise<boolean> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return false;
+  }
+  try {
+    const { createClient } = await import("@supabase/supabase-js");
+    const admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+    );
+    const { data, error } = await admin
+      .from("email_suppressions")
+      .select("email")
+      .eq("email", to.trim().toLowerCase())
+      .maybeSingle();
+    if (error) return false; // table missing / transient read error → send anyway
+    return !!data;
+  } catch {
+    return false;
+  }
+}
+
 /** Shared email sending via Resend with plain-text fallback. */
 export async function sendEmail(opts: {
   to: string;
@@ -281,6 +336,11 @@ export async function sendEmail(opts: {
 }): Promise<{ success: boolean; error?: string }> {
   const { to, subject, html, headers, replyTo, tag } = opts;
   const text = htmlToPlainText(html);
+
+  // Refuse suppressed (bounced/complained) recipients before any send attempt.
+  if (await isSuppressed(to)) {
+    return { success: false, error: "suppressed" };
+  }
 
   if (process.env.RESEND_API_KEY) {
     try {

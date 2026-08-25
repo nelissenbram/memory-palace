@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl, signUnsubscribeToken } from "./shared";
+import { escapeHtml, emailLayout, emailLink, sendEmail, getSiteUrl, signUnsubscribeToken } from "./shared";
 
 /* ── Canon tokens (SPEC §A) ── */
 const INK = "#403B36";
@@ -503,7 +503,8 @@ export function generateMonthlyEmailHtml(params: MonthlyEmailParams): string {
     headerHtml,
     bodyHtml,
     ctaText: m("cta", locale),
-    ctaUrl: `${siteUrl}/palace`,
+    ctaUrl: emailLink(`${siteUrl}/palace`, { campaign: "monthly", content: "cta" }),
+    utmCampaign: "monthly",
     footerExtra: `
       <p style="margin:0 0 6px;font-family:${FONT_BODY};font-size:11px;color:${MUTED};">
         ${m("footerNotice", locale)}

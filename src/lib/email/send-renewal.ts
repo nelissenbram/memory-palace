@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
+import { escapeHtml, emailLayout, emailLink, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
 
 // ── i18n translations for pre-renewal emails ──
 
@@ -134,7 +134,7 @@ export function generateRenewalEmailHtml(params: RenewalEmailParams): string {
   const displayName = escapeHtml(params.displayName);
   const planName = escapeHtml(params.planName);
   const renewalDate = escapeHtml(params.renewalDate);
-  const palaceUrl = `${getSiteUrl()}/palace`;
+  const palaceUrl = emailLink(`${getSiteUrl()}/palace`, { campaign: "renewal", content: "cta" });
 
   const headerHtml = `
     <p style="margin:0 0 14px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:600;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
@@ -177,6 +177,7 @@ export function generateRenewalEmailHtml(params: RenewalEmailParams): string {
     bodyHtml,
     ctaText: c.ctaText,
     ctaUrl: palaceUrl,
+    utmCampaign: "renewal",
     locale,
     footerExtra: `
       <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#B8A99A;">

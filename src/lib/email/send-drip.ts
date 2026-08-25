@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider, signUnsubscribeToken } from "./shared";
+import { escapeHtml, emailLayout, emailLink, sendEmail, getSiteUrl, ornamentalDivider, signUnsubscribeToken } from "./shared";
 
 // ── i18n translations for drip emails ──
 
@@ -408,7 +408,8 @@ export function generateDripEmailHtml(params: DripEmailParams): string {
   const locale = resolveLocale(params.locale);
   const c = copy[params.dripDay][locale];
   const displayName = escapeHtml(params.displayName);
-  const palaceUrl = `${getSiteUrl()}/palace`;
+  const campaign = `drip-day-${params.dripDay}`;
+  const palaceUrl = emailLink(`${getSiteUrl()}/palace`, { campaign, content: "cta" });
   const unsubscribeUrl = `${getSiteUrl()}/api/email/unsubscribe?unsubscribe=true${
     params.userId ? `&uid=${signUnsubscribeToken(params.userId)}` : `&email=${encodeURIComponent(params.recipientEmail)}`
   }`;
@@ -457,6 +458,7 @@ export function generateDripEmailHtml(params: DripEmailParams): string {
     bodyHtml,
     ctaText: c.ctaText,
     ctaUrl: palaceUrl,
+    utmCampaign: campaign,
     locale,
     footerExtra: `
       <p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#D4C5B2;">

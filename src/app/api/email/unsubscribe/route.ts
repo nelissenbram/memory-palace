@@ -73,10 +73,17 @@ async function handleUnsubscribe(request: Request) {
     // else: invalid/unsigned/non-uuid token — leave userId undefined and fall
     // through to the generic success page below without mutating anything.
   } else if (email) {
-    // Legacy email-based lookup
-    const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-    const authUser = authUsers?.users?.find((u) => u.email === email);
-    userId = authUser?.id;
+    // Legacy email-based lookup. Paginate through ALL auth pages — a single
+    // {perPage:1000} call silently strands users beyond the first 1000 with a
+    // fake "unsubscribed" page while their digests keep sending (CAN-SPAM risk).
+    let page = 1;
+    while (!userId) {
+      const { data: authUsers, error: listError } = await supabase.auth.admin.listUsers({ perPage: 1000, page });
+      if (listError || !authUsers?.users?.length) break;
+      userId = authUsers.users.find((u) => u.email === email)?.id;
+      if (authUsers.users.length < 1000) break;
+      page++;
+    }
   }
 
   if (!userId) {

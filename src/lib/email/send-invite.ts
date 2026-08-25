@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl } from "./shared";
+import { escapeHtml, emailLayout, emailLink, sendEmail, getSiteUrl } from "./shared";
 
 // ── i18n translations for invite emails ──
 
@@ -156,7 +156,7 @@ export function generateInviteEmailHtml(params: InviteEmailParams): string {
   const roomName = escapeHtml(params.roomName);
   const wingName = params.wingName ? escapeHtml(params.wingName) : "";
   const personalMessage = params.personalMessage ? escapeHtml(params.personalMessage) : null;
-  const acceptUrl = `${getSiteUrl()}/invite/${encodeURIComponent(params.shareId)}`;
+  const acceptUrl = emailLink(`${getSiteUrl()}/invite/${encodeURIComponent(params.shareId)}`, { campaign: "invite", content: "cta" });
   const permissionLabel = params.permission === "contribute" ? c.contribute : c.view;
 
   const headerHtml = `
@@ -206,6 +206,7 @@ export function generateInviteEmailHtml(params: InviteEmailParams): string {
     bodyHtml,
     ctaText: c.ctaText,
     ctaUrl: acceptUrl,
+    utmCampaign: "invite",
     locale,
     footerExtra: `
       <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#B8A99A;">
@@ -244,7 +245,7 @@ export async function sendFamilyInviteEmail(params: FamilyInviteEmailParams): Pr
   const inviterName = escapeHtml(params.inviterName);
   const groupName = escapeHtml(params.groupName);
   const roleLabel = params.role === "admin" ? c.admin : c.member;
-  const acceptUrl = `${getSiteUrl()}/settings/family`;
+  const acceptUrl = emailLink(`${getSiteUrl()}/settings/family`, { campaign: "invite", content: "cta" });
 
   const headerHtml = `
     <p style="margin:0 0 14px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:600;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
@@ -275,6 +276,7 @@ export async function sendFamilyInviteEmail(params: FamilyInviteEmailParams): Pr
     bodyHtml,
     ctaText: c.familyCta,
     ctaUrl: acceptUrl,
+    utmCampaign: "invite",
     locale,
     footerExtra: `
       <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#B8A99A;">

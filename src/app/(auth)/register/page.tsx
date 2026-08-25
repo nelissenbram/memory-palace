@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { signUp } from "@/lib/auth/actions";
+import { signUp, signIn } from "@/lib/auth/actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -13,7 +13,7 @@ import { T } from "@/lib/theme";
 import { EMBER, HAIRLINE, MUTED, INK, GOLD } from "@/lib/libraryTokens";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { track } from "@/lib/analytics";
-import { isIOS, isNative } from "@/lib/native/platform";
+import { isIOS, isNative, nativeHardNav } from "@/lib/native/platform";
 
 // Canon-consistent focus handlers for inline-styled inputs: EMBER border +
 // ceremonial GOLD ring on focus (inline styles cannot express :focus).
@@ -143,8 +143,6 @@ function RegisterContent() {
       if (result?.error) {
         setError(result.error);
       } else {
-        setRegisteredEmail(email);
-        setSuccess(true);
         track("signup_completed");
 
         // Apply referral code if stored
@@ -165,6 +163,24 @@ function RegisterContent() {
         } catch {
           // non-critical — referral application is best-effort
         }
+
+        // Auto-continue (SUCCESS_PLAYBOOK 1.2): with Supabase "Confirm email" OFF
+        // the account is live immediately, so sign straight in with the same
+        // credentials and route into the app exactly like the login page does —
+        // no dead-end "check your email" screen between signup and first memory.
+        // If confirmation is still ON, signIn fails (unconfirmed email) and we
+        // gracefully fall back to the existing check-your-email UI.
+        try {
+          const signInResult = await signIn(formData);
+          if (signInResult && "success" in signInResult && signInResult.success) {
+            await nativeHardNav(("redirect" in signInResult && signInResult.redirect) || "/atrium");
+            return; // navigating away — keep the button in its loading state
+          }
+        } catch {
+          // fall through to the check-your-email screen
+        }
+        setRegisteredEmail(email);
+        setSuccess(true);
       }
     } catch {
       setError(tc("somethingWentWrong"));
@@ -312,6 +328,71 @@ function RegisterContent() {
         </div>
       )}
 
+      {/* OAuth first (SUCCESS_PLAYBOOK 1.2): the one-tap Google/Apple path gets
+          top billing; the password form follows below the divider. */}
+      {(() => {
+        const handleOAuth = async (provider: "google" | "apple") => {
+          if (oauthLoading) return;
+          if (!ageConfirmed) {
+            setError(t("ageRequiredForSocial"));
+            return;
+          }
+          setError("");
+          setOauthLoading(provider);
+          // Safety net: if iOS drops browserFinished, never leave the button stuck
+          // disabled (no-op'ing every later tap). Force-reset after 45s.
+          const safety = setTimeout(() => setOauthLoading(null), 45000);
+          const clear = () => { clearTimeout(safety); setOauthLoading(null); };
+          const fn = provider === "google" ? signInWithGoogle : signInWithApple;
+          try {
+            // onDismiss resets the spinner if the in-app auth sheet closes without
+            // completing, so a cancelled/failed sign-up never looks frozen.
+            // Thread the deep-link redirect so social sign-up honors invite/kep
+            // links like the password path does.
+            const { error: oauthErr } = await fn({ onDismiss: clear, redirect });
+            if (oauthErr) {
+              clear();
+              setError(oauthErr);
+            }
+          } catch {
+            clear();
+            setError(tc("somethingWentWrong"));
+          }
+        };
+        const googleBtn = (
+          <button
+            key="google"
+            type="button"
+            onClick={() => handleOAuth("google")}
+            disabled={!!oauthLoading}
+            style={{ ...googleButtonStyle, ...(!ageConfirmed ? { opacity: 0.6 } : {}) }}
+          >
+            <GoogleIcon />
+            {oauthLoading === "google" ? t("signingUp") : t("signUpWithGoogle")}
+          </button>
+        );
+        const appleBtn = (
+          <button
+            key="apple"
+            type="button"
+            onClick={() => handleOAuth("apple")}
+            disabled={!!oauthLoading}
+            style={{ ...appleButtonStyle, ...(!ageConfirmed ? { opacity: 0.6 } : {}) }}
+          >
+            <AppleIcon />
+            {oauthLoading === "apple" ? t("signingUp") : t("signUpWithApple")}
+          </button>
+        );
+        // Apple first on iOS (Guideline 4.8); Google first elsewhere.
+        return appleFirst ? [appleBtn, googleBtn] : [googleBtn, appleBtn];
+      })()}
+
+      <div style={{ ...dividerStyle, margin: isShort ? "0.875rem 0 0.75rem" : isMobile ? "1.25rem 0 1rem" : "1.5rem 0 1.25rem" }}>
+        <span style={dividerLineStyle} />
+        <span style={dividerTextStyle}>{t("orUseEmail")}</span>
+        <span style={dividerLineStyle} />
+      </div>
+
       <label htmlFor="register-name" style={labelStyle}>{t("name")}</label>
       <input
         id="register-name"
@@ -393,69 +474,6 @@ function RegisterContent() {
       <button type="submit" disabled={loading || !ageConfirmed} style={buttonStyle(loading || !ageConfirmed)}>
         {loading ? t("creating") : t("createAccount")}
       </button>
-
-      <div style={{ ...dividerStyle, margin: isShort ? "0.875rem 0 0.75rem" : isMobile ? "1.25rem 0 1rem" : "1.5rem 0 1.25rem" }}>
-        <span style={dividerLineStyle} />
-        <span style={dividerTextStyle}>{t("orSignUpWith")}</span>
-        <span style={dividerLineStyle} />
-      </div>
-
-      {(() => {
-        const handleOAuth = async (provider: "google" | "apple") => {
-          if (oauthLoading) return;
-          if (!ageConfirmed) {
-            setError(t("ageRequiredForSocial"));
-            return;
-          }
-          setError("");
-          setOauthLoading(provider);
-          // Safety net: if iOS drops browserFinished, never leave the button stuck
-          // disabled (no-op'ing every later tap). Force-reset after 45s.
-          const safety = setTimeout(() => setOauthLoading(null), 45000);
-          const clear = () => { clearTimeout(safety); setOauthLoading(null); };
-          const fn = provider === "google" ? signInWithGoogle : signInWithApple;
-          try {
-            // onDismiss resets the spinner if the in-app auth sheet closes without
-            // completing, so a cancelled/failed sign-up never looks frozen.
-            // Thread the deep-link redirect so social sign-up honors invite/kep
-            // links like the password path does.
-            const { error: oauthErr } = await fn({ onDismiss: clear, redirect });
-            if (oauthErr) {
-              clear();
-              setError(oauthErr);
-            }
-          } catch {
-            clear();
-            setError(tc("somethingWentWrong"));
-          }
-        };
-        const googleBtn = (
-          <button
-            key="google"
-            type="button"
-            onClick={() => handleOAuth("google")}
-            disabled={!!oauthLoading}
-            style={{ ...googleButtonStyle, ...(!ageConfirmed ? { opacity: 0.6 } : {}) }}
-          >
-            <GoogleIcon />
-            {oauthLoading === "google" ? t("signingUp") : t("signUpWithGoogle")}
-          </button>
-        );
-        const appleBtn = (
-          <button
-            key="apple"
-            type="button"
-            onClick={() => handleOAuth("apple")}
-            disabled={!!oauthLoading}
-            style={{ ...appleButtonStyle, ...(!ageConfirmed ? { opacity: 0.6 } : {}) }}
-          >
-            <AppleIcon />
-            {oauthLoading === "apple" ? t("signingUp") : t("signUpWithApple")}
-          </button>
-        );
-        // Apple first on iOS (Guideline 4.8); Google first elsewhere.
-        return appleFirst ? [appleBtn, googleBtn] : [googleBtn, appleBtn];
-      })()}
 
       <p
         style={{

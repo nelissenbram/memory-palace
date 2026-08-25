@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
+import { escapeHtml, emailLayout, emailLink, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
 
 // ── i18n translations for welcome emails ──
 
@@ -122,7 +122,7 @@ export function generateWelcomeEmailHtml(params: WelcomeEmailParams): string {
   const locale = resolveLocale(params.locale);
   const c = copy[locale];
   const displayName = escapeHtml(params.displayName);
-  const palaceUrl = `${getSiteUrl()}/palace`;
+  const palaceUrl = emailLink(`${getSiteUrl()}/palace`, { campaign: "welcome", content: "cta" });
 
   const headerHtml = `
     <p style="margin:0 0 14px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:600;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
@@ -174,6 +174,7 @@ export function generateWelcomeEmailHtml(params: WelcomeEmailParams): string {
     bodyHtml,
     ctaText: c.ctaText,
     ctaUrl: palaceUrl,
+    utmCampaign: "welcome",
     locale,
     footerExtra: `
       <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#B8A99A;">
