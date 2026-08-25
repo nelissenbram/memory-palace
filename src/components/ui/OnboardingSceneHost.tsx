@@ -64,6 +64,14 @@ interface OnboardingSceneHostProps {
    * placeholder — no remount/rebuild, so the confetti falls over a visible
    * room + photo instead of seconds of blank beige. */
   uploadedMemory?: any | null;
+  /** Capture-first onboarding (SUCCESS_PLAYBOOK wk 2, Pillar 1 §3): the photos
+   * the user picked BEFORE the walk. Photo #1 goes to the mantel via
+   * uploadedMemory; #2/#3 replace the demo wall frames here so the walk_room
+   * leg reveals THEIR photos already hanging (fewer than 3 ⇒ remaining demo
+   * frames keep the room lived-in). The array identity must be stable across
+   * the walk_room→celebration mounts (the wizard memoizes it) so the
+   * structural fingerprint never changes mid-reveal — no scene rebuild. */
+  uploadedMemories?: any[] | null;
 }
 
 /* ── Reduced-motion + WebGL capability, resolved once ── */
@@ -185,6 +193,7 @@ export default function OnboardingSceneHost({
   initialCameraZ,
   demoAudio,
   uploadedMemory = null,
+  uploadedMemories = null,
 }: OnboardingSceneHostProps) {
   const styleEra = useUserStore((s) => s.styleEra) || "roman";
   const userName = useUserStore((s) => s.userName);
@@ -323,18 +332,33 @@ export default function OnboardingSceneHost({
   // so on the PUBLIC onboarding preview (/flythrough is unauthenticated)
   // /demo/*.mp4 307'd to /login and the cinema screen got an HTML page →
   // MediaError → canvas fallback. /video/ is matcher-exempt + fast-pathed.
+  // Capture-first (SUCCESS_PLAYBOOK wk 2): user photos #2/#3 replace the demo
+  // wall frames IN PLACE — same slot, same fixed createdAt (deterministic
+  // salon hang), same displayUnit — so the left-wall look-around reveals THEIR
+  // photos. Photo #1 is NOT hung here: it goes to the mantel via the
+  // uploadedMemory in-place swap (the step-9 camera framing ends on it).
   const demoRoomMemories = useMemo(
-    () =>
-      onboardingMode && memories.length === 0
-        ? [
-            { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "vinyl", displayed: true, dataUrl: "/video/demo/song-of-summer.mp3", createdAt: "2024-06-21T15:00:00.000Z", hue: 200, s: 50, l: 55 },
-            { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/video/demo/piano-recital.mp4", thumbnailUrl: "/video/demo/piano-recital-thumb.jpg", createdAt: "2024-11-02T19:30:00.000Z", hue: 30, s: 45, l: 50 },
-            { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/quiet-morning.jpg", createdAt: "2023-04-09T08:00:00.000Z", hue: 18, s: 40, l: 60 },
-            { id: "demo-frame-2", title: "Edge of the Water", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/edge-of-water.jpg", createdAt: "2024-07-18T17:00:00.000Z", hue: 200, s: 35, l: 55 },
-            { id: "demo-frame-3", title: "Graduation Day", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/graduation.jpg", createdAt: "2025-06-28T14:00:00.000Z", hue: 42, s: 45, l: 55 },
-          ]
-        : memories,
-    [onboardingMode, memories],
+    () => {
+      if (!(onboardingMode && memories.length === 0)) return memories;
+      const demoFrames = [
+        { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/quiet-morning.jpg", createdAt: "2023-04-09T08:00:00.000Z", hue: 18, s: 40, l: 60 },
+        { id: "demo-frame-2", title: "Edge of the Water", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/edge-of-water.jpg", createdAt: "2024-07-18T17:00:00.000Z", hue: 200, s: 35, l: 55 },
+        { id: "demo-frame-3", title: "Graduation Day", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/graduation.jpg", createdAt: "2025-06-28T14:00:00.000Z", hue: 42, s: 45, l: 55 },
+      ];
+      const extras = (uploadedMemories || []).slice(1); // #1 lives on the mantel
+      const frames = demoFrames.map((f, i) => {
+        const u = extras[i];
+        return u && u.dataUrl
+          ? { ...f, id: `ob-user-${u.id || i}`, title: u.title || f.title, dataUrl: u.dataUrl, thumbnailUrl: u.thumbnailUrl, hue: u.hue ?? f.hue, s: u.s ?? f.s, l: u.l ?? f.l }
+          : f;
+      });
+      return [
+        { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "vinyl", displayed: true, dataUrl: "/video/demo/song-of-summer.mp3", createdAt: "2024-06-21T15:00:00.000Z", hue: 200, s: 50, l: 55 },
+        { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/video/demo/piano-recital.mp4", thumbnailUrl: "/video/demo/piano-recital-thumb.jpg", createdAt: "2024-11-02T19:30:00.000Z", hue: 30, s: 45, l: 50 },
+        ...frames,
+      ];
+    },
+    [onboardingMode, memories, uploadedMemories],
   );
 
   // Override room name for onboarding — "[User]'s Self Portraits". Memoized on the

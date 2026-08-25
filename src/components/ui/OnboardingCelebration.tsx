@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { CREAM, INK, MUTED, HAIRLINE, EMBER, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
@@ -18,6 +18,10 @@ interface OnboardingCelebrationProps {
       celebration fires it over the just-hung memory; reduced-motion = static
       (no confetti, the settled gold threshold stands on its own). */
   confetti?: boolean;
+  /** Endowed-progress slot (SUCCESS_PLAYBOOK wk 2, Pillar 1 §4): rendered
+      between the subtitle and the hint — the wizard passes the 3-hook strip
+      + "Add one more" here. Absent = exactly the old layout. */
+  extra?: ReactNode;
 }
 
 /* The ceremonial threshold. A dignified beat over the just-hung first
@@ -122,6 +126,7 @@ export default function OnboardingCelebration({
   transparent = false,
   hint,
   confetti = true,
+  extra,
 }: OnboardingCelebrationProps) {
   const isMobile = useIsMobile();
   // Resolve once per mount — reduced-motion users get a static, already-settled frame.
@@ -240,6 +245,15 @@ export default function OnboardingCelebration({
         >
           {subtitle}
         </p>
+
+        {/* Endowed-progress slot (wk-2 capture-first): the wizard's 3-hook
+            strip + "Add one more" CTA. Interactive — pointer events restored
+            inside the otherwise pass-through transparent card. */}
+        {extra && (
+          <div style={{ width: "100%", pointerEvents: "auto", animation: enter("0.45s") }}>
+            {extra}
+          </div>
+        )}
 
         {/* Tutorial-handoff hint (§9, row [4]) — quiet italic pointer to the
             Atrium nudge tour that follows; EMBER glyph, never a CTA. */}

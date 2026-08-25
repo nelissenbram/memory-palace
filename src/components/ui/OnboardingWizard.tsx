@@ -24,31 +24,37 @@ const ConfettiBurst = lazy(() =>
 );
 const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
 
-/* ── State machine (WALKTHROUGH RESTORE) ──
-   video_intro -> lang_a11y -> name -> guided walkthrough (cinematic exterior
-   flyover, entrance-hall look-around+blinks, corridor procession, room reveal)
-   -> upload (first memory) -> celebration (threshold + confetti) ->
-   paywall (gated) -> done. The walkthrough teaches wings physically — the
-   style_era confirmation and wing_orient card are unrouted (components kept
-   for settings/reuse; saved phases remapped below). */
+/* ── State machine (CAPTURE-FIRST, SUCCESS_PLAYBOOK wk 2 / Pillar 1 §3) ──
+   video_intro -> lang_a11y -> name -> capture (pick up to 3 photos — the
+   memories exist BEFORE the tour) -> guided walkthrough (cinematic exterior
+   flyover, entrance-hall look-around+blinks, corridor procession, room leg
+   that REVEALS the just-captured photos hanging) -> celebration (endowed
+   progress: hooks strip + "add one more") -> paywall (gated) -> done.
+   `upload` (room + ImportHub) survives as the ZERO-CAPTURE fallback only: a
+   user who tapped "later" on the capture card still gets a first-memory ask
+   at the end of the walk — nobody exits without passing a capture beat.
+   The walkthrough teaches wings physically — the style_era confirmation and
+   wing_orient card are unrouted (components kept for settings/reuse; saved
+   phases remapped below). */
 type Phase =
   | "video_intro"      // Intro video plays first (full-screen)
   | "lang_a11y"        // Language + legibility (warm-cream card)
   | "name"             // Name input
+  | "capture"          // Pick 3 photos (capture-first — before the walk)
   | "cinematic"        // Live 3D exterior — WP1 hold -> prompt -> 5-waypoint flyover
   | "walk_exterior"    // Skip-path exterior leg: direct auto-walk to the entrance
   | "walk_entrance"    // Hall look-around + blinks -> slow walk to the roots door
   | "walk_corridor"    // Corridor steps 0-7: demo painting -> room prompt -> door
-  | "walk_room"        // Room steps 0-9: look-around -> empty painting prompt
-  | "upload"           // Seeded room + ImportHub (first memory)
-  | "celebration"      // Ceremonial threshold + confetti
+  | "walk_room"        // Room steps 0-9: look-around -> THEIR photos revealed
+  | "upload"           // Zero-capture fallback: seeded room + ImportHub
+  | "celebration"      // Ceremonial threshold + confetti + endowed progress
   | "paywall"          // Soft trial offer (web / iOS-with-IAP only)
   | "done";
 
-const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name"];
+const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "capture"];
 const WALK_PHASES: Phase[] = ["walk_exterior", "walk_entrance", "walk_corridor", "walk_room"];
 const PHASE_ORDER: Phase[] = [
-  "video_intro", "lang_a11y", "name",
+  "video_intro", "lang_a11y", "name", "capture",
   "cinematic", "walk_exterior", "walk_entrance", "walk_corridor", "walk_room",
   "upload", "celebration", "paywall", "done",
 ];
@@ -112,9 +118,10 @@ type TextSize = ScaleLevel;
 
 /* ── Quiet canon step dots (AtriumRelay lane-dot grammar): filled=EMBER_GLYPH,
    unfilled=HAIRLINE, no numeric total, no growing bar. Intentionally scoped to
-   the 2 setup cards (lang_a11y 1/2, name 2/2) — the full-screen video intro,
-   the guided walkthrough and the do-first upload/celebration are ceremonial
-   beats, not numbered setup steps, so they carry no dot. ── */
+   the 3 setup cards (lang_a11y 1/3, name 2/3, capture 3/3 — the capture card
+   IS a setup step now, and the visible 3rd dot is cheap endowed progress) —
+   the full-screen video intro, the guided walkthrough and the celebration are
+   ceremonial beats, not numbered setup steps, so they carry no dot. ── */
 function StepDots({ current, total, label }: { current: number; total: number; label: string }) {
   return (
     <div
@@ -228,9 +235,113 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     track("onboarding_phase_entered", { phase });
   }, [phase]);
 
+  // Endowed progress (Pillar 1 §4): one impression event when the celebration
+  // shows open hooks (1–2 captured) — pairs with second_memory_prompt_captured
+  // fired by the "Add one more" picker.
+  const secondPromptShownRef = useRef(false);
+  useEffect(() => {
+    if (phase !== "celebration" || secondPromptShownRef.current) return;
+    const c = capturedMemsRef.current.length;
+    if (c > 0 && c < 3) {
+      secondPromptShownRef.current = true;
+      track("second_memory_prompt_shown", { count: c });
+    }
+  }, [phase]);
+
   const memoryUploadedRef = useRef(false);
   const [uploadedMemory, setUploadedMemory] = useState<any>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // ── Capture-first state (SUCCESS_PLAYBOOK wk 2, Pillar 1 §3) ──
+  // The photos picked on the capture card. Optimistic: each entry appears the
+  // moment its dataURL is read (thumbnail + walk-reveal source) while
+  // addMemory persists in the background during the cinematic — the playbook's
+  // "upload in background during the walk". A persist that fails while the
+  // card is still up removes the slot + surfaces the error; memoryUploadedRef
+  // flips only on a CONFIRMED persist. Array identity is state-stable, so the
+  // scene host's structural fingerprint never churns mid-walk.
+  const [capturedMems, setCapturedMems] = useState<any[]>([]);
+  const capturedMemsRef = useRef<any[]>([]);
+  useEffect(() => { capturedMemsRef.current = capturedMems; }, [capturedMems]);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const captureInputRef = useRef<HTMLInputElement | null>(null);
+  const celebInputRef = useRef<HTMLInputElement | null>(null);
+  const CAPTURE_MAX = 3;
+  // The 3D scenes get a FROZEN snapshot of the captured photos, taken once
+  // when the walk starts: a celebration-time "add one more" (or a late persist
+  // rollback) must never change the structural fingerprint of the LIVE room
+  // scene — that forces a full rebuild (seconds of blank beige under the
+  // confetti, the exact regression owner item 6 fixed). The 2D strip reads the
+  // live capturedMems; the walls read this snapshot.
+  const walkMemsRef = useRef<any[]>([]);
+
+  // Read files → dataURLs → optimistic slots → background persist via the SAME
+  // store path the in-app ImportHub uses (optimistic add + server upload + DB
+  // create; server-side memory_created fires there). Mobile-friendly: callers
+  // open a plain <input type=file accept="image/*" multiple> photo picker.
+  const persistCapturedFiles = useCallback(async (files: File[], source: "capture" | "celebration") => {
+    const room = "ro1";
+    // Capture card: cap at 3 slots total. Celebration "add one more": one at a time.
+    const limit = source === "capture"
+      ? Math.max(0, CAPTURE_MAX - capturedMemsRef.current.length)
+      : 1;
+    const picks = files.filter((f) => f.type.startsWith("image/")).slice(0, limit);
+    if (picks.length === 0) return;
+    setCaptureError(null);
+    setCaptureBusy(true);
+    try {
+      for (const file of picks) {
+        let dataUrl = "";
+        try {
+          dataUrl = await new Promise<string>((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result as string);
+            reader.onerror = rej;
+            reader.readAsDataURL(file);
+          });
+        } catch { /* unreadable file — skip below */ }
+        if (!dataUrl) { setCaptureError(t("uploadFailed")); continue; }
+        const mem = {
+          id: `onboarding-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          title: file.name.replace(/\.[^.]+$/, "") || file.name,
+          type: "photo",
+          dataUrl,
+          hue: 18, s: 50, l: 60, desc: "",
+          createdAt: new Date().toISOString(),
+        };
+        // Optimistic slot first (instant thumbnail; the walk reveals dataUrl
+        // locally either way), then background persist.
+        setCapturedMems((prev) => [...prev, mem]);
+        useMemoryStore.getState().addMemory(room, mem as any)
+          .then((persisted) => {
+            if (persisted) { memoryUploadedRef.current = true; return; }
+            // Rolled back — drop the slot if the user is still on a card where
+            // the strip is live; surface the error either way.
+            setCapturedMems((prev) => prev.filter((m) => m.id !== mem.id));
+            setCaptureError(t("uploadFailed"));
+          })
+          .catch(() => {
+            setCapturedMems((prev) => prev.filter((m) => m.id !== mem.id));
+            setCaptureError(t("uploadFailed"));
+          });
+      }
+    } finally {
+      setCaptureBusy(false);
+    }
+  }, [t]);
+
+  // Leaving the capture card: capture_done{count} on the primary path (task
+  // contract), capture_skipped on "later" — both land on the cinematic so the
+  // walk ALWAYS happens after the capture beat.
+  const advanceFromCapture = useCallback((skipped: boolean) => {
+    const count = capturedMemsRef.current.length;
+    if (count > 0) track("onboarding_capture_done", { count });
+    if (skipped && count === 0) track("onboarding_capture_skipped", {});
+    // Freeze the walk-reveal set (see walkMemsRef doc above).
+    walkMemsRef.current = capturedMemsRef.current.slice(0, CAPTURE_MAX);
+    setPhase("cinematic");
+  }, [setPhase]);
 
   // ── Walkthrough leg state (restored from the guided walk) ──
   const [cinematicPaused, setCinematicPaused] = useState(false);
@@ -397,14 +508,24 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     completeAndFinish();
   }, [completeAndFinish, phase]);
 
+  // ── Where the walk ENDS (capture-first): with ≥1 captured memory the room
+  // leg resolves straight to the celebration (the memory already exists —
+  // playbook: "skippers then skip AFTER the memory exists"); with zero
+  // captures it falls back to the ImportHub upload ask, so nobody exits
+  // onboarding without passing a real capture opportunity. ──
+  const capturedCount = capturedMems.length;
+  const afterWalkTarget: Phase = capturedCount > 0 ? "celebration" : "upload";
+
   // ── Per-leg skip: every walkthrough leg is skippable to the NEXT phase in
-  // order (cinematic -> walk_exterior -> walk_entrance -> ...); the final leg's
-  // skip lands on upload. Nobody re-walks a skipped leg, nobody strands. ──
+  // order (cinematic -> walk_exterior -> walk_entrance -> ...); the final
+  // leg's skip lands on afterWalkTarget (celebration when photos were
+  // captured, upload otherwise). Nobody re-walks a skipped leg, nobody strands. ──
   const skipWalkLeg = useCallback(() => {
     track("onboarding_walk_leg_skipped", { phase });
+    if (phase === "walk_room") { setPhase(afterWalkTarget); return; }
     const idx = PHASE_ORDER.indexOf(phase);
-    setPhase(idx >= 0 && idx < PHASE_ORDER.length - 1 ? PHASE_ORDER[idx + 1] : "upload");
-  }, [phase, setPhase]);
+    setPhase(idx >= 0 && idx < PHASE_ORDER.length - 1 ? PHASE_ORDER[idx + 1] : afterWalkTarget);
+  }, [phase, setPhase, afterWalkTarget]);
 
   // ── Scene arrival handlers (restored walkthrough contract) ──
   // Exterior arrival: the flyover (or the walk_exterior auto-walk) reaches the
@@ -434,10 +555,12 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
   // Room: tapping the empty painting over the mantel fires
   // onMemoryClick("__upload_painting__") — honored immediately (no step gate,
-  // a dead-feeling painting reads as "unresponsive") -> upload.
+  // a dead-feeling painting reads as "unresponsive"). With captures the mantel
+  // already shows photo #1 (the in-place swap disarms isUploadPainting, so
+  // this only fires on the zero-capture placeholder) -> afterWalkTarget.
   const handleRoomPaintingClick = useCallback((id: string) => {
-    if (id === "__upload_painting__" && phase === "walk_room") setPhase("upload");
-  }, [phase, setPhase]);
+    if (id === "__upload_painting__" && phase === "walk_room") setPhase(afterWalkTarget);
+  }, [phase, setPhase, afterWalkTarget]);
 
   // Cinematic prompt fallback: the exterior scene fires onCinematicPause at the
   // WP1 hold; if it never does (stalled GL, reduced-motion stills path), surface
@@ -513,10 +636,10 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     } else if (phase === "walk_corridor" && !corridorWaitingForEnter) {
       timer = setTimeout(() => setPhase("walk_room"), 25000);
     } else if (phase === "walk_room" && !roomWaitingForPainting) {
-      timer = setTimeout(() => setPhase("upload"), 33000);
+      timer = setTimeout(() => setPhase(afterWalkTarget), 33000);
     }
     return () => { if (timer) clearTimeout(timer); };
-  }, [phase, walkLegLive, corridorWaitingForEnter, roomWaitingForPainting, setPhase]);
+  }, [phase, walkLegLive, corridorWaitingForEnter, roomWaitingForPainting, setPhase, afterWalkTarget]);
 
   // OUTER absolute bound — purely anti-infinite-loading: if a leg's scene
   // NEVER goes live (chunk never resolves, GL never produces a first frame),
@@ -537,10 +660,10 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     } else if (phase === "walk_corridor") {
       timer = setTimeout(() => setPhase("walk_room"), 90000);
     } else if (phase === "walk_room") {
-      timer = setTimeout(() => setPhase("upload"), 90000);
+      timer = setTimeout(() => setPhase(afterWalkTarget), 90000);
     }
     return () => { if (timer) clearTimeout(timer); };
-  }, [phase, cinematicResumed, walkLegLive, setPhase]);
+  }, [phase, cinematicResumed, walkLegLive, setPhase, afterWalkTarget]);
 
   // ── Paywall trial CTA (change 2): completing onboarding and routing to /pricing
   // must be ONE coherent flow — never fire setPhase('done') (which lands the user
@@ -571,7 +694,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     }
     try { localStorage.setItem(WALK_DONE_KEY, "true"); } catch {}
     cleanupStorage();
-    track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current });
+    track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current, memoriesUploaded: capturedMemsRef.current.length });
     // Same-document navigation to /pricing (new tab would orphan purchase intent on
     // web; a detached nav would race the WKWebView on iOS). window.location.href
     // stays in the current tab on web AND inside the WKWebView on native.
@@ -595,7 +718,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // ── Done ──
   useEffect(() => {
     if (phase === "done") {
-      track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current });
+      track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current, memoriesUploaded: capturedMemsRef.current.length });
       try { localStorage.setItem(WALK_DONE_KEY, "true"); } catch {}
       cleanupStorage();
       onFinish(memoryUploadedRef.current);
@@ -606,7 +729,9 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // time to warm the module cache before the cinematic; preload ImportHub
   // during the corridor/room legs so the painting tap opens it instantly. ──
   useEffect(() => {
-    if (phase === "name") {
+    // Warm the 3D module cache while the user types their name AND while they
+    // pick photos (the capture card sits between name and the cinematic now).
+    if (phase === "name" || phase === "capture") {
       import("@/lib/3d/scenePreloader")
         .then(({ preloadScene }) => {
           preloadScene("exterior");
@@ -948,7 +1073,7 @@ ${KEYFRAMES}
         {canonStyle}
 
         <div style={pageScrollerStyle}>
-          <StepDots current={1} total={2} label={t("stepOf", { current: "1", total: "2" })} />
+          <StepDots current={1} total={3} label={t("stepOf", { current: "1", total: "3" })} />
 
           <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -1097,14 +1222,15 @@ ${KEYFRAMES}
       setUserName(trimmedName);
       setStyleEra("roman");
       updateProfile({ styleEra: "roman" }).catch(() => {});
-      setPhase("cinematic");
+      // Capture-first (wk 2): the photo picker comes BEFORE the walk.
+      setPhase("capture");
     };
     return (
       <div style={pageStyle()}>
         {canonStyle}
 
         <div style={pageScrollerStyle}>
-          <StepDots current={2} total={2} label={t("stepOf", { current: "2", total: "2" })} />
+          <StepDots current={2} total={3} label={t("stepOf", { current: "2", total: "3" })} />
 
           <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -1241,6 +1367,147 @@ ${KEYFRAMES}
     );
   }
 
+  /* ── Capture card (SUCCESS_PLAYBOOK wk 2, Pillar 1 §3) — "Pick 3 photos to
+     hang in your palace", BEFORE the walk. Three frame slots + one hidden
+     multi-select photo picker (mobile gallery friendly). Min 1 to take the
+     primary path; "later" never dead-ends (zero-capture walks fall back to
+     the ImportHub ask at the end of the room leg). Persistence runs in the
+     background during the cinematic — see persistCapturedFiles. ── */
+  if (phase === "capture") {
+    const count = capturedMems.length;
+    const openPicker = () => captureInputRef.current?.click();
+    return (
+      <div style={pageStyle()}>
+        {canonStyle}
+
+        <div style={pageScrollerStyle}>
+          <StepDots current={3} total={3} label={t("stepOf", { current: "3", total: "3" })} />
+
+          <div className="onb-anim" style={cardStyle}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
+
+              <Overline>{t("appName")}</Overline>
+
+              <h2 style={{
+                fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
+              }}>
+                {tr("captureTitle", "Pick 3 photos to hang in your palace")}
+              </h2>
+              <p style={{
+                fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.9375rem",
+                color: MUTED, maxWidth: "22rem", lineHeight: 1.6, margin: 0,
+              }}>
+                {tr("captureAside", "The three you'd save from a fire. We'll hang them on your walls — then we'll walk you to them.")}
+              </p>
+
+              {/* Hidden photo picker — accept=image/*, multiple, capped at 3.
+                  A plain input keeps the native mobile gallery sheet. */}
+              <input
+                ref={captureInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  e.target.value = ""; // same files re-pickable after a removal
+                  if (files.length) persistCapturedFiles(files, "capture");
+                }}
+              />
+
+              {/* Three frame slots — filled slots show the photo, empty slots
+                  are click-to-pick hooks. */}
+              <div style={{ display: "flex", gap: "0.75rem", width: "100%", justifyContent: "center" }}>
+                {Array.from({ length: CAPTURE_MAX }, (_, i) => {
+                  const mem = capturedMems[i];
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className="onb-focusable"
+                      onClick={openPicker}
+                      aria-label={mem ? mem.title : tr("captureSlotEmpty", "Add a photo")}
+                      style={{
+                        flex: 1, maxWidth: "7.5rem", aspectRatio: "1 / 1",
+                        borderRadius: "0.625rem", padding: 0, overflow: "hidden",
+                        cursor: "pointer", position: "relative",
+                        border: mem ? `0.125rem solid ${EMBER}` : `0.125rem dashed ${HAIRLINE}`,
+                        background: mem ? "#FFF" : "#FFFFFF99",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      {mem ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={mem.dataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          <span aria-hidden style={{
+                            position: "absolute", top: "0.25rem", right: "0.25rem",
+                            width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                            background: CREAM, border: `0.0625rem solid ${HAIRLINE}`,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            <CheckMark color={EMBER} size="0.75rem" />
+                          </span>
+                        </>
+                      ) : (
+                        <span aria-hidden style={{
+                          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 400,
+                          color: MUTED, lineHeight: 1,
+                        }}>
+                          +
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Count line — quiet endowed progress under the slots. */}
+              <p aria-live="polite" style={{
+                fontFamily: T.font.body, fontSize: "0.75rem", color: MUTED,
+                margin: "-0.75rem 0 0", lineHeight: 1.4,
+              }}>
+                {captureBusy
+                  ? tr("captureSaving", "Hanging your photos…")
+                  : tr("captureCount", "{count} of 3 chosen", { count: String(count) })}
+              </p>
+
+              {captureError && (
+                <p role="alert" style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A63D3D",
+                  margin: "-0.5rem 0 0", lineHeight: 1.5,
+                }}>
+                  {captureError}
+                </p>
+              )}
+
+              {/* Primary path is upload-first: with no photos the CTA opens the
+                  picker; with ≥1 it advances into the walk that reveals them. */}
+              <button
+                className="onb-cta onb-focusable"
+                onClick={() => (count > 0 ? advanceFromCapture(false) : openPicker())}
+                style={{ ...primaryCtaStyle, width: "100%" }}
+              >
+                {count > 0
+                  ? `${tr("captureCta", "Hang them in my palace")} →`
+                  : tr("captureChoose", "Choose your photos")}
+              </button>
+
+              <button
+                className="onb-focusable"
+                onClick={() => advanceFromCapture(true)}
+                style={skipLinkStyle}
+              >
+                {tr("captureLater", "I'll add photos later")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   /* ── Cinematic — "Welcome to [Name]'s Palace" over the live exterior ──
      The scene holds at WP1 (onboardingMode); onCinematicPause surfaces the
      prompt card ("Ready to visit your palace…?" + Yes); cinematicResumed sends
@@ -1341,6 +1608,13 @@ ${KEYFRAMES}
             roomName={onboardingRoomName}
             isMobile={isMobile}
             corridorEnterClicked={corridorEnterClicked}
+            // Capture-first reveal: photos #2/#3 hang on the left wall for the
+            // room leg's look-around; photo #1 swaps into the mantel frame the
+            // moment the room leg starts (in-place, no rebuild) so the step-9
+            // camera framing ends on THEIR photo. Frozen snapshot — see
+            // walkMemsRef doc (live capturedMems churn must not rebuild).
+            uploadedMemories={walkMemsRef.current}
+            uploadedMemory={phase === "walk_room" ? walkMemsRef.current[0] ?? null : null}
           />
         </Suspense>
 
@@ -1411,39 +1685,61 @@ ${KEYFRAMES}
               : tr("roomTitle", "Me, Over Time Room")}
             caption={
               roomStep >= 4
-                ? tr("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more.")
-                : tr("walkRoom", "This is your first room. Ready to place your first memory?")
+                ? (capturedCount > 0
+                    ? tr("roomRevealSubtitle", "Your photos are already hanging — this room is yours now.")
+                    : tr("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more."))
+                : (capturedCount > 0
+                    ? tr("roomRevealWalk", "This is your first room. Look — the photos you chose made it here first.")
+                    : tr("walkRoom", "This is your first room. Ready to place your first memory?"))
             }
           >
             {roomStep >= 9 && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
-                <p style={{
-                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                  color: "#D4CBC0", margin: 0, lineHeight: 1.5,
-                  textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
-                }}>
-                  {tr("roomHangPrompt", "Let's hang your first memory on the wall.")}
-                </p>
-                {/* Instructional hint chip — points at the empty painting, not a
-                    button. BODY font (canon chip grammar — display is titles). */}
-                <span style={{
-                  display: "inline-block",
-                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                  padding: "0.5rem 1.5rem",
-                  background: "rgba(255,255,255,0.08)",
-                  color: "rgba(250,250,247,0.65)",
-                  border: "0.0625rem solid rgba(255,255,255,0.14)",
-                  borderRadius: "0.5rem",
-                  whiteSpace: "nowrap",
-                  pointerEvents: "none",
-                }}>
-                  {tr("roomClickPainting", "Click on the empty painting")}
-                </span>
-                <WalkCtaButton
-                  label={tr("walkAddMemory", "Add a Memory")}
-                  onClick={() => setPhase("upload")}
-                />
-              </div>
+              capturedCount > 0 ? (
+                /* Capture-first finale: the walk ENDS on their photo over the
+                   mantel (in-place swap) — no upload ask, just the claim. */
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+                  <p style={{
+                    fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                    color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                    textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
+                  }}>
+                    {tr("roomRevealPrompt", "That's yours now. It lives here — and at 3 memories, your room grows.")}
+                  </p>
+                  <WalkCtaButton
+                    label={tr("roomRevealCta", "Continue")}
+                    onClick={() => setPhase("celebration")}
+                  />
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+                  <p style={{
+                    fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                    color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                    textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
+                  }}>
+                    {tr("roomHangPrompt", "Let's hang your first memory on the wall.")}
+                  </p>
+                  {/* Instructional hint chip — points at the empty painting, not a
+                      button. BODY font (canon chip grammar — display is titles). */}
+                  <span style={{
+                    display: "inline-block",
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                    padding: "0.5rem 1.5rem",
+                    background: "rgba(255,255,255,0.08)",
+                    color: "rgba(250,250,247,0.65)",
+                    border: "0.0625rem solid rgba(255,255,255,0.14)",
+                    borderRadius: "0.5rem",
+                    whiteSpace: "nowrap",
+                    pointerEvents: "none",
+                  }}>
+                    {tr("roomClickPainting", "Click on the empty painting")}
+                  </span>
+                  <WalkCtaButton
+                    label={tr("walkAddMemory", "Add a Memory")}
+                    onClick={() => setPhase("upload")}
+                  />
+                </div>
+              )
             )}
           </WalkCinematicCaption>
         )}
@@ -1470,7 +1766,7 @@ ${KEYFRAMES}
             celebration can inject the photo into the visible room instantly.
             demoAudio=false: the room leg is over — the gramophone stops. */}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onboardingMode demoAudio={false} />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onboardingMode demoAudio={false} uploadedMemories={walkMemsRef.current} />
         </Suspense>
 
         {/* No seeded-memory tooltip here — the ImportHub's own upload prompt is
@@ -1547,6 +1843,9 @@ ${KEYFRAMES}
                 throw new Error("save-rolled-back");
               }
               setUploadedMemory(mem);
+              // Seed the endowed-progress strip (this fallback path only runs
+              // with zero captures, so the imported photo IS memory #1).
+              setCapturedMems((prev) => (prev.length ? prev : [mem]));
               handleMemoryAdded();
             }}
             onOpenCloudProvider={() => {}}
@@ -1568,13 +1867,97 @@ ${KEYFRAMES}
      palace (celebrationContinue -> done, no paywall); elsewhere it offers the
      soft trial step (celebrationAtrium "Select your plan" -> paywall). ── */
   if (phase === "celebration") {
-    const celebTitle = tr("celebrationTitle2", "Congratulations!");
-    const celebSubtitle = tr("celebrationSubtitle2", "Now continue exploring your Memory Palace");
+    // ── Endowed-progress copy (SUCCESS_PLAYBOOK wk 2, Pillar 1 §4): the
+    // headline states the count honestly and sells capture #2/#3 — someone who
+    // captured 30 seconds ago is the cheapest next capture there is. A resumed
+    // session with lost local state (count 0) keeps the classic congrats. ──
+    const celebTitle =
+      capturedCount >= 3 ? tr("celebrationTitle3", "Three hanging — your palace has begun.")
+      : capturedCount === 2 ? tr("celebrationTitle2of3", "Two hanging. One hook still empty.")
+      : capturedCount === 1 ? tr("celebrationTitle1of3", "One memory home. Two hooks still empty.")
+      : tr("celebrationTitle2", "Congratulations!");
+    const celebSubtitle =
+      capturedCount >= 3 ? tr("celebrationSubtitle3", "This is how a life gets kept — a few moments at a time. Keep the habit: one more today.")
+      : capturedCount >= 1 ? tr("celebrationSubtitleHooks", "Palaces come alive at 3 — watch your room grow.")
+      : tr("celebrationSubtitle2", "Now continue exploring your Memory Palace");
     // Tutorial-handoff hint (§9): points at the Atrium nudge tour that follows.
     // Free-tier-safe copy — passed to BOTH forks and BOTH platform branches.
     const celebHint = t("celebrationHandoffHint") !== "celebrationHandoffHint"
       ? t("celebrationHandoffHint")
       : "Step inside — a short tour of your Atrium is waiting.";
+    // ── The 3-hook strip + "Add one more" + Kep teaser — shared by the
+    // portrait (OnboardingCelebration extra) and landscape (inline) forks.
+    // Never rendered on a stateless resume (count 0): no hooks to show. ──
+    const celebrationExtras = capturedCount > 0 ? (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", width: "100%" }}>
+        {/* Hidden single-photo picker for "Add one more" */}
+        <input
+          ref={celebInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            e.target.value = "";
+            if (files.length) {
+              track("second_memory_prompt_captured", { count: capturedMemsRef.current.length + 1 });
+              persistCapturedFiles(files, "celebration");
+            }
+          }}
+        />
+        {/* 3-hook strip: filled slots = their thumbnails, empty = hooks */}
+        <div aria-label={tr("celebrationHooksAria", "{count} of 3 hooks filled", { count: String(Math.min(capturedCount, 3)) })} style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+          {Array.from({ length: 3 }, (_, i) => {
+            const mem = capturedMems[i];
+            return mem ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={mem.dataUrl} alt="" style={{
+                width: "3rem", height: "3rem", objectFit: "cover", display: "block",
+                borderRadius: "0.5rem", border: `0.125rem solid ${EMBER}`,
+              }} />
+            ) : (
+              <div key={i} aria-hidden style={{
+                width: "3rem", height: "3rem", borderRadius: "0.5rem",
+                border: `0.125rem dashed ${HAIRLINE}`, background: "#FFFFFF66",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: T.font.display, fontSize: "1.25rem", color: MUTED,
+              }}>
+                +
+              </div>
+            );
+          })}
+        </div>
+        {captureError && (
+          <p role="alert" style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#A63D3D", margin: 0, lineHeight: 1.4 }}>
+            {captureError}
+          </p>
+        )}
+        {/* "Add one more" — the cheapest second capture; quiet bordered CTA so
+            the EMBER continue keeps primacy. */}
+        <button
+          className="onb-focusable"
+          onClick={() => celebInputRef.current?.click()}
+          style={{
+            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+            padding: "0 1.25rem", minHeight: "2.75rem", borderRadius: "0.625rem",
+            border: `0.09375rem solid ${EMBER}`, background: "#FFF",
+            color: EMBER, cursor: "pointer",
+          }}
+        >
+          {captureBusy
+            ? tr("captureSaving", "Hanging your photos…")
+            : tr("celebrationAddMore", "Add one more (30 sec)")}
+        </button>
+        {/* Kep teaser — copy-only card (one-tap linking ships separately) */}
+        <p style={{
+          fontFamily: T.font.body, fontStyle: "italic", fontSize: "0.8125rem",
+          color: MUTED, lineHeight: 1.5, margin: 0, maxWidth: "22rem", textAlign: "center",
+        }}>
+          <span aria-hidden style={{ color: EMBER, opacity: 0.8, marginRight: "0.375rem" }}>✦</span>
+          {tr("celebrationKepTip", "Next time, skip the app: connect Kep on WhatsApp in Settings and text your photos in — they hang themselves.")}
+        </p>
+      </div>
+    ) : null;
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
         {canonStyle}
@@ -1585,7 +1968,7 @@ ${KEYFRAMES}
             injected IN PLACE into the mantel placeholder via uploadedMemory;
             the walk's step-9 framing already has the camera on the mantel. */}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onboardingMode demoAudio={false} uploadedMemory={uploadedMemory} />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onboardingMode demoAudio={false} uploadedMemory={uploadedMemory ?? walkMemsRef.current[0] ?? null} uploadedMemories={walkMemsRef.current} />
         </Suspense>
         {/* Ceremonial threshold. On short landscape phones the bottom-anchored
             fixed overlay inside OnboardingCelebration can push the CTA past the
@@ -1639,6 +2022,8 @@ ${KEYFRAMES}
               }}>
                 {celebSubtitle}
               </p>
+              {/* Endowed-progress strip (wk-2) — inline in this landscape fork */}
+              {celebrationExtras}
               {/* Tutorial-handoff hint (§9 row [4]) — mirrors the shared
                   OnboardingCelebration hint row; this landscape fork doesn't
                   use the component, so the row is replicated inline. */}
@@ -1674,6 +2059,7 @@ ${KEYFRAMES}
               buttonLabel={paywallAllowed() ? t("celebrationAtrium") : t("celebrationContinue")}
               onContinue={() => setPhase(paywallAllowed() ? "paywall" : "done")}
               hint={celebHint}
+              extra={celebrationExtras}
               transparent
             />
           </Suspense>

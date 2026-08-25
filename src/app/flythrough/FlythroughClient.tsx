@@ -176,17 +176,22 @@ const SCENES: SceneDef[] = [
 // Onboarding scene was added); scene 4 is a review surface, not footage.
 const RECORD_SCENE_COUNT = 4;
 
-// Onboarding-preview phase machine — mirrors the wizard's PHASE_ORDER with
-// viewer-local names: video (skippable intro) → card_lang (language + text
-// size, demo-local) → card_name (name, demo-local) → loading (cream veil,
-// fades on onReady) → hold (WP1 approach) → paused (one-shot cinematic pause;
-// prompt shown IN the caption, like the wizard) → flying (5-waypoint flyover)
-// → hall (blink look-around) → corridor (steps 0-7, step-6 room prompt) →
-// room (steps 0-9, upload-painting tap) → upload (ImportHub, demo-local) →
-// celebration (confetti threshold) → paywall (view-only card) → done (end
-// card). All state is local; zero localStorage writes.
+// Onboarding-preview phase machine — mirrors the wizard's CAPTURE-FIRST
+// PHASE_ORDER (SUCCESS_PLAYBOOK wk 2) with viewer-local names: video
+// (skippable intro) → card_lang (language + text size, demo-local) →
+// card_name (name, demo-local) → capture (pick up to 3 photos, demo-local —
+// BEFORE the walk) → loading (cream veil, fades on onReady) → hold (WP1
+// approach) → paused (one-shot cinematic pause; prompt shown IN the caption,
+// like the wizard) → flying (5-waypoint flyover) → hall (blink look-around) →
+// corridor (steps 0-7, step-6 room prompt) → room (steps 0-9 — with captures
+// the leg REVEALS the picked photos hanging and ends on Continue →
+// celebration; with zero captures the old upload-painting ask remains) →
+// upload (ImportHub fallback, demo-local, zero-capture path only) →
+// celebration (confetti threshold + endowed-progress hooks strip) → paywall
+// (view-only card) → done (end card). All state is local; zero localStorage
+// writes.
 type ObPhase =
-  | "video" | "card_lang" | "card_name"
+  | "video" | "card_lang" | "card_name" | "capture"
   | "loading" | "hold" | "paused" | "flying"
   | "hall" | "corridor" | "room"
   | "upload" | "celebration" | "paywall" | "done";
@@ -332,6 +337,37 @@ export default function FlythroughClient() {
   }, [obScene]);
   // The demo first memory (upload phase) — local object, never persisted.
   const [obMem, setObMem] = useState<Mem | null>(null);
+  // ── Capture-first demo state (wizard mirror): the photos picked on the
+  // capture card, as local dataURL Mems — never persisted anywhere. ──
+  const [obCaptured, setObCaptured] = useState<Mem[]>([]);
+  const obCapturedRef = useRef<Mem[]>([]);
+  useEffect(() => { obCapturedRef.current = obCaptured; }, [obCaptured]);
+  // Frozen snapshot handed to the 3D host at walk start (wizard mirror): a
+  // celebration-time "add one more" must not change the room's structural
+  // fingerprint (full rebuild under the confetti).
+  const obWalkMemsRef = useRef<Mem[]>([]);
+  const obCaptureInputRef = useRef<HTMLInputElement | null>(null);
+  const obCelebInputRef = useRef<HTMLInputElement | null>(null);
+  const obReadCaptureFiles = useCallback(async (files: File[], limit: number) => {
+    const picks = files.filter((f) => f.type.startsWith("image/")).slice(0, limit);
+    for (const file of picks) {
+      try {
+        const dataUrl = await new Promise<string>((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result as string);
+          reader.onerror = rej;
+          reader.readAsDataURL(file);
+        });
+        if (!dataUrl) continue;
+        setObCaptured((prev) => [...prev, {
+          id: `ob-cap-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          title: file.name.replace(/\.[^.]+$/, "") || file.name,
+          type: "photo", dataUrl, displayed: true,
+          hue: 18, s: 50, l: 60, createdAt: new Date().toISOString(),
+        } as Mem]);
+      } catch { /* unreadable file — demo-local, skip quietly */ }
+    }
+  }, []);
   // ?mantelDemo=1 — tour-recording mantel fill (see mantelDemoFromURL above).
   const [obMantelDemo, setObMantelDemo] = useState(false);
   // Video intro outro beat (mirrors the wizard's beginOutro welcome fade).
@@ -361,6 +397,8 @@ export default function FlythroughClient() {
     // obScene may already be "exterior" (no dep change) — reset readiness explicitly.
     setObWalkReady(false);
     setObMem(null);
+    setObCaptured([]);
+    obWalkMemsRef.current = [];
     setObVideoWelcome(false);
     obOutroFiredRef.current = false;
     obPauseFiredRef.current = false;
@@ -433,6 +471,9 @@ export default function FlythroughClient() {
   // the pending timeout — a scheduled advance can never outlive its disarm.
   const obCorridorWaiting = obCorridorStep >= 6;
   const obRoomWaiting = obRoomStep >= 9;
+  // Capture-first (wizard mirror): with captured photos the room leg resolves
+  // straight to the celebration; zero captures fall back to the upload ask.
+  const obAfterWalk: ObPhase = obCaptured.length > 0 ? "celebration" : "upload";
   const obLegLive =
     obWalkReady ||
     (obPhase === "corridor" && obCorridorStep >= 0) ||
@@ -453,10 +494,10 @@ export default function FlythroughClient() {
     } else if (obPhase === "corridor" && !obCorridorWaiting) {
       tmo = setTimeout(() => { setObScene("room"); setObPhase("room"); }, 25000);
     } else if (obPhase === "room" && !obRoomWaiting) {
-      tmo = setTimeout(() => setObPhase("upload"), 33000);
+      tmo = setTimeout(() => setObPhase(obAfterWalk), 33000);
     }
     return () => { if (tmo) clearTimeout(tmo); };
-  }, [currentScene, obPhase, obLegLive, obCorridorWaiting, obRoomWaiting]);
+  }, [currentScene, obPhase, obLegLive, obCorridorWaiting, obRoomWaiting, obAfterWalk]);
   // OUTER absolute bound (wizard mirror) — purely anti-infinite-loading: if a
   // leg's scene never goes live, advance 90s after phase entry ("flying" is
   // already post-resume; the paused prompt wait stays unbounded). Cancelled
@@ -472,10 +513,10 @@ export default function FlythroughClient() {
     } else if (obPhase === "corridor") {
       tmo = setTimeout(() => { setObScene("room"); setObPhase("room"); }, 90000);
     } else if (obPhase === "room") {
-      tmo = setTimeout(() => setObPhase("upload"), 90000);
+      tmo = setTimeout(() => setObPhase(obAfterWalk), 90000);
     }
     return () => { if (tmo) clearTimeout(tmo); };
-  }, [currentScene, obPhase, obLegLive]);
+  }, [currentScene, obPhase, obLegLive, obAfterWalk]);
   // "Enter The Room" fallback (wizard: corridor ro1-arrival may never fire):
   // the step-7 auto-walk covers ~4m at the 2.2m/s comfort cap (~2s) — 10s
   // ceiling (2s natural + 8s buffer) so it can never cut the walk itself.
@@ -484,9 +525,10 @@ export default function FlythroughClient() {
     const tmo = setTimeout(() => { setObScene("room"); setObPhase("room"); }, 10000);
     return () => clearTimeout(tmo);
   }, [currentScene, obPhase, obCorridorEnter]);
-  // Warm the 3D module cache while the owner types the demo name (wizard §preload).
+  // Warm the 3D module cache while the owner types the demo name / picks
+  // photos on the capture card (wizard §preload).
   useEffect(() => {
-    if (currentScene !== 4 || obPhase !== "card_name") return;
+    if (currentScene !== 4 || (obPhase !== "card_name" && obPhase !== "capture")) return;
     import("@/lib/3d/scenePreloader")
       .then(({ preloadScene }) => { preloadScene("exterior"); preloadScene("entrance"); })
       .catch(() => {});
@@ -500,8 +542,8 @@ export default function FlythroughClient() {
     }
     else if (obPhase === "hall") { setObScene("corridor"); setObPhase("corridor"); }
     else if (obPhase === "corridor") { setObScene("room"); setObPhase("room"); }
-    else if (obPhase === "room") setObPhase("upload");
-  }, [obPhase]);
+    else if (obPhase === "room") setObPhase(obAfterWalk);
+  }, [obPhase, obAfterWalk]);
   // Stable host callbacks: the host's ready-gate effect re-arms on onReady
   // identity change, so inline arrows here would reset its once-per-scene
   // guards every viewer render (step updates re-render constantly).
@@ -794,7 +836,7 @@ export default function FlythroughClient() {
         // photo is injected in place into the mantel placeholder and the
         // confetti falls over a visible room (mirrors the wizard's mounts).
         // Only the paywall re-keys to a fresh plain room, like the wizard.
-        if (obPhase === "video" || obPhase === "card_lang" || obPhase === "card_name") return null;
+        if (obPhase === "video" || obPhase === "card_lang" || obPhase === "card_name" || obPhase === "capture") return null;
         const hostEpoch =
           obPhase === "paywall" || obPhase === "done" ? "paywall" : "walk";
         const walkMode = hostEpoch === "walk";
@@ -823,11 +865,19 @@ export default function FlythroughClient() {
             // `onboardingAudioRef.current===true`); re-enable by restoring
             // demoAudio={obPhase !== "upload" && obPhase !== "celebration"}.
             demoAudio={false}
+            // Capture-first (wizard mirror): photo #1 swaps into the mantel
+            // from the START of the room leg; #2/#3 hang on the left wall via
+            // uploadedMemories (frozen snapshot — see obWalkMemsRef).
             // ?mantelDemo=1 (recording passes only): the demo hero photo hangs
             // in the mantel frame from the START of the room leg via the same
-            // in-place swap the celebration uses. Param absent ⇒ exactly the
-            // old expression (empty mantel until celebration).
-            uploadedMemory={obPhase === "celebration" ? obMem : obMantelDemo && obScene === "room" ? MANTEL_DEMO_MEM : null}
+            // in-place swap the celebration uses. Param absent + zero captures
+            // ⇒ exactly the old expression (empty mantel until celebration).
+            uploadedMemory={
+              obScene === "room" && obWalkMemsRef.current[0] ? obWalkMemsRef.current[0]
+              : obPhase === "celebration" ? obMem
+              : obMantelDemo && obScene === "room" ? MANTEL_DEMO_MEM : null
+            }
+            uploadedMemories={obWalkMemsRef.current}
             onReady={handleObHostReady}
             onSceneReady={handleObSceneReady}
             onCinematicPause={() => {
@@ -859,7 +909,7 @@ export default function FlythroughClient() {
             onDoorClick={(id: string) => {
               if (obPhase === "hall") { setObScene("corridor"); setObPhase("corridor"); }
               else if (obPhase === "corridor" && id === "ro1") { setObScene("room"); setObPhase("room"); }
-              else if (obPhase === "room" && id === "__upload_painting__") setObPhase("upload");
+              else if (obPhase === "room" && id === "__upload_painting__") setObPhase(obAfterWalk);
             }}
           />
         );
@@ -1157,11 +1207,13 @@ export default function FlythroughClient() {
       )}
 
       {/* ── Onboarding preview chrome (scene 4) — FULL walkthrough replay ──
-          Pure viewer UI mirroring the rebuilt OnboardingWizard flow with
-          demo-local state: video intro → lang/a11y + name cards → cinematic
-          captions + WP1 prompt → hall → corridor steps → room walk → ImportHub
-          → celebration → view-only paywall → end card. Reuses the wizard's
-          REAL components (WalkCinematicCaption/WalkCtaButton, ImportHub,
+          Pure viewer UI mirroring the CAPTURE-FIRST OnboardingWizard flow with
+          demo-local state: video intro → lang/a11y + name cards → capture card
+          (3-photo picker) → cinematic captions + WP1 prompt → hall → corridor
+          steps → room walk that REVEALS the picked photos (zero captures:
+          ImportHub fallback ask) → celebration (endowed-progress hooks) →
+          view-only paywall → end card. Reuses the wizard's REAL components
+          (WalkCinematicCaption/WalkCtaButton, ImportHub,
           OnboardingCelebration). No onboarding/locale/a11y localStorage writes. */}
       {mounted && currentScene === 4 && phase === "idle" && (
         <>
@@ -1364,7 +1416,7 @@ export default function FlythroughClient() {
                         placeholder={trOnb("namePlaceholder", "Your first name")}
                         aria-label={trOnb("namePlaceholder", "Your first name")}
                         maxLength={40}
-                        onKeyDown={(e) => { if (e.key === "Enter" && obName.trim()) setObPhase("loading"); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" && obName.trim()) setObPhase("capture"); }}
                         style={{
                           fontFamily: T.font.display, fontSize: "max(1rem, 16px)", textAlign: "center",
                           padding: "0.875rem 1.5rem", border: `0.09375rem solid ${OB_HAIRLINE}`,
@@ -1384,7 +1436,7 @@ export default function FlythroughClient() {
                           {"←"} {trOnb("backButton", "Back")}
                         </button>
                         <button
-                          onClick={() => { if (obName.trim()) setObPhase("loading"); }}
+                          onClick={() => { if (obName.trim()) setObPhase("capture"); }}
                           disabled={!obName.trim()}
                           style={{ ...obCtaStyle, flex: 1, opacity: obName.trim() ? 1 : 0.5, cursor: obName.trim() ? "pointer" : "not-allowed" }}
                         >
@@ -1394,6 +1446,102 @@ export default function FlythroughClient() {
                       <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: OB_MUTED, margin: 0 }}>{obDemoNote}</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Capture card (wizard 'capture', SUCCESS_PLAYBOOK wk 2) —
+              demo-local: 3 frame slots + hidden multi photo picker; photos
+              stay local dataURLs, the walk then reveals them. "Later" keeps
+              the zero-capture fallback path (upload ask after the walk). ── */}
+          {obPhase === "capture" && (
+            <div style={obCardPageStyle}>
+              <div style={obCardScrollerStyle}>
+                <div style={obCardStyle}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                      <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER_GLYPH}40` }} />
+                      <span style={obOverlineStyle}>{trOnb("appName", "The Memory Palace")}</span>
+                      <span aria-hidden style={{ width: "2rem", height: "1px", background: `${OB_EMBER_GLYPH}40` }} />
+                    </div>
+                    <h2 style={obH2Style}>{trOnb("captureTitle", "Pick 3 photos to hang in your palace")}</h2>
+                    <p style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.9375rem", color: OB_MUTED, maxWidth: "22rem", lineHeight: 1.6, margin: 0 }}>
+                      {trOnb("captureAside", "The three you'd save from a fire. We'll hang them on your walls — then we'll walk you to them.")}
+                    </p>
+                    <input
+                      ref={obCaptureInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        e.target.value = "";
+                        if (files.length) obReadCaptureFiles(files, Math.max(0, 3 - obCapturedRef.current.length));
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: "0.75rem", width: "100%", justifyContent: "center" }}>
+                      {Array.from({ length: 3 }, (_, i) => {
+                        const mem = obCaptured[i];
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => obCaptureInputRef.current?.click()}
+                            aria-label={mem ? mem.title : trOnb("captureSlotEmpty", "Add a photo")}
+                            style={{
+                              flex: 1, maxWidth: "7.5rem", aspectRatio: "1 / 1",
+                              borderRadius: "0.625rem", padding: 0, overflow: "hidden",
+                              cursor: "pointer", position: "relative",
+                              border: mem ? `0.125rem solid ${OB_EMBER}` : `0.125rem dashed ${OB_HAIRLINE}`,
+                              background: mem ? "#FFF" : "#FFFFFF99",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}
+                          >
+                            {mem ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={mem.dataUrl || ""} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                            ) : (
+                              <span aria-hidden style={{ fontFamily: T.font.display, fontSize: "1.75rem", color: OB_MUTED, lineHeight: 1 }}>+</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p aria-live="polite" style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: OB_MUTED, margin: "-0.75rem 0 0", lineHeight: 1.4 }}>
+                      {trOnb("captureCount", "{count} of 3 chosen", { count: String(obCaptured.length) })}
+                    </p>
+                    <button
+                      onClick={() => {
+                        if (obCaptured.length > 0) {
+                          obWalkMemsRef.current = obCapturedRef.current.slice(0, 3);
+                          setObPhase("loading");
+                        } else {
+                          obCaptureInputRef.current?.click();
+                        }
+                      }}
+                      style={{ ...obCtaStyle, width: "100%" }}
+                    >
+                      {obCaptured.length > 0
+                        ? `${trOnb("captureCta", "Hang them in my palace")} →`
+                        : trOnb("captureChoose", "Choose your photos")}
+                    </button>
+                    <button
+                      // Wizard mirror: photos already picked still walk with
+                      // you even on "later" (the memory exists — reveal it).
+                      onClick={() => { obWalkMemsRef.current = obCapturedRef.current.slice(0, 3); setObPhase("loading"); }}
+                      style={{
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: OB_MUTED,
+                        background: "none", border: "none", cursor: "pointer",
+                        textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+                        minHeight: "2.75rem", padding: "0.5rem",
+                      }}
+                    >
+                      {trOnb("captureLater", "I'll add photos later")}
+                    </button>
+                    <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: OB_MUTED, margin: 0 }}>{obDemoNote}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1473,27 +1621,43 @@ export default function FlythroughClient() {
                 : trOnb("roomTitle", "Me, Over Time Room")}
               caption={
                 obRoomStep >= 4
-                  ? trOnb("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more.")
-                  : trOnb("walkRoom", "This is your first room. Ready to place your first memory?")
+                  ? (obCaptured.length > 0
+                      ? trOnb("roomRevealSubtitle", "Your photos are already hanging — this room is yours now.")
+                      : trOnb("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more."))
+                  : (obCaptured.length > 0
+                      ? trOnb("roomRevealWalk", "This is your first room. Look — the photos you chose made it here first.")
+                      : trOnb("walkRoom", "This is your first room. Ready to place your first memory?"))
               }
             >
               {obRoomStep >= 9 && (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
-                  <p style={obPromptTextStyle}>{trOnb("roomHangPrompt", "Let's hang your first memory on the wall.")}</p>
-                  <span style={{
-                    display: "inline-block", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                    padding: "0.5rem 1.5rem",
-                    background: "rgba(255,255,255,0.08)", color: "rgba(250,250,247,0.65)",
-                    border: "0.0625rem solid rgba(255,255,255,0.14)", borderRadius: "0.5rem",
-                    whiteSpace: "nowrap", pointerEvents: "none",
-                  }}>
-                    {trOnb("roomClickPainting", "Click on the empty painting")}
-                  </span>
-                  <WalkCtaButton
-                    label={trOnb("walkAddMemory", "Add a Memory")}
-                    onClick={() => setObPhase("upload")}
-                  />
-                </div>
+                obCaptured.length > 0 ? (
+                  /* Capture-first finale (wizard mirror): the walk ends on the
+                     picked photos — no upload ask. */
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+                    <p style={obPromptTextStyle}>{trOnb("roomRevealPrompt", "That's yours now. It lives here — and at 3 memories, your room grows.")}</p>
+                    <WalkCtaButton
+                      label={trOnb("roomRevealCta", "Continue")}
+                      onClick={() => setObPhase("celebration")}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+                    <p style={obPromptTextStyle}>{trOnb("roomHangPrompt", "Let's hang your first memory on the wall.")}</p>
+                    <span style={{
+                      display: "inline-block", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                      padding: "0.5rem 1.5rem",
+                      background: "rgba(255,255,255,0.08)", color: "rgba(250,250,247,0.65)",
+                      border: "0.0625rem solid rgba(255,255,255,0.14)", borderRadius: "0.5rem",
+                      whiteSpace: "nowrap", pointerEvents: "none",
+                    }}>
+                      {trOnb("roomClickPainting", "Click on the empty painting")}
+                    </span>
+                    <WalkCtaButton
+                      label={trOnb("walkAddMemory", "Add a Memory")}
+                      onClick={() => setObPhase("upload")}
+                    />
+                  </div>
+                )
               )}
             </WalkCinematicCaption>
           )}
@@ -1529,10 +1693,13 @@ export default function FlythroughClient() {
                   } catch { /* previewUrl fallback */ }
                 }
                 if (!dataUrl) return;
-                setObMem({
+                const mem = {
                   id: `ob-demo-${Date.now()}`, title: f.name, type: "photo", dataUrl,
                   hue: 18, s: 50, l: 60, displayed: true, createdAt: new Date().toISOString(),
-                } as Mem);
+                } as Mem;
+                setObMem(mem);
+                // Seed the endowed-progress strip (zero-capture fallback path).
+                setObCaptured((prev) => (prev.length ? prev : [mem]));
                 setObPhase("celebration");
               }}
               onOpenCloudProvider={() => {}}
@@ -1548,11 +1715,74 @@ export default function FlythroughClient() {
               the just-hung demo memory. ── */}
           {obPhase === "celebration" && (
             <OnboardingCelebration
-              title={trOnb("celebrationTitle2", "Congratulations!")}
-              subtitle={trOnb("celebrationSubtitle2", "Now continue exploring your Memory Palace")}
+              title={
+                obCaptured.length >= 3 ? trOnb("celebrationTitle3", "Three hanging — your palace has begun.")
+                : obCaptured.length === 2 ? trOnb("celebrationTitle2of3", "Two hanging. One hook still empty.")
+                : obCaptured.length === 1 ? trOnb("celebrationTitle1of3", "One memory home. Two hooks still empty.")
+                : trOnb("celebrationTitle2", "Congratulations!")
+              }
+              subtitle={
+                obCaptured.length >= 3 ? trOnb("celebrationSubtitle3", "This is how a life gets kept — a few moments at a time. Keep the habit: one more today.")
+                : obCaptured.length >= 1 ? trOnb("celebrationSubtitleHooks", "Palaces come alive at 3 — watch your room grow.")
+                : trOnb("celebrationSubtitle2", "Now continue exploring your Memory Palace")
+              }
               buttonLabel={trOnb("celebrationAtrium", "Select your plan")}
               onContinue={() => setObPhase("paywall")}
               hint={trOnb("celebrationHandoffHint", "Step inside — a short tour of your Atrium is waiting.")}
+              extra={obCaptured.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", width: "100%" }}>
+                  <input
+                    ref={obCelebInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []);
+                      e.target.value = "";
+                      if (files.length) obReadCaptureFiles(files, 1);
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+                    {Array.from({ length: 3 }, (_, i) => {
+                      const mem = obCaptured[i];
+                      return mem ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={mem.dataUrl || ""} alt="" style={{
+                          width: "3rem", height: "3rem", objectFit: "cover", display: "block",
+                          borderRadius: "0.5rem", border: `0.125rem solid ${OB_EMBER}`,
+                        }} />
+                      ) : (
+                        <div key={i} aria-hidden style={{
+                          width: "3rem", height: "3rem", borderRadius: "0.5rem",
+                          border: `0.125rem dashed ${OB_HAIRLINE}`, background: "#FFFFFF66",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontFamily: T.font.display, fontSize: "1.25rem", color: OB_MUTED,
+                        }}>
+                          +
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => obCelebInputRef.current?.click()}
+                    style={{
+                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                      padding: "0 1.25rem", minHeight: "2.75rem", borderRadius: "0.625rem",
+                      border: `0.09375rem solid ${OB_EMBER}`, background: "#FFF",
+                      color: OB_EMBER, cursor: "pointer",
+                    }}
+                  >
+                    {trOnb("celebrationAddMore", "Add one more (30 sec)")}
+                  </button>
+                  <p style={{
+                    fontFamily: T.font.body, fontStyle: "italic", fontSize: "0.8125rem",
+                    color: OB_MUTED, lineHeight: 1.5, margin: 0, maxWidth: "22rem", textAlign: "center",
+                  }}>
+                    <span aria-hidden style={{ color: OB_EMBER, opacity: 0.8, marginRight: "0.375rem" }}>✦</span>
+                    {trOnb("celebrationKepTip", "Next time, skip the app: connect Kep on WhatsApp in Settings and text your photos in — they hang themselves.")}
+                  </p>
+                </div>
+              ) : null}
               transparent
             />
           )}
