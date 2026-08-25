@@ -30,6 +30,7 @@ export async function importFilesToRoom(
     let dataUrl = item.url || "";
     let directFilePath: string | null = null;
     let directStorageBackend: string | null = null;
+    let directEventDate: string | null = null;
 
     if (item.file) {
       try {
@@ -41,6 +42,7 @@ export async function importFilesToRoom(
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
             dataUrl = uploadData.url; directFilePath = uploadData.path; directStorageBackend = uploadData.storageBackend;
+            directEventDate = uploadData.eventDate || null;
           } else {
             dataUrl = await readFileWithTimeout(item.file, 15000);
           }
@@ -76,7 +78,7 @@ export async function importFilesToRoom(
             formData.append("file", item.file, item.name);
             formData.append("bucket", "memories");
             const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-            if (uploadRes.ok) { const uploadData = await uploadRes.json(); dataUrl = uploadData.url; directFilePath = uploadData.path; directStorageBackend = uploadData.storageBackend; }
+            if (uploadRes.ok) { const uploadData = await uploadRes.json(); dataUrl = uploadData.url; directFilePath = uploadData.path; directStorageBackend = uploadData.storageBackend; directEventDate = uploadData.eventDate || null; }
           } catch { /* give up */ }
         }
       }
@@ -91,6 +93,7 @@ export async function importFilesToRoom(
       type: isVideo ? "video" : isAudio ? "audio" : "photo",
       dataUrl, desc: "", createdAt: new Date().toISOString(),
       ...(directFilePath ? { _filePath: directFilePath, _storageBackend: directStorageBackend } : {}),
+      ...(directEventDate ? { _eventDate: directEventDate } : {}),
     } as Mem;
     await addMemory(roomId, mem);
     created.push(mem);

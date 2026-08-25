@@ -455,6 +455,41 @@ export default function MemoryPalace(){
       window.history.replaceState(window.history.state, "", window.location.pathname);
     }
   }, [searchParams]);
+  // ── ?memory=<id> deep-link (week-4 resurface repair) ──
+  // Digest OTD / memory-of-the-week emails land on /palace?memory=<id>; open
+  // that memory's detail card once the store has it. Best-effort: retries the
+  // bulk fetch a few times to ride out the cold-start auth-session race.
+  const memoryParam = searchParams?.get("memory");
+  useEffect(() => {
+    if (!memoryParam) return;
+    // Strip the param so back/refresh doesn't retrigger (UTMs are read on load).
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+    let cancelled = false;
+    const findMem = () => {
+      for (const mems of Object.values(useMemoryStore.getState().userMems)) {
+        const hit = mems.find((m) => m.id === memoryParam);
+        if (hit) return hit;
+      }
+      return null;
+    };
+    (async () => {
+      for (let attempt = 0; attempt < 4 && !cancelled; attempt++) {
+        const hit = findMem();
+        if (hit) {
+          setSelMem(hit);
+          return;
+        }
+        try { await useMemoryStore.getState().fetchAllRoomMemories(); } catch { /* best-effort */ }
+        const after = findMem();
+        if (after && !cancelled) {
+          setSelMem(after);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [memoryParam, setSelMem]);
   const [showSettings, setShowSettings] = useState(false);
   const walkthroughActive = useWalkthroughStore((s) => s.isActive);
   const showDiscoveryMenu = useWalkthroughStore((s) => s.showDiscoveryMenu);

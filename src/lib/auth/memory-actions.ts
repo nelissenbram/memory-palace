@@ -73,6 +73,8 @@ export async function createMemory(data: {
   locationName?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** Date the memory actually happened (date-only ISO, e.g. from EXIF DateTimeOriginal). Best-effort. */
+  eventDate?: string | null;
 }) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -92,28 +94,40 @@ export async function createMemory(data: {
   const dbRoomId = await ensureRoom(supabase, user.id, data.roomId, wingSlug);
   if (!dbRoomId) return { error: t("couldNotResolveRoom") };
 
-  const { data: memory, error } = await supabase
+  const baseRow = {
+    room_id: dbRoomId,
+    user_id: user.id,
+    title: data.title,
+    description: data.description || null,
+    type: data.type,
+    hue: data.hue,
+    saturation: data.saturation,
+    lightness: data.lightness,
+    file_url: data.fileUrl || null,
+    file_path: data.filePath || null,
+    file_size: data.fileSize || 0,
+    storage_backend: data.storageBackend || "supabase",
+    ...(data.thumbnailUrl ? { thumbnail_url: data.thumbnailUrl } : {}),
+    ...(data.locationName ? { location_name: data.locationName } : {}),
+    ...(data.lat != null ? { lat: data.lat } : {}),
+    ...(data.lng != null ? { lng: data.lng } : {}),
+  };
+
+  // event_date (week-4 resurface repair) is best-effort and must NEVER block a
+  // capture: if the migration hasn't been applied yet (unknown column), retry
+  // the insert without it.
+  let insertRes = await supabase
     .from("memories")
     .insert({
-      room_id: dbRoomId,
-      user_id: user.id,
-      title: data.title,
-      description: data.description || null,
-      type: data.type,
-      hue: data.hue,
-      saturation: data.saturation,
-      lightness: data.lightness,
-      file_url: data.fileUrl || null,
-      file_path: data.filePath || null,
-      file_size: data.fileSize || 0,
-      storage_backend: data.storageBackend || "supabase",
-      ...(data.thumbnailUrl ? { thumbnail_url: data.thumbnailUrl } : {}),
-      ...(data.locationName ? { location_name: data.locationName } : {}),
-      ...(data.lat != null ? { lat: data.lat } : {}),
-      ...(data.lng != null ? { lng: data.lng } : {}),
+      ...baseRow,
+      ...(data.eventDate ? { event_date: data.eventDate } : {}),
     })
     .select()
     .single();
+  if (insertRes.error && data.eventDate && /event_date/i.test(insertRes.error.message)) {
+    insertRes = await supabase.from("memories").insert(baseRow).select().single();
+  }
+  const { data: memory, error } = insertRes;
 
   if (error) {
     // Cleanup orphaned storage file on DB insert failure

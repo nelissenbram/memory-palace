@@ -208,6 +208,9 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     let fileSize: number | null = null;
     let storageBackend: string | null = null;
 
+    // Week-4 resurface: EXIF taken-date from /api/upload (best-effort) → event_date
+    let eventDate: string | null = mem._eventDate || null;
+
     // If file was already uploaded directly (via FormData in handleImportFiles)
     if (mem._filePath) {
       filePath = mem._filePath;
@@ -234,6 +237,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
           filePath = uploadData.path;
           fileUrl = uploadData.url;
           storageBackend = uploadData.storageBackend;
+          if (uploadData.eventDate) eventDate = uploadData.eventDate;
         } else {
           // Upload failed — roll back optimistic add
           console.error("[memoryStore] addMemory upload failed:", uploadRes.status);
@@ -284,6 +288,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl, filePath, fileSize, storageBackend,
       thumbnailUrl,
       locationName: mem.locationName || null, lat: mem.lat ?? null, lng: mem.lng ?? null,
+      eventDate,
     });
     if (result.memory) {
       set((s) => {

@@ -13,8 +13,12 @@ const FONT_DISPLAY = "'Fraunces', Georgia, 'Times New Roman', serif";
 const FONT_BODY = "'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
 export interface OnThisDayMemory {
+  /** Memory id — deep-linked as /palace?memory={id} (week-4 resurface repair) */
+  id: string;
   title: string;
   yearsAgo: number;
+  /** Optional photo thumbnail — the first OTD item with one becomes the hero image */
+  thumbnailUrl?: string | null;
 }
 
 export interface UpcomingCapsule {
@@ -39,6 +43,8 @@ export interface TrackProgress {
 }
 
 export interface MemoryOfTheWeek {
+  /** Memory id — deep-linked as /palace?memory={id} */
+  id: string;
   title: string;
   thumbnailUrl: string | null;
   roomName: string;
@@ -216,6 +222,22 @@ const t: Record<string, Record<string, string>> = {
 
 /* ── Section renderers ── */
 
+/** Resolve app-relative media URLs (e.g. /api/media/…) for email clients; data: URLs don't render in email. */
+function emailImageSrc(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (/^https?:\/\//i.test(url)) return url;
+  if (url.startsWith("/")) return `${getSiteUrl()}${url}`;
+  return null;
+}
+
+/** Deep link to a specific memory, UTM-tagged (campaign weekly). utm_content=otd makes resurface opens attributable. */
+function memoryDeepLink(memoryId: string, content: string): string {
+  return emailLink(`${getSiteUrl()}/palace?memory=${encodeURIComponent(memoryId)}`, {
+    campaign: "weekly",
+    content,
+  });
+}
+
 function sectionHeading(title: string): string {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;">
@@ -259,8 +281,10 @@ function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null, l: Record<string,
   if (!memory) return "";
 
   const siteUrl = getSiteUrl();
-  const thumbnail = memory.thumbnailUrl
-    ? `<img src="${escapeHtml(memory.thumbnailUrl)}" alt="${escapeHtml(memory.title)}" width="120" height="120" style="display:block;width:120px;height:120px;object-fit:cover;border-radius:3px;border:1px solid ${CARD_BORDER};" />`
+  const link = memoryDeepLink(memory.id, "motw");
+  const thumbSrc = emailImageSrc(memory.thumbnailUrl);
+  const thumbnail = thumbSrc
+    ? `<img src="${escapeHtml(thumbSrc)}" alt="${escapeHtml(memory.title)}" width="120" height="120" style="display:block;width:120px;height:120px;object-fit:cover;border-radius:3px;border:1px solid ${CARD_BORDER};" />`
     : `<div style="width:120px;height:120px;border-radius:3px;background:${TRAY};text-align:center;">
         <img src="${siteUrl}/email/palace-ember.png" width="48" height="48" alt="" style="display:inline-block;width:48px;height:48px;margin-top:36px;border:0;outline:none;" />
       </div>`;
@@ -269,10 +293,10 @@ function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null, l: Record<string,
     ${sectionHeading(l.memoryOfTheWeek)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg motw-table" style="background:${TRAY};border-radius:2px;border:1px solid ${CARD_BORDER};margin:0 0 28px;">
       <tr>
-        <td class="motw-image" style="padding:20px;width:120px;" valign="top">${thumbnail}</td>
+        <td class="motw-image" style="padding:20px;width:120px;" valign="top"><a href="${link}" style="text-decoration:none;display:block;">${thumbnail}</a></td>
         <td class="motw-text" style="padding:20px 20px 20px 4px;" valign="middle">
           <p class="text-primary" style="margin:0 0 8px;font-family:${FONT_DISPLAY};font-size:20px;font-weight:500;color:${INK};line-height:1.3;font-style:italic;">
-            &ldquo;${escapeHtml(memory.title)}&rdquo;
+            <a href="${link}" style="color:${INK};text-decoration:underline;">&ldquo;${escapeHtml(memory.title)}&rdquo;</a>
           </p>
           <p class="text-muted" style="margin:0 0 14px;font-family:${FONT_BODY};font-size:13px;color:${MUTED};letter-spacing:0.3px;">
             ${l.inRoom} <strong style="color:${INK};">${escapeHtml(memory.roomName)}</strong>
@@ -285,16 +309,30 @@ function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null, l: Record<string,
     </table>`;
 }
 
-/** THE HERO — On This Day. The one section allowed the GOLD frame (motif #2). */
+/** THE HERO — On This Day. The one section allowed the GOLD frame (motif #2).
+ * Week-4 resurface repair: Timehop-style photo hero (first item with a
+ * thumbnail) and every item deep-links to its memory (utm_content=otd). */
 function renderOnThisDay(memories: OnThisDayMemory[], l: Record<string, string>): string {
   if (memories.length === 0) return "";
 
   const shown = memories.slice(0, 5);
+
+  // Photo hero: the first shown item with a renderable thumbnail.
+  const heroSrc = emailImageSrc(shown[0] ? shown[0].thumbnailUrl : null);
+  const hero = heroSrc
+    ? `
+    <tr><td style="padding:0;">
+      <a href="${memoryDeepLink(shown[0].id, "otd")}" style="text-decoration:none;display:block;">
+        <img src="${escapeHtml(heroSrc)}" alt="${escapeHtml(shown[0].title)}" width="536" style="display:block;width:100%;max-width:536px;height:auto;border:0;outline:none;" />
+      </a>
+    </td></tr>`
+    : "";
+
   const items = shown.map((m, i) => `
     <tr><td style="padding:13px 20px;${i < shown.length - 1 ? `border-bottom:1px solid ${HAIRLINE};` : ""}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
         <td class="text-primary" style="font-family:${FONT_BODY};font-size:14px;color:${INK};line-height:1.5;">
-          &ldquo;${escapeHtml(m.title)}&rdquo;
+          <a href="${memoryDeepLink(m.id, "otd")}" style="color:${INK};text-decoration:underline;">&ldquo;${escapeHtml(m.title)}&rdquo;</a>
         </td>
         <td width="80" style="text-align:right;font-family:${FONT_BODY};font-size:11px;color:${MUTED};white-space:nowrap;">
           ${m.yearsAgo} ${m.yearsAgo === 1 ? l.yearAgo : l.yearsAgo}
@@ -305,6 +343,7 @@ function renderOnThisDay(memories: OnThisDayMemory[], l: Record<string, string>)
   return `
     ${sectionHeading(l.onThisWeek)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg otd-frame" style="background:${TRAY};border-radius:2px;border:1px solid ${GOLD};overflow:hidden;margin:0 0 28px;">
+      ${hero}
       ${items}
     </table>`;
 }
@@ -440,8 +479,13 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
       ${ornamentalDivider()}`;
 
   // CTA copy: "Add this memory" when the hero is an On-This-Day resurface,
-  // otherwise "Visit your palace" (SPEC §B).
-  const ctaText = params.onThisDayMemories.length > 0 ? l.addAMemory : l.visitYourPalace;
+  // otherwise "Visit your palace" (SPEC §B). When OTD fires, the CTA deep-links
+  // to the hero memory with utm_content=otd (resurface attribution).
+  const hasOtd = params.onThisDayMemories.length > 0;
+  const ctaText = hasOtd ? l.addAMemory : l.visitYourPalace;
+  const ctaUrl = hasOtd
+    ? memoryDeepLink(params.onThisDayMemories[0].id, "otd")
+    : emailLink(`${siteUrl}/palace`, { campaign: "weekly", content: "cta" });
 
   return emailLayout({
     preheader: l.preheaderNormal
@@ -450,7 +494,7 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
     headerHtml,
     bodyHtml,
     ctaText,
-    ctaUrl: emailLink(`${siteUrl}/palace`, { campaign: "weekly", content: "cta" }),
+    ctaUrl,
     utmCampaign: "weekly",
     footerExtra: `
       <style>${motwMobileStyle}</style>

@@ -994,6 +994,7 @@ export default function LibraryView() {
 
       let directFilePath: string | null = null;
       let directStorageBackend: string | null = null;
+      let directEventDate: string | null = null;
       if (item.file) {
         try {
           if ((isVideo || isAudio) && item.file.size > 0) {
@@ -1007,6 +1008,7 @@ export default function LibraryView() {
               dataUrl = uploadData.url;
               directFilePath = uploadData.path;
               directStorageBackend = uploadData.storageBackend;
+              directEventDate = uploadData.eventDate || null;
             } else {
               // Fallback: read as data URL (works on desktop, may fail on mobile for large files)
               dataUrl = await readFileWithTimeout(item.file, 15000);
@@ -1060,6 +1062,7 @@ export default function LibraryView() {
                 dataUrl = uploadData.url;
                 directFilePath = uploadData.path;
                 directStorageBackend = uploadData.storageBackend;
+                directEventDate = uploadData.eventDate || null;
               }
             } catch { /* give up */ }
           }
@@ -1076,6 +1079,7 @@ export default function LibraryView() {
         desc: "",
         createdAt: new Date().toISOString(),
         ...(directFilePath ? { _filePath: directFilePath, _storageBackend: directStorageBackend } : {}),
+        ...(directEventDate ? { _eventDate: directEventDate } : {}),
       });
     }
   }, [selectedRoom, selectedWing, wings, getWingRooms, fetchRoomMemories, addMemory, readFileWithTimeout]);

@@ -27,6 +27,7 @@ export interface Mem {
   _cached?: boolean; // loaded from IndexedDB cache
   _filePath?: string | null; // file path from direct upload (bypasses re-upload in addMemory)
   _storageBackend?: string | null; // storage backend from direct upload
+  _eventDate?: string | null; // EXIF taken-date (date-only ISO) from direct upload → memories.event_date
 }
 
 export interface SharingInfo {

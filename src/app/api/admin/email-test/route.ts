@@ -85,8 +85,8 @@ export async function GET(request: NextRequest) {
       userId: "00000000-0000-0000-0000-000000000000",
       displayName: "Bram",
       onThisDayMemories: [
-        { title: "Trip to Rome", yearsAgo: 1 },
-        { title: "Christmas at the lake house", yearsAgo: 3 },
+        { id: "preview-otd-1", title: "Trip to Rome", yearsAgo: 1 },
+        { id: "preview-otd-2", title: "Christmas at the lake house", yearsAgo: 3 },
       ],
       upcomingCapsules: [
         { title: "Letter to my future self", revealDate: "2027-04-12" },
@@ -103,6 +103,7 @@ export async function GET(request: NextRequest) {
       },
       weeklyStats: { totalMemories: 184, memoriesThisWeek: 7, totalRooms: 12 },
       memoryOfTheWeek: {
+        id: "preview-motw",
         title: "Sunday lunch in Lucca",
         thumbnailUrl: null,
         roomName: "Travel · Italy 2024",

@@ -77,10 +77,10 @@ function render(type: string, locale: string, to?: string): { html: string; subj
       recipientEmail, userId, displayName, locale,
       weeklyStats: { totalMemories: 47, memoriesThisWeek: 3, totalRooms: 12 },
       streakWeeks: 4,
-      memoryOfTheWeek: { title: "Opa's verhalen over de oorlog", thumbnailUrl: null, roomName: "Grootouders" },
+      memoryOfTheWeek: { id: "preview-motw", title: "Opa's verhalen over de oorlog", thumbnailUrl: null, roomName: "Grootouders" },
       onThisDayMemories: [
-        { title: "Mama's verjaardag", yearsAgo: 1 },
-        { title: "Eerste schooldag van Lotte", yearsAgo: 3 },
+        { id: "preview-otd-1", title: "Mama's verjaardag", yearsAgo: 1 },
+        { id: "preview-otd-2", title: "Eerste schooldag van Lotte", yearsAgo: 3 },
       ],
       upcomingCapsules: [{ title: "Brief aan mijn toekomstige zelf", revealDate: "2026-09-15" }],
       sharedRoomActivity: [{ roomName: "Familie", contributorName: "Sophie", memoryCount: 2 }],
