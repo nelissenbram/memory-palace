@@ -33,7 +33,10 @@ export async function captureServer(
         api_key: KEY,
         event,
         distinct_id: distinctId,
-        properties: { ...properties, $lib: "mp-server", source: "server" },
+        // Caller props WIN over the defaults: memory_created carries source
+        // "manual"|"kep"|"import"|"concierge" — clobbering it with "server"
+        // would flatten the capture-14d per-source breakdown.
+        properties: { $lib: "mp-server", channel: "server", ...properties },
         timestamp: new Date().toISOString(),
       }),
       // never let analytics stall a request for long
