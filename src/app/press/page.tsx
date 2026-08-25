@@ -11,11 +11,11 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Press Kit | The Memory Palace",
   description:
-    "Press kit for The Memory Palace — a 3D palace for your family's memories. Logos, screenshots, blurbs, founder story and contact.",
+    "Press kit for The Memory Palace — where memories become a place your loved ones can visit. Logos, screenshots, blurbs, founder story and contact.",
   alternates: { canonical: "https://thememorypalace.ai/press" },
   openGraph: {
     title: "The Memory Palace — Press Kit",
-    description: "A 3D palace for your family's memories. Logos, imagery, blurbs and founder contact.",
+    description: "Memories become a place your loved ones can visit. Logos, imagery, blurbs and founder contact.",
     url: "https://thememorypalace.ai/press",
     images: [{ url: "/api/og?title=Press%20Kit&subtitle=Logos%2C%20imagery%2C%20blurbs%20and%20founder%20contact", width: 1200, height: 630 }],
   },

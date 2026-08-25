@@ -101,7 +101,7 @@
 **Why:** reputation infrastructure for everything else — PH launch fuel, press credibility, listicle-author due-diligence trail. X is where indie-hacker/build-in-public lives; Bluesky + Threads are free mirrors (open APIs, scriptable).
 
 **First 3 actions:**
-1. Claim/fix @handles on X, Bluesky, Threads. Bio: "Building The Memory Palace — a 3D home for your family's memories. Solo, from Antwerp. 8 Apple rejections deep. Web: [go-link]" Pinned link `/go/x` (resp. `/go/bsky`, `/go/threads`).
+1. Claim/fix @handles on X, Bluesky, Threads. Bio: "Building The Memory Palace — memories become a place your loved ones can visit. Solo, from Antwerp. 8 Apple rejections deep. Web: [go-link]" Pinned link `/go/x` (resp. `/go/bsky`, `/go/threads`).
 2. Post #1 (below) today. Posts 2–5 over the following 10 days.
 3. AI sets up the mirror pipeline (X → Bluesky/Threads verbatim) + a weekly drafts batch of 8–10 posts for Sunday approval.
 
@@ -112,7 +112,7 @@
 **READY TO PASTE — first 5 posts:**
 
 **Post 1 — the honesty post (day 1):**
-> I built a 3D memory palace for families. An actual villa you walk through, with your photos on the walls.
+> I built a 3D memory palace. An actual villa you walk through, with a lifetime of your memories on the walls.
 >
 > 18 months of work. 145 real accounts. €0 MRR.
 >
@@ -170,7 +170,7 @@
 **Why:** the asset engine already exists (42 demo palaces, flythrough pipeline, photo-restore before/afters at ~€0.002/run) — near-zero production cost for the proven Remini/MyHeritage format, and the only faceless channel (protects founder time). Business plan: find ONE killer format, then double down.
 
 **First 3 actions:**
-1. Create TikTok + Instagram accounts (calendar 5.5 — pull setup forward if time allows; YT Shorts reuses the existing channel). Bios identical: "A 3D home for your family's memories. Built by one dad in Antwerp." Pinned link `/go/tiktok` / `/go/ig` / `/go/yt`.
+1. Create TikTok + Instagram accounts (calendar 5.5 — pull setup forward if time allows; YT Shorts reuses the existing channel). Bios identical: "Turn a lifetime of memories into a place your loved ones can visit. Built by one dad in Antwerp." Pinned link `/go/tiktok` / `/go/ig` / `/go/yt`.
 2. AI batch-restores 30–60 archive portraits (Library of Congress / Flickr Commons "no known copyright" / Nationaal Archief + own family shoebox) and renders the first 6 clips from the scripts below (ffmpeg wipe template + flythrough captures).
 3. Post video #1 on all three platforms the same day; pin the comment: "Drop your damaged family photo — every day I pick one, restore it free, and post the result."
 
@@ -397,7 +397,7 @@
 *READY TO PASTE — issue #1 (EN, subject: "Why I built a palace"):*
 > Hi — Bram here. You signed up somewhere along the way, so let me tell you what this is.
 >
-> Every Sunday: one question worth asking someone you love, one memory-keeping idea that works without any app, and occasionally what's new in the palace I'm building (a 3D villa for family memories — long story, 8 Apple rejections, ask me sometime).
+> Every Sunday: one question worth asking someone you love, one memory-keeping idea that works without any app, and occasionally what's new in the palace I'm building (a 3D villa where memories become a place your loved ones can visit — long story, 8 Apple rejections, ask me sometime).
 >
 > This week's question, to ask a parent: **"What did the kitchen of your childhood home smell like?"** Don't ask them to "tell their story" — nobody answers that. Ask about the kitchen. Then write down what they say, anywhere. That's the whole practice.
 >
@@ -580,7 +580,7 @@ Expect tens of installs/mo combined — small, but permanent and €0.
 **Reddit showcase threads:** r/SideProject, r/InternetIsBeautiful (the no-signup 42-palace walk link is *made* for it), r/webdev Showoff Saturday.
 
 ## 7e. Featuring nominations (the real "free boost" — most founders never file them)
-1. **Apple editorial featuring:** developer.apple.com/contact/app-store/promote/ — file **mid-September** for the December gift moment. Angle: solo Antwerp dev, privacy-first EU family memories, genuinely novel 3D, seasonal "Year in your Palace". The form takes 20 minutes; featuring = thousands of free impressions.
+1. **Apple editorial featuring:** developer.apple.com/contact/app-store/promote/ — file **mid-September** for the December gift moment. Angle: solo Antwerp dev, privacy-first EU memory-keeping, genuinely novel 3D, seasonal "Year in your Palace". The form takes 20 minutes; featuring = thousands of free impressions.
 2. **Google Play featuring:** editorial scouts quality + LiveOps usage; the NL custom listing + promotional content raise the odds.
 3. **App-review/tips inboxes:** iCulture (NL), OneMoreThing.nl, Androidworld.nl, AppAdvice, 9to5Mac tips, Android Police tips — 3-line pitch + `/press` link, max 2/week from wk 5.
 

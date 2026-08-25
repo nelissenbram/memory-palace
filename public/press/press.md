@@ -21,11 +21,11 @@ The Memory Palace turns a family's scattered photos, voice notes and stories int
 
 ## Blurbs
 
-**50 chars:** A 3D palace for your family's memories.
+**50 chars:** Memories become a place your loved ones can visit.
 
 **150 chars:** The Memory Palace turns your family's photos and stories into a 3D villa you walk through. WhatsApp a photo to Kep — it's on the wall tonight.
 
-**500 chars:** Your camera roll has thousands of photos and none of the stories. The Memory Palace gives a family's memories a home: a 3D Tuscan villa you walk through room by room, where every photo, voice note and story hangs on a wall. Capture is effortless — WhatsApp a photo or a voice note to Kep and it's framed and sorted the same day. Guided interviews turn a parent's spoken answers into a written life story, and AI restoration revives damaged old photos. Built by a solo founder in Antwerp. Free to start.
+**500 chars:** Your camera roll has thousands of photos and none of the stories. The Memory Palace gives a lifetime of memories a home: a 3D Tuscan villa you walk through room by room, where every photo, voice note and story hangs on a wall. Capture is effortless — WhatsApp a photo or a voice note to Kep and it's framed and sorted the same day. Guided interviews turn a loved one's spoken answers into a written life story, and AI restoration revives damaged old photos. Built by a solo founder in Antwerp. Free to start.
 
 ## The story hook: eight Apple rejections
 
