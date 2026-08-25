@@ -3,10 +3,15 @@ export type BillingInterval = "monthly" | "annual";
 
 /* ── SUCCESS_PLAYBOOK Pillar 2 §2: €49/€79 annual-default reprice ──
  *
- * Annual is THE plan (Keeper €49/yr, Guardian €79/yr); monthly (€9.99/€14.99)
- * stays visible purely as the decoy anchor. The new Stripe prices live in NEW
- * env vars so the reprice can ship code-first and activate the moment the owner
- * pastes the IDs:
+ * ⚠️ ANNUAL-ONLY (owner decision 2026-08-25, "Day One" model): the monthly
+ * option is REMOVED from all purchase surfaces — no interval toggle, no
+ * monthly price display anywhere in the UI. The monthly fields/env plumbing
+ * below stay purely for back-compat (existing monthly subscribers; the
+ * server-side checkout route still accepts interval:"monthly").
+ *
+ * Annual is THE plan (Keeper €49/yr, Guardian €79/yr). The new Stripe prices
+ * live in NEW env vars so the reprice can ship code-first and activate the
+ * moment the owner pastes the IDs:
  *
  *   NEXT_PUBLIC_STRIPE_KEEPER_ANNUAL49_PRICE_ID     → Keeper  €49/year
  *   NEXT_PUBLIC_STRIPE_GUARDIAN_ANNUAL79_PRICE_ID   → Guardian €79/year
@@ -51,10 +56,14 @@ export interface PlanDefinition {
   price: number;
   /** EUR per year actually billed on the annual interval, 0 for free. */
   annualTotal: number;
-  /** EUR per month on the monthly (decoy) interval, 0 for free. */
+  /** EUR per month on the legacy monthly interval, 0 for free.
+   *  UI-REMOVED per owner decision 2026-08-25 (annual-only): kept only for
+   *  back-compat (existing monthly subscribers / server checkout) — never
+   *  render this on a purchase surface. */
   monthlyPrice: number;
   stripePriceId: string | null; // annual Stripe price ID, null for free plan
-  monthlyStripePriceId: string | null; // monthly Stripe price ID
+  /** Legacy monthly Stripe price ID — UI-removed 2026-08-25 (see monthlyPrice). */
+  monthlyStripePriceId: string | null;
   limits: PlanLimits;
   featureKeys: string[];
   highlighted?: boolean;
@@ -189,14 +198,19 @@ export function annualPerMonthCopy(planId: Exclude<PlanId, "free">): string {
   return formatEur(PLANS[planId].price);
 }
 
-/** Percent saved choosing annual over 12× the monthly decoy (e.g. 59). */
+/** Percent saved choosing annual over 12× the legacy monthly price.
+ *  @deprecated Monthly was removed from all purchase surfaces (owner decision
+ *  2026-08-25, annual-only) — with no visible monthly price a "save %" claim
+ *  is meaningless. Unused as of that date; kept only so stray imports don't
+ *  break. Do not use in new UI. */
 export function annualSavingsPercent(planId: Exclude<PlanId, "free">): number {
   const p = PLANS[planId];
   if (!p.monthlyPrice) return 0;
   return Math.max(0, Math.round((1 - p.annualTotal / (p.monthlyPrice * 12)) * 100));
 }
 
-/** Highest annual saving across paid tiers — for the "Save up to N%" badge. */
+/** @deprecated See annualSavingsPercent — the "Save up to N%" badge is gone
+ *  (annual-only, owner decision 2026-08-25). */
 export function maxAnnualSavingsPercent(): number {
   return Math.max(annualSavingsPercent("keeper"), annualSavingsPercent("guardian"));
 }

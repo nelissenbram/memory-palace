@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
-import { PLANS, PLAN_ORDER, maxAnnualSavingsPercent, type PlanId, type BillingInterval } from "@/lib/constants/plans";
+import { PLANS, PLAN_ORDER, TRIAL_DAYS, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 import { isAndroid, isIOS } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, waitForProducts, manageSubscriptions, IAP_ENABLED } from "@/lib/native/iap";
@@ -81,7 +81,13 @@ export default function SubscriptionPage() {
   const [toast, setToast] = useState<ToastData | null>(null);
   const [showFullComparison, setShowFullComparison] = useState(false);
   const [showCancelFlow, setShowCancelFlow] = useState(false);
-  const [interval, setInterval] = useState<BillingInterval>("annual");
+  // Interval is hard-locked to "annual": the monthly option was removed from
+  // all purchase surfaces (owner decision 2026-08-25, annual-only "Day One"
+  // model). The BillingInterval state shape stays so checkout/IAP call-sites
+  // keep passing an explicit interval, but there is no setter and no toggle UI
+  // — on iOS this guarantees getIAPProductId(plan, "annual") is the only
+  // reachable product.
+  const [interval] = useState<BillingInterval>("annual");
   // Initialize lazily so the first paint already shows the detected currency —
   // avoids a visible EUR→local price flip on mount.
   const [currency, setCurrency] = useState<SupportedCurrency>(() => detectCurrency());
@@ -525,13 +531,20 @@ export default function SubscriptionPage() {
           <div style={{ textAlign: isPortrait ? "left" : "right" }}>
             {currentPlan.price > 0 ? (
               <>
-                {/* Annual-default reprice (Pillar 2 §2): annual shows the yearly
-                    total (€49/year), monthly stays the per-month decoy figure. */}
+                {/* Annual-only (owner decision 2026-08-25): the yearly total
+                    (€49/year) is the primary figure; the per-month equivalent
+                    renders small below. */}
                 <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: INK }}>
-                  {formatPrice(convertPrice(interval === "monthly" ? currentPlan.monthlyPrice : currentPlan.annualTotal, currency), currency)}
+                  {formatPrice(convertPrice(currentPlan.annualTotal, currency), currency)}
                 </div>
                 <div style={{ fontSize: "0.8125rem", color: MUTED }}>
-                  {interval === "monthly" ? t("perMonth") : tpf("perYear", "/year")}
+                  {tpf("perYear", "/year")}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: MUTED, marginTop: "0.125rem" }}>
+                  {(() => {
+                    const eq = formatPrice(convertPrice(currentPlan.price, currency), currency);
+                    return tpf("perMonthEquiv", `That's ${eq} a month, billed yearly`).replace("{price}", eq);
+                  })()}
                 </div>
               </>
             ) : (
@@ -560,48 +573,10 @@ export default function SubscriptionPage() {
         {/* On iOS: show IAP buttons. On web: show Stripe buttons. */}
         {!isAndroid() && (
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-            {/* iOS monthly/annual toggle. The web plan-comparison toggle never
-                renders in native apps, so without this the IAP flow is locked to
-                the default annual product. Only shown when a purchase is actually
-                reachable (StoreKit ready + a paid CTA will render). */}
-            {isApple && iapReady && (isFree || sub?.plan === "keeper") && (
-              <div
-                role="radiogroup"
-                aria-label={tpf("billingInterval", "Billing interval")}
-                style={{
-                  flexBasis: "100%",
-                  display: "inline-flex",
-                  alignSelf: "flex-start",
-                  borderRadius: "0.75rem",
-                  background: TRAY,
-                  padding: "0.25rem",
-                }}
-              >
-                {(["monthly", "annual"] as BillingInterval[]).map((iv) => (
-                  <button
-                    key={iv}
-                    role="radio"
-                    aria-checked={interval === iv}
-                    onClick={() => setInterval(iv)}
-                    style={{
-                      minHeight: "2.75rem",
-                      padding: "0.5rem 1.25rem",
-                      borderRadius: "0.625rem",
-                      border: "none",
-                      background: interval === iv ? EMBER_GRADIENT : "transparent",
-                      color: interval === iv ? CREAM : MUTED,
-                      fontFamily: F.body,
-                      fontSize: "0.875rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    {iv === "monthly" ? tpf("monthly", "Monthly") : tpf("annual", "Annual")}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* The iOS monthly/annual toggle that lived here is gone: pricing is
+                annual-only (owner decision 2026-08-25), so the IAP flow is
+                deliberately locked to the annual product — no monthly IAP
+                product is reachable from the UI. */}
             {isPaid && !isApple && (
               <>
                 <button
@@ -919,7 +894,10 @@ export default function SubscriptionPage() {
           {t("comparePlans")}
         </p>
 
-        {/* Billing interval toggle + Currency selector */}
+        {/* Trial line + Currency selector — the interval toggle is gone:
+            pricing is annual-only (owner decision 2026-08-25), so where the
+            toggle (and its "save %" badge) used to sit we surface the 14-day
+            trial instead. */}
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -928,82 +906,15 @@ export default function SubscriptionPage() {
           marginBottom: "1.25rem",
           flexWrap: "wrap",
         }}>
-          <div
-            role="radiogroup"
-            aria-label={tpf("billingInterval", "Billing interval")}
-            style={{
-              display: "inline-flex",
-              borderRadius: "0.75rem",
-              background: TRAY,
-              padding: "0.25rem",
-              gap: 0,
-            }}
-          >
-            <button
-              role="radio"
-              aria-checked={interval === "monthly"}
-              onClick={() => setInterval("monthly")}
-              style={{
-                minHeight: "2.75rem",
-                padding: "0.625rem 1.5rem",
-                borderRadius: "0.625rem",
-                border: "none",
-                background: interval === "monthly"
-                  ? EMBER_GRADIENT
-                  : "transparent",
-                color: interval === "monthly" ? CREAM : MUTED,
-                fontFamily: F.body,
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              {tpf("monthly", "Monthly")}
-            </button>
-            <button
-              role="radio"
-              aria-checked={interval === "annual"}
-              onClick={() => setInterval("annual")}
-              style={{
-                minHeight: "2.75rem",
-                padding: "0.625rem 1.5rem",
-                borderRadius: "0.625rem",
-                border: "none",
-                background: interval === "annual"
-                  ? EMBER_GRADIENT
-                  : "transparent",
-                color: interval === "annual" ? CREAM : MUTED,
-                fontFamily: F.body,
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              {tpf("annual", "Annual")}
-              <span
-                style={{
-                  fontSize: "0.6875rem",
-                  fontWeight: 700,
-                  padding: "0.125rem 0.5rem",
-                  borderRadius: "0.5rem",
-                  background: interval === "annual"
-                    ? "rgba(255,255,255,0.25)"
-                    : EMBER_GLYPH_TINT_12,
-                  color: interval === "annual" ? CREAM : EMBER,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {/* Dynamic: annual (€49/€79) vs 12× the monthly decoy. */}
-                {tpf("saveUpTo", `Save up to ${maxAnnualSavingsPercent()}%`)
-                  .replace("{percent}", String(maxAnnualSavingsPercent()))}
-              </span>
-            </button>
-          </div>
+          <p style={{
+            margin: 0,
+            fontFamily: F.body,
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            color: EMBER,
+          }}>
+            {tpf("trialNote", `${TRIAL_DAYS}-day free trial, cancel anytime`)}
+          </p>
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
@@ -1080,9 +991,7 @@ export default function SubscriptionPage() {
                     <div style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: INK }}>
                       {plan.price === 0
                         ? t("free")
-                        : interval === "monthly"
-                          ? `${formatPrice(convertPrice(plan.monthlyPrice, currency), currency)}/${t("perMonthShort")}`
-                          : `${formatPrice(convertPrice(plan.annualTotal, currency), currency)}/${tpf("perYearShort", "yr")}`}
+                        : `${formatPrice(convertPrice(plan.annualTotal, currency), currency)}/${tpf("perYearShort", "yr")}`}
                     </div>
                   </div>
                   {!nativeApp && isUpgrade && (
@@ -1228,17 +1137,26 @@ export default function SubscriptionPage() {
                               fontWeight: 500,
                               color: INK,
                             }}>
-                              {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.annualTotal, currency), currency)}
+                              {formatPrice(convertPrice(plan.annualTotal, currency), currency)}
                             </span>
                             <span style={{
                               fontSize: "0.8125rem",
                               color: MUTED,
                             }}>
-                              /{interval === "monthly" ? t("perMonthShort") : tpf("perYearShort", "yr")}
+                              /{tpf("perYearShort", "yr")}
                             </span>
                           </>
                         )}
                       </div>
+                      {/* Per-month equivalent subline (annual-only presentation). */}
+                      {!isFreeCard && (
+                        <p style={{ fontSize: "0.75rem", color: MUTED, margin: "-1rem 0 1.25rem" }}>
+                          {(() => {
+                            const eq = formatPrice(convertPrice(plan.price, currency), currency);
+                            return tpf("perMonthEquiv", `That's ${eq} a month, billed yearly`).replace("{price}", eq);
+                          })()}
+                        </p>
+                      )}
 
                       {/* CTA / Current badge */}
                       {isCurrent ? (

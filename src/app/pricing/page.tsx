@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import Toast, { type ToastData } from "@/components/ui/Toast";
-import { PLANS, PLAN_ORDER, maxAnnualSavingsPercent, type PlanId, type BillingInterval } from "@/lib/constants/plans";
+import { PLANS, PLAN_ORDER, TRIAL_DAYS, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { isAndroid, isIOS, isNative, openInExternalBrowser } from "@/lib/native/platform";
@@ -39,7 +39,13 @@ export default function PricingPage() {
   const isSmall = useIsSmall();
   const isCompact = useIsCompact();
   const isPortrait = useIsPortrait();
-  const [interval, setInterval] = useState<BillingInterval>("annual");
+  // Interval is hard-locked to "annual": the monthly option was removed from
+  // all purchase surfaces (owner decision 2026-08-25, annual-only "Day One"
+  // model). The BillingInterval state shape stays so checkout/IAP call-sites
+  // keep passing an explicit interval, but there is no setter and no toggle UI
+  // — on iOS this guarantees getIAPProductId(plan, "annual") is the only
+  // reachable product.
+  const [interval] = useState<BillingInterval>("annual");
   const [currency, setCurrency] = useState<SupportedCurrency>("EUR");
   const [loading, setLoading] = useState<PlanId | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
@@ -367,7 +373,9 @@ export default function PricingPage() {
         </p>
       </section>
 
-      {/* Billing Interval Toggle + Currency Selector */}
+      {/* Trial line + Currency Selector — the interval toggle is gone: pricing
+          is annual-only (owner decision 2026-08-25), so where the toggle (and
+          its "save %" badge) used to sit we surface the 14-day trial instead. */}
       <div
         style={{
           display: "flex",
@@ -379,86 +387,17 @@ export default function PricingPage() {
           flexWrap: "wrap",
         }}
       >
-        <div
-          role="radiogroup"
-          aria-label={t("billingInterval") !== "billingInterval" ? t("billingInterval") : "Billing interval"}
+        <p
           style={{
-            display: "inline-flex",
-            borderRadius: "0.75rem",
-            background: `${C.warmStone}`,
-            padding: "0.25rem",
-            gap: 0,
+            margin: 0,
+            fontFamily: F.body,
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            color: EMBER_CTA,
           }}
         >
-          <button
-            role="radio"
-            aria-checked={interval === "monthly"}
-            onClick={() => setInterval("monthly")}
-            style={{
-              padding: "0.625rem 1.5rem",
-              minHeight: "2.75rem",
-              borderRadius: "0.625rem",
-              border: "none",
-              background: interval === "monthly"
-                ? `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`
-                : "transparent",
-              color: interval === "monthly" ? C.white : MUTED_TEXT,
-              fontFamily: F.body,
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: trans("all 0.2s"),
-            }}
-          >
-            {/* i18n: "monthly" */}
-            {t("monthly") !== "monthly" ? t("monthly") : "Monthly"}
-          </button>
-          <button
-            role="radio"
-            aria-checked={interval === "annual"}
-            onClick={() => setInterval("annual")}
-            style={{
-              padding: "0.625rem 1.5rem",
-              minHeight: "2.75rem",
-              borderRadius: "0.625rem",
-              border: "none",
-              background: interval === "annual"
-                ? `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`
-                : "transparent",
-              color: interval === "annual" ? C.white : MUTED_TEXT,
-              fontFamily: F.body,
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: trans("all 0.2s"),
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            {/* i18n: "annual" */}
-            {t("annual") !== "annual" ? t("annual") : "Annual"}
-            <span
-              style={{
-                fontSize: "0.6875rem",
-                fontWeight: 700,
-                padding: "0.125rem 0.5rem",
-                borderRadius: "0.5rem",
-                background: interval === "annual"
-                  ? "rgba(255,255,255,0.25)"
-                  : `${EMBER_CTA}18`,
-                color: interval === "annual" ? C.white : EMBER_CTA,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {/* Dynamic: annual vs 12× the monthly decoy (69% on the €49 reprice
-                  against legacy €12.99 monthly; recomputes when the decoy lands). */}
-              {t("saveUpTo", { percent: String(maxAnnualSavingsPercent()) }) !== "saveUpTo"
-                ? t("saveUpTo", { percent: String(maxAnnualSavingsPercent()) })
-                : `Save up to ${maxAnnualSavingsPercent()}%`}
-            </span>
-          </button>
-        </div>
+          {t("trialNote") !== "trialNote" ? t("trialNote") : `${TRIAL_DAYS}-day free trial, cancel anytime`}
+        </p>
         <select
           value={currency}
           onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
@@ -641,11 +580,12 @@ export default function PricingPage() {
             const isHighlighted = plan.highlighted;
             const isFree = planId === "free";
 
-            // Reprice fallback tail: a paid tier with no Stripe price configured
-            // at all (neither the new ANNUAL49/79 env nor the legacy one) has no
-            // working web checkout — hide the card rather than render a CTA that
-            // errors. iOS is untouched (its prices come from StoreKit, not envs).
-            if (!isFree && !isApple && !plan.stripePriceId && !plan.monthlyStripePriceId) {
+            // Reprice fallback tail: a paid tier with no ANNUAL Stripe price
+            // configured (neither the new ANNUAL49/79 env nor the legacy one)
+            // has no working web checkout — checkout is annual-only, so a
+            // monthly-only price ID no longer counts. Hide the card rather than
+            // render a CTA that errors. iOS is untouched (StoreKit, not envs).
+            if (!isFree && !isApple && !plan.stripePriceId) {
               return null;
             }
 
@@ -739,20 +679,14 @@ export default function PricingPage() {
                     const iapProduct = isApple && iapReady
                       ? getProduct(getIAPProductId(planId as "keeper" | "guardian", interval))
                       : null;
-                    // Annual-first web presentation (Pillar 2 §2): lead with the
-                    // yearly total ("€49/year"); the per-month equivalent renders
-                    // small below. Monthly stays the per-month decoy figure.
-                    const webAnnual = !iapProduct && interval === "annual";
+                    // Annual-only presentation: lead with the yearly total
+                    // ("€49 /year"); the per-month equivalent renders small
+                    // below. No monthly figure exists on this surface.
                     const priceLabel = iapProduct?.price
-                      ?? formatPrice(
-                        convertPrice(webAnnual ? plan.annualTotal : plan.monthlyPrice, currency),
-                        currency,
-                      );
+                      ?? formatPrice(convertPrice(plan.annualTotal, currency), currency);
                     const suffix = iapProduct
-                      ? (interval === "monthly" ? t("perMonth") : null)
-                      : webAnnual
-                        ? (t("perYear") !== "perYear" ? t("perYear") : "/year")
-                        : t("perMonth");
+                      ? null
+                      : (t("perYear") !== "perYear" ? t("perYear") : "/year");
                     return (
                       <>
                         <span
@@ -781,7 +715,7 @@ export default function PricingPage() {
                 </div>
                 {/* Small per-month equivalent under the yearly total (web only —
                     iOS shows StoreKit pricing untouched). */}
-                {!isFree && !isApple && interval === "annual" && (
+                {!isFree && !isApple && (
                   <p style={{ fontSize: "0.75rem", color: C.muted, marginTop: "-1rem", marginBottom: "0.5rem" }}>
                     {(() => {
                       const eq = formatPrice(convertPrice(plan.price, currency), currency);
