@@ -19,13 +19,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const profile = await getProfileCached(username, by);
   if (!profile || !profile.is_public) return { title: "Not Found" };
 
+  const name = profile.display_name || username;
+  const description = profile.bio || `Walk through ${name}'s Memory Palace — rooms of photos, voices and stories in a 3D palace.`;
   return {
-    title: `${profile.display_name || username} | Memory Palace`,
-    description: profile.bio || `Visit ${profile.display_name || username}'s Memory Palace`,
+    title: `${name}'s Memory Palace`,
+    description,
+    alternates: { canonical: `https://thememorypalace.ai/u/${encodeURIComponent(username)}` },
     openGraph: {
-      title: `${profile.display_name || username}'s Palace`,
-      description: profile.bio || undefined,
-      images: [{ url: `/api/og?title=${encodeURIComponent(profile.display_name || username)}&type=profile` }],
+      title: `${name}'s Memory Palace`,
+      description,
+      url: `https://thememorypalace.ai/u/${encodeURIComponent(username)}`,
+      images: [{ url: `/api/og?title=${encodeURIComponent(name)}&type=profile&subtitle=${encodeURIComponent((profile.bio || "").slice(0, 120))}`, width: 1200, height: 630 }],
     },
     twitter: { card: "summary_large_image" },
   };

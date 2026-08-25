@@ -1,7 +1,8 @@
+import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getPublishedWings, getPublishedRooms, recordVisit } from "@/lib/social/visit-actions";
-import { getProfile } from "@/lib/social/profile-actions";
+import { getProfileCached } from "@/lib/social/profile-cache";
 import { getComments, getReactions } from "@/lib/social/comment-actions";
 import { getBlockedUserIds } from "@/lib/social/safety-actions";
 import { WINGS } from "@/lib/constants/wings";
@@ -11,6 +12,31 @@ interface Props {
   params: Promise<{ userId: string }>;
 }
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { userId } = await params;
+  const profile = await getProfileCached(userId, "id");
+  if (!profile || !profile.is_public) return { title: "Not Found" };
+
+  const name = profile.display_name || profile.username || "A Memory Keeper";
+  const description = profile.bio || `Walk through ${name}'s Memory Palace — rooms of photos, voices and stories in a 3D palace.`;
+  return {
+    title: `${name}'s Memory Palace`,
+    description,
+    alternates: {
+      canonical: profile.username
+        ? `https://thememorypalace.ai/u/${encodeURIComponent(profile.username)}`
+        : `https://thememorypalace.ai/visit/${userId}`,
+    },
+    openGraph: {
+      title: `${name}'s Memory Palace`,
+      description,
+      url: `https://thememorypalace.ai/visit/${userId}`,
+      images: [{ url: `/api/og?title=${encodeURIComponent(name)}&type=palace&subtitle=${encodeURIComponent((profile.bio || "").slice(0, 120))}`, width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image" },
+  };
+}
+
 export default async function PalaceOverviewPage({ params }: Props) {
   const { userId } = await params;
 
@@ -18,7 +44,7 @@ export default async function PalaceOverviewPage({ params }: Props) {
   const { data: { user: currentUser } } = await supabase.auth.getUser();
 
   const [profile, wings] = await Promise.all([
-    getProfile(userId),
+    getProfileCached(userId, "id"),
     getPublishedWings(userId),
   ]);
 
