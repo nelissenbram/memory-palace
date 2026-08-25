@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { captureServer } from "@/lib/analytics-server";
+import { lifecycleEmailsEnabled } from "@/lib/email/lifecycle-flag";
+import { fetchRecentSendsOfType, logLifecycleSend } from "@/lib/email/send-ledger";
+import { sendTrialEndingEmail } from "@/lib/email/send-trial";
+import { signPmUpdateToken } from "@/lib/billing/pm-update-token";
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!.trim(), { maxNetworkRetries: 2, timeout: 10000 });
@@ -117,12 +122,18 @@ export async function POST(req: NextRequest) {
           process.env.STRIPE_KEEPER_MONTHLY_PRICE_ID,
           process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID,
           process.env.NEXT_PUBLIC_STRIPE_KEEPER_MONTHLY_PRICE_ID,
+          // €49/€9.99 reprice IDs (SUCCESS_PLAYBOOK Pillar 2 §2)
+          process.env.NEXT_PUBLIC_STRIPE_KEEPER_ANNUAL49_PRICE_ID,
+          process.env.NEXT_PUBLIC_STRIPE_KEEPER_MONTHLY999_PRICE_ID,
         ].filter(Boolean);
         const guardianPrices = [
           process.env.STRIPE_GUARDIAN_PRICE_ID,
           process.env.STRIPE_GUARDIAN_MONTHLY_PRICE_ID,
           process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID,
           process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_MONTHLY_PRICE_ID,
+          // €79/€14.99 reprice IDs (SUCCESS_PLAYBOOK Pillar 2 §2)
+          process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_ANNUAL79_PRICE_ID,
+          process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_MONTHLY1499_PRICE_ID,
         ].filter(Boolean);
 
         let plan: string | null = null;
@@ -180,6 +191,85 @@ export async function POST(req: NextRequest) {
           })
           .eq("stripe_customer_id", customerId)
           .or(STRIPE_OWNED_FILTER);
+
+        break;
+      }
+
+      case "customer.subscription.trial_will_end": {
+        // Trial-close mechanism (SUCCESS_PLAYBOOK Pillar 2 §1). Stripe fires
+        // this ~3 days before trial end (day ~11 of the 14-day trial). The
+        // trial is card-optional and ends with missing_payment_method:'cancel',
+        // so without this end-ask the trial→paid rate is structurally 0%.
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+
+        // Resolve the Stripe-owned subscription row → user. Never act on an
+        // Apple-owned row (stale Stripe customer).
+        const { data: row } = await supabase
+          .from("subscriptions")
+          .select("user_id, plan, status")
+          .eq("stripe_customer_id", customerId)
+          .or(STRIPE_OWNED_FILTER)
+          .maybeSingle();
+        const userId = (row as { user_id?: string } | null)?.user_id;
+        if (!userId) break;
+
+        const planId = row?.plan === "guardian" ? "guardian" as const : "keeper" as const;
+        const trialEndMs = typeof subscription.trial_end === "number"
+          ? subscription.trial_end * 1000
+          : Date.now() + 3 * 86_400_000;
+        const daysLeft = Math.max(1, Math.ceil((trialEndMs - Date.now()) / 86_400_000));
+
+        // Funnel milestone fires regardless of the email kill-switch.
+        await captureServer(userId, "trial_ending", { plan: planId, days_left: daysLeft });
+
+        // Email is a lifecycle send: gated by the master kill-switch.
+        if (!lifecycleEmailsEnabled()) break;
+
+        // Per-trial dedupe (Stripe retries + any future day-N cron share this
+        // category): at most one trial-ending mail per user per 14 days.
+        // fetchRecentSendsOfType fails CLOSED, so an unreadable ledger skips
+        // the send rather than risking a double.
+        const { barred } = await fetchRecentSendsOfType(
+          supabase, [userId], "trial-ending", new Date(), 14,
+        );
+        if (barred.has(userId)) break;
+
+        // Recipient + locale + "what you've kept so far".
+        const { data: userRes } = await supabase.auth.admin.getUserById(userId);
+        const email = userRes?.user?.email;
+        if (!email) break;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name, preferred_locale")
+          .eq("id", userId)
+          .maybeSingle();
+        const { count: memoriesCount } = await supabase
+          .from("memories")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId);
+
+        // Signed pm-update link: mints the Billing-Portal session at click time
+        // (emails cannot carry a live portal URL); works signed-out.
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+        const pmUpdateUrl = `${siteUrl}/api/billing/pm-update?token=${encodeURIComponent(signPmUpdateToken(userId))}`;
+
+        const result = await sendTrialEndingEmail({
+          recipientEmail: email,
+          displayName: profile?.display_name || email.split("@")[0],
+          locale: profile?.preferred_locale || "en",
+          planId,
+          memoriesCount: memoriesCount ?? 0,
+          trialEnd: new Date(trialEndMs),
+          daysLeft,
+          pmUpdateUrl,
+        });
+        if (result.success) {
+          await logLifecycleSend(supabase, userId, "trial-ending");
+          await captureServer(userId, "trial_ending_email_sent", { plan: planId, days_left: daysLeft });
+        } else {
+          console.error("[Stripe Webhook] trial_will_end email failed:", result.error);
+        }
 
         break;
       }

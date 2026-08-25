@@ -3,7 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // "drip-day-N" entries (N = 1|3|7|14) close the drip double-send hole
 // (SUCCESS_PLAYBOOK 1.4): the day is part of the type so a day-1 stamp never
 // bars the legitimate day-3 send two days later.
-export type LifecycleEmailType = "weekly" | "monthly" | "winback" | `drip-day-${number}`;
+// "trial-ending" (Pillar 2 §1) is the trial-close mail's OWN category: it is
+// deliberately NOT in fetchRecentlyEmailed's lifecycle trio, so trial mail is
+// exempt from the ≤1/6d ceiling; its per-trial dedupe lives in the Stripe
+// webhook via fetchRecentSendsOfType.
+export type LifecycleEmailType = "weekly" | "monthly" | "winback" | "trial-ending" | `drip-day-${number}`;
 
 /** Rolling window (days) for the "≤1 lifecycle email per user" ceiling. */
 export const LEDGER_WINDOW_DAYS = 6;

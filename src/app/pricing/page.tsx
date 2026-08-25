@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import Toast, { type ToastData } from "@/components/ui/Toast";
-import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
+import { PLANS, PLAN_ORDER, maxAnnualSavingsPercent, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { isAndroid, isIOS, isNative, openInExternalBrowser } from "@/lib/native/platform";
@@ -451,7 +451,11 @@ export default function PricingPage() {
                 whiteSpace: "nowrap",
               }}
             >
-              {t("saveUpToPercent")}
+              {/* Dynamic: annual vs 12× the monthly decoy (69% on the €49 reprice
+                  against legacy €12.99 monthly; recomputes when the decoy lands). */}
+              {t("saveUpTo", { percent: String(maxAnnualSavingsPercent()) }) !== "saveUpTo"
+                ? t("saveUpTo", { percent: String(maxAnnualSavingsPercent()) })
+                : `Save up to ${maxAnnualSavingsPercent()}%`}
             </span>
           </button>
         </div>
@@ -637,6 +641,14 @@ export default function PricingPage() {
             const isHighlighted = plan.highlighted;
             const isFree = planId === "free";
 
+            // Reprice fallback tail: a paid tier with no Stripe price configured
+            // at all (neither the new ANNUAL49/79 env nor the legacy one) has no
+            // working web checkout — hide the card rather than render a CTA that
+            // errors. iOS is untouched (its prices come from StoreKit, not envs).
+            if (!isFree && !isApple && !plan.stripePriceId && !plan.monthlyStripePriceId) {
+              return null;
+            }
+
             return (
               <div
                 key={planId}
@@ -727,9 +739,20 @@ export default function PricingPage() {
                     const iapProduct = isApple && iapReady
                       ? getProduct(getIAPProductId(planId as "keeper" | "guardian", interval))
                       : null;
+                    // Annual-first web presentation (Pillar 2 §2): lead with the
+                    // yearly total ("€49/year"); the per-month equivalent renders
+                    // small below. Monthly stays the per-month decoy figure.
+                    const webAnnual = !iapProduct && interval === "annual";
                     const priceLabel = iapProduct?.price
-                      ?? formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency);
-                    const showPerMonth = !iapProduct || interval === "monthly";
+                      ?? formatPrice(
+                        convertPrice(webAnnual ? plan.annualTotal : plan.monthlyPrice, currency),
+                        currency,
+                      );
+                    const suffix = iapProduct
+                      ? (interval === "monthly" ? t("perMonth") : null)
+                      : webAnnual
+                        ? (t("perYear") !== "perYear" ? t("perYear") : "/year")
+                        : t("perMonth");
                     return (
                       <>
                         <span
@@ -742,23 +765,29 @@ export default function PricingPage() {
                         >
                           {priceLabel}
                         </span>
-                        {showPerMonth && (
+                        {suffix && (
                           <span
                             style={{
                               fontSize: "0.9375rem",
                               color: C.muted,
                             }}
                           >
-                            {t("perMonth")}
+                            {suffix}
                           </span>
                         )}
                       </>
                     );
                   })()}
                 </div>
-                {!isFree && interval === "annual" && (
+                {/* Small per-month equivalent under the yearly total (web only —
+                    iOS shows StoreKit pricing untouched). */}
+                {!isFree && !isApple && interval === "annual" && (
                   <p style={{ fontSize: "0.75rem", color: C.muted, marginTop: "-1rem", marginBottom: "0.5rem" }}>
-                    {t("billedYearly")}
+                    {(() => {
+                      const eq = formatPrice(convertPrice(plan.price, currency), currency);
+                      const v = t("perMonthEquiv", { price: eq });
+                      return v !== "perMonthEquiv" ? v : `That's ${eq} a month, billed yearly`;
+                    })()}
                   </p>
                 )}
                 {/* Web checkout charges in the Stripe price's base currency (EUR).

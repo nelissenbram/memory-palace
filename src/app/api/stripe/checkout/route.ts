@@ -94,7 +94,8 @@ export async function POST(req: NextRequest) {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-    // Only apply trial if user has never had a paid/trialing subscription
+    // Only apply trial if user has never had a paid/trialing subscription.
+    // Trial length comes from plans.ts (TRIAL_DAYS = 14, Pillar 2 reprice).
     const hadSubscription = subscription?.stripe_subscription_id &&
       ["active", "trialing", "past_due"].includes(subscription?.status ?? "");
     const trialDays =
@@ -112,6 +113,12 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
+      // Trial posture (SUCCESS_PLAYBOOK Pillar 2 §1/§3 — deliberate, do not
+      // "fix"): the trial stays CARD-OPTIONAL ("no card needed" is the paywall
+      // promise) and ends with missing_payment_method:'cancel' (never a
+      // surprise charge). The close mechanism is the trial_will_end webhook →
+      // trial-ending email → signed /api/billing/pm-update portal link, which
+      // asks for the card at day ~11 of 14 instead of at checkout.
       subscription_data: trialDays
         ? {
             trial_period_days: trialDays,

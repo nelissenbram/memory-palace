@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
-import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
+import { PLANS, PLAN_ORDER, maxAnnualSavingsPercent, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 import { isAndroid, isIOS } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, waitForProducts, manageSubscriptions, IAP_ENABLED } from "@/lib/native/iap";
@@ -525,10 +525,14 @@ export default function SubscriptionPage() {
           <div style={{ textAlign: isPortrait ? "left" : "right" }}>
             {currentPlan.price > 0 ? (
               <>
+                {/* Annual-default reprice (Pillar 2 §2): annual shows the yearly
+                    total (€49/year), monthly stays the per-month decoy figure. */}
                 <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: INK }}>
-                  {formatPrice(convertPrice(interval === "monthly" ? currentPlan.monthlyPrice : currentPlan.price, currency), currency)}
+                  {formatPrice(convertPrice(interval === "monthly" ? currentPlan.monthlyPrice : currentPlan.annualTotal, currency), currency)}
                 </div>
-                <div style={{ fontSize: "0.8125rem", color: MUTED }}>{t("perMonth")}</div>
+                <div style={{ fontSize: "0.8125rem", color: MUTED }}>
+                  {interval === "monthly" ? t("perMonth") : tpf("perYear", "/year")}
+                </div>
               </>
             ) : (
               <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: INK }}>
@@ -994,7 +998,9 @@ export default function SubscriptionPage() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {tpf("saveUpToPercent", "Save up to 23%")}
+                {/* Dynamic: annual (€49/€79) vs 12× the monthly decoy. */}
+                {tpf("saveUpTo", `Save up to ${maxAnnualSavingsPercent()}%`)
+                  .replace("{percent}", String(maxAnnualSavingsPercent()))}
               </span>
             </button>
           </div>
@@ -1072,7 +1078,11 @@ export default function SubscriptionPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0, marginLeft: "1rem" }}>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: INK }}>
-                      {plan.price === 0 ? t("free") : `${formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}/${t("perMonthShort")}`}
+                      {plan.price === 0
+                        ? t("free")
+                        : interval === "monthly"
+                          ? `${formatPrice(convertPrice(plan.monthlyPrice, currency), currency)}/${t("perMonthShort")}`
+                          : `${formatPrice(convertPrice(plan.annualTotal, currency), currency)}/${tpf("perYearShort", "yr")}`}
                     </div>
                   </div>
                   {!nativeApp && isUpgrade && (
@@ -1218,13 +1228,13 @@ export default function SubscriptionPage() {
                               fontWeight: 500,
                               color: INK,
                             }}>
-                              {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}
+                              {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.annualTotal, currency), currency)}
                             </span>
                             <span style={{
                               fontSize: "0.8125rem",
                               color: MUTED,
                             }}>
-                              /{t("perMonthShort")}
+                              /{interval === "monthly" ? t("perMonthShort") : tpf("perYearShort", "yr")}
                             </span>
                           </>
                         )}
