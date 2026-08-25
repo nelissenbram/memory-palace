@@ -221,6 +221,13 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     if (phase === "paywall") track("paywall_viewed", { source: "onboarding" });
   }, [phase]);
 
+  // Funnel: every onboarding phase transition (SUCCESS_PLAYBOOK 1.3). Fires once
+  // per phase change (incl. the initial/resumed phase) — an effect on `phase`
+  // mirrors the paywall_viewed pattern above and covers every setPhase() path.
+  useEffect(() => {
+    track("onboarding_phase_entered", { phase });
+  }, [phase]);
+
   const memoryUploadedRef = useRef(false);
   const [uploadedMemory, setUploadedMemory] = useState<any>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);

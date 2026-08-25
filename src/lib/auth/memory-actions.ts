@@ -131,7 +131,7 @@ export async function createMemory(data: {
 
   // Milestone: activation signal. First-party, server-side (covers native, where
   // the in-app tracker is disabled). Fire-and-forget.
-  void captureServer(user.id, "memory_created", { memoryType: data.type, hasMedia: !!data.fileUrl });
+  void captureServer(user.id, "memory_created", { source: "manual", memoryType: data.type, hasMedia: !!data.fileUrl });
 
   // ── Notify room owner if this is a shared room contribution ──
   try {

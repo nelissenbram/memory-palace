@@ -4,6 +4,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { captureServer } from "@/lib/analytics-server";
 
 interface CaptureData {
   media_url: string | null;
@@ -78,6 +79,9 @@ export async function autoRouteToRoom(
     console.error(`[Kep AutoRoute] Failed to create memory: ${memError.message}`);
     return null;
   }
+
+  // Milestone: activation signal (server-side; the WhatsApp path has no client). Fire-and-forget.
+  void captureServer(userId, "memory_created", { source: "kep" });
 
   // Update capture as routed
   await supabase

@@ -8,6 +8,7 @@ import type { Job } from "@/lib/queue/types";
 import { suggestRouting } from "./ai-route";
 import { transcribeFromUrl } from "./transcribe";
 import { checkAiConsent } from "@/lib/ai/check-consent";
+import { captureServer } from "@/lib/analytics-server";
 
 const CONFIDENCE_THRESHOLD = 0.8;
 
@@ -196,6 +197,9 @@ export async function handleKepCaptureJob(
       if (memError) {
         throw new Error(`Failed to create memory: ${memError.message}`);
       }
+
+      // Milestone: activation signal (server-side; the WhatsApp path has no client). Fire-and-forget.
+      void captureServer(userId, "memory_created", { source: "kep" });
 
       // Update capture as routed
       await supabase

@@ -14,6 +14,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { hasAnalyticsConsent, initAnalytics, optOutAnalytics } from "@/lib/analytics";
+import { identifyCurrentUser } from "@/components/PostHogProvider";
 import { INK, INK_DEEP, MUTED, EMBER_GLYPH, EMBER, SAGE, HAIRLINE, CREAM, DANGER, DANGER_SOFT } from "@/lib/libraryTokens";
 import BlockedAccountsPanel from "@/components/social/BlockedAccountsPanel";
 import MFASetup from "@/components/settings/MFASetup";
@@ -386,7 +387,8 @@ export default function SecuritySettingsPage() {
     // withdrawal / grant must take effect without a reload).
     if (storageKey === "mp-cookie-analytics") {
       if (newValue) {
-        void initAnalytics();
+        // Consent granted mid-session: init, then attach the signed-in identity.
+        void initAnalytics().then(() => identifyCurrentUser());
       } else {
         optOutAnalytics();
       }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
+import { captureServer } from "@/lib/analytics-server";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
   // Ownership guard — never overwrite a live Apple/Stripe row while migrating.
   const { data: existing } = await admin
     .from("subscriptions")
-    .select("subscription_source")
+    .select("subscription_source, status")
     .eq("user_id", uid)
     .maybeSingle();
   const owned =
@@ -145,5 +146,30 @@ export async function POST(req: NextRequest) {
     console.error("[rc-webhook] upsert failed:", error.message);
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
+
+  // ── Money events (SUCCESS_PLAYBOOK 1.3) ──
+  // Server-side PostHog, keyed to the Supabase uid so they merge with client
+  // events. Fire-and-forget AFTER the upsert succeeded: an event must never
+  // exist for a billing state we failed to persist, and captureServer never
+  // throws into the webhook path.
+  const money = { plan: plan ?? null, store, product: event.product_id ?? null };
+  const isTrial = event.period_type === "TRIAL" || event.period_type === "trial";
+  if (GRANTING.has(type) && plan) {
+    if (type === "RENEWAL") {
+      void captureServer(uid, "subscription_renewed", money);
+    } else {
+      void captureServer(uid, "checkout_completed", money);
+      if (isTrial) void captureServer(uid, "trial_started", money);
+    }
+    // Prior row said trialing and this grant lands the user on active → converted.
+    if (existing?.status === "trialing" && row.status === "active") {
+      void captureServer(uid, "trial_converted", money);
+    }
+  } else if (type === "CANCELLATION") {
+    void captureServer(uid, "subscription_cancelled", money);
+  } else if (type === "EXPIRATION") {
+    void captureServer(uid, "subscription_expired", money);
+  }
+
   return NextResponse.json({ ok: true, applied: type, plan: row.plan ?? undefined });
 }

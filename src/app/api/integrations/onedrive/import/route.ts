@@ -13,6 +13,7 @@ import {
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/onedrive";
+import { captureServer } from "@/lib/analytics-server";
 import { createClient } from "@/lib/supabase/server";
 import { checkLimit, getUserPlan } from "@/lib/auth/plan-limits";
 import { r2Upload, r2Remove, isR2Configured } from "@/lib/storage/r2";
@@ -221,6 +222,8 @@ export async function POST(request: NextRequest) {
           const isDuplicate = memErr.code === "23505" || memErr.message?.includes("duplicate");
           results.push({ id: itemId, success: false, error: isDuplicate ? "Already imported" : memErr.message });
         } else {
+          // Milestone: activation signal (server-side). Fire-and-forget.
+          void captureServer(user.id, "memory_created", { source: "import", provider: "onedrive" });
           results.push({ id: itemId, success: true, memoryId: memory.id });
         }
       } catch (err: unknown) {

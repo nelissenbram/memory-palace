@@ -5,6 +5,7 @@ import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { initAnalytics, optOutAnalytics } from "@/lib/analytics";
+import { identifyCurrentUser } from "@/components/PostHogProvider";
 
 const F = T.font;
 const C = T.color;
@@ -81,8 +82,10 @@ export default function CookieConsent() {
       localStorage.setItem("mp-cookie-analytics", "1");
     } catch { /* noop */ }
     setConsent("accepted");
-    // Only now start analytics — never before this explicit opt-in.
-    initAnalytics();
+    // Only now start analytics — never before this explicit opt-in. If the user
+    // is already signed in, identify them right away (the app-shell identify in
+    // PostHogProvider already ran as a no-op before consent existed).
+    initAnalytics().then(() => { void identifyCurrentUser(); });
   }
 
   function handleReject() {

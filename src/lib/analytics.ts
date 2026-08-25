@@ -54,9 +54,13 @@ export async function initAnalytics() {
   });
 }
 
-export function identify(userId: string, properties?: Record<string, unknown>) {
+export function identify(
+  userId: string,
+  properties?: Record<string, unknown>,
+  setOnceProperties?: Record<string, unknown>,
+) {
   if (typeof window === "undefined" || isNative() || !hasAnalyticsConsent()) return;
-  ph?.identify(userId, properties);
+  ph?.identify(userId, properties, setOnceProperties);
 }
 
 export function track(event: string, properties?: Record<string, unknown>) {
