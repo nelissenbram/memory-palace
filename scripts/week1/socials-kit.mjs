@@ -1,63 +1,103 @@
-// Social-profile asset kit v3 — terracotta canon (cream/ink/ember) with the
-// hero-video golden-hour villa as backdrop. Output: C:/Users/nelis/memory-palace/socials-kit/
+// Social-profile asset kit — FINAL ("type-only" winner, polished; grafts from
+// "museum-placard" runner-up: refined line-art temple w/ column capitals,
+// translucent double-hairline frame on the post, 2x supersample + Lanczos
+// downscale for print-house crispness).
+// Output: C:/Users/nelis/memory-palace/socials-kit/
 import puppeteer from "puppeteer";
 import fs from "fs";
+import { execFileSync } from "child_process";
 
 const OUT = "C:/Users/nelis/memory-palace/socials-kit";
 fs.mkdirSync(OUT, { recursive: true });
-const ICON = `<path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z"/><rect x="18" y="40" width="8" height="32"/><rect x="32" y="40" width="8" height="32"/><rect x="46" y="40" width="8" height="32"/><rect x="60" y="40" width="8" height="32"/><ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7"/><rect x="10" y="72" width="80" height="4"/><rect x="6" y="78" width="88" height="4"/><rect x="2" y="84" width="96" height="4"/>`;
-const svg = (size, color) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}"><g fill="${color}">${ICON}</g></svg>`;
-const b64 = (p) => `data:image/jpeg;base64,${fs.readFileSync(p).toString("base64")}`;
 
-const villa = b64("public/press/still-villa-goldenhour.jpg"); // hero-video golden hour, cypress path
-
-const CLAIM = "Memories become a place your loved ones can visit";
+const CLAIM = "Memories become a place<br>your loved ones can visit";
 const CREAM = "#FCFAF5", TRAY = "#F6EBE3", INK = "#403B36", INK_DEEP = "#2E2A26",
-  EMBER = "#B85C38", EMBER_GLYPH = "#9A4F2A", MUTED = "#716A5E", HAIRLINE = "#E3D6BC";
+  EMBER = "#B85C38", EMBER_GLYPH = "#9A4F2A", MUTED = "#716A5E", HAIRLINE = "#E3D6BC",
+  GOLD = "#D4AF37";
+
+// ICON — the brand temple, redrawn as refined engraved line-art (same temple:
+// pediment, 4 fluted columns + the raised 5th oval, 3 steps; now with column
+// capitals/bases grafted from the museum-placard variant).
+const ICON = (color, size, w = 2) => `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}" fill="none"
+     stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10 32 L50 12 L90 32"/>
+  <path d="M12 40 H88"/>
+  <path d="M10 32 L12 40 M90 32 L88 40"/>
+  <path d="M18 44 V68 M22.5 44 V68"/>
+  <path d="M32 44 V68 M36.5 44 V68"/>
+  <path d="M46 44 V68 M50.5 44 V68"/>
+  <path d="M60 44 V68 M64.5 44 V68"/>
+  <path d="M16.5 44 H24 M30.5 44 H38 M44.5 44 H52 M58.5 44 H66"/>
+  <path d="M16.5 68 H24 M30.5 68 H38 M44.5 68 H52 M58.5 68 H66"/>
+  <ellipse cx="78.5" cy="56" rx="4.5" ry="12"/>
+  <path d="M10 72 H90 M6 78 H94 M2 84 H98"/>
+</svg>`;
+
+const HEAD = `
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,300;1,9..144,400;1,9..144,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Marcellus&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .kicker{font-family:Marcellus,serif;text-transform:uppercase;}
+  .claim{font-family:Fraunces,serif;font-style:italic;font-weight:300;font-variation-settings:"opsz" 144;letter-spacing:-0.01em;}
+</style>`;
+
+// gold diamond + domain lockup (tiny gold accent only)
+const domainLine = (fontPx, color, mt) => `
+  <div style="display:flex;align-items:center;justify-content:center;margin-top:${mt}px;">
+    <span style="display:inline-block;width:5px;height:5px;background:${GOLD};transform:rotate(45deg);margin-right:${Math.round(fontPx)}px;"></span>
+    <span class="kicker" style="font-size:${fontPx}px;letter-spacing:.32em;margin-right:-.32em;color:${color};">thememorypalace.ai</span>
+  </div>`;
+
+// translucent double-hairline frame (grafted from museum-placard)
+const dblFrame = (a, b, color) => `
+  <div style="position:absolute;inset:${a}px;border:1px solid ${color};pointer-events:none;"></div>
+  <div style="position:absolute;inset:${b}px;border:1px solid ${color};opacity:.55;pointer-events:none;"></div>`;
 
 const pages = [
-  // Avatar — ember temple on warm cream/tray, terracotta ring (canon-pure, crisp small)
+  // ── AVATAR — the engraved line-art TEMPLE (brand mark), ember on cream.
+  //    Stroke weight tuned so it still reads at 40px; circle-crop safe.
   ["avatar-1024.png", 1024, 1024, `
-    <div style="width:1024px;height:1024px;background:radial-gradient(circle at 50% 40%, ${CREAM} 0%, ${TRAY} 74%, #EFDFCB 100%);display:flex;align-items:center;justify-content:center;">
-      <div style="width:860px;height:860px;border-radius:50%;border:14px solid ${EMBER};box-shadow:inset 0 0 0 8px ${CREAM}, inset 0 0 0 11px ${HAIRLINE};display:flex;align-items:center;justify-content:center;background:${CREAM};">
-        <div style="filter:drop-shadow(0 12px 28px rgba(154,79,42,.28));">${svg(520, EMBER)}</div>
+    <div style="width:1024px;height:1024px;background:radial-gradient(circle at 50% 40%, ${CREAM} 0%, ${CREAM} 55%, ${TRAY} 100%);position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+        ${ICON(EMBER, 660, 3.2)}
       </div>
     </div>`],
-  // X banner — golden-hour villa right, cream panel left, ink wordmark + ember claim
+  // ── X BANNER 1500×500 — centered maison axis: kicker / hairline / claim / domain.
   ["banner-x-1500x500.png", 1500, 500, `
-    <div style="width:1500px;height:500px;position:relative;overflow:hidden;background:${CREAM};">
-      <img src="${villa}" style="position:absolute;right:0;top:-180px;width:1160px;"/>
-      <div style="position:absolute;inset:0;background:linear-gradient(90deg, ${CREAM} 38%, rgba(252,250,245,.96) 50%, rgba(252,250,245,.35) 68%, rgba(252,250,245,0) 82%);"></div>
-      <div style="position:relative;height:100%;display:flex;align-items:center;padding-left:66px;gap:40px;">
-        ${svg(180, EMBER)}
-        <div>
-          <div style="font-family:Georgia,serif;font-weight:600;font-size:64px;color:${INK_DEEP};letter-spacing:.01em;">The Memory Palace</div>
-          <div style="font-family:Georgia,serif;font-style:italic;font-size:30px;color:${EMBER_GLYPH};margin-top:14px;">${CLAIM}</div>
-          <div style="font-family:Arial,sans-serif;font-size:22px;color:${MUTED};margin-top:22px;letter-spacing:.06em;">thememorypalace.ai</div>
-        </div>
+    <div style="width:1500px;height:500px;background:${CREAM};position:relative;overflow:hidden;">
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:6px;">
+        <div class="kicker" style="font-size:21px;letter-spacing:.42em;padding-left:.42em;color:${MUTED};">The Memory Palace</div>
+        <div style="width:72px;height:1px;background:linear-gradient(90deg,transparent,${HAIRLINE} 20%,${HAIRLINE} 80%,transparent);margin:26px auto 30px;"></div>
+        <div class="claim" style="font-size:106px;line-height:1.14;color:${EMBER};text-align:center;">${CLAIM}</div>
+        ${domainLine(17, MUTED, 42)}
       </div>
     </div>`],
-  // YouTube banner — villa full-bleed, centered cream card in the safe zone
+  // ── YOUTUBE BANNER 2560×1440 — same axis, everything inside the centered
+  //    1546×423 safe zone; quiet cream→tray field outside it.
   ["banner-yt-2560x1440.png", 2560, 1440, `
-    <div style="width:2560px;height:1440px;position:relative;overflow:hidden;background:${TRAY};">
-      <img src="${villa}" style="position:absolute;left:0;top:-10px;width:2560px;"/>
-      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 52%, rgba(252,250,245,0) 22%, rgba(246,235,227,.28) 58%, rgba(246,235,227,.66) 100%);"></div>
-      <div style="position:relative;height:100%;display:flex;align-items:center;justify-content:center;">
-        <div style="background:rgba(252,250,245,.93);border:1px solid ${HAIRLINE};border-top:6px solid ${EMBER};border-radius:10px;padding:56px 88px;text-align:center;box-shadow:0 24px 80px rgba(64,59,54,.25);">
-          <div style="margin-bottom:22px;">${svg(140, EMBER)}</div>
-          <div style="font-family:Georgia,serif;font-weight:600;font-size:76px;color:${INK_DEEP};">The Memory Palace</div>
-          <div style="font-family:Georgia,serif;font-style:italic;font-size:34px;color:${EMBER_GLYPH};margin-top:14px;">${CLAIM}</div>
-        </div>
+    <div style="width:2560px;height:1440px;background:radial-gradient(ellipse at 50% 46%, ${CREAM} 0%, ${CREAM} 50%, ${TRAY} 100%);position:relative;overflow:hidden;">
+      <div style="position:absolute;left:507px;top:508px;width:1546px;height:423px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <div class="kicker" style="font-size:22px;letter-spacing:.42em;padding-left:.42em;color:${MUTED};">The Memory Palace</div>
+        <div style="width:72px;height:1px;background:linear-gradient(90deg,transparent,${HAIRLINE} 20%,${HAIRLINE} 80%,transparent);margin:24px auto 26px;"></div>
+        <div class="claim" style="font-size:100px;line-height:1.13;color:${EMBER};text-align:center;">${CLAIM}</div>
+        ${domainLine(17, MUTED, 34)}
       </div>
     </div>`],
-  // IG first-post square — villa + cream claim card bottom
+  // ── POST 1080×1080 — cream on ember, left-set poetry stack, line-art temple,
+  //    translucent double-hairline frame (museum-placard graft).
   ["post-1080-claim.png", 1080, 1080, `
-    <div style="width:1080px;height:1080px;position:relative;overflow:hidden;background:${TRAY};">
-      <img src="${villa}" style="position:absolute;left:-420px;top:0;height:1080px;"/>
-      <div style="position:absolute;left:64px;right:64px;bottom:64px;background:rgba(252,250,245,.94);border:1px solid ${HAIRLINE};border-top:5px solid ${EMBER};border-radius:10px;padding:44px 48px;text-align:center;box-shadow:0 18px 60px rgba(64,59,54,.28);">
-        <div style="margin-bottom:18px;">${svg(96, EMBER)}</div>
-        <div style="font-family:Georgia,serif;font-style:italic;font-size:44px;line-height:1.3;color:${INK};">${CLAIM}.</div>
-        <div style="font-family:Arial,sans-serif;font-size:23px;color:${EMBER_GLYPH};margin-top:20px;letter-spacing:.09em;">THEMEMORYPALACE.AI</div>
+    <div style="width:1080px;height:1080px;background:${EMBER};position:relative;overflow:hidden;">
+      ${dblFrame(30, 40, "rgba(252,250,245,.32)")}
+      <div style="position:absolute;left:104px;top:96px;">${ICON("rgba(252,250,245,.92)", 62, 2.4)}</div>
+      <div class="kicker" style="position:absolute;left:104px;top:186px;font-size:20px;letter-spacing:.38em;color:rgba(252,250,245,.72);">The Memory Palace</div>
+      <div class="claim" style="position:absolute;left:96px;top:308px;font-size:122px;line-height:1.13;color:${CREAM};">Memories<br>become a place<br>your loved ones<br>can visit</div>
+      <div style="position:absolute;left:104px;bottom:104px;display:flex;align-items:center;">
+        <span style="display:inline-block;width:5px;height:5px;background:${GOLD};transform:rotate(45deg);margin-right:18px;"></span>
+        <span class="kicker" style="font-size:19px;letter-spacing:.32em;color:rgba(252,250,245,.8);">thememorypalace.ai</span>
       </div>
     </div>`],
 ];
@@ -65,11 +105,16 @@ const pages = [
 const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
 for (const [name, w, h, body] of pages) {
   const page = await browser.newPage();
-  await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
-  await page.setContent(`<!doctype html><html><body style="margin:0;padding:0;">${body}</body></html>`);
-  await new Promise((r) => setTimeout(r, 300));
-  await page.screenshot({ path: `${OUT}/${name}`, clip: { x: 0, y: 0, width: w, height: h } });
+  await page.setViewport({ width: w, height: h, deviceScaleFactor: 2 }); // supersample
+  await page.setContent(`<!doctype html><html><head>${HEAD}</head><body style="margin:0;padding:0;">${body}</body></html>`, { waitUntil: "networkidle0" });
+  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => new Promise((r) => setTimeout(r, 400)));
+  const tmp = `${OUT}/_2x-${name}`;
+  await page.screenshot({ path: tmp, clip: { x: 0, y: 0, width: w, height: h } });
   await page.close();
+  // Lanczos downscale to exact deliverable size (print-house crispness)
+  execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", tmp, "-vf", `scale=${w}:${h}:flags=lanczos`, `${OUT}/${name}`]);
+  fs.unlinkSync(tmp);
   console.log("wrote", name);
 }
 await browser.close();
