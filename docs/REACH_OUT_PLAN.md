@@ -20,6 +20,8 @@
 3. [The Weekly Operating Rhythm](#3-the-weekly-operating-rhythm)
 4. [Tracking](#4-tracking)
 5. [Do-Not List](#5-do-not-list)
+6. [Where the traffic actually comes from — the honest model](#6-where-the-traffic-actually-comes-from--the-honest-model)
+7. [ASO & Free App-Boost Playbook](#7-aso--free-app-boost-playbook-the-missing-chapter)
 
 ---
 
@@ -526,4 +528,69 @@
 
 ---
 
-*Review this doc at every plan gate (wk 4 / wk 8 / wk 12). Channels that produced a signup graduate to daily time; everything else follows its kill row. — assembled 2026-08-25*
+# 6. Where the traffic actually comes from — the honest model
+
+The playbook front-loads activation/monetization because traffic into a 4.4%-activation funnel is wasted. But "build it and they will come" is not a channel — this is the explicit 90-day traffic math. Ranges are honest estimates, not promises; every row is tracked via `/go/` + first-touch.
+
+| Channel | Starts | Realistic 90-day visitors | Nature |
+|---|---|---|---|
+| Reddit value posts (2-3 that land) | wk 1 warm-up, posts wk 3+ | 500–3,000 | spiky; 1 hit carries it |
+| Short-form (24+ videos) | wk 2 | 200–2,000 | lottery w/ long tail; 1 breakout = 10-50k views |
+| Product Hunt launch | wk 10 (gated) | 300–800 + long tail | one-day spike + backlink |
+| Show HN | wk 11 | 0 **or** 2-10k | front-page lottery; the 42-palace walk link is the ticket |
+| Directories + AI-tool directories (§7d) | wk 3-4 | 150–500 cumulative | small but permanent + backlinks feed SEO |
+| Listicle placements (2 landed) | pitch wk 3, land wk 6+ | 100–400/quarter, recurring | borrowed SEO; compounds |
+| NL/BE press (1 hit: iCulture/GvA/OneMoreThing) | pitch wk 5+ | 500–2,500 spike | credibility asset forever |
+| **ASO after the wk-3 store refresh (§7a-b)** | ramp wk 4+ | 3–15 installs/**day** by wk 8-12 | the only *always-on* channel here |
+| Alt app stores (§7c) | wk 3-4 | 1–5 installs/day trickle | zero-cost, forever |
+| Blog/SEO clusters | seeded now | near-zero in 90d | 6-12 month payoff; plant now |
+
+**Funnel math:** ~2,500–10,000 visits over 90 days × 5-10% signup = **150–700 signups** × 15-25% activation (post-fix) = **25–175 activated** → single digits to ~20 paying. That is exactly the playbook's stated 90-day outcome — the point of Q1 is finding which ONE row above outperforms its range, then feeding it.
+
+---
+
+# 7. ASO & Free App-Boost Playbook (the missing chapter)
+
+## 7a. iOS App Store refresh (ships with the 1.3.1 release, wk 3) — [AI drafts, F pastes ~30 min]
+App Store Connect → App Information / iOS App version:
+1. **Name (30 chars):** `Memory Palace: Family Memories` (now likely just "The Memory Palace" — the category keywords belong IN the name).
+2. **Subtitle (30 chars):** `Baby book, photos & life story`
+3. **Keyword field (100 chars, comma-separated, no spaces, never repeat name/subtitle words):**
+   `baby,journal,keepsake,album,scrapbook,legacy,grandma,heritage,archive,firstyear,milestones,3d`
+4. **NL localization** (per-locale metadata = a free second keyword set): subtitle `Babyboek, foto's & levensverhaal`; keywords `babyboek,herinneringen,familie,fotoboek,levensverhaal,stamboom,opa,oma,album`
+5. **Promotional text (170 chars, editable WITHOUT a release):** rotate seasonally — Sinterklaas/gift copy in Nov.
+6. **Screenshots:** the first 3 decide. Post-overhaul 3D (dome exterior / corridor / room) + capture flow + proof-card frame. Pipeline exists: `scripts/generate-store-assets-v5.mjs`.
+7. **In-App Events (free featuring surface):** create one for the December "Year in your Palace" reveal — events get their own store placement + search visibility.
+
+## 7b. Google Play refresh (same week) — [AI drafts, F pastes ~20 min]
+1. **Title (30):** `Memory Palace: Family Memories` · **Short description (80):** `Turn family photos into a 3D palace — baby book & life-story keeper in one.`
+2. **Full description:** the first 167 chars carry the most index weight — lead with "baby book", "memory keeper", "family album", "life story"; natural 2-3× repetition of each core phrase.
+3. **Custom store listing NL** (Play Console → Store presence): full Dutch listing — a free second market surface.
+4. **Category check:** *Lifestyle* vs *Parenting* — Qeepsake/Tinybeans live in Parenting; switch if less crowded while ICP-1 leads.
+5. **Promotional content (LiveOps):** free featuring cards for events/offers — use for the gift season.
+
+## 7c. Alternative app stores (free forever-trickle) — [AI 1d prep, F ~45 min accounts]
+Same AAB/APK, zero extra dev work, each = an install trickle + an authority backlink:
+1. **Samsung Galaxy Store** (seller.samsungapps.com, free account; Samsung ≈ ⅓ of EU Android) · 2. **Amazon Appstore** (also surfaces on Windows 11) · 3. **Huawei AppGallery** · 4. **Xiaomi GetApps** · 5. **Aptoide**
+Expect tens of installs/mo combined — small, but permanent and €0.
+
+## 7d. Directory & launch-platform sweep — [AI 2-3h, F approves]
+**Startup/product directories:** BetaList, Uneed, MicroLaunch, Fazier, Peerlist Launchpad, Indie Hackers product page, SaaSHub, StartupStash, Launching Next, SideProjectors, **AlternativeTo — list as alternative to Storyworth, Day One, 1SE, Qeepsake: that is literally where switchers search**.
+**AI-tool directories** (legit: AI interviews + photo-restore): There's An AI For That, Futurepedia, Toolify, TopAI.tools, AI Tool Hunt — they rank hard and link free.
+**Reddit showcase threads:** r/SideProject, r/InternetIsBeautiful (the no-signup 42-palace walk link is *made* for it), r/webdev Showoff Saturday.
+
+## 7e. Featuring nominations (the real "free boost" — most founders never file them)
+1. **Apple editorial featuring:** developer.apple.com/contact/app-store/promote/ — file **mid-September** for the December gift moment. Angle: solo Antwerp dev, privacy-first EU family memories, genuinely novel 3D, seasonal "Year in your Palace". The form takes 20 minutes; featuring = thousands of free impressions.
+2. **Google Play featuring:** editorial scouts quality + LiveOps usage; the NL custom listing + promotional content raise the odds.
+3. **App-review/tips inboxes:** iCulture (NL), OneMoreThing.nl, Androidworld.nl, AppAdvice, 9to5Mac tips, Android Police tips — 3-line pitch + `/press` link, max 2/week from wk 5.
+
+## 7f. What we deliberately do NOT do (extends the Do-Not list)
+- **No paid install "boost" services** — bot installs, ban risk, zero real users.
+- **No paid UA even via free Apple/Google ad credits** until Gate 3 passes — a €100 coupon doesn't fix CAC discipline.
+- **No review swaps / incentivized ratings** — detected, and one flag costs the entire 1.3.1 ratings reset.
+
+**Calendar wiring:** 7a+7b ship with wk-3's 1.3.1 release · 7c-7d run wk 3-4 · 7e Apple nomination mid-Sep · tips-mails from wk 5 (2/wk max; every sub-channel follows the §4 kill table: 0 signups after 4 weeks = retire).
+
+---
+
+*Review this doc at every plan gate (wk 4 / wk 8 / wk 12). Channels that produced a signup graduate to daily time; everything else follows its kill row. — assembled 2026-08-25; §6-7 added same day after owner review.*
