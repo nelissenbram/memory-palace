@@ -34,6 +34,20 @@ const ICON = (color, size, w = 2) => `
   <path d="M10 72 H90 M6 78 H94 M2 84 H98"/>
 </svg>`;
 
+
+// ICON_FILL — the FILLED temple, identical geometry to the app icon/PalaceLogo
+// (identity mark must match the app button; line-art stays ornamental only).
+const ICON_FILL = (color, size) => `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
+  <g fill="${color}">
+    <path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z"/>
+    <rect x="18" y="40" width="8" height="32"/><rect x="32" y="40" width="8" height="32"/>
+    <rect x="46" y="40" width="8" height="32"/><rect x="60" y="40" width="8" height="32"/>
+    <ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7"/>
+    <rect x="10" y="72" width="80" height="4"/><rect x="6" y="78" width="88" height="4"/><rect x="2" y="84" width="96" height="4"/>
+  </g>
+</svg>`;
+
 const HEAD = `
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -63,7 +77,7 @@ const pages = [
   ["avatar-1024.png", 1024, 1024, `
     <div style="width:1024px;height:1024px;background:radial-gradient(circle at 50% 40%, ${CREAM} 0%, ${CREAM} 55%, ${TRAY} 100%);position:relative;overflow:hidden;">
       <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
-        ${ICON(EMBER, 660, 3.2)}
+        ${ICON_FILL(EMBER, 640)}
       </div>
     </div>`],
   // ── X BANNER 1500×500 — centered maison axis: kicker / hairline / claim / domain.
@@ -92,7 +106,7 @@ const pages = [
   ["post-1080-claim.png", 1080, 1080, `
     <div style="width:1080px;height:1080px;background:${EMBER};position:relative;overflow:hidden;">
       ${dblFrame(30, 40, "rgba(252,250,245,.32)")}
-      <div style="position:absolute;left:104px;top:96px;">${ICON("rgba(252,250,245,.92)", 62, 2.4)}</div>
+      <div style="position:absolute;left:104px;top:96px;">${ICON_FILL("rgba(252,250,245,.92)", 62)}</div>
       <div class="kicker" style="position:absolute;left:104px;top:186px;font-size:20px;letter-spacing:.38em;color:rgba(252,250,245,.72);">The Memory Palace</div>
       <div class="claim" style="position:absolute;left:96px;top:308px;font-size:122px;line-height:1.13;color:${CREAM};">Memories<br>become a place<br>your loved ones<br>can visit</div>
       <div style="position:absolute;left:104px;bottom:104px;display:flex;align-items:center;">
