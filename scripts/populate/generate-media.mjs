@@ -41,7 +41,7 @@ async function generateOne(prompt, aspect, outPath) {
     },
   };
   let lastErr;
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 40; attempt++) {
     try {
       const res = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
         method: "POST",
@@ -55,7 +55,7 @@ async function generateOne(prompt, aspect, outPath) {
       // Rate limited: honor Retry-After, back off with jitter, retry (not a hard failure).
       if (res.status === 429) {
         const ra = parseInt(res.headers.get("retry-after") || "0", 10);
-        await sleep((ra > 0 ? ra * 1000 : 2500) + attempt * 1500 + Math.random() * 1200);
+        await sleep(Math.min(15000, (ra > 0 ? ra * 1000 : 1500) + attempt * 400 + Math.random() * 1500));
         continue;
       }
       const json = await res.json();
@@ -84,7 +84,7 @@ async function generateOne(prompt, aspect, outPath) {
       return "generated";
     } catch (e) {
       lastErr = e;
-      await sleep(2000 * (attempt + 1));
+      await sleep(Math.min(12000, 1500 * (attempt + 1)));
     }
   }
   throw lastErr;
