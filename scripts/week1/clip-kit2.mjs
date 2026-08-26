@@ -51,11 +51,12 @@ const g8hook = `
     <div class="claim" style="font-size:88px;line-height:1.3;color:${CREAM};text-align:center;max-width:860px;">No one has ever inherited a&nbsp;camera&nbsp;roll.</div>
   </div>`;
 
-// Caption overlays (transparent, lower third, soft shadow for footage).
+// Caption overlays (transparent, lower third). Ink pill behind the text —
+// owner 2026-08-26: white-on-footage was only partly readable.
 const caption = (html, size = 62) => `
   <div style="width:1080px;height:1920px;position:relative;">
     <div style="position:absolute;left:80px;right:80px;bottom:330px;display:flex;justify-content:center;">
-      <div class="claim" style="font-size:${size}px;line-height:1.32;color:${CREAM};text-align:center;text-shadow:0 3px 26px rgba(0,0,0,.65);">${html}</div>
+      <div class="claim" style="font-size:${size}px;line-height:1.32;color:${CREAM};text-align:center;background:rgba(24,19,15,.58);padding:20px 44px;border-radius:24px;text-shadow:0 3px 26px rgba(0,0,0,.65);">${html}</div>
     </div>
   </div>`;
 
@@ -102,7 +103,9 @@ const g8grid = `
     <div id="grid" style="position:absolute;left:70px;right:70px;top:270px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;">
       ${PHOTOS.map((p) => `<div style="aspect-ratio:1;overflow:hidden;border-radius:6px;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;"></div>`).join("")}
     </div>
-    <div id="cap" class="claim" style="position:absolute;left:80px;right:80px;bottom:340px;font-size:62px;line-height:1.3;color:${CREAM};text-align:center;opacity:0;">a folder is not a&nbsp;legacy.</div>
+    <div style="position:absolute;left:80px;right:80px;bottom:340px;display:flex;justify-content:center;">
+      <div id="cap" class="claim" style="font-size:62px;line-height:1.3;color:${CREAM};text-align:center;background:rgba(24,19,15,.72);padding:18px 42px;border-radius:24px;opacity:0;">a folder is not a&nbsp;legacy.</div>
+    </div>
     <script>
       const tiles = [...document.querySelectorAll('#grid img')];
       const clamp = (v) => Math.max(0, Math.min(1, v));
@@ -136,7 +139,9 @@ const g5anim = `
       </div>
       <div style="position:absolute;left:-70px;right:-70px;bottom:0;height:700px;background:linear-gradient(180deg,transparent,${INK} 78%);"></div>
     </div>
-    <div id="cap" class="claim" style="position:absolute;left:80px;right:80px;bottom:300px;z-index:4;font-size:58px;line-height:1.34;color:${CREAM};text-align:center;opacity:0;text-shadow:0 3px 26px rgba(0,0,0,.8);">your solution will be to delete the blurry ones. again.</div>
+    <div style="position:absolute;left:80px;right:80px;bottom:300px;z-index:4;display:flex;justify-content:center;">
+      <div id="cap" class="claim" style="font-size:58px;line-height:1.34;color:${CREAM};text-align:center;background:rgba(24,19,15,.72);padding:18px 42px;border-radius:24px;opacity:0;text-shadow:0 3px 26px rgba(0,0,0,.8);">your solution will be to delete the blurry ones. again.</div>
+    </div>
     <script>
       const clamp = (v) => Math.max(0, Math.min(1, v));
       window.setT = (t) => {

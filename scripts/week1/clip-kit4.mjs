@@ -24,7 +24,7 @@ const HEAD = `
 const caption = (html, size = 62) => `
   <div style="width:1080px;height:1920px;position:relative;">
     <div style="position:absolute;left:80px;right:80px;bottom:330px;display:flex;justify-content:center;">
-      <div class="claim" style="font-size:${size}px;line-height:1.32;color:${CREAM};text-align:center;text-shadow:0 3px 26px rgba(0,0,0,.65);">${html}</div>
+      <div class="claim" style="font-size:${size}px;line-height:1.32;color:${CREAM};text-align:center;background:rgba(24,19,15,.58);padding:20px 44px;border-radius:24px;text-shadow:0 3px 26px rgba(0,0,0,.65);">${html}</div>
     </div>
   </div>`;
 
@@ -62,10 +62,11 @@ const kep = `
         el.style.opacity = p;
         el.style.transform = 'scale(' + (0.9 + 0.1 * p) + ')';
       };
+      // Owner 2026-08-26: give the conversation room to breathe (6s beat).
       window.setT = (t) => {
-        pop(document.getElementById('b1'), t, 0.35);
-        pop(document.getElementById('b2'), t, 1.55);
-        document.getElementById('cap').style.opacity = clamp((t - 2.45) / 0.5);
+        pop(document.getElementById('b1'), t, 0.5);
+        pop(document.getElementById('b2'), t, 2.7);
+        document.getElementById('cap').style.opacity = clamp((t - 4.4) / 0.5);
       };
     </script>
   </div>`;
@@ -94,7 +95,7 @@ await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
 await page.setContent(`<!doctype html><html><head>${HEAD}</head><body style="margin:0;">${kep}</body></html>`, { waitUntil: "networkidle0" });
 await page.evaluateHandle("document.fonts.ready");
 await new Promise((r) => setTimeout(r, 400));
-const FPS = 30, SECONDS = 3.5;
+const FPS = 30, SECONDS = 6;
 const frames = Math.round(SECONDS * FPS);
 for (let f = 0; f < frames; f++) {
   await page.evaluate((t) => window.setT(t), f / FPS);

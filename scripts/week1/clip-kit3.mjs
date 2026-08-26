@@ -27,9 +27,23 @@ const SLIDES = await Promise.all([1, 2, 3, 4, 5, 6, 7].map(async (i) => {
   return `data:image/jpeg;base64,${buf.toString("base64")}`;
 }));
 
-// Pace (owner: "gaat het niet te snel?"): 1.15s hold + 0.35s eased slide.
-const HOLD = 1.15, TRANS = 0.35;
+// Pace (owner: "gaat het niet te snel?"): 1.25s hold + 0.35s eased slide —
+// a touch longer now that each slide carries a margin note to read.
+const HOLD = 1.25, TRANS = 0.35;
 const SECONDS = SLIDES.length * HOLD + (SLIDES.length - 1) * TRANS;
+
+// USP margin notes per shot — same copy + playful gold style as the landing
+// showcase strip (Fraunces italic #D4AF37, slight rotation, doodle arrow).
+const GOLD = "#D4AF37";
+const NOTES = [
+  "your palace, from above",
+  "every door, a chapter",
+  "photos become rooms",
+  "three generations, one tree",
+  "the questions that matter",
+  "a library of memories",
+  "little wins, along the way",
+];
 
 const carousel = `
   <div style="width:1080px;height:1920px;background:${INK};position:relative;">
@@ -41,12 +55,19 @@ const carousel = `
       </div>
       <div style="position:absolute;left:50%;top:34px;transform:translateX(-50%);width:170px;height:32px;border-radius:16px;background:#0d0b09;"></div>
     </div>
+    <div id="note" style="position:absolute;top:96px;left:110px;z-index:5;display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;transform:rotate(-4deg);">
+      <span id="noteText" class="claim" style="font-weight:500;font-size:52px;line-height:1.12;color:${GOLD};white-space:nowrap;text-shadow:0 2px 14px rgba(0,0,0,.55);"></span>
+      <svg id="noteArrow" width="72" height="56" viewBox="0 0 34 26" style="margin-left:44px;">
+        <path d="M4 2 C 10 16, 20 20, 29 22 M23 20 l7 2 -4 -6" fill="none" stroke="${GOLD}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+      </svg>
+    </div>
     <div id="dots" style="position:absolute;left:50%;top:${220 + SCREEN_H + 40 + 44}px;transform:translateX(-50%);display:flex;gap:14px;">
       ${SLIDES.map(() => `<span style="width:10px;height:10px;border-radius:50%;background:rgba(252,250,245,.35);"></span>`).join("")}
     </div>
     <div class="claim" style="position:absolute;left:80px;right:80px;top:${220 + SCREEN_H + 40 + 100}px;font-size:58px;line-height:1.3;color:${CREAM};text-align:center;">it fits in your pocket,&nbsp;too.</div>
     <script>
       const N = ${SLIDES.length}, HOLD = ${HOLD}, TRANS = ${TRANS};
+      const NOTES = ${JSON.stringify(NOTES)};
       const ease = (p) => p < 0.5 ? 4*p*p*p : 1 - Math.pow(-2*p+2, 3)/2;
       window.setT = (t) => {
         const cad = HOLD + TRANS;
@@ -59,6 +80,18 @@ const carousel = `
         [...document.getElementById('dots').children].forEach((d, i) => {
           d.style.background = i === active ? 'rgba(252,250,245,.95)' : 'rgba(252,250,245,.35)';
         });
+        // margin note: crossfade at the slide handoff, alternate side + tilt
+        const note = document.getElementById('note');
+        document.getElementById('noteText').textContent = NOTES[active];
+        note.style.opacity = prog === 0 ? 1 : (prog < 0.5 ? 1 - prog * 2 : (prog - 0.5) * 2);
+        const right = active % 2 === 1;
+        note.style.left = right ? 'auto' : '110px';
+        note.style.right = right ? '110px' : 'auto';
+        note.style.alignItems = right ? 'flex-end' : 'flex-start';
+        note.style.transform = 'rotate(' + (right ? 3 : -4) + 'deg)';
+        document.getElementById('noteArrow').style.transform = right ? 'scaleX(-1)' : 'none';
+        document.getElementById('noteArrow').style.marginLeft = right ? '0' : '44px';
+        document.getElementById('noteArrow').style.marginRight = right ? '44px' : '0';
       };
     </script>
   </div>`;
