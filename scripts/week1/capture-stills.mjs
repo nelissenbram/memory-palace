@@ -8,7 +8,12 @@ import fs from "fs";
 const OUT = "C:/Users/nelis/memory-palace/socials-kit/clips/work/stills";
 fs.mkdirSync(OUT, { recursive: true });
 
-const SHOTS = process.argv[2] === "round3" ? [
+const SHOTS = process.argv[2] === "round4" ? [
+  ["hearth-papa", "/flythrough?scene=room&fill=max&rcam=hearth&heroUrl=%2Fdemo%2Fbetween-two-hands.jpg&heroTitle=You%20and%20Papa&heroYear=1992"],
+  ["hearth-sea", "/flythrough?scene=room&fill=max&rcam=hearth&heroUrl=%2Fdemo%2Fedge-of-water.jpg&heroTitle=At%20the%20Sea&heroYear=2002"],
+  ["cor-v2", "/flythrough?scene=corridor&cp1=%2Fdemo%2Fquiet-morning.jpg%7CSunday%20Morning&cp2=%2Fdemo%2Fpexels-alexander-mass-748453803-28107011.jpg%7CGolden%20Hour&cp3=%2Fdemo%2Fgraduation.jpg%7CGraduation&cp4=%2Fdemo%2Fquiet-morning.jpg%7CQuiet"],
+  ["cor-v3-terminus", "/flythrough?scene=corridor&cam=terminus&cp1=%2Fdemo%2Fedge-of-water.jpg%7CAt%20the%20Sea&cp2=%2Fdemo%2Fgraduation.jpg%7CGraduation&cp3=%2Fdemo%2Fpexels-alexander-mass-748453803-28107011.jpg%7CGolden%20Hour&cp4=%2Fdemo%2Fbetween-two-hands.jpg%7CYou%20and%20Papa"],
+] : process.argv[2] === "round3" ? [
   ["cor-portal", "/flythrough?scene=corridor&cam=portal"],
   ["room-bookcase2", "/flythrough?scene=room&fill=max&rcam=bookcase"],
   ["room-music", "/flythrough?scene=room&fill=max&rcam=music"],

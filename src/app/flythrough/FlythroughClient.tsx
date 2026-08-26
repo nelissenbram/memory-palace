@@ -140,6 +140,38 @@ const DEMO_LUNETTES: Record<string, Mem> = Object.fromEntries(
   } satisfies Mem])
 );
 
+// ── ?heroUrl=&heroTitle=&heroYear= + ?cp1..cp4=url|title (dev-tool-only,
+// owner 2026-08-26 clip round) ── Recording helpers so tour/clip footage can
+// SHOW the exact memory a story beat mentions: heroUrl hangs that photo over
+// the mantel (hero:true wins the W3 Mantelpiece slot; plaque reads
+// heroTitle · heroYear) and cpN swaps the corridor salon paintings. Params
+// absent ⇒ byte-identical defaults (the real app never passes these).
+function heroFromURL(): Mem | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search);
+  const url = q.get("heroUrl");
+  if (!url) return null;
+  const year = q.get("heroYear") || "2026";
+  return {
+    id: "demo-hero-override", title: q.get("heroTitle") || "A Memory", hue: 40, s: 40, l: 60,
+    type: "photo", dataUrl: url, displayed: true, hero: true, createdAt: `${year}-06-01`,
+  } as Mem;
+}
+function corridorPaintingsFromURL(): Record<string, { url?: string; title?: string; size?: string }> | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search);
+  const out: Record<string, { url?: string; title?: string }> = {};
+  let any = false;
+  (["ro1", "ro2", "ro3", "ro4"] as const).forEach((ro, i) => {
+    const v = q.get(`cp${i + 1}`);
+    if (!v) return;
+    const [url, title] = v.split("|");
+    out[ro] = { url, title: title || undefined };
+    any = true;
+  });
+  return any ? out : null;
+}
+
 // A representative corridor for the viewer: rooms (→ doors + windows) + one
 // hung photo per room (→ populated salon walls). Mirrors the real app shape.
 const DEMO_CORRIDOR_ROOMS = [
@@ -239,6 +271,8 @@ export default function FlythroughClient() {
     setDemoFill(f);
     setDemoMems(f === "max" ? SAMPLE_MEMORIES_MAX : f === "min" ? SAMPLE_MEMORIES_MIN : SAMPLE_MEMORIES);
   }, []);
+  // ?cp1..4= — corridor salon-painting overrides (dev recording helper).
+  const [corridorPaintings, setCorridorPaintings] = useState(DEMO_CORRIDOR_PAINTINGS);
   useEffect(() => {
     setCurrentScene(initialSceneFromURL());
     applyFill(fillFromURL());
@@ -246,6 +280,11 @@ export default function FlythroughClient() {
     // ?mantelDemo=1 — recording-pass mantel fill for the onboarding room leg
     // (hydration-safe, applied after mount like ?scene=/?fill=/?name=).
     setObMantelDemo(mantelDemoFromURL());
+    // ?heroUrl= / ?cp1..4= — exact-media recording overrides (same pattern).
+    const heroMem = heroFromURL();
+    if (heroMem) setDemoMems((prev) => [heroMem, ...prev.map((m) => ({ ...m, hero: false } as Mem))]);
+    const cpOverrides = corridorPaintingsFromURL();
+    if (cpOverrides) setCorridorPaintings((prev) => ({ ...prev, ...cpOverrides }));
     setMounted(true);
   }, [applyFill]);
   const [progress, setProgress] = useState(0);
@@ -791,7 +830,7 @@ export default function FlythroughClient() {
           <CorridorScene
             wingId="roots"
             rooms={DEMO_CORRIDOR_ROOMS}
-            corridorPaintings={DEMO_CORRIDOR_PAINTINGS}
+            corridorPaintings={corridorPaintings}
             onDoorHover={noop}
             onDoorClick={noop}
             hoveredDoor={null}
