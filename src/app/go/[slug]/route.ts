@@ -25,6 +25,10 @@ const SLUGS: Record<string, { to: string; campaign: string }> = {
   hn: { to: "/", campaign: "hackernews" },
   gift: { to: "/pricing", campaign: "gift" },
   bio: { to: "/", campaign: "bio" },
+  bsky: { to: "/", campaign: "bluesky" },
+  threads: { to: "/", campaign: "threads" },
+  // walk = the no-signup public-palace demo (used in posts/pitches)
+  walk: { to: "/u/sol-alvarez", campaign: "walk-demo" },
 };
 
 export async function GET(
