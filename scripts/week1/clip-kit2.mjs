@@ -102,7 +102,7 @@ const g8grid = `
     <div id="grid" style="position:absolute;left:70px;right:70px;top:270px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;">
       ${PHOTOS.map((p) => `<div style="aspect-ratio:1;overflow:hidden;border-radius:6px;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;"></div>`).join("")}
     </div>
-    <div id="cap" class="claim" style="position:absolute;left:80px;right:80px;bottom:340px;font-size:62px;line-height:1.3;color:${CREAM};text-align:center;opacity:0;">a folder is not a&nbsp;bequest.</div>
+    <div id="cap" class="claim" style="position:absolute;left:80px;right:80px;bottom:340px;font-size:62px;line-height:1.3;color:${CREAM};text-align:center;opacity:0;">a folder is not a&nbsp;legacy.</div>
     <script>
       const tiles = [...document.querySelectorAll('#grid img')];
       const clamp = (v) => Math.max(0, Math.min(1, v));
