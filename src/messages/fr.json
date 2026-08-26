@@ -5164,5 +5164,161 @@
     "footerPrivacy": "Confidentialité",
     "footerTerms": "Conditions",
     "footerSecurity": "Sécurité"
+  },
+  "landingV2": {
+    "nav": {
+      "tour": "Visite",
+      "how": "Comment ça marche",
+      "features": "Fonctionnalités",
+      "faq": "FAQ",
+      "pricing": "Tarifs",
+      "signIn": "Se connecter",
+      "cta": "Commencer"
+    },
+    "hero": {
+      "eyebrow": "Un foyer en 3D pour les souvenirs de votre famille",
+      "h1": "Transformez une vie de photos en un lieu que votre famille peut visiter.",
+      "sub": "Un magnifique palais en 3D pour vos photos, vos enregistrements et vos histoires de vie — à explorer en famille. Gratuit pour commencer, sans carte bancaire.",
+      "sub_ios": "Un magnifique palais en 3D pour vos photos, vos enregistrements et vos histoires de vie — à explorer en famille. Prêt en quelques minutes — sans compétences techniques.",
+      "cta": "Créez votre palais",
+      "ctaMicro": "Gratuit pour toujours · Sans carte bancaire · Sans compétences techniques",
+      "ctaMicro_ios": "Prêt en quelques minutes · Sans compétences techniques",
+      "secondary": "Voir la visite en 90 secondes",
+      "chipGdpr": "Conforme au RGPD",
+      "chipEncrypted": "Chiffré au repos et en transit",
+      "chipEu": "Hébergé dans l'UE",
+      "securityLink": "Découvrez exactement comment nous protégeons vos souvenirs"
+    },
+    "proof": {
+      "p1": "0 €",
+      "p1Label": "Offre gratuite — sans limite de durée, sans carte",
+      "p1_ios": "Illimité",
+      "p1Label_ios": "Ailes et pièces",
+      "p2": "5",
+      "p2Label": "Langues",
+      "p3": "AES-256",
+      "p3Label": "Chiffré au repos",
+      "p4": "100 %",
+      "p4Label": "À vous — exportable à tout moment"
+    },
+    "showcase": {
+      "eyebrow": "Voyez-le en action",
+      "h2": "Entrez dans un vrai palais.",
+      "sub": "Ne nous croyez pas sur parole. Parcourez des pièces remplies de photos, écoutez les histoires, ressentez l'atmosphère.",
+      "attribution": "Le palais de Guillaume — le vrai foyer d'un membre, avec trois générations de souvenirs",
+      "exploreCta": "Explorer les palais publics",
+      "noAccount": "Sans créer de compte"
+    },
+    "notAlbum": {
+      "eyebrow": "Ceci n'est pas un album photo.",
+      "h2": "Ceci est un palais.",
+      "line": "Entrez. Voilà à quoi ressemble un souvenir quand il a un foyer."
+    },
+    "bands": {
+      "whatsappEyebrow": "Sans effort",
+      "whatsappH2": "Si vous savez envoyer un message WhatsApp, vous savez bâtir un palais.",
+      "whatsappBody": "Transférez une photo ou un message vocal sur WhatsApp — il apparaît dans votre palais, trié et prêt. Aucune nouvelle application à apprendre ; WhatsApp, vous connaissez déjà.",
+      "palaceEyebrow": "Un lieu à parcourir",
+      "palaceH2": "Un foyer que l'on peut traverser.",
+      "palaceBody": "Vos photos, vos voix et vos histoires habitent des pièces — passez devant elles, ensemble. Chaque aile garde un chapitre de votre vie.",
+      "palacePull": "Les photos montrent ce qui s'est passé. Votre voix raconte pourquoi cela comptait.",
+      "aiEyebrow": "Rien à trier",
+      "aiH2": "Vous apportez les photos. L'IA fait le tri.",
+      "aiBody": "Connectez Google Photos, Dropbox ou OneDrive — ce qui vous prendrait des mois se fait pendant votre café. Vos originaux restent intacts.",
+      "aiFootnote": "L'IA est facultative et ne s'entraîne jamais sur vos souvenirs.",
+      "togetherEyebrow": "Transmis",
+      "togetherH2": "Un palais a des héritiers.",
+      "togetherBody": "Votre fille ajoute ses photos de mariage. Scellez une lettre pour un anniversaire en 2040. Choisissez qui reçoit les clés — et décidez exactement quand vos mots arrivent."
+    },
+    "more": {
+      "title": "Et quand vous voudrez aller plus loin",
+      "map": "Carte des souvenirs — chaque souvenir épinglé là où il a eu lieu",
+      "tree": "Arbre généalogique — éventails, et apportez votre arbre existant",
+      "journeys": "Parcours guidés — votre histoire de vie, une question douce à la fois",
+      "interviews": "Entretiens guidés par l'IA — les questions que poseraient vos petits-enfants",
+      "sharing": "Partagez une pièce ou un chapitre entier de votre palais",
+      "uploads": "Ajoutez photos, vidéos, audio et documents"
+    },
+    "how": {
+      "eyebrow": "Premiers pas",
+      "h2": "Trois étapes. Cinq minutes.",
+      "toggleSelf": "Pour vous",
+      "toggleGift": "En cadeau",
+      "s1t": "Ajoutez vos souvenirs",
+      "s1d": "Téléversez photos et vidéos, ou importez depuis Google Photos, Dropbox ou OneDrive. L'IA range tout dans des pièces qui suivent les chapitres de votre vie.",
+      "s2t": "Racontez l'histoire derrière chaque photo",
+      "s2d": "Enregistrez votre voix racontant l'histoire derrière la photo — ou laissez un intervieweur bienveillant vous poser les questions que poseraient vos petits-enfants.",
+      "s3t": "Parcourez-le ensemble",
+      "s3d": "Invitez famille et amis à visiter votre palais. Ils peuvent l'explorer, ajouter leurs propres souvenirs ou recevoir les vôtres en capsules temporelles.",
+      "g1t": "Créez un palais à leur nom",
+      "g1d": "Installé en cinq minutes — vous gérez la technique, ils reçoivent la joie.",
+      "g2t": "Ils ne font que répondre à des questions",
+      "g2d": "Un intervieweur bienveillant enregistre leurs histoires sur WhatsApp ou dans le navigateur — aucune nouvelle application à apprendre.",
+      "g3t": "Les histoires restent dans la famille",
+      "g3d": "Tous ceux que vous invitez peuvent parcourir le palais — prêt à être transmis, le moment venu.",
+      "midCta": "Votre palais commence gratuitement — 1 Go de souvenirs, pièces illimitées, sans carte bancaire. Passez à l'offre supérieure seulement si vous en avez besoin.",
+      "midCta_ios": "Votre palais est prêt en quelques minutes. Sans compétences techniques."
+    },
+    "why": {
+      "eyebrow": "Pourquoi un palais ?",
+      "h2": "Parce que votre cerveau pense en lieux.",
+      "body": "Depuis 2 500 ans, on retient ce qui compte en le plaçant dans des pièces imaginaires. Nous retenons les lieux bien mieux que les fichiers — d'où un palais, pas un dossier.",
+      "link": "Lire l'histoire de 2 500 ans"
+    },
+    "compare": {
+      "h2": "Gardez Google Photos. C'est le disque. Ici, c'est le foyer.",
+      "sub": "Un dossier stocke vos photos. Un palais se souvient de votre vie.",
+      "colLeft": "Stockage photo dans le cloud",
+      "colRight": "The Memory Palace",
+      "r1l": "Organisation",
+      "r1a": "Dossiers et albums, triés par date",
+      "r1b": "Des pièces en 3D que l'on parcourt, organisées par chapitres de vie",
+      "r2l": "Histoires",
+      "r2a": "Des photos sans contexte",
+      "r2b": "Chaque photo peut porter votre voix racontant pourquoi elle comptait",
+      "r3l": "Partage",
+      "r3a": "Des albums partagés — parfaits pour le week-end dernier",
+      "r3b": "Un palais partagé que votre famille bâtit ensemble, à travers les générations",
+      "r4l": "Héritage",
+      "r4a": "Les héritiers reçoivent une archive brute de milliers de fichiers sans nom",
+      "r4b": "Capsules temporelles, contacts d'héritage et un foyer prêt à être transmis",
+      "r5l": "Sauvegarde et synchronisation",
+      "r5a": "Excellent — continuez à l'utiliser",
+      "r5b": "Ce n'est pas notre rôle. Rapatriez les photos qui comptent quand vous serez prêt."
+    },
+    "pricing": {
+      "h2": "Des tarifs simples et honnêtes",
+      "line": "Gratuit pour toujours — ailes et pièces illimitées, 1 Go de souvenirs, export complet à tout moment. Passez à l'offre supérieure seulement si nécessaire ; l'essai n'est jamais facturé automatiquement.",
+      "cta": "Voir tous les tarifs"
+    },
+    "promise": {
+      "h2": "La Promesse Pour Toujours",
+      "body": "Exportez tout en ZIP à tout moment, quelle que soit l'offre. Et si nous devions un jour fermer, vous auriez 90 jours et votre archive complète — vos souvenirs ne sont jamais enfermés.",
+      "founderTitle": "D'une petite équipe qui le pense vraiment",
+      "founderBody": "The Memory Palace est construit par une petite équipe européenne indépendante. Pas de géant de la tech derrière, pas de publicité, pas de vente de vos données — vos souvenirs sont notre mission, pas un produit."
+    },
+    "phone": {
+      "title": "Aussi dans votre poche",
+      "sub": "Votre palais sur téléphone et tablette — ou dans n'importe quel navigateur."
+    },
+    "final": {
+      "h2": "Commencez par un souvenir. Le reste suivra.",
+      "cta": "Créez votre palais"
+    },
+    "a11y": {
+      "heroVideo": "Vue aérienne d'un palais de la mémoire toscan à la lumière dorée",
+      "pause": "Mettre la vidéo d'arrière-plan en pause",
+      "play": "Lire la vidéo d'arrière-plan",
+      "tourDialog": "Vidéo de présentation du produit",
+      "close": "Fermer",
+      "phoneStrip": "Captures d'écran de l'application",
+      "prev": "Précédent",
+      "next": "Suivant",
+      "bandPalace": "Le hall d'entrée d'un palais de la mémoire en 3D",
+      "bandTogether": "Un visiteur effleure des photos encadrées dans une galerie ensoleillée",
+      "showcaseFrame": "Une photo de famille encadrée dans une aile du palais",
+      "bandWhatsapp": "Une photo WhatsApp apparaît encadrée sur un mur du palais",
+      "bandAi": "Des photos rangées dans les pièces du palais"
+    }
   }
 }

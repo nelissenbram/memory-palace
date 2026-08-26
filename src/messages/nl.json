@@ -5166,5 +5166,161 @@
     "footerPrivacy": "Privacy",
     "footerTerms": "Voorwaarden",
     "footerSecurity": "Beveiliging"
+  },
+  "landingV2": {
+    "nav": {
+      "tour": "Tour",
+      "how": "Hoe het werkt",
+      "features": "Functies",
+      "faq": "FAQ",
+      "pricing": "Prijzen",
+      "signIn": "Inloggen",
+      "cta": "Aan de slag"
+    },
+    "hero": {
+      "eyebrow": "Een 3D-thuis voor de herinneringen van je familie",
+      "h1": "Maak van een leven vol foto's een plek die je familie kan bezoeken.",
+      "sub": "Een prachtig 3D-paleis voor je foto's, stemopnames en levensverhalen — verken het samen met je familie. Gratis te beginnen, geen creditcard nodig.",
+      "sub_ios": "Een prachtig 3D-paleis voor je foto's, stemopnames en levensverhalen — verken het samen met je familie. Binnen enkele minuten klaar — geen technische kennis nodig.",
+      "cta": "Maak je Paleis",
+      "ctaMicro": "Voor altijd gratis · Geen creditcard · Geen technische kennis nodig",
+      "ctaMicro_ios": "Binnen enkele minuten klaar · Geen technische kennis nodig",
+      "secondary": "Bekijk de tour van 90 seconden",
+      "chipGdpr": "AVG-conform",
+      "chipEncrypted": "Versleuteld bij opslag & verzending",
+      "chipEu": "Opgeslagen in de EU",
+      "securityLink": "Lees precies hoe we je herinneringen beschermen"
+    },
+    "proof": {
+      "p1": "€0",
+      "p1Label": "Gratis plan — geen tijdslimiet, geen kaart",
+      "p1_ios": "Onbeperkt",
+      "p1Label_ios": "Vleugels & kamers",
+      "p2": "5",
+      "p2Label": "Talen",
+      "p3": "AES-256",
+      "p3Label": "Versleuteld bij opslag",
+      "p4": "100%",
+      "p4Label": "Van jou — altijd te exporteren"
+    },
+    "showcase": {
+      "eyebrow": "Zie het in actie",
+      "h2": "Stap een echt paleis binnen.",
+      "sub": "Geloof ons niet op ons woord. Loop door kamers vol foto's, hoor de verhalen, voel de sfeer.",
+      "attribution": "Het paleis van Guillaume — het echte thuis van een lid, met drie generaties herinneringen",
+      "exploreCta": "Verken openbare paleizen",
+      "noAccount": "Geen account nodig"
+    },
+    "notAlbum": {
+      "eyebrow": "Dit is geen fotoalbum.",
+      "h2": "Dit is een paleis.",
+      "line": "Stap binnen. Zo ziet een herinnering eruit als ze een thuis heeft."
+    },
+    "bands": {
+      "whatsappEyebrow": "Moeiteloos",
+      "whatsappH2": "Kun je een WhatsApp-bericht sturen? Dan kun je een paleis bouwen.",
+      "whatsappBody": "Stuur een foto of spraakbericht door via WhatsApp — het verschijnt in je paleis, gesorteerd en wel. Geen nieuwe app om te leren; WhatsApp ken je al.",
+      "palaceEyebrow": "Beloopbaar",
+      "palaceH2": "Een thuis waar je doorheen kunt lopen.",
+      "palaceBody": "Je foto's, stemmen en verhalen wonen in kamers — loop er samen langs. Elke vleugel bewaart een hoofdstuk van je leven.",
+      "palacePull": "Foto's laten zien wat er gebeurde. Jouw stem vertelt waarom het ertoe deed.",
+      "aiEyebrow": "Sorteren hoeft niet",
+      "aiH2": "Jij brengt de foto's. AI doet het sorteren.",
+      "aiBody": "Koppel Google Foto's, Dropbox of OneDrive — wat jou maanden zou kosten, gebeurt terwijl jij koffie drinkt. Je originelen blijven onaangeroerd.",
+      "aiFootnote": "AI is optioneel en traint nooit op je herinneringen.",
+      "togetherEyebrow": "Doorgegeven",
+      "togetherH2": "Een paleis heeft erfgenamen.",
+      "togetherBody": "Je dochter voegt haar trouwfoto's toe. Verzegel een brief voor een verjaardag in 2040. Kies wie de sleutels krijgt — en bepaal precies wanneer je woorden aankomen."
+    },
+    "more": {
+      "title": "En als je klaar bent voor meer",
+      "map": "Herinneringskaart — elke herinnering op de plek waar ze gebeurde",
+      "tree": "Familiestamboom — waaierdiagrammen, en neem je bestaande stamboom mee",
+      "journeys": "Begeleide reizen — je levensverhaal, één zachte vraag per keer",
+      "interviews": "AI-interviews — de vragen die je kleinkinderen zouden stellen",
+      "sharing": "Deel één kamer of een heel hoofdstuk van je paleis",
+      "uploads": "Upload foto's, video's, audio en documenten"
+    },
+    "how": {
+      "eyebrow": "Aan de slag",
+      "h2": "Drie stappen. Vijf minuten.",
+      "toggleSelf": "Voor jezelf",
+      "toggleGift": "Als cadeau",
+      "s1t": "Voeg je herinneringen toe",
+      "s1d": "Upload foto's en video's, of importeer uit Google Foto's, Dropbox of OneDrive. AI sorteert alles in kamers die passen bij de hoofdstukken van je leven.",
+      "s2t": "Vertel het verhaal erachter",
+      "s2d": "Neem je stem op terwijl je het verhaal achter de foto vertelt — of laat een zachte interviewer de vragen stellen die je kleinkinderen zouden stellen.",
+      "s3t": "Loop er samen doorheen",
+      "s3d": "Nodig familie en vrienden uit in je paleis. Ze kunnen rondkijken, eigen herinneringen toevoegen, of die van jou als tijdcapsule ontvangen.",
+      "g1t": "Maak een paleis op hun naam",
+      "g1d": "In vijf minuten opgezet — jij regelt de techniek, zij krijgen het plezier.",
+      "g2t": "Zij beantwoorden alleen vragen",
+      "g2d": "Een zachte interviewer legt hun verhalen vast via WhatsApp of in de browser — geen nieuwe app om te leren.",
+      "g3t": "De verhalen blijven in de familie",
+      "g3d": "Iedereen die je uitnodigt kan door het paleis lopen — en het is klaar om door te geven, wanneer de tijd rijp is.",
+      "midCta": "Je paleis begint gratis — 1 GB aan herinneringen, onbeperkt kamers, geen creditcard. Upgrade alleen als je eruit groeit.",
+      "midCta_ios": "Je paleis is binnen enkele minuten klaar. Geen technische kennis nodig."
+    },
+    "why": {
+      "eyebrow": "Waarom een paleis?",
+      "h2": "Omdat je brein in plekken denkt.",
+      "body": "Al 2.500 jaar onthouden mensen wat belangrijk is door het in denkbeeldige kamers te plaatsen. Plekken onthouden we veel beter dan bestanden — daarom een paleis, geen map.",
+      "link": "Lees het verhaal van 2.500 jaar"
+    },
+    "compare": {
+      "h2": "Houd Google Foto's. Dat is de schijf. Dit is het thuis.",
+      "sub": "Een map bewaart je foto's. Een paleis onthoudt je leven.",
+      "colLeft": "Cloudopslag voor foto's",
+      "colRight": "The Memory Palace",
+      "r1l": "Organisatie",
+      "r1a": "Mappen en albums, gesorteerd op datum",
+      "r1b": "3D-kamers waar je doorheen loopt, geordend per levenshoofdstuk",
+      "r2l": "Verhalen",
+      "r2a": "Foto's zonder context",
+      "r2b": "Elke foto kan jouw stem dragen die vertelt waarom het ertoe deed",
+      "r3l": "Delen",
+      "r3a": "Gedeelde albums — prima voor vorig weekend",
+      "r3b": "Een gedeeld paleis dat je familie samen bouwt, over generaties heen",
+      "r4l": "Nalatenschap",
+      "r4a": "Erfgenamen krijgen een ruw archief van duizenden naamloze bestanden",
+      "r4b": "Tijdcapsules, nalatenschapscontacten en een thuis dat klaar is om door te geven",
+      "r5l": "Back-up & camerasynchronisatie",
+      "r5a": "Uitstekend — blijf het gebruiken",
+      "r5b": "Niet ons werk. Haal de foto's die ertoe doen over wanneer jij er klaar voor bent."
+    },
+    "pricing": {
+      "h2": "Eenvoudige, eerlijke prijzen",
+      "line": "Voor altijd gratis — onbeperkt vleugels en kamers, 1 GB aan herinneringen, altijd volledig te exporteren. Upgrade alleen als je eruit groeit; de proefperiode wordt nooit automatisch betaald.",
+      "cta": "Bekijk alle prijzen"
+    },
+    "promise": {
+      "h2": "De Voor-Altijd-Belofte",
+      "body": "Exporteer alles als ZIP, op elk moment, in elk plan. En mochten wij er ooit mee stoppen, dan krijg je 90 dagen en je complete archief — je herinneringen zitten nooit op slot.",
+      "founderTitle": "Van een klein team dat het meent",
+      "founderBody": "The Memory Palace wordt gebouwd door een klein, onafhankelijk Europees team. Geen big tech erachter, geen advertenties, geen verkoop van je gegevens — jouw herinneringen zijn onze missie, geen product."
+    },
+    "phone": {
+      "title": "Ook in je broekzak",
+      "sub": "Je paleis op je telefoon en tablet — of in elke browser."
+    },
+    "final": {
+      "h2": "Begin met één herinnering. De rest volgt vanzelf.",
+      "cta": "Maak je Paleis"
+    },
+    "a11y": {
+      "heroVideo": "Luchtopname van een Toscaans herinneringspaleis bij avondlicht",
+      "pause": "Achtergrondvideo pauzeren",
+      "play": "Achtergrondvideo afspelen",
+      "tourDialog": "Productrondleiding (video)",
+      "close": "Sluiten",
+      "phoneStrip": "App-schermafbeeldingen",
+      "prev": "Vorige",
+      "next": "Volgende",
+      "bandPalace": "De entreehal van een 3D-herinneringspaleis",
+      "bandTogether": "Een bezoeker raakt ingelijste foto's aan in een zonovergoten galerij",
+      "showcaseFrame": "Een ingelijste familiefoto in een paleisvleugel",
+      "bandWhatsapp": "Een WhatsApp-foto die ingelijst aan een paleismuur verschijnt",
+      "bandAi": "Foto's die in paleiskamers worden gesorteerd"
+    }
   }
 }
