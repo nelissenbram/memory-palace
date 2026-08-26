@@ -25,6 +25,7 @@ import { TypeIcon } from "@/lib/constants/type-icons";
 import ImportHub from "@/components/ui/ImportHub";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { importFilesToRoom, writeTextMemory } from "@/lib/ui/roomImport";
+import { byLaneOrder } from "@/lib/ui/spotOrder";
 
 const MUTED = "#716A5E";
 const SAND = T.color.sandstone;
@@ -108,11 +109,18 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
   const [writeOpen, setWriteOpen] = useState(false);
   const [fromRoomsOpen, setFromRoomsOpen] = useState(false);
   const [wTitle, setWTitle] = useState(""); const [wBody, setWBody] = useState("");
-  const [undo, setUndo] = useState<{ label: string; run: () => void } | null>(null);
+  const [undo, setUndo] = useState<{ label: string; run: (() => void) | null } | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [trackIdx, setTrackIdx] = useState(0);
+  // ── Drag & drop to a specific display spot (owner 2026-08-26) ──
+  const [dragId, setDragId] = useState<string | null>(null);
+  // index = insertion slot in the DISPLAYED lane (for the indicator line);
+  // beforeId = the lane member to insert before (null = end of the full lane).
+  const [dropHint, setDropHint] = useState<{ lane: StationId | "mantel" | "archive"; index: number; beforeId: string | null } | null>(null);
+  // Touch fallback: per-card "Move to…" two-step picker (station → spot)
+  const [movePick, setMovePick] = useState<{ id: string; station: StationId | null } | null>(null);
 
-  const showUndo = (label: string, run: () => void) => {
+  const showUndo = (label: string, run: (() => void) | null) => {
     setUndo({ label, run });
     if (undoTimer.current) clearTimeout(undoTimer.current);
     undoTimer.current = setTimeout(() => setUndo(null), 6000);
@@ -125,19 +133,131 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
   // shown, matching InteriorScene/Library — they used to vanish from the Ledger
   // entirely ("0 memories kept here" while the room and Library showed media).
   const isShown = (m: Mem) => m.displayed !== false;
-  const filtered = useMemo(() => q ? mems.filter((m) => (m.title || "").toLowerCase().includes(q)) : mems, [mems, q]);
-  const kept = useMemo(() => mems.filter(isShown), [mems]);
+  // Spot canon (drag & drop): the SAME order InteriorScene mounts anchors in —
+  // explicit picks → sort_order (1-based) → date. See lib/ui/spotOrder.ts.
+  const sorted = useMemo(() => [...mems].sort(byLaneOrder), [mems]);
+  const filtered = useMemo(() => q ? sorted.filter((m) => (m.title || "").toLowerCase().includes(q)) : sorted, [sorted, q]);
+  const kept = useMemo(() => sorted.filter(isShown), [sorted]);
   const archived = useMemo(() => filtered.filter((m) => m.displayed === false), [filtered]);
-  const playables = useMemo(() => mems.filter(isPlayable), [mems]);
+  const playables = useMemo(() => sorted.filter(isPlayable), [sorted]);
   const hero = useMemo(() => {
-    const shownPortraits = mems.filter((m) => isShown(m) && stationOf(m) === "portraits");
+    const shownPortraits = sorted.filter((m) => isShown(m) && stationOf(m) === "portraits");
     return shownPortraits.find(isHero) || shownPortraits[0] || null;
-  }, [mems]);
-  const byStation = useMemo(() => {
+  }, [sorted]);
+  // Full (unfiltered) lane lists — reorder math + spot numbers must include
+  // items a search is currently hiding, or drops would renumber a partial lane.
+  const laneFull = useMemo(() => {
     const g: Record<StationId, Mem[]> = { portraits: [], vitrine: [], library: [], gramophone: [], screen: [] };
-    for (const m of filtered) { if (isShown(m) && m !== hero) g[stationOf(m)].push(m); }
+    for (const m of sorted) { if (isShown(m) && m !== hero) g[stationOf(m)].push(m); }
     return g;
-  }, [filtered, hero]);
+  }, [sorted, hero]);
+  const byStation = useMemo(() => {
+    if (!q) return laneFull;
+    const g: Record<StationId, Mem[]> = { portraits: [], vitrine: [], library: [], gramophone: [], screen: [] };
+    for (const s of Object.keys(g) as StationId[]) g[s] = laneFull[s].filter((m) => filtered.includes(m));
+    return g;
+  }, [laneFull, filtered, q]);
+  // memId → 1-based spot number within its station (position = 3D anchor index)
+  const spotIndex = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const s of Object.keys(laneFull) as StationId[]) laneFull[s].forEach((m, i) => map.set(m.id, i + 1));
+    return map;
+  }, [laneFull]);
+
+  // Spot identity — mirrors InteriorScene's anchor order per station:
+  // portraits fill the salon walls in run order, vitrine holds 12 shelf slots,
+  // the library 6 scroll cubbies (first also open on the table), the gramophone
+  // 6 records (first on the turntable), the screen 1 canvas + the player queue.
+  const spotLabelText = useCallback((s: StationId, n: number): string => {
+    const num = (k: string, f: string) => tr(k, f).replace("{n}", String(n));
+    switch (s) {
+      case "portraits": return num("spotWall", "Wall spot {n}");
+      case "vitrine": return n <= 12 ? num("spotShelf", "Shelf {n} of 12") : tr("spotWaiting", "Awaiting a spot");
+      case "library": return n === 1 ? tr("spotOpenBook", "Open on the reading table") : n <= 6 ? num("spotCubby", "Cubby {n} of 6") : tr("spotWaiting", "Awaiting a spot");
+      case "gramophone": return n === 1 ? tr("spotTurntable", "On the turntable") : n <= 6 ? num("spotRecord", "Record {n} of 6") : tr("spotWaiting", "Awaiting a spot");
+      case "screen": return n === 1 ? tr("spotOnScreen", "On the screen") : num("spotQueue", "Queue · {n}");
+    }
+  }, [tr]);
+
+  // displayUnit that PINS a memory to the target station (keeps a compatible
+  // existing unit — e.g. a "frame" photo dropped elsewhere on the wall stays a frame).
+  const pinUnit = (target: StationId, mem: Mem): string => {
+    if (target === "portraits") {
+      const u = mem.displayUnit;
+      return u === "painting" || u === "photo" || u === "frame" ? u : "painting";
+    }
+    return stationUnit[target];
+  };
+
+  /** Place a memory on a specific spot: renumber the whole target lane so the
+   *  drop round-trips into the exact 3D anchor. beforeId = insert before that
+   *  lane member (null = end). Persists sort_order via the normal update path. */
+  const placeAt = (mem: Mem, target: StationId | "mantel", beforeId: string | null) => {
+    if (target === "mantel" && !isPhotoLike(mem)) { showUndo(tr("mantelOnlyPhotos", "Only pictures can rest on the mantelpiece"), null); return; }
+    const writes = new Map<string, Partial<Mem>>();
+    const snaps = new Map<string, Partial<Mem>>();
+    const touch = (m: Mem, upd: Partial<Mem>) => {
+      const w = writes.get(m.id) || {};
+      const sn = snaps.get(m.id) || {};
+      let any = writes.has(m.id);
+      for (const k of Object.keys(upd) as (keyof Mem)[]) {
+        const cur = k in w ? (w as Record<string, unknown>)[k] : (m as unknown as Record<string, unknown>)[k];
+        if (cur !== (upd as Record<string, unknown>)[k]) {
+          (w as Record<string, unknown>)[k] = (upd as Record<string, unknown>)[k];
+          if (!(k in sn)) (sn as Record<string, unknown>)[k] = (m as unknown as Record<string, unknown>)[k];
+          any = true;
+        }
+      }
+      if (any) { writes.set(m.id, w); snaps.set(m.id, sn); }
+    };
+
+    let toastSpot: string;
+    if (target === "mantel") {
+      // New portraits sequence: mem takes the mantel (spot 1), the previous
+      // occupant becomes wall spot 1, the wall keeps its order.
+      const seq = [mem, ...(hero && hero.id !== mem.id ? [hero] : []), ...laneFull.portraits.filter((m2) => m2.id !== mem.id)];
+      seq.forEach((m2, i) => touch(m2, { sortOrder: i + 1, displayed: true }));
+      touch(mem, { displayUnit: pinUnit("portraits", mem), hero: true });
+      if (hero && hero.id !== mem.id && isHero(hero)) touch(hero, { hero: false });
+      toastSpot = tr("stationMantel", "Mantelpiece");
+    } else if (target === "portraits") {
+      const wasHero = !!hero && hero.id === mem.id;
+      // The visible wall list the user aimed at (mantel occupant excluded).
+      let wall = laneFull.portraits.filter((m2) => m2.id !== mem.id);
+      let keeper = hero && hero.id !== mem.id ? hero : null; // stays on the mantel
+      if (wasHero) { keeper = wall[0] || null; wall = wall.slice(1); } // demote: old wall spot 1 takes the mantel
+      let j = beforeId ? wall.findIndex((m2) => m2.id === beforeId) : -1;
+      if (beforeId && keeper && keeper.id === beforeId) j = 0; // aimed at the promoted piece → spot 1
+      if (j < 0) j = wall.length;
+      const seq = [...(keeper ? [keeper] : []), ...wall.slice(0, j), mem, ...wall.slice(j)];
+      seq.forEach((m2, i) => touch(m2, { sortOrder: i + 1, displayed: true }));
+      touch(mem, { displayUnit: pinUnit("portraits", mem) });
+      if (isHero(mem) && seq[0]?.id !== mem.id) touch(mem, { hero: false });
+      const n = seq.findIndex((m2) => m2.id === mem.id); // 0 = mantel (no other portraits left)
+      toastSpot = n === 0 ? tr("stationMantel", "Mantelpiece") : spotLabelText("portraits", n);
+    } else {
+      const lane = laneFull[target].filter((m2) => m2.id !== mem.id);
+      let j = beforeId ? lane.findIndex((m2) => m2.id === beforeId) : -1;
+      if (j < 0) j = lane.length;
+      lane.splice(j, 0, mem);
+      lane.forEach((m2, i) => touch(m2, { sortOrder: i + 1, displayed: true }));
+      touch(mem, { displayUnit: pinUnit(target, mem) });
+      if (isHero(mem)) touch(mem, { hero: false }); // left the portraits — the wall's first piece takes the mantel
+      toastSpot = `${stationLabel(target)} · ${spotLabelText(target, j + 1)}`;
+    }
+
+    writes.forEach((upd, id) => onUpdate(id, upd));
+    showUndo(tr("movedToast", "Moved to {spot}").replace("{spot}", toastSpot), () => snaps.forEach((prev, id) => onUpdate(id, prev)));
+  };
+
+  const dragMem = dragId ? sorted.find((m) => m.id === dragId) || null : null;
+  const endDrag = () => { setDragId(null); setDropHint(null); };
+  const dropOn = (target: StationId | "mantel" | "archive") => {
+    if (!dragMem) return;
+    if (target === "archive") { if (isShown(dragMem)) setShown(dragMem, false); }
+    else placeAt(dragMem, target, (dropHint && dropHint.lane === target ? dropHint.beforeId : null));
+    endDrag();
+  };
 
   const stationLabel = (id: StationId) => tr(`station_${id}`, { portraits: "Portraits", vitrine: "Vitrine", library: "Library", gramophone: "Gramophone", screen: "Screen" }[id]);
   const stationWhere = (id: StationId) => tr(`stationWhere_${id}`, { portraits: "Along the hall", vitrine: "Front-right corner", library: "Front-left corner", gramophone: "Back-right corner", screen: "Set into the right wall" }[id]);
@@ -149,6 +269,48 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
     showUndo(tr("archivedToast", "Kept safe in the archive"), () => onUpdate(mem.id, { displayed: true, displayUnit: prevUnit || impliedUnit(mem) }));
   };
   const setScale = (mem: Mem, v: "sm" | "md" | "lg") => onUpdate(mem.id, { displayScale: v } as unknown as Partial<Mem>);
+
+  // ── Touch fallback for drag & drop: "Move to…" → station → numbered spot ──
+  const renderMovePicker = (m: Mem) => {
+    const pick = movePick;
+    if (!pick || pick.id !== m.id) return null;
+    const stations: StationId[] = ["portraits", "vitrine", "library", "gramophone", "screen"];
+    const title: React.CSSProperties = { fontFamily: T.font.body, fontWeight: 700, fontSize: "0.6875rem", letterSpacing: "0.1em", textTransform: "uppercase", color: MUTED, marginBottom: "0.4rem" };
+    return (
+      <div style={{ background: T.color.white, border: `0.0625rem solid ${SAND}`, borderRadius: T.radius.md, padding: "0.6rem", marginTop: "-0.1rem" }}>
+        {pick.station === null ? (
+          <>
+            <div style={title}>{tr("moveTo", "Move to…")}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+              {isPhotoLike(m) && (!hero || hero.id !== m.id) && (
+                <button style={spotChip()} onClick={() => { placeAt(m, "mantel", null); setMovePick(null); }}>★ {tr("stationMantel", "Mantelpiece")}</button>
+              )}
+              {stations.map((s) => (
+                <button key={s} style={spotChip()} onClick={() => setMovePick({ id: m.id, station: s })}>{stationLabel(s)}</button>
+              ))}
+              {isShown(m) && <button style={spotChip()} onClick={() => { setShown(m, false); setMovePick(null); }}>{tr("archived", "Archive")}</button>}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={title}>{tr("pickSpot", "Pick a spot in {station}").replace("{station}", stationLabel(pick.station))}</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+              {(() => {
+                const lane = laneFull[pick.station].filter((x) => x.id !== m.id);
+                const st = pick.station;
+                return Array.from({ length: Math.min(lane.length + 1, 12) }, (_, i) => (
+                  <button key={i} style={spotChip()} title={spotLabelText(st, i + 1)} aria-label={spotLabelText(st, i + 1)}
+                    onClick={() => { placeAt(m, st, lane[i]?.id ?? null); setMovePick(null); }}>{i + 1}</button>
+                ));
+              })()}
+              <button style={spotChip()} onClick={() => { placeAt(m, pick.station!, null); setMovePick(null); }}>{tr("lastSpot", "Last")}</button>
+              <button style={{ ...spotChip(), border: "none", background: "transparent", color: MUTED }} onClick={() => setMovePick({ id: m.id, station: null })}>‹ {tr("cancel", "Cancel")}</button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   const toggleSelect = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const bulkHide = () => { const ids = [...selected]; ids.forEach((id) => onUpdate(id, { displayed: false })); setSelected(new Set()); setSelectMode(false); showUndo(tr("archivedNToast", "{n} kept safe").replace("{n}", String(ids.length)), () => ids.forEach((id) => { const m = mems.find((x) => x.id === id); if (m) onUpdate(id, { displayed: true, displayUnit: impliedUnit(m) }); })); };
@@ -252,38 +414,81 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
         </div>
       )}
 
-      {/* ── MANTELPIECE — its own lane (owner #2) ── */}
-      {hero && (
-        <section style={{ background: TRAY.gold, borderRadius: T.radius.lg, padding: "0.75rem", marginBottom: T.space.md, borderLeft: `0.1875rem solid ${BRONZE}`, boxShadow: "inset 0 0.0625rem 0.25rem rgba(64,59,54,0.05)" }}>
+      {/* ── MANTELPIECE — its own lane (owner #2); drop a picture here to feature it ── */}
+      {(hero || (canEdit && dragMem && isPhotoLike(dragMem))) && (
+        <section
+          onDragOver={canEdit && dragMem && isPhotoLike(dragMem) ? (e) => { e.preventDefault(); if (dropHint?.lane !== "mantel") setDropHint({ lane: "mantel", index: 0, beforeId: null }); } : undefined}
+          onDrop={canEdit && dragMem ? (e) => { e.preventDefault(); dropOn("mantel"); } : undefined}
+          style={{ background: TRAY.gold, borderRadius: T.radius.lg, padding: "0.75rem", marginBottom: T.space.md, borderLeft: `0.1875rem solid ${BRONZE}`, boxShadow: "inset 0 0.0625rem 0.25rem rgba(64,59,54,0.05)", outline: dropHint?.lane === "mantel" ? `0.125rem solid ${EMBER}` : undefined, outlineOffset: "-0.125rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.5rem" }}>
             <div style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.6875rem", letterSpacing: "0.12em", textTransform: "uppercase", color: INK }}>★ {tr("stationMantel", "Mantelpiece")}</div>
             <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>{tr("stationWhereMantel", "Above the fireplace")}</div>
           </div>
-          <Card mem={hero} station="portraits" tr={tr} canEdit={canEdit} selectMode={selectMode} selected={selected.has(hero.id)}
-            onToggleSelect={() => toggleSelect(hero.id)} shown onShown={(v) => setShown(hero, v)}
-            onOpen={() => onSelect?.(hero)} heroCard />
+          {hero ? (
+            <>
+              <Card mem={hero} station="portraits" tr={tr} canEdit={canEdit} selectMode={selectMode} selected={selected.has(hero.id)}
+                onToggleSelect={() => toggleSelect(hero.id)} shown onShown={(v) => setShown(hero, v)}
+                onOpen={() => onSelect?.(hero)} heroCard dimmed={dragId === hero.id}
+                onMoveTo={canEdit && !selectMode ? () => setMovePick(movePick?.id === hero.id ? null : { id: hero.id, station: null }) : undefined}
+                outerProps={canEdit && !selectMode ? { draggable: true, onDragStart: (e) => { setDragId(hero.id); setMovePick(null); try { e.dataTransfer.setData("text/plain", hero.id); e.dataTransfer.effectAllowed = "move"; } catch { } }, onDragEnd: endDrag } : undefined} />
+              {movePick?.id === hero.id && renderMovePicker(hero)}
+            </>
+          ) : (
+            <div style={dropStub()}>{tr("dropHere", "Drop here")}</div>
+          )}
         </section>
       )}
 
-      {/* ── station lanes (shown items only — the archive is grouped below) ── */}
+      {/* ── station lanes (shown items only — the archive is grouped below).
+           Drag a card between/within lanes to give it a SPECIFIC display spot;
+           the lane order below IS the 3D anchor order (spotOrder canon). ── */}
       {anyMem && STATIONS.map((s) => {
         const items = byStation[s.id];
-        if (items.length === 0) return null;
+        const laneDroppable = canEdit && !!dragMem;
+        if (items.length === 0 && !laneDroppable) return null;
+        const hintIdx = dropHint?.lane === s.id ? dropHint.index : null;
         return (
-          <section key={s.id} style={{ background: s.tray, borderRadius: T.radius.lg, padding: "0.75rem", marginBottom: T.space.md, borderLeft: `0.1875rem solid ${EMBER}`, boxShadow: "inset 0 0.0625rem 0.25rem rgba(64,59,54,0.05)" }}>
+          <section key={s.id}
+            onDragOver={laneDroppable ? (e) => { e.preventDefault(); setDropHint((h) => (h?.lane === s.id ? h : { lane: s.id, index: items.length, beforeId: null })); } : undefined}
+            onDrop={laneDroppable ? (e) => { e.preventDefault(); dropOn(s.id); } : undefined}
+            onDragLeave={laneDroppable ? (e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropHint((h) => (h?.lane === s.id ? null : h)); } : undefined}
+            style={{ background: s.tray, borderRadius: T.radius.lg, padding: "0.75rem", marginBottom: T.space.md, borderLeft: `0.1875rem solid ${EMBER}`, boxShadow: "inset 0 0.0625rem 0.25rem rgba(64,59,54,0.05)", outline: hintIdx !== null ? `0.125rem solid ${EMBER}` : undefined, outlineOffset: "-0.125rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.5rem" }}>
               <div style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.6875rem", letterSpacing: "0.12em", textTransform: "uppercase", color: INK }}>{stationLabel(s.id)}</div>
               <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>{stationWhere(s.id)}</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-              {items.map((m) => (
-                <Card key={m.id} mem={m} station={s.id} tr={tr} canEdit={canEdit} selectMode={selectMode}
-                  selected={selected.has(m.id)} onToggleSelect={() => toggleSelect(m.id)}
-                  shown onShown={(v) => setShown(m, v)}
-                  onOpen={() => onSelect?.(m)}
-                  onPlay={isPlayable(m) ? () => setTrackIdx(Math.max(0, playables.indexOf(m))) : undefined}
-                  onScale={s.id === "portraits" && isPhotoLike(m) ? (v) => setScale(m, v) : undefined} />
+              {items.map((m, i) => (
+                <React.Fragment key={m.id}>
+                  {hintIdx === i && <DropLine />}
+                  <Card mem={m} station={s.id} tr={tr} canEdit={canEdit} selectMode={selectMode}
+                    selected={selected.has(m.id)} onToggleSelect={() => toggleSelect(m.id)}
+                    shown onShown={(v) => setShown(m, v)}
+                    onOpen={() => onSelect?.(m)}
+                    onPlay={isPlayable(m) ? () => setTrackIdx(Math.max(0, playables.indexOf(m))) : undefined}
+                    onScale={s.id === "portraits" && isPhotoLike(m) ? (v) => setScale(m, v) : undefined}
+                    spotBadge={spotLabelText(s.id, spotIndex.get(m.id) || i + 1)}
+                    dimmed={dragId === m.id}
+                    onMoveTo={canEdit && !selectMode ? () => setMovePick(movePick?.id === m.id ? null : { id: m.id, station: null }) : undefined}
+                    outerProps={canEdit && !selectMode ? {
+                      draggable: true,
+                      onDragStart: (e) => { setDragId(m.id); setMovePick(null); try { e.dataTransfer.setData("text/plain", m.id); e.dataTransfer.effectAllowed = "move"; } catch { } },
+                      onDragEnd: endDrag,
+                      onDragOver: (e) => {
+                        if (!dragMem || dragMem.id === m.id) return;
+                        e.preventDefault(); e.stopPropagation();
+                        const r = e.currentTarget.getBoundingClientRect();
+                        const idx = e.clientY < r.top + r.height / 2 ? i : i + 1;
+                        const before = items[idx]?.id === dragMem.id ? items[idx + 1] : items[idx];
+                        setDropHint({ lane: s.id, index: idx, beforeId: before?.id ?? null });
+                      },
+                      onDrop: (e) => { e.preventDefault(); e.stopPropagation(); dropOn(s.id); },
+                    } : undefined} />
+                  {movePick?.id === m.id && renderMovePicker(m)}
+                </React.Fragment>
               ))}
+              {hintIdx === items.length && <DropLine />}
+              {items.length === 0 && <div style={dropStub()}>{tr("dropHere", "Drop here")}</div>}
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.5rem" }}>
               {canEdit && <button onClick={() => setImportUnit(s.id === "library" ? "bookshelf" : stationUnit[s.id])} style={addTile()}>+ {tr("add", "Add")}</button>}
@@ -292,20 +497,31 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
         );
       })}
 
-      {/* ── THE ARCHIVE — every archived memory, grouped under its own name (owner #1) ── */}
-      {archived.length > 0 && (
-        <section style={{ background: "#EDE6D8", borderRadius: T.radius.lg, padding: "0.75rem", marginBottom: T.space.md, borderLeft: `0.1875rem solid ${MUTED}` }}>
+      {/* ── THE ARCHIVE — every archived memory, grouped under its own name (owner #1).
+           Also a drop target: drag a card here to keep it safe off-display. ── */}
+      {(archived.length > 0 || (canEdit && dragMem && isShown(dragMem))) && (
+        <section
+          onDragOver={canEdit && dragMem ? (e) => { e.preventDefault(); if (dropHint?.lane !== "archive") setDropHint({ lane: "archive", index: 0, beforeId: null }); } : undefined}
+          onDrop={canEdit && dragMem ? (e) => { e.preventDefault(); dropOn("archive"); } : undefined}
+          style={{ background: "#EDE6D8", borderRadius: T.radius.lg, padding: "0.75rem", marginBottom: T.space.md, borderLeft: `0.1875rem solid ${MUTED}`, outline: dropHint?.lane === "archive" ? `0.125rem solid ${EMBER}` : undefined, outlineOffset: "-0.125rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.5rem" }}>
             <div style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.6875rem", letterSpacing: "0.12em", textTransform: "uppercase", color: MUTED }}>{tr("archiveLane", "In the archive")}</div>
             <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>{tr("archiveKeptSafe", "{n} kept safe").replace("{n}", String(archived.length))}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
             {archived.map((m) => (
-              <Card key={m.id} mem={m} station={stationOf(m)} tr={tr} canEdit={canEdit} selectMode={selectMode}
-                selected={selected.has(m.id)} onToggleSelect={() => toggleSelect(m.id)}
-                shown={false} onShown={(v) => setShown(m, v)}
-                onOpen={() => onSelect?.(m)} />
+              <React.Fragment key={m.id}>
+                <Card mem={m} station={stationOf(m)} tr={tr} canEdit={canEdit} selectMode={selectMode}
+                  selected={selected.has(m.id)} onToggleSelect={() => toggleSelect(m.id)}
+                  shown={false} onShown={(v) => setShown(m, v)}
+                  onOpen={() => onSelect?.(m)}
+                  dimmed={dragId === m.id}
+                  onMoveTo={canEdit && !selectMode ? () => setMovePick(movePick?.id === m.id ? null : { id: m.id, station: null }) : undefined}
+                  outerProps={canEdit && !selectMode ? { draggable: true, onDragStart: (e) => { setDragId(m.id); setMovePick(null); try { e.dataTransfer.setData("text/plain", m.id); e.dataTransfer.effectAllowed = "move"; } catch { } }, onDragEnd: endDrag } : undefined} />
+                {movePick?.id === m.id && renderMovePicker(m)}
+              </React.Fragment>
             ))}
+            {archived.length === 0 && <div style={dropStub()}>{tr("dropHere", "Drop here")}</div>}
           </div>
         </section>
       )}
@@ -318,11 +534,11 @@ export default function RoomStewardLedger({ mems, room, onClose, onUpdate, onDel
         </div>
       )}
 
-      {/* Undo toast */}
+      {/* Undo toast (run=null → plain notice without an Undo button) */}
       {undo && (
         <div style={{ position: "sticky", bottom: "0.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", padding: "0.6rem 0.9rem", borderRadius: T.radius.lg, background: INK, color: "#F3ECDA", fontFamily: T.font.body, fontSize: "0.8125rem", boxShadow: "0 0.5rem 1.5rem rgba(20,16,12,0.35)" }}>
           <span>{undo.label}</span>
-          <button onClick={() => { undo.run(); setUndo(null); }} style={{ background: "none", border: "none", color: "#E9D7AC", fontWeight: 700, cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem" }}>{tr("undo", "Undo")}</button>
+          {undo.run && <button onClick={() => { undo.run?.(); setUndo(null); }} style={{ background: "none", border: "none", color: "#E9D7AC", fontWeight: 700, cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem" }}>{tr("undo", "Undo")}</button>}
         </div>
       )}
 
@@ -414,27 +630,43 @@ const SIZE_STEPS = ["sm", "md", "lg"] as const;
 export type DisplayScale = (typeof SIZE_STEPS)[number];
 const scaleOf = (m: Mem): DisplayScale => { const v = (m as unknown as { displayScale?: string }).displayScale; return v === "sm" || v === "lg" ? v : "md"; };
 
-function Card({ mem, station, tr, canEdit, selectMode, selected, onToggleSelect, shown, onShown, onOpen, onPlay, onScale, heroCard }: {
+function Card({ mem, station, tr, canEdit, selectMode, selected, onToggleSelect, shown, onShown, onOpen, onPlay, onScale, heroCard, spotBadge, dimmed, onMoveTo, outerProps }: {
   mem: Mem; station: StationId; tr: (k: string, f: string) => string; canEdit: boolean; selectMode: boolean; selected: boolean;
   onToggleSelect: () => void; shown: boolean; onShown: (v: boolean) => void; onOpen: () => void; onPlay?: () => void; onScale?: (v: DisplayScale) => void; heroCard?: boolean;
+  /** the specific display spot this card occupies in the 3D room (e.g. "Wall spot 2") */
+  spotBadge?: string;
+  /** true while this card is being dragged */
+  dimmed?: boolean;
+  /** opens the tap-based "Move to…" spot picker (touch fallback for drag & drop) */
+  onMoveTo?: () => void;
+  /** drag & drop wiring spread on the card's outer div (draggable, onDragStart, …) */
+  outerProps?: React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean };
 }) {
   const scale = scaleOf(mem);
   const sizeWord = (v: DisplayScale) => v === "sm" ? tr("sizeSmall", "Small") : v === "lg" ? tr("sizeLarge", "Large") : tr("sizeMedium", "Medium");
   return (
-    <div style={{ padding: "0.5rem", borderRadius: T.radius.md, background: T.color.white, border: `0.0625rem solid ${selected ? EMBER : heroCard ? BRONZE : "rgba(64,59,54,0.08)"}` }}>
+    <div {...outerProps} style={{ padding: "0.5rem", borderRadius: T.radius.md, background: T.color.white, border: `0.0625rem solid ${selected ? EMBER : heroCard ? BRONZE : "rgba(64,59,54,0.08)"}`, opacity: dimmed ? 0.45 : 1, cursor: outerProps?.draggable ? "grab" : undefined }}>
       <div style={{ display: "flex", alignItems: "center", gap: T.space.sm }}>
         {selectMode && (
           <button aria-label="select" onClick={onToggleSelect} style={{ width: "1.25rem", height: "1.25rem", borderRadius: "0.3rem", flexShrink: 0, cursor: "pointer", border: `0.125rem solid ${selected ? EMBER : SAND}`, background: selected ? EMBER : "transparent", color: "#fff", fontSize: "0.8rem", lineHeight: 1 }}>{selected ? "✓" : ""}</button>
+        )}
+        {outerProps?.draggable && !selectMode && (
+          <span aria-hidden title={tr("dragToPlace", "Drag to place")} style={{ color: MUTED, fontSize: "0.8rem", flexShrink: 0, cursor: "grab", letterSpacing: "-0.1em" }}>⠿</span>
         )}
         <button onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: T.space.sm, flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
           <Thumb mem={mem} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: INK, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mem.title || tr("untitled", "Untitled")}</div>
+            {shown && spotBadge && <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: BRONZE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>◈ {spotBadge}</div>}
             {!shown && <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>{tr("wasAt", "From")} {tr(`station_${station}`, station)}</div>}
           </div>
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}>
           {onPlay && <button onClick={onPlay} aria-label={tr("play", "Play")} style={{ width: "1.8rem", height: "1.8rem", borderRadius: "50%", border: "none", background: EMBER, color: "#fff", cursor: "pointer", fontSize: "0.8rem" }}>▶</button>}
+          {onMoveTo && (
+            <button onClick={onMoveTo} aria-label={tr("moveTo", "Move to…")} title={tr("moveTo", "Move to…")}
+              style={{ width: "1.8rem", height: "1.8rem", borderRadius: "50%", border: `0.0625rem solid ${SAND}`, background: T.color.white, color: INK, cursor: "pointer", fontSize: "0.8rem", flexShrink: 0 }}>⇄</button>
+          )}
           {canEdit && (
             <div style={{ display: "inline-flex", borderRadius: T.radius.pill, overflow: "hidden", border: `0.0625rem solid ${SAND}` }}>
               <button onClick={() => onShown(true)} style={seg(shown)}>{tr("shownHere", "Shown")}</button>
@@ -470,3 +702,8 @@ function seg(active: boolean): React.CSSProperties { return { padding: "0.32rem 
 function miniBtn(): React.CSSProperties { return { background: "none", border: "0.0625rem solid #5A4A34", borderRadius: T.radius.pill, color: "#C9BFA8", padding: "0.25rem 0.45rem", fontSize: "0.7rem", cursor: "pointer" }; }
 function chip(): React.CSSProperties { return { padding: "0.32rem 0.5rem", borderRadius: T.radius.pill, border: `0.0625rem solid ${SAND}`, background: T.color.white, color: INK, fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer" }; }
 function addTile(): React.CSSProperties { return { padding: "0.3rem 0.6rem", borderRadius: T.radius.pill, border: `0.09375rem dashed ${SAND}`, background: "transparent", color: EMBER, fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer" }; }
+/** insertion indicator between cards while dragging */
+function DropLine() { return <div aria-hidden style={{ height: "0.1875rem", borderRadius: "0.09375rem", background: EMBER, margin: "0.05rem 0.25rem" }} />; }
+function dropStub(): React.CSSProperties { return { padding: "0.6rem", borderRadius: T.radius.md, border: `0.09375rem dashed ${SAND}`, color: MUTED, fontFamily: T.font.body, fontSize: "0.75rem", textAlign: "center" }; }
+/** touch-target-friendly chips for the "Move to…" spot picker */
+function spotChip(): React.CSSProperties { return { minWidth: "2.4rem", minHeight: "2.4rem", padding: "0.4rem 0.7rem", borderRadius: T.radius.pill, border: `0.0625rem solid ${SAND}`, background: T.color.white, color: INK, fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }; }

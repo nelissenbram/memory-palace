@@ -20,6 +20,8 @@ export interface Mem {
   locationName?: string; // e.g. "Rome, Italy"
   displayed?: boolean; // whether this memory is shown as a 3D object in the room (default true for first N items)
   displayUnit?: string; // which display unit this memory is assigned to (e.g. "frame", "screen", "vinyl")
+  sortOrder?: number; // explicit display-spot order within its station (memories.sort_order, 1-based; 0/unset = chronological)
+  hero?: boolean; // ★ Mantelpiece feature (session-only flag; round-trips as sortOrder 1 in the portraits lane)
   historicalContext?: string; // AI-generated historical context for the memory's time period
   resolution?: { goal: string; targetDate?: string; progress?: number; reminders?: boolean; }; // goal/resolution tracking for time capsules
   visibility?: "private" | "shared" | "family" | "public"; // memory visibility level (default: "shared" if room is shared, else "private")

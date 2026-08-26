@@ -116,6 +116,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.displayed != null ? { displayed: m.displayed } : {}),
         ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
         ...(m.display_scale ? { displayScale: m.display_scale } : {}),
+        ...(m.sort_order != null ? { sortOrder: m.sort_order } : {}),
       }));
       set((s) => ({ userMems: { ...s.userMems, [roomId]: mapped } }));
 
@@ -164,6 +165,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.displayed != null ? { displayed: m.displayed } : {}),
         ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
         ...(m.display_scale ? { displayScale: m.display_scale } : {}),
+        ...(m.sort_order != null ? { sortOrder: m.sort_order } : {}),
       }));
     }
     set({ userMems: allMapped });
@@ -362,7 +364,11 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       ...("displayed" in updates ? { displayed: updates.displayed ?? null } : {}),
       ...("displayUnit" in updates ? { display_unit: updates.displayUnit ?? null } : {}),
       ...("displayScale" in updates ? { display_scale: (updates as { displayScale?: string | null }).displayScale ?? null } : {}),
+      ...("sortOrder" in updates ? { sort_order: updates.sortOrder ?? 0 } : {}),
     };
+    // Client-only fields (e.g. hero ★) can leave nothing to persist — an empty
+    // Supabase update() would error, and there is nothing to send anyway.
+    if (Object.keys(supaUpdates).length === 0) return true;
     try {
       let result = await updateMemoryAction(memId, supaUpdates);
       let err = (result as { error?: string } | null)?.error;

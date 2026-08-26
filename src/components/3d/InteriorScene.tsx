@@ -28,6 +28,7 @@ import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
 import { measure, autoFit } from "@/lib/3d/fitRenderer";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
+import { byLaneOrder } from "@/lib/ui/spotOrder";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useRoomMediaBarStore } from "@/lib/stores/roomMediaBarStore";
@@ -105,17 +106,26 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
   const onReadyRef=useRef(onReady);
   useEffect(()=>{onReadyRef.current=onReady;},[onReady]);
   const readyFiredRef=useRef(false); // onReady fires EXACTLY once per mount (survives fingerprint rebuilds)
-  const wing=wingDataProp||DEFAULT_WINGS.find(r=>r.id===roomId),mems=memories||[];
+  const wing=wingDataProp||DEFAULT_WINGS.find(r=>r.id===roomId);
+  // ── Steward's Ledger spot canon (drag & drop, 2026-08-26): the SAME lane
+  // order the Ledger shows (byLaneOrder: explicit picks → sort_order → date)
+  // drives the bucket → anchor mount order below, so "spot N" in the Ledger is
+  // the memory that renders at anchor N here. Untouched rooms (all sort_order
+  // 0) keep the historic fetch order exactly.
+  const mems=useMemo(()=>[...(memories||[])].sort(byLaneOrder),[memories]);
 
   // ── FINGERPRINT: split structural vs display to avoid unnecessary full rebuilds ──
-  // Structural fingerprint: memory identity & content — requires full scene rebuild
-  const structuralFingerprint=useMemo(()=>mems.map((m:any)=>`${m.id}:${m.type}:${m.dataUrl?.slice(0,30)||""}`).join("|"),[mems]);
+  // Structural fingerprint: memory identity & content — requires full scene rebuild.
+  // Order-INDEPENDENT (parts sorted before join): a Ledger spot reorder writes
+  // sortOrder on every lane member — that must flow through the DEBOUNCED
+  // display half as ONE coalesced rebuild, not k structural rebuilds.
+  const structuralFingerprint=useMemo(()=>mems.map((m:any)=>`${m.id}:${m.type}:${m.dataUrl?.slice(0,30)||""}`).sort().join("|"),[mems]);
   // Display fingerprint: which memories are displayed & where — changes when user
   // toggles displayed/displayUnit in the media panel. Debounced with a longer
   // window (800ms) to prevent rapid teardown/rebuild cycles that exhaust WebGL
   // contexts and cause a pitch-dark scene. The debounce also coalesces multiple
   // rapid toggles (common when the user assigns furniture in RoomMediaPanel).
-  const rawDisplayFP=useMemo(()=>mems.map((m:any)=>`${m.displayed}:${m.displayUnit||""}:${m.displayScale||""}`).join("|"),[mems]);
+  const rawDisplayFP=useMemo(()=>mems.map((m:any)=>`${m.id}:${m.displayed}:${m.displayUnit||""}:${m.displayScale||""}:${m.sortOrder||0}:${m.hero?1:0}`).join("|"),[mems]);
   const [debouncedDisplayFP,setDebouncedDisplayFP]=useState(rawDisplayFP);
   const displayDebounceRef=useRef<ReturnType<typeof setTimeout>|null>(null);
   const prevStructuralFPRef=useRef(structuralFingerprint);
@@ -1404,8 +1414,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         const id=String(m.id??m.title);
         if(seen.has(id))continue;seen.add(id);wallMems.push(m);
       }
-      // Chronological hang — rows fill oldest-first (stable for equal dates).
-      wallMems.sort((a: any,b: any)=>new Date(a.createdAt||a.revealDate||0).getTime()-new Date(b.createdAt||b.revealDate||0).getTime());
+      // Spot-canon hang (Ledger drag & drop): explicit sort_order first, then the
+      // historic chronological fill — mirrors the Ledger's portraits lane exactly.
+      wallMems.sort(byLaneOrder);
     }
 
     // Store ALL video/audio mems (not just displayed) for playlist navigation
