@@ -7,6 +7,7 @@ import type { Wing } from "@/lib/constants/wings";
 import { paintTex, devCheckArtworkAspect } from "@/lib/3d/textureHelpers";
 import { mk } from "@/lib/3d/meshHelpers";
 import { layoutForRoom } from "@/lib/3d/roomLayouts";
+import { stemForRoom, clampToFootprint } from "@/lib/3d/roomCollision";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
@@ -359,8 +360,8 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // eases to a stop at the collider edge (resolveColliders keeps it outside).
     const startAutoWalk=(target: FocusTarget)=>{
       const pose=computeFocusPose(target,0);
-      aw.x=Math.max(-rWRef.w/2+1,Math.min(rWRef.w/2-1,pose.position.x));
-      aw.z=Math.max(-rWRef.l/2+1,Math.min(rWRef.l/2-1.5,pose.position.z));
+      const awc=clampXZ({x:pose.position.x,z:pose.position.z});
+      aw.x=awc.x;aw.z=awc.z;
       aw.fx=target.position.x;aw.fz=target.position.z;
       aw.target=target;aw.detour=null;
       const sx=posT.current.x,sz=posT.current.z;
@@ -373,17 +374,17 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
           const pxn=-ddz/Math.max(1e-6,segLen),pzn=ddx/Math.max(1e-6,segLen);
           const side=(mx-hit.x)*pxn+(mz-hit.z)*pzn>=0?1:-1;
           const push=Math.max(hit.hw,hit.hd)+COL_R+0.5;
-          aw.detour={
-            x:Math.max(-rWRef.w/2+1,Math.min(rWRef.w/2-1,hit.x+pxn*side*push)),
-            z:Math.max(-rWRef.l/2+1,Math.min(rWRef.l/2-1.5,hit.z+pzn*side*push)),
-          };
+          aw.detour=clampXZ({x:hit.x+pxn*side*push,z:hit.z+pzn*side*push});
           break;
         }
       }
       aw.active=true;
     };
     // Room bounds for the integrator — filled in once the layout shell is known.
-    const rWRef={w:20,l:20};
+    // Under W3 the shell is a T (narrow entry stem), so the clamp needs the stem
+    // geometry too — a plain rectangle let the walker escape beside the door.
+    const rWRef={w:20,l:20,tShape:false,stemHalfW:0,widenZ:0};
+    const clampXZ=(p:{x:number;z:number})=>clampToFootprint(p,{rW:rWRef.w,rL:rWRef.l,tShape:rWRef.tShape,stemHalfW:rWRef.stemHalfW,widenZ:rWRef.widenZ});
 
     // ══ ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23, ExteriorScene parity) ══
     // The room streams its eager PBR sets (herringbone/fabric/velvet/…) and
@@ -601,9 +602,8 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // T-SHAPE — a NARROW entry stem at the door that WIDENS into the hall. Keep the
     // stem SHORTER now so the hall (and its three corners) is close to the entry and
     // in view, not 20m away down a corridor.
-    const stemHalfW=Math.max(2.4,rW/2-3.4);            // narrow entry-stem half-width
-    const stemLen=Math.min(Math.max(3.5,rL*0.28),7);   // entry stem depth (shorter → hall in view)
-    const widenZ=rL/2-stemLen;                         // z where the stem opens into the hall
+    const {stemHalfW,stemLen,widenZ}=stemForRoom(rW,rL); // narrow stem half-width / depth / widening z — single source of truth shared with the walker clamp (roomCollision.ts)
+    rWRef.tShape=W3;rWRef.stemHalfW=stemHalfW;rWRef.widenZ=widenZ; // feed the T footprint to clampXZ — stops walking through the stem walls beside the door
     const BOOKSHELF_LEN=W3?[2.4,2.6,3.2,3.8,4.2][tierBays]:4.0;   // library length follows the tier
     const libWingW=W3?BOOKSHELF_LEN+0.6:4.6;
     const libWingZ1=widenZ-0.15, libWingZ0=libWingZ1-libWingW; // library: FRONT-left (bookcase reaches the corner so the L-arm connects)
@@ -2877,7 +2877,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       if(k["w"]||k["arrowup"])_dir.current.z-=1;if(k["s"]||k["arrowdown"])_dir.current.z+=1;
       if(k["a"]||k["arrowleft"])_dir.current.x-=1;if(k["d"]||k["arrowright"])_dir.current.x+=1;
       if(_dir.current.length()>0){_dir.current.normalize().multiplyScalar(spd);_dir.current.applyAxisAngle(_yAxis.current,-lookA.current.yaw);posT.current.add(_dir.current);}
-      posT.current.x=Math.max(-rW/2+1,Math.min(rW/2-1,posT.current.x));posT.current.z=Math.max(-rL/2+1,Math.min(rL/2-1.5,posT.current.z));
+      clampXZ(posT.current); // full T-footprint clamp (rect + stem walls + shoulders) — never through the walls beside the door
       // W2 (WS6-8): AABB push-out after the wall clamp — no ghost-walking
       // through the fireplace/sofa/tables/piano/impluvium props.
       if(W2)resolveColliders(posT.current);
