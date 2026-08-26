@@ -8,7 +8,13 @@ import fs from "fs";
 const OUT = "C:/Users/nelis/memory-palace/socials-kit/clips/work/stills";
 fs.mkdirSync(OUT, { recursive: true });
 
-const SHOTS = process.argv[2] === "round2" ? [
+const SHOTS = process.argv[2] === "round3" ? [
+  ["cor-portal", "/flythrough?scene=corridor&cam=portal"],
+  ["room-bookcase2", "/flythrough?scene=room&fill=max&rcam=bookcase"],
+  ["room-music", "/flythrough?scene=room&fill=max&rcam=music"],
+  ["room-libportal", "/flythrough?scene=room&fill=max&rcam=libportal"],
+  ["room-hearth-min", "/flythrough?scene=room&fill=min&rcam=hearth"],
+] : process.argv[2] === "round2" ? [
   ["room-entry", "/flythrough?scene=room&fill=max&rcam=entry"],
   ["room-hearth", "/flythrough?scene=room&fill=max&rcam=hearth"],
   ["room-bookcase", "/flythrough?scene=room&fill=max&rcam=bookcase"],
@@ -32,7 +38,7 @@ for (const [name, path] of SHOTS) {
   await page.goto(`http://localhost:3000${path}`, { waitUntil: "networkidle2", timeout: 120000 });
   await page.waitForSelector("canvas", { timeout: 60000 });
   // Assemble-before-reveal veil lifts on onReady (â‰¤10s viewer ceiling) + settle
-  await new Promise((r) => setTimeout(r, 16000));
+  await new Promise((r) => setTimeout(r, 24000));
   // Hide every top-level element that does not contain the canvas (viewer chrome)
   await page.evaluate(() => {
     const canvas = document.querySelector("canvas");

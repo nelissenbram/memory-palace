@@ -29,7 +29,7 @@ const SLIDES = await Promise.all([1, 2, 3, 4, 5, 6, 7].map(async (i) => {
 
 // Pace (owner: "gaat het niet te snel?"): 1.25s hold + 0.35s eased slide —
 // a touch longer now that each slide carries a margin note to read.
-const HOLD = 1.25, TRANS = 0.35;
+const HOLD = 1.45, TRANS = 0.35;
 const SECONDS = SLIDES.length * HOLD + (SLIDES.length - 1) * TRANS;
 
 // USP margin notes per shot — same copy + playful gold style as the landing
