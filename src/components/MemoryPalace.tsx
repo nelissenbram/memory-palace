@@ -386,7 +386,20 @@ export default function MemoryPalace(){
       }
       if (best) seed[room.id] = { url: best.dataUrl || undefined, title: best.title, memId: best.id, roomId: room.id };
     }
-    return { ...seed, ...corridorPaintings };
+    // Synced curation can arrive URL-less (settingsSync strips data-URI urls
+    // from entries that carry a memId): re-resolve the url from the memory
+    // store; if the mem isn't loaded (yet), show the seed for that slot but
+    // keep the chosen frame size, so the wall never blanks.
+    const manual: CorridorPaintings = {};
+    for (const [slot, entry] of Object.entries(corridorPaintings)) {
+      if (!entry || entry.url) { manual[slot] = entry; continue; }
+      const pool = userMemsMap[entry.roomId || slot] || [];
+      const real = entry.memId ? pool.find((m) => m.id === entry.memId) : undefined;
+      if (real?.dataUrl) manual[slot] = { ...entry, url: real.dataUrl };
+      else if (seed[slot]) manual[slot] = { ...seed[slot], size: entry.size };
+      else manual[slot] = entry;
+    }
+    return { ...seed, ...manual };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- customRooms is read via getWingRooms
   }, [w3Corridor, activeWing, corridorPaintings, userMemsMap, customRooms, getWingRooms]);
   // Owner R2 item 4: the corridor viewer feed — every HUNG painting in slot
@@ -1459,11 +1472,17 @@ export default function MemoryPalace(){
     if (activeWing) trackWingVisit(activeWing);
   }, [activeWing, trackWingVisit]);
 
-  // Load corridor paintings when wing changes
+  // Load corridor paintings when wing changes, and re-read after settingsSync
+  // pulls server curation (mp_corridor_paintings_* is synced by prefix — the
+  // pull can land AFTER this mount on mobile cold start).
   useEffect(() => {
     if (activeWing) setCorridorPaintings(loadCorridorPaintings(activeWing));
     else setCorridorPaintings({});
     setCorridorViewerIdx(null); // viewer feed is per-wing — never carry an index across wings
+    if (!activeWing) return;
+    const reload = () => setCorridorPaintings(loadCorridorPaintings(activeWing));
+    window.addEventListener("mp-settings-synced", reload);
+    return () => window.removeEventListener("mp-settings-synced", reload);
   }, [activeWing]);
   // Owner R2 item 3: GUARANTEE the F09 seed has data when the corridor shows.
   // The app-mount bulk fetch is deferred behind syncSettingsFromServer +

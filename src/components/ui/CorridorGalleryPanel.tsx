@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 import { ROOM_MEMS, DEFAULT_CORRIDOR_PAINTINGS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { WINGS } from "@/lib/constants/wings";
@@ -41,6 +42,7 @@ function loadCorridorPaintings(wingId: string): CorridorPaintings {
 function saveCorridorPaintings(wingId: string, paintings: CorridorPaintings) {
   try {
     localStorage.setItem(`mp_corridor_paintings_${wingId}`, JSON.stringify(paintings));
+    syncSettingsToServer();
   } catch { /* quota exceeded */ }
 }
 
