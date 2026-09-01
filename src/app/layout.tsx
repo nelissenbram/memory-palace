@@ -11,6 +11,7 @@ import { AccessibilityProvider } from "@/components/providers/AccessibilityProvi
 import { DaylightProvider } from "@/components/providers/DaylightProvider";
 import WebVitals from "@/components/WebVitals";
 import PostHogProvider from "@/components/PostHogProvider";
+import CookieConsent from "@/components/CookieConsent";
 
 // Display serif — warm humanist old-style face with a taller x-height and
 // sturdier strokes than Cormorant, so headlines stay solid at sub-hero sizes
@@ -340,6 +341,7 @@ export default async function RootLayout({
         </a>
         <WebVitals />
         <PostHogProvider />
+        <CookieConsent />
         <ServiceWorkerRegistration />
         <PWAInstallBanner />
         <OfflineBanner />

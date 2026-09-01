@@ -4,6 +4,7 @@ import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 import { checkPhotoRestoreQuota, incrementPhotoRestore } from "@/lib/auth/plan-limits";
 import { captureServer } from "@/lib/analytics-server";
+import { checkAiConsent } from "@/lib/ai/check-consent";
 
 // Restore/enhance an OLD photo via Replicate (GFPGAN face+photo restoration).
 // Security posture (learned from the v2 audit):
@@ -42,6 +43,10 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+  // AI processing is opt-in (settings promise) — gate face restoration too.
+  const consent = await checkAiConsent(supabase, user.id);
+  if (!consent.ok) return NextResponse.json({ error: consent.error }, { status: 403 });
 
   let body: { memoryId?: string };
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Invalid body" }, { status: 400 }); }

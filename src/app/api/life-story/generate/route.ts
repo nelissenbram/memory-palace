@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
+import { checkAiConsent } from "@/lib/ai/check-consent";
 
 // Life Story: weave a chapter's prose from the user's OWN memories + interview
 // material via the Anthropic API.
@@ -62,6 +63,12 @@ export async function POST(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // AI processing is opt-in (settings promise) — gate the AI weave too.
+    const consent = await checkAiConsent(supabase, user.id);
+    if (!consent.ok) {
+      return NextResponse.json({ error: "ai_consent_required" }, { status: 403 });
     }
 
     // 2. Rate limit: cost-sensitive AI route → strict limiter, 5 req/min per user.
