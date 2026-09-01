@@ -27,7 +27,7 @@ interface RestorePhotoModalProps {
   onSaved?: () => void;
 }
 
-type Phase = "processing" | "compare" | "saving" | "done" | "error";
+type Phase = "consent" | "processing" | "compare" | "saving" | "done" | "error";
 
 /**
  * "Restore a Photo" client flow. Calls the secure POST /api/ai-enhance backend
@@ -46,7 +46,14 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved }: 
   const isMobile = useIsMobile();
   const { addMemory } = useMemoryStore();
 
-  const [phase, setPhase] = useState<Phase>("processing");
+  const [phase, setPhase] = useState<Phase>(() => {
+    // One-time consent notice before the first restore (LEG-004). Once acknowledged
+    // we skip straight to processing on subsequent restores.
+    if (typeof window !== "undefined") {
+      try { if (localStorage.getItem("mp_restore_consent") === "1") return "processing"; } catch {}
+    }
+    return "consent";
+  });
   const [originalUrl, setOriginalUrl] = useState<string>(memory.dataUrl || "");
   const [restoredUrl, setRestoredUrl] = useState<string>("");
   const [quota, setQuota] = useState<RestoreQuota | null>(null);
@@ -92,10 +99,16 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved }: 
   }, [memory.id, memory.dataUrl]);
 
   useEffect(() => {
+    if (phase === "consent") return; // hold until the user acknowledges the notice
     if (startedRef.current) return;
     startedRef.current = true;
     runRestore();
-  }, [runRestore]);
+  }, [phase, runRestore]);
+
+  const acceptConsent = useCallback(() => {
+    try { localStorage.setItem("mp_restore_consent", "1"); } catch {}
+    setPhase("processing");
+  }, []);
 
   // ── Save: fetch the (short-lived) Replicate image → data URL → reuse addMemory,
   //    which decodes + uploads via /api/upload and persists via createMemory. ──
@@ -167,6 +180,22 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved }: 
           .mp-restore-spin, .mp-restore-pulse { animation: none !important; }
         }
       `}</style>
+
+      {/* ── CONSENT (one-time notice before the first restore) ── */}
+      {phase === "consent" && (
+        <div style={{ padding: "1.5rem 1rem 0.5rem" }}>
+          <p style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, color: T.color.ink, margin: "0 0 0.75rem" }}>
+            {t("restoreConsentTitle")}
+          </p>
+          <p style={{ fontFamily: T.font.body, fontSize: T.fontSize.base, color: T.color.inkMuted, lineHeight: 1.55, margin: "0 0 1.5rem" }}>
+            {t("restoreConsentBody")}
+          </p>
+          <div style={{ display: "flex", gap: T.space.sm, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            <button onClick={onClose} style={ghostBtn}>{tc("cancel")}</button>
+            <button onClick={acceptConsent} style={primaryBtn}>{t("restoreConsentContinue")}</button>
+          </div>
+        </div>
+      )}
 
       {/* ── PROCESSING ── */}
       {phase === "processing" && (
