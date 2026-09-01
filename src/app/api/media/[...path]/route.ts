@@ -157,21 +157,37 @@ export async function GET(
     authorized = !!share;
   }
 
-  // Check published wing access — visitors can view memories in published wings
+  // Wing-level access — an accepted whole-wing share OR a published wing.
+  // wing_shares.wing_id is the wing SLUG (joined via slug + owner_id), not the UUID.
   if (!authorized && memory.room_id) {
     const { data: room } = await adminClient
       .from("rooms")
       .select("wing_id")
       .eq("id", memory.room_id)
       .single();
-    if (room) {
+    if (room?.wing_id) {
       const { data: wing } = await adminClient
         .from("wings")
-        .select("id")
+        .select("slug, published_at")
         .eq("id", room.wing_id)
-        .not("published_at", "is", null)
-        .single();
-      authorized = !!wing;
+        .maybeSingle();
+      if (wing) {
+        // Published wing → public (visitors can view).
+        if (wing.published_at) authorized = true;
+        // Accepted whole-wing share → authenticated recipient (scoped on owner + recipient).
+        if (!authorized && user && wing.slug) {
+          const { data: wingShare } = await adminClient
+            .from("wing_shares")
+            .select("id")
+            .eq("wing_id", wing.slug)
+            .eq("owner_id", memory.user_id)
+            .eq("shared_with_id", user.id)
+            .eq("status", "accepted")
+            .limit(1)
+            .maybeSingle();
+          if (wingShare) authorized = true;
+        }
+      }
     }
   }
 

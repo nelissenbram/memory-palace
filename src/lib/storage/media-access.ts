@@ -107,21 +107,39 @@ export async function authorizeMediaRead(
     authorized = !!share;
   }
 
-  // Published-wing access.
+  // Wing-level access: an accepted whole-wing share OR a published wing. Both
+  // resolve through the memory's room → wing. Note wing_shares.wing_id is the
+  // wing SLUG (joined via slug + owner_id), not the wings.id UUID.
   if (!authorized && memory.room_id) {
     const { data: room } = await adminClient
       .from("rooms")
       .select("wing_id")
       .eq("id", memory.room_id)
       .maybeSingle();
-    if (room) {
+    if (room?.wing_id) {
       const { data: wing } = await adminClient
         .from("wings")
-        .select("id")
+        .select("slug, published_at")
         .eq("id", room.wing_id)
-        .not("published_at", "is", null)
         .maybeSingle();
-      authorized = !!wing;
+      if (wing) {
+        // Published wing → public.
+        if (wing.published_at) authorized = true;
+        // Accepted whole-wing share → authenticated recipient. Scoped on owner +
+        // recipient + accepted, so admin-client use stays safe under any RLS.
+        if (!authorized && user && wing.slug) {
+          const { data: wingShare } = await adminClient
+            .from("wing_shares")
+            .select("id")
+            .eq("wing_id", wing.slug)
+            .eq("owner_id", memory.user_id)
+            .eq("shared_with_id", user.id)
+            .eq("status", "accepted")
+            .limit(1)
+            .maybeSingle();
+          if (wingShare) authorized = true;
+        }
+      }
     }
   }
 
