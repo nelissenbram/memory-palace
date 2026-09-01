@@ -365,7 +365,11 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
       setImporting(false);
       onClose();
     } catch (err: unknown) {
-      setImportError(err instanceof Error ? err.message : t("importFailedRetry"));
+      // OPS-002: never surface raw internal error codes (e.g. "save-rolled-back",
+      // "save-failed", "no-dataurl") — always show a friendly retry message and
+      // keep the code in the console/telemetry for debugging.
+      console.warn("[ImportHub] import failed:", err);
+      setImportError(t("importFailedRetry"));
       setImporting(false);
     }
   }, [queue, onImportFiles, clearQueue, onClose, targetRoomId, t]);

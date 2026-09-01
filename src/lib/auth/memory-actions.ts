@@ -24,12 +24,30 @@ async function ensureRoom(
   if (existing) return existing.id;
 
   // Find the user's wing
-  const { data: wing } = await supabase
+  let { data: wing } = await supabase
     .from("wings")
     .select("id")
     .eq("user_id", userId)
     .eq("slug", wingSlug)
     .single();
+
+  // Self-heal: default wings are seeded in completeOnboarding(), but the FIRST
+  // memory save (onboarding ImportHub) can run BEFORE that — a brand-new user
+  // (esp. Apple Sign-In) then has no "roots" wing yet and the save would roll
+  // back ("save-rolled-back"). Create the wing on demand so a capture never
+  // fails on unseeded state.
+  if (!wing) {
+    const WING_ACCENTS: Record<string, string> = {
+      roots: "#C66B3D", nest: "#7AA0C8", craft: "#8B7355",
+      travel: "#4A6741", passions: "#9B6B8E", attic: "#8B7355",
+    };
+    const created = await supabase
+      .from("wings")
+      .insert({ user_id: userId, slug: wingSlug, accent_color: WING_ACCENTS[wingSlug] || "#C66B3D", sort_order: 0 })
+      .select("id")
+      .single();
+    wing = created.data;
+  }
 
   if (!wing) return null;
 
