@@ -45,9 +45,13 @@ export async function GET(
   const target = entry.to.startsWith("http")
     ? new URL(entry.to)
     : new URL(entry.to, req.url);
+  // utm_content carries the per-clip CODE (e.g. GRAVE-04a) so clicks + signups
+  // are attributable PER CLIP, not just per platform — the backbone of A/B.
+  const code = (req.nextUrl.searchParams.get("utm_content") || "").slice(0, 40);
   target.searchParams.set("utm_source", slug);
   target.searchParams.set("utm_medium", "social");
   target.searchParams.set("utm_campaign", entry.campaign);
+  if (code) target.searchParams.set("utm_content", code);
 
   const ua = req.headers.get("user-agent") || "";
   const device = /Mobi|Android|iPhone|iPad|iPod/i.test(ua) ? "mobile" : "desktop";
@@ -55,7 +59,7 @@ export async function GET(
   // Awaited (captureServer never throws, 2.5s hard timeout): a fire-and-forget
   // here can be dropped when the serverless invocation ends at the redirect,
   // and lost hits defeat the whole point of the rail.
-  await captureServer(`go-${slug}`, "go_link_hit", { slug, ua: device });
+  await captureServer(`go-${slug}`, "go_link_hit", { slug, ua: device, code });
 
   return NextResponse.redirect(target, 302);
 }
