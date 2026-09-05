@@ -174,8 +174,8 @@ export default function PrivacyPolicyPage() {
           </P>
           <P>
             {t("whoWeAreText2")}
-            <a href="mailto:privacy@thememorypalace.com" style={linkStyle}>
-              privacy@thememorypalace.com
+            <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+              privacy@thememorypalace.ai
             </a>
           </P>
           {/* LEG-001: controller block — name + contact only (explicit owner choice:
@@ -183,8 +183,8 @@ export default function PrivacyPolicyPage() {
           <P>
             <strong>{t("controllerLabel")}</strong>
             {t("controllerText")}
-            <a href="mailto:privacy@thememorypalace.com" style={linkStyle}>
-              privacy@thememorypalace.com
+            <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+              privacy@thememorypalace.ai
             </a>
           </P>
           <P>{t("dpoText")}</P>
@@ -427,8 +427,8 @@ export default function PrivacyPolicyPage() {
           </Ul>
           <P>
             {t("yourRightsOutroPre")}
-            <a href="mailto:privacy@thememorypalace.com" style={linkStyle}>
-              privacy@thememorypalace.com
+            <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+              privacy@thememorypalace.ai
             </a>
             {t("yourRightsOutroPost")}
           </P>
@@ -536,8 +536,8 @@ export default function PrivacyPolicyPage() {
           <Ul>
             <Li>
               {t("contactEmail")}
-              <a href="mailto:privacy@thememorypalace.com" style={linkStyle}>
-                privacy@thememorypalace.com
+              <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+                privacy@thememorypalace.ai
               </a>
             </Li>
             <Li>{t("contactCompany")}</Li>

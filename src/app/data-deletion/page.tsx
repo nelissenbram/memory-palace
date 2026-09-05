@@ -262,8 +262,8 @@ export default function DataDeletionPage() {
         </h2>
         <p style={{ fontSize: isMobile ? "1rem" : "0.9375rem", lineHeight: 1.75, color: C.ink, marginBottom: "2rem" }}>
           {t("option3Pre")}
-          <a href="mailto:privacy@thememorypalace.com" style={linkStyle}>
-            privacy@thememorypalace.com
+          <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+            privacy@thememorypalace.ai
           </a>
           {t("option3Post")}
         </p>

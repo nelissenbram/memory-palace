@@ -46,7 +46,7 @@ function useHistoryBack() {
   );
 }
 
-const EMAIL = "privacy@thememorypalace.com";
+const EMAIL = "privacy@thememorypalace.ai";
 const MARKER = "@@LINK@@";
 
 /** Split a translated string around a MARKER placeholder and render a link in between. */
