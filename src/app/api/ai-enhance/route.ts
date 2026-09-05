@@ -5,6 +5,7 @@ import { getClientIp } from "@/lib/ip";
 import { checkPhotoRestoreQuota, incrementPhotoRestore } from "@/lib/auth/plan-limits";
 import { captureServer } from "@/lib/analytics-server";
 import { checkAiConsent } from "@/lib/ai/check-consent";
+import { isR2Configured, r2PresignedUrl } from "@/lib/storage/r2";
 
 // Restore/enhance an OLD photo via Replicate (GFPGAN face+photo restoration).
 // Security posture (learned from the v2 audit):
@@ -59,13 +60,41 @@ export async function POST(request: NextRequest) {
   // Ownership-scoped fetch: only the caller's own photo.
   const { data: memory } = await supabase
     .from("memories")
-    .select("id, file_url, type, user_id")
+    .select("id, file_url, file_path, storage_backend, type, user_id")
     .eq("id", memoryId)
     .eq("user_id", user.id)
     .maybeSingle();
   if (!memory) return NextResponse.json({ error: "Photo not found" }, { status: 404 });
-  const imageUrl = (memory as { file_url?: string }).file_url || "";
-  if ((memory as { type?: string }).type !== "photo" || !/^https?:\/\//.test(imageUrl)) {
+  const row = memory as { file_url?: string; file_path?: string; storage_backend?: string; type?: string };
+  if (row.type !== "photo") {
+    return NextResponse.json({ error: "Only stored photos can be restored." }, { status: 422 });
+  }
+
+  // Resolve a URL Replicate can actually fetch. Every /api/upload row since the
+  // R2 migration stores the RELATIVE authenticated proxy path
+  // "/api/media/memories/<path>" (unreachable from outside), and legacy rows can
+  // carry an already-EXPIRED 7-day signed URL (cloud imports) — so whenever we
+  // know the storage path we mint a FRESH short-lived signed URL, and only fall
+  // back to a stored absolute https URL when we can't. No SSRF: both file_url
+  // and file_path come from the caller's OWN row.
+  const rawUrl = row.file_url || "";
+  const MEDIA_PREFIX = "/api/media/memories/";
+  const filePath = row.file_path || (rawUrl.startsWith(MEDIA_PREFIX) ? rawUrl.slice(MEDIA_PREFIX.length) : "");
+  let imageUrl = "";
+  if (filePath) {
+    if ((row.storage_backend || "supabase") === "r2" && isR2Configured()) {
+      try { imageUrl = await r2PresignedUrl("memories", filePath, 3600); } catch { /* fall through to Supabase */ }
+    }
+    if (!imageUrl) {
+      // Session client: storage RLS scopes this to the owner's own file, which
+      // is exactly who we authenticated above (works on previews without a
+      // service-role key too).
+      const { data: signed } = await supabase.storage.from("memories").createSignedUrl(filePath, 3600);
+      if (signed?.signedUrl) imageUrl = signed.signedUrl;
+    }
+  }
+  if (!imageUrl && /^https?:\/\//.test(rawUrl)) imageUrl = rawUrl;
+  if (!imageUrl) {
     return NextResponse.json({ error: "Only stored photos can be restored." }, { status: 422 });
   }
 
