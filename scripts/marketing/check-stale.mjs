@@ -66,8 +66,16 @@ for (const shot of manifest.shots) {
     const dirty = String(st.sceneCommit || "").endsWith("-dirty");
     if (!renderedAt) { status = "UNKNOWN"; detail = `unresolvable commit ${st.sceneCommit}`; }
     else if (renderedAt < newestScene) {
-      status = "STALE";
-      detail = `scene moved on ${new Date(newestScene * 1000).toISOString().slice(0, 10)}, asset is from ${new Date(renderedAt * 1000).toISOString().slice(0, 10)}`;
+      // A dirty stamp means the asset was rendered from uncommitted scene edits.
+      // Committing those edits then makes the scene commit newer than the stamp,
+      // which would flag every freshly-rendered asset as STALE — a false alarm
+      // this checker used to produce. It is unverifiable, not known-stale: the
+      // pixels may match the very commit that superseded it. Render deliverables
+      // AFTER committing scene changes and this state does not arise.
+      status = dirty ? "DIRTY" : "STALE";
+      detail = dirty
+        ? `rendered from uncommitted edits (${st.sceneCommit}); re-render to verify`
+        : `scene moved on ${new Date(newestScene * 1000).toISOString().slice(0, 10)}, asset is from ${new Date(renderedAt * 1000).toISOString().slice(0, 10)}`;
     } else { status = "OK"; detail = dirty ? "rendered from a dirty tree" : ""; }
   }
   rows.push({ id: shot.id, scenes: scenes.join(","), status, detail, out: shot.out });
@@ -79,12 +87,12 @@ if (process.argv.includes("--json")) {
   const pad = (s, n) => String(s).padEnd(n);
   console.log(`\n${pad("STATUS", 9)}${pad("ID", 30)}${pad("SCENES", 18)}DETAIL`);
   console.log("-".repeat(112));
-  const order = { STALE: 0, MISSING: 1, UNKNOWN: 2, OK: 3 };
+  const order = { STALE: 0, DIRTY: 1, MISSING: 2, UNKNOWN: 3, OK: 4 };
   for (const r of rows.sort((a, b) => order[a.status] - order[b.status] || a.id.localeCompare(b.id))) {
     console.log(`${pad(r.status, 9)}${pad(r.id, 30)}${pad(r.scenes, 18)}${r.detail}`);
   }
   const n = (s) => rows.filter((r) => r.status === s).length;
-  console.log(`\n${n("STALE")} stale · ${n("MISSING")} missing · ${n("UNKNOWN")} unknown · ${n("OK")} ok`);
+  console.log(`\n${n("STALE")} stale · ${n("DIRTY")} dirty · ${n("MISSING")} missing · ${n("UNKNOWN")} unknown · ${n("OK")} ok`);
   console.log("Re-render a scene's assets:  node scripts/marketing/render.mjs --scenes <scene>\n");
 }
 

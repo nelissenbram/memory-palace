@@ -988,7 +988,9 @@ export default function LandingV2Client({
                 thumbnailUrl: "https://thememorypalace.ai/video/tour-poster.jpg",
                 contentUrl: "https://thememorypalace.ai/video/walkthrough-tour.mp4",
                 // Search Console: uploadDate must be ISO 8601 WITH a timezone.
-                uploadDate: "2026-08-23T12:00:00+00:00",
+                // Bumped when the tour was rebuilt from the post-overhaul scenes
+                // (scripts/marketing/build-tour.mjs). Keep in step with the video.
+                uploadDate: "2026-09-05T12:00:00+00:00",
                 duration: "PT31S",
               },
             ],
