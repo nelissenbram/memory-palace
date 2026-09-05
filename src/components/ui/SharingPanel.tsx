@@ -276,6 +276,11 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           )}
         </div>
 
+        {/* LEG-006: light sensitivity notice for public sharing / granting access */}
+        <p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",lineHeight:1.6,margin:"-0.625rem 0 1.25rem"}}>
+          {t("sensitiveShareNotice")}
+        </p>
+
         {/* Invite section */}
         {sharing.shared&&<>
           <label htmlFor="sharing-email-input" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("inviteByEmail")}</label>

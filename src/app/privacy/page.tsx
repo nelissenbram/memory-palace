@@ -208,6 +208,22 @@ export default function PrivacyPolicyPage() {
               {t("whatWeCollectItem3Text")}
             </Li>
           </Ul>
+          {/* LEG-006: Art. 9 special-categories clause — explicit consent basis,
+              withdrawn by deleting the content. */}
+          <h3
+            style={{
+              fontFamily: F.display,
+              fontSize: "1.125rem",
+              fontWeight: 500,
+              color: C.ink,
+              marginBottom: "0.5rem",
+              marginTop: "1.5rem",
+              lineHeight: 1.3,
+            }}
+          >
+            {t("specialCategoriesTitle")}
+          </h3>
+          <P>{t("specialCategoriesText")}</P>
         </Section>
 
         <Section title={t("howWeUseTitle")}>
