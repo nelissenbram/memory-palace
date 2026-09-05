@@ -83,3 +83,10 @@ public/demo/personas/
 # ops/social capture scaffolding (do not deploy)
 public/demo/pool/
 public/demo/*-portrait.png
+
+# Marketing render OUTPUT now lives in this worktree so the pipeline and the 3D
+# code it renders travel together (docs/MARKETING_ASSET_OVERHAUL_PLAN.md), but the
+# binaries stay out of git. The scripts and marketing/shots.manifest.json ARE
+# versioned — their absence is what let the asset library silently rot.
+socials-kit/
+*.stamp.json

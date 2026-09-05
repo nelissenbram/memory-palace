@@ -6,7 +6,15 @@
 import puppeteer from "puppeteer";
 import fs from "fs";
 
-const OUT = "C:/Users/nelis/memory-palace/socials-kit/clips/work/obwalk";
+// Render target + output root come from scripts/marketing/kit.mjs.
+// These used to be hardcoded to localhost:3000 and the JULY-OLD worktree at
+// C:/Users/nelis/memory-palace/socials-kit, which is how the entire marketing
+// asset library silently went stale. Override with MP_BASE / MP_KIT.
+import { BASE as MP_BASE, KIT as MP_KIT, assertStagingServer } from "../marketing/kit.mjs";
+await assertStagingServer();
+
+
+const OUT = `${MP_KIT}/clips/work/obwalk`;
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 const TOTAL_S = 150;
@@ -70,7 +78,7 @@ const clickByText = (texts) => page.evaluate((wanted) => {
 }, texts);
 
 console.log("navigating…");
-await page.goto("http://localhost:3000/flythrough?scene=onboarding&mantelDemo=1", { waitUntil: "networkidle2", timeout: 120000 });
+await page.goto(`${MP_BASE}/flythrough?scene=onboarding&mantelDemo=1`, { waitUntil: "networkidle2", timeout: 120000 });
 await new Promise((r) => setTimeout(r, 5000));
 console.log("skip intro:", await clickByText(["skip"]));
 await new Promise((r) => setTimeout(r, 2500));

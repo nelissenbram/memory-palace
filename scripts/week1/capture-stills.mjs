@@ -1,11 +1,19 @@
 ﻿// Hi-res 9:16 stills of the CURRENT palace scenes via /flythrough (owner
 // 2026-08-26: clips must show the newest palace). 1620x2880 captures leave
 // headroom for digital camera moves (ffmpeg zoompan) at 1080x1920 delivery.
-// Usage: node scripts/week1/capture-stills.mjs   (dev server on :3000)
+// Usage: node scripts/week1/capture-stills.mjs   (dev server for THIS worktree on :3002)
 import puppeteer from "puppeteer";
 import fs from "fs";
 
-const OUT = "C:/Users/nelis/memory-palace/socials-kit/clips/work/stills";
+// Render target + output root come from scripts/marketing/kit.mjs.
+// These used to be hardcoded to localhost:3000 and the JULY-OLD worktree at
+// C:/Users/nelis/memory-palace/socials-kit, which is how the entire marketing
+// asset library silently went stale. Override with MP_BASE / MP_KIT.
+import { BASE as MP_BASE, KIT as MP_KIT, assertStagingServer } from "../marketing/kit.mjs";
+await assertStagingServer();
+
+
+const OUT = `${MP_KIT}/clips/work/stills`;
 fs.mkdirSync(OUT, { recursive: true });
 
 const SHOTS = process.argv[2] === "round4" ? [
@@ -40,7 +48,7 @@ const page = await browser.newPage();
 
 for (const [name, path] of SHOTS) {
   console.log("capturing", name);
-  await page.goto(`http://localhost:3000${path}`, { waitUntil: "networkidle2", timeout: 120000 });
+  await page.goto(`${MP_BASE}${path}`, { waitUntil: "networkidle2", timeout: 120000 });
   await page.waitForSelector("canvas", { timeout: 60000 });
   // Assemble-before-reveal veil lifts on onReady (â‰¤10s viewer ceiling) + settle
   await new Promise((r) => setTimeout(r, 24000));

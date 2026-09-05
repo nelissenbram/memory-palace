@@ -2,12 +2,20 @@
 // dev recorder (owner 2026-08-26: old tour footage shows an outdated palace).
 // Opens the viewer at a portrait viewport with fill=max, clicks Record, and
 // collects the four per-scene webms (exterior / hall / corridor / room).
-// Usage: node scripts/week1/record-scenes.mjs   (dev server on :3000 required)
+// Usage: node scripts/week1/record-scenes.mjs   (dev server for THIS worktree on :3002)
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
 
-const OUT = "C:/Users/nelis/memory-palace/socials-kit/clips/work/scenes";
+// Render target + output root come from scripts/marketing/kit.mjs.
+// These used to be hardcoded to localhost:3000 and the JULY-OLD worktree at
+// C:/Users/nelis/memory-palace/socials-kit, which is how the entire marketing
+// asset library silently went stale. Override with MP_BASE / MP_KIT.
+import { BASE as MP_BASE, KIT as MP_KIT, assertStagingServer } from "../marketing/kit.mjs";
+await assertStagingServer();
+
+
+const OUT = `${MP_KIT}/clips/work/scenes`;
 fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await puppeteer.launch({
@@ -20,7 +28,7 @@ const cdp = await page.createCDPSession();
 await cdp.send("Page.setDownloadBehavior", { behavior: "allow", downloadPath: OUT.replace(/\//g, "\\") });
 
 console.log("navigating…");
-await page.goto("http://localhost:3000/flythrough?fill=max", { waitUntil: "networkidle2", timeout: 120000 });
+await page.goto(`${MP_BASE}/flythrough?fill=max`, { waitUntil: "networkidle2", timeout: 120000 });
 await page.waitForSelector("canvas", { timeout: 60000 });
 // Let the first scene assemble (veil lifts on onReady, ≤10s safety ceiling)
 await new Promise((r) => setTimeout(r, 12000));

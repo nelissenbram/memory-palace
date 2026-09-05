@@ -1,14 +1,22 @@
 // Record the dev-only scripted corridor WALK (?walk=1|left|right) dressed with a
 // persona's cp paintings. Reliable: no onboarding nav, headless renders fine.
-// Usage: dev server :3000, then node scripts/week1/record-corridor-walk.mjs <persona> [dir]
+// Usage: dev server for THIS worktree on :3002, then node scripts/week1/record-corridor-walk.mjs <persona> [dir]
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
+
+// Render target + output root come from scripts/marketing/kit.mjs.
+// These used to be hardcoded to localhost:3000 and the JULY-OLD worktree at
+// C:/Users/nelis/memory-palace/socials-kit, which is how the entire marketing
+// asset library silently went stale. Override with MP_BASE / MP_KIT.
+import { BASE as MP_BASE, KIT as MP_KIT, assertStagingServer } from "../marketing/kit.mjs";
+await assertStagingServer();
+
 const OUT = path.resolve("scripts/hero_rec2/corridors"); fs.mkdirSync(OUT, { recursive: true });
 const persona = process.argv[2] || "giovanni-del-mare";
 const dir = process.argv[3] || "1";
 const wing = process.argv[4] || "roots";
-const manifest = JSON.parse(fs.readFileSync("C:/Users/nelis/memory-palace/socials-kit/clips/work/personas/manifest.json", "utf8"));
+const manifest = JSON.parse(fs.readFileSync(`${MP_KIT}/clips/work/personas/manifest.json`, "utf8"));
 const p = manifest.find((x) => x.username === persona);
 const cp = p.corridor.map((c, i) => `cp${i + 1}=${encodeURIComponent(`${c.url}|${c.title}`)}`).join("&");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -19,7 +27,7 @@ const cdp = await page.createCDPSession();
 await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: OUT });
 await page.setRequestInterception(true);
 page.on("request", (r) => { if (r.url().includes("ballroom_1k.hdr")) { r.abort().catch(()=>{}); } else r.continue().catch(()=>{}); });
-await page.goto(`http://localhost:3000/flythrough?scene=corridor&walk=${dir}&wing=${wing}&${cp}`, { waitUntil:"networkidle2", timeout:60000 });
+await page.goto(`${MP_BASE}/flythrough?scene=corridor&walk=${dir}&wing=${wing}&${cp}`, { waitUntil:"networkidle2", timeout:60000 });
 // wait out the assemble-before-reveal veil
 await sleep(13000);
 // reset the walk so it starts on-camera, then record one full walk (13s)

@@ -2,13 +2,21 @@
 // paintings via cp params, from the onboarding walk. Headless + GPU (proven to
 // render). Correct flow discovered 2026-08-31: lang Continue -> TYPE name Continue
 // -> "I'll add photos later" -> "Begin the walk" -> record pooled canvas.
-// Usage: dev server on :3000, then node scripts/week1/record-corridor-dressed.mjs <persona>
+// Usage: dev server for THIS worktree on :3002, then node scripts/week1/record-corridor-dressed.mjs <persona>
 import puppeteer from "puppeteer";
 import fs from "fs";
 import path from "path";
+
+// Render target + output root come from scripts/marketing/kit.mjs.
+// These used to be hardcoded to localhost:3000 and the JULY-OLD worktree at
+// C:/Users/nelis/memory-palace/socials-kit, which is how the entire marketing
+// asset library silently went stale. Override with MP_BASE / MP_KIT.
+import { BASE as MP_BASE, KIT as MP_KIT, assertStagingServer } from "../marketing/kit.mjs";
+await assertStagingServer();
+
 const OUT = path.resolve("scripts/hero_rec2/corridors"); fs.mkdirSync(OUT, { recursive: true });
 const persona = process.argv[2] || "giovanni-del-mare";
-const manifest = JSON.parse(fs.readFileSync("C:/Users/nelis/memory-palace/socials-kit/clips/work/personas/manifest.json", "utf8"));
+const manifest = JSON.parse(fs.readFileSync(`${MP_KIT}/clips/work/personas/manifest.json`, "utf8"));
 const p = manifest.find((x) => x.username === persona);
 const cp = p.corridor.map((c, i) => `cp${i + 1}=${encodeURIComponent(`${c.url}|${c.title}`)}`).join("&");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -23,7 +31,7 @@ const text = () => page.evaluate(() => (document.body.innerText||"").replace(/\s
 const clickText = (n) => page.evaluate((n)=>{const el=[...document.querySelectorAll("button,[role=button]")].find(e=>(e.innerText||"").toLowerCase().includes(n.toLowerCase())&&e.offsetParent!==null); if(el){el.click();return true} return false}, n);
 const waitBeat = async (re, ms) => { const dl=Date.now()+ms; while(Date.now()<dl){ let t=""; try{t=await text()}catch{} if(re.test(t))return true; await sleep(300);} return false; };
 
-await page.goto(`http://localhost:3000/flythrough?scene=onboarding&name=Guillaume&${cp}`, { waitUntil:"domcontentloaded", timeout:60000 });
+await page.goto(`${MP_BASE}/flythrough?scene=onboarding&name=Guillaume&${cp}`, { waitUntil:"domcontentloaded", timeout:60000 });
 await sleep(6000);
 // 1) language step
 await clickText("Continue"); await sleep(2000);
