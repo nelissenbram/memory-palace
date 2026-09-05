@@ -68,3 +68,12 @@ public/workbox-*.js.map
 .edge-profile-copy/
 tmp/
 _aab_download/
+
+# Autonomy agent workspaces — local only, never commit (socials-kit holds GBs of clips)
+/cos-autonomy/
+/legal-autonomy/
+/ops-autonomy/
+/socials-kit/
+
+# Business docs in repo-root (autonomy charters expect them here; not source code)
+/*.docx
