@@ -178,6 +178,16 @@ export default function PrivacyPolicyPage() {
               privacy@thememorypalace.ai
             </a>
           </P>
+          {/* LEG-001: controller block — name + contact only (explicit owner choice:
+              no postal address, no company number, no legal entity). */}
+          <P>
+            <strong>{t("controllerLabel")}</strong>
+            {t("controllerText")}
+            <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+              privacy@thememorypalace.ai
+            </a>
+          </P>
+          <P>{t("dpoText")}</P>
         </Section>
 
         <Section title={t("whatWeCollectTitle")}>

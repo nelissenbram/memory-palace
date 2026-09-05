@@ -254,6 +254,9 @@ export default function TermsOfServicePage() {
             <Li>{t("section6Li3")}</Li>
           </Ul>
           <P>{t("section6P2")}</P>
+          {/* LEG-001: savings clause — mandatory (consumer) law liability cannot be
+              limited or excluded by these Terms. */}
+          <P>{t("section6P3")}</P>
         </Section>
 
         <Section title={t("section7Title")}>
