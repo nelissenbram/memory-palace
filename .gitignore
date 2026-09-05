@@ -76,3 +76,10 @@ scripts/hero_rec2/
 # Generated palace-population media (AI images) + logs — never commit/deploy
 scripts/populate/media/
 scripts/populate/*.log
+
+# social autonomy capture-scaffolding (do not commit)
+public/demo/personas/
+
+# ops/social capture scaffolding (do not deploy)
+public/demo/pool/
+public/demo/*-portrait.png
