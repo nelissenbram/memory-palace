@@ -43,6 +43,8 @@ import EnhanceMemories from "./EnhanceMemories";
 import FeatureDiscovery from "./FeatureDiscovery";
 import PersonaSelector from "./PersonaSelector";
 import LifeStoryPanel from "./LifeStoryPanel";
+import RestorePhotoPicker from "./RestorePhotoPicker";
+import type { RestorablePhoto } from "./RestorePhotoPicker";
 
 import TuscanCard from "./TuscanCard";
 import TuscanStyles from "./TuscanStyles";
@@ -293,6 +295,7 @@ export default function HomeView() {
 
   /* Life Story panel (change 11): opened from the lifestory relay tile */
   const [showLifeStory, setShowLifeStory] = useState(false);
+  const [showRestorePicker, setShowRestorePicker] = useState(false);
 
   /* P2-6: Confetti on achievement unlock */
   const [showConfetti, setShowConfetti] = useState(false);
@@ -658,6 +661,16 @@ export default function HomeView() {
   const libThumbs = useMemo(() => Array.from(new Set(
     recentMemories.map((r) => memSrc(r.mem)).filter((x): x is string => !!x)
   )).slice(0, 3), [recentMemories, memSrc]);
+  // Photos eligible for AI restore: the user's OWN stored photos (https-backed,
+  // same gate the /api/ai-enhance backend applies — demo mems and local blobs
+  // would 404/422 there). Newest first, so the shoebox scans people just made
+  // sit at the top of the picker.
+  const restorablePhotos = useMemo<RestorablePhoto[]>(() =>
+    allMemories
+      .filter(({ mem }) => mem.type === "photo" && typeof mem.dataUrl === "string" && /^https?:\/\//.test(mem.dataUrl))
+      .sort((a, b) => new Date(b.mem.createdAt || 0).getTime() - new Date(a.mem.createdAt || 0).getTime())
+      .map(({ mem, room }) => ({ mem, roomId: room.id })),
+  [allMemories]);
   // Steward brain — one smart, non-duplicative suggestion (never re-offers the
   // Palace/Library anchors that already sit right below).
   // Memory tracks brought forward: an in-progress (persona-informed) journey
@@ -887,7 +900,7 @@ export default function HomeView() {
       tiles: [
         { key: "photos", title: t("relay.tilePhotos"), desc: t("relay.tilePhotosDesc"), onClick: goUpload, datum: mtc.photo > 0 ? (mtc.photo === 1 ? t("relay.photosCountNOne", { count: String(mtc.photo) }) : t("relay.photosCountN", { count: String(mtc.photo) })) : undefined },
         { key: "cloud", title: t("relay.tileCloud"), desc: t("relay.tileCloudDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
-        { key: "restore", title: t("relay.tileRestore"), desc: t("relay.tileRestoreDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
+        { key: "restore", title: t("relay.tileRestore"), desc: t("relay.tileRestoreDesc"), onClick: () => setShowRestorePicker(true) },
         { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? (mtc.story === 1 ? t("relay.storiesCountNOne", { count: String(mtc.story) }) : t("relay.storiesCountN", { count: String(mtc.story) })) : undefined },
         { key: "record", title: t("relay.tileInterviews"), desc: t("relay.tileInterviewsDesc"), onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? (interviewSessions.length === 1 ? t("relay.recordedCountOne", { count: String(interviewSessions.length) }) : t("relay.recordedCount", { count: String(interviewSessions.length) })) : undefined },
         { key: "whatsapp", title: t("relay.tileWhatsapp"), desc: t("relay.tileWhatsappDesc"), onClick: () => setShowKepCapture(true) },
@@ -917,7 +930,7 @@ export default function HomeView() {
       ],
     },
   ].map((lane) => ({ ...lane, tiles: markHero(lane.id, lane.tiles) }));
-  }, [t, goUpload, mtc, handleNavigateLibrary, setShowInterviewLibrary, interviewSessions, setShowKepCapture, setShowMemoryMap, setShowTimeline, yearRange, setShowStatistics, setShowFamilyTree, startTransition, setNavMode, enterEntrance, router, setShowSharedWithMe, sharedWithMe, sharedLoading, relaySuggestion.key, totalMemories, setShowLifeStory]);
+  }, [t, goUpload, mtc, handleNavigateLibrary, setShowInterviewLibrary, interviewSessions, setShowKepCapture, setShowMemoryMap, setShowTimeline, yearRange, setShowStatistics, setShowFamilyTree, startTransition, setNavMode, enterEntrance, router, setShowSharedWithMe, sharedWithMe, sharedLoading, relaySuggestion.key, totalMemories, setShowLifeStory, setShowRestorePicker]);
   const relayYou = useMemo(() => [
     { key: "journeys", label: t("relay.youJourneys"), onClick: () => setShowTracksPanel(true) },
     { key: "milestones", label: t("relay.youMilestones"), onClick: () => setShowAchievementPanel(true) },
@@ -1784,6 +1797,15 @@ export default function HomeView() {
 
       {/* ── LIFE STORY PANEL (change 11) ── */}
       {showLifeStory && <LifeStoryPanel onClose={() => setShowLifeStory(false)} />}
+
+      {/* ── RESTORE-PHOTO PICKER (Atrium tile → pick a photo in place, no Library detour) ── */}
+      {showRestorePicker && (
+        <RestorePhotoPicker
+          photos={restorablePhotos}
+          onAddPhotos={() => { setShowRestorePicker(false); goUpload(); }}
+          onClose={() => setShowRestorePicker(false)}
+        />
+      )}
 
       {/* ── MODE TRANSITION OVERLAY ── */}
       <ModeTransition {...transitionProps} />
