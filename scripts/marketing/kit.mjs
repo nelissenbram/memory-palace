@@ -120,3 +120,51 @@ export const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msed
 
 /** 3D scenes need assembly + reveal-veil fade before a frame is worth capturing. */
 export const ASSEMBLY_WAIT_MS = 18000;
+
+/**
+ * Block until the scene has actually settled, instead of guessing a fixed wait.
+ *
+ * Two failures made this necessary, both of which produced plausible-looking but
+ * wrong output rather than an error:
+ *  - scene=exterior remounts (it logs "reveal (assembled)" twice); a remount
+ *    swaps the canvas, so anything bound to the old one silently dies.
+ *  - a still captured while the cream reveal-veil is still fading comes out
+ *    desaturated — the red corridor runner rendered grey and looked like a scene
+ *    regression rather than a capture bug.
+ *
+ * Waits for the SAME canvas element to persist at a stable size, then for the
+ * veil to be gone (no near-opaque full-viewport overlay), then a short settle.
+ */
+export async function waitForScene(page, { stableFor = 2500, settleMs = 2500, capMs = 45000 } = {}) {
+  const t0 = Date.now();
+  let lastKey = "", stableSince = 0;
+  for (;;) {
+    const state = await page.evaluate(() => {
+      const c = [...document.querySelectorAll("canvas")]
+        .sort((a, b) => b.width * b.height - a.width * a.height)[0];
+      if (!c || !c.width) return { key: "", veiled: true };
+      if (!c.dataset.recId) c.dataset.recId = String(Math.floor(performance.now()));
+      // reveal veil = a fixed/absolute element covering ~the viewport, still opaque
+      let veiled = false;
+      for (const el of document.querySelectorAll("div")) {
+        const s = getComputedStyle(el);
+        if (s.position !== "fixed" && s.position !== "absolute") continue;
+        const r = el.getBoundingClientRect();
+        if (r.width < innerWidth * 0.9 || r.height < innerHeight * 0.9) continue;
+        if (el.querySelector("canvas")) continue;      // the scene's own wrapper
+        if (Number(s.opacity) > 0.05 && s.backgroundColor !== "rgba(0, 0, 0, 0)") { veiled = true; break; }
+      }
+      return { key: `${c.dataset.recId}:${c.width}x${c.height}`, veiled };
+    }).catch(() => ({ key: "", veiled: true }));
+
+    const now = Date.now();
+    if (state.key && state.key === lastKey && !state.veiled) {
+      if (!stableSince) stableSince = now;
+      if (now - stableSince >= stableFor) break;
+    } else { lastKey = state.key; stableSince = 0; }
+    if (now - t0 > capMs) break;             // don't hang forever; capture what we have
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  await new Promise((r) => setTimeout(r, settleMs));
+  return ((Date.now() - t0) / 1000).toFixed(1);
+}

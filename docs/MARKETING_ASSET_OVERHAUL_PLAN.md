@@ -17,12 +17,20 @@ The overhauls touched `InteriorScene` (rooms) and `CorridorScene` (corridors) on
 Exterior and hall geometry is unchanged since August, so **exterior/hall footage stays
 valid**. That is the triage axis and it removes a large slice of the work.
 
+> **CORRECTION (2026-09-05, after inspecting actual frames).** The first version of
+> this table ranked the hero videos by file date and exposure without checking what
+> they contain. Three of the four are **not 3D renders at all** — they are cinematic
+> stock/AI footage (a woman walking a sunlit corridor; a Tuscan landscape through an
+> arch; a cypress avenue to a villa). They contain no product geometry, so a 3D
+> overhaul cannot make them stale. Only `walkthrough-tour.mp4` is a product render.
+> Verify content before ranking by mtime.
+
 | Asset | Surface | Autoplay | Shows | Verdict |
 |---|---|---|---|---|
-| `public/video/hero-ob.mp4` | Onboarding intro | **yes**, 100% of new users | corridor + room | 🔴 re-render (16/07) |
-| `public/video/hero-v2.mp4` | Landing hero | **yes** | palace | 🟠 re-render (23/08) |
-| `public/video/walkthrough-tour.mp4` | Landing "see it in action" | no (click) | seg 5–8 = corridor/room | 🔴 partial re-render |
-| `public/video/hero-bg.mp4` | Atrium hero (in-app) | no | palace | 🟠 re-render (16/07) |
+| `public/video/hero-ob.mp4` | Onboarding intro | **yes**, 100% of new users | stock footage, no 3D | 🟢 leave alone |
+| `public/video/hero-v2.mp4` | Landing hero | **yes** | stock footage, no 3D | 🟢 leave alone |
+| `public/video/hero-bg.mp4` | Atrium hero (in-app) | no | stock footage, no 3D | 🟢 leave alone |
+| `public/video/walkthrough-tour.mp4` | Landing "see it in action" | no (click) | **the only 3D render** | 🔴 rebuild (all 7 segments) |
 | `public/landing/band-corridor.jpg` | Landing Palace card | — | corridor | 🔴 |
 | `public/landing/shots/shot-1..7.webp` | Landing carousel | — | app views | 🔴 |
 | `store-assets/raw-v4`, `raw-v5`, `ios` | App Store / Play | — | room + corridor | 🔴 |
@@ -30,10 +38,17 @@ valid**. That is the triage axis and it removes a large slice of the work.
 | `public/press/still-hall-doors`, `still-villa-goldenhour` | `/press` | — | hall, exterior | 🟢 keep |
 | `public/video/why-clip.mp4` | — | — | — | ⚪ unreferenced, delete |
 
-**Partial re-render wins.** `walkthrough-tour.mp4` is assembled by `scripts/build_tour.mjs`
-from 8 segments (`t1_orbit … t8_mantel`) chained with ffmpeg xfades. Segments 1–4 are
-exterior/hall and stay; only **s5 corridor, s6 door, s7 room-pan, s8 mantel** need
-re-recording before re-assembly. Apply the same segment-level thinking everywhere.
+**The tour chain had a hole.** `scripts/build_tour.mjs` consumes seven *graded*
+segments (`scripts/hero_rec2/seg2/s0..s6.mp4`), but nothing in the repo produced
+those from the raw takes in `seg/t1..t8.mp4` — that cut/grade step was done by hand
+and never written down (`s2` and `t5` are not even the same take). So "re-render only
+the stale segments" was not actually possible without eyeballing an unknown grade,
+which would risk a visible colour jump exactly at the hall→corridor cut.
+
+Resolved by declaring the whole chain in `scripts/marketing/build-tour.mjs`:
+record → trim → xfade → publish → stamp, with all seven segments re-recorded through
+one shared grade. Cut durations mirror the original 31.1 s so the landing section,
+poster and JSON-LD duration stay valid.
 
 ---
 
@@ -89,16 +104,21 @@ re-recording before re-assembly. Apply the same segment-level thinking everywher
   (`--scenes corridor,room`) — so "re-render everything touching rooms" is one command.
 - Verify every existing param still resolves against the new scene code.
 
-### Phase 1 — Hero video set (highest exposure first)
+### Phase 1 — The tour video (scope corrected)
 
-Order strictly by how many people see it:
-1. `hero-ob.mp4` — onboarding, autoplays for every new user.
-2. `hero-v2.mp4` — landing hero, autoplays for every visitor.
-3. `walkthrough-tour.mp4` — re-record s5–s8, re-assemble with `build_tour.mjs`.
-4. `hero-bg.mp4` — atrium.
+Only `walkthrough-tour.mp4` is a product render, so phase 1 is one deliverable:
 
-Also refresh posters (`hero-poster.jpg`, `walkthrough-poster-v2.jpg`) and bump the JSON-LD
-`VideoObject.uploadDate` in `LandingV2Client.tsx` (currently hardcoded 2026-08-23).
+```
+node scripts/marketing/build-tour.mjs          # record missing segments, then assemble
+node scripts/marketing/build-tour.mjs --force  # re-record all seven
+```
+
+A scripted room dolly (`?rmove=hearth|reveal`) was added to `InteriorScene` for this —
+the room previously had only static `?rcam` poses, so the tour had no motion indoors.
+It mirrors the corridor's `?walk`: a 13 s eased move, resettable via `window.__walkReset`.
+
+Afterwards bump `VideoObject.uploadDate` and `duration` in `LandingV2Client.tsx`
+(hardcoded 2026-08-23 / PT31S).
 
 ### Phase 2 — Stills: landing, press, stores
 

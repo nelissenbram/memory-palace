@@ -1295,10 +1295,18 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           scene.add(canopy);}
       } else if(wingId==="travel"){
         // Armillary sphere — a gilt core caged by three angled rings + axis.
-        scene.add(mk(new THREE.SphereGeometry(.14,18,14),MS.gold,0,pH2+.62,sZ));
+        // ⚠️ This hovered ~40 cm clear of the stone: everything here is positioned
+        // absolutely against pH2 and the cap top is pH2+.04 — the same defect the
+        // owner caught on nest/passions, missed on this wing. Lowered and given a
+        // turned stand so it RESTS on the pedestal like a real armillary.
+        const armY=pH2+.54;
+        {const foot=mk(new THREE.CylinderGeometry(.075,.10,.07,16),MS.bronze,0,pH2+.075,sZ);scene.add(foot);}   // base pad
+        {const stem=mk(new THREE.CylinderGeometry(.022,.032,.15,12),MS.bronze,0,pH2+.185,sZ);scene.add(stem);}  // turned stem
+        {const col=new THREE.Mesh(new THREE.TorusGeometry(.036,.011,8,18),MS.bronze);col.rotation.x=Math.PI/2;col.position.set(0,pH2+.262,sZ);scene.add(col);}
+        scene.add(mk(new THREE.SphereGeometry(.115,18,14),MS.gold,0,armY,sZ));
         for(const[ax2,az] of [[0,0],[Math.PI/2.4,0],[0,Math.PI/2.4],[Math.PI/3,Math.PI/4]] as [number,number][]){
-          const ring=new THREE.Mesh(new THREE.TorusGeometry(.4,.016,10,40),MS.gold);ring.rotation.set(Math.PI/2+ax2,az,0);ring.position.set(0,pH2+.62,sZ);scene.add(ring);}
-        {const axis=mk(new THREE.CylinderGeometry(.012,.012,1.05,8),MS.bronze,0,pH2+.62,sZ);axis.rotation.x=.35;scene.add(axis);}
+          const ring=new THREE.Mesh(new THREE.TorusGeometry(.265,.014,10,40),MS.gold);ring.rotation.set(Math.PI/2+ax2,az,0);ring.position.set(0,armY,sZ);scene.add(ring);}
+        {const axis=mk(new THREE.CylinderGeometry(.011,.011,.74,8),MS.bronze,0,armY,sZ);axis.rotation.x=.35;scene.add(axis);}
       } else if(wingId==="nest"){
         // Owner r5: rework to the theme. NEST = "the home I've made". The old
         // version was a bronze open cylinder + torus rim + 3 balls, which read
@@ -3037,7 +3045,16 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         else if(camDebug==="statue"){camera.position.set(0,1.82,2.7);camera.lookAt(0,1.62,0);} // close on the central statue (z=0)
         // close-up on the first bay's potted plant — checks soil/leaf detail at
         // the ~1.5 m distance a corridor pot is actually seen from.
-        else if(camDebug==="plant"){const pz2=cL/2-9.5,pxx=-(cW/2-.5);camera.position.set(pxx+1.5,1.18,pz2+1.0);camera.lookAt(pxx,.60,pz2);}
+        // Lower + closer than the first pass, which caught the bottom of a
+        // salon painting frame in the top-left corner. Sits below the picture
+        // rail so the backdrop is clean wainscot.
+        // The pots stand under the salon paintings, so a framing that fits the
+        // whole plant will include one. Settled on showing it WHOLE — the plant
+        // in its gallery setting reads intentional, where the first pass clipped
+        // just a corner of the frame and looked like a mistake. (A high downward
+        // angle avoids the painting but trades it for a specular hotspot on the
+        // polished floor and an awkward diagonal skirting line.)
+        else if(camDebug==="plant"){const pz2=cL/2-9.5,pxx=-(cW/2-.5);camera.position.set(pxx+1.85,1.06,pz2+1.25);camera.lookAt(pxx,.66,pz2);}
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {

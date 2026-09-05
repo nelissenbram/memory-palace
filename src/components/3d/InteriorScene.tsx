@@ -223,6 +223,12 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // Viewer-only review angle: ?rcam=door|hearth|bookcase hard-poses the camera
     // (the exit door sits behind the spawn, so straight-ahead can't show it).
     const _rcam=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("rcam"):null;
+    // Dev-only scripted room DOLLY (?rmove=hearth|reveal) — the room only had
+    // static ?rcam poses, so the marketing tour had no motion indoors. Mirrors
+    // the corridor's ?walk: a 13 s eased move, reset on window.__walkReset so a
+    // recorder can start it on cue. Deterministic (no Math.random) → re-runnable.
+    const _rmove=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("rmove"):null;
+    let rmoveT0=0;
     const wallCount=W3?(Number.isFinite(_wcOverride)?_wcOverride:displayedWallCount(mems)):undefined;
     const layout=layoutForRoom(actualRoomId||roomId,wallCount);
     if(W3&&typeof process!=="undefined"&&process.env.NODE_ENV!=="production")console.debug(`[rooms] tier=${layout.tier} deeper-by=${layout.bays} rL=${layout.rL} rW=${layout.rW} (walls=${wallCount})`);
@@ -3335,7 +3341,30 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         else if(_rcam==="musportal"){camera.position.set(-2.6,2.2,-rWRef.l/2+6.5);camera.lookAt(rWRef.w/2-0.4,1.5,-rWRef.l/2+2.6);}  // hall → music portal
         else if(_rcam==="front"){camera.position.set(0,2.3,-rWRef.l/2+7);camera.lookAt(1.5,1.0,rWRef.l/2);}   // mid-hall → the two FRONT corners (library left, vitrine right)
         else if(_rcam==="vitrine"){camera.position.set(1.5,1.8,0);camera.lookAt(rWRef.w/2,1.2,rWRef.l/2-(rWRef.l*0.28<7?rWRef.l*0.28:7)-1);}  // → front-right corner cabinet
+        // ?rcam=velario — the glazed ceiling field is the biggest thing the room
+        // pass added and nothing framed it: ?rcam=entry stands IN the doorway, so
+        // the door surround intrudes as a dark mass on both edges. This stands
+        // just inside the room and pitches up along the ceiling run.
+        else if(_rcam==="velario"){camera.position.set(0,1.62,rWRef.l/2-5.5);camera.lookAt(0,rH-1.75,-rWRef.l/2+7);}
         else if(_rcam==="libshelf"){const wz=rWRef.l/2-Math.min(Math.max(3.5,rWRef.l*0.28),7);camera.position.set(-rWRef.w/2+2.4,1.7,(wz-4.75+wz)/2-2.5);camera.lookAt(-rWRef.w/2,1.6,(wz-4.75+wz)/2);}  // → library bookcase (open book)
+      }
+      else if(_rmove){
+        // recorder sets window.__walkReset once the reveal-veil lifts, so the
+        // move starts on-camera rather than behind the veil.
+        if(!rmoveT0||(typeof window!=="undefined"&&(window as unknown as {__walkReset?:boolean}).__walkReset)){rmoveT0=performance.now();if(typeof window!=="undefined")(window as unknown as {__walkReset?:boolean}).__walkReset=false;}
+        const t=Math.min(1,(performance.now()-rmoveT0)/13000),e=easeInOutCubic(t);
+        const L=rWRef.l;
+        // [fromPos, fromLook, toPos, toLook]
+        const MOVES:Record<string,[number[],number[],number[],number[]]>={
+          // slow push-in onto the chimneypiece — the hero shot of the product
+          hearth:[[0,1.95,-L/2+11.5],[0,2.05,-L/2],[0,1.95,-L/2+5.4],[0,2.05,-L/2]],
+          // entry → mid-room: reveals the velario ceiling and the far hearth
+          reveal:[[0,1.75,L/2-1.2],[0,1.70,-L/2],[0,1.88,-L/2+9.5],[0,2.00,-L/2]],
+        };
+        const m=MOVES[_rmove]||MOVES.hearth;
+        const lerp=(a:number[],b:number[])=>[a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e,a[2]+(b[2]-a[2])*e];
+        const p=lerp(m[0],m[2]),lk=lerp(m[1],m[3]);
+        camera.position.set(p[0],p[1],p[2]);camera.lookAt(lk[0],lk[1],lk[2]);
       }
       // ── Camera debug overlay ──
       if (camDebugRef.current) {

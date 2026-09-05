@@ -23,7 +23,7 @@ import { dirname, resolve, extname } from "node:path";
 import puppeteer from "puppeteer";
 import {
   REPO, BASE, paths, ensureDir, stamp, sceneCommit,
-  assertStagingServer, GPU_ARGS, EDGE, ASSEMBLY_WAIT_MS,
+  assertStagingServer, GPU_ARGS, EDGE, ASSEMBLY_WAIT_MS, waitForScene,
 } from "./kit.mjs";
 
 const MANIFEST = resolve(REPO, "marketing", "shots.manifest.json");
@@ -64,7 +64,10 @@ async function renderStill(page, shot, args) {
 
   await page.setViewport({ width: w, height: h, deviceScaleFactor: shot.dsf || 2 });
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
-  await new Promise((r) => setTimeout(r, args.wait));
+  // Wait for the scene to settle rather than guessing: a fixed 18s wait shot the
+  // first batch mid-reveal-veil and desaturated everything (grey runner).
+  const waited = await waitForScene(page);
+  process.stdout.write(`(settled ${waited}s) `);
 
   // Hide dev chrome + any fixed consent overlay so it never lands in a deliverable.
   await page.evaluate(() => {

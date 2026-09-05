@@ -23,10 +23,18 @@
       "prominence": "medium",
       "kind": "still",
       "route": "/staging/corridor",
-      "params": { "cam": "terminus", "wing": "roots" },
-      "viewport": [1600, 1000],
+      "params": {
+        "cam": "terminus",
+        "wing": "roots"
+      },
+      "viewport": [
+        1600,
+        1000
+      ],
       "dsf": 2,
-      "scenes": ["corridor"],
+      "scenes": [
+        "corridor"
+      ],
       "out": "public/landing/band-corridor.jpg",
       "note": "Wide corridor showing the enfilade + new light shafts. Replaces the pre-overhaul band."
     },
@@ -37,11 +45,19 @@
       "prominence": "low",
       "kind": "still",
       "route": "/staging/corridor",
-      "params": { "cam": "portal", "wing": "roots" },
-      "viewport": [2400, 1350],
+      "params": {
+        "wing": "roots"
+      },
+      "viewport": [
+        2400,
+        1350
+      ],
       "dsf": 2,
-      "scenes": ["corridor"],
-      "out": "public/press/still-corridor-procession.jpg"
+      "scenes": [
+        "corridor"
+      ],
+      "out": "public/press/still-corridor-procession.jpg",
+      "note": "Default spawn view (no ?cam): the wide corridor with planting on both sides and the centrepiece at the terminus. ?cam=portal was tried first and framed nothing but a flat door filling the frame."
     },
     {
       "id": "press-still-room-hearth",
@@ -50,14 +66,21 @@
       "prominence": "low",
       "kind": "still",
       "route": "/staging/room",
-      "params": { "rcam": "hearth", "wallcount": "12" },
-      "viewport": [2400, 1350],
+      "params": {
+        "rcam": "hearth",
+        "wallcount": "12"
+      },
+      "viewport": [
+        2400,
+        1350
+      ],
       "dsf": 2,
-      "scenes": ["room"],
+      "scenes": [
+        "room"
+      ],
       "out": "public/press/still-room-hearth.jpg",
       "note": "The fp19 chimneypiece — the hero shot of the whole product."
     },
-
     {
       "id": "showcase-room-velario",
       "phase": 2,
@@ -65,12 +88,20 @@
       "prominence": "high",
       "kind": "still",
       "route": "/staging/room",
-      "params": { "rcam": "entry", "wallcount": "12" },
-      "viewport": [1600, 1000],
+      "params": {
+        "rcam": "velario",
+        "wallcount": "12"
+      },
+      "viewport": [
+        1600,
+        1000
+      ],
       "dsf": 2,
-      "scenes": ["room"],
+      "scenes": [
+        "room"
+      ],
       "out": "socials-kit/clips/work/stills/showcase-room-velario.png",
-      "note": "The grand glazed velario ceiling + daylight pool. Biggest new feature; no existing shot frames it."
+      "note": "Dedicated ?rcam=velario pose. ?rcam=entry stands in the doorway, so the door surround intruded as a dark mass on both edges."
     },
     {
       "id": "showcase-room-hearth-mattina",
@@ -79,10 +110,19 @@
       "prominence": "high",
       "kind": "still",
       "route": "/staging/room",
-      "params": { "rcam": "hearth", "grade": "mattina", "wallcount": "12" },
-      "viewport": [1200, 1500],
+      "params": {
+        "rcam": "hearth",
+        "grade": "mattina",
+        "wallcount": "12"
+      },
+      "viewport": [
+        1200,
+        1500
+      ],
       "dsf": 2,
-      "scenes": ["room"],
+      "scenes": [
+        "room"
+      ],
       "out": "socials-kit/clips/work/stills/showcase-room-hearth.png"
     },
     {
@@ -92,10 +132,17 @@
       "prominence": "medium",
       "kind": "still",
       "route": "/staging/corridor",
-      "params": { "cam": "plant" },
-      "viewport": [1100, 1100],
+      "params": {
+        "cam": "plant"
+      },
+      "viewport": [
+        1100,
+        1100
+      ],
       "dsf": 2,
-      "scenes": ["corridor"],
+      "scenes": [
+        "corridor"
+      ],
       "out": "socials-kit/clips/work/stills/showcase-corridor-plant.png",
       "note": "Potted plant close-up: leaf-card foliage, visible potting soil, wheel-thrown terracotta."
     },
@@ -106,10 +153,18 @@
       "prominence": "medium",
       "kind": "still",
       "route": "/staging/corridor",
-      "params": { "wing": "roots", "cam": "statue" },
-      "viewport": [1100, 1100],
+      "params": {
+        "wing": "roots",
+        "cam": "statue"
+      },
+      "viewport": [
+        1100,
+        1100
+      ],
       "dsf": 2,
-      "scenes": ["corridor"],
+      "scenes": [
+        "corridor"
+      ],
       "out": "socials-kit/clips/work/stills/statue-roots.png"
     },
     {
@@ -119,10 +174,18 @@
       "prominence": "medium",
       "kind": "still",
       "route": "/staging/corridor",
-      "params": { "wing": "nest", "cam": "statue" },
-      "viewport": [1100, 1100],
+      "params": {
+        "wing": "nest",
+        "cam": "statue"
+      },
+      "viewport": [
+        1100,
+        1100
+      ],
       "dsf": 2,
-      "scenes": ["corridor"],
+      "scenes": [
+        "corridor"
+      ],
       "out": "socials-kit/clips/work/stills/statue-nest.png",
       "note": "Woven twig nest + eggs (reworked 2026-09-05)."
     },
@@ -133,10 +196,18 @@
       "prominence": "medium",
       "kind": "still",
       "route": "/staging/corridor",
-      "params": { "wing": "passions", "cam": "statue" },
-      "viewport": [1100, 1100],
+      "params": {
+        "wing": "passions",
+        "cam": "statue"
+      },
+      "viewport": [
+        1100,
+        1100
+      ],
       "dsf": 2,
-      "scenes": ["corridor"],
+      "scenes": [
+        "corridor"
+      ],
       "out": "socials-kit/clips/work/stills/statue-passions.png",
       "note": "Bronze lyre (new 2026-09-05 — this wing previously had no themed statue)."
     },
@@ -147,10 +218,18 @@
       "prominence": "medium",
       "kind": "still",
       "route": "/staging/corridor",
-      "params": { "wing": "travel", "cam": "statue" },
-      "viewport": [1100, 1100],
+      "params": {
+        "wing": "travel",
+        "cam": "statue"
+      },
+      "viewport": [
+        1100,
+        1100
+      ],
       "dsf": 2,
-      "scenes": ["corridor"],
+      "scenes": [
+        "corridor"
+      ],
       "out": "socials-kit/clips/work/stills/statue-travel.png"
     },
     {
@@ -160,62 +239,19 @@
       "prominence": "medium",
       "kind": "still",
       "route": "/staging/corridor",
-      "params": { "wing": "craft", "cam": "statue" },
-      "viewport": [1100, 1100],
+      "params": {
+        "wing": "craft",
+        "cam": "statue"
+      },
+      "viewport": [
+        1100,
+        1100
+      ],
       "dsf": 2,
-      "scenes": ["corridor"],
+      "scenes": [
+        "corridor"
+      ],
       "out": "socials-kit/clips/work/stills/statue-craft.png"
-    },
-
-    {
-      "id": "tour-s5-corridor",
-      "phase": 1,
-      "surface": "landing / walkthrough-tour.mp4 segment",
-      "prominence": "high",
-      "kind": "video",
-      "renderer": "scripts/week1/record-corridor-walk.mjs",
-      "route": "/flythrough",
-      "params": { "scene": "corridor", "walk": "1", "wing": "roots" },
-      "durationMs": 13500,
-      "scenes": ["corridor"],
-      "out": "scripts/hero_rec2/seg/t5_corridor.mp4"
-    },
-    {
-      "id": "tour-s6-door",
-      "phase": 1,
-      "surface": "landing / walkthrough-tour.mp4 segment",
-      "prominence": "high",
-      "kind": "video",
-      "renderer": "scripts/week1/record-scenes.mjs",
-      "route": "/flythrough",
-      "params": { "scene": "corridor", "cam": "door" },
-      "scenes": ["corridor"],
-      "out": "scripts/hero_rec2/seg/t6_door.mp4"
-    },
-    {
-      "id": "tour-s7-roompan",
-      "phase": 1,
-      "surface": "landing / walkthrough-tour.mp4 segment",
-      "prominence": "high",
-      "kind": "video",
-      "renderer": "scripts/week1/record-scenes.mjs",
-      "route": "/flythrough",
-      "params": { "scene": "room", "fill": "max" },
-      "scenes": ["room"],
-      "out": "scripts/hero_rec2/seg/t7_roompan.mp4"
-    },
-    {
-      "id": "tour-s8-mantel",
-      "phase": 1,
-      "surface": "landing / walkthrough-tour.mp4 segment",
-      "prominence": "high",
-      "kind": "video",
-      "renderer": "scripts/week1/record-scenes.mjs",
-      "route": "/flythrough",
-      "params": { "scene": "room", "fill": "max", "rcam": "hearth" },
-      "scenes": ["room"],
-      "out": "scripts/hero_rec2/seg/t8_mantel.mp4",
-      "note": "Ends on the new chimneypiece. Segments t1-t4 are exterior/hall and are NOT re-rendered."
     },
     {
       "id": "walkthrough-tour",
@@ -223,48 +259,20 @@
       "surface": "landing 'see it in action' + JSON-LD VideoObject",
       "prominence": "high",
       "kind": "assemble",
-      "renderer": "scripts/build_tour.mjs",
-      "dependsOn": ["tour-s5-corridor", "tour-s6-door", "tour-s7-roompan", "tour-s8-mantel"],
-      "scenes": ["corridor", "room"],
+      "renderer": "scripts/marketing/build-tour.mjs",
+      "route": "/flythrough",
+      "params": {},
+      "scenes": [
+        "exterior",
+        "hall",
+        "corridor",
+        "room"
+      ],
       "out": "public/video/walkthrough-tour.mp4",
-      "note": "Re-assembles t1-t8 with xfades. Remember to bump VideoObject.uploadDate in LandingV2Client.tsx."
-    },
-    {
-      "id": "hero-ob",
-      "phase": 1,
-      "surface": "onboarding intro — AUTOPLAYS for 100% of new users",
-      "prominence": "critical",
-      "kind": "video",
-      "renderer": "scripts/week1/ob-record.mjs",
-      "route": "/flythrough",
-      "params": { "scene": "onboarding", "mantelDemo": "1" },
-      "scenes": ["corridor", "room"],
-      "out": "public/video/hero-ob.mp4",
-      "note": "Highest-exposure asset in the product and the oldest (16/07). Render this first."
-    },
-    {
-      "id": "hero-v2",
-      "phase": 1,
-      "surface": "landing hero — AUTOPLAYS for every visitor",
-      "prominence": "critical",
-      "kind": "video",
-      "renderer": "scripts/week1/record-scenes.mjs",
-      "route": "/flythrough",
-      "params": { "fill": "max" },
-      "scenes": ["exterior", "corridor", "room"],
-      "out": "public/video/hero-v2.mp4"
-    },
-    {
-      "id": "hero-bg",
-      "phase": 1,
-      "surface": "atrium hero (in-app)",
-      "prominence": "high",
-      "kind": "video",
-      "renderer": "scripts/week1/record-scenes.mjs",
-      "route": "/flythrough",
-      "params": { "fill": "max" },
-      "scenes": ["exterior", "corridor", "room"],
-      "out": "public/video/hero-bg.mp4"
+      "note": "The ONLY hero video that is a 3D product render. All 7 segments (s0..s6) are declared inside build-tour.mjs and re-recorded through one shared grade; the old chain's grading step existed nowhere in the repo. Poster is derived from the closing mantel beat. Remember to bump VideoObject uploadDate/duration."
     }
-  ]
+  ],
+  "notes": {
+    "$note_not_product_renders": "hero-ob.mp4, hero-v2.mp4 and hero-bg.mp4 were REMOVED from this manifest on 2026-09-05. Inspecting their frames showed they are cinematic stock/AI footage (a woman walking a sunlit corridor; a Tuscan landscape through an arch; a cypress avenue to a villa) — they contain no product geometry, so a 3D overhaul cannot make them stale. They were originally ranked top priority purely on file date and exposure, which was wrong. Leave them alone; replacing them with 3D renders would be a creative decision, not a staleness fix."
+  }
 }
