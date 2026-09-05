@@ -207,6 +207,12 @@ export default function PrivacyPolicyPage() {
               <strong>{t("whatWeCollectItem3Label")}</strong>
               {t("whatWeCollectItem3Text")}
             </Li>
+            {/* LEG-014: subscription/billing data category — plan, status,
+                Apple/Stripe payment references; never card details. */}
+            <Li>
+              <strong>{t("whatWeCollectItem4Label")}</strong>
+              {t("whatWeCollectItem4Text")}
+            </Li>
           </Ul>
           {/* LEG-006: Art. 9 special-categories clause — explicit consent basis,
               withdrawn by deleting the content. */}
@@ -480,6 +486,12 @@ export default function PrivacyPolicyPage() {
             <Li>
               <strong>{t("retentionItem4Label")}</strong>
               {t("retentionItem4Text")}
+            </Li>
+            {/* LEG-014: billing records — subscription duration + 7y statutory
+                accounting retention. */}
+            <Li>
+              <strong>{t("retentionItem5Label")}</strong>
+              {t("retentionItem5Text")}
             </Li>
           </Ul>
         </Section>
