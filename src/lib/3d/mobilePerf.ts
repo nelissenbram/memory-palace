@@ -142,7 +142,10 @@ const DESKTOP_QUALITY: QualitySettings = {
   vegetationDensity: 1,
   loadBackgroundHDRI: true,
   loadEnvHDRI: true,
-  textureRes: "1k",
+  // Hero-shot texture pass (owner: "level van detail/textuur significant
+  // verhogen"): desktop loads the 2k PBR variants where shipped (loadPBRSet
+  // falls back to 1k per-file, so partially-shipped sets stay safe).
+  textureRes: "2k",
   maxEagerTextureSets: 20,
   paintingResWidth: 512,
   paintingResHeight: 384,

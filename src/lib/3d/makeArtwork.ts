@@ -1,5 +1,7 @@
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { PLASTER, INK, GOLD, GOLDEN } from "./canon";
+import { loadWalnutWoodTextures } from "./assetLoader";
 
 /**
  * WS7-3 — makeArtwork(): every photo memory becomes a museum piece via ONE
@@ -73,7 +75,20 @@ function getFrameMat() {
 // frames read as fine-art frames (dark wood + a thin bronze slip) rather than a
 // solid gold slab. Module-cached, shared across every corridor piece.
 function getWalnutFrameMat() {
-  if (!walnutFrameMat) walnutFrameMat = new THREE.MeshStandardMaterial({ color: "#3A2A1C", roughness: 0.5, metalness: 0.15 });
+  if (!walnutFrameMat) {
+    // SCENE_REALISM_PLAN 1.5: real noce grain on the moulding — the bare flat
+    // material read as a painted box. Maps are lazy-loaded clones (assetLoader
+    // cache); fall back to the plain material off-browser (SSR/tests).
+    walnutFrameMat = new THREE.MeshStandardMaterial({ color: "#3A2A1C", roughness: 0.42, metalness: 0.12 });
+    try {
+      const walnutTex = loadWalnutWoodTextures([1, 1]);
+      walnutFrameMat.map = walnutTex.map;
+      walnutFrameMat.normalMap = walnutTex.normalMap;
+      walnutFrameMat.normalScale = new THREE.Vector2(0.6, 0.6);
+      walnutFrameMat.roughnessMap = walnutTex.roughnessMap;
+      walnutFrameMat.needsUpdate = true;
+    } catch { /* keep the untextured fallback */ }
+  }
   return walnutFrameMat;
 }
 
@@ -252,7 +267,9 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
   // (corridor) = a slimmer dark-walnut moulding (gilt slip added below).
   const frameBorder = opts.refinedFrame ? 0.15 : 0.2;
   const frameDepth = opts.refinedFrame ? 0.08 : 0.06;
-  const frameGeo = new THREE.BoxGeometry(w + frameBorder, h + frameBorder, frameDepth);
+  // Rounded edges (owner: razor-straight corners read as lazy) — the moulding
+  // now catches a soft highlight along every edge like a real profiled frame.
+  const frameGeo = new RoundedBoxGeometry(w + frameBorder, h + frameBorder, frameDepth, 3, 0.03); // owner: frames were too rectangular — a real rounded moulding profile
   const frame = new THREE.Mesh(frameGeo, opts.refinedFrame ? getWalnutFrameMat() : getFrameMat());
   frame.position.z = opts.refinedFrame ? -0.03 : -0.02;
   ownedGeos.push(frameGeo);
@@ -266,7 +283,10 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
 
   // The photo — unlit, aspect-correct, the brightest pixels on the wall.
   // F15 rabbet: the photo sits deeper so the raised lip below overhangs it.
+  // Hero-shot panel #3: slight >1 multiplier so the photo decisively wins the
+  // brightness contest against the fire/table (brightness dogma, reinforced).
   const photoMat = new THREE.MeshBasicMaterial({ map: opts.texture });
+  photoMat.color.setScalar(1.08);
   const photoGeo = new THREE.PlaneGeometry(w, h);
   const photo = new THREE.Mesh(photoGeo, photoMat);
   photo.position.z = opts.rabbet ? 0.020 : 0.024; // above the liner (0.014); lip at 0.05 still overhangs
@@ -293,7 +313,8 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
       [lipT, h - lipT, (w / 2 - lipT / 2 + 0.01), 0],      // right
     ];
     for (const [bw, bh, bx, by] of bars) {
-      const g = new THREE.BoxGeometry(bw, bh, lipD);
+      // rounded slip bars — the inner gilt/bronze line reads as a turned bead
+      const g = new RoundedBoxGeometry(bw, bh, lipD, 1, Math.min(0.009, lipT / 2.4));
       const m = new THREE.Mesh(g, lipMat);
       m.position.set(bx, by, lipZ - lipD / 2);
       m.castShadow = true;
@@ -346,13 +367,16 @@ export function makeArtwork(opts: ArtworkOptions): Artwork {
     // Real museum plaque: a thin brass plate stands off the wall, the engraved
     // face sits just proud of it. Default: flat wall lettering, no plate.
     if (plate) {
-      const backGeo = new THREE.BoxGeometry(plaqueW + 0.02, plaqueH + 0.02, 0.012);
+      const backGeo = new RoundedBoxGeometry(plaqueW + 0.02, plaqueH + 0.02, 0.012, 2, 0.005); // rounded plate edges
       const back = new THREE.Mesh(backGeo, getRefinedSlipMat());
       back.position.set(0, plaqueY, 0.03);
       back.castShadow = true;
       ownedGeos.push(backGeo);
       group.add(back);
     }
+    // NOTE(SCENE_REALISM_PLAN 1.6, reverted): a metalness-.85 lit face made the
+    // ivory plate dark and the engraved title unreadable at the hero distance —
+    // the unlit plate wins (brightness dogma: legibility beats material fidelity).
     const plaqueMat = new THREE.MeshBasicMaterial({ map: plaqueTex, transparent: true, depthWrite: false });
     const plaqueGeo = new THREE.PlaneGeometry(plaqueW, plaqueH);
     const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);

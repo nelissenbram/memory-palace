@@ -22,8 +22,9 @@ import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
 import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { mergeBufferGeometries } from "@/lib/3d/geometryOptimizer";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
-import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, loadSandstoneTextures, loadClayPlasterTextures, loadWornPlasterTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
 import { measure, autoFit } from "@/lib/3d/fitRenderer";
@@ -294,6 +295,33 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const shCam=W1?Math.min(12,Math.max(layout.rW,layout.rL)/2+2):12;
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=30;sun.shadow.camera.left=-shCam;sun.shadow.camera.right=shCam;sun.shadow.camera.top=shCam;sun.shadow.camera.bottom=-shCam;
     scene.add(sun);
+    // HERO-SHOT PANEL #4 (W3): raking key from upper camera-left so the
+    // chimneypiece relief throws real shadows. Three selectable grades answer
+    // the owner's "khaki/donker" note — ?grade=bright|fresh (viewer knob, like
+    // ?rcam) vs the default golden hour. Same light count, no postprocessing.
+    if(W3){
+      const _grade=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("grade"):null;
+      sun.position.set(-9,13,10);
+      // r2: the first grade pass only moved hemi/sun and measured a ~2% pixel
+      // delta — the ENV MAP dominates interior light. Grades now drive
+      // scene.environmentIntensity (the real lever) + bigger sun/hemi swings.
+      if(_grade==="dorato"){
+        // "Dorato" — the darker golden hour (kept as a knob).
+        sun.color.set("#FFD9A8");sun.intensity*=1.35;
+        hemi.intensity*=.7;hemi.color.set("#FFEFD5");hemi.groundColor.set("#8A6B4F");
+      }else if(_grade==="fresh"){
+        // "Contrasto" — golden key + COOL daylight fill breaking the monochrome.
+        sun.color.set("#FFD296");sun.intensity*=1.5;
+        hemi.intensity*=1.3;hemi.color.set("#D4E4F2");hemi.groundColor.set("#9A7E5E");
+        scene.environmentIntensity*=1.3;
+      }else{
+        // DEFAULT = "Mattina" (owner keuze 2026-09-04): airy Tuscan morning —
+        // near-white sun, lifted ivory ambient; walls read cream, not khaki.
+        sun.color.set("#FFE8C8");sun.intensity*=1.2;
+        hemi.intensity*=1.6;hemi.color.set("#F6F2E8");hemi.groundColor.set("#B8A184");
+        scene.environmentIntensity*=1.55;
+      }
+    }
     // W2 (WS6-9 light budget law): the den runs hemi + sun + fire ONLY (≤4);
     // the point fill is deleted there (hemi covers it).
     const ambL=new THREE.PointLight(dlPreset.fillColor,(W1?.16:.3)*dlPreset.fillIntensity/0.35,15);ambL.position.set(0,4,0);if(!W2)scene.add(ambL); // r2 (W1): point fill .3→.16
@@ -429,7 +457,19 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const wallTex=loadPlasterWallTextures([3,3]);
     const rugTex=loadFabricTextures([2,2]);
     const velvetTex=loadVelvetTextures([2,2]);
-    const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallTex,rugTex,velvetTex];
+    // SCENE_REALISM_PLAN Phase 1: matte pietra-serena stone for the chimneypiece
+    // (kills the wet-plastic clearcoat-marble "Paint" look), a dedicated low-repeat
+    // intonaco for the chimney breast (no tiling behind the hero photo), and worn
+    // plaster to give the firebrick real texture.
+    const stoneTex=loadSandstoneTextures([1.4,1.4]);
+    const fireboxTex=loadWornPlasterTextures([2,2]);
+    // Subtle-texture pass (owner: "meer subtiele details (~textuur) aan mantel,
+    // muren en plafond"): a dedicated fine-repeat marble clone for the
+    // chimneypiece (the shared [3,3] floor-scale marble read flat on 0.1-0.5m
+    // boxes) and a fine plaster clone for the ceiling (was a flat colour).
+    const fpMarbleTex=loadMarbleTextures([1.5,1.5]);
+    const ceilTex=loadPlasterWallTextures([5,5]);
+    const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallTex,rugTex,velvetTex,stoneTex,fireboxTex,fpMarbleTex,ceilTex];
     // Reveal gate: the eager PBR sets visibly RETEXTURE the biggest surfaces
     // (herringbone floor/walls/rug flip from flat colour to full maps). No
     // promise API — a clone's `version` stays 0 until its base image lands
@@ -451,7 +491,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     if(W1){
       const maxAniso=ren.capabilities?.getMaxAnisotropy?.()??1;
       const aniso=Math.min(isMobileGPU()?4:8,maxAniso);
-      for(const set of [marbleTex,woodTex,wallTex]){
+      for(const set of [marbleTex,woodTex,wallTex,stoneTex]){
         for(const tx of [set.map,set.normalMap]){
           if(tx&&tx.anisotropy!==aniso){tx.anisotropy=aniso;tx.needsUpdate=true;}
         }
@@ -466,12 +506,19 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // tones with canon grout, trim → ink, gold → canon gold; the leather
     // "gentleman's club" set and fireplace brick regrade to canon ink/travertine.
     // msKey includes the flag so acquireMaterialSet never serves a stale palette.
-    const msKey=`interior|w1:${W1?1:0}|w3:${W3?1:0}|${wing?.wall||"-"}|${wing?.accent||"-"}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    // fp2 = SCENE_REALISM_PLAN material pass (stone/breast/firebrick added) — never serve a pre-pass cached set.
+    const msKey=`interior|fp19|w1:${W1?1:0}|w3:${W3?1:0}|${wing?.wall||"-"}|${wing?.accent||"-"}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
     const MS=acquireMaterialSet(msKey,()=>({
-      wall:new THREE.MeshStandardMaterial({color:W1?PLASTER:(wing?.wall||"#DDD4C6"),roughness:.88,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:wallTex.roughnessMap,aoMap:wallTex.aoMap,aoMapIntensity:.6}),
-      floor:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#8A7358",roughness:.45,metalness:.1,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.7}),
-      floorL:new THREE.MeshStandardMaterial({color:W1?TRAVERTINE_GROUT:"#B8A480",roughness:.5,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
-      ceil:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#F0EAE0",roughness:.95}),
+      // Subtle-texture pass: wall normal .3→.42 + AO .6→.68 — the plaster grain
+      // becomes readable at room distance without changing the tone.
+      wall:new THREE.MeshStandardMaterial({color:W1?PLASTER:(wing?.wall||"#DDD4C6"),roughness:.88,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.68,.68),roughnessMap:wallTex.roughnessMap,aoMap:wallTex.aoMap,aoMapIntensity:.72}),
+      // Owner 05-09: "vloer rustieker, zonder zwaarder/donkerder" — same tones,
+      // but the wear lives in stronger normals + rougher response.
+      floor:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#8A7358",roughness:.52,metalness:.08,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.8,.8),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.7}),
+      floorL:new THREE.MeshStandardMaterial({color:W1?TRAVERTINE_GROUT:"#B8A480",roughness:.55,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.55,.55),roughnessMap:woodTex.roughnessMap}),
+      // Subtle-texture pass: the ceiling was a flat colour slab — fine-repeat
+      // plaster maps give it lime-wash grain; tone unchanged.
+      ceil:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#F0EAE0",roughness:.95,map:ceilTex.map,normalMap:ceilTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:ceilTex.roughnessMap}),
       trim:new THREE.MeshStandardMaterial({color:W1?INK:"#CFC3AE",roughness:.55,metalness:.12}),
       // W3 (owner 2026-08-18 #6): NO gold anywhere in the room — every "gold"
       // accent becomes matte bronze (corridor precedent: "mat brons ipv tacky goud").
@@ -480,15 +527,56 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       gold:new THREE.MeshStandardMaterial({color:W3?"#C9A87C":(W1?GOLD:"#C8A868"),roughness:W3?.55:.28,metalness:W3?.4:.6}),
       dkW:new THREE.MeshStandardMaterial({color:"#3E2A18",roughness:.5,metalness:.08,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.4,.4),aoMap:woodTex.aoMap,aoMapIntensity:.5}),
       ltW:new THREE.MeshStandardMaterial({color:"#A08060",roughness:.55,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
-      wain:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.mid:"#B8A890",roughness:.65,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.2,.2),roughnessMap:wallTex.roughnessMap}),
+      // Band-detail pass (owner: "banden kunnen nog beter — meer detail/contrast"):
+      // wainscot gets real grain + AO, and a LIGHTER fielded-panel partner so
+      // frame-vs-field reads as carpentry instead of one flat strip.
+      // Owner r2: "onderrand mag gerust het lichttaupe zijn" + "meer reliëf/
+      // textuur in beide muurdelen" — wainscot lifts to light taupe with deep
+      // grain, the fielded panels go ivory on top of it, and the wall field
+      // gets a stronger normal so both zones carry visible plaster relief.
+      // Owner r3: the WHOLE lower wall zone goes strongly lighter taupe/beige;
+      // the fielded squares flip to a TOUCH DARKER than their frame (classic
+      // recessed-panel reading), AO nearly off so nothing eats the light.
+      // Owner 05-09 r2: band was still "veel te donker, gaat op in de bovenmuur"
+      // — near-white beige + a soft self-lift (emissive) so the lower third
+      // reads UNMISTAKABLY lighter than the wall, in every light and also in
+      // the under-window aprons. AO off (it was re-darkening it).
+      wain:new THREE.MeshStandardMaterial({color:W1?"#F7F1E3":"#DCD2BC",roughness:.7,emissive:new THREE.Color("#EFE7D5"),emissiveIntensity:.22,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.55,.55),roughnessMap:wallTex.roughnessMap}),
+      wainPanel:new THREE.MeshStandardMaterial({color:W1?"#EDE4D0":"#D2C6AE",roughness:.66,emissive:new THREE.Color("#E4DAC6"),emissiveIntensity:.16,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.45,.45),roughnessMap:wallTex.roughnessMap}),
       leather:new THREE.MeshStandardMaterial({color:W1?INK:"#5A3020",roughness:.55,metalness:.05,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
       leatherD:new THREE.MeshStandardMaterial({color:W1?INK:"#4A2818",roughness:.5,metalness:.04,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.12,.12)}),
       button:new THREE.MeshStandardMaterial({color:W1?INK:"#3A1E10",roughness:.3,metalness:.1}),
       bronze:new THREE.MeshStandardMaterial({color:"#8A7050",roughness:.32,metalness:.48}),
       marble:mkPhys(THREE,{color:"#E8E2DA",roughness:.15,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:marbleTex.roughnessMap,aoMap:marbleTex.aoMap,aoMapIntensity:.8,clearcoat:.3,clearcoatRoughness:.2,reflectivity:.6}),
+      // Subtle-texture pass: DEDICATED chimneypiece marble — the shared [3,3]
+      // floor-scale maps sampled almost flat on the mantel's 0.1-0.5m boxes.
+      // Fine [1.5,1.5] repeat + stronger normal makes veining/grain readable at
+      // the hero distance; softer clearcoat keeps polish without the lacquer.
+      // Owner r4: "eerder beige/wit, niet goud/bruin" — the tinted sandstone
+      // DIFFUSE is dropped entirely: a flat near-white beige carries the tone
+      // (guaranteed, independent of texture tint or warm light), while the
+      // stone grain lives purely in the normal/roughness/AO maps.
+      fpMarble:new THREE.MeshStandardMaterial({color:"#F2EEE6",roughness:.7,metalness:.02,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.85,.85),roughnessMap:stoneTex.roughnessMap,aoMap:stoneTex.aoMap,aoMapIntensity:.5,envMapIntensity:1.15}),
+      // SCENE_REALISM_PLAN 1.1: matte pietra serena for the chimneypiece — no
+      // clearcoat/lacquer (that sheen WAS the "Paint" look), strong normals/AO so
+      // it reads as 400-year-old cut stone at the hero camera distance.
+      // Warm pietra forte (grey read as cement in the warm salon light); matte, no clearcoat.
+      stone:new THREE.MeshStandardMaterial({color:"#B7AC9A",roughness:.65,metalness:0,map:stoneTex.map,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.75,.75),roughnessMap:stoneTex.roughnessMap,aoMap:stoneTex.aoMap,aoMapIntensity:.9}),
+      // 1.2: dedicated intonaco chimney breast — one ramp-step warmer/darker than
+      // the room wall, low repeat so it never visibly tiles behind the hero photo.
+      // 1.2: breast = the WALL's exact [3,3] plaster maps with only a half-step
+      // warmer tint. (A dedicated low-repeat plaster sampled one dark patch of the
+      // map and rendered as a heavy grey slab — brightness-adjacency beats variety.)
+      // Owner 05-09 r2: the gold/brown plane ABOVE the painting → refined pale
+      // SANDSTONE (same family as the chimneypiece — reads as a stone chimney
+      // breast, architecturally logical, no more ochre).
+      breast:new THREE.MeshStandardMaterial({color:"#EDE7D9",roughness:.78,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.55,.55),roughnessMap:stoneTex.roughnessMap,envMapIntensity:1.05}),
+      // 2.3: real firebrick — worn plaster maps over a warm sooted brown.
+      firebrick:new THREE.MeshStandardMaterial({color:"#4A342A",roughness:.95,map:fireboxTex.map,normalMap:fireboxTex.normalMap,normalScale:new THREE.Vector2(.7,.7),roughnessMap:fireboxTex.roughnessMap}),
       brick:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.shade:"#8A5040",roughness:.9}),
       brickD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#6A3830",roughness:.85}),
-      iron:new THREE.MeshStandardMaterial({color:"#3A3A3A",roughness:.5,metalness:.4}),
+      // 2.3: warm wrought-iron near-black (was neutral #3A3A3A grey — read as CG primer)
+      iron:new THREE.MeshStandardMaterial({color:"#23211E",roughness:.5,metalness:.4}),
       fire:new THREE.MeshBasicMaterial({color:"#FF8030",transparent:true,opacity:.7}),
       fireG:new THREE.MeshBasicMaterial({color:"#FFD060",transparent:true,opacity:.5}),
       rug:new THREE.MeshStandardMaterial({color:"#6A2028",roughness:.9,map:rugTex.map,normalMap:rugTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:rugTex.roughnessMap,aoMap:rugTex.aoMap,aoMapIntensity:.5}),
@@ -522,6 +610,51 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       handle:mkPhys(THREE,{color:"#C9A87C",roughness:.45,metalness:.45,clearcoat:.15,clearcoatRoughness:.2}), // mat brons, not polished gold
       glass:mkPhys(THREE,{color:"#E8F0F0",transparent:true,opacity:.15,roughness:.02,metalness:.0,transmission:.85,ior:1.5,thickness:.5}),
     }));
+    // Owner 05-09: the herringbone base floor (outside/between the diamond
+    // tiles) reads dark brown — lift to LIGHT OAK. The wood diffuse is mid-
+    // brown, so a ≤1 tint can't lighten it: >1 multiplier, W3-only, absolute
+    // per-mount write (cache-safe).
+    if(W3){
+      // r3: any multiplier keeps the wood map's yellow HUE — owner wants
+      // steigerplank / washed-white wood. Same cure as the chimneypiece: drop
+      // the diffuse map, flat washed grey-white carries the tone, the grain
+      // lives in the normal/roughness maps. Absolute writes → cache-safe.
+      const fl=MS.floor as THREE.MeshStandardMaterial, flL=MS.floorL as THREE.MeshStandardMaterial;
+      // r5: the roughness-as-colour trick rendered BLACK on KTX2/linear paths.
+      // Robust cure: BAKE a desaturated washed-plank texture from the wood
+      // diffuse pixels once its image lands (grayscale + lift = steigerplank);
+      // until then (or if the image isn't canvas-drawable) a flat washed tone.
+      fl.map=null;fl.color.set("#E7E1D4");fl.needsUpdate=true;
+      flL.map=null;flL.color.set("#F0EBE0");flL.needsUpdate=true;
+      {
+        let _tries=0;
+        const bakeWashedPlanks=()=>{
+          if(!alive)return;
+          try{
+            const img:any=(woodTex.map as any)?.image;
+            if(img&&img.width){
+              const c=document.createElement("canvas");c.width=256;c.height=256;
+              const g2=c.getContext("2d")!;
+              g2.drawImage(img,0,0,256,256);
+              const d=g2.getImageData(0,0,256,256);
+              for(let i=0;i<d.data.length;i+=4){
+                const l=d.data[i]*.299+d.data[i+1]*.587+d.data[i+2]*.114;
+                const v=Math.min(255,150+l*.45);             // lift + flatten → washed
+                d.data[i]=v;d.data[i+1]=v;d.data[i+2]=Math.min(255,v*.985);
+              }
+              g2.putImageData(d,0,0);
+              const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
+              t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.copy((woodTex.map as any).repeat);
+              fl.map=t;fl.color.set("#FFFFFF");fl.needsUpdate=true;
+              flL.map=t;flL.color.set("#F4F0E8");flL.needsUpdate=true;
+              return;
+            }
+          }catch{/* compressed/undrawable image — keep the flat washed tone */return;}
+          if(_tries++<40)setTimeout(bakeWashedPlanks,250);
+        };
+        bakeWashedPlanks();
+      }
+    }
     const fMats=[MS.fG,MS.fB,MS.gold];
     memMeshes.current=[];hitAreaMeshes.current=[];allClickableRef.current=[]; // reset the raycast list too — a rebuilt scene with the SAME mesh count must not keep stale (disposed) meshes clickable
     const animTex: any[]=[];
@@ -593,7 +726,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       return gm;
     };
 
-    const rW=layout.rW,rL=layout.rL,rH=layout.rH;
+    // Owner 05-09: ceiling +80cm under W3 — a loftier salon; everything built
+    // from rH (walls, breast, rails, cornice, velario) follows automatically.
+    const rW=layout.rW,rL=layout.rL,rH=layout.rH+(W3?0.8:0);
     rWRef.w=rW;rWRef.l=rL;
     // W3 "Deepening Cabinet" (owner 2026-08-17): the LIBRARY must NOT scale with
     // the room — freeze it to a fixed length at the hearth end; the rest of the
@@ -646,24 +781,46 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // wash so it reads lit. ONE window style shared by wings + main room (owner
     // "juiste stijl" + "een hoop ramen ontbreken"). px/pz sit ON the wall plane;
     // rotY orients the facing (+X wall→π/2, -X wall→-π/2, back→0, front→π).
+    // Owner 05-09: window realism overhaul — rounded two-step jamb profiles
+    // (geen rechte hoeken), an outer bead around the arch, a rounded keystone,
+    // a moulded sill on corbel brackets, an inner reveal shadow for depth, and
+    // gradient daylight glass instead of one flat glow colour.
     const addArchWindow=(px:number,py:number,pz:number,rotY:number,w:number,h:number)=>{
       const g=new THREE.Group();g.position.set(px,py,pz);g.rotation.y=rotY;
-      const r=w/2, glow=new THREE.MeshBasicMaterial({color:"#FFEAC8"});
-      const rect=new THREE.Mesh(new THREE.PlaneGeometry(w,h),glow);rect.position.set(0,h/2,0.02);g.add(rect);
-      const head=new THREE.Mesh(new THREE.CircleGeometry(r,22,0,Math.PI),glow);head.position.set(0,h,0.02);g.add(head);
-      for(const sx of[-1,1]){const j=new THREE.Mesh(new THREE.BoxGeometry(0.1,h+0.05,0.14),MS.wain);j.position.set(sx*(r+0.05),h/2,0.04);g.add(j);}      // jambs
-      const arch=new THREE.Mesh(new THREE.RingGeometry(r,r+0.11,24,1,0,Math.PI),MS.wain);arch.position.set(0,h,0.04);g.add(arch);                          // arch surround
-      const sill=new THREE.Mesh(new THREE.BoxGeometry(w+0.3,0.1,0.18),MS.gold);sill.position.set(0,0,0.06);g.add(sill);                                    // sill
-      const key=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.18,0.16),MS.gold);key.position.set(0,h+r-0.02,0.06);g.add(key);                                // keystone
-      // muntins / crossbars — a slim dark glazing grid so it reads as a real window
-      const bar=(bw:number,bh:number,bx:number,by:number)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,0.022),MS.dkW);m.position.set(bx,by,0.035);g.add(m);};
-      bar(0.028,h,0,h/2);                          // vertical mullion (lower)
-      bar(w-0.02,0.028,0,h*0.55);                  // transom
-      bar(w*0.7,0.026,0,h*0.24);                   // lower rail
-      for(const a of[Math.PI*0.34,Math.PI*0.66]){const rb=new THREE.Mesh(new THREE.BoxGeometry(0.024,r*0.94,0.022),MS.dkW);rb.position.set(Math.cos(a)*r*0.46,h+Math.sin(a)*r*0.46,0.035);rb.rotation.z=a-Math.PI/2;g.add(rb);} // arch bars
-      bar(0.026,r*0.9,0,h+r*0.45);                 // arch centre bar
+      const r=w/2;
+      const gc=document.createElement("canvas");gc.width=64;gc.height=64;
+      const gg=gc.getContext("2d")!;const ggr=gg.createRadialGradient(32,24,4,32,32,46);
+      ggr.addColorStop(0,"#FFF7E4");ggr.addColorStop(.55,"#FBE9C9");ggr.addColorStop(1,"#EDD6AE");
+      gg.fillStyle=ggr;gg.fillRect(0,0,64,64);
+      const gTex=new THREE.CanvasTexture(gc);gTex.colorSpace=THREE.SRGBColorSpace;
+      const glow=new THREE.MeshBasicMaterial({map:gTex});
+      const rect=new THREE.Mesh(new THREE.PlaneGeometry(w,h),glow);rect.position.set(0,h/2,0.015);g.add(rect);
+      const head=new THREE.Mesh(new THREE.CircleGeometry(r,28,0,Math.PI),glow);head.position.set(0,h,0.015);g.add(head);
+      // inner reveal shadow — the opening reads as set INTO the wall
+      const revMat=new THREE.MeshBasicMaterial({color:"#2A2118",transparent:true,opacity:.26,depthWrite:false});
+      for(const sx of[-1,1]){const rv=new THREE.Mesh(new THREE.PlaneGeometry(.04,h),revMat);rv.position.set(sx*(r-.02),h/2,.028);g.add(rv);}
+      const rvT=new THREE.Mesh(new THREE.PlaneGeometry(w-.04,.04),revMat);rvT.position.set(0,h-.01,.028);g.add(rvT);
+      // two-step ROUNDED jambs (inner walnut-tone + outer pale fillet)
+      for(const sx of[-1,1]){
+        const j=new THREE.Mesh(new RoundedBoxGeometry(0.12,h+0.06,0.15,2,.022),MS.wain);j.position.set(sx*(r+0.06),h/2,0.045);g.add(j);
+        const j2=new THREE.Mesh(new RoundedBoxGeometry(0.055,h+0.02,0.10,2,.015),MS.wainPanel);j2.position.set(sx*(r+0.117),h/2,0.05);g.add(j2);
+      }
+      // arch: surround ring + rounded outer bead + rounded keystone
+      const arch=new THREE.Mesh(new THREE.RingGeometry(r,r+0.12,32,1,0,Math.PI),MS.wain);arch.position.set(0,h,0.045);g.add(arch);
+      const bead=new THREE.Mesh(new THREE.TorusGeometry(r+0.125,0.02,8,32,Math.PI),MS.wainPanel);bead.position.set(0,h,0.05);g.add(bead);
+      const key=new THREE.Mesh(new RoundedBoxGeometry(0.16,0.24,0.17,2,.022),MS.gold);key.position.set(0,h+r+0.01,0.05);g.add(key);
+      // moulded sill on corbel brackets
+      const sill=new THREE.Mesh(new RoundedBoxGeometry(w+0.36,0.09,0.2,2,.02),MS.wainPanel);sill.position.set(0,-0.005,0.07);g.add(sill);
+      for(const sx of[-1,1]){const br=new THREE.Mesh(new RoundedBoxGeometry(0.08,0.1,0.12,2,.016),MS.wain);br.position.set(sx*(r-0.04),-0.10,0.055);g.add(br);}
+      // rounded muntins / crossbars
+      const bar=(bw:number,bh:number,bx:number,by:number)=>{const m=new THREE.Mesh(new RoundedBoxGeometry(Math.max(bw,.024),Math.max(bh,.024),0.024,1,.008),MS.dkW);m.position.set(bx,by,0.03);g.add(m);};
+      bar(0.026,h,0,h/2);                          // vertical mullion (lower)
+      bar(w-0.02,0.026,0,h*0.55);                  // transom
+      bar(w*0.7,0.024,0,h*0.24);                   // lower rail
+      for(const a of[Math.PI*0.34,Math.PI*0.66]){const rb=new THREE.Mesh(new RoundedBoxGeometry(0.024,r*0.94,0.024,1,.008),MS.dkW);rb.position.set(Math.cos(a)*r*0.46,h+Math.sin(a)*r*0.46,0.03);rb.rotation.z=a-Math.PI/2;g.add(rb);} // arch bars
+      bar(0.024,r*0.9,0,h+r*0.45);                 // arch centre bar
       scene.add(g);
-      addGlowCard(px,py+h*0.55,pz,1.1,rotY);
+      addGlowCard(px,py+h*0.55,pz,1.0,rotY);
     };
     if(W3){
       // ── T-SHAPE walls: FULL-length hall side walls → widening shoulders → narrow
@@ -692,7 +849,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       //   bookcase block: built-in table + reading lamp + the open book on it).
       //   Here only the rug zones the corner. ═
       const libZc=(libWingZ0+libWingZ1)/2;
-      const lrug=new THREE.Mesh(new THREE.PlaneGeometry(2.4,BOOKSHELF_LEN),MS.rug);lrug.rotation.x=-Math.PI/2;lrug.position.set(-rW/2+1.5,0.012,libZc);lrug.renderOrder=1;scene.add(lrug);
+      const lrug=new THREE.Mesh(new THREE.PlaneGeometry(2.4,BOOKSHELF_LEN),MS.rug);lrug.rotation.x=-Math.PI/2;lrug.position.set(-rW/2+1.5,0.035,libZc);lrug.renderOrder=1;scene.add(lrug); // lifted above the edge-meander motif (owner: motif ran OVER the rug)
       // LIBRARY made L-SHAPED (owner 2026-08-17): a SECOND bookcase arm runs along the
       // shoulder wall, wrapping the front-left corner together with the main left-wall
       // bookcase (built at bsX). Decorative shelves + book spines, facing -Z.
@@ -710,7 +867,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         scene.add(mk(new THREE.BoxGeometry(saLen,0.04,0.32),MS.dkW,saXc,shy,widenZ-0.2));                    // shelf board
         let bx=saXL+0.1,k=sh*7+3;
         while(bx<saXR-0.12){const bwi=0.05+((k*13)%5)*0.016, bhi=0.24+((k*7)%4)*0.03;
-          scene.add(mk(new THREE.BoxGeometry(bwi,bhi,0.2),new THREE.MeshStandardMaterial({color:libPal[k%libPal.length],roughness:.72}),bx+bwi/2,shy+0.04+bhi/2,saZ));
+          scene.add(mk(new RoundedBoxGeometry(bwi,bhi,0.2,1,.012),new THREE.MeshStandardMaterial({color:libPal[k%libPal.length],roughness:.72}),bx+bwi/2,shy+0.04+bhi/2,saZ)); // rounded spines (owner)
           bx+=bwi+0.01;k=(k*1103515245+12345)>>>8;
         }
       }
@@ -723,7 +880,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       //   records, and a listening stool on a rug. ═
       const musZc=(musWingZ0+musWingZ1)/2, gcx=rW/2-1.15, gcz=-rL/2+1.1;
       addCol(gcx,gcz,0.75,0.5,true); // gramophone — solid
-      const mrug=new THREE.Mesh(new THREE.PlaneGeometry(3.0,3.0),MS.rug);mrug.rotation.x=-Math.PI/2;mrug.position.set(rW/2-1.7,0.012,-rL/2+1.7);mrug.renderOrder=1;scene.add(mrug);
+      const mrug=new THREE.Mesh(new THREE.PlaneGeometry(3.0,3.0),MS.rug);mrug.rotation.x=-Math.PI/2;mrug.position.set(rW/2-1.7,0.035,-rL/2+1.7);mrug.renderOrder=1;scene.add(mrug); // lifted above the edge-meander motif
       const brass=new THREE.MeshStandardMaterial({color:"#8F6F4B",roughness:.42,metalness:.55}); // matte bronze horn (owner: no gold)
       const brassD=new THREE.MeshStandardMaterial({color:"#6E5438",roughness:.5,metalness:.5});
       const ebony=new THREE.MeshStandardMaterial({color:"#17110C",roughness:.4,metalness:.1});
@@ -776,26 +933,83 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // back wall flanking the fireplace + one high on each side wall over each corner. ──
       for(const s of[-1,1])addArchWindow(s*(rW/2-1.9),1.5,-rL/2+0.06,0,1.3,1.5);                 // back wall, flanking the fireplace
       addArchWindow(-rW/2+0.06,rH-1.7,libZc,Math.PI/2,1.2,0.9);                                   // high over the library
-      addArchWindow(rW/2-0.06,rH-1.7,musZc,-Math.PI/2,1.2,0.9);                                   // high over the music corner
+      addArchWindow(rW/2-0.06,1.5,musZc,-Math.PI/2,1.3,1.5);                                      // right wall — owner: SAME window as the back-wall pair
     }
     if(W3){
       // T-shape wainscot: FULL hall side walls at ±rW/2, then the stem side walls at
       // ±stemHalfW — never at ±rW/2 in the stem (that's cut away).
-      const railY=rH-0.45; // picture rail — with the wainscot below, frames the portrait band
+      // Owner r5: rail raised to just under the ceiling — the hero painting now
+      // hangs fully ON the wall instead of colliding with the rail/frieze zone
+      // (the old rH-.45 put the rail exactly through the photo's top edge).
+      const railY=rH-0.28;
       for(const s of[-1,1]){
         const hL=widenZ+rL/2, hC=(-rL/2+widenZ)/2;
         if(hL>0.5){scene.add(mk(new THREE.BoxGeometry(.05,1.2,hL-.3),MS.wain,s*(rW/2-.025),.6,hC));scene.add(mk(new THREE.BoxGeometry(.06,.07,hL-.2),MS.gold,s*(rW/2-.03),1.23,hC));scene.add(mk(new THREE.BoxGeometry(.08,.18,hL-.1),MS.dkW,s*(rW/2-.04),.09,hC));
-          scene.add(mk(new THREE.BoxGeometry(.09,.06,hL-.2),MS.dkW,s*(rW/2-.045),railY,hC));scene.add(mk(new THREE.BoxGeometry(.05,.03,hL-.2),MS.gold,s*(rW/2-.03),railY-.045,hC));}
+          scene.add(mk(new THREE.BoxGeometry(.09,.06,hL-.2),MS.dkW,s*(rW/2-.045),railY,hC));scene.add(mk(new THREE.BoxGeometry(.05,.03,hL-.2),MS.gold,s*(rW/2-.03),railY-.045,hC));
+          // Owner 05-09: the full band treatment continues on the SIDE walls —
+          // skirting cap line, rail backer, and fielded panels along the hall.
+          scene.add(mk(new THREE.BoxGeometry(.075,.025,hL-.15),MS.gold,s*(rW/2-.037),.195,hC));     // skirting cap
+          scene.add(mk(new THREE.BoxGeometry(.062,.05,hL-.25),MS.dkW,s*(rW/2-.031),1.185,hC));      // rail backer
+          for(let pz=-rL/2+.75;pz<widenZ-.55;pz+=1.06){
+            scene.add(mk(new THREE.BoxGeometry(.03,.72,.92),MS.wainPanel,s*(rW/2-.055),.665,pz));    // raised field
+            scene.add(mk(new THREE.BoxGeometry(.02,.018,.96),new THREE.MeshBasicMaterial({color:"#F6EEDC"}),s*(rW/2-.068),.293,pz)); // bottom light arris
+          }}
         const sL=rL/2-widenZ, sC=(widenZ+rL/2)/2;
         scene.add(mk(new THREE.BoxGeometry(.05,1.2,sL-.3),MS.wain,s*(stemHalfW-.025),.6,sC));scene.add(mk(new THREE.BoxGeometry(.06,.07,sL-.2),MS.gold,s*(stemHalfW-.03),1.23,sC));scene.add(mk(new THREE.BoxGeometry(.08,.18,sL-.1),MS.dkW,s*(stemHalfW-.04),.09,sC));
         scene.add(mk(new THREE.BoxGeometry(.09,.06,sL-.3),MS.dkW,s*(stemHalfW-.045),railY,sC));scene.add(mk(new THREE.BoxGeometry(.05,.03,sL-.3),MS.gold,s*(stemHalfW-.03),railY-.045,sC));
       }
       scene.add(mk(new THREE.BoxGeometry(rW-.3,.06,.09),MS.dkW,0,railY,-rL/2+.045));scene.add(mk(new THREE.BoxGeometry(rW-.3,.03,.05),MS.gold,0,railY-.045,-rL/2+.03));   // back-wall picture rail
+      // ── BAND-DETAIL PASS (owner: "de banden zijn mooi maar kunnen nog beter
+      // — meer detail/contrast"). The back wall's bands were flat strips: no
+      // skirting, a single wainscot slab, a thin lonely rail. Now: a walnut
+      // base skirting with a bronze cap line, FIELDED wainscot panels with
+      // chiseled shadow/highlight lines flanking the breast, a walnut backer
+      // that makes the bronze chair rail pop, and a defined frieze band under
+      // the picture rail. All thin boxes — mergeStatic batches them.
+      {
+        const bz=-rL/2;
+        // Owner 05-09 r3 — ROOT CAUSE found: the arch-window glass STARTS at
+        // y=1.5, i.e. ABOVE the whole lower band (top 1.27). The band never
+        // needed interrupting; the segmented spans + lowered "sill aprons" were
+        // exactly the visible dip. Everything runs FULL WIDTH again.
+        const wwx=rW/2-1.9;
+        scene.add(mk(new THREE.BoxGeometry(rW-.25,.18,.07),MS.dkW,0,.09,bz+.035));                 // base skirting
+        scene.add(mk(new THREE.BoxGeometry(rW-.25,.025,.075),MS.gold,0,.195,bz+.0375));            // skirting cap line
+        scene.add(mk(new THREE.BoxGeometry(rW-.25,1.2,.05),MS.wain,0,.6,bz+.025));                 // wainscot — uninterrupted
+        scene.add(mk(new THREE.BoxGeometry(rW-.2,.07,.06),MS.gold,0,1.23,bz+.03));                 // chair rail
+        scene.add(mk(new THREE.BoxGeometry(rW-.2,.05,.062),MS.dkW,0,1.185,bz+.031));               // walnut backer under the rail
+        // fielded panels flanking the 2.0-wide chimney breast — raised lighter
+        // field + dark shadow gap on top/inner edge + light arris on the bottom;
+        // panels near a window opening are skipped.
+        for(const s of[-1,1]){
+          let px=1.25+.46;                                                                          // first panel centre, outward from the breast
+          while(px+.5<rW/2-.3){
+            const x=s*px;                                                                           // (no window skip — the band tops out below the window glass at 1.5)
+            scene.add(mk(new THREE.BoxGeometry(.92,.72,.03),MS.wainPanel,x,.665,bz+.056));          // raised field (prouder)
+            scene.add(mk(new THREE.BoxGeometry(.96,.02,.02),new THREE.MeshBasicMaterial({color:"#463828"}),x,1.045,bz+.068));   // top shadow line
+            scene.add(mk(new THREE.BoxGeometry(.02,.76,.02),new THREE.MeshBasicMaterial({color:"#463828"}),x-s*.475,.665,bz+.068)); // inner stile shadow
+            scene.add(mk(new THREE.BoxGeometry(.02,.76,.02),new THREE.MeshBasicMaterial({color:"#463828"}),x+s*.475,.665,bz+.068)); // outer stile shadow
+            scene.add(mk(new THREE.BoxGeometry(.96,.018,.02),new THREE.MeshBasicMaterial({color:"#F6EEDC"}),x,.293,bz+.068));   // bottom light arris
+            px+=1.06;
+          }
+        }
+        // frieze band: the zone between picture rail and cornice becomes a
+        // defined warm band with walnut edge lines instead of ambient gradient
+        const fzH=rH-.13-(railY+.035); // thin frieze ribbon between the raised rail and the ceiling line
+        if(fzH>.05){
+          scene.add(mk(new THREE.BoxGeometry(rW-.3,fzH,.035),MS.breast,0,railY+.035+fzH/2,bz+.018));
+          scene.add(mk(new THREE.BoxGeometry(rW-.3,.03,.04),MS.dkW,0,rH-.13,bz+.02));              // frieze top line
+        }
+      }
     }else{
       for(let s=-1;s<=1;s+=2){
         scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
     }
-    scene.add(mk(new THREE.BoxGeometry(rW-.3,1.2,.05),MS.wain,0,.6,-rL/2+.025));scene.add(mk(new THREE.BoxGeometry(rW-.2,.07,.06),MS.gold,0,1.23,-rL/2+.03));
+    // W3: the full-width back wainscot + chair rail ran STRAIGHT THROUGH the
+    // arched window openings (owner: "overlap tussen ramen en muurlijsten") —
+    // the W3 band pass below rebuilds them as segmented spans that skip the
+    // windows. Legacy keeps the original single strip.
+    if(!W3){scene.add(mk(new THREE.BoxGeometry(rW-.3,1.2,.05),MS.wain,0,.6,-rL/2+.025));scene.add(mk(new THREE.BoxGeometry(rW-.2,.07,.06),MS.gold,0,1.23,-rL/2+.03));}
     // ── W3 "The Deepening Cabinet": a grown room is ONE undivided volume — the
     // added depth becomes hanging WALL for the salon-hang display, NOT a
     // colonnade or a furniture journey (owner 2026-08-17: "it feels like a ZAAL,
@@ -996,7 +1210,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // Center medallion: compass rose (8 triangular segments)
       const medallionR=0.6;
       const compassColors=[
-        new THREE.MeshStandardMaterial({color:"#1A1A18",roughness:0.5}),
+        new THREE.MeshStandardMaterial({color:"#96805F",roughness:0.55}), // was near-black — lightened with the floor
         new THREE.MeshStandardMaterial({color:"#F5F0E8",roughness:0.5}),
         new THREE.MeshStandardMaterial({color:"#C17040",roughness:0.5})
       ];
@@ -1034,10 +1248,14 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         }
       }
 
-      // Diamond grid of alternating black/white tiles (InstancedMesh)
+      // Diamond grid of alternating tiles (InstancedMesh). Owner 05-09: the
+      // near-black #1A1A18 made the whole floor read far too dark — now a warm
+      // mid-brown vs cream, same motif, much lighter overall.
+      // Owner r2: tiles need CONTRAST against the washed-white floor — light
+      // tile down to warm cream, dark tile a step deeper greige.
       const tileSize=0.3, tileMats=[
-        new THREE.MeshStandardMaterial({color:"#1A1A18",roughness:0.5}),
-        new THREE.MeshStandardMaterial({color:"#F5F0E8",roughness:0.5})
+        new THREE.MeshStandardMaterial({color:"#655A48",roughness:0.62}), // owner: darker for real contrast
+        new THREE.MeshStandardMaterial({color:"#E3D9C5",roughness:0.55})
       ];
       const tileGeo=new THREE.PlaneGeometry(tileSize*0.65,tileSize*0.65);
       for(let tmi=0;tmi<2;tmi++){
@@ -1173,7 +1391,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       scene.add(mk(new THREE.SphereGeometry(0.012,4,4),new THREE.MeshBasicMaterial({color:"#FFAA44"}),lampX+0.09,lampY+0.02,lampZ2));
       // point light — W2 (WS6-9): deleted; the emissive glow sphere + a glow card carry it
       if(!W2&&!isMobileGPU()){const oilLight=new THREE.PointLight("#FF9930",0.3,3);oilLight.position.set(lampX+0.09,lampY+0.05,lampZ2);scene.add(oilLight);}
-      if(W2)addGlowCard(lampX+0.09,lampY+0.06,lampZ2+0.06,0.35);
+      // HERO PANEL #2: the 0.35 glow card hovered over the bare tabletop as a
+      // grey smudge dead-centre foreground — halve it, dim it, keep the warmth.
+      if(W2){const lg=new THREE.Mesh(new THREE.PlaneGeometry(.17,.17),Object.assign(getGlowCardMat().clone(),{opacity:.22}));lg.position.set(lampX+0.09,lampY+0.05,lampZ2+0.06);lg.renderOrder=1;scene.add(lg);}
 
       // ─── ROMAN CEILING BEAMS ───
       const beamCount=7;
@@ -1199,25 +1419,94 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     {
     addCol(fpX,fpZ,1.4,0.55,true); // WS6-8: fireplace + hearth slab (solid — you can't walk through it)
     if(W3){
-      // ── carved marble chimneypiece: jamb pilasters, friezed breast with corbels,
-      // a layered bullnose mantel shelf, a two-tier stone hearth + brass andirons ──
+      // ── THE INITIAL carved-marble chimneypiece, RESTORED (owner: "herstart
+      // met de initiële mantel" — both photoscan replacements rejected). Same
+      // geometry as the original prod build; the upgrade is SUBTLE material
+      // texture (dedicated fine-repeat marble maps via MS.fpMarble), quiet
+      // joint shadows, two arris highlights, the sooted firebox void and the
+      // improved sprite fire. No GLB, no merge tricks — plain eager build.
       const fbW=1.7,fbH=1.16;
-      scene.add(mk(new THREE.BoxGeometry(fbW,fbH,.08),new THREE.MeshStandardMaterial({color:"#150F0C",roughness:.93}),fpX,.62,fpZ+.03));  // dark firebox back
-      scene.add(mk(new THREE.BoxGeometry(fbW+.5,fbH+.12,.34),MS.brickD,fpX,.62,fpZ-.06));                                                  // firebrick mass
+      const fpM=MS.fpMarble;
+      // Owner r5: "strakke rechte hoeken lijken lui" — every visible stone/
+      // bronze element gets ROUNDED edges (RoundedBoxGeometry) so corners
+      // catch a soft highlight instead of a razor line.
+      const rbox=(w:number,h:number,d:number,r=.018)=>new RoundedBoxGeometry(w,h,d,2,Math.min(r,w/2.2,h/2.2,d/2.2));
+      scene.add(mk(new THREE.BoxGeometry(fbW,fbH,.08),new THREE.MeshStandardMaterial({color:"#171008",roughness:.96}),fpX,.62,fpZ+.03));  // sooted firebox back
+      scene.add(mk(rbox(fbW+.5,fbH+.12,.34),MS.firebrick,fpX,.62,fpZ-.06));                                                                // firebrick mass (worn-plaster maps)
       for(const s of[-1,1]){
-        scene.add(mk(new THREE.BoxGeometry(.26,fbH+.08,.44),MS.marble,fpX+s*(fbW/2+.16),.6,fpZ+.06));                                      // jamb pilaster
-        scene.add(mk(new THREE.BoxGeometry(.3,.1,.48),MS.gold,fpX+s*(fbW/2+.16),1.17,fpZ+.06));                                            // pilaster cap
-        scene.add(mk(new THREE.BoxGeometry(.3,.1,.48),MS.marble,fpX+s*(fbW/2+.16),.1,fpZ+.06));                                            // base
+        scene.add(mk(rbox(.26,fbH+.08,.44,.025),fpM,fpX+s*(fbW/2+.16),.6,fpZ+.06));                                                        // jamb pilaster
+        scene.add(mk(rbox(.3,.1,.48,.02),MS.gold,fpX+s*(fbW/2+.16),1.17,fpZ+.06));                                                         // pilaster cap
+        scene.add(mk(rbox(.3,.1,.48,.02),fpM,fpX+s*(fbW/2+.16),.1,fpZ+.06));                                                               // base
       }
-      scene.add(mk(new THREE.BoxGeometry(fbW+.6,.26,.42),MS.marble,fpX,1.28,fpZ+.06));                                                     // frieze
-      scene.add(mk(new THREE.BoxGeometry(.34,.2,.46),MS.gold,fpX,1.28,fpZ+.08));                                                           // centre tablet
-      for(const s of[-1,1])scene.add(mk(new THREE.BoxGeometry(.14,.16,.52),MS.marble,fpX+s*(fbW/2+.05),1.42,fpZ+.06));                     // corbels
-      scene.add(mk(new THREE.BoxGeometry(fbW+.94,.1,.56),MS.marble,fpX,1.5,fpZ+.08));                                                      // mantel shelf
-      scene.add(mk(new THREE.BoxGeometry(fbW+1.02,.05,.62),MS.marble,fpX,1.56,fpZ+.09));                                                   // bullnose
-      scene.add(mk(new THREE.BoxGeometry(fbW+.9,.03,.6),MS.gold,fpX,1.6,fpZ+.09));                                                         // gilt lip
-      scene.add(mk(new THREE.BoxGeometry(fbW+1.1,.1,.72),MS.marble,fpX,.05,fpZ+.22));                                                      // hearth tier 1
-      scene.add(mk(new THREE.BoxGeometry(fbW+.7,.06,.5),MS.marble,fpX,.13,fpZ+.16));                                                       // hearth tier 2
-      for(const s of[-1,1]){scene.add(mk(new THREE.CylinderGeometry(.02,.02,.42,8),MS.bronze,fpX+s*.38,.21,fpZ+.14));scene.add(mk(new THREE.SphereGeometry(.045,8,8),MS.gold,fpX+s*.38,.44,fpZ+.14));scene.add(mk(new THREE.BoxGeometry(.03,.03,.34),MS.iron,fpX+s*.38,.06,fpZ+.18));} // andirons
+      scene.add(mk(rbox(fbW+.6,.26,.42,.03),fpM,fpX,1.28,fpZ+.06));                                                                        // frieze
+      scene.add(mk(rbox(.34,.2,.46,.025),MS.gold,fpX,1.28,fpZ+.08));                                                                       // centre tablet
+      for(const s of[-1,1])scene.add(mk(rbox(.14,.16,.52,.02),fpM,fpX+s*(fbW/2+.05),1.42,fpZ+.06));                                        // corbels
+      scene.add(mk(rbox(fbW+.94,.1,.56,.028),fpM,fpX,1.5,fpZ+.08));                                                                        // mantel shelf
+      scene.add(mk(rbox(fbW+1.02,.05,.62,.022),fpM,fpX,1.56,fpZ+.09));                                                                     // bullnose (rounded = real bullnose now)
+      scene.add(mk(rbox(fbW+.9,.03,.6,.012),MS.gold,fpX,1.6,fpZ+.09));                                                                     // gilt lip
+      scene.add(mk(rbox(fbW+1.1,.1,.72,.028),fpM,fpX,.05,fpZ+.22));                                                                        // hearth tier 1
+      scene.add(mk(rbox(fbW+.7,.06,.5,.02),fpM,fpX,.13,fpZ+.16));                                                                          // hearth tier 2
+      for(const s of[-1,1]){scene.add(mk(new THREE.CylinderGeometry(.02,.02,.42,8),MS.bronze,fpX+s*.38,.21,fpZ+.14));scene.add(mk(new THREE.SphereGeometry(.045,8,8),MS.gold,fpX+s*.38,.44,fpZ+.14));scene.add(mk(new THREE.BoxGeometry(.03,.03,.34),MS.iron,fpX+s*.38,.06,fpZ+.18));} // andirons (initial: gold finials)
+      // Detail/accent layer (owner r3: "meer detail/accenten"): joint shadows
+      // seat the slabs, shallow FLUTES groove the jamb pilasters, fine reveal
+      // lines crown the frieze, and corbel undersides get a shadow kiss — all
+      // reads as carved sandstone, never as applied trim.
+      {
+        const shadowMat=new THREE.MeshBasicMaterial({color:"#201A12",transparent:true,opacity:.36,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
+        const joint=(w:number,h:number,x:number,y:number,z:number)=>{const j=new THREE.Mesh(new THREE.PlaneGeometry(w,h),shadowMat);j.position.set(x,y,z);j.renderOrder=1;scene.add(j);};
+        joint(fbW+.88,.022,fpX,1.443,fpZ+.272);joint(fbW+.56,.018,fpX,1.148,fpZ+.272);
+        for(const s of[-1,1])joint(.014,fbH-.06,fpX+s*(fbW/2+.02),.6,fpZ+.283);
+        // jamb flutes: 3 shallow vertical grooves per pilaster (soft shadow strips)
+        const fluteMat=new THREE.MeshBasicMaterial({color:"#8A7E66",transparent:true,opacity:.26,depthWrite:false});
+        for(const s of[-1,1])for(let fg=-1;fg<=1;fg++){
+          const fl=new THREE.Mesh(new THREE.PlaneGeometry(.013,fbH-.16),fluteMat);
+          fl.position.set(fpX+s*(fbW/2+.16)+fg*.075,.6,fpZ+.285);fl.renderOrder=1;scene.add(fl);
+        }
+        // frieze reveals: a fine shadow line above + below the frieze band
+        joint(fbW+.58,.014,fpX,1.405,fpZ+.272);
+        joint(fbW+.58,.012,fpX,1.155,fpZ+.278);
+        // corbel underside shadow kisses
+        for(const s of[-1,1])joint(.15,.016,fpX+s*(fbW/2+.05),1.335,fpZ+.30);
+        // (arris laths removed — the rounded edges carry the highlight now)
+        // Accent wash — NEUTRAL-COOL (the warm ivory wash was gilding the stone
+        // gold; a cool daylight kiss keeps the sandstone beige/white).
+        const washMat=getGlowCardMat().clone();washMat.opacity=.10;washMat.color=new THREE.Color("#DCE6EE");
+        const wash=new THREE.Mesh(new THREE.PlaneGeometry(2.7,1.8),washMat);
+        wash.position.set(fpX,.95,fpZ+.44);wash.renderOrder=1;scene.add(wash);
+      }
+      // Sooted void behind the fire (panel #1) + dim low ember spill (panel #3)
+      {
+        const sootIn=new THREE.MeshStandardMaterial({color:"#1C120A",roughness:.95});
+        sootIn.envMapIntensity=.1;
+        const sb=mk(new THREE.BoxGeometry(1.36,1.26,.04),sootIn,fpX,.65,fpZ+.05);sb.castShadow=false;scene.add(sb);
+        const sf=mk(new THREE.BoxGeometry(1.32,.026,.42),sootIn,fpX,.014,fpZ+.26);sf.castShadow=false;scene.add(sf);
+        const fireGlowMat=getGlowCardMat().clone();fireGlowMat.opacity=.20;
+        const fg=new THREE.Mesh(new THREE.PlaneGeometry(1.3,.9),fireGlowMat);
+        fg.position.set(fpX,.55,fpZ+.30);fg.renderOrder=1;scene.add(fg);
+      }
+      // Warm firelight pool on the floor (panel #8)
+      {
+        const poolMat=getGlowCardMat().clone();poolMat.opacity=.12;poolMat.color=new THREE.Color("#FF9A4D");
+        const pool=new THREE.Mesh(new THREE.PlaneGeometry(2.2,1.3),poolMat);
+        pool.rotation.x=-Math.PI/2;pool.position.set(fpX,.02,fpZ+1.15);pool.renderOrder=1;scene.add(pool);
+      }
+      // Baked contact shadows (panel #7)
+      {
+        const cc=document.createElement("canvas");cc.width=64;cc.height=64;
+        const cg=cc.getContext("2d")!;const cgr=cg.createRadialGradient(32,32,4,32,32,32);
+        cgr.addColorStop(0,"rgba(0,0,0,0.55)");cgr.addColorStop(.7,"rgba(0,0,0,0.2)");cgr.addColorStop(1,"rgba(0,0,0,0)");
+        cg.fillStyle=cgr;cg.fillRect(0,0,64,64);
+        const cTex=new THREE.CanvasTexture(cc);
+        const cShadow=(w:number,d:number,x:number,y:number,z:number,flat=true)=>{
+          const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),new THREE.MeshBasicMaterial({map:cTex,transparent:true,opacity:.35,depthWrite:false}));
+          if(flat)m.rotation.x=-Math.PI/2;
+          m.position.set(x,y,z);m.renderOrder=1;scene.add(m);return m;
+        };
+        cShadow(2.7,.9,fpX,.017,fpZ+.45);                 // under the chimneypiece/hearth
+        cShadow(1.55,.85,0,.008,fpZ+3.6);                 // under the coffee table (ctZ = sofaZ-1.7 = fpZ+3.6 under W3; sofaZ declared later)
+        const ws=cShadow(2.1,.3,fpX,2.06,fpZ+.075,false); // wall drop-shadow under the hero frame
+        (ws.material as THREE.MeshBasicMaterial).opacity=.22;
+      }
     }else{
     scene.add(mk(new THREE.BoxGeometry(2.8,.12,.5),MS.marble,fpX,1.3,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2.6,.08,.4),MS.gold,fpX,1.24,fpZ+.02));
@@ -1229,13 +1518,116 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     }
     // W2 (WS6-9): the fire point is one of the ≤4 budget lights — mobile
     // finally gets the flicker too (it lost every other decorative light).
-    const fireL=new THREE.PointLight("#FF8030",(W2||!isMobileGPU())?.6:0,5);fireL.position.set(fpX,.5,fpZ+.2);if(W2||!isMobileGPU())scene.add(fireL);
+    // 1.4: distance 5→6 so the fire's real light grazes the shelf underside (~1.5) on desktop.
+    const fireL=new THREE.PointLight("#FF8030",(W2||!isMobileGPU())?.6:0,6);fireL.position.set(fpX,.5,fpZ+.2);if(W2||!isMobileGPU())scene.add(fireL);
     animTex.push({type:"fire",light:fireL});
+    // ── App-built open fire (logs + painted flame sprites + embers). W3 uses
+    // the scanned asset's OWN burning logs/flames — this builds only for the
+    // legacy room and the W3 GLB-failure fallback (eager building would feed
+    // the static meshes into mergeStatic where they can't be hidden).
+    const buildOpenFire=()=>{
     for(let l=0;l<3;l++){const log=mk(new THREE.CylinderGeometry(.06,.07,.5+Math.random()*.3,6),MS.dkW,fpX-.25+l*.25,.12,fpZ+.1);log.rotation.z=Math.PI/2+Math.random()*.2;scene.add(log);}
-    for(let f=0;f<5;f++){const fl2=new THREE.Mesh(new THREE.ConeGeometry(.06+Math.random()*.04,.2+Math.random()*.15,4),f%2?MS.fire:MS.fireG);fl2.position.set(fpX-.2+f*.1,.2+Math.random()*.1,fpZ+.1);animTex.push({type:"flame",mesh:fl2,baseY:.2+Math.random()*.1,phase:Math.random()*6});scene.add(fl2);}
+    // Painted flame sprites — additive canvas licks (yellow core → orange →
+    // transparent) in three depth layers, each with its OWN material so the
+    // existing animTex flicker (y/scale/opacity) desynchronises per flame.
+    {
+      // Fire realism upgrade (owner 05-09): a 4-FRAME flame ATLAS — four
+      // differently-swaying licks drawn side by side; every flame clone steps
+      // through the frames (~12fps, animTex "fireAnim") so the fire genuinely
+      // MOVES and changes shape instead of wobbling one static sprite.
+      const fc=document.createElement("canvas");fc.width=256;fc.height=128;
+      const fg2=fc.getContext("2d")!;
+      const drawLick=(ox:number,sw:number)=>{
+        const grad=fg2.createRadialGradient(ox+32,104,3,ox+32,88,84);
+        grad.addColorStop(0,"rgba(255,250,215,0.98)");grad.addColorStop(.22,"rgba(255,205,95,0.9)");grad.addColorStop(.5,"rgba(255,130,32,0.55)");grad.addColorStop(1,"rgba(255,60,8,0)");
+        fg2.fillStyle=grad;
+        fg2.beginPath();fg2.moveTo(ox+32,6);
+        fg2.quadraticCurveTo(ox+52+sw*18,54,ox+45+sw*10,96);
+        fg2.quadraticCurveTo(ox+38+sw*6,120,ox+32,124);
+        fg2.quadraticCurveTo(ox+20+sw*4,118,ox+21+sw*8,92);
+        fg2.quadraticCurveTo(ox+12+sw*14,52,ox+32,6);fg2.fill();
+      };
+      [-1,-.3,.4,1].forEach((sw,i)=>drawLick(i*64,sw));
+      const flameAtlas=new THREE.CanvasTexture(fc);flameAtlas.colorSpace=THREE.SRGBColorSpace;
+      const FL:[number,number,number,number,number][]=[
+        [-.30,.16,.40,0.0,.09],[-.17,.19,.48,1.3,.135],[-.05,.15,.36,2.1,.09],
+        [ .06,.22,.56,3.4,.135],[ .18,.17,.42,4.2,.18],[ .29,.14,.32,5.1,.09],
+        [ .00,.25,.64,2.8,.18]];
+      const spawnFlame=(fx:number,fw:number,fh:number,ph:number,dz:number,core=false)=>{
+        const t2=flameAtlas.clone();t2.repeat.set(.25,1);t2.needsUpdate=true;
+        const fMat=new THREE.MeshBasicMaterial({map:t2,transparent:true,opacity:core?.9:.72,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+        const fl2=new THREE.Mesh(new THREE.PlaneGeometry(fw,fh),fMat);
+        fl2.position.set(fpX+fx,.15+fh/2,fpZ+.07+dz);
+        fl2.rotation.y=fx*.8;
+        animTex.push({type:"fireAnim",mesh:fl2,tex:t2,baseY:.15+fh/2,phase:ph});
+        scene.add(fl2);
+      };
+      for(const [fx,fw,fh,ph,dz] of FL)spawnFlame(fx,fw,fh,ph,dz);
+      // two hot white-core licks in front — the heart of the fire
+      spawnFlame(-.07,.11,.3,1.2,.10,true);spawnFlame(.09,.09,.26,3.7,.11,true);
+      // glowing ember-bed strip — hot at the base, low behind the logs
+      const emMat=new THREE.MeshBasicMaterial({color:"#FF8A30",transparent:true,opacity:.3,blending:THREE.AdditiveBlending,depthWrite:false});
+      const em=new THREE.Mesh(new THREE.PlaneGeometry(.9,.2),emMat);
+      em.rotation.x=-Math.PI/2;em.position.set(fpX,.04,fpZ+.13);scene.add(em);
+      animTex.push({type:"flame",mesh:em,baseY:.04,phase:2.2});
+      // charred crossed log (panel #5) — near-black bark tips
+      const charM=new THREE.MeshStandardMaterial({color:"#1A1310",roughness:.95});
+      const clog=mk(new THREE.CylinderGeometry(.05,.06,.6,7),charM,fpX+.06,.2,fpZ+.15);
+      clog.rotation.z=Math.PI/2-.4;clog.rotation.y=.5;scene.add(clog);
+    }
+    }; // end buildOpenFire
+    buildOpenFire(); // the improved sprite fire burns in BOTH the W3 and legacy chimneypieces
     if(W3){
-      scene.add(mk(new THREE.BoxGeometry(2.0,rH-1.62,.12),MS.wall,fpX,1.62+(rH-1.62)/2,fpZ+.03));       // chimney breast above the mantel
-      scene.add(mk(new THREE.BoxGeometry(2.24,.06,.16),MS.gold,fpX,rH-.12,fpZ+.05));                     // ceiling cornice
+      // 1.2: dedicated intonaco breast (was the plain room wall — a dead-flat fill
+      // the photo floated on). Same geometry/position; hero clearances untouched.
+      // Owner 05-09: the hero photo (≈2.15 incl frame) was WIDER than the 2.0
+      // breast it hung on — the breast now comfortably exceeds the frame and
+      // matches the mantel width below (architecturally one chimney mass).
+      scene.add(mk(new THREE.BoxGeometry(2.64,rH-1.62,.12),MS.breast,fpX,1.62+(rH-1.62)/2,fpZ+.03));     // chimney breast above the mantel
+      scene.add(mk(new THREE.BoxGeometry(2.84,.06,.16),MS.gold,fpX,rH-.12,fpZ+.05));                     // ceiling cornice — follows the widened breast
+      // ── LUCERNARIO / VELARIO (owner experiment: "lichtdoorlatend plafond" —
+      // the diffused palazzo skylight, cf. Florentine sala velari): a recessed
+      // glazed lantern over the salon pouring soft ivory daylight onto the
+      // hero zone. Emissive panel + baked shaft/pool + a hemi lift — ZERO
+      // extra dynamic lights. Viewer kill-switch: ?lucernario=0.
+      if((typeof window==="undefined")||new URLSearchParams(window.location.search).get("lucernario")!=="0"){
+        // Owner 05-09 r2: "geen combinatie van verschillende plafondbakken maar
+        // ÉÉN grote" — a single grand VELARIO spanning the salon: one recessed
+        // glazed field with a mullion grid, like the Uffizi sala ceilings.
+        // Owner 05-09: 30cm ceiling left/right INCLUDING the rim overhang, and
+        // running the full length up to the back (mantel) wall.
+        const lw=rW-0.88; // rim sticks out .14 → outer edge at rW/2-0.30
+        const lzA=-rL/2+.35, lzB=rL/2-1.7, ld=Math.max(2.4,lzB-lzA), lz=(lzA+lzB)/2;
+        for(const [bw,bd,bx,bzz] of [[lw+.28,.14,0,-ld/2-.07],[lw+.28,.14,0,ld/2+.07],[.14,ld,-lw/2-.07,0],[.14,ld,lw/2+.07,0]] as [number,number,number,number][])
+          scene.add(mk(new THREE.BoxGeometry(bw,.12,bd),MS.trim,bx,rH-.05,lz+bzz));                       // recess rim
+        const vc=document.createElement("canvas");vc.width=64;vc.height=64;
+        const vg=vc.getContext("2d")!;
+        const vgr=vg.createRadialGradient(32,32,6,32,32,42);
+        vgr.addColorStop(0,"#FFFBEE");vgr.addColorStop(.75,"#F7EFDC");vgr.addColorStop(1,"#EADFC6");
+        vg.fillStyle=vgr;vg.fillRect(0,0,64,64);
+        const vTex=new THREE.CanvasTexture(vc);vTex.colorSpace=THREE.SRGBColorSpace;
+        // Owner r3: "witte waas, sterk reduceren" — panel dimmed a step, the huge
+        // additive light-SHAFT plane is DELETED (it veiled everything seen
+        // through it, especially in large rooms), pool halved, ambient lift cut.
+        const panel=new THREE.Mesh(new THREE.PlaneGeometry(lw,ld),new THREE.MeshBasicMaterial({map:vTex,color:new THREE.Color("#E9E2D2")}));
+        panel.rotation.x=Math.PI/2;panel.position.set(0,rH-.02,lz);scene.add(panel);                      // one luminous field
+        // Owner 05-09: real DRAAGBALKEN integrated into the light coffer — a
+        // walnut spine + cross beams (rounded edges) carrying the glazed field,
+        // with slim roede bars between them.
+        {
+          // owner: "teveel tussenbalken" + "minder rechthoekig, meer rond" —
+          // beams only, generously spaced (~2.4m), with a near-pill profile.
+          const spine=mk(new RoundedBoxGeometry(.12,.1,ld,3,.048),MS.dkW,0,rH-.07,lz);scene.add(spine);
+          const nBars=Math.max(2,Math.round(ld/2.4));
+          for(let b=0;b<=nBars;b++){
+            const bzp=lz-ld/2+(b*(ld/nBars));
+            scene.add(mk(new RoundedBoxGeometry(lw,.1,.13,3,.048),MS.dkW,0,rH-.07,bzp));           // rounded cross beam
+          }
+        }
+        const dayPool=new THREE.Mesh(new THREE.PlaneGeometry(lw+.4,ld+.2),Object.assign(getGlowCardMat().clone(),{opacity:.04}));
+        dayPool.rotation.x=-Math.PI/2;dayPool.position.set(0,.018,lz);dayPool.renderOrder=1;scene.add(dayPool);
+        hemi.intensity*=1.08;                                                                             // modest ambient contribution
+      }
     }else{
       scene.add(mk(new THREE.BoxGeometry(2.4,rH-1.3,.08),MS.wall,fpX,1.3+(rH-1.3)/2,fpZ-.02));
       scene.add(mk(new THREE.BoxGeometry(.2,.3,.12),MS.bronze,fpX,1.45,fpZ+.15));
@@ -1256,21 +1648,23 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     const legProfS=[new THREE.Vector2(.045,0),new THREE.Vector2(.052,.03),new THREE.Vector2(.028,.1),new THREE.Vector2(.04,.16),new THREE.Vector2(.02,.21)];
     // turned bun legs
     for(let lx of[-1,1])for(let lz of[-1,1]){const lg=new THREE.Mesh(new THREE.LatheGeometry(legProfS,8),MS.dkW);lg.position.set(lx*1.06,0,sofaZ+lz*.34);lg.castShadow=false;scene.add(lg);}
+    // Owner 05-09: "zetel + zitbanken sterk afronden" — every upholstered box is
+    // now a RoundedBox with generous radii; only turned/rolled parts stay as-is.
     // seat frame + 3 plush leather cushions + a rolled FRONT bolster edge (#13)
-    scene.add(mk(new THREE.BoxGeometry(2.42,.24,.92),MS.leatherD,0,.32,sofaZ));
+    scene.add(mk(new RoundedBoxGeometry(2.42,.24,.92,2,.07),MS.leatherD,0,.32,sofaZ));
     {const fb=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,2.38,12),MS.leatherD);fb.rotation.z=Math.PI/2;fb.position.set(0,.42,sofaZ-.44);scene.add(fb);}
-    for(let c=-1;c<=1;c++){scene.add(mk(new THREE.BoxGeometry(.72,.22,.8),MS.leather,c*.76,.52,sofaZ-.02));scene.add(mk(new THREE.BoxGeometry(.68,.06,.76),MS.leather,c*.76,.63,sofaZ-.02));
+    for(let c=-1;c<=1;c++){scene.add(mk(new RoundedBoxGeometry(.72,.22,.8,2,.07),MS.leather,c*.76,.52,sofaZ-.02));scene.add(mk(new RoundedBoxGeometry(.68,.06,.76,2,.026),MS.leather,c*.76,.63,sofaZ-.02));
       scene.add(mk(new THREE.BoxGeometry(.7,.015,.015),MS.leatherD,c*.76,.635,sofaZ-.41));} // piping seam
     // rolled back + 3 back cushions + tufting
-    scene.add(mk(new THREE.BoxGeometry(2.42,.5,.16),MS.leatherD,0,.74,sofaZ+.4));
+    scene.add(mk(new RoundedBoxGeometry(2.42,.5,.16,2,.06),MS.leatherD,0,.74,sofaZ+.4));
     {const rb=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,2.42,12),MS.leatherD);rb.rotation.z=Math.PI/2;rb.position.set(0,.97,sofaZ+.4);scene.add(rb);}
-    for(let c=-1;c<=1;c++)scene.add(mk(new THREE.BoxGeometry(.72,.46,.14),MS.leather,c*.76,.72,sofaZ+.31));
+    for(let c=-1;c<=1;c++)scene.add(mk(new RoundedBoxGeometry(.72,.46,.14,2,.06),MS.leather,c*.76,.72,sofaZ+.31));
     for(let bx=-3;bx<=3;bx++)scene.add(mk(new THREE.SphereGeometry(.016,6,6),MS.button,bx*.34,.74,sofaZ+.235));
     // rolled arms (arm body + a horizontal roll bolster)
-    for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.2,.52,.88),MS.leatherD,s*1.2,.5,sofaZ));const ra=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.88,12),MS.leatherD);ra.rotation.x=Math.PI/2;ra.position.set(s*1.2,.74,sofaZ);scene.add(ra);}
-    // a throw pillow at each end
-    scene.add(mk(new THREE.BoxGeometry(.34,.3,.14),new THREE.MeshStandardMaterial({color:"#8A5838",roughness:.85}),-0.72,.66,sofaZ+.16));
-    scene.add(mk(new THREE.BoxGeometry(.34,.3,.14),new THREE.MeshStandardMaterial({color:wing?.accent||"#C66B3D",roughness:.9}),.72,.66,sofaZ+.16));
+    for(let s=-1;s<=1;s+=2){scene.add(mk(new RoundedBoxGeometry(.2,.52,.88,2,.08),MS.leatherD,s*1.2,.5,sofaZ));const ra=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.88,12),MS.leatherD);ra.rotation.x=Math.PI/2;ra.position.set(s*1.2,.74,sofaZ);scene.add(ra);}
+    // plump throw pillows at each end
+    scene.add(mk(new RoundedBoxGeometry(.34,.3,.14,2,.06),new THREE.MeshStandardMaterial({color:"#8A5838",roughness:.85}),-0.72,.66,sofaZ+.16));
+    scene.add(mk(new RoundedBoxGeometry(.34,.3,.14,2,.06),new THREE.MeshStandardMaterial({color:wing?.accent||"#C66B3D",roughness:.9}),.72,.66,sofaZ+.16));
     } // end sofa
 
     // ═══════════════════════════════════════════
@@ -1281,9 +1675,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     if(W3){
       for(const s of[-1,1]){
         const bx2=s*1.9, bz2=sofaZ-1.5;
-        for(const lz of[-0.42,0.42])for(const lx of[-0.18,0.18])scene.add(mk(new THREE.BoxGeometry(.06,.34,.06),MS.dkW,bx2+lx,.17,bz2+lz));
-        scene.add(mk(new THREE.BoxGeometry(.52,.07,1.12),MS.dkW,bx2,.37,bz2));
-        scene.add(mk(new THREE.BoxGeometry(.46,.11,1.02),MS.leather,bx2,.46,bz2));
+        for(const lz of[-0.42,0.42])for(const lx of[-0.18,0.18])scene.add(mk(new RoundedBoxGeometry(.06,.34,.06,1,.014),MS.dkW,bx2+lx,.17,bz2+lz));
+        scene.add(mk(new RoundedBoxGeometry(.52,.07,1.12,2,.028),MS.dkW,bx2,.37,bz2));                  // rounded bench top
+        scene.add(mk(new RoundedBoxGeometry(.46,.11,1.02,2,.05),MS.leather,bx2,.46,bz2));               // plump cushion
       }
     }
     if(!W3){
@@ -1314,7 +1708,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     addCol(0,ctZ,0.65,0.4); // WS6-8: coffee table
     scene.add(mk(new THREE.BoxGeometry(1.2,.04,.6),MS.dkW,0,.52,ctZ));
     for(let cx of[-1,1])for(let cz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.03,.03,.5,6),MS.dkW,cx*.5,.25,ctZ+cz*.22));
-    scene.add(mk(new THREE.BoxGeometry(1.1,.02,.5),MS.gold,0,.54,ctZ));
+    // HERO PANEL #2: the bright gold inlay slab was the second-brightest surface
+    // in the hero shot, fighting the photo — now a quiet dark-walnut inlay.
+    scene.add(mk(new THREE.BoxGeometry(1.1,.02,.5),new THREE.MeshStandardMaterial({color:"#5A4230",roughness:.55}),0,.54,ctZ));
     } // end coffee table
 
     // ═══════════════════════════════════════════
@@ -1453,7 +1849,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // displayScale (S/M/L, 2026-08-21) intentionally NOT applied here: the
       // hero's y/width are tuned to the mantel (plaque clears the shelf at
       // 2.72) — lg would sink the plaque back into the mantel. Salon walls only.
-      mountArtwork(om,t,fpX,W3?2.72:2.4,W3?fpZ+.17:fpZ+.09,0,W2?2.0:1.7);
+      mountArtwork(om,t,fpX,W3?2.72:2.4,W3?fpZ+.17:fpZ+.09,0,W2?2.0:1.7); // heroY back at the owner-tuned 2.72 (initial mantel restored, shelf 1.6)
     }else if(bigPaintMem){
       // Frame only shown when there's actual content — refined walnut moulding
       // + muted-bronze slip (owner item 4: corridor frame family, no gold).
@@ -1472,7 +1868,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // zone (hero hangs at y=2.72, canvas fpZ+.17 — plaque/frame clear the
       // mantel shelf at 1.6 and the chimney-breast face at fpZ+.09; the old
       // 2.4/fpZ+.02-.12 buried the frame inside the W3 breast).
-      const phY=W3?2.72:2.4;
+      const phY=W3?2.72:2.4; // owner-tuned initial value (mantel shelf 1.6)
       // Owner item 4: refined walnut moulding + muted-bronze slip (corridor
       // family) — the mat-brons slab still read too gold above the mantel.
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fWalnut,fpX,phY,W3?fpZ+.10:fpZ+.02));
@@ -1636,8 +2032,18 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         // band — above the wainscot dado (~1.3m) and below the picture rail (~rH-0.5),
         // not floating the full wall. Pass a raised floor + capped top so the hang
         // is confined to that band and reads as an intentional picture-rail row.
-        const bandBottom=W3?0.5:0, bandTop=W3?(rH-0.55):(rH-0.2);
-        const lay=computeSalonHang(refs,{width:run.width,height:bandTop-bandBottom,yBase:bandBottom},{seed:(salonSeed^(ri*0x9e3779b9))>>>0,maxPieces:slice.length});
+        // Owner 05-09 r3 — TWO root causes of the tiny/too-high side pieces:
+        // (1) yBase=1.45 shifted the sightline anchor (yBase+EYE_HEIGHT) to ~3m
+        //     → everything hung high; yBase back near the floor puts single-row
+        //     centres at true eye height (~2.1-2.2).
+        // (2) a big minPieceWidth raises the internal "comfortable width" which
+        //     FORCES extra rows inside the capped band → rowBandH collapses →
+        //     PIEPkleine pieces. Instead we cap the COUNT per run (one piece per
+        //     ~2.1m of wall) so a single row of genuinely GRAND pieces hangs.
+        const bandBottom=W3?0.6:0, bandTop=W3?Math.min(rH-0.55,3.4):(rH-0.2);
+        // Owner: side pieces = 0.8× the mantel hero (2.0m) → hard cap 1.6m wide.
+        const runCap=W3?Math.max(2,Math.floor(run.width/1.85)):slice.length;
+        const lay=computeSalonHang(refs,{width:run.width,height:bandTop-bandBottom,yBase:bandBottom},{seed:(salonSeed^(ri*0x9e3779b9))>>>0,maxPieces:Math.min(slice.length,runCap),minPieceWidth:W3?1.1:undefined,maxPieceWidth:W3?1.6:undefined});
         applyDisplayScale(lay,(id)=>byId.get(id)); // per-painting S/M/L before mount
         omittedCount+=lay.omitted.length;
         const mount=mountSalonHang(lay,{
@@ -1754,7 +2160,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         const ci=Math.floor(bRng()*bookPalette.length);
         const baseColor=bookPalette[ci];
         const bookMat=new THREE.MeshStandardMaterial({color:baseColor,roughness:.7+bRng()*.2,metalness:.02});
-        const book=mk(new THREE.BoxGeometry(bw2,bh,bd),bookMat,bsX+.08,sy+.03+bh/2,bz);
+        const book=mk(new RoundedBoxGeometry(bw2,bh,bd,1,.01),bookMat,bsX+.08,sy+.03+bh/2,bz); // rounded spines (owner)
         book.rotation.z=tilt;scene.add(book);
         const bands=bRng()<.6?1:2;
         for(let bn=0;bn<bands;bn++){
@@ -1876,7 +2282,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     // ═══════════════════════════════════════════
     const scrX=rW/2-(W3?0.05:0.2); // W3 (owner): sit near the wall so the screen reads INSET, not proud
     const scrZ=0;
-    const scrY=2.2;
+    const scrY=W3?2.72:2.2; // owner: aligned — same centre line as the mantel hero photo
     const scrPlaneW=2.8, scrPlaneH=1.8;
     if(W3){
       // owner: SINK the screen flush into the wall — a shallow inset, not a proud
@@ -1896,9 +2302,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       scene.add(mk(new THREE.BoxGeometry(0.045,0.02,fw+0.05),MS.gold,scrX-0.03,scrY-fh/2-0.03,scrZ));    // hairline gilt bottom
       // owner: a viewing bench a couple of metres out, facing the screen
       const bvx=scrX-2.1;
-      for(const lz of[-0.55,0.55])for(const lx of[-0.22,0.22])scene.add(mk(new THREE.BoxGeometry(.07,.36,.07),MS.dkW,bvx+lx,.18,scrZ+lz));
-      scene.add(mk(new THREE.BoxGeometry(.6,.08,1.42),MS.dkW,bvx,.4,scrZ));
-      scene.add(mk(new THREE.BoxGeometry(.52,.13,1.3),MS.leather,bvx,.5,scrZ));
+      for(const lz of[-0.55,0.55])for(const lx of[-0.22,0.22])scene.add(mk(new RoundedBoxGeometry(.07,.36,.07,1,.016),MS.dkW,bvx+lx,.18,scrZ+lz));
+      scene.add(mk(new RoundedBoxGeometry(.6,.08,1.42,2,.03),MS.dkW,bvx,.4,scrZ));
+      scene.add(mk(new RoundedBoxGeometry(.52,.13,1.3,2,.055),MS.leather,bvx,.5,scrZ));
       scene.add(mk(new THREE.BoxGeometry(.08,2,3),MS.screen,scrX,scrY,scrZ));
       scene.add(mk(new THREE.BoxGeometry(.04,.15,.15),MS.iron,scrX,1.15,scrZ));
     }
@@ -2236,11 +2642,21 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     {
     const rugZ=(sofaZ+fpZ)/2+.2;
     // z-fight sweep r2: rug bottom sat exactly on the floor inlay — lifted onto it.
+    // HERO PANEL #6 (W3): rug ~40% smaller so the herringbone floor (the most
+    // authentic surface in frame) shows between rug and hearth, and warmed to
+    // terracotta — the old disc read as a featureless brown void.
+    const rugMat=W3?new THREE.MeshStandardMaterial({color:"#6E3B2A",roughness:.9,map:rugTex.map,normalMap:rugTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:rugTex.roughnessMap,aoMap:rugTex.aoMap,aoMapIntensity:.5}):MS.rug;
+    // Owner 05-09: floor glow-pools were drawing OVER the rugs (rug top sat
+    // below the pool planes at y≈.02) — rug lifted just above them so the
+    // depth test clips the pools underneath; light stops at the rug edge.
+    // Owner r2: the mosaic overlays STILL drew through the rug (their z-fight
+    // polygon offsets bias the depth test) — the rug now sits a solid 5cm up,
+    // decisively above every floor overlay.
     if(layout.rugStyle==="persian"){
-    scene.add(mk(new THREE.BoxGeometry(4,.012,3),MS.rug,0,.012,rugZ));
+    scene.add(mk(new THREE.BoxGeometry(W3?2.7:4,.012,W3?2.0:3),rugMat,0,W3?.05:.012,rugZ));
     }else{
-    const rr=Math.min(rW,rL)*0.2;
-    scene.add(mk(new THREE.CylinderGeometry(rr,rr,.012,24),MS.rug,0,.012,rugZ));
+    const rr=Math.min(rW,rL)*(W3?0.13:0.2);
+    scene.add(mk(new THREE.CylinderGeometry(rr,rr,.012,24),rugMat,0,W3?.05:.012,rugZ));
     }
     } // end rug
 
@@ -2663,7 +3079,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
     lookT.current={yaw:0,pitch:0};lookA.current={yaw:0,pitch:0};
 
     // ── DUST PARTICLES ──
-    const dust=createDustParticles({count:100,bounds:{x:rW/2-.5,y:rH/2,z:rL/2-.5},center:new THREE.Vector3(0,rH/2,0),opacity:0.25,size:0.025});
+    // HERO PANEL #11 (W3): motes read as dead pixels on the upper walls at
+    // thumbnail scale — fewer, fainter, kept below mantel height near the fire.
+    const dust=createDustParticles(W3?{count:40,bounds:{x:rW/2-.5,y:.9,z:rL/2-.5},center:new THREE.Vector3(0,1.1,0),opacity:0.12,size:0.02}:{count:100,bounds:{x:rW/2-.5,y:rH/2,z:rL/2-.5},center:new THREE.Vector3(0,rH/2,0),opacity:0.25,size:0.025});
     scene.add(dust.points);
 
     // ── Optimize: deduplicate materials to reduce GPU state changes ──
@@ -2908,7 +3326,7 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       // Debug review angles (viewer-only) — override the walk pose.
       if(_rcam){
         if(_rcam==="door"){camera.position.set(0,2.0,rWRef.l/2-6);camera.lookAt(0,1.9,rWRef.l/2);}
-        else if(_rcam==="hearth"){camera.position.set(0,2.0,-rWRef.l/2+7);camera.lookAt(0,1.6,-rWRef.l/2);}
+        else if(_rcam==="hearth"){camera.position.set(0,1.95,-rWRef.l/2+6.6);camera.lookAt(0,2.05,-rWRef.l/2);} // hero recrop (panel #10): photo on the upper-third power point, less dead ceiling
         else if(_rcam==="bookcase"||_rcam==="wing"){camera.position.set(-rWRef.w/2-1.6,2.2,-rWRef.l/2+4.4);camera.lookAt(-rWRef.w/2-3.5,1.4,-rWRef.l/2+1.5);}
         else if(_rcam==="music"){camera.position.set(rWRef.w/2-2.9,1.55,-rWRef.l/2+3.3);camera.lookAt(rWRef.w/2-1.15,1.35,-rWRef.l/2+1.1);}  // → gramophone corner (back-right)
         else if(_rcam==="plan"){camera.position.set(0,rH-0.35,rWRef.l/2-0.6);camera.lookAt(0,0,-rWRef.l/4);} // high at the entry, looking down the room — reads the T footprint
@@ -2957,6 +3375,9 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         if(a.type==="fire"){a.light.intensity=.5+Math.sin(t*5)*.15+Math.sin(t*7.3)*.1;}
         if(a.type==="doorGlow"){a.mesh.material.opacity=.03+Math.sin(t*2)*.02;}
         if(a.type==="flame"){a.mesh.position.y=a.baseY+Math.sin(t*4+a.phase)*.06;a.mesh.scale.y=.8+Math.sin(t*6+a.phase)*.3;a.mesh.material.opacity=.5+Math.sin(t*5+a.phase)*.2;}
+        // "fireAnim": atlas-frame flames — step through the 4 licks (~12fps,
+        // phase-offset per flame) + soft rise/scale/opacity flicker.
+        else if(a.type==="fireAnim"){const fr=Math.floor(t*12+a.phase*3)%4;a.tex.offset.x=fr*.25;a.mesh.position.y=a.baseY+Math.sin(t*4.3+a.phase)*.045;a.mesh.scale.y=.85+Math.sin(t*6.1+a.phase)*.22;a.mesh.material.opacity=.58+Math.sin(t*5.2+a.phase)*.18;}
         if(a.type==="orb"){a.mesh.position.y=a.baseY+Math.sin(t*1.5+a.phase)*.1;a.inner.position.y=a.mesh.position.y;a.light.position.y=a.mesh.position.y;a.mesh.material.emissiveIntensity=.3+Math.sin(t*2+a.phase)*.15;}
         if(a.type==="disc"){a.mesh.rotation.y=t*.5;a.label.rotation.y=t*.5;
           // Onboarding (item 4): cap the falloff at the soft walk volume (0.35).
