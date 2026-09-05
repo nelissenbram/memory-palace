@@ -2555,7 +2555,8 @@
     "restoreErrorBody": "La restauración falló, inténtalo de nuevo.",
     "restoreTierFree": "Gratis",
     "restoreTierKeeper": "Keeper",
-    "restoreTierGuardian": "Guardian"
+    "restoreTierGuardian": "Guardian",
+    "aiBadge": "Editado con IA"
   },
   "legacyPanel": {
     "title": "Tu legado",
@@ -4927,7 +4928,8 @@
     "q4": "¿Qué fue difícil en aquella época y cómo lo superaste?",
     "q5": "Mirando atrás a {chapter}, ¿qué te gustaría que tu familia supiera o recordara?",
     "selectAllRoom": "Seleccionar todo en esta sala",
-    "treeNoMedia": "Aún no hay recuerdos en esta sala"
+    "treeNoMedia": "Aún no hay recuerdos en esta sala",
+    "aiBadge": "Generado con IA"
   },
   "navigation": {
     "nav_label": "Navegación principal",

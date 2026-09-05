@@ -2557,7 +2557,8 @@
     "restoreErrorBody": "Herstel mislukt, probeer het opnieuw.",
     "restoreTierFree": "Gratis",
     "restoreTierKeeper": "Keeper",
-    "restoreTierGuardian": "Guardian"
+    "restoreTierGuardian": "Guardian",
+    "aiBadge": "AI-bewerkt"
   },
   "legacyPanel": {
     "title": "Jouw nalatenschap",
@@ -4929,7 +4930,8 @@
     "q4": "Wat was moeilijk in die tijd, en hoe ben je erdoorheen gekomen?",
     "q5": "Als je terugkijkt op {chapter}, wat zou je willen dat je familie weet of onthoudt?",
     "selectAllRoom": "Alles in deze kamer selecteren",
-    "treeNoMedia": "Nog geen herinneringen in deze kamer"
+    "treeNoMedia": "Nog geen herinneringen in deze kamer",
+    "aiBadge": "AI-gegenereerd"
   },
   "navigation": {
     "nav_label": "Hoofdnavigatie",

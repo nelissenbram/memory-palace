@@ -119,6 +119,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
         ...(m.display_scale ? { displayScale: m.display_scale } : {}),
         ...(m.sort_order != null ? { sortOrder: m.sort_order } : {}),
+        ...(m.source ? { source: m.source } : {}),
       }));
       set((s) => ({ userMems: { ...s.userMems, [roomId]: mapped } }));
 
@@ -168,6 +169,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
         ...(m.display_scale ? { displayScale: m.display_scale } : {}),
         ...(m.sort_order != null ? { sortOrder: m.sort_order } : {}),
+        ...(m.source ? { source: m.source } : {}),
       }));
     }
     set({ userMems: allMapped });
@@ -293,6 +295,9 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       thumbnailUrl,
       locationName: mem.locationName || null, lat: mem.lat ?? null, lng: mem.lng ?? null,
       eventDate,
+      // LEG-003: AI provenance flag (restored photos, interview narratives,
+      // AI-tagged imports) — persisted best-effort by createMemory.
+      ...(mem.source === "ai" ? { source: "ai" as const } : {}),
     });
     if (result.memory) {
       // OPS-010: first_photo_saved — client-side funnel milestone on the very
@@ -380,6 +385,9 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       ...("displayUnit" in updates ? { display_unit: updates.displayUnit ?? null } : {}),
       ...("displayScale" in updates ? { display_scale: (updates as { displayScale?: string | null }).displayScale ?? null } : {}),
       ...("sortOrder" in updates ? { sort_order: updates.sortOrder ?? 0 } : {}),
+      // LEG-003: mark AI-edited content (e.g. AI labels merged into the
+      // description). Only ever escalates to 'ai' — never back to 'user'.
+      ...(updates.source === "ai" ? { source: "ai" } : {}),
     };
     // Client-only fields (e.g. hero ★) can leave nothing to persist — an empty
     // Supabase update() would error, and there is nothing to send anyway.
@@ -392,6 +400,15 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       // optimistically for the session and persists once the owner migrates.
       if (err && "display_scale" in supaUpdates && /display_scale/i.test(err)) {
         const { display_scale: _dropped, ...rest } = supaUpdates as Record<string, unknown>;
+        if (Object.keys(rest).length === 0) return true; // nothing else to persist
+        result = await updateMemoryAction(memId, rest as Parameters<typeof updateMemoryAction>[1]);
+        err = (result as { error?: string } | null)?.error;
+      }
+      // source (LEG-003 AI provenance) ships ahead of its migration
+      // (20260905130000_ai_provenance.sql) the same way: never lose the
+      // underlying content update over the missing provenance column.
+      if (err && "source" in supaUpdates && /source/i.test(err)) {
+        const { source: _droppedSource, ...rest } = supaUpdates as Record<string, unknown>;
         if (Object.keys(rest).length === 0) return true; // nothing else to persist
         result = await updateMemoryAction(memId, rest as Parameters<typeof updateMemoryAction>[1]);
         err = (result as { error?: string } | null)?.error;

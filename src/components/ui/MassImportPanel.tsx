@@ -441,6 +441,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           // loads it instead of the full-res original. Only a data: URL is
           // uploadable by addMemory; a blob: preview fallback is skipped.
           ...(item.previewUrl?.startsWith("data:") ? { thumbnailUrl: item.previewUrl } : {}),
+          // LEG-003 (AI Act art. 50): title/description suggested by /api/ai-tag.
+          ...(item.aiSuggestions ? { source: "ai" as const } : {}),
         };
         if (item.confirmed.lat !== null && item.confirmed.lng !== null) {
           mem.lat = item.confirmed.lat;

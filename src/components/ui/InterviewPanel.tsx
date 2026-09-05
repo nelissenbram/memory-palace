@@ -428,6 +428,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       type: "interview",
       desc: narrative,
       createdAt: new Date().toISOString(),
+      // LEG-003 (AI Act art. 50): the narrative is an AI-generated summary.
+      source: "ai",
     };
     onCreateMemory(mem, currentTemplate.wingId);
     onClose();

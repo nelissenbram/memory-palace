@@ -2555,7 +2555,8 @@
     "restoreErrorBody": "Restore failed, please try again.",
     "restoreTierFree": "Free",
     "restoreTierKeeper": "Keeper",
-    "restoreTierGuardian": "Guardian"
+    "restoreTierGuardian": "Guardian",
+    "aiBadge": "AI-edited"
   },
   "legacyPanel": {
     "title": "Your Legacy",
@@ -4927,7 +4928,8 @@
     "q4": "What was difficult in that time, and how did you get through it?",
     "q5": "Looking back on {chapter}, what would you like your family to know or remember?",
     "selectAllRoom": "Select all in this room",
-    "treeNoMedia": "No memories in this room yet"
+    "treeNoMedia": "No memories in this room yet",
+    "aiBadge": "AI-generated"
   },
   "navigation": {
     "nav_label": "Main navigation",

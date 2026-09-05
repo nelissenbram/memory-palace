@@ -157,6 +157,8 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved, si
         dataUrl,
         desc: memory.desc || "",
         createdAt: new Date().toISOString(),
+        // LEG-003 (AI Act art. 50): the restored image is AI-generated output.
+        source: "ai",
       });
 
       setPhase("done");

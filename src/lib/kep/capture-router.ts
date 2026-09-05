@@ -178,21 +178,31 @@ export async function handleKepCaptureJob(
 
     if (targetRoomId && ownsTargetRoom) {
       // Create memory in the suggested room
-      const { data: memory, error: memError } = await supabase
+      const memoryRow = {
+        user_id: userId,
+        room_id: targetRoomId,
+        title: buildMemoryTitle(capture),
+        type: mapMediaTypeToMemoryType(capture.media_type),
+        file_url: capture.media_url,
+        description: capture.transcription || (capture.payload_preview as Record<string, unknown>)?.text as string || null,
+        source_kep_id: kepId,
+        source_type: kep.source_type,
+        source_sender: capture.source_sender,
+      };
+      // LEG-003 (AI Act art. 50): this path only runs with AI consent and uses
+      // AI routing (and Whisper transcription for audio) → mark provenance.
+      let insertRes = await supabase
         .from("memories")
-        .insert({
-          user_id: userId,
-          room_id: targetRoomId,
-          title: buildMemoryTitle(capture),
-          type: mapMediaTypeToMemoryType(capture.media_type),
-          file_url: capture.media_url,
-          description: capture.transcription || (capture.payload_preview as Record<string, unknown>)?.text as string || null,
-          source_kep_id: kepId,
-          source_type: kep.source_type,
-          source_sender: capture.source_sender,
-        })
+        .insert({ ...memoryRow, source: "ai" })
         .select("id")
         .single();
+      // `source` ships ahead of its migration (20260905130000_ai_provenance.sql):
+      // if the column doesn't exist yet, retry without it — never fail a capture
+      // over the provenance flag.
+      if (insertRes.error && /source/i.test(insertRes.error.message)) {
+        insertRes = await supabase.from("memories").insert(memoryRow).select("id").single();
+      }
+      const { data: memory, error: memError } = insertRes;
 
       if (memError) {
         throw new Error(`Failed to create memory: ${memError.message}`);

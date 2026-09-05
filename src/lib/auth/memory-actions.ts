@@ -93,6 +93,8 @@ export async function createMemory(data: {
   lng?: number | null;
   /** Date the memory actually happened (date-only ISO, e.g. from EXIF DateTimeOriginal). Best-effort. */
   eventDate?: string | null;
+  /** LEG-003 provenance: 'ai' when the content is AI-generated/AI-edited. Best-effort (column may lag its migration). */
+  source?: "user" | "ai";
 }) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -131,18 +133,23 @@ export async function createMemory(data: {
     ...(data.lng != null ? { lng: data.lng } : {}),
   };
 
-  // event_date (week-4 resurface repair) is best-effort and must NEVER block a
-  // capture: if the migration hasn't been applied yet (unknown column), retry
-  // the insert without it.
+  // event_date (week-4 resurface repair) and source (LEG-003 AI provenance)
+  // are best-effort and must NEVER block a capture: if their migration hasn't
+  // been applied yet (unknown column), retry the insert without them.
+  const optionalCols = {
+    ...(data.eventDate ? { event_date: data.eventDate } : {}),
+    ...(data.source === "ai" ? { source: "ai" } : {}),
+  };
   let insertRes = await supabase
     .from("memories")
-    .insert({
-      ...baseRow,
-      ...(data.eventDate ? { event_date: data.eventDate } : {}),
-    })
+    .insert({ ...baseRow, ...optionalCols })
     .select()
     .single();
-  if (insertRes.error && data.eventDate && /event_date/i.test(insertRes.error.message)) {
+  if (
+    insertRes.error &&
+    Object.keys(optionalCols).length > 0 &&
+    /event_date|source/i.test(insertRes.error.message)
+  ) {
     insertRes = await supabase.from("memories").insert(baseRow).select().single();
   }
   const { data: memory, error } = insertRes;
@@ -239,7 +246,7 @@ export async function createMemory(data: {
 
 export async function updateMemoryAction(
   memoryId: string,
-  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string; thumbnail_url?: string; location_name?: string; lat?: number; lng?: number; displayed?: boolean | null; display_unit?: string | null; display_scale?: string | null; sort_order?: number | null }
+  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string; thumbnail_url?: string; location_name?: string; lat?: number; lng?: number; displayed?: boolean | null; display_unit?: string | null; display_scale?: string | null; sort_order?: number | null; source?: string }
 ) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||

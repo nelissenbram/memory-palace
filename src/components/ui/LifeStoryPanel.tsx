@@ -680,6 +680,26 @@ function ChapterCard({
       )}
 
       {/* ---- woven content, freely editable ---- */}
+      {/* LEG-003 (AI Act art. 50): chapter prose is AI-woven — badge its origin.
+          Content only ever originates from /api/life-story/generate; user edits
+          afterwards do not remove the AI-origin marker. */}
+      {hasContent && (
+        <div
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "0.3125rem",
+            marginTop: "0.75rem", padding: "0.1875rem 0.5625rem",
+            borderRadius: "0.75rem", border: `0.0625rem solid ${HAIRLINE}`,
+            background: T.color.white, color: MUTED,
+            fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
+            letterSpacing: "0.08em", textTransform: "uppercase",
+          }}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2l2.09 6.26L20 10l-4.91 3.74L17.18 20 12 16.27 6.82 20l2.09-6.26L4 10l5.91-1.74z" />
+          </svg>
+          {t("aiBadge")}
+        </div>
+      )}
       {hasContent && (
         <textarea
           ref={(el) => { textareaRef.current = el; if (el) { el.style.height = "auto"; el.style.height = `${Math.max(el.scrollHeight, 128)}px`; } }}

@@ -2555,7 +2555,8 @@
     "restoreErrorBody": "La restauration a échoué, veuillez réessayer.",
     "restoreTierFree": "Gratuit",
     "restoreTierKeeper": "Keeper",
-    "restoreTierGuardian": "Guardian"
+    "restoreTierGuardian": "Guardian",
+    "aiBadge": "Édité par IA"
   },
   "legacyPanel": {
     "title": "Votre héritage",
@@ -4927,7 +4928,8 @@
     "q4": "Qu'est-ce qui était difficile à cette époque, et comment l'avez-vous traversée ?",
     "q5": "En repensant à {chapter}, que voudriez-vous que votre famille sache ou retienne ?",
     "selectAllRoom": "Tout sélectionner dans cette salle",
-    "treeNoMedia": "Aucun souvenir dans cette salle pour l'instant"
+    "treeNoMedia": "Aucun souvenir dans cette salle pour l'instant",
+    "aiBadge": "Généré par IA"
   },
   "navigation": {
     "nav_label": "Navigation principale",

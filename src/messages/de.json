@@ -2555,7 +2555,8 @@
     "restoreErrorBody": "Restaurierung fehlgeschlagen, bitte versuche es erneut.",
     "restoreTierFree": "Kostenlos",
     "restoreTierKeeper": "Keeper",
-    "restoreTierGuardian": "Guardian"
+    "restoreTierGuardian": "Guardian",
+    "aiBadge": "KI-bearbeitet"
   },
   "legacyPanel": {
     "title": "Dein Vermächtnis",
@@ -4927,7 +4928,8 @@
     "q4": "Was war schwierig in dieser Zeit, und wie bist du da durchgekommen?",
     "q5": "Wenn du auf {chapter} zurückblickst, was soll deine Familie wissen oder in Erinnerung behalten?",
     "selectAllRoom": "Alles in diesem Raum auswählen",
-    "treeNoMedia": "Noch keine Erinnerungen in diesem Raum"
+    "treeNoMedia": "Noch keine Erinnerungen in diesem Raum",
+    "aiBadge": "KI-generiert"
   },
   "navigation": {
     "nav_label": "Hauptnavigation",

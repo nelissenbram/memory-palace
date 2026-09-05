@@ -56,24 +56,34 @@ export async function autoRouteToRoom(
   const roomName = room?.name || "Kep Room";
 
   // Create memory directly
-  const { data: memory, error: memError } = await supabase
+  const memoryRow = {
+    user_id: userId,
+    room_id: targetRoomId,
+    title: buildTitle(capture),
+    type: mapMediaTypeToMemoryType(capture.media_type),
+    file_url: capture.media_url,
+    // Record the media byte size so WhatsApp-routed captures count toward the
+    // user's storage quota (previously omitted -> silent storage undercount).
+    file_size: capture.media_size || 0,
+    description: capture.transcription || (capture.payload_preview?.text as string) || null,
+    source_kep_id: kepId,
+    source_type: "whatsapp",
+    source_sender: capture.source_sender,
+  };
+  // LEG-003 (AI Act art. 50): this fixed-room path involves no AI routing, so
+  // only a Whisper transcription (AI-generated description) marks provenance.
+  let insertRes = await supabase
     .from("memories")
-    .insert({
-      user_id: userId,
-      room_id: targetRoomId,
-      title: buildTitle(capture),
-      type: mapMediaTypeToMemoryType(capture.media_type),
-      file_url: capture.media_url,
-      // Record the media byte size so WhatsApp-routed captures count toward the
-      // user's storage quota (previously omitted -> silent storage undercount).
-      file_size: capture.media_size || 0,
-      description: capture.transcription || (capture.payload_preview?.text as string) || null,
-      source_kep_id: kepId,
-      source_type: "whatsapp",
-      source_sender: capture.source_sender,
-    })
+    .insert(capture.transcription ? { ...memoryRow, source: "ai" } : memoryRow)
     .select("id")
     .single();
+  // `source` ships ahead of its migration (20260905130000_ai_provenance.sql):
+  // if the column doesn't exist yet, retry without it — never fail a capture
+  // over the provenance flag.
+  if (insertRes.error && capture.transcription && /source/i.test(insertRes.error.message)) {
+    insertRes = await supabase.from("memories").insert(memoryRow).select("id").single();
+  }
+  const { data: memory, error: memError } = insertRes;
 
   if (memError) {
     console.error(`[Kep AutoRoute] Failed to create memory: ${memError.message}`);
