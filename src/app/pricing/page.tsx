@@ -734,6 +734,20 @@ export default function PricingPage() {
                   </p>
                 )}
 
+                {/* Auto-renewal disclosure BEFORE the purchase button (LEG-005a).
+                    Web/Stripe buyers must see, pre-purchase, that the plan renews
+                    automatically at the stated rate and can be cancelled anytime.
+                    iOS keeps its Apple-worded autoRenewNotice below (unchanged). */}
+                {!isFree && !isApple && (
+                  <p style={{ fontSize: "0.75rem", color: C.muted, lineHeight: 1.6, margin: "0 0 0.75rem" }}>
+                    {(() => {
+                      const total = formatPrice(convertPrice(plan.annualTotal, currency), currency);
+                      const v = ts("autoRenewNoticeWeb", { price: total });
+                      return v !== "autoRenewNoticeWeb" ? v : `Renews automatically at ${total} per year until cancelled. Cancel anytime.`;
+                    })()}
+                  </p>
+                )}
+
                 {/* CTA */}
                 <button
                   onClick={() => handleSubscribe(planId)}

@@ -724,6 +724,7 @@
     "manageInSettings": "Gestiona tu suscripción en Ajustes > Apple ID > Suscripciones",
     "iapUnavailable": "Las compras dentro de la app no están disponibles ahora mismo. Inténtalo de nuevo en un momento.",
     "autoRenewNotice": "Las suscripciones se renuevan automáticamente al precio indicado hasta que las canceles. Gestiónalas o cancélalas cuando quieras en Ajustes > Apple ID > Suscripciones.",
+    "autoRenewNoticeWeb": "Se renueva automáticamente por {price} al año hasta que canceles. Puedes cancelar en cualquier momento.",
     "iosFreeNote": "The Memory Palace es gratis en iPhone y iPad, con todas las funciones esenciales incluidas.",
     "disclosureTerms": "Términos de uso",
     "disclosurePrivacy": "Política de privacidad",
