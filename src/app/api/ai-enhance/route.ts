@@ -14,7 +14,10 @@ import { checkAiConsent } from "@/lib/ai/check-consent";
 //  - Quota: free = 10 lifetime, keeper = 50/mo, guardian = 200/mo (checkPhotoRestoreQuota),
 //    incremented only after a successful restore.
 
-const MODEL = "tencentarc/gfpgan"; // model-scoped endpoint runs the latest version
+// tencentarc/gfpgan is a community model: the model-scoped predictions endpoint
+// (/v1/models/{model}/predictions) 404s for those, so we must pin a version and
+// use /v1/predictions instead.
+const MODEL_VERSION = "0fbacf7afc6c144e5be9767cff80f25aff23e52b0708f17e20f9879b2f21516c";
 
 async function getQuota() {
   const supabase = await createClient();
@@ -76,10 +79,10 @@ export async function POST(request: NextRequest) {
   const token = process.env.REPLICATE_API_TOKEN;
   let prediction: { status?: string; output?: unknown; error?: unknown; urls?: { get?: string } };
   try {
-    const res = await fetch(`https://api.replicate.com/v1/models/${MODEL}/predictions`, {
+    const res = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "wait" },
-      body: JSON.stringify({ input: { img: imageUrl, version: "v1.4", scale: 2 } }),
+      body: JSON.stringify({ version: MODEL_VERSION, input: { img: imageUrl, version: "v1.4", scale: 2 } }),
     });
     prediction = await res.json();
     if (!res.ok) {
