@@ -143,6 +143,25 @@ export default function CancelFlow({ onClose, onProceedToPortal, planName }: Can
               ))}
             </div>
 
+            {/* LEG-005c: the retention step must be skippable — a direct path to
+                cancellation without answering the survey or seeing an offer. */}
+            <button
+              onClick={() => {
+                track("cancel_retention_skipped");
+                setStep("confirm");
+              }}
+              style={{
+                width: "100%", marginTop: "1rem", padding: "0.875rem",
+                borderRadius: "0.75rem",
+                border: `1px solid ${C.cream}`,
+                background: C.linen,
+                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
+                color: C.charcoal, cursor: "pointer", minHeight: "2.75rem",
+              }}
+            >
+              {t("stillWantToCancel")}
+            </button>
+
             <button
               onClick={onClose}
               style={{
@@ -192,14 +211,17 @@ export default function CancelFlow({ onClose, onProceedToPortal, planName }: Can
               {offerForReason[reason].cta}
             </button>
 
+            {/* LEG-005c: equal visual weight with the retention CTA above — a
+                full button, not a de-emphasized underline link. */}
             <button
               onClick={() => setStep("confirm")}
               style={{
-                width: "100%",
-                fontFamily: F.body, fontSize: "0.8125rem",
-                color: C.muted, background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline",
-                textUnderlineOffset: "2px",
+                width: "100%", padding: "0.875rem",
+                borderRadius: "0.75rem",
+                border: `1px solid ${C.cream}`,
+                background: C.linen,
+                fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 600,
+                color: C.charcoal, cursor: "pointer", minHeight: "3rem",
               }}
             >
               {t("stillWantToCancel")}
@@ -225,15 +247,17 @@ export default function CancelFlow({ onClose, onProceedToPortal, planName }: Can
               </p>
             </div>
 
+            {/* LEG-005c: the cancel action carries the SAME button weight as
+                "Keep my plan" below — same size, fill treatment and typography —
+                so cancelling is never visually demoted. */}
             <button
               onClick={handleProceedToCancel}
               style={{
                 width: "100%", padding: "0.875rem",
-                borderRadius: "0.75rem",
-                border: `1px solid ${C.cream}`,
-                background: C.linen,
-                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                color: C.charcoal, cursor: "pointer",
+                borderRadius: "0.75rem", border: "none",
+                background: C.charcoal,
+                fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 600,
+                color: C.white, cursor: "pointer",
                 marginBottom: "0.625rem", minHeight: "3rem",
               }}
             >
