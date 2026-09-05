@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
 import { Sheet } from "@/components/ui/Sheet";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useMemoryStore } from "@/lib/stores/memoryStore";
 import RestorePhotoModal from "@/components/ui/RestorePhotoModal";
 import type { Mem } from "@/lib/constants/defaults";
 
@@ -14,10 +15,10 @@ export interface RestorablePhoto {
 }
 
 interface RestorePhotoPickerProps {
-  /** The caller's own stored photos (https-backed) eligible for restore, newest first. */
+  /** The caller's own stored photos eligible for restore, newest first. */
   photos: RestorablePhoto[];
-  /** Route the user into the normal photo-upload flow (used when they have nothing to restore yet). */
-  onAddPhotos: () => void;
+  /** Room a brand-new upload lands in (newest photo's room, else the first room). Undefined hides the upload path. */
+  uploadRoomId?: string;
   onClose: () => void;
 }
 
@@ -31,16 +32,22 @@ interface RestoreQuota {
  * user in the Library with a transient hint, this shows their own photos in a
  * grid right away: tap one → straight into the RestorePhotoModal before/after
  * flow. Closing the modal returns here so several photos can be restored in a
- * row; the empty state hands users with no photos to the upload flow.
+ * row. "Upload a photo" runs the normal upload INSIDE this flow (addMemory →
+ * /api/upload → createMemory) and then opens the restore modal on the fresh
+ * photo directly — no round-trip through the Library and back.
  *
  * Canon: inline styles, rem, T.color tokens, Fraunces + Source Sans, >=2.75rem
- * touch targets.
+ * touch targets, reduced-motion guard on the spinner.
  */
-export default function RestorePhotoPicker({ photos, onAddPhotos, onClose }: RestorePhotoPickerProps) {
+export default function RestorePhotoPicker({ photos, uploadRoomId, onClose }: RestorePhotoPickerProps) {
   const { t } = useTranslation("memoryDetail");
   const { t: tc } = useTranslation("common");
+  const { addMemory } = useMemoryStore();
   const [selected, setSelected] = useState<RestorablePhoto | null>(null);
   const [quota, setQuota] = useState<RestoreQuota | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Remaining-restores line (same source the modal uses). Best-effort: the
   // picker renders fine without it, so failures stay silent.
@@ -57,6 +64,47 @@ export default function RestorePhotoPicker({ photos, onAddPhotos, onClose }: Res
 
   const quotaLeft = quota ? Math.max(quota.limit - quota.used, 0) : null;
 
+  // Upload-in-place: persist through the app's normal path, then jump straight
+  // into the restore modal on the fresh photo. addMemory swaps the optimistic
+  // client id for the SERVER id in the store on success — the restore backend
+  // looks the photo up by that id, so we re-read the store to find the fresh
+  // entry (the one that wasn't there before) rather than trusting our local id.
+  const handleFile = async (file: File) => {
+    if (!uploadRoomId || uploading) return;
+    setUploadError(false);
+    setUploading(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const clientId = `restoreup-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const before = new Set((useMemoryStore.getState().userMems[uploadRoomId] || []).map((m) => m.id));
+      before.add(clientId);
+      const ok = await addMemory(uploadRoomId, {
+        id: clientId,
+        title: file.name.replace(/\.[^.]+$/, "") || t("restorePickerUploadTitle"),
+        hue: Math.floor(Math.random() * 360), s: 50, l: 70,
+        type: "photo",
+        dataUrl,
+        desc: "",
+        createdAt: new Date().toISOString(),
+      });
+      if (!ok) { setUploadError(true); return; }
+      const after = useMemoryStore.getState().userMems[uploadRoomId] || [];
+      const fresh = after.find((m) => !before.has(m.id)) || after.find((m) => m.id === clientId);
+      if (fresh) setSelected({ mem: fresh, roomId: uploadRoomId });
+      else setUploadError(true);
+    } catch {
+      setUploadError(true);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const ghostBtn: React.CSSProperties = {
     minHeight: T.touch, padding: "0 1.25rem", borderRadius: T.radius.md,
     border: `0.0625rem solid ${T.color.hairline}`, background: T.color.cream, color: T.color.ink,
@@ -66,9 +114,25 @@ export default function RestorePhotoPicker({ photos, onAddPhotos, onClose }: Res
     minHeight: T.touch, padding: "0 1.25rem", borderRadius: T.radius.md,
     border: "none", background: T.color.ember, color: T.color.cream,
     fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600, cursor: "pointer",
+    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
   };
 
-  const emptyState = useMemo(() => photos.length === 0, [photos.length]);
+  const uploadButton = uploadRoomId ? (
+    <button onClick={() => fileInputRef.current?.click()} style={{ ...primaryBtn, opacity: uploading ? 0.7 : 1 }} disabled={uploading}>
+      {uploading && (
+        <span
+          className="mp-restorepick-spin"
+          aria-hidden
+          style={{
+            width: "1rem", height: "1rem", flex: "0 0 auto",
+            border: `0.125rem solid rgba(255,255,255,0.4)`, borderTopColor: T.color.cream,
+            borderRadius: "50%", animation: "mp-restorepick-spin 0.9s linear infinite",
+          }}
+        />
+      )}
+      {uploading ? t("restorePickerUploading") : t("restorePickerAddPhotos")}
+    </button>
+  ) : null;
 
   // A photo is picked → hand over to the existing restore flow. Rendering the
   // modal INSTEAD of the picker sheet (both are Sheets) keeps one layer open at
@@ -85,7 +149,19 @@ export default function RestorePhotoPicker({ photos, onAddPhotos, onClose }: Res
 
   return (
     <Sheet open onClose={onClose} title={t("restorePickerTitle")} maxWidth="42rem">
-      {emptyState ? (
+      <style>{`
+        @keyframes mp-restorepick-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { .mp-restorepick-spin { animation: none !important; } }
+      `}</style>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+      />
+
+      {photos.length === 0 ? (
         <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
           <p style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, color: T.color.ink, margin: "0 0 0.5rem" }}>
             {t("restorePickerEmptyTitle")}
@@ -93,9 +169,14 @@ export default function RestorePhotoPicker({ photos, onAddPhotos, onClose }: Res
           <p style={{ fontFamily: T.font.body, fontSize: T.fontSize.base, color: T.color.inkMuted, lineHeight: 1.55, margin: "0 0 1.25rem" }}>
             {t("restorePickerEmptyBody")}
           </p>
+          {uploadError && (
+            <p style={{ fontFamily: T.font.body, fontSize: T.fontSize.sm, color: T.color.ember, margin: "0 0 1rem" }}>
+              {t("restorePickerUploadFailed")}
+            </p>
+          )}
           <div style={{ display: "flex", gap: T.space.sm, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={onClose} style={ghostBtn}>{tc("close")}</button>
-            <button onClick={onAddPhotos} style={primaryBtn}>{t("restorePickerAddPhotos")}</button>
+            {uploadButton}
           </div>
         </div>
       ) : (
@@ -143,11 +224,17 @@ export default function RestorePhotoPicker({ photos, onAddPhotos, onClose }: Res
             ))}
           </div>
 
+          {uploadError && (
+            <p style={{ fontFamily: T.font.body, fontSize: T.fontSize.sm, color: T.color.ember, textAlign: "center", margin: `${T.space.md} 0 0` }}>
+              {t("restorePickerUploadFailed")}
+            </p>
+          )}
+
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: T.space.sm, flexWrap: "wrap", marginTop: T.space.md }}>
             <span style={{ fontFamily: T.font.body, fontSize: T.fontSize.sm, color: T.color.inkMuted }}>
               {quotaLeft !== null ? t("restoreQuotaLeft", { left: String(quotaLeft), limit: String(quota!.limit) }) : ""}
             </span>
-            <button onClick={onAddPhotos} style={ghostBtn}>{t("restorePickerAddPhotos")}</button>
+            {uploadButton}
           </div>
         </div>
       )}

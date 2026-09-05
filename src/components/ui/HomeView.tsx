@@ -661,16 +661,29 @@ export default function HomeView() {
   const libThumbs = useMemo(() => Array.from(new Set(
     recentMemories.map((r) => memSrc(r.mem)).filter((x): x is string => !!x)
   )).slice(0, 3), [recentMemories, memSrc]);
-  // Photos eligible for AI restore: the user's OWN stored photos (https-backed,
-  // same gate the /api/ai-enhance backend applies — demo mems and local blobs
-  // would 404/422 there). Newest first, so the shoebox scans people just made
-  // sit at the top of the picker.
-  const restorablePhotos = useMemo<RestorablePhoto[]>(() =>
-    allMemories
-      .filter(({ mem }) => mem.type === "photo" && typeof mem.dataUrl === "string" && /^https?:\/\//.test(mem.dataUrl))
-      .sort((a, b) => new Date(b.mem.createdAt || 0).getTime() - new Date(a.mem.createdAt || 0).getTime())
-      .map(({ mem, room }) => ({ mem, roomId: room.id })),
-  [allMemories]);
+  // Photos eligible for AI restore: the user's OWN photos, straight from
+  // userMems (NO demo fallback — demo mems 404 at the backend). Deliberately no
+  // https check on dataUrl: a just-uploaded photo can still carry its local
+  // data: preview client-side while the DB row (which is what /api/ai-enhance
+  // reads) already holds the https URL — filtering on the client URL made
+  // fresh uploads invisible here. Newest first.
+  const restorablePhotos = useMemo<RestorablePhoto[]>(() => {
+    const out: RestorablePhoto[] = [];
+    for (const w of wings) {
+      for (const r of getWingRooms(w.id)) {
+        for (const m of userMems[r.id] || []) {
+          if (m.type === "photo" && !m._offline && (m.dataUrl || m.thumbnailUrl)) out.push({ mem: m, roomId: r.id });
+        }
+      }
+    }
+    return out.sort((a, b) => new Date(b.mem.createdAt || 0).getTime() - new Date(a.mem.createdAt || 0).getTime());
+  }, [wings, getWingRooms, userMems]);
+  // Where an upload-from-the-picker lands: the newest photo's room, else the first room.
+  const restoreUploadRoomId = useMemo<string | undefined>(() => {
+    if (restorablePhotos.length > 0) return restorablePhotos[0].roomId;
+    for (const w of wings) { const rs = getWingRooms(w.id); if (rs.length > 0) return rs[0].id; }
+    return undefined;
+  }, [restorablePhotos, wings, getWingRooms]);
   // Steward brain — one smart, non-duplicative suggestion (never re-offers the
   // Palace/Library anchors that already sit right below).
   // Memory tracks brought forward: an in-progress (persona-informed) journey
@@ -1802,7 +1815,7 @@ export default function HomeView() {
       {showRestorePicker && (
         <RestorePhotoPicker
           photos={restorablePhotos}
-          onAddPhotos={() => { setShowRestorePicker(false); goUpload(); }}
+          uploadRoomId={restoreUploadRoomId}
           onClose={() => setShowRestorePicker(false)}
         />
       )}
