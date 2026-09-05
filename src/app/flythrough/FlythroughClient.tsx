@@ -1890,7 +1890,7 @@ export default function FlythroughClient() {
                     ))}
                   </div>
                   <button onClick={() => setObPhase("done")} style={{ ...obCtaStyle, width: "100%" }}>
-                    {trOnb("paywallTrialCta", "Start 7-day free trial")}
+                    {trOnb("paywallTrialCta", "Start 14-day free trial")}
                   </button>
                   <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: OB_MUTED, lineHeight: 1.5, margin: "-0.5rem 0 0", maxWidth: "22rem" }}>
                     {trOnb("paywallAutoRenewWeb", "Auto-renewing subscription. Cancel anytime.")}
