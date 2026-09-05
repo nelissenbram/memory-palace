@@ -89,7 +89,7 @@ export function buildCreatePayload(data: WizardData) {
     payload.source_config = {
       albumId: data.photos_album_id || undefined,
       dateRanges: data.photos_date_from
-        ? [{ startDate: data.photos_date_from, endDate: data.photos_date_to || new Date().toISOString() }]
+        ? [{ startDate: data.photos_date_from, endDate: data.photos_date_to || new Date().toISOString().slice(0, 10) }]
         : undefined,
       mediaTypes: data.photos_media_types,
     };

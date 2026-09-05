@@ -1,5 +1,10 @@
 User-agent: *
 Allow: /
+Allow: /u/
+Allow: /visit/
+Allow: /explore
+Allow: /press
+Allow: /blog
 
 Disallow: /api/
 Disallow: /settings/

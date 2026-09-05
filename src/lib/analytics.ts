@@ -1,6 +1,10 @@
-import posthog from "posthog-js";
 import { isNative } from "@/lib/native/platform";
 
+// posthog-js (~184KB) is loaded ONLY after consent, via dynamic import — it must
+// never ship in the first-paint layout chunk (most sessions never consent). The
+// type is erased at build time, so this costs nothing at runtime.
+type PostHogClient = (typeof import("posthog-js"))["default"];
+let ph: PostHogClient | null = null;
 let initialized = false;
 
 /**
@@ -23,21 +27,23 @@ export function hasAnalyticsConsent(): boolean {
 /** Stop tracking and clear any stored analytics identity (consent withdrawn). */
 export function optOutAnalytics() {
   if (typeof window === "undefined" || isNative()) return;
-  try { posthog.opt_out_capturing(); posthog.reset(); } catch { /* not initialized */ }
+  try { ph?.opt_out_capturing(); ph?.reset(); } catch { /* not initialized */ }
 }
 
-export function initAnalytics() {
+export async function initAnalytics() {
   if (initialized || typeof window === "undefined") return;
   // Do not load any analytics inside the native apps. Apple flags cookies/tracking
   // (Guideline 5.1.2i) and we don't use App Tracking Transparency. Keeping PostHog
   // out of the native shell entirely means no tracking network calls or cookies there.
   if (isNative()) return;
-  // Web: never initialize without explicit consent.
+  // Web: never initialize (nor download the SDK) without explicit consent.
   if (!hasAnalyticsConsent()) return;
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key) return;
 
-  posthog.init(key, {
+  const mod = await import("posthog-js");
+  ph = mod.default;
+  ph.init(key, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com",
     person_profiles: "identified_only",
     capture_pageview: true,
@@ -48,19 +54,21 @@ export function initAnalytics() {
   });
 }
 
-export function identify(userId: string, properties?: Record<string, unknown>) {
+export function identify(
+  userId: string,
+  properties?: Record<string, unknown>,
+  setOnceProperties?: Record<string, unknown>,
+) {
   if (typeof window === "undefined" || isNative() || !hasAnalyticsConsent()) return;
-  posthog.identify(userId, properties);
+  ph?.identify(userId, properties, setOnceProperties);
 }
 
 export function track(event: string, properties?: Record<string, unknown>) {
   if (typeof window === "undefined" || isNative() || !hasAnalyticsConsent()) return;
-  posthog.capture(event, properties);
+  ph?.capture(event, properties);
 }
 
 export function reset() {
   if (typeof window === "undefined" || isNative()) return;
-  posthog.reset();
+  ph?.reset();
 }
-
-export { posthog };

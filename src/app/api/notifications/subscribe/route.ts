@@ -186,14 +186,26 @@ export async function PATCH(request: Request) {
   }
 
   if (hasPushUpdates) {
-    const { error } = await supabase
+    const { data: updatedRows, error } = await supabase
       .from("push_subscriptions")
       .update(pushUpdates)
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .select("id");
 
     if (error) {
       console.error("[subscribe] Push update failed:", error);
       return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    }
+
+    // No push_subscriptions row exists for this user (subscribe insert failed or
+    // the row was pruned). The update silently matched 0 rows, so nothing was
+    // stored — signal 409 so the client can prompt the user to re-enable push
+    // rather than falsely reporting the preference as saved.
+    if (!updatedRows || updatedRows.length === 0) {
+      return NextResponse.json(
+        { error: "No push subscription", code: "no_subscription" },
+        { status: 409 }
+      );
     }
   }
 

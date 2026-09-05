@@ -28,14 +28,14 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div style={{ textAlign: "center" }}>
+      <div role="status" aria-live="polite" style={{ textAlign: "center" }}>
         <div style={{
           width: "4rem", height: "4rem", borderRadius: "2rem",
-          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          background: `linear-gradient(135deg, ${T.color.ember}20, ${T.color.walnut}20)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 1rem",
         }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2"/>
             <path d="M22 4L12 13 2 4"/>
             <path d="M15 12l5 5M9 12l-5 5" opacity="0.4"/>
@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
             fontFamily: T.font.display,
             fontSize: "1.5rem",
             fontWeight: 500,
-            color: T.color.charcoal,
+            color: T.color.ink,
             margin: "0 0 0.75rem",
           }}
         >
@@ -55,19 +55,47 @@ export default function ForgotPasswordPage() {
         <p style={{ fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6 }}>
           {t("resetLinkSent")}
         </p>
-        <Link
-          href="/login"
+        <button
+          type="button"
+          onClick={() => setSuccess(false)}
           style={{
-            display: "inline-block",
-            marginTop: "1.25rem",
-            color: T.color.terracotta,
-            textDecoration: "none",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: T.touch,
+            padding: "0.5rem 0.75rem",
+            marginTop: "0.75rem",
+            background: "none",
+            border: "none",
+            color: T.color.muted,
+            textDecoration: "underline",
+            fontFamily: T.font.body,
             fontWeight: 600,
-            fontSize: "0.875rem",
+            fontSize: "0.8125rem",
+            cursor: "pointer",
           }}
         >
-          {t("backToSignIn")}
-        </Link>
+          {t("tryDifferentEmail")}
+        </button>
+        <div>
+          <Link
+            href="/login"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: T.touch,
+              padding: "0.5rem 0.75rem",
+              marginTop: "0.25rem",
+              color: T.color.ember,
+              textDecoration: "none",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+            }}
+          >
+            {t("backToSignIn")}
+          </Link>
+        </div>
       </div>
     );
   }
@@ -77,11 +105,11 @@ export default function ForgotPasswordPage() {
       <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
         <div style={{
           width: "3.5rem", height: "3.5rem", borderRadius: "1.75rem",
-          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          background: `linear-gradient(135deg, ${T.color.ember}20, ${T.color.walnut}20)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 0.5rem",
         }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.color.ember} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="8" cy="15" r="5"/>
             <path d="M12.5 10.5L21 2"/>
             <path d="M17 2h4v4"/>
@@ -93,7 +121,7 @@ export default function ForgotPasswordPage() {
             fontFamily: T.font.display,
             fontSize: "1.75rem",
             fontWeight: 300,
-            color: T.color.charcoal,
+            color: T.color.ink,
             margin: 0,
             lineHeight: 1.3,
           }}
@@ -106,19 +134,7 @@ export default function ForgotPasswordPage() {
       </div>
 
       {error && (
-        <div
-          id="forgot-password-error"
-          role="alert"
-          style={{
-            padding: "0.625rem 0.875rem",
-            borderRadius: "0.625rem",
-            background: "#FDF2F2",
-            border: "1px solid #FECACA",
-            color: "#B91C1C",
-            fontSize: "0.8125rem",
-            marginBottom: "1rem",
-          }}
-        >
+        <div id="forgot-password-error" role="alert" style={errorBannerStyle}>
           {error}
         </div>
       )}
@@ -153,7 +169,7 @@ export default function ForgotPasswordPage() {
           background: T.color.white,
           fontFamily: T.font.body,
           fontSize: "1rem",
-          color: T.color.charcoal,
+          color: T.color.ink,
           outline: "none",
           boxSizing: "border-box",
         }}
@@ -169,7 +185,7 @@ export default function ForgotPasswordPage() {
           border: "none",
           background: loading
             ? `${T.color.sandstone}40`
-            : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+            : `linear-gradient(135deg, ${T.color.ember}, ${T.color.walnut})`,
           color: loading ? T.color.muted : "#FFFFFF",
           fontFamily: T.font.body,
           fontSize: "0.9375rem",
@@ -193,7 +209,16 @@ export default function ForgotPasswordPage() {
       >
         <Link
           href="/login"
-          style={{ color: T.color.terracotta, textDecoration: "none", fontWeight: 600 }}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: T.touch,
+            padding: "0.5rem 0.75rem",
+            color: T.color.ember,
+            textDecoration: "none",
+            fontWeight: 600,
+          }}
         >
           {t("backToSignIn")}
         </Link>
@@ -201,3 +226,17 @@ export default function ForgotPasswordPage() {
     </form>
   );
 }
+
+// Shared warm-red-on-cream error banner — identical palette to the sibling
+// reset-password surface so both auth forms read as one product. (Kept as a
+// well-named local const per this pass's no-shared-token-file rule; the two
+// definitions are byte-identical.)
+const errorBannerStyle: React.CSSProperties = {
+  padding: "0.625rem 0.875rem",
+  borderRadius: "0.625rem",
+  background: "#FDF2F2",
+  border: "1px solid #FECACA",
+  color: T.color.error,
+  fontSize: "0.8125rem",
+  marginBottom: "1rem",
+};

@@ -45,10 +45,10 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
       backdropFilter: "blur(0.75rem)",
       WebkitBackdropFilter: "blur(0.75rem)",
       borderRadius: "1rem",
-      border: `1px solid ${T.color.cream}`,
-      boxShadow: "0 0.25rem 1.25rem rgba(44,44,42,.1)",
+      border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
+      boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S2 warm ink + top highlight
       padding: "1rem",
-      animation: "fadeIn .5s ease 1.2s both",
+      animation: "fadeIn .3s ease 1.2s both",
       overflow: "hidden",
     }}>
       {/* Header: Level + Points */}
@@ -57,9 +57,9 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
           width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem",
           background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "0.875rem", fontWeight: 700, color: T.color.white,
+          fontSize: "0.8125rem", fontWeight: 700, color: T.color.white,
           fontFamily: T.font.body,
-          boxShadow: `0 0.125rem 0.5rem ${levelInfo.color}30`,
+          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm ink
           flexShrink: 0,
         }}>
           {levelInfo.rank}
@@ -67,12 +67,12 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
-            color: T.color.charcoal,
+            color: "#403B36", // Atrium token: ink
           }}>
             {tl(levelInfo.titleKey)}
           </div>
           <div style={{
-            fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium token: meta + muted
           }}>
             {t("pointsSummary", { totalPoints: String(totalPoints), completedTracks: String(completedTracks), totalTracks: String(totalTracks) })}
           </div>
@@ -89,22 +89,22 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
             aria-valuemax={100}
             style={{
               width: "100%", height: "0.25rem", borderRadius: "0.125rem",
-              background: `${T.color.sandstone}20`, overflow: "hidden",
+              background: "#E3D6BC", overflow: "hidden", // Atrium token: opaque hairline track (no alpha band)
             }}
           >
             <div style={{
               width: `${progressInfo.progress * 100}%`, height: "100%", borderRadius: "0.125rem",
               background: `linear-gradient(90deg, ${levelInfo.color}, ${progressInfo.nextLevel.color})`,
-              transition: "width .8s ease",
+              transition: "width .3s ease", // Atrium motion budget
             }} />
           </div>
           <div style={{
             display: "flex", justifyContent: "space-between", marginTop: "0.1875rem",
           }}>
-            <span style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: T.color.muted }}>
+            <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: meta + muted */ }}>
               {tl(levelInfo.titleKey)}
             </span>
-            <span style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: T.color.muted }}>
+            <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: meta + muted */ }}>
               {tl(progressInfo.nextLevel.titleKey)}
             </span>
           </div>
@@ -118,8 +118,8 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
           style={{
             width: "100%",
             padding: "0.625rem 0.75rem",
-            borderRadius: "0.625rem",
-            border: `1px solid ${recommended.color}22`,
+            borderRadius: "0.75rem", // Atrium radius: small control
+            border: `0.0625rem solid ${recommended.color}22`,
             background: `${recommended.color}08`,
             cursor: "pointer",
             textAlign: "left",
@@ -136,30 +136,30 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
           }}
         >
           <div style={{
-            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem",
+            width: "1.75rem", height: "1.75rem", borderRadius: "0.7rem", // Atrium radius: small control
             background: `${recommended.color}15`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "0.875rem", flexShrink: 0,
+            fontSize: "0.9375rem", flexShrink: 0,
           }}>
             {recommended.icon}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
-              color: recommended.color, textTransform: "uppercase", letterSpacing: "0.03125rem",
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, // Atrium token: overline
+              color: recommended.color, textTransform: "uppercase", letterSpacing: "0.12em",
               marginBottom: "0.0625rem",
             }}>
               {t("continueJourney")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36", // Atrium token: meta + ink
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
               {t(nextStep.titleKey)}
             </div>
           </div>
           <span style={{
-            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium token: body + muted
             flexShrink: 0,
           }}>{"\u2192"}</span>
         </button>
@@ -168,12 +168,12 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
       {/* All tracks completed */}
       {!nextStep && completedTracks === totalTracks && (
         <div style={{
-          padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
-          background: `${levelInfo.color}08`, border: `1px solid ${levelInfo.color}15`,
+          padding: "0.625rem 0.75rem", borderRadius: "0.75rem", // Atrium radius: small control
+          background: `${levelInfo.color}08`, border: `0.0625rem solid ${levelInfo.color}15`,
           textAlign: "center",
         }}>
           <span style={{
-            fontFamily: T.font.body, fontSize: "0.6875rem", color: levelInfo.color, fontWeight: 500,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: levelInfo.color, fontWeight: 500, // Atrium token: meta
           }}>
             {t("allTracksCompleted")}
           </span>

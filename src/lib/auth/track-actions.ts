@@ -151,6 +151,27 @@ export async function fetchLegacyContacts() {
   }
 }
 
+// The legacy ACCESS reader (/legacy/[token]) enforces on wing_access/room_access
+// holding DB uuids, but this panel selects wing SLUGS + room local ids. Resolve them
+// to uuids so the canonical columns get populated and the grant is actually honored at
+// delivery (otherwise a LegacyPanel grant is silently ignored — it lived only in the
+// divergent accessible_wings/accessible_rooms slug columns).
+async function resolveLegacyAccessUuids(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  wingSlugs?: string[],
+  roomUuids?: string[],
+): Promise<{ wing_access: string[]; room_access: string[] }> {
+  // accessible_wings holds wing SLUGS -> resolve to wings.id (uuid). accessible_rooms is
+  // already a uuid[] (the panel has no room picker), so pass those straight through.
+  let wing_access: string[] = [];
+  if (wingSlugs && wingSlugs.length > 0) {
+    const { data } = await supabase.from("wings").select("id").eq("user_id", userId).in("slug", wingSlugs);
+    wing_access = (data || []).map((w: { id: string }) => w.id);
+  }
+  return { wing_access, room_access: roomUuids || [] };
+}
+
 export async function addLegacyContact(data: {
   contactName: string;
   contactEmail: string;
@@ -164,19 +185,27 @@ export async function addLegacyContact(data: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
-  const { data: contact, error } = await supabase
+  const access = await resolveLegacyAccessUuids(supabase, user.id, data.accessibleWings, data.accessibleRooms);
+  const baseRow = {
+    user_id: user.id,
+    contact_name: data.contactName,
+    contact_email: data.contactEmail.toLowerCase(),
+    relationship: data.relationship,
+    access_level: data.accessLevel,
+    accessible_wings: data.accessibleWings || [],
+    accessible_rooms: data.accessibleRooms || [],
+  };
+
+  let { data: contact, error } = await supabase
     .from("legacy_contacts")
-    .insert({
-      user_id: user.id,
-      contact_name: data.contactName,
-      contact_email: data.contactEmail.toLowerCase(),
-      relationship: data.relationship,
-      access_level: data.accessLevel,
-      accessible_wings: data.accessibleWings || [],
-      accessible_rooms: data.accessibleRooms || [],
-    })
+    .insert({ ...baseRow, wing_access: access.wing_access, room_access: access.room_access })
     .select()
     .single();
+  // Older DBs may lack the canonical wing_access/room_access columns — fall back to
+  // the base row (mirrors the same guard in legacy-actions.ts) so creation still works.
+  if (error && /wing_access|room_access/i.test(error.message)) {
+    ({ data: contact, error } = await supabase.from("legacy_contacts").insert(baseRow).select().single());
+  }
 
   if (error) return { error: error.message };
   return { contact };
@@ -205,12 +234,26 @@ export async function updateLegacyContact(
   if (updates.accessLevel !== undefined) dbUpdates.access_level = updates.accessLevel;
   if (updates.accessibleWings !== undefined) dbUpdates.accessible_wings = updates.accessibleWings;
   if (updates.accessibleRooms !== undefined) dbUpdates.accessible_rooms = updates.accessibleRooms;
+  // Keep the canonical uuid columns (which the delivery reader enforces on) in sync.
+  if (updates.accessibleWings !== undefined || updates.accessibleRooms !== undefined) {
+    const access = await resolveLegacyAccessUuids(supabase, user.id, updates.accessibleWings, updates.accessibleRooms);
+    if (updates.accessibleWings !== undefined) dbUpdates.wing_access = access.wing_access;
+    if (updates.accessibleRooms !== undefined) dbUpdates.room_access = access.room_access;
+  }
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from("legacy_contacts")
     .update(dbUpdates)
     .eq("id", contactId)
     .eq("user_id", user.id);
+
+  // Older DBs may lack wing_access/room_access — retry without them (see legacy-actions).
+  if (error && /wing_access|room_access/i.test(error.message)) {
+    const safe = { ...dbUpdates };
+    delete safe.wing_access;
+    delete safe.room_access;
+    ({ error } = await supabase.from("legacy_contacts").update(safe).eq("id", contactId).eq("user_id", user.id));
+  }
 
   if (error) return { error: error.message };
   return { success: true };

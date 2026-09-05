@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MUSEO VIVO — Toscaans Moodbord, Analyse &amp; Grondplan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,400&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F7F0E3;
+    --plaster:#F2E9DA;
+    --plaster-light:#FBF6EC;
+    --travertine:#E8DCC0;
+    --ink:#403B36;
+    --ink-soft:#6B635A;
+    --terracotta:#B0725A;
+    --terracotta-deep:#9A5E45;
+    --gold:#B8973A;
+    --line:#CDBFA6;
+    --shade:#D9CCB2;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--cream);color:var(--ink);
+    font-family:'Source Sans 3',system-ui,sans-serif;
+    font-size:17px;line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:2.5rem 1.5rem 6rem;}
+  h1,h2,h3,h4{font-family:'Fraunces',Georgia,serif;color:var(--ink);line-height:1.12;font-weight:900;}
+  h1{font-size:clamp(2rem,5vw,3.4rem);margin:.2rem 0 .4rem;letter-spacing:-.01em;}
+  h2{font-size:clamp(1.5rem,3.4vw,2.2rem);margin:3.4rem 0 .6rem;font-weight:900;
+     border-top:2px solid var(--line);padding-top:1.6rem;}
+  h3{font-size:1.28rem;margin:2rem 0 .5rem;font-weight:600;color:var(--terracotta-deep);}
+  h4{font-size:1.05rem;margin:1.2rem 0 .3rem;font-weight:600;}
+  .lede{font-family:'Fraunces',serif;font-style:italic;font-size:1.25rem;color:var(--ink-soft);
+        max-width:44ch;margin:.4rem 0 1.4rem;}
+  .kicker{font-family:'Source Sans 3',sans-serif;font-weight:600;letter-spacing:.18em;
+          text-transform:uppercase;font-size:.72rem;color:var(--terracotta-deep);}
+  .secnum{font-family:'Fraunces',serif;font-weight:900;color:var(--terracotta);
+          font-size:.9em;margin-right:.5rem;}
+  p{margin:.7rem 0;}
+  a{color:var(--terracotta-deep);}
+  .card{background:var(--plaster-light);border:1px solid var(--line);border-radius:14px;
+        padding:1.3rem 1.5rem;margin:1.4rem 0;box-shadow:0 1px 0 #fff inset,0 6px 18px rgba(64,59,54,.05);}
+  .grid{display:grid;gap:1.1rem;}
+  @media(min-width:680px){.grid.g2{grid-template-columns:1fr 1fr;}.grid.g3{grid-template-columns:1fr 1fr 1fr;}}
+  figure{margin:0;background:var(--plaster-light);border:1px solid var(--line);border-radius:12px;
+         overflow:hidden;display:flex;flex-direction:column;}
+  figure img{width:100%;height:210px;object-fit:cover;display:block;background:var(--shade);}
+  figcaption{padding:.7rem .9rem .9rem;font-size:.86rem;line-height:1.45;}
+  figcaption b{font-family:'Fraunces',serif;font-weight:600;display:block;color:var(--ink);margin-bottom:.15rem;}
+  figcaption .take{display:block;margin-top:.35rem;color:var(--terracotta-deep);}
+  figcaption .take::before{content:"→ ";font-weight:700;}
+  .catlabel{font-family:'Fraunces',serif;font-weight:900;font-size:1.15rem;margin:2rem 0 .2rem;color:var(--ink);}
+  .catlabel span{color:var(--terracotta);}
+  ul,ol{margin:.6rem 0 .6rem 0;padding-left:1.3rem;}
+  li{margin:.3rem 0;}
+  .rules{counter-reset:rule;list-style:none;padding-left:0;}
+  .rules li{position:relative;padding:.5rem 0 .5rem 3rem;border-bottom:1px dashed var(--line);}
+  .rules li::before{counter-increment:rule;content:"R"counter(rule);position:absolute;left:0;top:.5rem;
+    font-family:'Fraunces',serif;font-weight:900;color:#fff;background:var(--terracotta);
+    width:2.2rem;height:1.7rem;display:flex;align-items:center;justify-content:center;
+    border-radius:6px;font-size:.82rem;}
+  .rules li b{color:var(--terracotta-deep);}
+  .planwrap{background:var(--plaster-light);border:1px solid var(--line);border-radius:16px;
+            padding:1rem;margin:1.4rem 0;box-shadow:0 8px 26px rgba(64,59,54,.07);}
+  .planwrap svg{width:100%;height:auto;display:block;}
+  .legend{display:flex;flex-wrap:wrap;gap:.5rem 1.1rem;font-size:.83rem;margin-top:.6rem;color:var(--ink-soft);}
+  .legend i{display:inline-block;width:.9rem;height:.9rem;border-radius:3px;vertical-align:-1px;margin-right:.35rem;}
+  table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.9rem;}
+  th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--line);}
+  th{font-family:'Fraunces',serif;font-weight:600;}
+  .solve{background:var(--travertine);border-left:4px solid var(--terracotta);border-radius:0 10px 10px 0;
+         padding:.9rem 1.1rem;margin:1rem 0;font-size:.95rem;}
+  .solve b{color:var(--terracotta-deep);}
+  .toc{font-size:.9rem;color:var(--ink-soft);margin:.6rem 0 0;}
+  .toc a{margin-right:1rem;white-space:nowrap;}
+  .foot{margin-top:4rem;padding-top:1.4rem;border-top:2px solid var(--line);font-size:.82rem;color:var(--ink-soft);}
+  .pill{display:inline-block;background:var(--travertine);border:1px solid var(--line);border-radius:999px;
+        padding:.12rem .7rem;font-size:.76rem;font-weight:600;color:var(--ink-soft);margin:0 .2rem .3rem 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="kicker">MUSEO VIVO · WS3 exterior · concept-fase vóór uitvoering</span>
+  <h1>Toscaans Moodbord,<br>Analyse &amp; Grondplan</h1>
+  <p class="lede">Eerst kijken naar echte Toscaanse villa-onderdelen, dán de grammatica destilleren, dán pas tekenen — het grondplan ligt hier ter goedkeuring vóór er iets gebouwd wordt.</p>
+  <div class="toc">
+    <a href="#moodbord">1 · Moodbord</a>
+    <a href="#analyse">2 · Analyse</a>
+    <a href="#grondplan">3 · Grondplan</a>
+  </div>
+
+  <div class="card">
+    <b style="font-family:'Fraunces',serif;">Waar dit vandaan komt.</b>
+    Het gekozen concept is <b>Le Sette Sorelle</b> (7 slanke torens rond een terracotta Brunelleschi-koepel).
+    De koepel is de <b>entreehal</b>: bezoekers komen daar binnen en gaan via de hal naar 5 vleugels
+    (de vleugels worden niet van buiten aangeklikt). De entree ligt op de <b>−Z aankomst-as</b> met
+    monumentale trap en een tympaan die de eigenaarsnaam draagt; een 18s aankomst-dolly eindigt bij die ene deur,
+    met de naam-beat op ~7,5s. Palet is golden hour: warm plaster (#F2E9DA), travertijn, ink (#403B36),
+    terracotta koepel — <b>goud uitsluitend</b> op koepel-lantaarn en tympaan.
+    <br><br>
+    De vorige render-rondes stuitten op vier problemen die dit plan expliciet moet oplossen:
+    <span class="pill">P1 · radiaal 5-spaken leest als windmolen</span>
+    <span class="pill">P2 · torens klitten als schutting vóór de koepel</span>
+    <span class="pill">P3 · te weinig "gegroeid"/borgo-gevoel</span>
+    <span class="pill">P4 · owner wil breedte/volume, verrassend in het landschap</span>
+  </div>
+
+  <!-- ══════════════════════════ 1 · MOODBORD ══════════════════════════ -->
+  <h2 id="moodbord"><span class="secnum">1</span>Moodbord — echte Toscaanse onderdelen</h2>
+  <p>Alle beelden zijn foto's van Wikimedia Commons, elke URL geverifieerd (bestaande File-pagina + originele <code>upload.wikimedia.org/…/commons/</code>-pad). Onder elke foto: wat het is, en <span style="color:var(--terracotta-deep)">wat wij eruit halen</span>.</p>
+
+  <div class="catlabel"><span>a ·</span> Gevel &amp; proportie</div>
+  <div class="grid g2">
+    <figure>
+      <img loading="lazy" alt="Palazzo Piccolomini, Pienza" src="./img/m7.jpg">
+      <figcaption><b>Palazzo Piccolomini, Pienza (Rossellino, 1459)</b>
+        Vroeg-renaissance stadspaleis: rustica-basement, twee bel-etages met gelijke vensterritmes, zware kroonlijst.
+        <span class="take">De drie-lagen-verhouding basement : corpo : kroonlijst als proportie-recept voor ons hoofdblok en de vleugels.</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="Villa Medicea La Ferdinanda, Artimino" src="./img/m14.jpg">
+      <figcaption><b>Villa Medicea "La Ferdinanda", Artimino (Buontalenti, 1596)</b>
+        Breed, laag hoofdvolume met vooruitspringende hoek-bastions en een woud van schoorstenen — een villa die massa én verticalen combineert.
+        <span class="take">Bewijs dat "breed hoofdblok + verticale accenten aan de flanken" authentiek Toscaans is (P4). Ons model voor de brede corps de logis.</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="catlabel"><span>b ·</span> De koepel (Brunelleschi)</div>
+  <div class="grid g3">
+    <figure>
+      <img loading="lazy" alt="Cupola van Santa Maria del Fiore" src="./img/m5.jpg">
+      <figcaption><b>Cupola, Santa Maria del Fiore</b>
+        De terracotta schil met acht witmarmeren ribben die naar de lantaarn convergeren.
+        <span class="take">Terracotta koepel = held; ribben leiden het oog omhoog naar de gouden lantaarn.</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="Lantaarn van de koepel" src="./img/m12.jpg">
+      <figcaption><b>Lantaarn (lanterna) van boven</b>
+        Achthoekige lantaarn met steunberen — het bekronende, lichtste punt van het silhouet.
+        <span class="take">De enige plek (met het tympaan) waar goud mag; hoogste finial in de compositie.</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="Luchtfoto koepel" src="./img/m4.jpg">
+      <figcaption><b>Koepel van bovenaf</b>
+        Tamboer → dubbelschalige koepel → lantaarn, met de ribben als achtvoudige geleding.
+        <span class="take">Verhouding tamboer : schil : lantaarn — de opbouw die ons dome-silhouet dominant houdt.</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="catlabel"><span>c ·</span> Torens &amp; San-Gimignano-stadsprofiel</div>
+  <div class="grid g2">
+    <figure>
+      <img loading="lazy" alt="Panorama San Gimignano" src="./img/m10.jpg">
+      <figcaption><b>Panorama San Gimignano</b>
+        De beroemde torenstad: torens van ongelijke hoogte, verspreid, met gewone gebouwmassa ertússen — geen rij, een profiel.
+        <span class="take">Kern-les tegen P2: torens staan nooit als schutting; er zit altijd gebouw tussen, op ongelijke afstand.</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="San Gimignano skyline" src="./img/m11.jpg">
+      <figcaption><b>San Gimignano skyline</b>
+        Torens klitten in kleine groepjes, verschillende hoogtes, forse casa-torre-proporties (kort en fors, niet ranke naalden).
+        <span class="take">Casa-torre slankheid ≈ 4–6 : 1 (H:B), gegroepeerd in clusters — recept voor onze 7 zusters (P2, P3).</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="catlabel"><span>d ·</span> Loggia's &amp; arcades &nbsp;·&nbsp; <span>e ·</span> Cortile</div>
+  <div class="grid g2">
+    <figure>
+      <img loading="lazy" alt="Loggia degli Uffizi" src="./img/m6.jpg">
+      <figcaption><b>Loggiato degli Uffizi, Firenze</b>
+        Lange, ritmische zuilen-arcade in pietra serena — de gevel als reeks openingen, niet als blinde muur.
+        <span class="take">Parametrisch arcade-ritme voor de brede vleugels: langer maken = openingen spreiden, niet volumes stapelen.</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="Cortile van Palazzo Vecchio" src="./img/m8.jpg">
+      <figcaption><b>Cortile di Michelozzo, Palazzo Vecchio</b>
+        Een besloten binnenhof, aan alle zijden omsloten door arcades — het paleis vouwt zich om een leegte.
+        <span class="take">De cour d'honneur: de vleugels omarmen een open hof i.p.v. radiaal weg te wijzen (P1).</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="catlabel"><span>f ·</span> Tuinen: parterre &amp; cipressenlaan</div>
+  <div class="grid g3">
+    <figure>
+      <img loading="lazy" alt="Villa Lante, Bagnaia" src="./img/m1.jpg">
+      <figcaption><b>Villa Lante, Bagnaia — giardino all'italiana</b>
+        Geometrische parterre: buxus-compartimenten om een centrale fontein, streng axiaal.
+        <span class="take">Grind-parterre met vier buxus-vakken + centrale urn op de as (al gebouwd) klopt met de canon.</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="Viale dei Cipressi, Bolgheri" src="./img/m13.jpg">
+      <figcaption><b>Viale dei Cipressi, Bolgheri</b>
+        Kaarsrechte cipressenlaan die de blik naar één eindpunt kanaliseert.
+        <span class="take">Onze cipressenlaan (z −50…−110) op de aankomst-as = de dolly-corridor, exact deze werking.</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="Cipressen San Quirico d'Orcia bij zonsondergang" src="./img/m2.jpg">
+      <figcaption><b>Cipressi di San Quirico d'Orcia — al tramonto</b>
+        Cipresgroep op een heuvel in golden hour: warme westflank, koele schaduwzijde.
+        <span class="take">De licht-signatuur: goud/ink-ritme dat we op de torens en de heuvel willen vangen.</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <div class="catlabel"><span>g ·</span> Trap / entree &nbsp;·&nbsp; <span>h ·</span> Daken &amp; materialen</div>
+  <div class="grid g3">
+    <figure>
+      <img loading="lazy" alt="Cipressen San Quirico d'Orcia" src="./img/m3.jpg">
+      <figcaption><b>Podere-heuvel, San Quirico d'Orcia</b>
+        Een gebouw/boomgroep die uit een heuvelrug groeit — "je zou verrast zijn dit aan te treffen".
+        <span class="take">De gegroeide, geaardte plaatsing in het landschap die owner vraagt (P3, P4).</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="Terracotta daken Florence" src="./img/m9.jpg">
+      <figcaption><b>Coppo-daken, Palazzo Incontri (Firenze)</b>
+        Overlappende terracotta coppo-pannen; warme bruinrode toon, zachte golving.
+        <span class="take">Materiaal-canon voor koepel én toren-tentdaken: coppo-terracotta, mat, niet glimmend.</span>
+      </figcaption>
+    </figure>
+    <figure>
+      <img loading="lazy" alt="Lantaarn detail" src="./img/m12.jpg">
+      <figcaption><b>Portale &amp; bekroning (lanterna)</b>
+        De monumentale bekroning waar steen, marmer-ribben en de gouden top elkaar ontmoeten.
+        <span class="take">Referentie voor het tympaan-portaal + gouden bekroning op de −Z as.</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <!-- ══════════════════════════ 2 · ANALYSE ══════════════════════════ -->
+  <h2 id="analyse"><span class="secnum">2</span>Analyse — de Toscaanse ontwerpgrammatica</h2>
+
+  <h3>Proportie-regels</h3>
+  <p>De renaissance-gevel (Pienza, Uffizi) leest in <b>drie horizontale banden</b>: een dragend basement, een corpo van één of twee bel-etages met een <b>herhaald venster-ritme</b>, en een zware bekronende kroonlijst. De verhoudingen zijn eerder rustig dan hoog: het corpo domineert, basement en kroonlijst kaderen. Voor de torens geldt het omgekeerde: een authentieke Toscaanse <b>casa-torre is fors, geen naald</b> — slankheid H:B ≈ 4–6 : 1 (San Gimignano), niet de 8:1-lucifer die een diagram-look geeft. De koepel is een gestapelde drieklank: <b>tamboer</b> (achthoekige trommel met vensters) → <b>schil met ribben</b> → <b>lantaarn</b>, waarbij de lantaarn altijd het hoogste, lichtste eindpunt is. Dat de zeven zusters nét onder de lantaarn-finial toppen (maar boven de koepel-apex mogen) houdt de hiërarchie intact.</p>
+
+  <h3>Materiaal- &amp; kleurlogica in golden hour</h3>
+  <p>Het palet is smal en warm: zon-gebleekt <b>plaster</b> (de honing komt van de zon, niet van de verf), <b>travertijn</b> voor lijstwerk en zuilen, <b>coppo-terracotta</b> voor alle daken en de koepelschil, <b>ink</b> in de schaduwzijden, en <b>goud alleen</b> op koepel-lantaarn en tympaan. In golden hour zet de lage ZW-zon de westflanken in vuur terwijl de oostflanken in koele ink-schaduw vallen; dat <b>goud/ink-ritme</b> (zichtbaar op de San-Quirico-cipressen en de San-Gimignano-torens) is het compositie-instrument, niet een extra licht. Contrast leeft in de licht-<em>ratio</em>, niet in een exposure-tweak.</p>
+
+  <h3>Compositieprincipes — hoe één gebouw "gegroeid" oogt</h3>
+  <p>Een authentiek Toscaans stadspaleis is geen symmetrisch diagram maar <b>één aaneengesloten massa die in eeuwen is aangebouwd</b> (Palazzo Vecchio, de burcht van Volterra, de verdichte kernen van San Gimignano en Massa Marittima). Drie mechanismen dragen die gegroeidheid. <b>(1) Hiërarchie zonder spiegeling:</b> één dominant hoofdvolume (koepel/corpo) torent, en de rest schikt zich er ongelijk omheen — nooit twee gelijke helften. <b>(2) Bewuste asymmetrie:</b> de ene kant is hoog en compact, de andere strekt zich laag en lang uit; de gevel verspringt in hoogte en rooilijn omdat elke eeuw een stuk toevoegde. Balans ontstaat door <em>gewicht</em> (een hoog compact blok weegt op tegen een lange lage vleugel), niet door een spiegel-as. <b>(3) Eén doorlopende omtrek:</b> alles zit vast aaneen — vleugels vloeien in elkaar, een teruggelegen tak vouwt terug en omsluit met de rest een onregelmatige <em>cortile</em>; je loopt binnen één muurlijn van de ene hoek naar de andere. De torens groeien uit de knopen en hoeken van díe massa op, niet als losse volumes op het veld — verspreid, mét gebouw ertussen, zodat de koepel vrij en dominant blijft.</p>
+
+  <div class="solve">
+    <b>Vijf zinnen samengevat.</b> (1) De gevel is een drieklank basement–corpo–kroonlijst met herhaald venster-ritme; de koepel is tamboer–schil–lantaarn, met de lantaarn als lichtste top. (2) Casa-torri zijn fors (H:B 4–6:1), niet ranke naalden. (3) Het palet is smal en warm; golden hour werkt via het goud/ink-ritme van west- vs. oostflanken, niet via extra licht. (4) Authenticiteit ontstaat uit hiërarchie (één held) en <b>bewuste asymmetrie in één aaneengesloten massa</b>: één hoge compacte kant, één lange lage kant, in balans door gewicht en niet door spiegeling. (5) Torens groeien uit de hoeken en knopen van díe ene massa, verspreid mét gebouw ertussen, zodat de koepel vrij en dominant leest — nooit als schutting ervoor.
+  </div>
+
+  <h3>Ontwerpregels voor ons paleis</h3>
+  <ol class="rules">
+    <li><b>Eén held.</b> De terracotta koepel is het enige dominante volume; niets in het silhouet mag hem verbergen of evenaren. Torens toppen onder de lantaarn-finial. <span class="pill">P2</span></li>
+    <li><b>Koepel-footprint ≤ 10%.</b> Het grondvlak van de koepel-drum blijft ≤ 10% van het totale paleis-grondvlak — de koepel domineert door <em>hoogte/silhouet</em> als draaipunt, niet door grondbeslag; het paleis spreidt eromheen. <span class="pill">P1</span> <span class="pill">P2</span></li>
+    <li><b>Eén aaneengesloten massa.</b> Het paleis is <b>één samenhangende footprint</b> met een doorlopende omtrek — geen losse vleugel-volumes met gaten ertussen. Alle delen raken elkaar; je loopt binnen één muurlijn van kant tot kant. <span class="pill">P1</span> <span class="pill">P2</span></li>
+    <li><b>Bewust asymmetrisch, in balans door gewicht.</b> Eén hoge compacte kant (koepel-hoofdblok) weegt op tegen één lange lage kant (galerij-vleugel); geen spiegel-as. Rooilijn en daknok verspringen zoals bij een door de eeuwen gegroeid stadspaleis. <span class="pill">P1</span> <span class="pill">P2</span></li>
+    <li><b>Geen "vijf vleugels".</b> Het exterieur drukt de vijf hoofdstukken <b>niet</b> als vijf uitwaaierende volumes uit. De vijf blijven <em>interne posities binnen de ene massa</em>; wat je ziet is één gegroeid gebouw, geen ster of waaier. <span class="pill">P4</span></li>
+    <li><b>Torens uit de knopen, verspreid.</b> Casa-torri rijzen op uit de hoeken en knikpunten van de massa (niet als losse torens op het veld). Geen twee vormen samen een "schutting" vóór de koepel; er zit altijd gebouw of afstand tussen. <span class="pill">P2</span> <span class="pill">P3</span></li>
+    <li><b>Casa-torre-proporties.</b> Toren-slankheid H:B blijft 4–6:1 (fors), in drie hoogte-families gegroepeerd, niet één uniforme rij. <span class="pill">P2</span></li>
+    <li><b>Poortgebouw-frame.</b> De twee hoogste torens flankeren de tympaan-gevel als poort, nét buiten de aankomst-wig, zodat ze de entree inkaderen zonder de koepel te dekken. <span class="pill">P2</span></li>
+    <li><b>Aankomst-as vrij.</b> Geen bouwmassa of toren binnen ±22° van de −Z as; de cipressenlaan → trap → tympaan → deur blijft een lege corridor voor de dolly. <span class="pill">functioneel</span></li>
+    <li><b>Irregulier omsloten cortile.</b> Een teruggelegen tak vouwt terug en omsluit met het hoofdblok een <b>onregelmatige binnenhof</b>; die bindende leegte maakt de aaneengesloten massa leesbaar als één borgo, niet als losse blokken. <span class="pill">P1</span> <span class="pill">P3</span></li>
+    <li><b>Breedte door lengte, niet door stapelen.</b> De lage galerij-vleugel wordt "groot" door langer te worden en de arcade-/venster-openingen te spreiden — parametrisch op de vleugellengte. <span class="pill">P4</span></li>
+    <li><b>Golden-hour-palet, goud gereserveerd.</b> Plaster/travertijn/terracotta/ink; goud uitsluitend op koepel-lantaarn en tympaan; contrast via licht-ratio. <span class="pill">canon</span></li>
+    <li><b>Geworteld in de heuvel.</b> De hele massa en de torens krijgen een gebattered plint/footing en volgen het terrein, zodat het ensemble uit de heuvel groeit i.p.v. erop geplaatst lijkt. <span class="pill">P3</span> <span class="pill">P4</span></li>
+    <li><b>Mobiel-budget.</b> Alles merget per materiaal / instancing; gevel- en toren-loops delen draw-buckets — netto binnen het scene-budget. <span class="pill">functioneel</span></li>
+  </ol>
+
+  <!-- ══════════════════════════ 3 · GRONDPLAN ══════════════════════════ -->
+  <h2 id="grondplan"><span class="secnum">3</span>Grondplan — <span style="font-weight:400;font-style:italic;font-family:'Fraunces',serif;">"un corpo unico, cresciuto nei secoli"</span></h2>
+
+  <p><b>Parti in vier zinnen.</b> Eén <b>uitgestrekte, aaneengesloten, bewust asymmetrische</b> footprint: een hoog compact <b>hoofdblok</b> draagt de terracotta koepel (= entreehal) pal boven de entree op de −Z-as — maar de koepel-drum is <em>bescheiden van grondvlak</em> (⌀ 16 w.u., ~201 w.u.², nog geen 8% van het totaal) en heerst door hoogte, niet door beslag. Vanuit dat blok groeit, één kant uit, een <b>lange diepe galerij-vleugel</b> ver naar het oosten, en daaraan hangen een <b>teruglig-tak</b> die met het hoofdblok een grote onregelmatige <b>cortile</b> omsluit, een lagere <b>dienstvleugel</b> naar achter, en een <b>ommuurde broncourt</b> — samen één doorlopende muurlijn, van hoek tot hoek beloopbaar, zonder gaten. Zeven casa-torri <b>rijzen uit de knopen en hoeken van díe massa</b> op als een gegroeid stadsprofiel: twee hoge torens flankeren de entree als poortgebouw, een cluster verdicht bij de galerij-knik als "oude stad", losse accenten markeren het verre uiteinde, de teruglig en de broncourt — nooit als schutting vóór de koepel. Balans komt van <b>gewicht</b>, niet van spiegeling: het hoge compacte blok weegt op tegen de lange lage armen die zich eromheen spreiden; de koepel blijft vrij de held én het draaipunt op (0,0).</p>
+
+  <div class="planwrap">
+    <svg viewBox="0 0 900 700" role="img" aria-label="Top-down grondplan van het aaneengesloten asymmetrische paleis">
+      <defs>
+        <pattern id="gravel" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+          <rect width="7" height="7" fill="#EFE4CC"/><circle cx="1.5" cy="1.5" r=".6" fill="#DDCDA9"/><circle cx="4.5" cy="4" r=".5" fill="#D6C49C"/>
+        </pattern>
+        <pattern id="parterre" width="26" height="26" patternUnits="userSpaceOnUse">
+          <rect width="26" height="26" fill="#E9E0C8"/>
+          <rect x="3" y="3" width="20" height="20" fill="none" stroke="#8FA05C" stroke-width="3"/>
+        </pattern>
+        <pattern id="arcade" width="26" height="10" patternUnits="userSpaceOnUse">
+          <rect width="26" height="10" fill="#F2E9DA"/>
+          <line x1="0" y1="0" x2="0" y2="10" stroke="#C9B896" stroke-width="1.4"/>
+        </pattern>
+        <marker id="arrow" markerWidth="12" markerHeight="12" refX="8" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#9A5E45"/>
+        </marker>
+        <radialGradient id="domeG" cx="42%" cy="38%" r="72%">
+          <stop offset="0%" stop-color="#C98363"/><stop offset="70%" stop-color="#B0725A"/><stop offset="100%" stop-color="#8F5842"/>
+        </radialGradient>
+      </defs>
+
+      <!-- ground / hill wash -->
+      <rect x="0" y="0" width="900" height="700" fill="#EDE6D2"/>
+
+      <!-- ===== ORIENTATION & SCALE ============================================
+           North (+Z) is UP/rear; arrival (-Z) is DOWN/front. Dome centre at
+           plan (415,300) = world (0,0), the pivot. SCALE: 1 world unit = 4 px.
+           plan_x = 415 + 4·X   |   plan_y = 300 − 4·Z   (X east+, +Z rear/north).
+           The palace is a large, grown asymmetric mass; the dome-drum footprint
+           is deliberately small (⌀16 w.u.) so it rules by HEIGHT, not by ground.
+      ================================================================== -->
+
+      <!-- ==================================================================== -->
+      <!-- ONE CONTINUOUS FOOTPRINT (single outline, no gaps) -->
+      <!-- A high compact main block (holds the dome) → B long deep gallery reaching
+           far east → C returning back-tak folding up to embrace a large irregular
+           cortile → D lower service wing (rear-west) → E walled well-court range.
+           All parts touch; one wall-line walkable corner to corner. -->
+
+      <!-- A+B+C : main block + long gallery + returning back-tak, one outline -->
+      <path d="
+        M 251,244
+        L 251,236
+        L 347,236
+        L 347,188
+        L 611,188
+        L 611,236
+        L 727,236
+        L 727,252
+        L 647,252
+        L 647,264
+        L 779,264
+        L 779,316
+        L 467,316
+        L 467,348
+        L 347,348
+        L 347,288
+        L 251,288
+        Z" fill="#F2E9DA" stroke="#403B36" stroke-width="2.6" stroke-linejoin="round"/>
+
+      <!-- E : walled well-court range (attached to gallery rear-east) -->
+      <path d="M 647,252 L 647,216 L 727,216 L 727,252 Z"
+            fill="#EFE7D6" stroke="#403B36" stroke-width="2.4" stroke-linejoin="round"/>
+      <!-- broncourt (well-court) open square inside E's embrace -->
+      <rect x="655" y="222" width="64" height="26" fill="url(#gravel)" stroke="#C9B896" stroke-width="1.3"/>
+      <circle cx="687" cy="235" r="4" fill="#8A6B3E"/><!-- well -->
+      <text x="687" y="212" text-anchor="middle" font-family="Fraunces,serif" font-size="10" fill="#7A6B4E" font-style="italic">broncourt</text>
+
+      <!-- D : lower service wing (attached rear-west of the main block) -->
+      <rect x="251" y="244" width="104" height="44" fill="#EFE7D6" stroke="#403B36" stroke-width="2.4"/>
+      <text x="303" y="270" text-anchor="middle" font-family="Fraunces,serif" font-size="10" fill="#7A6B4E" font-style="italic">dienstvleugel</text>
+
+      <!-- large irregular CORTILE (bound void between A, B and the back-tak C) -->
+      <path d="M 467,236 L 611,236 L 611,264 L 467,264 Z"
+            fill="url(#gravel)" stroke="#C9B896" stroke-width="1.5"/>
+      <text x="539" y="254" text-anchor="middle" font-family="Fraunces,serif" font-size="14" fill="#7A6B4E" font-style="italic">cortile grande</text>
+
+      <!-- arcade rhythm along the long deep gallery (breedte door lengte) -->
+      <rect x="467" y="300" width="308" height="14" fill="url(#arcade)" opacity=".9"/>
+
+      <!-- roof/parcel seams so the mass reads as grown-in-time, not one slab -->
+      <g stroke="#D8C9A6" stroke-width="1.4" fill="none">
+        <line x1="411" y1="236" x2="411" y2="348"/>
+        <line x1="467" y1="264" x2="467" y2="316"/>
+        <line x1="543" y1="188" x2="543" y2="236"/>
+        <line x1="611" y1="264" x2="611" y2="316"/>
+        <line x1="695" y1="264" x2="695" y2="316"/>
+      </g>
+
+      <!-- ==================================================================== -->
+      <!-- DOME / ENTRANCE HALL (the hero, small footprint) — ⌀16 w.u. = 64 px -->
+      <!-- centre (415,300); drum r=32 px, terracotta shell r=24 px -->
+      <circle cx="415" cy="300" r="32" fill="#E8DCC0" stroke="#403B36" stroke-width="2"/><!-- tambour drum ⌀16 -->
+      <circle cx="415" cy="300" r="24" fill="url(#domeG)" stroke="#8F5842" stroke-width="1.5"/><!-- terracotta shell -->
+      <g stroke="#F2E9DA" stroke-width="1.6">
+        <line x1="415" y1="276" x2="415" y2="300"/><line x1="432" y1="283" x2="415" y2="300"/>
+        <line x1="439" y1="300" x2="415" y2="300"/><line x1="432" y1="317" x2="415" y2="300"/>
+        <line x1="415" y1="324" x2="415" y2="300"/><line x1="398" y1="317" x2="415" y2="300"/>
+        <line x1="391" y1="300" x2="415" y2="300"/><line x1="398" y1="283" x2="415" y2="300"/>
+      </g>
+      <circle cx="415" cy="300" r="6" fill="#B8973A" stroke="#8F6E1E" stroke-width="1"/><!-- gold lantern -->
+      <text x="415" y="303" text-anchor="middle" font-family="Fraunces,serif" font-size="8" font-weight="900" fill="#403B36">HAL</text>
+      <text x="360" y="343" text-anchor="middle" font-family="Fraunces,serif" font-size="10" fill="#5A4A38" style="paint-order:stroke;stroke:#F2E9DA;stroke-width:3">koepel = entreehal · ⌀16 w.u.</text>
+
+      <!-- ==================================================================== -->
+      <!-- 5 CHAPTER-ANCHORS — invisible walkthrough positions INSIDE the mass -->
+      <g font-family="Fraunces,serif" font-size="11" fill="#403B36">
+        <g fill="#8F5842">
+          <circle cx="303" cy="264" r="5"/>   <!-- 0 roots  (world −28,+9) -->
+          <circle cx="527" cy="300" r="5"/>   <!-- 1 nest   (world +28,0) -->
+          <circle cx="731" cy="300" r="5"/>   <!-- 2 craft  (world +79,0) -->
+          <circle cx="631" cy="308" r="5"/>   <!-- 3 travel (world +54,−2) -->
+          <circle cx="527" cy="212" r="5"/>   <!-- 4 passions (world +28,+22) -->
+        </g>
+        <g stroke="#8F5842" stroke-width="1" fill="none">
+          <circle cx="303" cy="264" r="9"/><circle cx="527" cy="300" r="9"/><circle cx="731" cy="300" r="9"/>
+          <circle cx="631" cy="308" r="9"/><circle cx="527" cy="212" r="9"/>
+        </g>
+        <text x="303" y="251" text-anchor="middle">0·roots</text>
+        <text x="527" y="287" text-anchor="middle">1·nest</text>
+        <text x="731" y="287" text-anchor="middle">2·craft</text>
+        <text x="631" y="325" text-anchor="middle">3·travel</text>
+        <text x="527" y="202" text-anchor="middle">4·passions</text>
+      </g>
+      <text x="415" y="366" text-anchor="middle" font-family="Fraunces,serif" font-size="10" fill="#6B635A" font-style="italic">5 hoofdstuk-anchors = posities BINNEN de massa (geen vleugels)</text>
+
+      <!-- ==================================================================== -->
+      <!-- 7 CASA-TORRI — rising from the corners/knots of the mass, spread out -->
+      <g font-family="Fraunces,serif" font-size="10" fill="#403B36">
+        <!-- two TALL gate-towers flanking the entrance, just outside the ±22° wedge -->
+        <rect x="356" y="356" width="27" height="27" fill="#DFD2B4" stroke="#403B36" stroke-width="2.6"/><!-- T1 W-gate -->
+        <rect x="452" y="356" width="27" height="27" fill="#DFD2B4" stroke="#403B36" stroke-width="2.6"/><!-- T2 E-gate -->
+        <text x="369" y="398" text-anchor="middle">T1·poort</text>
+        <text x="465" y="398" text-anchor="middle">T2·poort</text>
+        <!-- cluster at the gallery/back-tak knots ("oude stad"): T3,T4,T5 -->
+        <rect x="757" y="242" width="22" height="22" fill="#E4D8BC" stroke="#403B36" stroke-width="2"/><!-- T3 far NE corner -->
+        <rect x="757" y="316" width="20" height="20" fill="#E4D8BC" stroke="#403B36" stroke-width="2"/><!-- T4 far SE corner -->
+        <rect x="601" y="168" width="20" height="20" fill="#E4D8BC" stroke="#403B36" stroke-width="2"/><!-- T5 back-tak NE -->
+        <text x="768" y="238" text-anchor="middle">T3</text>
+        <text x="768" y="352" text-anchor="middle">T4</text>
+        <text x="611" y="160" text-anchor="middle">T5</text>
+        <text x="700" y="360" text-anchor="middle">torencluster “oude stad”</text>
+        <!-- accents: NW corner of block/service, back-tak west, well-court -->
+        <rect x="243" y="228" width="24" height="24" fill="#E4D8BC" stroke="#403B36" stroke-width="2"/><!-- T6 NW corner -->
+        <rect x="347" y="172" width="20" height="20" fill="#E4D8BC" stroke="#403B36" stroke-width="2"/><!-- T7 back-tak NW -->
+        <text x="238" y="222" text-anchor="middle">T6</text>
+        <text x="357" y="164" text-anchor="middle">T7</text>
+      </g>
+
+      <!-- ==================================================================== -->
+      <!-- ENTRANCE AXIS (−Z, front, DOWN) — on x=415 -->
+      <g>
+        <rect x="385" y="352" width="60" height="8" fill="#E8DCC0" stroke="#403B36" stroke-width="1"/>
+        <rect x="379" y="362" width="72" height="8" fill="#E1D4B6" stroke="#403B36" stroke-width="1"/>
+        <rect x="373" y="372" width="84" height="8" fill="#DACCAC" stroke="#403B36" stroke-width="1"/>
+      </g>
+      <rect x="405" y="347" width="20" height="7" fill="#B8973A" stroke="#8F6E1E" stroke-width="1"/><!-- gold tympanum band -->
+      <text x="490" y="366" font-size="10" fill="#5A4A38" font-family="Fraunces,serif">trap + goud-tympaan (naam-beat)</text>
+
+      <!-- parterre garden on axis -->
+      <rect x="370" y="470" width="90" height="70" fill="url(#parterre)" stroke="#C9B896" stroke-width="1.5"/>
+      <circle cx="415" cy="505" r="6" fill="#8A6B3E"/>
+      <text x="490" y="510" font-size="10" fill="#5A4A38" font-family="Fraunces,serif">grind-parterre + buxus + urn</text>
+
+      <!-- cypress avenue (two rows) leading to arrival -->
+      <g fill="#5A6E3A">
+        <ellipse cx="390" cy="576" rx="6" ry="13"/><ellipse cx="390" cy="611" rx="6" ry="13"/><ellipse cx="390" cy="646" rx="6" ry="13"/><ellipse cx="390" cy="681" rx="6" ry="13"/>
+        <ellipse cx="440" cy="576" rx="6" ry="13"/><ellipse cx="440" cy="611" rx="6" ry="13"/><ellipse cx="440" cy="646" rx="6" ry="13"/><ellipse cx="440" cy="681" rx="6" ry="13"/>
+      </g>
+      <text x="490" y="620" font-size="10" fill="#5A4A38" font-family="Fraunces,serif">cipressenlaan (z −50…−120)</text>
+
+      <!-- massa-vrije ±22° wedge on -Z axis (guide) -->
+      <path d="M 415,300 L 336,700 L 494,700 Z" fill="none" stroke="#C0553A" stroke-width="1" stroke-dasharray="4 5" opacity=".6"/>
+      <text x="415" y="696" text-anchor="middle" font-size="9" fill="#C0553A" opacity=".85">massa-vrije aankomst-wig ±22°</text>
+
+      <!-- arrival / dolly axis arrow -->
+      <line x1="415" y1="695" x2="415" y2="382" stroke="#9A5E45" stroke-width="2.5" marker-end="url(#arrow)"/>
+      <text x="560" y="660" font-size="11" fill="#9A5E45" font-family="Fraunces,serif" font-weight="600">18s dolly · naam-beat ~7,5s ↑</text>
+
+      <!-- name-beat framing rays between the two gate-towers -->
+      <line x1="465" y1="368" x2="431" y2="322" stroke="#B8973A" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>
+      <line x1="369" y1="368" x2="399" y2="322" stroke="#B8973A" stroke-width="1" stroke-dasharray="3 3" opacity=".7"/>
+
+      <!-- weight-balance indicator: high compact (L) vs long low (R) -->
+      <g opacity=".6" font-family="Fraunces,serif" font-size="9" fill="#9A5E45">
+        <line x1="300" y1="430" x2="770" y2="430" stroke="#9A5E45" stroke-width="1" stroke-dasharray="2 4"/>
+        <path d="M 415,430 l -6,-9 l 12,0 z" fill="#9A5E45"/>
+        <text x="316" y="444">hoog · compact (gewicht)</text>
+        <text x="754" y="444" text-anchor="end">lang · laag · uitgestrekt (gewicht)</text>
+      </g>
+
+      <!-- north arrow -->
+      <g transform="translate(858,90)">
+        <line x1="0" y1="34" x2="0" y2="0" stroke="#403B36" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="0" y="-6" text-anchor="middle" font-family="Fraunces,serif" font-size="14" font-weight="900" fill="#403B36">N</text>
+        <text x="0" y="50" text-anchor="middle" font-size="9" fill="#6B635A">(+Z achter)</text>
+      </g>
+
+      <!-- scale bar : 1 w.u. = 4 px → 40 px = 10 w.u. -->
+      <g transform="translate(30,672)" font-family="Fraunces,serif" font-size="9" fill="#6B635A">
+        <rect x="0" y="0" width="40" height="6" fill="#403B36"/>
+        <rect x="40" y="0" width="40" height="6" fill="none" stroke="#403B36" stroke-width="1"/>
+        <text x="0" y="20">0</text><text x="76" y="20">20 w.u.</text>
+        <text x="0" y="-6">schaal · 1 w.u. = 4 px</text>
+      </g>
+
+      <!-- title -->
+      <text x="30" y="42" font-family="Fraunces,serif" font-size="20" font-weight="900" fill="#403B36">Plan · één uitgestrekt, aaneengesloten, asymmetrisch corpo</text>
+      <text x="30" y="62" font-size="11" fill="#6B635A">top-down · klein-footprint koepel-entreehal (⌀16 w.u.) als draaipunt · lange diepe galerij · teruglig-tak + cortile grande · dienstvleugel · broncourt · 7 casa-torri · 5 interne anchors · aankomst op −Z</text>
+    </svg>
+    <div class="legend">
+      <span><i style="background:#B0725A"></i>terracotta koepel (held)</span>
+      <span><i style="background:#B8973A"></i>goud: lantaarn + tympaan</span>
+      <span><i style="background:#F2E9DA;border:1px solid #403B36"></i>aaneengesloten massa (plaster)</span>
+      <span><i style="background:#DFD2B4;border:1px solid #403B36"></i>casa-torri (travertijn)</span>
+      <span><i style="background:#8F5842;border-radius:50%"></i>5 interne hoofdstuk-anchors</span>
+      <span><i style="background:#5A6E3A"></i>cipressen / buxus</span>
+      <span><i style="background:#C0553A"></i>massa-vrije aankomst-wig</span>
+    </div>
+  </div>
+
+  <h3>Koepel-footprint vs. totaal grondvlak — de ≤10%-rekensom</h3>
+  <p>Alle maten in <b>wereld-eenheden (w.u.)</b>, koepel-drum gecentreerd op (0,0), −Z = aankomst. De koepel-drum is ⌀ 16 w.u.; zijn grondvlak (cirkel) = π·8² ≈ <b>201 w.u.²</b>. Het totale bebouwde grondvlak is de som van de vijf aaneengesloten volumes (cortile-hoven zijn <em>leegte</em> en tellen niet als bebouwd oppervlak).</p>
+  <table>
+    <thead><tr><th>Volume</th><th>Afmeting (w.u.)</th><th>Grondvlak (w.u.²)</th></tr></thead>
+    <tbody>
+      <tr><td>A · Hoofdblok (draagt koepel)</td><td>30 × 28</td><td>840</td></tr>
+      <tr><td>B · Galerij-vleugel (lang, diep, oost)</td><td>78 × 13</td><td>1014</td></tr>
+      <tr><td>C · Teruglig-tak (omsluit cortile)</td><td>46 × 12</td><td>552</td></tr>
+      <tr><td>D · Dienstvleugel (lager, rear-west)</td><td>26 × 11</td><td>286</td></tr>
+      <tr><td>E · Broncourt-range (ommuurd)</td><td>20 × 9</td><td>180</td></tr>
+      <tr><td><b>Totaal bebouwd paleis-grondvlak</b></td><td>—</td><td><b>2872</b></td></tr>
+    </tbody>
+  </table>
+  <div class="solve">
+    <b>Ratio.</b> Koepel-footprint 201 w.u.² ÷ totaal 2872 w.u.² = <b>7,0%</b> — ruim onder de 10%-grens. De koepel-drum beslaat dus nog geen dertiende van het bebouwde grondvlak; hij domineert het silhouet uitsluitend door <em>hoogte</em> (hoogste volume, gouden lantaarn als apex) en blijft het centrale draaipunt op (0,0), terwijl het paleis zich er breed omheen spreidt. (Zou de koepel als vierkant gerekend worden — 16×16 = 256 w.u.² — dan is de ratio 8,9%, nog steeds ≤10%.)
+  </div>
+
+  <h3>Bouw-maten voor de 3D — wereld-coördinaten (koepel op 0,0, −Z = aankomst)</h3>
+  <p>X = oost positief, Z = noord/achter positief (−Z is de aankomst-as), Y = hoogte. Rechthoeken gegeven als centrum (Xc, Zc) + breedte×diepte; hoogtes indicatief voor de gewichtsbalans (koepel het hoogst).</p>
+  <table>
+    <thead><tr><th>Element</th><th>Centrum (X, Z)</th><th>Breedte × diepte</th><th>Hoogte Y (indic.)</th><th>Rol</th></tr></thead>
+    <tbody>
+      <tr><td>Koepel-drum + lantaarn</td><td>0, 0</td><td>⌀ 16 (footprint ~201)</td><td>drum ~24 → apex ~28 → lantaarn-finial ~30,4</td><td>held / draaipunt</td></tr>
+      <tr><td>A Hoofdblok</td><td>−2, +2</td><td>30 × 28</td><td>~18 (hoog compact)</td><td>draagt koepel, entree-gevel op −Z</td></tr>
+      <tr><td>B Galerij-vleugel</td><td>+52, +2,5</td><td>78 × 13</td><td>~9 (laag, lang)</td><td>breedte door lengte, arcade</td></tr>
+      <tr><td>C Teruglig-tak</td><td>+26, +22</td><td>46 × 12</td><td>~11</td><td>omsluit cortile grande</td></tr>
+      <tr><td>D Dienstvleugel</td><td>−28, +8,5</td><td>26 × 11</td><td>~8 (lagst)</td><td>rear-west, gegroeidheid</td></tr>
+      <tr><td>E Broncourt-range</td><td>+68, +16,5</td><td>20 × 9</td><td>~8 (ommuurd)</td><td>omsluit broncourt</td></tr>
+      <tr><td>Cortile grande (leegte)</td><td>+13, +7</td><td>36 × 7</td><td>—</td><td>onregelmatige binnenhof</td></tr>
+      <tr><td>Broncourt (leegte)</td><td>+68, +16,5</td><td>16 × 6,5</td><td>—</td><td>ommuurd hof + put</td></tr>
+    </tbody>
+  </table>
+  <table>
+    <thead><tr><th>Casa-torre</th><th>Positie (X, Z)</th><th>Voet (w.u.)</th><th>Hoogte-familie</th></tr></thead>
+    <tbody>
+      <tr><td>T1 · poort (west)</td><td>−13, −14</td><td>7 × 7</td><td>hoog (~28,5, poortframe)</td></tr>
+      <tr><td>T2 · poort (oost)</td><td>+11, −14</td><td>7 × 7</td><td>hoog (~28,5, poortframe)</td></tr>
+      <tr><td>T3 · verre NE-hoek</td><td>+90, +12</td><td>5,5 × 5,5</td><td>midden (~24)</td></tr>
+      <tr><td>T4 · verre SE-hoek</td><td>+90, −6</td><td>5 × 5</td><td>midden (~23)</td></tr>
+      <tr><td>T5 · teruglig NE</td><td>+50, +32</td><td>5 × 5</td><td>laag (~20)</td></tr>
+      <tr><td>T6 · NW-hoek (blok/dienst)</td><td>−41, +16</td><td>6 × 6</td><td>midden (~24)</td></tr>
+      <tr><td>T7 · teruglig NW</td><td>−13, +30</td><td>5 × 5</td><td>laag (~20)</td></tr>
+    </tbody>
+  </table>
+  <table>
+    <thead><tr><th>Hoofdstuk-anchor</th><th>targetWorldPos (X, Z)</th><th>Ligt in</th></tr></thead>
+    <tbody>
+      <tr><td>0 · roots</td><td>−28, +9</td><td>dienstvleugel/hoofdblok-knik</td></tr>
+      <tr><td>1 · nest</td><td>+28, 0</td><td>galerij (vroeg)</td></tr>
+      <tr><td>2 · craft</td><td>+79, 0</td><td>galerij (ver-oost)</td></tr>
+      <tr><td>3 · travel</td><td>+54, −2</td><td>galerij-front bij knik</td></tr>
+      <tr><td>4 · passions</td><td>+28, +22</td><td>teruglig-tak</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:.86rem;color:var(--ink-soft);"><b>SVG↔wereld-schaal:</b> 1 w.u. = 4 px; plan_x = 415 + 4·X, plan_y = 300 − 4·Z. De koepel-drum (⌀16 w.u. = 64 px) toont dus visueel het bescheiden grondbeslag t.o.v. de ~110 w.u. brede, ~55 w.u. diepe totale massa.</p>
+
+  <h3>Onderbouwing — elke analyseregel gekoppeld aan een plankeuze</h3>
+  <table>
+    <thead><tr><th>Analyseregel</th><th>Plankeuze</th></tr></thead>
+    <tbody>
+      <tr><td>R1 Eén held</td><td>Koepel in het hoge compacte blok, vrij aan alle zijden; geen enkel volume of toren evenaart hem; torens toppen onder de lantaarn-finial (~28–29 vs. finial ~30,4).</td></tr>
+      <tr><td>R2b Koepel-footprint ≤ 10%</td><td>Koepel-drum ⌀16 w.u. → footprint ~201 w.u.² tegenover ~2872 w.u.² totaal bebouwd = <b>7,0%</b>. De koepel is het draaipunt op (0,0) en heerst door hoogte; het uitgestrekte paleis spreidt eromheen. Zie de rekensom hierboven.</td></tr>
+      <tr><td>R2 Eén aaneengesloten massa</td><td>Hoofdblok → galerij → teruglig-tak vormen één doorlopende omtrek (één outline-path); binnen de muurlijn beloopbaar van hoek tot hoek — geen losse volumes, geen gaten.</td></tr>
+      <tr><td>R3 Asymmetrisch, gewichtsbalans</td><td>Hoog compact hoofdblok links (koepel, kort/diep) weegt op tegen de lange lage galerij rechts; rooilijn en nok verspringen — geen spiegel-as in de bebouwing.</td></tr>
+      <tr><td>R4 Geen "vijf vleugels"</td><td>De 5 hoofdstukken zijn 5 kleine <em>interne anchor-posities</em> binnen de massa (0-roots … 4-passions), niet 5 uitwaaierende volumes.</td></tr>
+      <tr><td>R5 + R6 Torens uit knopen, casa-torre</td><td>7 vierkante torens in 3 hoogte-families, opgroeiend uit hoeken/knikken: 2 poorttorens vooraan, cluster T3·T4·T5 bij de galerij-knik, T6·T7 los op het hoofdblok — nooit een rij.</td></tr>
+      <tr><td>R7 Poortgebouw-frame</td><td>Poorttorens flankeren de tympaan-gevel net buiten de ±22°-wig; ze kaderen het tympaan tijdens de naam-beat en dekken de koepel niet.</td></tr>
+      <tr><td>R8 Aankomst-as vrij</td><td>Dichtstbijzijnde bouwmassa (galerij-front) staat ruim buiten de wig; geen massa of toren binnen ±22° van de −Z-as.</td></tr>
+      <tr><td>R9 Irregulier omsloten cortile</td><td>De teruglig-tak vouwt terug en omsluit met het hoofdblok een onregelmatige binnenhof (cortile) — bindende leegte die de massa als één borgo laat lezen.</td></tr>
+      <tr><td>R10 Breedte door lengte</td><td>Galerij-arcade parametrisch op de vleugellengte: langer = meer gespreide openingen, geen gestapelde volumes.</td></tr>
+      <tr><td>R12 Geworteld</td><td>Massa en torens met gebattered plint/footing die het terrein volgen; het geheel groeit uit de heuvel.</td></tr>
+    </tbody>
+  </table>
+
+  <h4>Hoe het plan de vier owner-richtlijnen respecteert</h4>
+  <div class="solve"><b>(i) Asymmetrisch én in balans.</b> Er is geen spiegel-as in de bebouwing: links een hoog compact hoofdblok (koepel, kort en diep), rechts een lange lage galerij die één kant uit strekt, met een teruglig-tak erboven. De compositie leest in balans doordat het <em>gewicht</em> klopt — het hoge dichte volume weegt op tegen de lange lage massa — niet doordat de helften gelijk zijn. Alleen de tuin-as (trap/parterre/laan) blijft axiaal voor de entree; de architectuur eromheen is bewust ongelijk.</div>
+  <div class="solve"><b>(ii) Eén gegroeid gebouw.</b> Alles zit vast aaneen: hoofdblok, galerij en teruglig-tak vormen één doorlopende omtrek (één outline-path), zonder losse volumes of gaten. De rooilijn en nok verspringen, parcel-naden lopen door de massa, een torencluster verdicht bij de galerij-knik als "oude stad", en een onregelmatige cortile wordt omsloten — precies het beeld van een stadspaleis dat in eeuwen is aangebouwd. Je loopt binnen één muurlijn van de ene hoek naar de andere.</div>
+  <div class="solve"><b>(iii) Koepel blijft de held.</b> De koepel staat vrij in het hoge compacte blok, met open lucht aan alle zijden; geen toren of vleugel evenaart of dekt hem. De torens groeien verspreid uit de hoeken en knopen — op verschillende afstanden en hoogtes, met bouwmassa ertussen — zodat geen twee samen een schutting voor de koepel vormen. De twee poorttorens staan vooraan maar toppen onder de lantaarn: ze kaderen de entree in plaats van de held te verbergen.</div>
+  <div class="solve"><b>(iv) 5 vleugels losgelaten.</b> Het exterieur drukt de vijf hoofdstukken niet als vijf uitwaaierende volumes uit. In het datamodel bestaan de vijf <code>WINGS[0..4]</code>-id's nog steeds als hoofdstukken, maar in de 3D-scene hebben ze alleen elk een onzichtbare <code>targetWorldPos</code>-anchor nodig voor de walkthrough-highlight. Die vijf anchors zijn hier simpelweg vijf posities <em>binnen de ene aaneengesloten massa</em> (zie de geringde stippen). Wat de bezoeker ziet, is één gegroeid gebouw — geen ster, geen waaier.</div>
+
+  <h4>Functionele contracten — gerespecteerd</h4>
+  <ul>
+    <li><b>Koepel = entreehal:</b> hoofdvolume in het compacte blok, de deur op de −Z-gevel eronder; bezoekers betreden de hal en gaan van binnenuit naar de hoofdstukken — vleugels worden niet van buiten aangeklikt.</li>
+    <li><b>5 anchors bereikbaar:</b> alle vijf <code>targetWorldPos</code>-posities (id's 0–4) liggen binnen de massa, vrij van de toren-footprints en de aankomst-wig; ze dienen alleen de walkthrough-highlight, niet een buiten-ingang.</li>
+    <li><b>Entree-as vrij:</b> ±22°-wig op −Z blijft leeg — cipressenlaan → parterre → trap → goud-tympaan → deur, recht onder de koepel.</li>
+    <li><b>Dolly + naam-beat:</b> de openingsswing schuift de verspreide torens als coulissen langs elkaar (parallax); op ~7,5s staat de naam in het kader tussen de twee poorttorens; de afdaling sluit torens en galerij-massa achter de camera tot alleen de deur rest.</li>
+    <li><b>Mobiel-budget:</b> één merged massa-mesh per materiaal + geïnstanceerde torens die draw-buckets delen; de galerij-arcade is een parametrische loop op de vleugellengte — netto binnen het scene-budget.</li>
+  </ul>
+
+  <h3>Waarom dit één plan (en geen alternatief)</h3>
+  <p>De owner-richtlijnen wijzen naar precies deze ene oplossing, dus we tonen bewust geen A/B-keuze meer: <b>één aaneengesloten, asymmetrische massa</b> die als een gegroeid Toscaans stadspaleis leest. Het levert de breedte en de gegroeidheid die gevraagd wordt (lange lage galerij + torencluster + onregelmatige cortile), houdt de koepel maximaal vrij als held, en respecteert de −Z-aankomst-as en de naam-beat frontaal. Het blijft binnen de bestaande scene-infrastructuur: één merged massa-mesh, geïnstanceerde torens en een parametrische galerij-loop. Het bewuste asymmetrische verspringen — hoog compact links, lang laag rechts — is wat het paleis <em>eigen</em> en gegroeid maakt in plaats van diagrammatisch, terwijl de vijf hoofdstukken onzichtbaar als anchors binnen de massa blijven leven.</p>
+
+  <div class="foot">
+    <p><b>Geverifieerde beeldbronnen</b> (Wikimedia Commons, File-pagina bevestigd; thumbnails afgeleid van het originele <code>/commons/</code>-pad):</p>
+    <p>
+      Palazzo Piccolomini Pienza · Villa Medicea Artimino (La Ferdinanda) · Cupola Santa Maria del Fiore · Lanterna Santa Maria del Fiore · Cupola del Brunelleschi ariview · Panorama San Gimignano · San Gimignano skyline · Loggia degli Uffizi · Palazzo Vecchio Cortile interno · Bagnaia – Villa Lante · Viale dei Cipressi (Bolgheri) · Cipressi di San Quirico d'Orcia · Cipressi di S. Quirico d'Orcia al tramonto · Palazzo Incontri (tetti).
+    </p>
+    <p>Geen enkele beoogde beeld-URL bleek onbereikbaar in de eindselectie: waar een eerste kandidaat 404'de (bv. <code>Villa_Lante_giardino.jpg</code>, <code>Villa_lante,_giardino_all'italiana_02.jpg</code>) is een geverifieerd alternatief uit dezelfde categorie gekozen (<code>Bagnaia_-_Villa_Lante.jpg</code>).</p>
+    <p style="margin-top:1.2rem;">MUSEO VIVO · staging-only concept-deliverable · geen app-code gewijzigd · uitvoering pas na owner-keuze.</p>
+  </div>
+
+</div>
+</body>
+</html>

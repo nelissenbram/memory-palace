@@ -51,7 +51,7 @@ export function AddPersonForm({
     border: `1px solid ${T.color.sandstone}`,
     background: T.color.white,
     fontFamily: T.font.body,
-    fontSize: "0.875rem",
+    fontSize: isMobile ? "1rem" : "0.875rem",
     color: T.color.charcoal,
     outline: "none",
     minHeight: "2.75rem",
@@ -484,23 +484,7 @@ export function AddPersonForm({
       <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", flexWrap: "wrap" }}>
         <button
           disabled={submitting}
-          onClick={async () => {
-            if (submitting) return;
-            setSubmitting(true);
-            try {
-              await onAdd({
-                first_name: t("unknownPerson"),
-                last_name: undefined,
-                birth_date: undefined,
-                death_date: undefined,
-                gender: undefined,
-                relatedToId: relatedTo || undefined,
-                relationType: relationType || undefined,
-              });
-            } finally {
-              setSubmitting(false);
-            }
-          }}
+          onClick={handleSubmit}
           style={{
             padding: "0.625rem 1.25rem",
             borderRadius: "0.75rem",

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Fraunces, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
@@ -13,15 +13,22 @@ import WebVitals from "@/components/WebVitals";
 import PostHogProvider from "@/components/PostHogProvider";
 import CookieConsent from "@/components/CookieConsent";
 
-const cormorant = Cormorant_Garamond({
+// Display serif — warm humanist old-style face with a taller x-height and
+// sturdier strokes than Cormorant, so headlines stay solid at sub-hero sizes
+// and for 60+ eyes. Optical sizing is tuned in CSS (font-optical-sizing: auto),
+// not here — next/font/google does not accept the opsz axis in the import.
+const fraunces = Fraunces({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-display",
   display: "swap",
 });
 
-const manrope = Manrope({
+// Body / UI sans — the most legibility-proven humanist sans on Google Fonts:
+// tall x-height, open apertures, distinct I/l/1. Also carries eyebrows
+// (uppercase + tracking) and the margin-note role Caveat used to fill.
+const sourceSans = Source_Sans_3({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-body",
@@ -102,7 +109,7 @@ export default async function RootLayout({
   const locale = cookieStore.get("mp_locale")?.value || "en";
 
   return (
-    <html lang={locale} className={`${cormorant.variable} ${manrope.variable}`}>
+    <html lang={locale} className={`${fraunces.variable} ${sourceSans.variable}`}>
       <head>
         {/* Boot diagnostics removed — was sending device info without consent (Apple Guideline 5.1.2i) */}
         {/* Native WKWebView: tear down any service worker + caches left by an OLDER
@@ -236,11 +243,6 @@ export default async function RootLayout({
                 "price": "0",
                 "priceCurrency": "EUR",
                 "description": "Free plan with 100 memories, 2 wings, 5 rooms",
-              },
-              "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": "4.8",
-                "ratingCount": "12",
               },
             },
           ],

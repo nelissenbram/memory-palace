@@ -68,12 +68,31 @@ public/workbox-*.js.map
 .edge-profile-copy/
 tmp/
 _aab_download/
+.tmp_audio/
 
-# Autonomy agent workspaces — local only, never commit (socials-kit holds GBs of clips)
-/cos-autonomy/
-/legal-autonomy/
+scripts/hero_rec/
+scripts/hero_rec2/
+
+# Generated palace-population media (AI images) + logs — never commit/deploy
+scripts/populate/media/
+scripts/populate/*.log
+
+# social autonomy capture-scaffolding (do not commit)
+public/demo/personas/
+
+# ops/social capture scaffolding (do not deploy)
+public/demo/pool/
+public/demo/*-portrait.png
+
+# Marketing render OUTPUT now lives in this worktree so the pipeline and the 3D
+# code it renders travel together (docs/MARKETING_ASSET_OVERHAUL_PLAN.md), but the
+# binaries stay out of git. The scripts and marketing/shots.manifest.json ARE
+# versioned — their absence is what let the asset library silently rot.
+socials-kit/
+*.stamp.json
+
+# Local-only autonomy workspace (cos-/legal-autonomy ARE versioned on master)
 /ops-autonomy/
-/socials-kit/
 
 # Business docs in repo-root (autonomy charters expect them here; not source code)
 /*.docx

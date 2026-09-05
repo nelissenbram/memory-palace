@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getEffectiveStorageLimit, getUserPlan } from "@/lib/auth/plan-limits";
+import { getEffectiveStorageLimit, getUserPlan, getUserStorageBytes } from "@/lib/auth/plan-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -14,16 +14,14 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [limitMb, subscription, storageRes] = await Promise.all([
+    // Exact total via SQL aggregate (paginated fallback) — an unpaginated
+    // select would cap at PostgREST max-rows and under-report for heavy users.
+    const [limitMb, subscription, totalBytes] = await Promise.all([
       getEffectiveStorageLimit(user.id),
       getUserPlan(user.id),
-      supabase.from("memories").select("file_size").eq("user_id", user.id),
+      getUserStorageBytes(user.id),
     ]);
 
-    const totalBytes = (storageRes.data || []).reduce(
-      (sum: number, m: { file_size: number }) => sum + (m.file_size || 0),
-      0,
-    );
     const storageMb = Math.round(totalBytes / (1024 * 1024));
 
     return NextResponse.json({

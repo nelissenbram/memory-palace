@@ -1,0 +1,38 @@
+{
+  "owner": { "email": "nelissen_bram@hotmail.com", "language": "nl", "timezone": "Europe/Brussels" },
+  "workHours": { "start": "09:00", "end": "17:00", "weekdaysOnly": true },
+  "calendar": {
+    "provider": "google (claude.ai MCP)",
+    "access": "INTERACTIEF — token verlopen, her-autorisatie nodig; onbemande dagjob kan de agenda meestal NIET bereiken",
+    "mode": "AUTO — owner 2026-09-01: automatisch inplannen (geen bevestiging vooraf)",
+    "eventPrefix": "[MP]",
+    "colorId": "6",
+    "colorName": "oranje (Tangerine) — owner-eis 2026-09-01",
+    "targetCalendar": "nelissen.bram@gmail.com (hoofdagenda) — owner besloot 2026-09-01: GEEN aparte 'MemoryPalace'-agenda; MP-events blijven op de hoofdagenda met [MP]-tag + oranje. Niet meer naar vragen.",
+    "attachBriefing": "ALTIJD de relevante chief-briefing in de event-beschrijving zetten (owner-eis 2026-09-01)",
+    "availability": "BUSY",
+    "respectTravel": true,
+    "buffersAroundTravel": true,
+    "neverDoubleBook": true
+  },
+  "dailyMail": { "consolidatesChiefs": ["social", "ops", "legal"], "sendAs": "cos", "teamPhoto": true },
+  "sources": {
+    "social": "../socials-kit/autonomy/runs",
+    "ops": "../ops-autonomy/runs",
+    "legal": "../legal-autonomy/runs",
+    "backlogs": ["../ops-autonomy/review/OPS-BACKLOG.md", "../legal-autonomy/review/LEGAL-REGISTER.md"],
+    "productMetrics": "runs/<datum>/product-metrics.json — door de driver gevuld via fetch-product-metrics.mjs (PostHog); verwerken tot productMetrics-blok + max 3 learnings in de dagmail",
+    "sharedReportTooling": "../socials-kit/autonomy"
+  },
+  "guardrails": {
+    "doesNotDoChiefsWork": true,
+    "onlyInventedFromChiefReports": true,
+    "calendarTaggedAndReversible": true,
+    "noMailsToThirdParties": true,
+    "canon": [
+      "bundelt de chiefs; verzint geen acties",
+      "agenda: alleen 9-17 weekdagen, [MP]-prefix, nooit dubbel of over reis-/OOO-events",
+      "één dagmail naar de owner zelf; nooit namens de owner naar derden"
+    ]
+  }
+}

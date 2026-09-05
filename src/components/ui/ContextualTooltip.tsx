@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
+import { INK, MUTED, HAIRLINE, SHADOW } from "@/lib/libraryTokens";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
@@ -8,8 +9,7 @@ const STORAGE_PREFIX = "mp_ctx_tooltip_";
 
 type TooltipId =
   | "corridor_click_door"
-  | "room_click_furniture"
-  | "room_empty_upload";
+  | "room_click_furniture";
 
 interface TooltipConfig {
   id: TooltipId;
@@ -28,11 +28,8 @@ const TOOLTIP_DEFS: Record<string, TooltipConfig> = {
     messageKey: "furnitureHint",
     position: "bottom-center",
   },
-  room_empty_upload: {
-    id: "room_empty_upload",
-    messageKey: "emptyRoomHint",
-    position: "center",
-  },
+  // room_empty_upload retired (PALACE_TUTORIAL_SPEC §4.1) — its copy described
+  // the pre-Steward's-Ledger empty-room flow.
 };
 
 function hasBeenShown(id: string): boolean {
@@ -114,6 +111,7 @@ export default function ContextualTooltip({
       tabIndex={0}
       onClick={handleDismiss}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleDismiss(); } }}
+      className="mp-ctx-tooltip-anim"
       style={{
         position: "absolute",
         zIndex: 75,
@@ -133,30 +131,32 @@ export default function ContextualTooltip({
         animation: "fadeUp .5s ease",
       }}
     >
+      <style>{`@media (prefers-reduced-motion: reduce) { .mp-ctx-tooltip-anim, .mp-ctx-tooltip-anim * { animation: none !important; } }`}</style>
+      {/* Canon card: translucent cream + blur (floats over the live 3D scene) */}
       <div
         style={{
-          background: "rgba(42, 34, 24, 0.85)",
+          background: "rgba(252,250,245,0.96)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: "1rem",
+          borderRadius: "0.875rem",
           padding: isMobile ? "0.875rem 1.375rem" : "1rem 1.75rem",
-          border: "1px solid rgba(212, 175, 55, 0.2)",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.25)",
+          border: `1px solid ${HAIRLINE}`,
+          boxShadow: SHADOW[2],
           display: "flex",
           alignItems: "center",
           gap: "0.75rem",
           maxWidth: isMobile ? "calc(100vw - 2.5rem)" : "25rem",
         }}
       >
-        {/* Glowing dot */}
+        {/* Glowing dot \u2014 canon GOLD #D4AF37 */}
         <div
           style={{
             width: "0.625rem",
             height: "0.625rem",
             borderRadius: "0.3125rem",
             background:
-              "radial-gradient(circle, #FFEEBB 0%, #FFD080 60%, transparent 100%)",
-            boxShadow: "0 0 12px rgba(255, 224, 160, 0.5)",
+              "radial-gradient(circle, #FFE4A0 0%, #D4AF37 60%, transparent 100%)",
+            boxShadow: "0 0 10px rgba(212,175,55,0.6)",
             flexShrink: 0,
           }}
         />
@@ -165,7 +165,7 @@ export default function ContextualTooltip({
           style={{
             fontFamily: T.font.body,
             fontSize: isMobile ? "0.9375rem" : "1rem",
-            color: "rgba(250, 250, 247, 0.92)",
+            color: INK,
             lineHeight: 1.4,
           }}
         >
@@ -176,7 +176,7 @@ export default function ContextualTooltip({
           style={{
             fontFamily: T.font.body,
             fontSize: "0.6875rem",
-            color: "rgba(250, 250, 247, 0.35)",
+            color: MUTED,
             flexShrink: 0,
             marginLeft: "0.25rem",
           }}

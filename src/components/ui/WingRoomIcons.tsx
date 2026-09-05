@@ -134,6 +134,23 @@ const AtticIcon: React.FC<IconProps> = ({ size = DEFAULT_SIZE, color = DEFAULT_C
   </svg>
 );
 
+/** Stack of overlapping picture frames — All Memories / whole archive.
+ *  Exported: consumed by LibraryView's header and the Library sidebar for the
+ *  "__all__" (All Memories) scope — deliberately distinct from the 6 wing icons. */
+export const AllMemoriesIcon: React.FC<IconProps> = ({ size = DEFAULT_SIZE, color = DEFAULT_COLOR }) => (
+  <svg {...svgProps(size, color)}>
+    {/* Back frame — offset up-right */}
+    <rect x="8" y="3" width="13" height="10" rx="1" fill={color} fillOpacity={0.04} />
+    {/* Middle frame */}
+    <rect x="5.5" y="6.5" width="13" height="10" rx="1" fill={color} fillOpacity={0.05} />
+    {/* Front frame */}
+    <rect x="3" y="10" width="13" height="10" rx="1" fill={color} fillOpacity={0.06} />
+    {/* Photo inside front frame — sun + hills */}
+    <circle cx="6.5" cy="13.5" r="1" fill={color} fillOpacity={0.15} />
+    <path d="M4.5,18.5 L8,15 L10.5,17.5 L12,16 L14.5,18.5" fill="none" />
+  </svg>
+);
+
 // ===========================================================================
 // ROOM ICONS — Roots wing
 // ===========================================================================
@@ -520,9 +537,38 @@ export const ROOM_ICON_MAP: Record<string, React.FC<IconProps>> = {
   at1: AmphoraRoomIcon,
 };
 
+/**
+ * Resolves a room's icon to a ROOM_ICON_MAP key.
+ * Order: explicit `icon` value (the SVG picker stores standard room ids),
+ * then the room's own id (default rooms), else null — callers render
+ * GenericRoomIcon for null. Pure function, no fallback to emoji ever.
+ */
+export function resolveRoomIconId(roomId: string, icon?: string): string | null {
+  if (icon && ROOM_ICON_MAP[icon]) return icon;
+  if (ROOM_ICON_MAP[roomId]) return roomId;
+  return null;
+}
+
 // ===========================================================================
 // PUBLIC COMPONENTS
 // ===========================================================================
+
+/** Door frame / archway — the universal fallback glyph for custom rooms
+ *  whose id/icon doesn't resolve to a crafted room icon. */
+export const GenericRoomIcon: React.FC<IconProps> = ({ size = DEFAULT_SIZE, color = DEFAULT_COLOR }) => (
+  <svg {...svgProps(size, color)}>
+    {/* Outer arched door frame */}
+    <path d="M5,21 L5,10 Q5,3.5 12,3.5 Q19,3.5 19,10 L19,21" fill={color} fillOpacity={0.04} />
+    {/* Inner arch — the door leaf */}
+    <path d="M7.5,21 L7.5,10.5 Q7.5,6.5 12,6.5 Q16.5,6.5 16.5,10.5 L16.5,21" fill={color} fillOpacity={0.04} />
+    {/* Keystone accent */}
+    <circle cx="12" cy="5" r="0.5" fill={color} fillOpacity={0.2} />
+    {/* Door knob */}
+    <circle cx="14.7" cy="14.5" r="0.5" fill={color} fillOpacity={0.3} />
+    {/* Threshold */}
+    <line x1="3.5" y1="21" x2="20.5" y2="21" />
+  </svg>
+);
 
 /**
  * Renders the SVG icon for a given wing.

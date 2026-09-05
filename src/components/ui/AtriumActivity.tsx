@@ -81,7 +81,7 @@ function OTDThumb({ mem, isMobile, year }: { mem: Mem; isMobile: boolean; year: 
         fontSize: "0.5625rem",
         fontWeight: 700,
         color: "rgba(255,255,255,0.95)",
-        background: "rgba(44,44,42,0.45)",
+        background: "rgba(64,59,54,0.45)",
         backdropFilter: "blur(0.5rem)",
         WebkitBackdropFilter: "blur(0.5rem)",
         padding: "0.0625rem 0.375rem",
@@ -117,7 +117,7 @@ export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMem
           borderLeft: `0.25rem solid ${T.color.gold}`,
           padding: isMobile ? "1.125rem 1rem" : "1.5rem 1.75rem",
           animation: "atriumPageTurn 0.8s cubic-bezier(0.23, 1, 0.32, 1) both, atriumBorderGlow 5s ease-in-out 2s infinite",
-          boxShadow: `0 0.5rem 2rem rgba(44,44,42,0.05), 0 0.0625rem 0.25rem rgba(212,175,55,0.06), inset 0 0.0625rem 0 rgba(255,255,255,0.6)`,
+          boxShadow: `0 0.5rem 2rem rgba(64,59,54,0.05), 0 0.0625rem 0.25rem rgba(212,175,55,0.06), inset 0 0.0625rem 0 rgba(255,255,255,0.6)`,
           overflow: "hidden",
           transformOrigin: "left center",
         }}
@@ -267,15 +267,15 @@ export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMem
                     scrollSnapAlign: "start",
                     transition: "transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s ease",
                     animation: `atriumThumbEnter 0.5s cubic-bezier(0.23, 1, 0.32, 1) ${0.3 + idx * 0.07}s both`,
-                    boxShadow: "0 0.125rem 0.625rem rgba(44,44,42,0.04)",
+                    boxShadow: "0 0.125rem 0.625rem rgba(64,59,54,0.04)",
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.transform = "translateY(-0.1875rem) scale(1.02)";
-                    e.currentTarget.style.boxShadow = "0 0.5rem 1.5rem rgba(212,175,55,0.12), 0 0.125rem 0.5rem rgba(44,44,42,0.04)";
+                    e.currentTarget.style.boxShadow = "0 0.5rem 1.5rem rgba(212,175,55,0.12), 0 0.125rem 0.5rem rgba(64,59,54,0.04)";
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.transform = "translateY(0) scale(1)";
-                    e.currentTarget.style.boxShadow = "0 0.125rem 0.625rem rgba(44,44,42,0.04)";
+                    e.currentTarget.style.boxShadow = "0 0.125rem 0.625rem rgba(64,59,54,0.04)";
                   }}
                 >
                   {/* Thumbnail with onError fallback */}
@@ -432,18 +432,18 @@ export const SharedRoomsPreview = React.memo(function SharedRoomsPreview({ share
                 cursor: "pointer",
                 transition: "transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.3s ease, border-color 0.25s ease",
                 animation: `atriumCardRise 0.5s cubic-bezier(0.23, 1, 0.32, 1) ${0.2 + i * 0.1}s both`,
-                boxShadow: "0 0.125rem 0.75rem rgba(44,44,42,0.04)",
+                boxShadow: "0 0.125rem 0.75rem rgba(64,59,54,0.04)",
                 position: "relative",
                 overflow: "hidden",
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = "translateY(-0.25rem)";
-                e.currentTarget.style.boxShadow = `0 0.5rem 2rem rgba(74,103,65,0.12), 0 0 0.75rem rgba(74,103,65,0.06), 0 0.125rem 0.5rem rgba(44,44,42,0.03)`;
+                e.currentTarget.style.boxShadow = `0 0.5rem 2rem rgba(74,103,65,0.12), 0 0 0.75rem rgba(74,103,65,0.06), 0 0.125rem 0.5rem rgba(64,59,54,0.03)`;
                 e.currentTarget.style.borderColor = `${T.color.sage}30`;
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 0.125rem 0.75rem rgba(44,44,42,0.04)";
+                e.currentTarget.style.boxShadow = "0 0.125rem 0.75rem rgba(64,59,54,0.04)";
                 e.currentTarget.style.borderColor = `${T.color.sage}15`;
               }}
             >
@@ -774,7 +774,7 @@ export function InterviewPrompt({
           padding: isMobile ? "2rem 1.5rem" : "2.75rem 3rem",
           animation: "atriumSlideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both, atriumBorderGlow 6s ease-in-out 3s infinite",
           position: "relative",
-          boxShadow: `0 0.5rem 2.5rem rgba(198,107,61,0.08), 0 0.25rem 1rem rgba(44,44,42,0.04), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
+          boxShadow: `0 0.5rem 2.5rem rgba(198,107,61,0.08), 0 0.25rem 1rem rgba(64,59,54,0.04), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
         }}
       >
         {/* Decorative radial glow top-right */}
@@ -993,17 +993,17 @@ export function InterviewPrompt({
                   padding: isMobile ? "0.9375rem 2.25rem" : "1rem 2.75rem",
                   cursor: "pointer",
                   transition: "transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s ease",
-                  boxShadow: `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`,
+                  boxShadow: `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(64,59,54,0.08)`,
                   letterSpacing: "0.015em",
                   lineHeight: 1,
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = "translateY(-0.1875rem)";
-                  e.currentTarget.style.boxShadow = `0 0.75rem 2.5rem ${T.color.terracotta}40, 0 0.125rem 0.375rem rgba(44,44,42,0.08)`;
+                  e.currentTarget.style.boxShadow = `0 0.75rem 2.5rem ${T.color.terracotta}40, 0 0.125rem 0.375rem rgba(64,59,54,0.08)`;
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`;
+                  e.currentTarget.style.boxShadow = `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(64,59,54,0.08)`;
                 }}
               >
                 {t("interview.beginFirstSession")}
@@ -1030,19 +1030,6 @@ export function InterviewPrompt({
                 {t("interview.browseAll")}
               </button>
             </div>
-
-            <p style={{
-              fontFamily: T.font.body,
-              fontSize: "0.8125rem",
-              color: T.color.muted,
-              margin: "1rem 0 0",
-              fontStyle: "italic",
-              letterSpacing: "0.005em",
-              lineHeight: 1.5,
-              opacity: 0.8,
-            }}>
-              {t("interview.socialProof")}
-            </p>
 
           </div>
         </div>

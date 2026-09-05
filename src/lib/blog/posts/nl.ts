@@ -1361,7 +1361,7 @@ const posts: BlogPost[] = [
 <p>Voordat je specifieke tools evalueert, bepaal je prioriteiten:</p>
 
 <ul>
-<li><strong>Privacy:</strong> Wie is eigenaar van je gegevens? Kan het bedrijf je foto's of verhalen gebruiken voor AI-training? Is end-to-end-encryptie beschikbaar?</li>
+<li><strong>Privacy:</strong> Wie is eigenaar van je gegevens? Kan het bedrijf je foto's of verhalen gebruiken voor AI-training? Worden je gegevens versleuteld bij opslag en verzending?</li>
 <li><strong>Levensduur:</strong> Zal het platform over 10 jaar nog bestaan? Wat gebeurt er met je gegevens als het stopt? Kun je alles exporteren?</li>
 <li><strong>Samenwerking:</strong> Kunnen meerdere familieleden bijdragen? Zijn er machtigingsniveaus voor verschillende rollen?</li>
 <li><strong>Media-ondersteuning:</strong> Verwerkt het foto's, video, audio en documenten? Kun je context en verhaal toevoegen?</li>

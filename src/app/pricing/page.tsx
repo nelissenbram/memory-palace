@@ -5,23 +5,47 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import Toast, { type ToastData } from "@/components/ui/Toast";
-import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
+import { PLANS, PLAN_ORDER, TRIAL_DAYS, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
-import { isAndroid, isIOS } from "@/lib/native/platform";
-import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases, IAP_ENABLED } from "@/lib/native/iap";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
+import { isAndroid, isIOS, isNative, openInExternalBrowser } from "@/lib/native/platform";
+import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases, isIAPReady, waitForProducts, IAP_ENABLED } from "@/lib/native/iap";
+import { EMBER, HAIRLINE, focusRing } from "@/lib/libraryTokens";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
+import { track } from "@/lib/analytics";
 
 const F = T.font;
 const C = T.color;
+
+// Canon interactive/border/secondary tokens (libraryTokens). The page historically
+// painted every CTA/toggle/badge/link with the off-canon terracotta #C66B3D and
+// bordered with sandstone; repoint to EMBER / HAIRLINE / MUTED so /pricing matches
+// the rest of the palace.
+const EMBER_CTA = EMBER;        // #B85C38 interactive / active
+const HAIRLINE_BORDER = HAIRLINE; // #E3D6BC canon 1px border
+// Canon body/heading ink is INK #403B36 (theme.ts C.ink), not the cold legacy
+// near-black C.charcoal (#1F1B1A). Paint all body/heading text with INK_TEXT so
+// /pricing matches the warmer ink used across the landing siblings.
+const INK_TEXT = C.ink;         // #403B36 canon body/heading ink
+// Canon secondary text is MUTED #716A5E (C.muted). walnut (#8B7355) is a
+// non-text ink; keep it only for the CTA gradient stop, never for copy.
+const MUTED_TEXT = C.muted;     // #716A5E canon secondary text
 
 export default function PricingPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const isCompact = useIsCompact();
-  const [interval, setInterval] = useState<BillingInterval>("annual");
+  const isPortrait = useIsPortrait();
+  // Interval is hard-locked to "annual": the monthly option was removed from
+  // all purchase surfaces (owner decision 2026-08-25, annual-only "Day One"
+  // model). The BillingInterval state shape stays so checkout/IAP call-sites
+  // keep passing an explicit interval, but there is no setter and no toggle UI
+  // — on iOS this guarantees getIAPProductId(plan, "annual") is the only
+  // reachable product.
+  const [interval] = useState<BillingInterval>("annual");
   const [currency, setCurrency] = useState<SupportedCurrency>("EUR");
   const [loading, setLoading] = useState<PlanId | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
@@ -31,37 +55,72 @@ export default function PricingPage() {
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("pricing");
 
+  // Honour the OS "reduce motion" preference for the hover/active scale and the
+  // colour/transform transitions on the toggle, CTAs and highlighted card.
+  // Inline-only (canon forbids @media in styles): read the media query in JS and
+  // fall back to transition:'none' / no scale when the user asks for less motion.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduceMotion(mq.matches);
+    apply();
+    mq.addEventListener?.("change", apply);
+    return () => mq.removeEventListener?.("change", apply);
+  }, []);
+
   // Auto-detect currency from timezone/locale
   useEffect(() => {
     setCurrency(detectCurrency());
+  }, []);
+
+  // Funnel: paywall impression. track() is a no-op in native + without consent,
+  // so this only fires for consenting web viewers (the RC webhook covers native
+  // purchases server-side). Fires once per page view.
+  useEffect(() => {
+    track("paywall_viewed", { source: "pricing" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const { t: ts } = useTranslation("subscription");
   const { t: tp } = useTranslation("plans");
   const { t: tc } = useTranslation("common");
 
-  // Redirect away from the pricing page inside native apps. Android forbids
-  // external payment flows; on iOS, StoreKit is not yet active, so we keep the
-  // app cleanly free (Apple Guideline 3.1.1) by routing native users into the
-  // app instead of showing dead/"Preparing store" purchase buttons.
-  // TODO: when Apple IAP products are Approved, allow iOS here and drive
+  // Native-app gating for the pricing page. Android now uses web (Stripe)
+  // checkout opened in an external browser, so the Android app can view this
+  // page. On iOS with IAP disabled we keep the app cleanly free (Apple
+  // Guideline 3.1.1) by routing native users into the app instead of showing
+  // dead/"Preparing store" purchase buttons; with IAP enabled, iOS drives
   // purchases exclusively through initIAP()/purchase() below.
   useEffect(() => {
-    // Android has no in-app purchase path → route to the app. iOS shows the IAP
-    // paywall when IAP is enabled; while disabled it stays free-tier (route away).
+    // Android uses web (Stripe) checkout opened in an external browser, so the
+    // native Android app may view this page. iOS shows the IAP paywall when IAP
+    // is enabled; while disabled it stays free-tier (route away).
     // Purchases on iOS go exclusively through initIAP()/purchase() below — never Stripe.
-    if (isAndroid() || (isIOS() && !IAP_ENABLED)) {
+    if (isIOS() && !IAP_ENABLED) {
       router.replace("/atrium");
     }
   }, [router]);
 
-  // Initialize IAP on iOS
+  // Initialize IAP on iOS. A successful initIAP() alone does NOT mean anything is
+  // purchasable — cordova-plugin-purchase populates prices asynchronously after
+  // initialize() resolves. Gate iapReady on waitForProducts() (the documented
+  // contract in iap.ts) so the Upgrade button only enables once a real price has
+  // loaded, never erroring on tap (Apple Guideline 2.1).
   useEffect(() => {
-    if (isApple && IAP_ENABLED) {
-      initIAP().then((ok) => {
-        setIapReady(ok);
-        if (!ok) setIapError(getIAPError());
-      });
-    }
+    if (!(isApple && IAP_ENABLED)) return;
+    let isMounted = true;
+    (async () => {
+      const ok = await initIAP();
+      if (!ok) {
+        if (isMounted) setIapError(getIAPError());
+        return;
+      }
+      const ready = await waitForProducts();
+      if (!isMounted) return;
+      setIapReady(ready);
+      if (!ready) setIapError(getIAPError() || "Subscriptions are taking longer than usual to load. Please try again.");
+    })();
+    return () => { isMounted = false; };
   }, [isApple]);
 
   const handleSubscribe = async (planId: PlanId) => {
@@ -69,6 +128,15 @@ export default function PricingPage() {
       window.location.href = "/register";
       return;
     }
+
+    // Funnel: purchase intent (store dimension). No-op in native (iOS IAP purchases
+    // are captured server-side via the RevenueCat webhook), meaningful on web.
+    track("checkout_started", {
+      plan: planId,
+      interval,
+      store: isApple ? "app_store" : isAndroid() ? "play_store" : "stripe",
+      source: "pricing",
+    });
 
     // Use IAP on iOS
     if (isApple && !iapReady) {
@@ -81,7 +149,7 @@ export default function PricingPage() {
         const productId = getIAPProductId(planId as "keeper" | "guardian", interval);
         const success = await purchase(productId);
         if (success) {
-          setToast({ message: t("subscriptionActivated") || "Subscription activated!", type: "success" });
+          setToast({ message: t("subscriptionActivated") !== "subscriptionActivated" ? t("subscriptionActivated") : "Subscription activated!", type: "success" });
           setTimeout(() => router.push("/settings/subscription"), 1500);
         } else {
           setToast({ message: t("somethingWentWrong"), type: "error" });
@@ -98,7 +166,7 @@ export default function PricingPage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId, interval }),
+        body: JSON.stringify({ plan: planId, interval, currency }),
         redirect: "manual",
       });
       // Middleware redirects unauthenticated users — detect redirect
@@ -106,7 +174,10 @@ export default function PricingPage() {
         window.location.href = "/register";
         return;
       }
-      if (res.status === 401) {
+      // Auth middleware may answer with 401/403 (or a 302 redirect) for
+      // unauthenticated users — route them to register rather than falling
+      // through to the JSON error path.
+      if (res.status === 401 || res.status === 403 || res.status === 302) {
         window.location.href = "/register";
         return;
       }
@@ -120,10 +191,15 @@ export default function PricingPage() {
       }
 
       if (data.url) {
-        // WEB ONLY. Native apps are routed away from this page and never reach
-        // here. We deliberately do NOT open Stripe in an external browser on iOS
-        // — steering users to an outside purchase is an Apple 3.1.1/3.1.3 reject.
-        window.location.href = data.url;
+        // Web navigates to Stripe checkout directly; the native Android app
+        // opens it in an external browser instead of the in-app webview.
+        // iOS never reaches this branch — it uses IAP exclusively (opening
+        // Stripe externally on iOS is an Apple 3.1.1/3.1.3 reject).
+        if (isNative()) {
+          await openInExternalBrowser(data.url);
+        } else {
+          window.location.href = data.url;
+        }
       } else {
         setToast({ message: data.error || t("somethingWentWrong"), type: "error" });
       }
@@ -139,13 +215,18 @@ export default function PricingPage() {
     { q: t("faq3q"), a: t("faq3a") },
   ];
 
+  // When the user prefers reduced motion, drop every colour/scale transition to
+  // "none" and skip the highlighted-card scale-up.
+  const trans = (value: string) => (reduceMotion ? "none" : value);
+  const highlightScale = reduceMotion ? undefined : "scale(1.03)";
+
   return (
     <div
       style={{
         minHeight: "100vh",
         background: C.linen,
         fontFamily: F.body,
-        color: C.charcoal,
+        color: INK_TEXT,
         paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
         paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
       }}
@@ -156,20 +237,20 @@ export default function PricingPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 clamp(20px, 5vw, 60px)",
-          height: 64,
+          padding: "0 clamp(1.25rem, 5vw, 3.75rem)",
+          height: "4rem",
           background: `${C.linen}e8`,
           backdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${C.sandstone}40`,
+          borderBottom: `1px solid ${HAIRLINE_BORDER}`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <Link href="/" aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            width: 32, height: 32, borderRadius: 8,
-            border: `1px solid ${C.sandstone}50`,
-            background: "none", color: C.walnut, textDecoration: "none",
-            transition: "border-color 0.2s",
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
+            border: `1px solid ${HAIRLINE_BORDER}`,
+            background: "none", color: MUTED_TEXT, textDecoration: "none",
+            transition: trans("border-color 0.2s"),
           }}>
             <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -180,7 +261,7 @@ export default function PricingPage() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: "0.625rem",
               textDecoration: "none",
             }}
           >
@@ -188,9 +269,9 @@ export default function PricingPage() {
             <span
               style={{
                 fontFamily: F.display,
-                fontSize: 20,
+                fontSize: "1.25rem",
                 fontWeight: 500,
-                color: C.charcoal,
+                color: INK_TEXT,
                 letterSpacing: "-0.3px",
               }}
             >
@@ -198,15 +279,18 @@ export default function PricingPage() {
             </span>
           </Link>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
-            background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
-            padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
-            fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
-            textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
-            appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
-            backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
-            backgroundRepeat: "no-repeat", backgroundPosition: "right 0.375rem center",
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+          <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")}
+            onFocus={(e) => { e.currentTarget.style.outline = focusRing.outline; e.currentTarget.style.outlineOffset = focusRing.outlineOffset; }}
+            onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
+            style={{
+            background: "none", border: `1px solid ${HAIRLINE_BORDER}`, borderRadius: "0.375rem",
+            padding: "0.5rem 0.625rem", minHeight: "2.75rem", fontSize: "1rem", fontFamily: F.body,
+            fontWeight: 600, color: MUTED_TEXT, cursor: "pointer", letterSpacing: "0.5px",
+            textTransform: "uppercase", transition: trans("border-color 0.2s, color 0.2s"),
+            appearance: "none", WebkitAppearance: "none", paddingRight: "1.5rem",
+            backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
+            backgroundRepeat: "no-repeat", backgroundPosition: "right 0.5rem center",
           }}>
             {locales.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
           </select>
@@ -215,10 +299,10 @@ export default function PricingPage() {
               href="/login"
               style={{
                 fontFamily: F.body,
-                fontSize: 14,
-                color: C.walnut,
+                fontSize: "0.875rem",
+                color: MUTED_TEXT,
                 textDecoration: "none",
-                padding: "8px 16px",
+                padding: "0.5rem 1rem",
               }}
             >
               {t("signIn")}
@@ -228,13 +312,13 @@ export default function PricingPage() {
             href="/register"
             style={{
               fontFamily: F.body,
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               color: C.white,
               textDecoration: "none",
-              padding: "8px 20px",
-              borderRadius: 10,
-              background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+              padding: "0.5rem 1.25rem",
+              borderRadius: "0.625rem",
+              background: `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
             }}
           >
             {t("getStarted")}
@@ -245,19 +329,21 @@ export default function PricingPage() {
       {/* Header */}
       <section
         style={{
-          padding: isMobile ? "60px 20px 40px" : "80px 40px 56px",
+          // Tighten the tall top padding on landscape phones (short viewport)
+          // so the hero isn't pushed below the fold; keep the roomy portrait value.
+          padding: isMobile ? (isPortrait ? "3.75rem 1.25rem 2.5rem" : "2rem 1.25rem 1.75rem") : "5rem 2.5rem 3.5rem",
           textAlign: "center",
           background: `radial-gradient(ellipse at 50% 30%, ${C.warmStone}, ${C.linen} 70%)`,
         }}
       >
         <p
           style={{
-            fontSize: 12,
+            fontSize: "0.75rem",
             letterSpacing: "2.5px",
             textTransform: "uppercase",
-            color: C.terracotta,
+            color: EMBER_CTA,
             fontWeight: 600,
-            marginBottom: 16,
+            marginBottom: "1rem",
           }}
         >
           {t("headline")}
@@ -265,20 +351,20 @@ export default function PricingPage() {
         <h1
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(32px, 5vw, 52px)",
+            fontSize: "clamp(2rem, 5vw, 3.25rem)",
             fontWeight: 300,
             lineHeight: 1.15,
-            color: C.charcoal,
-            marginBottom: 16,
+            color: INK_TEXT,
+            marginBottom: "1rem",
           }}
         >
           {t("subheadline")}
         </h1>
         <p
           style={{
-            fontSize: "clamp(16px, 2vw, 19px)",
-            color: C.walnut,
-            maxWidth: 520,
+            fontSize: "clamp(1rem, 2vw, 1.1875rem)",
+            color: MUTED_TEXT,
+            maxWidth: "32.5rem",
             margin: "0 auto",
             lineHeight: 1.6,
           }}
@@ -287,106 +373,54 @@ export default function PricingPage() {
         </p>
       </section>
 
-      {/* Billing Interval Toggle + Currency Selector */}
+      {/* Trial line + Currency Selector — the interval toggle is gone: pricing
+          is annual-only (owner decision 2026-08-25), so where the toggle (and
+          its "save %" badge) used to sit we surface the 14-day trial instead. */}
       <div
         style={{
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          gap: 12,
-          padding: isMobile ? "0 16px" : "0 40px",
-          marginTop: -8,
+          gap: "0.75rem",
+          padding: isMobile ? "0 1rem" : "0 2.5rem",
+          marginTop: "-0.5rem",
           flexWrap: "wrap",
         }}
       >
-        <div
+        <p
           style={{
-            display: "inline-flex",
-            borderRadius: 12,
-            background: `${C.warmStone}`,
-            padding: 4,
-            gap: 0,
+            margin: 0,
+            fontFamily: F.body,
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            color: EMBER_CTA,
           }}
         >
-          <button
-            onClick={() => setInterval("monthly")}
-            style={{
-              padding: "10px 24px",
-              borderRadius: 10,
-              border: "none",
-              background: interval === "monthly"
-                ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
-                : "transparent",
-              color: interval === "monthly" ? C.white : C.walnut,
-              fontFamily: F.body,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s",
-            }}
-          >
-            {/* i18n: "monthly" */}
-            {t("monthly") !== "monthly" ? t("monthly") : "Monthly"}
-          </button>
-          <button
-            onClick={() => setInterval("annual")}
-            style={{
-              padding: "10px 24px",
-              borderRadius: 10,
-              border: "none",
-              background: interval === "annual"
-                ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
-                : "transparent",
-              color: interval === "annual" ? C.white : C.walnut,
-              fontFamily: F.body,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            {/* i18n: "annual" */}
-            {t("annual") !== "annual" ? t("annual") : "Annual"}
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                padding: "2px 8px",
-                borderRadius: 8,
-                background: interval === "annual"
-                  ? "rgba(255,255,255,0.25)"
-                  : `${C.terracotta}18`,
-                color: interval === "annual" ? C.white : C.terracotta,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {t("saveUpToPercent")}
-            </span>
-          </button>
-        </div>
+          {t("trialNote") !== "trialNote" ? t("trialNote") : `${TRIAL_DAYS}-day free trial, cancel anytime`}
+        </p>
         <select
           value={currency}
           onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
           aria-label={t("currency")}
+          onFocus={(e) => { e.currentTarget.style.outline = focusRing.outline; e.currentTarget.style.outlineOffset = focusRing.outlineOffset; }}
+          onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
           style={{
             background: "none",
-            border: `1px solid ${C.sandstone}60`,
+            border: `1px solid ${HAIRLINE_BORDER}`,
             borderRadius: "0.5rem",
             padding: "0.5rem 1.75rem 0.5rem 0.625rem",
-            fontSize: "0.8125rem",
+            minHeight: "2.75rem",
+            fontSize: "1rem",
             fontFamily: F.body,
             fontWeight: 600,
-            color: C.walnut,
+            color: MUTED_TEXT,
             cursor: "pointer",
             letterSpacing: "0.5px",
-            transition: "border-color 0.2s, color 0.2s",
+            transition: trans("border-color 0.2s, color 0.2s"),
             appearance: "none",
             WebkitAppearance: "none",
             backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
             backgroundRepeat: "no-repeat",
             backgroundPosition: "right 0.5rem center",
           }}
@@ -427,8 +461,7 @@ export default function PricingPage() {
               </svg>
             ),
           },
-          // 30-day money-back guarantee is a web/Stripe concept — iOS refunds are Apple-managed.
-          ...(isApple ? [] : [{
+          {
             label: t("trustGuarantee"),
             icon: (
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -436,7 +469,7 @@ export default function PricingPage() {
                 <path d="M5 8.5l2 2 4-4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ),
-          }]),
+          },
         ].map((badge) => (
           <div
             key={badge.label}
@@ -445,7 +478,7 @@ export default function PricingPage() {
               alignItems: "center",
               gap: "0.375rem",
               fontSize: "0.8125rem",
-              color: C.walnut,
+              color: MUTED_TEXT,
               fontFamily: F.body,
               fontWeight: 500,
             }}
@@ -461,25 +494,26 @@ export default function PricingPage() {
       {/* IAP error banner for iOS */}
       {isApple && iapError && (
         <div style={{
-          maxWidth: 600, margin: "1.5rem auto 0", padding: "1rem 1.25rem",
-          background: `${C.terracotta}10`, border: `1px solid ${C.terracotta}30`,
-          borderRadius: 12, textAlign: "center",
+          maxWidth: "37.5rem", margin: "1.5rem auto 0", padding: "1rem 1.25rem",
+          background: `${EMBER_CTA}10`, border: `1px solid ${EMBER_CTA}30`,
+          borderRadius: "0.75rem", textAlign: "center",
         }}>
-          <p style={{ fontSize: 14, color: C.charcoal, margin: 0, fontFamily: F.body }}>
+          <p style={{ fontSize: "0.875rem", color: INK_TEXT, margin: 0, fontFamily: F.body }}>
             {iapError}
           </p>
           <button
-            onClick={() => {
+            onClick={async () => {
               setIapError(null);
-              initIAP().then((ok) => {
-                setIapReady(ok);
-                if (!ok) setIapError(getIAPError());
-              });
+              const ok = await initIAP();
+              if (!ok) { setIapError(getIAPError()); return; }
+              const ready = await waitForProducts();
+              setIapReady(ready);
+              if (!ready) setIapError(getIAPError() || "Subscriptions are taking longer than usual to load. Please try again.");
             }}
             style={{
-              marginTop: 8, padding: "0.5rem 1.25rem", borderRadius: 8,
-              border: `1px solid ${C.terracotta}`, background: "transparent",
-              color: C.terracotta, fontFamily: F.body, fontSize: 13,
+              marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "0.5rem",
+              border: `1px solid ${EMBER_CTA}`, background: "transparent",
+              color: EMBER_CTA, fontFamily: F.body, fontSize: "0.8125rem",
               fontWeight: 600, cursor: "pointer",
             }}
           >
@@ -493,6 +527,17 @@ export default function PricingPage() {
         <div style={{ textAlign: "center", marginTop: "1rem" }}>
           <button
             onClick={async () => {
+              // Distinguish "store not ready yet" from a genuine empty restore,
+              // so we never show "No purchases" when the store simply hasn't loaded.
+              if (!isIAPReady()) {
+                setToast({
+                  message: tc("restoreLoading") !== "restoreLoading"
+                    ? tc("restoreLoading")
+                    : "Connecting to the App Store… please try again in a moment.",
+                  type: "error",
+                });
+                return;
+              }
               const ok = await restorePurchases();
               setToast({
                 message: ok
@@ -502,8 +547,8 @@ export default function PricingPage() {
               });
             }}
             style={{
-              background: "none", border: "none", color: C.terracotta,
-              fontFamily: F.body, fontSize: 14, fontWeight: 600, cursor: "pointer",
+              background: "none", border: "none", color: EMBER_CTA,
+              fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600, cursor: "pointer",
               textDecoration: "underline", textUnderlineOffset: 3, minHeight: "2.75rem",
             }}
           >
@@ -515,8 +560,8 @@ export default function PricingPage() {
       {/* Plan Cards */}
       <section
         style={{
-          padding: isMobile ? "40px 16px 80px" : "56px 40px 100px",
-          maxWidth: 1100,
+          padding: isMobile ? "2.5rem 1rem 5rem" : "3.5rem 2.5rem 6.25rem",
+          maxWidth: "68.75rem",
           margin: "0 auto",
         }}
       >
@@ -526,7 +571,7 @@ export default function PricingPage() {
             gridTemplateColumns: (isMobile || isCompact)
               ? "1fr"
               : "repeat(3, 1fr)",
-            gap: (isMobile || isCompact) ? 20 : 28,
+            gap: (isMobile || isCompact) ? "1.25rem" : "1.75rem",
             alignItems: "start",
           }}
         >
@@ -535,21 +580,30 @@ export default function PricingPage() {
             const isHighlighted = plan.highlighted;
             const isFree = planId === "free";
 
+            // Reprice fallback tail: a paid tier with no ANNUAL Stripe price
+            // configured (neither the new ANNUAL49/79 env nor the legacy one)
+            // has no working web checkout — checkout is annual-only, so a
+            // monthly-only price ID no longer counts. Hide the card rather than
+            // render a CTA that errors. iOS is untouched (StoreKit, not envs).
+            if (!isFree && !isApple && !plan.stripePriceId) {
+              return null;
+            }
+
             return (
               <div
                 key={planId}
                 style={{
                   background: C.white,
-                  borderRadius: 20,
+                  borderRadius: "1.25rem",
                   border: isHighlighted
-                    ? `2px solid ${C.terracotta}`
-                    : `1px solid ${C.sandstone}50`,
-                  padding: isMobile ? "28px 24px" : "36px 32px",
+                    ? `2px solid ${EMBER_CTA}`
+                    : `1px solid ${HAIRLINE_BORDER}`,
+                  padding: isMobile ? "1.75rem 1.5rem" : "2.25rem 2rem",
                   position: "relative",
                   boxShadow: isHighlighted
-                    ? `0 8px 32px rgba(198,107,61,0.15)`
-                    : "0 2px 12px rgba(0,0,0,0.04)",
-                  transform: isHighlighted && !isSmall && !isCompact ? "scale(1.03)" : undefined,
+                    ? "0 0.5rem 1.5rem rgba(64,59,54,0.14)"
+                    : "0 0.25rem 1rem rgba(64,59,54,0.07)",
+                  transform: isHighlighted && !isSmall && !isCompact ? highlightScale : undefined,
                 }}
               >
                 {/* Badge */}
@@ -557,16 +611,16 @@ export default function PricingPage() {
                   <div
                     style={{
                       position: "absolute",
-                      top: -14,
+                      top: "-0.875rem",
                       left: "50%",
                       transform: "translateX(-50%)",
-                      background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                      background: `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
                       color: C.white,
                       fontFamily: F.body,
-                      fontSize: 12,
+                      fontSize: "0.75rem",
                       fontWeight: 600,
-                      padding: "6px 18px",
-                      borderRadius: 20,
+                      padding: "0.375rem 1.125rem",
+                      borderRadius: "1.25rem",
                       letterSpacing: "0.5px",
                       whiteSpace: "nowrap",
                     }}
@@ -579,20 +633,20 @@ export default function PricingPage() {
                 <h3
                   style={{
                     fontFamily: F.display,
-                    fontSize: 26,
+                    fontSize: "1.625rem",
                     fontWeight: 500,
-                    color: C.charcoal,
-                    marginBottom: 4,
-                    marginTop: isHighlighted ? 8 : 0,
+                    color: INK_TEXT,
+                    marginBottom: "0.25rem",
+                    marginTop: isHighlighted ? "0.5rem" : 0,
                   }}
                 >
                   {tp(plan.nameKey)}
                 </h3>
                 <p
                   style={{
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     color: C.muted,
-                    marginBottom: 20,
+                    marginBottom: "1.25rem",
                     lineHeight: 1.5,
                   }}
                 >
@@ -604,17 +658,17 @@ export default function PricingPage() {
                   style={{
                     display: "flex",
                     alignItems: "baseline",
-                    gap: 4,
-                    marginBottom: 24,
+                    gap: "0.25rem",
+                    marginBottom: "1.5rem",
                   }}
                 >
                   {isFree ? (
                     <span
                       style={{
                         fontFamily: F.display,
-                        fontSize: 42,
+                        fontSize: "2.625rem",
                         fontWeight: 500,
-                        color: C.charcoal,
+                        color: INK_TEXT,
                       }}
                     >
                       {t("free")}
@@ -625,38 +679,58 @@ export default function PricingPage() {
                     const iapProduct = isApple && iapReady
                       ? getProduct(getIAPProductId(planId as "keeper" | "guardian", interval))
                       : null;
+                    // Annual-only presentation: lead with the yearly total
+                    // ("€49 /year"); the per-month equivalent renders small
+                    // below. No monthly figure exists on this surface.
                     const priceLabel = iapProduct?.price
-                      ?? formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency);
-                    const showPerMonth = !iapProduct || interval === "monthly";
+                      ?? formatPrice(convertPrice(plan.annualTotal, currency), currency);
+                    const suffix = iapProduct
+                      ? null
+                      : (t("perYear") !== "perYear" ? t("perYear") : "/year");
                     return (
                       <>
                         <span
                           style={{
                             fontFamily: F.display,
-                            fontSize: 42,
+                            fontSize: "2.625rem",
                             fontWeight: 500,
-                            color: C.charcoal,
+                            color: INK_TEXT,
                           }}
                         >
                           {priceLabel}
                         </span>
-                        {showPerMonth && (
+                        {suffix && (
                           <span
                             style={{
-                              fontSize: 15,
+                              fontSize: "0.9375rem",
                               color: C.muted,
                             }}
                           >
-                            {t("perMonth")}
+                            {suffix}
                           </span>
                         )}
                       </>
                     );
                   })()}
                 </div>
-                {!isFree && interval === "annual" && (
-                  <p style={{ fontSize: 12, color: C.muted, marginTop: -16, marginBottom: 8 }}>
-                    {t("billedYearly")}
+                {/* Small per-month equivalent under the yearly total (web only —
+                    iOS shows StoreKit pricing untouched). */}
+                {!isFree && !isApple && (
+                  <p style={{ fontSize: "0.75rem", color: C.muted, marginTop: "-1rem", marginBottom: "0.5rem" }}>
+                    {(() => {
+                      const eq = formatPrice(convertPrice(plan.price, currency), currency);
+                      const v = t("perMonthEquiv", { price: eq });
+                      return v !== "perMonthEquiv" ? v : `That's ${eq} a month, billed yearly`;
+                    })()}
+                  </p>
+                )}
+                {/* Web checkout charges in the Stripe price's base currency (EUR).
+                    Non-EUR figures shown here are a client-side approximation, so we
+                    label them as such to avoid a mismatch at checkout. iOS shows the
+                    real StoreKit price (no conversion) and is excluded. */}
+                {!isFree && !isApple && currency !== "EUR" && (
+                  <p style={{ fontSize: "0.6875rem", color: C.muted, marginTop: "-0.25rem", marginBottom: "0.5rem", lineHeight: 1.5 }}>
+                    {t("approxBilledEur")}
                   </p>
                 )}
 
@@ -664,24 +738,28 @@ export default function PricingPage() {
                 <button
                   onClick={() => handleSubscribe(planId)}
                   disabled={loading !== null || (isApple && !isFree && !iapReady)}
+                  aria-busy={loading === planId}
+                  onFocus={(e) => { e.currentTarget.style.outline = focusRing.outline; e.currentTarget.style.outlineOffset = focusRing.outlineOffset; }}
+                  onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
                   style={{
                     width: "100%",
-                    padding: "16px 24px",
-                    borderRadius: 14,
+                    padding: "1rem 1.5rem",
+                    minHeight: "2.75rem",
+                    borderRadius: "0.875rem",
                     border: isFree
-                      ? `1.5px solid ${C.sandstone}`
+                      ? `1.5px solid ${HAIRLINE_BORDER}`
                       : "none",
                     background: isFree
                       ? "transparent"
-                      : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                    color: isFree ? C.charcoal : C.white,
+                      : `linear-gradient(135deg, ${EMBER_CTA}, ${C.walnut})`,
+                    color: isFree ? INK_TEXT : C.white,
                     fontFamily: F.body,
-                    fontSize: 16,
+                    fontSize: "1rem",
                     fontWeight: 600,
                     cursor: loading ? "wait" : (isApple && !isFree && !iapReady ? "default" : "pointer"),
-                    transition: "all 0.2s",
+                    transition: trans("all 0.2s"),
                     opacity: (loading && loading !== planId) || (isApple && !isFree && !iapReady) ? 0.6 : 1,
-                    marginBottom: 28,
+                    marginBottom: "1.75rem",
                   }}
                 >
                   {loading === planId
@@ -696,11 +774,11 @@ export default function PricingPage() {
                 </button>
                 {plan.trial && (
                   <p style={{
-                    fontSize: 13,
-                    color: C.terracotta,
+                    fontSize: "0.8125rem",
+                    color: EMBER_CTA,
                     textAlign: "center" as const,
-                    marginTop: -16,
-                    marginBottom: 16,
+                    marginTop: "-1rem",
+                    marginBottom: "1rem",
                     fontWeight: 500,
                   }}>
                     {t("trialNote") !== "trialNote" ? t("trialNote") : `${plan.trial}-day free trial, cancel anytime`}
@@ -715,16 +793,16 @@ export default function PricingPage() {
                 )}
                 {/* Subscription disclosures (Apple Guideline 3.1.2) */}
                 {!isFree && (
-                  <div style={{ marginTop: -8, marginBottom: 20 }}>
+                  <div style={{ marginTop: "-0.5rem", marginBottom: "1.25rem" }}>
                     {isApple && (
-                      <p style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, textAlign: "center" as const, margin: "0 0 6px" }}>
+                      <p style={{ fontSize: "0.6875rem", color: C.muted, lineHeight: 1.6, textAlign: "center" as const, margin: "0 0 0.375rem" }}>
                         {ts("autoRenewNotice")}
                       </p>
                     )}
-                    <p style={{ fontSize: 11, color: C.muted, textAlign: "center" as const, margin: 0 }}>
-                      <a href="/terms" style={{ color: C.terracotta, textDecoration: "none" }}>{ts("disclosureTerms")}</a>
+                    <p style={{ fontSize: "0.6875rem", color: C.muted, textAlign: "center" as const, margin: 0 }}>
+                      <a href="/terms" style={{ color: EMBER_CTA, textDecoration: "none" }}>{ts("disclosureTerms")}</a>
                       {"  ·  "}
-                      <a href="/privacy" style={{ color: C.terracotta, textDecoration: "none" }}>{ts("disclosurePrivacy")}</a>
+                      <a href="/privacy" style={{ color: EMBER_CTA, textDecoration: "none" }}>{ts("disclosurePrivacy")}</a>
                     </p>
                   </div>
                 )}
@@ -734,7 +812,7 @@ export default function PricingPage() {
                   style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: 12,
+                    gap: "0.75rem",
                   }}
                 >
                   {plan.featureKeys.map((featureKey) => (
@@ -743,25 +821,25 @@ export default function PricingPage() {
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 10,
-                        fontSize: 14,
-                        color: C.charcoal,
+                        gap: "0.625rem",
+                        fontSize: "0.875rem",
+                        color: INK_TEXT,
                         lineHeight: 1.4,
                       }}
                     >
                       <span
                         style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 10,
+                          width: "1.25rem",
+                          height: "1.25rem",
+                          borderRadius: "0.625rem",
                           background: isHighlighted
-                            ? `${C.terracotta}18`
+                            ? `${EMBER_CTA}18`
                             : `${C.sage}15`,
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: 11,
-                          color: isHighlighted ? C.terracotta : C.sage,
+                          fontSize: "0.6875rem",
+                          color: isHighlighted ? EMBER_CTA : C.sage,
                           flexShrink: 0,
                         }}
                       >
@@ -777,88 +855,10 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section
-        style={{
-          padding: isMobile ? "0 1rem 3rem" : "0 2.5rem 4rem",
-          maxWidth: 1100,
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isSmall ? "1fr" : "repeat(2, 1fr)",
-            gap: isMobile ? "1.25rem" : "1.75rem",
-          }}
-        >
-          {[
-            {
-              quote: t("testimonial1Quote"),
-              author: t("testimonial1Author"),
-              role: t("testimonial1Role"),
-            },
-            {
-              quote: t("testimonial2Quote"),
-              author: t("testimonial2Author"),
-              role: t("testimonial2Role"),
-            },
-          ].map((testimonial) => (
-            <div
-              key={testimonial.author}
-              style={{
-                background: C.white,
-                borderRadius: "1rem",
-                border: `1px solid ${C.sandstone}40`,
-                padding: isMobile ? "1.5rem" : "2rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1rem",
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: F.display,
-                  fontSize: "1.0625rem",
-                  fontStyle: "normal",
-                  color: C.charcoal,
-                  lineHeight: 1.6,
-                  margin: 0,
-                }}
-              >
-                &ldquo;{testimonial.quote}&rdquo;
-              </p>
-              <div>
-                <span
-                  style={{
-                    fontFamily: F.body,
-                    fontSize: "0.875rem",
-                    fontWeight: 600,
-                    color: C.charcoal,
-                  }}
-                >
-                  {testimonial.author}
-                </span>
-                <span
-                  style={{
-                    fontFamily: F.body,
-                    fontSize: "0.8125rem",
-                    color: C.muted,
-                    marginLeft: "0.5rem",
-                  }}
-                >
-                  {testimonial.role}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* FAQ-like trust section */}
       <section
         style={{
-          padding: isMobile ? "48px 20px 64px" : "64px 40px 80px",
+          padding: isMobile ? "3rem 1.25rem 4rem" : "4rem 2.5rem 5rem",
           background: C.warmStone,
           textAlign: "center",
         }}
@@ -866,21 +866,21 @@ export default function PricingPage() {
         <h2
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(24px, 3vw, 36px)",
+            fontSize: "clamp(1.5rem, 3vw, 2.25rem)",
             fontWeight: 300,
-            color: C.charcoal,
-            marginBottom: 12,
+            color: INK_TEXT,
+            marginBottom: "0.75rem",
           }}
         >
           {t("faqTitle")}
         </h2>
         <div
           style={{
-            maxWidth: 680,
-            margin: "32px auto 0",
+            maxWidth: "42.5rem",
+            margin: "2rem auto 0",
             display: "flex",
             flexDirection: "column",
-            gap: 16,
+            gap: "1rem",
             textAlign: "left",
           }}
         >
@@ -889,26 +889,26 @@ export default function PricingPage() {
               key={item.q}
               style={{
                 background: C.white,
-                borderRadius: 14,
-                padding: isMobile ? "20px" : "22px 28px",
-                border: `1px solid ${C.sandstone}40`,
+                borderRadius: "0.875rem",
+                padding: isMobile ? "1.25rem" : "1.375rem 1.75rem",
+                border: `1px solid ${HAIRLINE_BORDER}`,
               }}
             >
               <h4
                 style={{
                   fontFamily: F.body,
-                  fontSize: 15,
+                  fontSize: "0.9375rem",
                   fontWeight: 600,
-                  color: C.charcoal,
-                  marginBottom: 8,
+                  color: INK_TEXT,
+                  marginBottom: "0.5rem",
                 }}
               >
                 {item.q}
               </h4>
               <p
                 style={{
-                  fontSize: 14,
-                  color: C.walnut,
+                  fontSize: "0.875rem",
+                  color: MUTED_TEXT,
                   lineHeight: 1.6,
                   margin: 0,
                 }}
@@ -923,13 +923,13 @@ export default function PricingPage() {
       {/* Footer */}
       <footer
         style={{
-          padding: "32px clamp(20px, 5vw, 60px)",
-          borderTop: `1px solid ${C.sandstone}40`,
+          padding: "2rem clamp(1.25rem, 5vw, 3.75rem)",
+          borderTop: `1px solid ${HAIRLINE_BORDER}`,
           background: C.charcoal,
           textAlign: "center",
         }}
       >
-        <p style={{ fontSize: 12, color: C.muted }}>
+        <p style={{ fontSize: "0.75rem", color: C.muted }}>
           &copy; {new Date().getFullYear()} {t("copyright")}
         </p>
       </footer>

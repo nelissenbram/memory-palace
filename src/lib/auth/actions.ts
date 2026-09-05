@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { sendResetEmail } from "@/lib/email/send-reset";
 import { serverError } from "@/lib/i18n/server-errors";
+import { captureServer } from "@/lib/analytics-server";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
@@ -33,6 +34,15 @@ export async function signUp(formData: FormData) {
     return { error: t("passwordTooShort") };
   }
 
+  // Enforce the age attestation server-side (the client checkbox merely gates
+  // the button). Reject when the confirmation is absent/false so the
+  // attestation cannot be bypassed by scripting the form. Uses the generic
+  // localized message — this path is only reachable by a bypassed client, and a
+  // dedicated key would require adding to server-errors.ts (out of scope here).
+  if (formData.get("ageConfirmed") !== "true") {
+    return { error: t("somethingWentWrong") };
+  }
+
   const displayName = (formData.get("displayName") as string) || "";
   const redirectTo = formData.get("redirect") as string | null;
 
@@ -43,7 +53,7 @@ export async function signUp(formData: FormData) {
     ? `${baseCallbackUrl}?redirect=${encodeURIComponent(redirectTo)}`
     : baseCallbackUrl;
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -54,6 +64,18 @@ export async function signUp(formData: FormData) {
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Server-side signup count (works for native apps too, where the client SDK is
+  // disabled). An already-registered email returns an obfuscated user with no
+  // identities — skip those so re-registrations aren't counted as signups.
+  if (data.user && (data.user.identities?.length ?? 0) > 0) {
+    await captureServer(data.user.id, "user_signed_up", {
+      method: "email",
+      // Person-property zodat de owner in PostHog namen ziet i.p.v. kale uids
+      // (owner-keuze 2026-09-05, LEG-012: alleen display_name, geen e-mail).
+      ...(displayName ? { $set: { name: displayName } } : {}),
+    });
   }
 
   return { success: true };
@@ -86,7 +108,13 @@ export async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: error.message };
+    // Never hand a raw, unlocalized, provider-worded Supabase string to the UI.
+    // Collapse every sign-in failure (bad credentials, unconfirmed email,
+    // rate-limit, etc.) to the generic localized message so the copy stays in
+    // the user's language and does not leak provider internals. (Granular
+    // per-code copy would need new localized keys in server-errors.ts.)
+    console.error("[auth] signIn error:", (error as { code?: string }).code ?? error.status, error.message);
+    return { error: t("somethingWentWrong") };
   }
 
   // Check if MFA is required (AAL1 achieved but AAL2 needed)

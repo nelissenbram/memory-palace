@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { r2Upload, isR2Configured } from "@/lib/storage/r2";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { extractExifDate } from "@/lib/utils/exif-date";
 
 export const dynamic = "force-dynamic";
 
@@ -89,14 +90,25 @@ export async function POST(request: NextRequest) {
   const path = `${user.id}/${Date.now()}_${randomUUID().slice(0, 8)}.${safeExt}`;
 
   let storageBackend: "r2" | "supabase";
+  const buffer = new Uint8Array(await file.arrayBuffer());
+
+  // Week-4 resurface repair (SUCCESS_PLAYBOOK Pillar 1 §8): best-effort EXIF
+  // taken-date for new photo uploads — the buffer is already in memory, so scan
+  // the first 256KB for DateTimeOriginal. Never blocks the upload.
+  let eventDate: string | null = null;
+  if (bucket === "memories" && contentType.startsWith("image/")) {
+    try {
+      eventDate = extractExifDate(buffer.subarray(0, 256 * 1024));
+    } catch {
+      eventDate = null;
+    }
+  }
 
   try {
     if (isR2Configured()) {
-      const buffer = new Uint8Array(await file.arrayBuffer());
       await r2Upload(bucket as "memories" | "busts", path, buffer, contentType);
       storageBackend = "r2";
     } else {
-      const buffer = await file.arrayBuffer();
       const { error } = await supabase.storage
         .from(bucket)
         .upload(path, Buffer.from(buffer), { contentType });
@@ -117,5 +129,8 @@ export async function POST(request: NextRequest) {
     url,
     storageBackend,
     size: file.size,
+    // Taken-date (date-only ISO) parsed from EXIF, or null. Callers pass this
+    // to createMemory as eventDate → memories.event_date.
+    eventDate,
   });
 }

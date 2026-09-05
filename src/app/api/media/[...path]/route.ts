@@ -6,18 +6,35 @@ import { getClientIp } from "@/lib/ip";
 
 export const dynamic = "force-dynamic";
 
-/** Reject path segments that could cause traversal or injection. */
+/**
+ * Reject path segments that could cause traversal or injection.
+ *
+ * The allowlist `[A-Za-z0-9._/-]` (applied per-segment; `/` never appears
+ * inside a decoded segment but is allowed defensively) is deliberately strict:
+ * it rejects the SQL LIKE metacharacters `%` and `_`, which — combined with the
+ * legacy `.ilike('thumbnail_url', '%<filePath>%')` fallback below — would let a
+ * crafted path match an ARBITRARY memory row (a bare `%` matches every
+ * thumbnail_url), driving the authorization check off a row the caller does not
+ * own while bytes for the attacker-supplied path are streamed.
+ */
 function isPathSafe(segments: string[]): boolean {
+  const SAFE = /^[A-Za-z0-9._/-]+$/;
   for (const seg of segments) {
     if (
       seg === "" ||
       seg === "." ||
       seg === ".." ||
       seg.includes("\0") ||
-      seg.includes("\\")
+      seg.includes("\\") ||
+      !SAFE.test(seg)
     ) return false;
   }
   return true;
+}
+
+/** Escape SQL LIKE/ILIKE metacharacters so user input is matched literally. */
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 }
 
 /**
@@ -63,21 +80,41 @@ export async function GET(
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+
+  // Prefer the admin client (bypasses RLS for shared/published/ANONYMOUS access);
+  // on environments WITHOUT a service-role key (e.g. Vercel Preview deploys, where
+  // it is Production-only) fall back to the authenticated session client. RLS then
+  // scopes lookups to the user's OWN memories — which only REDUCES access, never
+  // grants it — so owners still see their own media on previews.
+  let adminClient = supabase;
+  let hasAdmin = false;
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/server");
+      adminClient = createAdminClient();
+      hasAdmin = true;
+    } catch (err) {
+      console.error("[media] admin client unavailable, using session client:", err);
+    }
+  }
+
+  // Anonymous visitors (public share links) can be served ONLY published-wing
+  // media, which requires the admin client to look up + authorize (RLS hides it
+  // from an anonymous session). Without a service-role key we can't safely
+  // authorize an anonymous read → 401.
+  if (!user && !hasAdmin) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rl = await rateLimit(`media:${user.id}`, 200, 60_000);
+  // Rate limit per-user, or per-IP for anonymous public viewers.
+  const rlIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = await rateLimit(user ? `media:${user.id}` : `media:anon:${rlIp}`, 200, 60_000);
   if (!rl.success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
   }
 
-  // Check ownership: file_path matches the video OR thumbnail_url references this path
-  // (thumbnails are uploaded as separate files but linked via thumbnail_url)
-  // Use admin client to bypass RLS — authorization is checked below
-  const { createAdminClient } = await import("@/lib/supabase/server");
-  const adminClient = createAdminClient();
-
+  // Check ownership: file_path matches the video OR thumbnail_url references this
+  // path (thumbnails are uploaded as separate files but linked via thumbnail_url).
   let { data: memory } = await adminClient
     .from("memories")
     .select("id, user_id, storage_backend, room_id")
@@ -88,10 +125,13 @@ export async function GET(
   if (!memory) {
     // Try matching by thumbnail_url. Use ilike with %filePath% to handle any URL format
     // (proxy path, full URL with token, signed URL, etc.) — the file path is unique enough.
+    // LIKE metacharacters in filePath are escaped so it is matched LITERALLY: a bare `%`
+    // or `_` must never widen the match to an unrelated row (defense-in-depth alongside
+    // isPathSafe, which already rejects those characters).
     const { data: thumbMatch } = await adminClient
       .from("memories")
       .select("id, user_id, storage_backend, room_id")
-      .ilike("thumbnail_url", `%${filePath}%`)
+      .ilike("thumbnail_url", `%${escapeLike(filePath)}%`)
       .limit(1)
       .maybeSingle();
     memory = thumbMatch;
@@ -102,10 +142,10 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  let authorized = memory.user_id === user.id;
+  let authorized = !!user && memory.user_id === user.id;
 
-  // Check shared access if not the owner
-  if (!authorized) {
+  // Check shared access if not the owner (authenticated users only)
+  if (!authorized && user) {
     const { data: share } = await supabase
       .from("room_shares")
       .select("id")
@@ -117,21 +157,37 @@ export async function GET(
     authorized = !!share;
   }
 
-  // Check published wing access — visitors can view memories in published wings
+  // Wing-level access — an accepted whole-wing share OR a published wing.
+  // wing_shares.wing_id is the wing SLUG (joined via slug + owner_id), not the UUID.
   if (!authorized && memory.room_id) {
     const { data: room } = await adminClient
       .from("rooms")
       .select("wing_id")
       .eq("id", memory.room_id)
       .single();
-    if (room) {
+    if (room?.wing_id) {
       const { data: wing } = await adminClient
         .from("wings")
-        .select("id")
+        .select("slug, published_at")
         .eq("id", room.wing_id)
-        .not("published_at", "is", null)
-        .single();
-      authorized = !!wing;
+        .maybeSingle();
+      if (wing) {
+        // Published wing → public (visitors can view).
+        if (wing.published_at) authorized = true;
+        // Accepted whole-wing share → authenticated recipient (scoped on owner + recipient).
+        if (!authorized && user && wing.slug) {
+          const { data: wingShare } = await adminClient
+            .from("wing_shares")
+            .select("id")
+            .eq("wing_id", wing.slug)
+            .eq("owner_id", memory.user_id)
+            .eq("shared_with_id", user.id)
+            .eq("status", "accepted")
+            .limit(1)
+            .maybeSingle();
+          if (wingShare) authorized = true;
+        }
+      }
     }
   }
 
@@ -156,8 +212,13 @@ export async function GET(
     return redirectToR2(bucket, filePath);
   }
 
-  // Fallback: stream from Supabase (for legacy files not yet migrated to R2)
-  return streamFromSupabase(request, bucket, filePath);
+  // Fallback: stream from Supabase (for legacy files not yet migrated to R2).
+  // Pass the admin-or-session client chosen above: storage RLS has no policy
+  // for published-wing visitors, so a session-client download would 404 for
+  // authorized non-owners. With a service-role key this is the admin client;
+  // without one (e.g. Vercel Preview) it falls back to the session client,
+  // which still works for owners.
+  return streamFromSupabase(request, bucket, filePath, adminClient);
 }
 
 /**
@@ -194,7 +255,7 @@ async function streamFromR2(
     const { r2Download } = await import("@/lib/storage/r2");
     const rangeHeader = request.headers.get("range") || undefined;
     const { data, contentType, contentLength, contentRange } = await r2Download(bucket, filePath, rangeHeader);
-    const ct = contentType || inferContentType(filePath);
+    const ct = resolveContentType(contentType, filePath);
     const headers: Record<string, string> = {
       "Content-Type": ct,
       "Accept-Ranges": "bytes",
@@ -210,6 +271,21 @@ async function streamFromR2(
     console.error("[media] R2 stream error:", err);
     return NextResponse.json({ error: "Storage error" }, { status: 500 });
   }
+}
+
+/**
+ * Resolve a trustworthy Content-Type. Storage backends report generic/wrong
+ * types for files uploaded without explicit metadata — Supabase Storage
+ * defaults to `text/plain;charset=UTF-8`, S3/R2 to `application/octet-stream`.
+ * Mobile <video>/<audio> REFUSES to play media served under those types, so
+ * the file extension wins over any generic reported type (owner R2 #6).
+ */
+function resolveContentType(provided: string | null | undefined, filePath: string): string {
+  const p = (provided || "").toLowerCase();
+  if (!p || p === "application/octet-stream" || p.startsWith("text/plain") || p === "application/json" || p === "binary/octet-stream") {
+    return inferContentType(filePath);
+  }
+  return provided as string;
 }
 
 /** Infer Content-Type from file extension when storage doesn't provide one. */
@@ -239,10 +315,17 @@ async function streamFromSupabase(
   request: NextRequest,
   bucket: "memories" | "busts",
   filePath: string,
+  client?: Awaited<ReturnType<typeof createClient>>,
 ): Promise<NextResponse> {
   try {
-    const { createClient: createServerClient } = await import("@/lib/supabase/server");
-    const supabase = await createServerClient();
+    // Use the caller-provided client when given (memories route passes the
+    // admin client when available, else the session client). Otherwise
+    // (public busts) create a session client here.
+    let supabase = client;
+    if (!supabase) {
+      const { createClient: createServerClient } = await import("@/lib/supabase/server");
+      supabase = await createServerClient();
+    }
     const { data, error } = await supabase.storage.from(bucket).download(filePath);
     if (error || !data) {
       return NextResponse.json({ error: "File not found" }, { status: 404 });
@@ -250,7 +333,9 @@ async function streamFromSupabase(
 
     const arrayBuf = await data.arrayBuffer();
     const buf = Buffer.from(arrayBuf);
-    const ct = data.type || inferContentType(filePath);
+    // Supabase reports text/plain for uploads without explicit contentType —
+    // mobile <video> refuses those; the file extension wins (owner R2 #6).
+    const ct = resolveContentType(data.type, filePath);
     const size = buf.byteLength;
     const rangeHeader = request.headers.get("range");
 
@@ -262,10 +347,27 @@ async function streamFromSupabase(
     };
 
     if (rangeHeader) {
-      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
-      if (match) {
-        const start = parseInt(match[1], 10);
-        const end = match[2] ? parseInt(match[2], 10) : size - 1;
+      // Full single-range grammar incl. suffix form (`bytes=-N` = last N bytes);
+      // out-of-range starts get a proper 416 instead of a 200 full-body reply
+      // (mobile players treat that as a broken stream).
+      const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+      if (match && (match[1] || match[2])) {
+        let start: number;
+        let end: number;
+        if (match[1]) {
+          start = parseInt(match[1], 10);
+          end = match[2] ? Math.min(parseInt(match[2], 10), size - 1) : size - 1;
+        } else {
+          const suffix = Math.min(parseInt(match[2], 10), size);
+          start = size - suffix;
+          end = size - 1;
+        }
+        if (start >= size || start > end || Number.isNaN(start)) {
+          return new NextResponse(null, {
+            status: 416,
+            headers: { "Content-Range": `bytes */${size}`, "Accept-Ranges": "bytes" },
+          });
+        }
         headers["Content-Range"] = `bytes ${start}-${end}/${size}`;
         headers["Content-Length"] = String(end - start + 1);
         const slice = buf.subarray(start, end + 1);

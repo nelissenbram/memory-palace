@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/help", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/passcode", "/legacy", "/security", "/privacy", "/terms", "/help", "/data-deletion", "/credits", "/press", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/flythrough", "/explore", "/u", "/visit", "/api/og", "/go"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -42,12 +42,25 @@ export async function middleware(request: NextRequest) {
   // Fast-path: skip auth entirely for public/static routes that never need session
   if (
     path === "/" ||
+    // /go/<slug> marketing redirect rail — pure 302 + analytics, never needs a session
+    path.startsWith("/go/") ||
+    // Dev-only staging viewers (e.g. /staging/room) — prod-disabled at the page
+    // level via notFound(), so exempting them from auth here is dev-only too.
+    (process.env.NODE_ENV !== "production" && path.startsWith("/staging/")) ||
     path.startsWith("/.well-known/") ||
     path.startsWith("/video/") ||
     path.startsWith("/api/cron/") ||
     path.startsWith("/api/webhooks/") ||
     path.startsWith("/api/stripe/webhook") ||
     path.startsWith("/api/apple/webhook") ||
+    path.startsWith("/api/revenuecat/webhook") ||
+    // /api/media/ fully authenticates + authorizes itself (route.ts calls
+    // supabase.auth.getUser() plus ownership/share/published-wing checks), so the
+    // middleware's updateSession()->getUser() here is pure duplicate cost. A 3D room
+    // render fans out one /api/media/ request per thumbnail + full asset, so skipping
+    // the middleware Auth round-trip here removes one GoTrue round-trip per image with
+    // zero security loss.
+    path.startsWith("/api/media/") ||
     // Note: /api/admin/ is NOT fast-pathed — it needs session refresh for admin auth fallback
     path.startsWith("/api/email/") ||
     path.startsWith("/api/legacy/") ||
@@ -66,29 +79,49 @@ export async function middleware(request: NextRequest) {
   }
 
   // Refresh the session and get auth state in a single getUser() call
-  const { response, user } = await updateSession(request);
+  const { response, user, mfaPending } = await updateSession(request);
 
   const isPublicRoute = isPublicPath(path);
+
+  // Server-side AAL2 enforcement: a session that has MFA enrolled but has only
+  // reached AAL1 (second factor not yet verified) is NOT fully authenticated.
+  // Treat it as such for protected routes so a scripted client that ignores the
+  // client-side mfaRequired prompt cannot reach protected pages/APIs with a bare
+  // AAL1 session. The user is still allowed onto public routes (notably /login,
+  // where the MFA challenge is completed) so they can finish stepping up.
+  const fullyAuthed = !!user && !mfaPending;
 
   // Authenticated user on public route or landing → redirect to atrium
   // Exception: invite pages and public share pages should be accessible to authenticated users
   const isInvitePage = path.startsWith("/invite");
   const isKepPage = path.startsWith("/kep");
-  const isPublicSharePage = path.startsWith("/public");
+  // /public share galleries AND the /passcode gate must stay reachable by
+  // authenticated users too — an account holder can receive a passcode share
+  // link and needs to enter it rather than being bounced to /atrium.
+  const isPublicSharePage = path.startsWith("/public") || path.startsWith("/passcode");
   const isLegacyPage = path.startsWith("/legacy");
   const isResetPasswordPage = path.startsWith("/reset-password");
   const isApiRoute = path.startsWith("/api/");
   const isPricingPage = path.startsWith("/pricing");
-  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security") || path.startsWith("/help");
+  // /data-deletion is a public GDPR/App-Store page; a logged-in user requesting
+  // deletion must be able to reach it instead of redirecting to /atrium.
+  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security") || path.startsWith("/help") || path.startsWith("/data-deletion") || path.startsWith("/credits");
   const isBlogPage = path.startsWith("/blog");
   const isSocialPage = path.startsWith("/explore") || path.startsWith("/u/") || path.startsWith("/visit/");
-  if (user && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage) {
+  // /flythrough is the dev-only 3D preview; let authed users reach it too (don't
+  // bounce them to /atrium) so it can be watched without logging in/out.
+  const isFlythrough = path.startsWith("/flythrough") || path.startsWith("/test-palazzo");
+  if (fullyAuthed && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage && !isFlythrough) {
     return redirectWith("/atrium", request, response);
   }
 
-  // Unauthenticated user on protected route → redirect to login
-  if (!user && !isPublicRoute && path !== "/") {
-    return redirectWith("/login", request, response);
+  // Unauthenticated user on protected route → redirect to login.
+  // A session that is authenticated but MFA-pending (AAL1 with AAL2 required) is
+  // NOT fully authenticated: send it to /login?mfa so the second factor is
+  // completed before any protected page or API renders.
+  if (!fullyAuthed && !isPublicRoute && path !== "/") {
+    const target = user && mfaPending ? "/login?mfa=1" : "/login";
+    return redirectWith(target, request, response);
   }
 
   return response;
@@ -96,6 +129,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|workbox-.*\\.js|fallback-.*\\.js|manifest\\.json|clear\\.html|models/|draco/|textures/|video/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|wasm|hdr)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap\\.xml|robots\\.txt|sw\\.js|workbox-.*\\.js|fallback-.*\\.js|manifest\\.json|clear\\.html|models/|draco/|textures/|video/|concepts/|press/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|wasm|hdr)$).*)",
   ],
 };

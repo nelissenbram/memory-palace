@@ -1,7 +1,26 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient, hasServiceRoleKey } from "@/lib/supabase/server";
 import { serverT, serverTf, getServerLocale, getUserLocale } from "@/lib/i18n/server";
+
+/**
+ * Client used to WRITE notification rows.
+ *
+ * The notifications INSERT RLS policy is `WITH CHECK (from_user_id = auth.uid())`.
+ * Self-generated notifications (milestones, achievements, first-in-room,
+ * family-joined) and cross-user fan-out set from_user_id = null (or a different
+ * actor), so the RLS-bound anon client silently rejects every such row. Writing
+ * via the service-role client bypasses RLS. This is safe: every caller here
+ * targets a known-legitimate `user_id` (the row owner / recipient) and never
+ * exposes the client to request-controlled ids beyond the recipient itself, so
+ * ownership is enforced by construction. When the service-role key is absent
+ * (e.g. Preview deploys) we fall back to the anon client (self-rows will still
+ * be rejected there, but that only affects non-production previews).
+ */
+function notificationsWriteClient() {
+  if (hasServiceRoleKey()) return createAdminClient();
+  return null;
+}
 
 export interface NotificationRow {
   id: string;
@@ -51,6 +70,124 @@ export async function resolveTargetOwner(
   }
 }
 
+// ── Resolve owner + publish state of a target for visibility checks ──
+// Returns the owner id and, for room/wing/memory targets, whether it is published
+// and at what visibility. For palace/user targets, publish state is derived from
+// the profile's is_public flag.
+async function resolveTargetVisibility(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  targetType: string,
+  targetId: string,
+): Promise<{ ownerId: string | null; published: boolean; visibility: string; roomId: string | null }> {
+  const none = { ownerId: null as string | null, published: false, visibility: "private", roomId: null as string | null };
+  try {
+    switch (targetType) {
+      case "palace":
+      case "user": {
+        const { data } = await supabase.from("profiles").select("is_public").eq("id", targetId).single();
+        return { ownerId: targetId, published: !!data?.is_public, visibility: "public", roomId: null };
+      }
+      case "room": {
+        const { data } = await supabase
+          .from("rooms")
+          .select("user_id, published_at, publish_visibility")
+          .eq("id", targetId)
+          .single();
+        if (!data) return none;
+        return {
+          ownerId: data.user_id || null,
+          published: !!data.published_at,
+          visibility: data.publish_visibility || "public",
+          roomId: targetId,
+        };
+      }
+      case "wing": {
+        const { data } = await supabase
+          .from("wings")
+          .select("user_id, published_at, publish_visibility")
+          .eq("id", targetId)
+          .single();
+        if (!data) return none;
+        return {
+          ownerId: data.user_id || null,
+          published: !!data.published_at,
+          visibility: data.publish_visibility || "public",
+          roomId: null,
+        };
+      }
+      case "memory": {
+        const { data } = await supabase.from("memories").select("room_id").eq("id", targetId).single();
+        if (!data?.room_id) return none;
+        const { data: room } = await supabase
+          .from("rooms")
+          .select("user_id, published_at, publish_visibility")
+          .eq("id", data.room_id)
+          .single();
+        if (!room) return none;
+        return {
+          ownerId: room.user_id || null,
+          published: !!room.published_at,
+          visibility: room.publish_visibility || "public",
+          roomId: data.room_id,
+        };
+      }
+      default:
+        return none;
+    }
+  } catch {
+    return none;
+  }
+}
+
+// ── Can the given viewer see this target? ──
+// Enforces the same visibility model the app publishes with:
+//   • owner always yes
+//   • published + "public"    → anyone
+//   • published + "followers" → only accepted followers of the owner
+//   • accepted room collaborator (room/memory) → yes
+//   • otherwise (private / unpublished) → no
+// Pass viewerId = null for anonymous visitors (only public targets are visible).
+export async function canViewTarget(
+  targetType: string,
+  targetId: string,
+  viewerId: string | null,
+): Promise<boolean> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return false;
+  const supabase = await createClient();
+  const { ownerId, published, visibility, roomId } = await resolveTargetVisibility(supabase, targetType, targetId);
+  if (!ownerId) return false;
+
+  // Owner can always see their own target.
+  if (viewerId && viewerId === ownerId) return true;
+
+  if (published) {
+    if (visibility === "public") return true;
+    if (visibility === "followers" && viewerId) {
+      const { data: follow } = await supabase
+        .from("follows")
+        .select("id")
+        .eq("follower_id", viewerId)
+        .eq("following_id", ownerId)
+        .maybeSingle();
+      if (follow) return true;
+    }
+  }
+
+  // Accepted collaborators on the room may view/comment even when unpublished.
+  if (viewerId && roomId) {
+    const { data: collab } = await supabase
+      .from("room_collaborators")
+      .select("id")
+      .eq("room_id", roomId)
+      .eq("user_id", viewerId)
+      .not("accepted_at", "is", null)
+      .maybeSingle();
+    if (collab) return true;
+  }
+
+  return false;
+}
+
 // ── Bulk-insert notifications (for fan-out to followers) ──
 export async function createBulkNotifications(items: {
   userId: string;
@@ -64,8 +201,10 @@ export async function createBulkNotifications(items: {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
   if (items.length === 0) return;
   try {
-    const supabase = await createClient();
-    await supabase.from("notifications").insert(
+    // Fan-out writes rows OWNED by other users (followers) — the RLS INSERT
+    // policy would reject them. Use the service-role client.
+    const supabase = notificationsWriteClient() ?? (await createClient());
+    const { error } = await supabase.from("notifications").insert(
       items.map((i) => ({
         user_id: i.userId,
         type: i.type,
@@ -78,8 +217,9 @@ export async function createBulkNotifications(items: {
         read: false,
       })),
     );
-  } catch {
-    // Table may not exist
+    if (error) console.error("[createBulkNotifications] insert failed:", error.message);
+  } catch (e) {
+    console.error("[createBulkNotifications] insert threw:", (e as Error).message);
   }
 }
 
@@ -119,10 +259,13 @@ export async function createContributionNotification(data: {
   const roomName = room.name || serverT("aRoom", ownerLocale);
   const message = serverTf("notif_contribution", ownerLocale, { name: fromName, room: roomName });
 
-  // Try inserting into notifications table.
-  // If the table doesn't exist yet, silently fail — the client uses localStorage fallback.
+  // Insert the notification for the room OWNER (a different user than the
+  // contributor). The RLS INSERT policy checks from_user_id = auth.uid(); use
+  // the service-role client so the row is not silently rejected, and surface
+  // errors instead of swallowing them.
   try {
-    await supabase.from("notifications").insert({
+    const writeClient = notificationsWriteClient() ?? supabase;
+    const { error } = await writeClient.from("notifications").insert({
       user_id: room.user_id,
       type: "new_contribution",
       message,
@@ -133,8 +276,9 @@ export async function createContributionNotification(data: {
       from_user_name: fromName,
       read: false,
     });
-  } catch {
-    // Table may not exist — client falls back to localStorage
+    if (error) console.error("[createContributionNotification] insert failed:", error.message);
+  } catch (e) {
+    console.error("[createContributionNotification] insert threw:", (e as Error).message);
   }
 }
 
@@ -154,8 +298,10 @@ export async function createNotification(input: {
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
   try {
-    const supabase = await createClient();
-    await supabase.from("notifications").insert({
+    // Use the service-role client so self-notifications (from_user_id null) and
+    // cross-user fan-out are not silently rejected by the RLS INSERT policy.
+    const supabase = notificationsWriteClient() ?? (await createClient());
+    const { error } = await supabase.from("notifications").insert({
       user_id: input.userId,
       type: input.type,
       message: input.message,
@@ -166,8 +312,9 @@ export async function createNotification(input: {
       from_user_name: input.fromUserName ?? null,
       read: false,
     });
-  } catch {
-    // Table may not exist — client falls back to localStorage
+    if (error) console.error("[createNotification] insert failed:", error.message);
+  } catch (e) {
+    console.error("[createNotification] insert threw:", (e as Error).message);
   }
 
   // Fire real-time web push (best-effort; silent on failure)

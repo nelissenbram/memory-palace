@@ -1,8 +1,12 @@
 "use client";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useUserStore } from "@/lib/stores/userStore";
+import type { Locale } from "@/i18n/config";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import { INK, HAIRLINE } from "@/lib/libraryTokens";
+import { T } from "@/lib/theme";
 
 const ExteriorScene = lazy(() => import("@/components/3d/ExteriorScene"));
 const EntranceHallScene = lazy(() => import("@/components/3d/EntranceHallScene"));
@@ -18,6 +22,12 @@ interface OnboardingSceneHostProps {
   onRoomClick?: (id: string) => void;
   onDoorClick?: (id: string) => void;
   onReady?: () => void;
+  /** REAL scene readiness (the named scene's own onReady — first rendered
+   * frame + assembled reveal barrier — or the no-WebGL/error fallback where no
+   * 3D ready will ever come). Unlike onReady, this is NEVER fired by the
+   * host's internal 10s reveal-timeout — callers use it to arm anti-stranding
+   * ceilings only once choreography can actually run. */
+  onSceneReady?: (scene: OnboardingScene) => void;
   onOnboardingLookDone?: () => void;
   onCinematicPause?: () => void;
   cinematicResumed?: boolean;
@@ -25,10 +35,139 @@ interface OnboardingSceneHostProps {
   wingId?: string;
   roomId?: string;
   roomName?: string;
+  /** Store-less callers (the /flythrough onboarding preview): the real name
+   * typed on the demo name card, threaded to InteriorScene's mantel plaque
+   * ("{name}'s Beautiful Smile") AND ExteriorScene's tympanum name. In-app the
+   * wizard omits it — the scenes read the user store, which the name card
+   * already populated. */
+  demoUserName?: string;
+  /** Store-less callers (the /flythrough onboarding preview): the demo-local
+   * language (obLocale), threaded into every scene's canvas-baked texts
+   * (tympanum fallback, hall wing doors, corridor door plates, mantel plaque)
+   * so they resolve in the chosen language. In-app the wizard omits it — the
+   * language card already set the global locale before any scene mounts. */
+  localeOverride?: Locale;
   memories?: any[];
   isMobile?: boolean;
   corridorEnterClicked?: boolean;
   initialCameraZ?: number;
+  /** Guided-walk gramophone music — DISABLED by default (owner 2026-08-23
+   * revision: "no audio in the room during onboarding"). InteriorScene's
+   * autoplay is opt-in: ONLY an explicit true plays the demo audio mem softly
+   * during the onboarding room scene; undefined/false = silent (false also
+   * pauses a playing gramophone without tearing down the still-mounted walk
+   * scene). No caller passes true today — the wiring is dormant; see
+   * InteriorScene's vinyl block for the one-line re-enable. */
+  demoAudio?: boolean;
+  /** Celebration payoff (owner item 6, 2026-08-23): the just-uploaded first
+   * memory. Injected into the LIVE room scene in place of the mantel upload
+   * placeholder — no remount/rebuild, so the confetti falls over a visible
+   * room + photo instead of seconds of blank beige. */
+  uploadedMemory?: any | null;
+  /** Capture-first onboarding (SUCCESS_PLAYBOOK wk 2, Pillar 1 §3): the photos
+   * the user picked BEFORE the walk. Photo #1 goes to the mantel via
+   * uploadedMemory; #2/#3 replace the demo wall frames here so the walk_room
+   * leg reveals THEIR photos already hanging (fewer than 3 ⇒ remaining demo
+   * frames keep the room lived-in). The array identity must be stable across
+   * the walk_room→celebration mounts (the wizard memoizes it) so the
+   * structural fingerprint never changes mid-reveal — no scene rebuild. */
+  uploadedMemories?: any[] | null;
+}
+
+/* ── Reduced-motion + WebGL capability, resolved once ── */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+function webglAvailable(): boolean {
+  if (typeof document === "undefined") return true; // SSR: assume capable, re-checked on mount
+  try {
+    const c = document.createElement("canvas");
+    const gl =
+      c.getContext("webgl2") ||
+      c.getContext("webgl") ||
+      c.getContext("experimental-webgl");
+    return !!gl;
+  } catch {
+    return false;
+  }
+}
+
+/* ── Static warm-cream canon fallback ──
+ * Used when WebGL is unavailable OR the 3D scene throws. Onboarding always
+ * completes: a calm gradient + the room name, never a black/broken canvas. */
+function SceneFallback({ roomName }: { roomName?: string }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "0.75rem",
+        textAlign: "center",
+        padding: "2rem",
+        // Warm-cream canon gradient — the same house, just still.
+        background:
+          "radial-gradient(ellipse at 50% 35%, #FFFFFF 0%, #FCFAF5 45%, #F6EBE3 100%)",
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          display: "block",
+          width: "3rem",
+          height: "0.125rem",
+          background: HAIRLINE,
+          borderRadius: "0.0625rem",
+          marginBottom: "0.25rem",
+        }}
+      />
+      {roomName ? (
+        <h2
+          style={{
+            fontFamily: T.font.display,
+            fontSize: "1.75rem",
+            fontWeight: 600,
+            fontStyle: "italic",
+            color: INK,
+            lineHeight: 1.2,
+            margin: 0,
+          }}
+        >
+          {roomName}
+        </h2>
+      ) : null}
+    </div>
+  );
+}
+
+/* ── Error boundary around the R3F/Three scenes ──
+ * ExteriorScene builds its own WebGLRenderer and its retry can throw uncaught;
+ * this catches any scene failure and swaps in the warm-cream fallback so the
+ * user is never stranded on a broken canvas. */
+class SceneErrorBoundary extends Component<
+  { fallback: ReactNode; onError?: () => void; children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    try {
+      this.props.onError?.();
+    } catch {}
+  }
+  render() {
+    if (this.state.failed) return this.props.fallback;
+    return this.props.children;
+  }
 }
 
 export default function OnboardingSceneHost({
@@ -38,6 +177,7 @@ export default function OnboardingSceneHost({
   onRoomClick,
   onDoorClick,
   onReady,
+  onSceneReady,
   onOnboardingLookDone,
   onCinematicPause,
   cinematicResumed,
@@ -45,10 +185,15 @@ export default function OnboardingSceneHost({
   wingId = "roots",
   roomId = "ro1",
   roomName,
+  demoUserName,
+  localeOverride,
   memories = [],
   isMobile = false,
   corridorEnterClicked = false,
   initialCameraZ,
+  demoAudio,
+  uploadedMemory = null,
+  uploadedMemories = null,
 }: OnboardingSceneHostProps) {
   const styleEra = useUserStore((s) => s.styleEra) || "roman";
   const userName = useUserStore((s) => s.userName);
@@ -59,13 +204,85 @@ export default function OnboardingSceneHost({
   const bustName = useUserStore((s) => s.bustName);
   const bustGender = useUserStore((s) => s.bustGender);
 
+  const reduce = useMemo(prefersReducedMotion, []);
+  // WebGL check must run on the client; assume capable during SSR, verify on mount.
+  const [noWebGL, setNoWebGL] = useState(false);
+  const [boundaryFailed, setBoundaryFailed] = useState(false);
+  useEffect(() => {
+    if (!webglAvailable()) setNoWebGL(true);
+  }, []);
+
   const [activeScene, setActiveScene] = useState(scene);
   const [transitioning, setTransitioning] = useState(false);
   const prevSceneRef = useRef(scene);
 
-  // Warm white flash crossfade — feels like a blink, not a cut
+  /* ── Change 17: gate the reveal on a real sceneReady signal, not a fixed
+   * delay — with a max-wait fallback so a never-firing onReady still reveals. */
+  const [sceneReady, setSceneReady] = useState(false);
+  const readyFiredRef = useRef(false);
+  const handleReady = useCallback(() => {
+    if (readyFiredRef.current) return;
+    readyFiredRef.current = true;
+    setSceneReady(true);
+    try {
+      onReady?.();
+    } catch {}
+  }, [onReady]);
+
+  // REAL readiness notification (anti-stranding ceilings): fired once per
+  // active scene, ONLY from the scene's own onReady (first rendered frame +
+  // assembled reveal barrier) or the no-3D fallback path — never from the 10s
+  // reveal-timeout below, which exists purely so a slow scene doesn't strand
+  // the user on a cream veil.
+  // onSceneReady is kept in a ref so parent inline-callback identity churn
+  // can neither re-fire it nor reset the once-guard.
+  const onSceneReadyRef = useRef(onSceneReady);
+  useEffect(() => { onSceneReadyRef.current = onSceneReady; }, [onSceneReady]);
+  const sceneReadyNotifiedRef = useRef(false);
+  const notifySceneReady = useCallback((s: OnboardingScene) => {
+    if (sceneReadyNotifiedRef.current) return;
+    sceneReadyNotifiedRef.current = true;
+    try { onSceneReadyRef.current?.(s); } catch {}
+  }, []);
+  // What the SCENES call: real first-frame readiness → notify + reveal.
+  const handleRealReady = useCallback(() => {
+    notifySceneReady(activeScene);
+    handleReady();
+  }, [activeScene, notifySceneReady, handleReady]);
+
+  // Reset the ready gate whenever the scene changes, then arm the ceiling timeout.
+  useEffect(() => {
+    readyFiredRef.current = false;
+    sceneReadyNotifiedRef.current = false;
+    setSceneReady(false);
+    // If the fallback is showing, there is no 3D "ready" — reveal immediately,
+    // and report scene-ready too (the ceilings ARE the choreography here, so
+    // they must arm right away and keep their original no-WebGL pacing).
+    if (noWebGL || boundaryFailed) {
+      notifySceneReady(activeScene);
+      handleReady();
+      return;
+    }
+    // Ceiling timeout: a stalled/never-firing onReady still surfaces the scene
+    // (reveal only — deliberately NOT a scene-ready signal). 10s (was 4s):
+    // the scenes' assemble-before-reveal barrier (owner 2026-08-23) fires
+    // onReady only once GLBs/textures/painting canvases have settled, capped
+    // at 8s scene-side — a 4s ceiling would undercut the barrier and reveal a
+    // half-assembled scene. The real onReady is always preferred (handleReady
+    // fires the moment it lands); this ceiling is pure anti-stranding.
+    const ceiling = setTimeout(() => handleReady(), 10000);
+    return () => clearTimeout(ceiling);
+  }, [activeScene, noWebGL, boundaryFailed, handleReady, notifySceneReady]);
+
+  // Warm white flash crossfade — feels like a blink, not a cut.
+  // Under reduced motion, swap instantly (no animated blink).
   useEffect(() => {
     if (scene !== prevSceneRef.current) {
+      if (reduce) {
+        setActiveScene(scene);
+        prevSceneRef.current = scene;
+        return;
+      }
       setTransitioning(true);
       const t1 = setTimeout(() => {
         setActiveScene(scene);
@@ -74,117 +291,214 @@ export default function OnboardingSceneHost({
         setTransitioning(false);
         prevSceneRef.current = scene;
       }, 500);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
-  }, [scene]);
+  }, [scene, reduce]);
 
+  // WINGS is a module-level constant — stable identity, safe to pass straight through.
   const allWings: Wing[] = WINGS;
   const noop = () => {};
 
-  // Demo corridor paintings for onboarding — only one painting (near first door)
-  const demoPaintings: Record<string, { url?: string; title?: string }> = onboardingMode ? {
-    ro1: { url: "/demo/between-two-hands.jpg", title: "Between Two Hands" },
-  } : {};
+  // Demo corridor paintings for onboarding — only one painting (near first door).
+  // Memoized on onboardingMode so scene props keep a stable identity across the
+  // host's own state transitions (transitioning/sceneReady) and store churn.
+  const demoPaintings = useMemo<Record<string, { url?: string; title?: string }>>(
+    () =>
+      (onboardingMode
+        ? { ro1: { url: "/demo/between-two-hands.jpg", title: "Between Two Hands" } }
+        : {}) as Record<string, { url?: string; title?: string }>,
+    [onboardingMode],
+  );
 
-  // Demo room memories — non-photo types so the upload placeholder painting stays visible
-  const demoRoomMemories = onboardingMode && memories.length === 0 ? [
-    { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "audio", dataUrl: "/demo/song-of-summer.mp3", createdAt: new Date().toISOString(), hue: 200, s: 50, l: 55 },
-    { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/demo/piano-recital.mp4", createdAt: new Date().toISOString(), hue: 30, s: 45, l: 50 },
-    { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", dataUrl: "/demo/quiet-morning.jpg", createdAt: new Date().toISOString(), hue: 18, s: 40, l: 60 },
-  ] : memories;
+  // Demo room memories (owner item 4, 2026-08-23) — the walk must arrive in a
+  // LIVED-IN room: the gramophone displays the demo audio mem (auto-play
+  // DISABLED per owner 2026-08-23 revision — demoAudio prop wiring is
+  // dormant, see the prop doc) and 3 generic pictures hang together
+  // on the LEFT wall (portraits side; displayed:true frame photos — the mantel
+  // stays EMPTY for the upload placeholder because InteriorScene's onboarding
+  // guard never lifts a hero there). Fixed createdAt dates keep the
+  // chronological salon hang deterministic. Memoized so InteriorScene's
+  // memories prop keeps a stable identity (a fresh array each render defeats
+  // memoization and can trigger scene-graph rebuilds) — and so the walk_room →
+  // upload → celebration mounts share ONE structural fingerprint (no rebuild).
+  // NOTE: /demo has no dedicated piano audio (piano-recital.mp4 is video-only,
+  // no audio track) — song-of-summer.mp3 is the bundled demo music and plays
+  // at the gramophone.
+  // Item 4 (owner 2026-08-23): the AV demo files live under /video/demo/, NOT
+  // /demo/ — the middleware matcher exempts image extensions but not .mp4/.mp3,
+  // so on the PUBLIC onboarding preview (/flythrough is unauthenticated)
+  // /demo/*.mp4 307'd to /login and the cinema screen got an HTML page →
+  // MediaError → canvas fallback. /video/ is matcher-exempt + fast-pathed.
+  // Capture-first (SUCCESS_PLAYBOOK wk 2): user photos #2/#3 replace the demo
+  // wall frames IN PLACE — same slot, same fixed createdAt (deterministic
+  // salon hang), same displayUnit — so the left-wall look-around reveals THEIR
+  // photos. Photo #1 is NOT hung here: it goes to the mantel via the
+  // uploadedMemory in-place swap (the step-9 camera framing ends on it).
+  const demoRoomMemories = useMemo(
+    () => {
+      if (!(onboardingMode && memories.length === 0)) return memories;
+      const demoFrames = [
+        { id: "demo-frame-1", title: "A Quiet Morning", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/quiet-morning.jpg", createdAt: "2023-04-09T08:00:00.000Z", hue: 18, s: 40, l: 60 },
+        { id: "demo-frame-2", title: "Edge of the Water", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/edge-of-water.jpg", createdAt: "2024-07-18T17:00:00.000Z", hue: 200, s: 35, l: 55 },
+        { id: "demo-frame-3", title: "Graduation Day", type: "photo", displayUnit: "frame", displayed: true, dataUrl: "/demo/graduation.jpg", createdAt: "2025-06-28T14:00:00.000Z", hue: 42, s: 45, l: 55 },
+      ];
+      const extras = (uploadedMemories || []).slice(1); // #1 lives on the mantel
+      const frames = demoFrames.map((f, i) => {
+        const u = extras[i];
+        return u && u.dataUrl
+          ? { ...f, id: `ob-user-${u.id || i}`, title: u.title || f.title, dataUrl: u.dataUrl, thumbnailUrl: u.thumbnailUrl, hue: u.hue ?? f.hue, s: u.s ?? f.s, l: u.l ?? f.l }
+          : f;
+      });
+      return [
+        { id: "demo-audio-1", title: "Song of Summer", type: "audio", displayUnit: "vinyl", displayed: true, dataUrl: "/video/demo/song-of-summer.mp3", createdAt: "2024-06-21T15:00:00.000Z", hue: 200, s: 50, l: 55 },
+        { id: "demo-video-1", title: "Piano Recital", type: "video", displayUnit: "screen", dataUrl: "/video/demo/piano-recital.mp4", thumbnailUrl: "/video/demo/piano-recital-thumb.jpg", createdAt: "2024-11-02T19:30:00.000Z", hue: 30, s: 45, l: 50 },
+        ...frames,
+      ];
+    },
+    [onboardingMode, memories, uploadedMemories],
+  );
 
-  // Override room name for onboarding — "[User]'s Self Portraits"
-  const corridorRooms: WingRoom[] = (WING_ROOMS[wingId] || []).map((r, i) => {
-    if (i === 0 && roomName) return { ...r, name: roomName, nameKey: undefined };
-    return r;
-  });
+  // Override room name for onboarding — "[User]'s Self Portraits". Memoized on the
+  // real inputs (wingId/roomName) so the corridor rooms array keeps a stable
+  // identity across unrelated re-renders.
+  const corridorRooms: WingRoom[] = useMemo(
+    () =>
+      (WING_ROOMS[wingId] || []).map((r, i) => {
+        if (i === 0 && roomName) return { ...r, name: roomName, nameKey: undefined };
+        return r;
+      }),
+    [wingId, roomName],
+  );
+
+  // Static fallback path: WebGL unavailable — never mount the 3D canvas at all.
+  if (noWebGL || boundaryFailed) {
+    return (
+      <div style={{ position: "absolute", inset: 0, touchAction: "none" }}>
+        <SceneFallback roomName={roomName} />
+      </div>
+    );
+  }
+
+  const sceneNode = (
+    <Suspense fallback={null}>
+      {activeScene === "exterior" && (
+        <ExteriorScene
+          onRoomHover={noop}
+          onRoomClick={onRoomClick || noop}
+          hoveredRoom={null}
+          wings={allWings}
+          styleEra={styleEra}
+          autoWalkTo={autoWalkTo}
+          onReady={handleRealReady}
+          onboardingMode={onboardingMode}
+          onCinematicPause={onCinematicPause}
+          cinematicResumed={cinematicResumed}
+          userNameOverride={demoUserName}
+          localeOverride={localeOverride}
+        />
+      )}
+      {activeScene === "entrance" && (
+        <EntranceHallScene
+          onDoorClick={onDoorClick || noop}
+          wings={allWings}
+          styleEra={styleEra}
+          autoWalkTo={autoWalkTo}
+          onReady={handleRealReady}
+          onboardingMode={onboardingMode}
+          bustPedestals={bustPedestals}
+          bustTextureUrl={bustTextureUrl}
+          bustModelUrl={bustModelUrl}
+          bustProportions={bustProportions}
+          bustName={bustName || userName || null}
+          bustGender={bustGender || null}
+          localeOverride={localeOverride}
+        />
+      )}
+      {activeScene === "corridor" && (
+        <CorridorScene
+          wingId={wingId}
+          rooms={corridorRooms}
+          onDoorHover={noop}
+          onDoorClick={onDoorClick || noop}
+          hoveredDoor={null}
+          styleEra={styleEra}
+          autoWalkTo={autoWalkTo}
+          onReady={handleRealReady}
+          onboardingMode={onboardingMode}
+          onCinematicStep={onCinematicStep}
+          isMobile={isMobile}
+          corridorEnterClicked={corridorEnterClicked}
+          corridorPaintings={demoPaintings}
+          localeOverride={localeOverride}
+        />
+      )}
+      {activeScene === "room" && (
+        <InteriorScene
+          roomId={wingId}
+          actualRoomId={roomId}
+          userNameOverride={demoUserName}
+          localeOverride={localeOverride}
+          memories={demoRoomMemories}
+          onMemoryClick={onDoorClick || noop}
+          styleEra={styleEra}
+          onReady={handleRealReady}
+          onboardingMode={onboardingMode}
+          onOnboardingLookDone={onOnboardingLookDone}
+          onCinematicStep={onCinematicStep}
+          isMobile={isMobile}
+          initialCameraZ={initialCameraZ}
+          onboardingAudio={demoAudio}
+          onboardingUploadedMemory={uploadedMemory}
+        />
+      )}
+    </Suspense>
+  );
 
   return (
     <div style={{ position: "absolute", inset: 0, touchAction: "none" }}>
-      {/* Scene */}
+      {/* Scene — revealed only once sceneReady fires (real signal, timeout-guarded).
+          A calm warm-cream backdrop sits underneath so nothing is ever black. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          opacity: transitioning ? 0 : 1,
-          transition: "opacity 0.25s ease",
+          background: "radial-gradient(ellipse at 50% 35%, #FFFFFF 0%, #FCFAF5 45%, #F6EBE3 100%)",
+        }}
+        aria-hidden
+      />
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: transitioning || !sceneReady ? 0 : 1,
+          transition: reduce ? "none" : "opacity 0.35s ease",
         }}
       >
-        <Suspense fallback={null}>
-          {activeScene === "exterior" && (
-            <ExteriorScene
-              onRoomHover={noop}
-              onRoomClick={onRoomClick || noop}
-              hoveredRoom={null}
-              wings={allWings}
-              styleEra={styleEra}
-              autoWalkTo={autoWalkTo}
-              onReady={onReady}
-              onboardingMode={onboardingMode}
-              onCinematicPause={onCinematicPause}
-              cinematicResumed={cinematicResumed}
-            />
-          )}
-          {activeScene === "entrance" && (
-            <EntranceHallScene
-              onDoorClick={onDoorClick || noop}
-              wings={allWings}
-              styleEra={styleEra}
-              autoWalkTo={autoWalkTo}
-              onboardingMode={onboardingMode}
-              bustPedestals={bustPedestals}
-              bustTextureUrl={bustTextureUrl}
-              bustModelUrl={bustModelUrl}
-              bustProportions={bustProportions}
-              bustName={bustName || userName || null}
-              bustGender={bustGender || null}
-            />
-          )}
-          {activeScene === "corridor" && (
-            <CorridorScene
-              wingId={wingId}
-              rooms={corridorRooms}
-              onDoorHover={noop}
-              onDoorClick={onDoorClick || noop}
-              hoveredDoor={null}
-              styleEra={styleEra}
-              autoWalkTo={autoWalkTo}
-              onboardingMode={onboardingMode}
-              onCinematicStep={onCinematicStep}
-              isMobile={isMobile}
-              corridorEnterClicked={corridorEnterClicked}
-              corridorPaintings={demoPaintings}
-            />
-          )}
-          {activeScene === "room" && (
-            <InteriorScene
-              roomId={wingId}
-              actualRoomId={roomId}
-              memories={demoRoomMemories}
-              onMemoryClick={onDoorClick || noop}
-              styleEra={styleEra}
-              onboardingMode={onboardingMode}
-              onOnboardingLookDone={onOnboardingLookDone}
-              onCinematicStep={onCinematicStep}
-              isMobile={isMobile}
-              initialCameraZ={initialCameraZ}
-            />
-          )}
-        </Suspense>
+        <SceneErrorBoundary
+          fallback={<SceneFallback roomName={roomName} />}
+          onError={() => setBoundaryFailed(true)}
+        >
+          {sceneNode}
+        </SceneErrorBoundary>
       </div>
 
-      {/* Warm flash overlay during transition */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "radial-gradient(ellipse at center, rgba(242,237,231,0.6), rgba(26,25,23,0.8))",
-          opacity: transitioning ? 1 : 0,
-          transition: transitioning ? "opacity 0.15s ease-in" : "opacity 0.35s ease-out",
-          pointerEvents: "none",
-          zIndex: 10,
-        }}
-      />
+      {/* Warm flash overlay during transition (skipped under reduced motion) */}
+      {!reduce && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "radial-gradient(ellipse at center, rgba(242,237,231,0.6), rgba(26,25,23,0.8))",
+            opacity: transitioning ? 1 : 0,
+            transition: transitioning ? "opacity 0.15s ease-in" : "opacity 0.35s ease-out",
+            pointerEvents: "none",
+            zIndex: 10,
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { r2Remove, isR2Configured } from "@/lib/storage/r2";
 import { serverError } from "@/lib/i18n/server-errors";
+import { captureServer } from "@/lib/analytics-server";
 
 // Ensure a room exists in the DB, creating it if needed.
 // Maps local room IDs (like "ro1") to Supabase UUIDs.
@@ -23,12 +24,30 @@ async function ensureRoom(
   if (existing) return existing.id;
 
   // Find the user's wing
-  const { data: wing } = await supabase
+  let { data: wing } = await supabase
     .from("wings")
     .select("id")
     .eq("user_id", userId)
     .eq("slug", wingSlug)
     .single();
+
+  // Self-heal: default wings are seeded in completeOnboarding(), but the FIRST
+  // memory save (onboarding ImportHub) can run BEFORE that — a brand-new user
+  // (esp. Apple Sign-In) then has no "roots" wing yet and the save would roll
+  // back ("save-rolled-back"). Create the wing on demand so a capture never
+  // fails on unseeded state.
+  if (!wing) {
+    const WING_ACCENTS: Record<string, string> = {
+      roots: "#C66B3D", nest: "#7AA0C8", craft: "#8B7355",
+      travel: "#4A6741", passions: "#9B6B8E", attic: "#8B7355",
+    };
+    const created = await supabase
+      .from("wings")
+      .insert({ user_id: userId, slug: wingSlug, accent_color: WING_ACCENTS[wingSlug] || "#C66B3D", sort_order: 0 })
+      .select("id")
+      .single();
+    wing = created.data;
+  }
 
   if (!wing) return null;
 
@@ -72,6 +91,8 @@ export async function createMemory(data: {
   locationName?: string | null;
   lat?: number | null;
   lng?: number | null;
+  /** Date the memory actually happened (date-only ISO, e.g. from EXIF DateTimeOriginal). Best-effort. */
+  eventDate?: string | null;
 }) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -91,28 +112,40 @@ export async function createMemory(data: {
   const dbRoomId = await ensureRoom(supabase, user.id, data.roomId, wingSlug);
   if (!dbRoomId) return { error: t("couldNotResolveRoom") };
 
-  const { data: memory, error } = await supabase
+  const baseRow = {
+    room_id: dbRoomId,
+    user_id: user.id,
+    title: data.title,
+    description: data.description || null,
+    type: data.type,
+    hue: data.hue,
+    saturation: data.saturation,
+    lightness: data.lightness,
+    file_url: data.fileUrl || null,
+    file_path: data.filePath || null,
+    file_size: data.fileSize || 0,
+    storage_backend: data.storageBackend || "supabase",
+    ...(data.thumbnailUrl ? { thumbnail_url: data.thumbnailUrl } : {}),
+    ...(data.locationName ? { location_name: data.locationName } : {}),
+    ...(data.lat != null ? { lat: data.lat } : {}),
+    ...(data.lng != null ? { lng: data.lng } : {}),
+  };
+
+  // event_date (week-4 resurface repair) is best-effort and must NEVER block a
+  // capture: if the migration hasn't been applied yet (unknown column), retry
+  // the insert without it.
+  let insertRes = await supabase
     .from("memories")
     .insert({
-      room_id: dbRoomId,
-      user_id: user.id,
-      title: data.title,
-      description: data.description || null,
-      type: data.type,
-      hue: data.hue,
-      saturation: data.saturation,
-      lightness: data.lightness,
-      file_url: data.fileUrl || null,
-      file_path: data.filePath || null,
-      file_size: data.fileSize || 0,
-      storage_backend: data.storageBackend || "supabase",
-      ...(data.thumbnailUrl ? { thumbnail_url: data.thumbnailUrl } : {}),
-      ...(data.locationName ? { location_name: data.locationName } : {}),
-      ...(data.lat != null ? { lat: data.lat } : {}),
-      ...(data.lng != null ? { lng: data.lng } : {}),
+      ...baseRow,
+      ...(data.eventDate ? { event_date: data.eventDate } : {}),
     })
     .select()
     .single();
+  if (insertRes.error && data.eventDate && /event_date/i.test(insertRes.error.message)) {
+    insertRes = await supabase.from("memories").insert(baseRow).select().single();
+  }
+  const { data: memory, error } = insertRes;
 
   if (error) {
     // Cleanup orphaned storage file on DB insert failure
@@ -127,6 +160,10 @@ export async function createMemory(data: {
     }
     return { error: error.message };
   }
+
+  // Milestone: activation signal. First-party, server-side (covers native, where
+  // the in-app tracker is disabled). Fire-and-forget.
+  void captureServer(user.id, "memory_created", { source: "manual", memoryType: data.type, hasMedia: !!data.fileUrl });
 
   // ── Notify room owner if this is a shared room contribution ──
   try {
@@ -194,7 +231,7 @@ export async function createMemory(data: {
 
 export async function updateMemoryAction(
   memoryId: string,
-  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string; thumbnail_url?: string; location_name?: string; lat?: number; lng?: number; displayed?: boolean | null; display_unit?: string | null }
+  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string; thumbnail_url?: string; location_name?: string; lat?: number; lng?: number; displayed?: boolean | null; display_unit?: string | null; display_scale?: string | null; sort_order?: number | null }
 ) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -348,14 +385,22 @@ export async function fetchAllMemories() {
     .eq("user_id", user.id);
   if (!rooms || rooms.length === 0) return { roomMemories: {} as Record<string, any[]> };
 
-  // Fetch all memories for all rooms in one query
+  // Fetch all memories for all rooms in one query.
+  // Project only the columns the client mapper consumes (see memoryStore
+  // fetchAllRoomMemories) instead of select('*') so we don't pull large
+  // unused columns and can serve from index-only reads. A generous .limit()
+  // guards against pathological payloads for power users; 2000 is well above
+  // any real per-user memory count and won't truncate normal data.
   const roomIds = rooms.map((r: any) => r.id);
   const { data: memories, error } = await supabase
     .from("memories")
-    .select("*")
+    .select(
+      "id, title, hue, saturation, lightness, type, description, file_url, thumbnail_url, location_name, lat, lng, created_at, displayed, display_unit, room_id, sort_order",
+    )
     .in("room_id", roomIds)
     .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(2000);
 
   if (error) return { roomMemories: {} as Record<string, any[]>, error: error.message };
 

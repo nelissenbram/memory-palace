@@ -11,6 +11,21 @@ loader.setDRACOLoader(dracoLoader);
 const modelCache = new Map<string, THREE.Group>();
 
 /**
+ * Pre-warm the DRACO decoder (WASM worker) so the first GLB load does not stall
+ * the main thread / establishing dolly. The exterior ships zero GLBs by default,
+ * so its decoder is cold — call this once at scene mount when a W3 asset is
+ * gated on. No-op safe: if the decoder is unavailable, loadModel still rejects
+ * and the caller falls back to procedural geometry.
+ */
+export function warmDracoDecoder(): void {
+  try {
+    dracoLoader.preload();
+  } catch {
+    /* decoder unavailable — ignore, load path degrades gracefully */
+  }
+}
+
+/**
  * Load a GLTF model with caching. Returns a clone of the cached model.
  * Supports DRACO-compressed meshes.
  */

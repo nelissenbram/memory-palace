@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useSyncExternalStore } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import ProfileCard from "@/components/social/ProfileCard";
@@ -14,6 +14,24 @@ import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import type { SocialProfile } from "@/lib/social/profile-actions";
 import type { FeedItem } from "@/lib/social/feed-actions";
 import type { PublishedWing } from "@/lib/social/visit-actions";
+
+/** Canon interactive/CTA color; gold stays ceremonial (Enter-Palace only). */
+const EMBER = "#B85C38";
+const EMBER_GLYPH = "#9A4F2A";
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+/** True when the user has requested reduced motion. */
+function useReducedMotion(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(REDUCED_MOTION_QUERY);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
+    () => false,
+  );
+}
 
 interface ProfilePageClientProps {
   profile: SocialProfile;
@@ -34,6 +52,10 @@ export default function ProfilePageClient({
   const router = useRouter();
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
+  const reduceMotion = useReducedMotion();
+  // Gate entrance animations behind prefers-reduced-motion: return "none"
+  // (rather than a keyframe) so no motion runs and content is immediately visible.
+  const entry = (anim: string) => (reduceMotion ? "none" : anim);
   // Navigate to app modes via full page navigation (not soft nav)
   // to avoid conflicts with MemoryPalace's history management
   const handleModeChange = (mode: "atrium" | "library" | "3d") => {
@@ -58,7 +80,7 @@ export default function ProfilePageClient({
         <NavigationBar
           currentMode={"atrium"}
           onModeChange={handleModeChange}
-          onNotifications={() => router.push("/palace?notifications=1")}
+          onNotifications={() => router.push("/atrium?notifications=1")}
           isMobile={false}
           activeTab="explore"
         />
@@ -69,7 +91,7 @@ export default function ProfilePageClient({
         {/* ── Back Button ──────────────────────────────── */}
         <div style={{
           padding: isMobile ? "1rem 0 0.75rem" : "1.5rem 0 1rem",
-          animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out both`,
+          animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out both`),
         }}>
           <button
             onClick={() => router.push("/explore")}
@@ -93,10 +115,33 @@ export default function ProfilePageClient({
 
         {/* ── Profile Header ──────────────────────────── */}
         <div style={{
-          animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.05s both`,
+          animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.05s both`),
         }}>
-          <TuscanCard variant="elevated" padding="1.5rem">
-            <ProfileCard profile={profile} />
+          <TuscanCard variant="elevated" padding="1.5rem" animate={!reduceMotion}>
+            <ProfileCard profile={profile} isAuthenticated={isAuthenticated} />
+            {/* Self-view bridge (change 24): owners see one Edit affordance where
+                visitors see Follow — self view = public view + Edit. */}
+            {profile.is_own && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.875rem" }}>
+                <button
+                  onClick={() => router.push("/settings/profile")}
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    minHeight: "2.75rem",
+                    padding: "0.5rem 1.375rem",
+                    borderRadius: "2rem",
+                    border: `0.0625rem solid ${EMBER}`, /* Atrium ember — interactive */
+                    background: "transparent",
+                    color: EMBER,
+                    fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                    cursor: "pointer",
+                    transition: `background 0.2s ${EASE}`,
+                  }}
+                >
+                  {t("editProfile")}
+                </button>
+              </div>
+            )}
           </TuscanCard>
         </div>
 
@@ -105,10 +150,15 @@ export default function ProfilePageClient({
           <div style={{
             textAlign: "center",
             marginTop: "1.25rem",
-            animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.07s both`,
+            animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.07s both`),
           }}>
             <button
-              onClick={() => router.push(`/visit/${profile.id}/${publishedWings[0].slug}`)}
+              onClick={() =>
+                // Route to the palace-level entry (an overview across ALL published
+                // wings) rather than assuming publishedWings[0] — which is merely the
+                // most-recently-published wing, not a curated/owner-chosen landing.
+                router.push(`/visit/${profile.id}`)
+              }
               style={{
                 display: "inline-flex", alignItems: "center", gap: "0.625rem",
                 fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
@@ -136,15 +186,15 @@ export default function ProfilePageClient({
         <div style={{
           display: "flex", gap: "1.5rem", justifyContent: "center", flexWrap: "wrap",
           padding: "1.25rem 0",
-          animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.08s both`,
+          animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.08s both`),
         }}>
           {[
             { label: t("publishedWings"), value: publishedWings.length },
             { label: t("rooms"), value: publishedWings.reduce((sum, w) => sum + w.room_count, 0) },
-            { label: t("visits"), value: publishedWings.reduce((sum, w) => sum + w.visit_count, 0) },
+            { label: t("totalWingVisits"), value: publishedWings.reduce((sum, w) => sum + w.visit_count, 0) },
           ].map((stat) => (
             <div key={stat.label} style={{ textAlign: "center", minWidth: "4rem" }}>
-              <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.charcoal }}>
+              <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.inkSoft }}>
                 {stat.value}
               </div>
               <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -153,7 +203,7 @@ export default function ProfilePageClient({
             </div>
           ))}
           <div style={{ textAlign: "center", minWidth: "4rem" }}>
-            <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.charcoal }}>
+            <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.inkSoft }}>
               {new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
             </div>
             <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -166,7 +216,7 @@ export default function ProfilePageClient({
         {publishedWings.length > 0 && (
           <section style={{
             marginTop: "2rem",
-            animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.1s both`,
+            animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.1s both`),
           }}>
             <TuscanSectionHeader
               badge={
@@ -191,6 +241,7 @@ export default function ProfilePageClient({
                   wing={wing}
                   profileId={profile.id}
                   delay={i * 0.05}
+                  reduceMotion={reduceMotion}
                 />
               ))}
             </div>
@@ -202,7 +253,7 @@ export default function ProfilePageClient({
           <section style={{
             marginTop: "2rem",
             marginBottom: "2rem",
-            animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.2s both`,
+            animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.2s both`),
           }}>
             <TuscanSectionHeader>{t("recentActivity")}</TuscanSectionHeader>
             <ActivityFeed
@@ -217,11 +268,11 @@ export default function ProfilePageClient({
         {publishedWings.length === 0 && activities.length === 0 && (
           <div style={{
             textAlign: "center", padding: "3rem 1rem",
-            animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.1s both`,
+            animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.1s both`),
           }}>
             <p style={{
               fontFamily: T.font.display, fontSize: "1.25rem",
-              color: T.color.charcoal, margin: "0 0 0.375rem",
+              color: T.color.inkSoft, margin: "0 0 0.375rem",
             }}>
               {t("profileEmpty")}
             </p>
@@ -240,7 +291,7 @@ export default function ProfilePageClient({
         <NavigationBar
           currentMode={"atrium"}
           onModeChange={handleModeChange}
-          onNotifications={() => router.push("/palace?notifications=1")}
+          onNotifications={() => router.push("/atrium?notifications=1")}
           isMobile={true}
           activeTab="explore"
         />
@@ -255,10 +306,12 @@ function WingCard({
   wing,
   profileId,
   delay = 0,
+  reduceMotion = false,
 }: {
   wing: PublishedWing;
   profileId: string;
   delay?: number;
+  reduceMotion?: boolean;
 }) {
   const { t } = useTranslation("social");
   const router = useRouter();
@@ -272,9 +325,10 @@ function WingCard({
     <TuscanCard
       variant="glass"
       padding="0"
+      animate={!reduceMotion}
       style={{
         cursor: "pointer",
-        animationDelay: `${delay}s`,
+        ...(reduceMotion ? {} : { animationDelay: `${delay}s` }),
       }}
     >
       <div
@@ -321,7 +375,7 @@ function WingCard({
           {/* Wing name */}
           <div style={{
             fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600,
-            color: T.color.charcoal, marginBottom: "0.25rem",
+            color: T.color.inkSoft, marginBottom: "0.25rem",
           }}>
             {wing.custom_name || wing.slug}
           </div>
@@ -359,7 +413,7 @@ function WingCard({
               {wing.visit_count} {t("visits")}
             </span>
             <span style={{
-              marginLeft: "auto", color: T.color.goldDark, fontWeight: 500,
+              marginLeft: "auto", color: EMBER_GLYPH, fontWeight: 500,
               display: "flex", alignItems: "center", gap: "0.25rem",
             }}>
               {t("exploreVisitWing")} →

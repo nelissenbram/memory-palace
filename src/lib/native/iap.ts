@@ -38,6 +38,23 @@ export interface IAPProduct {
 let store: any = null;
 let initialized = false;
 let initError: string | null = null;
+let purchaseHandlersBound = false;
+
+/**
+ * In-flight purchase promises keyed by productId. The store's approved/verified/
+ * error handlers are bound ONCE at init (see bindPurchaseHandlers) and route
+ * results back to the correct pending order via this map, so retries never
+ * accumulate duplicate global listeners on the singleton store.
+ */
+const pendingPurchases = new Map<string, (ok: boolean) => void>();
+
+function settlePurchase(productId: string, ok: boolean) {
+  const resolve = pendingPurchases.get(productId);
+  if (resolve) {
+    pendingPurchases.delete(productId);
+    resolve(ok);
+  }
+}
 
 /** Returns the last initialization error message, or null if init succeeded. */
 export function getIAPError(): string | null { return initError; }
@@ -120,10 +137,9 @@ export async function initIAP(): Promise<boolean> {
     }
   };
 
-  // Auto-finish verified transactions
-  store.when().verified((receipt: any) => {
-    receipt.finish();
-  });
+  // Bind approved/verified/error handlers exactly once (see bindPurchaseHandlers).
+  // This also auto-finishes verified transactions.
+  bindPurchaseHandlers();
 
   try {
     await store.initialize([cdv.Platform.APPLE_APPSTORE]);
@@ -192,12 +208,52 @@ export function getAllProducts(): IAPProduct[] {
     .filter((p): p is IAPProduct => p !== null);
 }
 
+/**
+ * Bind the store's approved/verified/error listeners exactly once. Repeated
+ * purchase attempts route through the pendingPurchases map instead of stacking
+ * fresh global listeners on the singleton store (which would let a later verify
+ * resolve stale promises, or an unrelated error resolve(false) a live order).
+ */
+function bindPurchaseHandlers() {
+  if (purchaseHandlersBound || !store) return;
+  purchaseHandlersBound = true;
+
+  store.when().approved((transaction: any) => {
+    // Verify every approved transaction so the receipt validator runs and the
+    // subscription is finished even when no order() is in flight (restores).
+    transaction.verify();
+  });
+
+  store.when().verified((receipt: any) => {
+    receipt.finish();
+    const products = receipt.sourceReceipt?.products ?? [];
+    for (const p of products) {
+      settlePurchase(p.id, true);
+    }
+  });
+
+  store.error((error: any) => {
+    console.error("[IAP] Purchase error:", error);
+    // Correlate the error to a specific in-flight order when the plugin
+    // surfaces a productId; otherwise fail the most recent pending order.
+    const errProductId: string | undefined = error?.productId;
+    if (errProductId && pendingPurchases.has(errProductId)) {
+      settlePurchase(errProductId, false);
+    } else if (pendingPurchases.size > 0) {
+      const lastKey = Array.from(pendingPurchases.keys()).pop()!;
+      settlePurchase(lastKey, false);
+    }
+  });
+}
+
 /** Purchase a subscription product. Returns true on success. */
 export async function purchase(productId: string): Promise<boolean> {
   if (!store) {
     console.error("[IAP] Store not initialized");
     return false;
   }
+
+  bindPurchaseHandlers();
 
   const cdv = getCdv();
   const offer = store
@@ -208,29 +264,17 @@ export async function purchase(productId: string): Promise<boolean> {
     return false;
   }
 
-  return new Promise((resolve) => {
-    store.when().approved((transaction: any) => {
-      if (transaction.products.some((p: any) => p.id === productId)) {
-        transaction.verify();
-      }
-    });
+  // If an attempt for this product is already in flight, fail the stale one so
+  // its promise never dangles, then start fresh.
+  settlePurchase(productId, false);
 
-    store.when().verified((receipt: any) => {
-      if (receipt.sourceReceipt.products.some((p: any) => p.id === productId)) {
-        receipt.finish();
-        resolve(true);
-      }
-    });
-
-    store.error((error: any) => {
-      console.error("[IAP] Purchase error:", error);
-      resolve(false);
-    });
+  return new Promise<boolean>((resolve) => {
+    pendingPurchases.set(productId, resolve);
 
     store.order(offer).then((error: any) => {
       if (error) {
         console.error("[IAP] Order error:", error);
-        resolve(false);
+        settlePurchase(productId, false);
       }
     });
   });

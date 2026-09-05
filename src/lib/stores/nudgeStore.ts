@@ -28,6 +28,8 @@ export type NudgeId =
   | "explore_cards"
   | "explore_publish"
   | "explore_overview"
+  // Me / identity page
+  | "me_overview"
   | "library_wing_sidebar"
   | "library_room_bar"
   | "library_search"
@@ -44,12 +46,11 @@ export type NudgeId =
   | "palace_click_room"
   | "palace_room_overview"
   | "palace_room_info"
-  | "palace_room_layout"
   | "palace_room_upload"
   | "palace_room_memory"
   | "palace_room_share";
 
-type PageId = "atrium" | "library" | "palace" | "explore";
+type PageId = "atrium" | "library" | "palace" | "explore" | "me";
 
 // Ordered sequence per page — ends with a bridge nudge to the next page
 const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
@@ -58,13 +59,18 @@ const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
     "explore_cards", "explore_publish",
     "explore_overview",
   ],
+  me: [
+    "me_overview",
+  ],
   atrium: [
     "atrium_nav_modes", "atrium_notifications",
     "atrium_help_button",
     "atrium_overview", "atrium_go_library",
   ],
   library: [
-    "library_wing_sidebar", "library_room_bar",
+    // library_room_bar retired — the unified "Il Muro" wall has no separate
+    // desktop rooms bar; the wing sidebar step already covers wings & rooms.
+    "library_wing_sidebar",
     "library_search", "library_tools",
     "library_import", "library_overview",
     "library_go_palace",
@@ -75,7 +81,9 @@ const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
     "palace_entrance_info", "palace_click_wing",
     "palace_corridor_info", "palace_click_room",
     "palace_room_overview",
-    "palace_room_info", "palace_room_layout",
+    // palace_room_layout retired (PALACE_TUTORIAL_SPEC §3.1) — the room-type/
+    // layout picker no longer exists; stations place memories automatically.
+    "palace_room_info",
     "palace_room_upload", "palace_room_memory", "palace_room_share",
   ],
 };
@@ -83,6 +91,7 @@ const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
 // Mobile: explain each bottom nav button left-to-right, then overview + bridge
 const MOBILE_PAGE_NUDGES: Record<PageId, NudgeId[]> = {
   explore: PAGE_NUDGES.explore,
+  me: PAGE_NUDGES.me,
   atrium: [
     "atrium_mob_home", "atrium_mob_library", "atrium_mob_palace",
     "atrium_mob_me", "atrium_mob_notif", "atrium_mob_help",
@@ -146,7 +155,7 @@ function shouldShowNudges(): boolean {
     if (seen.length === 0) return true;
 
     const allNudges = new Set([
-      ...PAGE_NUDGES.explore,
+      ...PAGE_NUDGES.explore, ...PAGE_NUDGES.me,
       ...PAGE_NUDGES.atrium, ...PAGE_NUDGES.library, ...PAGE_NUDGES.palace,
       ...MOBILE_PAGE_NUDGES.atrium,
     ]);

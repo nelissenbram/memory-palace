@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import RoomPlacementPicker from "@/components/ui/RoomPlacementPicker";
+import { RoomIcon, GenericRoomIcon, resolveRoomIconId } from "@/components/ui/WingRoomIcons";
 
 import { T } from "@/lib/theme";
 
@@ -21,8 +22,10 @@ interface InviteResult {
     recipientEmail: string;
   };
   inviter?: { name: string; avatarUrl: string | null };
-  room?: { name: string };
-  wing?: { name: string; icon: string };
+  // name = owner's tailored (renamed) room name, resolved server-side;
+  // localId = raw local room id ("ro1") used only to pick the crafted SVG icon.
+  room?: { name: string; localId?: string; icon?: string };
+  wing?: { slug?: string; name: string; icon: string };
   memoryCount?: number;
 }
 
@@ -256,7 +259,16 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
           borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
           marginBottom: "1.25rem", textAlign: "center",
         }}>
-          {wing.icon && <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem" }}>{wing.icon}</div>}
+          {/* Crafted SVG room icon (never emoji): resolve via the room's local
+              id / stored icon, fall back to the generic door-arch glyph. */}
+          <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", marginBottom: "0.5rem", color: T.color.walnut }}>
+            {(() => {
+              const iconId = resolveRoomIconId(room.localId || "", room.icon);
+              return iconId
+                ? <RoomIcon roomId={iconId} wingId={wing.slug} size={30} color={T.color.walnut} />
+                : <GenericRoomIcon size={30} color={T.color.walnut} />;
+            })()}
+          </div>
           <div style={{
             fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
             color: T.color.charcoal, marginBottom: "0.25rem",

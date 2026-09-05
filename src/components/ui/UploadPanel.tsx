@@ -16,6 +16,58 @@ import { TypeIcon } from "@/lib/constants/type-icons";
 import { hapticSuccess } from "@/lib/native/haptics";
 import { captureOrPick } from "@/lib/native/camera";
 import { isNative } from "@/lib/native/platform";
+import { RoomIcon, GenericRoomIcon, resolveRoomIconId } from "./WingRoomIcons";
+
+/* ═══ Tuscan line-art icons (terracotta glyph #9A4F2A) — matches ImportHub ═══ */
+const GLYPH = "#9A4F2A"; // Atrium token: terracotta glyph
+
+const UploadGlyph = ({ color = GLYPH }: { color?: string }) => (
+  <svg width="2rem" height="2rem" viewBox="0 0 40 40" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="4" y="8" width="32" height="24" rx="3" />
+    <path d="M20 14v12M14 20l6 6 6-6" />
+    <path d="M4 12l16-6 16 6" strokeDasharray="2 2" opacity="0.5" />
+  </svg>
+);
+
+const CameraGlyph = ({ size = 18, color = GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 011 1v9a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </svg>
+);
+
+const PinGlyph = ({ size = 14, color = GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z" />
+    <circle cx="12" cy="10" r="2.5" />
+  </svg>
+);
+
+const GlobeGlyph = ({ size = 15, color = GLYPH }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c2.5 2.5 3.8 5.7 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.7-3.8-9S9.5 5.5 12 3z" />
+  </svg>
+);
+
+const SparkleGlyph = ({ size = 15, color = "#FCFAF5" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" />
+  </svg>
+);
+
+const LockGlyph = ({ size = 15, color = "#FCFAF5" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 018 0v3" />
+  </svg>
+);
+
+const CloseGlyph = ({ size = 18, color = "currentColor" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <path d="M5 5l10 10M15 5L5 15" />
+  </svg>
+);
 
 interface UploadPanelProps {
   wing: Wing | null | undefined;
@@ -70,7 +122,8 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const [contextAccepted,setContextAccepted]=useState(false);
   const [fileSizeError,setFileSizeError]=useState<string|null>(null);
   const fileRef=useRef<HTMLInputElement|null>(null);
-  const accent=wing?.accent||T.color.terracotta;
+  const accent=wing?.accent||"#B85C38"; // Atrium EMBER — canon interactive accent (not off-canon T.color.terracotta)
+  // Atrium tokens: ink #403B36, muted #716A5E, hairline #E3D6BC, sage #56683C, warm-ink shadows rgba(64,59,54,…)
 
   const MAX_IMAGE_SIZE=50*1024*1024; // 50 MB
   const MAX_VIDEO_SIZE=100*1024*1024; // 100 MB
@@ -106,8 +159,10 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
     const r=new FileReader();
     r.onload=e=>{setPreview(e.target?.result as string);};
     r.readAsDataURL(file);
-    // Generate thumbnail from video/audio files during user interaction (works on mobile)
-    if(isVid||file.type.startsWith("audio/")){
+    // Generate a downscaled thumbnail during user interaction (works on mobile).
+    // Photos/paintings/albums get one too so the Library wall never pulls the
+    // multi-MB original through the rate-limited /api/media proxy.
+    if(isVid||file.type.startsWith("audio/")||file.type.startsWith("image/")){
       generateThumbnail(file,280).then(t=>{if(t)setVideoThumb(t);}).catch(()=>{});
     }
   };
@@ -165,36 +220,45 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const demos=UPLOAD_DEMOS;
 
   return(
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
-      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("addMemory")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e=>e.stopPropagation()} style={{position:"fixed",right:0,top:0,bottom:0,width:isMobile?"100%":"min(380px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":`1px solid ${T.color.cream}`,paddingTop:isMobile?`max(1.25rem, env(safe-area-inset-top, 0px))`:"1.75rem",paddingBottom:isMobile?`max(1.25rem, env(safe-area-inset-bottom, 0px))`:"1.75rem",paddingLeft:isMobile?`max(1rem, env(safe-area-inset-left, 0px))`:"1.5rem",paddingRight:isMobile?`max(1rem, env(safe-area-inset-right, 0px))`:"1.5rem",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(64,59,54,0.55)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
+      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("addMemory")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e=>e.stopPropagation()} style={{position:"fixed",right:0,top:0,bottom:0,width:isMobile?"100%":"min(23.75rem, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":"0.0625rem solid #E3D6BC",paddingTop:isMobile?`max(1.25rem, env(safe-area-inset-top, 0px))`:"1.75rem",paddingBottom:isMobile?`max(1.25rem, env(safe-area-inset-bottom, 0px))`:"1.75rem",paddingLeft:isMobile?`max(1rem, env(safe-area-inset-left, 0px))`:"1.5rem",paddingRight:isMobile?`max(1rem, env(safe-area-inset-right, 0px))`:"1.5rem",overflowY:"auto",animation:"slideInRight .3s ease"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem"}}>
           <div>
-            <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,margin:0}}>{t("addMemory")}</h3>
-            <p style={{fontFamily:T.font.body,fontSize:"0.75rem",color:accent,margin:"0.25rem 0 0"}}>{room?.icon} {room ? translateRoomName(room, tWings) : ""}</p>
+            <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:600,color:"#403B36",margin:0}}>{t("addMemory")}</h3>
+            <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:accent,margin:"0.25rem 0 0",display:"flex",alignItems:"center",gap:"0.3125rem"}}>
+              {room&&(()=>{
+                /* Crafted line-art room glyph, never the raw emoji stored in room.icon */
+                const resolved=resolveRoomIconId(room.id,room.icon);
+                return <span aria-hidden style={{display:"flex",alignItems:"center",flexShrink:0,lineHeight:0}}>
+                  {resolved?<RoomIcon roomId={resolved} wingId={wing?.id} size={14} color={accent}/>:<GenericRoomIcon size={14} color={accent}/>}
+                </span>;
+              })()}
+              {room ? translateRoomName(room, tWings) : ""}
+            </p>
           </div>
-          <button onClick={onClose} aria-label={tc("close")} style={{width:isMobile?"2.5rem":"2rem",height:isMobile?"2.5rem":"2rem",borderRadius:isMobile?"1.25rem":"1rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?"1rem":"0.875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}>✕</button>
+          <button onClick={onClose} aria-label={tc("close")} style={{width:isMobile?"2.5rem":"2rem",height:isMobile?"2.5rem":"2rem",borderRadius:isMobile?"1.25rem":"1rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,color:"#716A5E",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}><CloseGlyph size={16}/></button>
         </div>
 
         {/* Method tabs */}
-        <div style={{display:"flex",gap:"0.25rem",marginBottom:"1rem",background:T.color.warmStone,borderRadius:"0.625rem",padding:"0.1875rem"}}>
+        <div style={{display:"flex",gap:"0.25rem",marginBottom:"1rem",background:T.color.warmStone,borderRadius:"0.75rem",padding:"0.1875rem"}}>
           {[["url",t("pasteUrl")],["file",t("uploadFile")],...(roomMemories.length>0?[["room",t("fromRoom")]]:[] as string[][])].map(([val,label])=>(
-            <button key={val} onClick={()=>setUploadMethod(val)} role="tab" aria-selected={uploadMethod===val} style={{flex:1,padding:isMobile?"0.75rem 0.75rem":"0.5rem 0.75rem",borderRadius:"0.5rem",border:"none",background:uploadMethod===val?T.color.white:"transparent",color:uploadMethod===val?T.color.charcoal:T.color.muted,fontFamily:T.font.body,fontSize:isMobile?"0.875rem":"0.75rem",fontWeight:uploadMethod===val?600:500,cursor:"pointer",transition:"all .2s"}}>{label}</button>
+            <button key={val} onClick={()=>setUploadMethod(val)} role="tab" aria-selected={uploadMethod===val} style={{flex:1,padding:isMobile?"0.75rem 0.75rem":"0.5rem 0.75rem",borderRadius:"0.5rem",border:"none",background:uploadMethod===val?T.color.white:"transparent",color:uploadMethod===val?"#403B36":"#716A5E",fontFamily:T.font.body,fontSize:isMobile?"0.9375rem":"0.8125rem",fontWeight:uploadMethod===val?600:500,cursor:"pointer",transition:"all .2s"}}>{label}</button>
           ))}
         </div>
 
         {uploadMethod==="url"?<>
           {/* URL input */}
-          <label htmlFor="upload-url" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("imageOrVideoUrl")}</label>
+          <label htmlFor="upload-url" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("imageOrVideoUrl")}</label>
           <div style={{display:"flex",gap:"0.375rem",marginBottom:"0.75rem"}}>
-            <input id="upload-url" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadUrl();}} placeholder={t("urlPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
-            <button onClick={loadUrl} style={{padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:"none",background:accent,color:"#FFF",fontFamily:T.font.body,fontSize:"0.75rem",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>{t("load")}</button>
+            <input id="upload-url" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadUrl();}} placeholder={t("urlPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:"#403B36",boxSizing:"border-box"}}/>
+            <button onClick={loadUrl} style={{padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:"none",background:accent,color:"#FCFAF5",fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",minHeight:"2.75rem"}}>{t("load")}</button>
           </div>
           {/* Quick demo images */}
           <div style={{marginBottom:"1rem"}}>
-            <label style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted,display:"block",marginBottom:"0.375rem"}}>{t("tryDemoImage")}</label>
+            <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",display:"block",marginBottom:"0.375rem"}}>{t("tryDemoImage")}</label>
             <div style={{display:"flex",gap:"0.375rem"}}>
               {demos.map((d,i)=>(
-                <button key={i} onClick={()=>{setImageUrl(d.url);setPreview(d.url);if(!title)setTitle(d.title);}} style={{flex:1,padding:"0.375rem 0.5rem",borderRadius:"0.5rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.walnut,cursor:"pointer"}}>{d.title}</button>
+                <button key={i} onClick={()=>{setImageUrl(d.url);setPreview(d.url);if(!title)setTitle(d.title);}} style={{flex:1,padding:isMobile?"0.625rem 0.5rem":"0.375rem 0.5rem",borderRadius:"0.5rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",cursor:"pointer",minHeight:"2.75rem"}}>{d.title}</button>
               ))}
             </div>
           </div>
@@ -203,10 +267,10 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           <div role="button" aria-label={t("dropOrBrowse")} tabIndex={0} onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}
             onClick={()=>fileRef.current?.click()}
             onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fileRef.current?.click();}}}
-            style={{border:`2px dashed ${dragOver?accent:T.color.sandstone}`,borderRadius:"1rem",padding:"2rem",textAlign:"center",cursor:"pointer",background:dragOver?`${accent}08`:T.color.warmStone,marginBottom:"1rem",transition:"all .2s"}}>
-            <div style={{fontSize:"2rem",marginBottom:"0.5rem"}}>{dragOver?"✨":"📸"}</div>
-            <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.muted,margin:0}}>{t("dropOrBrowse")}</p>
-            <p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.sandstone,margin:"0.25rem 0 0"}}>{t("fileTypes")}</p>
+            style={{border:`0.125rem dashed ${dragOver?accent:T.color.sandstone}`,borderRadius:"1rem",padding:"2rem",textAlign:"center",cursor:"pointer",background:dragOver?`${accent}08`:T.color.warmStone,marginBottom:"1rem",transition:"all .2s"}}>
+            <div style={{marginBottom:"0.5rem",display:"flex",justifyContent:"center"}}>{dragOver?<SparkleGlyph size={32} color={accent}/>:<UploadGlyph color={accent}/>}</div>
+            <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",margin:0}}>{t("dropOrBrowse")}</p>
+            <p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",margin:"0.25rem 0 0"}}>{t("fileTypes")}</p>
           </div>
           <input ref={fileRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" style={{display:"none"}} onChange={e=>{if(e.target.files?.[0])processFile(e.target.files[0]);}}/>
           {isNative()&&<button onClick={async()=>{
@@ -216,16 +280,16 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             const blob=await res.blob();
             const file=new File([blob],"photo.jpg",{type:blob.type||"image/jpeg"});
             processFile(file);
-          }} style={{width:"100%",padding:isMobile?"0.875rem":"0.75rem",borderRadius:"0.75rem",border:`2px solid ${accent}`,background:`${accent}10`,color:accent,fontFamily:T.font.body,fontSize:isMobile?"0.9375rem":"0.8125rem",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.5rem",marginBottom:"1rem",transition:"all .2s"}}>
-            <span style={{fontSize:"1.125rem"}}>&#x1F4F7;</span> {t("takePhoto")}
+          }} style={{width:"100%",padding:isMobile?"0.875rem":"0.75rem",borderRadius:"0.75rem",border:`0.125rem solid ${accent}`,background:`${accent}10`,color:accent,fontFamily:T.font.body,fontSize:isMobile?"0.9375rem":"0.8125rem",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.5rem",marginBottom:"1rem",transition:"all .2s"}}>
+            <CameraGlyph size={18} color={accent}/> {t("takePhoto")}
           </button>}
-          {fileName&&<p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,marginBottom:"0.5rem"}}>{t("fileLabel", { name: fileName })}</p>}
-          {fileSizeError&&<p role="alert" style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.error,background:`${T.color.error}10`,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",marginBottom:"0.75rem",lineHeight:1.5}}>{fileSizeError}</p>}
+          {fileName&&<p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",marginBottom:"0.5rem"}}>{t("fileLabel", { name: fileName })}</p>}
+          {fileSizeError&&<p role="alert" style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.error,background:`${T.color.error}10`,padding:"0.625rem 0.875rem",borderRadius:"0.75rem",marginBottom:"0.75rem",lineHeight:1.5}}>{fileSizeError}</p>}
         </>}
 
         {/* Room memory picker */}
         {uploadMethod==="room"&&<>
-          <p style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.muted,marginBottom:"0.75rem"}}>
+          <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",marginBottom:"0.75rem"}}>
             {t("chooseMemory", { type: displayType })}
           </p>
           <div style={{display:"flex",flexDirection:"column",gap:"0.5rem",marginBottom:"1rem",maxHeight:"15rem",overflowY:"auto"}}>
@@ -238,22 +302,22 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
                   }
                 }} style={{
                   display:"flex",alignItems:"center",gap:"0.75rem",padding:"0.75rem 0.875rem",borderRadius:"0.75rem",
-                  border:`1px solid ${T.color.cream}`,background:T.color.white,cursor:"pointer",
-                  textAlign:"left",transition:"all .15s",
+                  border:`0.0625rem solid #E3D6BC`,background:T.color.white,cursor:"pointer",
+                  textAlign:"left",transition:"all .2s",
                 }} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=accent;(e.currentTarget as HTMLElement).style.background=`${accent}08`;}}
-                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=T.color.cream;(e.currentTarget as HTMLElement).style.background=T.color.white;}}>
+                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor="#E3D6BC";(e.currentTarget as HTMLElement).style.background=T.color.white;}}>
                   {m.dataUrl?
-                    <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.5rem",overflow:"hidden",flexShrink:0,border:`1px solid ${T.color.cream}`,position:"relative"}}>
+                    <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.5rem",overflow:"hidden",flexShrink:0,border:`0.0625rem solid #E3D6BC`,position:"relative"}}>
                       <Image src={m.dataUrl!} fill sizes="44px" style={{objectFit:"cover"}} alt=""/>
                     </div>
                   :
                     <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.5rem",background:`hsl(${m.hue},${m.s}%,${m.l}%)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      <TypeIcon type={m.type} size={20} color={T.color.charcoal}/>
+                      <TypeIcon type={m.type} size={20} color={"#403B36"}/>
                     </div>
                   }
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,color:T.color.charcoal,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
-                    <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted}}>
+                    <div style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,color:"#403B36",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
+                    <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E"}}>
                       {t("currentlyWillDisplay", { current: m.type, target: displayType })}
                     </div>
                   </div>
@@ -261,105 +325,105 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
                 </button>
               );
             })}
-            {roomMemories.length===0&&<p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.muted,textAlign:"center",padding:"1.25rem"}}>{t("noMemoriesInRoom")}</p>}
+            {roomMemories.length===0&&<p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",textAlign:"center",padding:"1.25rem"}}>{t("noMemoriesInRoom")}</p>}
           </div>
 
           {/* Display type selector for room picker */}
-          <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.5rem"}}>{t("displayAs")}</label>
+          <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.5rem"}}>{t("displayAs")}</label>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"0.5rem",marginBottom:"1rem"}}>
             {([["photo","typeFrame"],["painting","typePainting"],["video","typeScreen"],["album","typeAlbum"],["orb","typeOrb"],["case","typeVitrine"],["audio","typeAudio"],["document","typeDocument"]] as const).map(([val,labelKey])=>(
-              <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"0.625rem 0.5rem",borderRadius:"0.625rem",border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
-                <div style={{display:"flex",justifyContent:"center"}}><TypeIcon type={val} size={20} color={displayType===val?accent:T.color.muted}/></div>
-                <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:500,marginTop:"0.125rem"}}>{t(labelKey)}</div>
+              <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"0.625rem 0.5rem",borderRadius:"0.75rem",border:displayType===val?`0.125rem solid ${accent}`:`0.0625rem solid #E3D6BC`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .2s"}}>
+                <div style={{display:"flex",justifyContent:"center"}}><TypeIcon type={val} size={20} color={displayType===val?accent:"#716A5E"}/></div>
+                <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:displayType===val?accent:"#716A5E",fontWeight:displayType===val?600:500,marginTop:"0.125rem"}}>{t(labelKey)}</div>
               </button>
             ))}
           </div>
         </>}
 
         {/* Preview */}
-        {preview&&<div style={{borderRadius:"0.75rem",overflow:"hidden",marginBottom:"1rem",border:`1px solid ${T.color.cream}`}}>
+        {preview&&<div style={{borderRadius:"0.75rem",overflow:"hidden",marginBottom:"1rem",border:`0.0625rem solid #E3D6BC`}}>
           {isVideo?<video src={preview} style={{width:"100%",maxHeight:"10rem",objectFit:"cover",display:"block"}} autoPlay muted loop playsInline preload="metadata"/>
             :<img src={preview} loading="lazy" decoding="async" style={{width:"100%",maxHeight:"10rem",objectFit:"cover",display:"block"}} alt="" onError={e=>{(e.target as HTMLElement).style.display="none";}}/>}
         </div>}
 
         {/* Title */}
-        <label htmlFor="upload-title" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("titleLabel")}</label>
-        <input id="upload-title" value={title} onChange={e=>setTitle(e.target.value)} placeholder={t("nameMemory")} style={{width:"100%",padding:"0.75rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:"1rem"}}/>
+        <label htmlFor="upload-title" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("titleLabel")}</label>
+        <input id="upload-title" value={title} onChange={e=>setTitle(e.target.value)} placeholder={t("nameMemory")} style={{width:"100%",padding:"0.75rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:"#403B36",boxSizing:"border-box",marginBottom:"1rem"}}/>
         {/* Description */}
-        <label htmlFor="upload-description" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("descriptionOptional")}</label>
-        <textarea id="upload-description" value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t("descriptionPlaceholder")} rows={2} style={{width:"100%",padding:"0.75rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:"1rem",resize:"none"}}/>
+        <label htmlFor="upload-description" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("descriptionOptional")}</label>
+        <textarea id="upload-description" value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t("descriptionPlaceholder")} rows={2} style={{width:"100%",padding:"0.75rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:"#403B36",boxSizing:"border-box",marginBottom:"1rem",resize:"none"}}/>
         {/* Display type */}
-        <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.5rem"}}>{t("displayAs")}</label>
+        <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.5rem"}}>{t("displayAs")}</label>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"0.5rem",marginBottom:"1.5rem"}}>
           {([["photo","typeFrame"],["painting","typePainting"],["video","typeScreen"],["album","typeAlbum"],["orb","typeOrb"],["case","typeVitrine"],["audio","typeAudio"],["document","typeDocument"]] as const).map(([val,labelKey])=>(
-            <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"0.625rem 0.5rem",borderRadius:"0.625rem",border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
-              <div style={{display:"flex",justifyContent:"center"}}><TypeIcon type={val} size={20} color={displayType===val?accent:T.color.muted}/></div>
-              <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:500,marginTop:"0.125rem"}}>{t(labelKey)}</div>
+            <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"0.625rem 0.5rem",borderRadius:"0.75rem",border:displayType===val?`0.125rem solid ${accent}`:`0.0625rem solid #E3D6BC`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .2s"}}>
+              <div style={{display:"flex",justifyContent:"center"}}><TypeIcon type={val} size={20} color={displayType===val?accent:"#716A5E"}/></div>
+              <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:displayType===val?accent:"#716A5E",fontWeight:displayType===val?600:500,marginTop:"0.125rem"}}>{t(labelKey)}</div>
             </button>
           ))}
         </div>
         {/* Location */}
-        <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("locationOptional")}</label>
+        <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("locationOptional")}</label>
         <div style={{display:"flex",gap:"0.375rem",marginBottom:"0.375rem"}}>
-          <input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder={t("locationPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+          <input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder={t("locationPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:"#403B36",boxSizing:"border-box"}}/>
           {/* GPS uses CoreLocation on iOS; no NSLocation purpose string is shipped, so
               keep it web-only to avoid an unprompted permission (Apple 5.1.5). */}
-          {!isNative() && <button onClick={useCurrentLocation} disabled={geoLoading} style={{padding:"0.625rem 0.75rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.walnut,cursor:geoLoading?"wait":"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:"0.25rem"}}>
-            {geoLoading?<span style={{display:"inline-block",width:"0.75rem",height:"0.75rem",border:"2px solid transparent",borderTopColor:T.color.walnut,borderRadius:"50%",animation:"spin .6s linear infinite"}}/>:"\uD83D\uDCCD"} {t("gps")}
+          {!isNative() && <button onClick={useCurrentLocation} disabled={geoLoading} style={{padding:"0.625rem 0.75rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",cursor:geoLoading?"wait":"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:"0.25rem"}}>
+            {geoLoading?<span style={{display:"inline-block",width:"0.75rem",height:"0.75rem",border:"0.125rem solid transparent",borderTopColor:"#9A4F2A",borderRadius:"50%",animation:"spin .6s linear infinite"}}/>:<PinGlyph size={14}/>} {t("gps")}
           </button>}
         </div>
-        {lat!==null&&lng!==null&&<p style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted,margin:"0 0 0.75rem",paddingLeft:"0.125rem"}}>{t("coordinates", { lat: lat.toFixed(4), lng: lng.toFixed(4) })}</p>}
+        {lat!==null&&lng!==null&&<p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",margin:"0 0 0.75rem",paddingLeft:"0.125rem"}}>{t("coordinates", { lat: lat.toFixed(4), lng: lng.toFixed(4) })}</p>}
         {(lat===null||lng===null)&&<div style={{height:"0.75rem",marginBottom:"0.25rem"}}/>}
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         {/* Time Capsule */}
-        <div style={{marginBottom:"1.25rem",padding:"1rem",borderRadius:"0.75rem",border:`1px solid ${timeCapsule?`${accent}60`:T.color.cream}`,background:timeCapsule?`${accent}08`:T.color.warmStone,transition:"all .2s"}}>
+        <div style={{marginBottom:"1.25rem",padding:"1rem",borderRadius:"1rem",border:`0.0625rem solid ${timeCapsule?`${accent}60`:"#E3D6BC"}`,background:timeCapsule?`${accent}08`:T.color.warmStone,transition:"all .2s"}}>
           <label style={{display:"flex",alignItems:"center",gap:"0.625rem",cursor:"pointer",marginBottom:timeCapsule?"0.875rem":0}}>
             <div onClick={()=>setTimeCapsule(!timeCapsule)} style={{width:"2.375rem",height:"1.375rem",borderRadius:"0.6875rem",background:timeCapsule?accent:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
-              <div style={{width:"1rem",height:"1rem",borderRadius:"0.5rem",background:"#FFF",position:"absolute",top:"0.1875rem",left:timeCapsule?"1.1875rem":"0.1875rem",transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+              <div style={{width:"1rem",height:"1rem",borderRadius:"0.5rem",background:"#FCFAF5",position:"absolute",top:"0.1875rem",left:timeCapsule?"1.1875rem":"0.1875rem",transition:"left .2s",boxShadow:"0 0.0625rem 0.1875rem rgba(64,59,54,0.2)"}}/>
             </div>
             <div>
-              <div style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,color:T.color.charcoal}}>{t("timeCapsule")}</div>
-              <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted}}>{t("lockUntilFuture")}</div>
+              <div style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,color:"#403B36"}}>{t("timeCapsule")}</div>
+              <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E"}}>{t("lockUntilFuture")}</div>
             </div>
           </label>
           {timeCapsule&&<div>
-            <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("revealDate")}</label>
+            <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("revealDate")}</label>
             <input type="date" value={revealDate} min={todayStr} onChange={e=>setRevealDate(e.target.value)}
-              style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+              style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:"#403B36",boxSizing:"border-box"}}/>
             {revealDate&&revealDate<=todayStr&&<p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.error,margin:"0.375rem 0 0"}}>{t("revealDateFuture")}</p>}
             {/* Resolution toggle */}
             <div style={{marginTop:"1rem"}}>
               <label style={{display:"flex",alignItems:"center",gap:"0.625rem",cursor:"pointer",marginBottom:isResolution?"0.875rem":0}}>
-                <div onClick={()=>setIsResolution(!isResolution)} style={{width:"2.375rem",height:"1.375rem",borderRadius:"0.6875rem",background:isResolution?T.color.sage:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
-                  <div style={{width:"1rem",height:"1rem",borderRadius:"0.5rem",background:"#FFF",position:"absolute",top:"0.1875rem",left:isResolution?"1.1875rem":"0.1875rem",transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+                <div onClick={()=>setIsResolution(!isResolution)} style={{width:"2.375rem",height:"1.375rem",borderRadius:"0.6875rem",background:isResolution?"#56683C":`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
+                  <div style={{width:"1rem",height:"1rem",borderRadius:"0.5rem",background:"#FCFAF5",position:"absolute",top:"0.1875rem",left:isResolution?"1.1875rem":"0.1875rem",transition:"left .2s",boxShadow:"0 0.0625rem 0.1875rem rgba(64,59,54,0.2)"}}/>
                 </div>
                 <div>
-                  <div style={{fontFamily:T.font.body,fontSize:"0.75rem",fontWeight:600,color:T.color.charcoal}}>{t("resolution")}</div>
-                  <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted}}>{t("trackGoal")}</div>
+                  <div style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,color:"#403B36"}}>{t("resolution")}</div>
+                  <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E"}}>{t("trackGoal")}</div>
                 </div>
               </label>
               {isResolution&&<div style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
                 <div>
-                  <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("goalDescription")}</label>
+                  <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("goalDescription")}</label>
                   <input value={goalDesc} onChange={e=>setGoalDesc(e.target.value)} placeholder={t("goalPlaceholder")}
-                    style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+                    style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:"#403B36",boxSizing:"border-box"}}/>
                 </div>
                 <div>
-                  <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("targetDate")}</label>
+                  <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("targetDate")}</label>
                   <input type="date" value={targetDate} min={todayStr} onChange={e=>setTargetDate(e.target.value)}
-                    style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+                    style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:"#403B36",boxSizing:"border-box"}}/>
                 </div>
                 <label style={{display:"flex",alignItems:"center",gap:"0.625rem",cursor:"pointer"}}>
-                  <div onClick={()=>setTrackProgress(!trackProgress)} style={{width:"2.125rem",height:"1.25rem",borderRadius:"0.625rem",background:trackProgress?T.color.sage:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
-                    <div style={{width:"0.875rem",height:"0.875rem",borderRadius:"0.4375rem",background:"#FFF",position:"absolute",top:"0.1875rem",left:trackProgress?"1.0625rem":"0.1875rem",transition:"left .2s",boxShadow:"0 1px 2px rgba(0,0,0,.2)"}}/>
+                  <div onClick={()=>setTrackProgress(!trackProgress)} style={{width:"2.125rem",height:"1.25rem",borderRadius:"0.75rem",background:trackProgress?"#56683C":`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
+                    <div style={{width:"0.875rem",height:"0.875rem",borderRadius:"0.4375rem",background:"#FCFAF5",position:"absolute",top:"0.1875rem",left:trackProgress?"1.0625rem":"0.1875rem",transition:"left .2s",boxShadow:"0 0.0625rem 0.125rem rgba(64,59,54,0.2)"}}/>
                   </div>
-                  <span style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.charcoal}}>{t("trackProgress")}</span>
+                  <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#403B36"}}>{t("trackProgress")}</span>
                 </label>
                 <label style={{display:"flex",alignItems:"center",gap:"0.625rem",cursor:"pointer"}}>
-                  <div onClick={()=>setReminders(!reminders)} style={{width:"2.125rem",height:"1.25rem",borderRadius:"0.625rem",background:reminders?T.color.sage:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
-                    <div style={{width:"0.875rem",height:"0.875rem",borderRadius:"0.4375rem",background:"#FFF",position:"absolute",top:"0.1875rem",left:reminders?"1.0625rem":"0.1875rem",transition:"left .2s",boxShadow:"0 1px 2px rgba(0,0,0,.2)"}}/>
+                  <div onClick={()=>setReminders(!reminders)} style={{width:"2.125rem",height:"1.25rem",borderRadius:"0.75rem",background:reminders?"#56683C":`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
+                    <div style={{width:"0.875rem",height:"0.875rem",borderRadius:"0.4375rem",background:"#FCFAF5",position:"absolute",top:"0.1875rem",left:reminders?"1.0625rem":"0.1875rem",transition:"left .2s",boxShadow:"0 0.0625rem 0.125rem rgba(64,59,54,0.2)"}}/>
                   </div>
-                  <span style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.charcoal}}>{t("getReminders")}</span>
+                  <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#403B36"}}>{t("getReminders")}</span>
                 </label>
               </div>}
             </div>
@@ -367,33 +431,33 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         </div>
         {/* Historical Context suggestion */}
         {title.trim()&&!timeCapsule&&<div style={{marginBottom:"1.25rem"}}>
-          {contextOffer&&contextPreview?<div style={{padding:"0.875rem",borderRadius:"0.75rem",border:`1px solid ${T.color.cream}`,background:"linear-gradient(135deg,rgba(74,103,65,.06),rgba(198,107,61,.06))"}}>
+          {contextOffer&&contextPreview?<div style={{padding:"0.875rem",borderRadius:"1rem",border:`0.0625rem solid #E3D6BC`,background:"linear-gradient(135deg,#EFF2E8,#F6EBE3)"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.5rem"}}>
-              <span style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase"}}>{t("historicalContext")}</span>
+              <span style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",fontWeight:700,letterSpacing:"0.12em",textTransform:"uppercase"}}>{t("historicalContext")}</span>
               <div style={{display:"flex",gap:"0.375rem"}}>
-                <button onClick={()=>{setContextAccepted(true);}} style={{fontFamily:T.font.body,fontSize:"0.6875rem",fontWeight:600,color:contextAccepted?T.color.sage:accent,background:"none",border:"none",cursor:"pointer",padding:0}}>{contextAccepted?t("added"):t("accept")}</button>
-                <button onClick={()=>{setContextOffer(false);setContextPreview("");setContextAccepted(false);}} style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,background:"none",border:"none",cursor:"pointer",padding:0}}>{t("dismiss")}</button>
+                <button onClick={()=>{setContextAccepted(true);}} style={{fontFamily:T.font.body,fontSize:"0.6875rem",fontWeight:600,color:contextAccepted?"#56683C":accent,background:"none",border:"none",cursor:"pointer",padding:0}}>{contextAccepted?t("added"):t("accept")}</button>
+                <button onClick={()=>{setContextOffer(false);setContextPreview("");setContextAccepted(false);}} style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",background:"none",border:"none",cursor:"pointer",padding:0}}>{t("dismiss")}</button>
               </div>
             </div>
-            <p style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.walnut,lineHeight:1.6,margin:0,maxHeight:"7.5rem",overflowY:"auto",whiteSpace:"pre-wrap"}}>{contextPreview}</p>
+            <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#403B36",lineHeight:1.6,margin:0,maxHeight:"7.5rem",overflowY:"auto",whiteSpace:"pre-wrap"}}>{contextPreview}</p>
           </div>
-          :contextLoading?<div style={{padding:"0.75rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:`${T.color.cream}40`,textAlign:"center"}}>
-            <span style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.muted,display:"inline-flex",alignItems:"center",gap:"0.375rem"}}>
-              <span style={{display:"inline-block",width:"0.75rem",height:"0.75rem",border:`2px solid ${T.color.sandstone}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+          :contextLoading?<div style={{padding:"0.75rem",borderRadius:"0.75rem",border:`0.0625rem solid #E3D6BC`,background:T.color.cream,textAlign:"center"}}>
+            <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",display:"inline-flex",alignItems:"center",gap:"0.375rem"}}>
+              <span style={{display:"inline-block",width:"0.75rem",height:"0.75rem",border:`0.125rem solid ${T.color.sandstone}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
               {t("generatingContext")}
             </span>
           </div>
-          :<button onClick={fetchContext} style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px dashed ${T.color.sandstone}`,background:"transparent",fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.walnut,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.375rem"}}>
-            <span>&#x1F30D;</span> {t("addHistoricalContext")}
+          :<button onClick={fetchContext} style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.75rem",border:`0.0625rem dashed ${T.color.sandstone}`,background:"transparent",fontFamily:T.font.body,fontSize:"0.8125rem",color:"#716A5E",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.375rem"}}>
+            <GlobeGlyph size={15} color="#716A5E"/> {t("addHistoricalContext")}
           </button>}
         </div>}
         {/* Saved offline indicator */}
-        {savedOffline&&<div style={{padding:"0.75rem 1rem",borderRadius:"0.75rem",background:`${T.color.success}18`,border:`1px solid ${T.color.success}40`,marginBottom:"0.75rem",textAlign:"center"}}>
-          <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,color:T.color.success}}>{t("savedOffline")}</span>
+        {savedOffline&&<div style={{padding:"0.75rem 1rem",borderRadius:"0.75rem",background:"#EFF2E8",border:"0.0625rem solid #56683C40",marginBottom:"0.75rem",textAlign:"center"}}>
+          <span style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:600,color:"#56683C"}}>{t("savedOffline")}</span>
         </div>}
         {/* Submit */}
-        <button onClick={submit} disabled={!title.trim()||!capsuleValid||savedOffline} style={{width:"100%",padding:isMobile?"1rem":"0.875rem",borderRadius:"0.75rem",border:"none",background:title.trim()&&capsuleValid&&!savedOffline?`linear-gradient(135deg,${accent},${T.color.walnut})`:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid&&!savedOffline?"#FFF":T.color.muted,fontFamily:T.font.body,fontSize:isMobile?"1rem":"0.875rem",fontWeight:600,cursor:title.trim()&&capsuleValid&&!savedOffline?"pointer":"default",transition:"all .2s",minHeight:"3rem"}}>
-          {savedOffline?t("saved"):timeCapsule&&revealDate?t("sealCapsule", { date: new Date(revealDate+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"short",day:"numeric",year:"numeric"}) }):t("addToRoom", { room: room ? translateRoomName(room, tWings) : "room" })} {savedOffline?"":timeCapsule?"🔒":"✨"}
+        <button onClick={submit} disabled={!title.trim()||!capsuleValid||savedOffline} style={{width:"100%",padding:isMobile?"1rem":"0.875rem",borderRadius:"0.75rem",border:"none",background:title.trim()&&capsuleValid&&!savedOffline?accent:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid&&!savedOffline?"#FCFAF5":"#716A5E",fontFamily:T.font.body,fontSize:isMobile?"1rem":"0.9375rem",fontWeight:600,cursor:title.trim()&&capsuleValid&&!savedOffline?"pointer":"default",transition:"all .2s",minHeight:"3rem",display:"inline-flex",alignItems:"center",justifyContent:"center",gap:"0.375rem"}}>
+          {savedOffline?t("saved"):timeCapsule&&revealDate?t("sealCapsule", { date: new Date(revealDate+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"short",day:"numeric",year:"numeric"}) }):t("addToRoom", { room: room ? translateRoomName(room, tWings) : "room" })} {savedOffline?null:timeCapsule?<LockGlyph size={15} color={title.trim()&&capsuleValid&&!savedOffline?"#FCFAF5":"#716A5E"}/>:<SparkleGlyph size={15} color={title.trim()&&capsuleValid&&!savedOffline?"#FCFAF5":"#716A5E"}/>}
         </button>
       </div>
     </div>

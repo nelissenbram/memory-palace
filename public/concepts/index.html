@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>MUSEO VIVO — Exterior conceptboards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F7F0E3; --ink:#403B36; --plaster:#F2E9DA; --shade:#D2C2A3;
+    --shade2:#E4D6BD; --gold:#D4AF37; --sky1:#FFDCAE; --sky2:#E8C99A;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:"Fraunces",Georgia,serif; font-optical-sizing:auto;
+    line-height:1.55; font-size:1.0625rem;
+  }
+  main{max-width:62.5rem; margin:0 auto; padding:3rem 1.25rem 5rem}
+  header.masthead{text-align:center; margin-bottom:2.5rem}
+  header.masthead .kicker{
+    font-size:.75rem; letter-spacing:.35em; text-transform:uppercase;
+    color:#8A7B5C; margin-bottom:.75rem;
+  }
+  h1{font-size:clamp(1.9rem,4.5vw,3rem); font-weight:600; margin:.25rem 0 .5rem; letter-spacing:.01em}
+  h1 .gold{color:var(--gold)}
+  .lede{max-width:44rem; margin:0 auto; font-size:1.05rem; color:#5A5245}
+  .rule{width:5.5rem; height:2px; background:var(--gold); margin:1.5rem auto; border:0}
+
+  table.compare{
+    width:100%; border-collapse:collapse; margin:1.75rem 0 .5rem;
+    font-size:.95rem; background:#FDF8EE; border:1px solid #E0D3B8;
+  }
+  table.compare th, table.compare td{padding:.55rem .8rem; text-align:left; border-bottom:1px solid #E9DDC4}
+  table.compare th{
+    font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+    color:#8A7B5C; font-weight:600; background:#F4ECDB;
+  }
+  table.compare td.score{font-weight:600; white-space:nowrap}
+  .advice{
+    font-size:.95rem; color:#5A5245; background:#F4ECDB; border-left:3px solid var(--gold);
+    padding:.9rem 1.1rem; margin:1.25rem 0 0;
+  }
+
+  section.concept{margin-top:4.5rem}
+  .concept-head{display:flex; align-items:baseline; gap:1rem; margin-bottom:.4rem}
+  .num{
+    font-size:2.6rem; font-weight:300; color:var(--gold); line-height:1;
+    font-variant-numeric:lining-nums;
+  }
+  h2{font-size:clamp(1.4rem,3vw,2rem); font-weight:600; margin:0; letter-spacing:.01em}
+  .pitch{font-style:italic; color:#5A5245; margin:.25rem 0 1rem; max-width:46rem}
+  .meta{display:flex; flex-wrap:wrap; gap:.5rem; margin:.75rem 0 1.25rem}
+  .meta span{
+    font-size:.78rem; letter-spacing:.04em; background:#EFE5CF; border:1px solid #DECDA9;
+    border-radius:2rem; padding:.25rem .8rem; color:#5A5245;
+  }
+  .meta span.badge{background:var(--gold); border-color:var(--gold); color:#fff; font-weight:600}
+
+  figure.elev{margin:0 0 .5rem; border:1px solid #D8C9A8; background:#fff; box-shadow:0 2px 14px rgba(64,59,54,.08)}
+  figure.elev svg{display:block; width:100%; height:auto}
+  figure.elev figcaption, figure.photo figcaption{
+    font-size:.82rem; color:#6E6452; padding:.55rem .8rem; line-height:1.45;
+  }
+  figure.elev figcaption{border-top:1px solid #EADDBF; background:#FDF9F0}
+  .sig{margin:.9rem 0 1.4rem; max-width:46rem}
+  .sig strong{color:var(--ink)}
+
+  .photos{display:grid; grid-template-columns:repeat(auto-fit,minmax(17rem,1fr)); gap:1rem; margin-top:.5rem}
+  figure.photo{margin:0; background:#FDF9F0; border:1px solid #E0D3B8}
+  figure.photo img{display:block; width:100%; height:14rem; object-fit:cover}
+  figure.photo figcaption em{color:#8A7B5C; font-style:normal; font-size:.74rem; display:block; margin-top:.2rem}
+
+  footer{margin-top:5rem; font-size:.82rem; color:#8A7B5C; text-align:center}
+  footer a{color:inherit}
+
+  /* shared svg classes */
+  svg .pl{fill:#F2E9DA} svg .sh{fill:#D2C2A3} svg .s2{fill:#E4D6BD}
+  svg .ink{fill:#403B36} svg .au{fill:#D4AF37}
+  svg .cast{fill:#403B36; opacity:.12}
+  svg .coppo{fill:#C9A97E}
+  svg .nm{fill:#D4AF37; font-family:"Fraunces",serif; font-weight:600; text-anchor:middle}
+</style>
+</head>
+<body>
+<main>
+
+<header class="masthead">
+  <div class="kicker">Museo Vivo · WS3 exterior · conceptronde vóór uitvoering</div>
+  <h1>MUSEO VIVO — <span class="gold">Exterior conceptboards</span></h1>
+  <p class="lede">Vier gewaagde “Toscaanse fantasie-paleizen” voor de nieuwe 3D-exterior.
+  Alle vier respecteren de canon: warm plaster/travertijn/ink/goud, één lage ZW-zon op golden hour,
+  de 18-seconden-dolly die eindigt bij de ene deur, en de naam-op-tympaan-beat op ~7,5&nbsp;s.
+  Per concept: een uitgewerkte elevatieschets, echte precedent-foto’s (Wikimedia Commons) en de
+  haalbaarheid uit <code>docs/EXTERIOR_FANTASY_CONCEPTS.md</code>.</p>
+  <hr class="rule">
+
+  <table class="compare">
+    <thead><tr><th>#</th><th>Concept</th><th>Signature</th><th>Δ draw calls</th><th>Hergebruik scene</th><th>Score</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>La Scala del Cielo</td><td>de trap ís de berg</td><td>+12–18</td><td>~75%</td><td class="score">4/5</td></tr>
+      <tr><td>2</td><td>Le Sette Sorelle</td><td>torenfamilie-parallax</td><td>+7–12</td><td>~85%</td><td class="score">5/5 ★</td></tr>
+      <tr><td>3</td><td>Lo Specchio d’Oro</td><td>omgekeerde villa in goud-water</td><td>+10–16</td><td>~80%</td><td class="score">3/5</td></tr>
+      <tr><td>4</td><td>Il Crinale</td><td>reuzennis in boog-substructie</td><td>+12–20</td><td>~55–60%</td><td class="score">3/5</td></tr>
+    </tbody>
+  </table>
+  <p class="advice"><strong>Advies art-director:</strong> concept 2 heeft de beste risico/impact-verhouding en is
+  volledig additief op de huidige W2-scene; concept 1 dient de dolly het sterkst. Combineerbaar: 2 + een lichte
+  versie van 1 (twee terrassen) blijft binnen budget (~+22 calls). Concepten 3 en 4 zijn de gewaagdste beelden
+  maar vragen elk een prototype-week vóór commitment. Alles staging-only; uitvoering pas na owner-keuze.</p>
+</header>
+
+
+<!-- ============================================================ CONCEPT 1 -->
+<section class="concept" id="scala">
+  <div class="concept-head"><div class="num">1</div><h2>LA SCALA DEL CIELO</h2></div>
+  <p class="pitch">Het paleis staat niet óp de heuvel — de heuvel is zelf een trap van honderd meter naar de ene deur.</p>
+  <div class="meta"><span class="badge">Score 4/5</span><span>Δ draw calls +12–18</span><span>Hergebruik ~75%</span><span>Dolly: klim langs de as</span></div>
+
+  <figure class="elev">
+  <svg viewBox="0 0 900 420" role="img" aria-label="Front-elevatie: villa met koepel op drie travertijn-terrassen, verbonden door één axiale trap van honderd meter, cipres-paren op elke bordes-rand, gouden uur">
+    <defs>
+      <linearGradient id="aSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFDCAE"/><stop offset="1" stop-color="#E8C99A"/></linearGradient>
+      <radialGradient id="aGlow" cx=".16" cy=".68" r=".55"><stop offset="0" stop-color="#FFEBC8" stop-opacity=".9"/><stop offset="1" stop-color="#FFEBC8" stop-opacity="0"/></radialGradient>
+      <pattern id="aBal" width="9" height="12" patternUnits="userSpaceOnUse">
+        <rect width="9" height="12" fill="#C4B18B"/><rect x="1.6" width="4.6" height="12" rx="2.2" fill="#EFE5D2"/>
+      </pattern>
+      <pattern id="aTr" width="900" height="9" patternUnits="userSpaceOnUse">
+        <rect width="900" height="5.4" fill="#F2E9DA"/><rect y="5.4" width="900" height="1.8" fill="#CBB791"/><rect y="7.2" width="900" height="1.8" fill="#B39F79"/>
+      </pattern>
+      <g id="aCyp" fill="#4C4735"><path d="M0 0 C8 -12 9 -34 0 -58 C-9 -34 -8 -12 0 0 Z"/><rect x="-1.2" y="-1" width="2.4" height="3.5"/></g>
+      <g id="aWin"><path d="M0 16 V6 a5 5 0 0 1 10 0 V16 Z" fill="#403B36"/></g>
+    </defs>
+
+    <rect width="900" height="420" fill="url(#aSky)"/>
+    <rect width="900" height="420" fill="url(#aGlow)"/>
+    <path d="M0 322 Q140 296 300 316 L0 330 Z" fill="#EBDFC5"/>
+    <path d="M900 318 Q760 292 600 314 L900 328 Z" fill="#E2D3B4"/>
+    <rect y="336" width="900" height="84" fill="#E7DAC0"/>
+    <path d="M0 352 H900 M0 372 H900 M0 396 H900" stroke="#DACBA9" stroke-width="1" opacity=".6"/>
+
+    <!-- palace on the summit -->
+    <g>
+      <!-- wings, half behind the top balustrade -->
+      <rect x="292" y="168" width="58" height="44" class="s2"/>
+      <rect x="292" y="164" width="58" height="5" class="coppo"/>
+      <use href="#aWin" transform="translate(303 178) scale(.8)"/><use href="#aWin" transform="translate(325 178) scale(.8)"/>
+      <rect x="550" y="168" width="58" height="44" class="sh"/>
+      <rect x="550" y="164" width="58" height="5" class="coppo"/>
+      <use href="#aWin" transform="translate(563 178) scale(.8)"/><use href="#aWin" transform="translate(585 178) scale(.8)"/>
+
+      <!-- main block -->
+      <rect x="350" y="130" width="200" height="82" class="pl"/>
+      <rect x="516" y="130" width="34" height="82" class="s2"/>
+      <rect x="350" y="130" width="200" height="5" class="sh"/>
+      <rect x="350" y="166" width="200" height="2" fill="#D8C9A8"/>
+      <use href="#aWin" transform="translate(360 142)"/><use href="#aWin" transform="translate(381 142)"/><use href="#aWin" transform="translate(402 142)"/>
+      <use href="#aWin" transform="translate(488 142)"/><use href="#aWin" transform="translate(509 142)"/><use href="#aWin" transform="translate(530 142)"/>
+      <rect x="362" y="180" width="9" height="11" class="ink"/><rect x="384" y="180" width="9" height="11" class="ink"/><rect x="406" y="180" width="9" height="11" class="ink"/>
+      <rect x="487" y="180" width="9" height="11" class="ink"/><rect x="509" y="180" width="9" height="11" class="ink"/><rect x="531" y="180" width="9" height="11" class="ink"/>
+
+      <!-- central bay + pediment with name -->
+      <rect x="413" y="130" width="74" height="82" class="pl"/>
+      <rect x="413" y="130" width="4" height="82" class="s2"/><rect x="483" y="130" width="4" height="82" class="s2"/>
+      <rect x="424" y="172" width="6" height="40" class="pl"/><rect x="424" y="172" width="2" height="40" class="sh"/>
+      <rect x="470" y="172" width="6" height="40" class="pl"/><rect x="470" y="172" width="2" height="40" class="sh"/>
+      <path d="M436 212 v-22 a14 14 0 0 1 28 0 v22 Z" class="ink"/>
+      <path d="M434 212 v-22 a16 16 0 0 1 32 0 v22" fill="none" stroke="#D4AF37" stroke-width="1.4"/>
+
+      <!-- drum + dome + lantern -->
+      <rect x="405" y="92" width="90" height="38" class="pl"/>
+      <rect x="468" y="92" width="27" height="38" class="s2"/>
+      <use href="#aWin" transform="translate(412 100) scale(.75)"/><use href="#aWin" transform="translate(428 100) scale(.75)"/><use href="#aWin" transform="translate(444 100) scale(.75)"/><use href="#aWin" transform="translate(460 100) scale(.75)"/><use href="#aWin" transform="translate(476 100) scale(.75)"/>
+      <rect x="403" y="88.5" width="94" height="3.5" class="au"/>
+      <path d="M405 89 C405 56 429 42 450 42 C471 42 495 56 495 89 Z" class="pl"/>
+      <path d="M450 42 C471 42 495 56 495 89 L474 89 C474 60 462 48 452 44.5 Z" class="sh"/>
+      <path d="M432 45.5 C424 55 418 68 417 89 M450 42 V89 M468 45.5 C476 55 482 68 483 89" stroke="#C9B592" stroke-width="1" fill="none"/>
+      <rect x="443" y="30" width="14" height="12" class="pl"/><rect x="446" y="32.5" width="2.6" height="7" class="ink"/><rect x="451.4" y="32.5" width="2.6" height="7" class="ink"/>
+      <path d="M441 30 Q450 19 459 30 Z" class="au"/>
+      <rect x="449.3" y="17" width="1.4" height="5" class="au"/><circle cx="450" cy="14.5" r="2.6" class="au"/>
+      <!-- tympaan vóór de tamboer (paint order) -->
+      <path d="M403 130 L497 130 L450 98 Z" class="pl"/>
+      <path d="M409 127 L491 127 L450 103 Z" fill="#EADDC2"/>
+      <path d="M403 130 L497 130 L450 98 Z" fill="none" stroke="#C9B592" stroke-width="1.5"/>
+      <text x="450" y="125" class="nm" font-size="8.5" letter-spacing="1.5">MUSEO&#160;VIVO</text>
+    </g>
+
+    <!-- TOP TERRACE -->
+    <g>
+      <rect x="290" y="212" width="320" height="8" fill="#EFE5D0"/>
+      <rect x="290" y="220" width="320" height="30" class="s2"/>
+      <rect x="290" y="220" width="320" height="4" class="sh"/>
+      <path d="M300 224 V248 M330 224 V248 M556 224 V248 M586 224 V248" stroke="#D2C2A3" stroke-width="1"/>
+      <rect x="290" y="201" width="125" height="3" class="pl"/><rect x="290" y="204" width="125" height="6.5" fill="url(#aBal)"/><rect x="290" y="210.5" width="125" height="2.5" class="pl"/>
+      <rect x="485" y="201" width="125" height="3" class="pl"/><rect x="485" y="204" width="125" height="6.5" fill="url(#aBal)"/><rect x="485" y="210.5" width="125" height="2.5" class="pl"/>
+      <use href="#aCyp" transform="translate(297 201) scale(1.15)"/><use href="#aCyp" transform="translate(603 201) scale(1.15)"/>
+      <path d="M299 201 L352 210 L355 213 L302 204 Z" class="cast"/>
+      <path d="M605 201 L658 210 L661 213 L608 204 Z" class="cast"/>
+    </g>
+
+    <!-- MID TERRACE -->
+    <g>
+      <rect x="210" y="262" width="480" height="6" fill="#EFE5D0"/>
+      <rect x="210" y="268" width="480" height="34" class="s2"/>
+      <rect x="210" y="268" width="480" height="4" class="sh"/>
+      <path d="M226 272 V298 M262 272 V298 M298 272 V298 M602 272 V298 M638 272 V298 M674 272 V298" stroke="#D2C2A3" stroke-width="1"/>
+      <rect x="210" y="251" width="195" height="3" class="pl"/><rect x="210" y="254" width="195" height="6.5" fill="url(#aBal)"/><rect x="210" y="260.5" width="195" height="2.5" class="pl"/>
+      <rect x="495" y="251" width="195" height="3" class="pl"/><rect x="495" y="254" width="195" height="6.5" fill="url(#aBal)"/><rect x="495" y="260.5" width="195" height="2.5" class="pl"/>
+      <use href="#aCyp" transform="translate(219 251) scale(1.3)"/><use href="#aCyp" transform="translate(681 251) scale(1.3)"/>
+      <path d="M221 251 L284 261 L288 265 L225 255 Z" class="cast"/>
+      <path d="M683 251 L746 261 L750 265 L687 255 Z" class="cast"/>
+      <path d="M690 268 L760 296 L760 306 L690 278 Z" class="cast"/>
+    </g>
+
+    <!-- BOTTOM TERRACE -->
+    <g>
+      <rect x="120" y="312" width="660" height="6" fill="#EFE5D0"/>
+      <rect x="120" y="318" width="660" height="32" class="s2"/>
+      <rect x="120" y="318" width="660" height="4" class="sh"/>
+      <path d="M140 322 V346 M180 322 V346 M220 322 V346 M260 322 V346 M640 322 V346 M680 322 V346 M720 322 V346 M760 322 V346" stroke="#D2C2A3" stroke-width="1"/>
+      <rect x="120" y="301" width="270" height="3" class="pl"/><rect x="120" y="304" width="270" height="6.5" fill="url(#aBal)"/><rect x="120" y="310.5" width="270" height="2.5" class="pl"/>
+      <rect x="510" y="301" width="270" height="3" class="pl"/><rect x="510" y="304" width="270" height="6.5" fill="url(#aBal)"/><rect x="510" y="310.5" width="270" height="2.5" class="pl"/>
+      <use href="#aCyp" transform="translate(129 301) scale(1.5)"/><use href="#aCyp" transform="translate(771 301) scale(1.5)"/>
+      <path d="M131 301 L206 312 L211 317 L136 306 Z" class="cast"/>
+      <path d="M773 301 L848 312 L853 317 L778 306 Z" class="cast"/>
+      <path d="M780 318 L866 352 L866 364 L780 330 Z" class="cast"/>
+    </g>
+
+    <!-- the scala: four flights on one axis -->
+    <g>
+      <path d="M330 420 L570 420 L510 350 L390 350 Z" fill="url(#aTr)"/>
+      <path d="M390 350 L510 350 L498 312 L402 312 Z" fill="url(#aTr)"/>
+      <path d="M402 312 L498 312 L488 262 L412 262 Z" fill="url(#aTr)"/>
+      <path d="M412 262 L488 262 L478 212 L422 212 Z" fill="url(#aTr)"/>
+      <path d="M330 420 L570 420 L510 350 L390 350 Z M390 350 L510 350 L498 312 L402 312 Z M402 312 L498 312 L488 262 L412 262 Z M412 262 L488 262 L478 212 L422 212 Z" fill="none" stroke="#B9A784" stroke-width="1"/>
+      <path d="M510 350 L570 420 L556 420 L500 352 Z" class="cast"/>
+      <path d="M498 312 L510 350 L500 350 L490 314 Z" class="cast"/>
+      <path d="M488 262 L498 312 L489 312 L480 264 Z" class="cast"/>
+      <path d="M478 212 L488 262 L480 262 L471 214 Z" class="cast"/>
+    </g>
+
+    <!-- foreground contre-jour cypresses at the foot of the scala -->
+    <use href="#aCyp" transform="translate(302 420) scale(2.1)"/>
+    <use href="#aCyp" transform="translate(268 414) scale(1.5)"/>
+    <use href="#aCyp" transform="translate(598 420) scale(2.1)"/>
+    <use href="#aCyp" transform="translate(632 414) scale(1.5)"/>
+    <path d="M305 419 L420 407 L428 412 L308 424 Z" class="cast"/>
+    <path d="M601 419 L716 407 L724 412 L604 424 Z" class="cast"/>
+  </svg>
+  <figcaption><strong>Elevatieschets</strong> — drie travertijn-terrassen als reuzentreden, één axiale scala van 100&nbsp;m die per terras versmalt naar de ene deur; cipres-paren markeren elke bordes-rand, de lage ZW-zon strijkt dwars over de treden (elke stootrand een slagschaduw), naam-beat op het tympaan exact boven de trap-as.</figcaption>
+  </figure>
+
+  <p class="sig"><strong>Signature-move:</strong> de trap ís de berg. Geen paleis met een trap ervoor, maar één continue
+  steen-cascade waar landschap en architectuur niet te scheiden zijn — de dolly “beklimt” letterlijk het gebouw.
+  <br><strong>Haalbaarheid:</strong> terrassen zijn gemergde boxen, balusters één InstancedMesh; risico zit in terrein
+  (<code>getHeightAt</code>), paden en het herschrijven van de dolly-waypoints. Score <strong>4/5</strong>.</p>
+
+  <div class="photos">
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Collodi%2C_Giardino_di_Villa_Garzoni%2C_scalinata_02.jpg/960px-Collodi%2C_Giardino_di_Villa_Garzoni%2C_scalinata_02.jpg" alt="Giardino Garzoni, Collodi: terrastuin met dubbele cascade-trap" loading="lazy">
+      <figcaption>Giardino Garzoni (Collodi, Toscane) — de terrastuin als één opklimmend theater.
+      <em>Leent: terras-op-terras silhouet met balustrades en een as die naar boven toe versmalt. · Wikimedia Commons</em></figcaption>
+    </figure>
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Collodi%2C_Giardino_di_Villa_Garzoni%2C_scalinata_05.jpg/960px-Collodi%2C_Giardino_di_Villa_Garzoni%2C_scalinata_05.jpg" alt="Villa Garzoni: balustrade-trappen in detail" loading="lazy">
+      <figcaption>Garzoni, scalinata-detail: balusters, bordessen, treden die licht vangen.
+      <em>Leent: het “gestreepte goud” van treden onder een lage zon; balustrade-ritme per terras. · Wikimedia Commons</em></figcaption>
+    </figure>
+  </div>
+</section>
+
+
+<!-- ============================================================ CONCEPT 2 -->
+<section class="concept" id="sorelle">
+  <div class="concept-head"><div class="num">2</div><h2>LE SETTE SORELLE</h2></div>
+  <p class="pitch">Een San Gimignano-familie van zeven slanke torens omringt de koepel als kaarsen om een reliekschrijn — elke toren draagt één verlicht venster.</p>
+  <div class="meta"><span class="badge">Score 5/5 · advies</span><span>Δ draw calls +7–12</span><span>Hergebruik ~85%</span><span>Volledig additief op W2</span></div>
+
+  <figure class="elev">
+  <svg viewBox="0 0 900 420" role="img" aria-label="Front-elevatie: koepelvilla met zeven slanke torens in drie hoogtes, elk met één gloeiend venster; westflanken in goud, oostflanken in schaduw; lange torenschaduwen over het voorplein">
+    <defs>
+      <linearGradient id="bSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFDCAE"/><stop offset="1" stop-color="#E8C99A"/></linearGradient>
+      <radialGradient id="bGlow" cx=".14" cy=".66" r=".55"><stop offset="0" stop-color="#FFEBC8" stop-opacity=".9"/><stop offset="1" stop-color="#FFEBC8" stop-opacity="0"/></radialGradient>
+      <radialGradient id="bWinGlow"><stop offset="0" stop-color="#FFDCAE" stop-opacity=".85"/><stop offset="1" stop-color="#FFDCAE" stop-opacity="0"/></radialGradient>
+      <g id="bCyp" fill="#4C4735"><path d="M0 0 C8 -12 9 -34 0 -58 C-9 -34 -8 -12 0 0 Z"/><rect x="-1.2" y="-1" width="2.4" height="3.5"/></g>
+      <g id="bWin"><path d="M0 16 V6 a5 5 0 0 1 10 0 V16 Z" fill="#403B36"/></g>
+      <!-- glowing tower window -->
+      <g id="bGlo">
+        <circle cx="4.5" cy="7" r="13" fill="url(#bWinGlow)"/>
+        <path d="M0 15 V6 a4.5 4.5 0 0 1 9 0 V15 Z" fill="#D4AF37"/>
+        <path d="M1.7 15 V6.6 a2.8 2.8 0 0 1 5.6 0 V15 Z" fill="#FFDCAE"/>
+      </g>
+    </defs>
+
+    <rect width="900" height="420" fill="url(#bSky)"/>
+    <rect width="900" height="420" fill="url(#bGlow)"/>
+    <path d="M0 320 Q150 298 320 316 L0 330 Z" fill="#EBDFC5"/>
+    <path d="M900 316 Q740 294 580 314 L900 326 Z" fill="#E2D3B4"/>
+
+    <!-- lawn strip + forecourt base -->
+    <rect y="310" width="900" height="110" fill="#E7DAC0"/>
+
+    <!-- long tower shadows over the forecourt (drawn under the walls) -->
+    <path d="M282 310 L470 348 L470 356 L318 322 Z" class="cast"/>
+    <path d="M583 310 L790 350 L790 358 L617 322 Z" class="cast"/>
+    <path d="M189 310 L330 336 L330 342 L221 318 Z" class="cast"/>
+    <path d="M103 310 L232 332 L232 338 L133 316 Z" class="cast"/>
+    <path d="M695 310 L860 340 L860 346 L727 318 Z" class="cast"/>
+    <path d="M767 310 L890 330 L890 336 L797 316 Z" class="cast"/>
+
+    <!-- 7th sister, far left, smallest -->
+    <g>
+      <rect x="47" y="212" width="26" height="98" class="pl"/><rect x="63" y="212" width="10" height="98" class="sh"/>
+      <path d="M44 212 L76 212 L60 196 Z" class="coppo"/>
+      <rect x="47" y="252" width="26" height="2.2" fill="#B9A784"/>
+      <use href="#bGlo" transform="translate(55 224)"/>
+    </g>
+
+    <!-- wings (behind mid towers) -->
+    <rect x="205" y="262" width="125" height="48" class="s2"/>
+    <rect x="205" y="257" width="125" height="5" class="coppo"/>
+    <use href="#bWin" transform="translate(240 272) scale(.8)"/><use href="#bWin" transform="translate(266 272) scale(.8)"/><use href="#bWin" transform="translate(292 272) scale(.8)"/>
+    <rect x="570" y="262" width="125" height="48" class="sh"/>
+    <rect x="570" y="257" width="125" height="5" class="coppo"/>
+    <use href="#bWin" transform="translate(600 272) scale(.8)"/><use href="#bWin" transform="translate(626 272) scale(.8)"/><use href="#bWin" transform="translate(652 272) scale(.8)"/>
+
+    <!-- central block -->
+    <g>
+      <rect x="330" y="190" width="240" height="120" class="pl"/>
+      <rect x="532" y="190" width="38" height="120" class="s2"/>
+      <rect x="330" y="190" width="240" height="6" class="sh"/>
+      <rect x="330" y="240" width="240" height="2" fill="#D8C9A8"/>
+      <use href="#bWin" transform="translate(340 208)"/><use href="#bWin" transform="translate(362 208)"/><use href="#bWin" transform="translate(384 208)"/>
+      <use href="#bWin" transform="translate(506 208)"/><use href="#bWin" transform="translate(528 208)"/><use href="#bWin" transform="translate(550 208)"/>
+      <rect x="342" y="254" width="9" height="12" class="ink"/><rect x="364" y="254" width="9" height="12" class="ink"/><rect x="386" y="254" width="9" height="12" class="ink"/>
+      <rect x="505" y="254" width="9" height="12" class="ink"/><rect x="527" y="254" width="9" height="12" class="ink"/><rect x="549" y="254" width="9" height="12" class="ink"/>
+      <!-- central bay + pediment -->
+      <rect x="405" y="190" width="90" height="120" class="pl"/>
+      <rect x="405" y="190" width="4" height="120" class="s2"/><rect x="491" y="190" width="4" height="120" class="s2"/>
+      <rect x="416" y="252" width="6" height="58" class="pl"/><rect x="416" y="252" width="2" height="58" class="sh"/>
+      <rect x="478" y="252" width="6" height="58" class="pl"/><rect x="478" y="252" width="2" height="58" class="sh"/>
+      <path d="M434 310 v-24 a16 16 0 0 1 32 0 v24 Z" class="ink"/>
+      <path d="M432 310 v-24 a18 18 0 0 1 36 0 v24" fill="none" stroke="#D4AF37" stroke-width="1.4"/>
+      <!-- drum + dome -->
+      <rect x="402" y="132" width="96" height="58" class="pl"/>
+      <rect x="468" y="132" width="30" height="58" class="s2"/>
+      <use href="#bWin" transform="translate(410 143) scale(.8)"/><use href="#bWin" transform="translate(427 143) scale(.8)"/><use href="#bWin" transform="translate(444 143) scale(.8)"/><use href="#bWin" transform="translate(461 143) scale(.8)"/><use href="#bWin" transform="translate(478 143) scale(.8)"/>
+      <rect x="400" y="128.5" width="100" height="3.5" class="au"/>
+      <path d="M402 129 C402 94 427 80 450 80 C473 80 498 94 498 129 Z" class="pl"/>
+      <path d="M450 80 C473 80 498 94 498 129 L476 129 C476 98 463 86 452 82.5 Z" class="sh"/>
+      <path d="M430 84 C421 94 415 106 414 129 M450 80 V129 M470 84 C479 94 485 106 486 129" stroke="#C9B592" stroke-width="1" fill="none"/>
+      <rect x="443" y="66" width="14" height="14" class="pl"/><rect x="446" y="69" width="2.6" height="8" class="ink"/><rect x="451.4" y="69" width="2.6" height="8" class="ink"/>
+      <path d="M441 66 Q450 55 459 66 Z" class="au"/>
+      <rect x="449.3" y="54" width="1.4" height="5" class="au"/><circle cx="450" cy="51.5" r="2.6" class="au"/>
+      <!-- tympaan vóór de tamboer (paint order) -->
+      <path d="M395 190 L505 190 L450 156 Z" class="pl"/>
+      <path d="M402 187 L498 187 L450 161 Z" fill="#EADDC2"/>
+      <path d="M395 190 L505 190 L450 156 Z" fill="none" stroke="#C9B592" stroke-width="1.5"/>
+      <text x="450" y="184.5" class="nm" font-size="9" letter-spacing="1.8">MUSEO&#160;VIVO</text>
+    </g>
+
+    <!-- the two tall sisters, framing the tympaan -->
+    <g>
+      <rect x="282" y="68" width="36" height="242" class="pl"/><rect x="305" y="68" width="13" height="242" class="sh"/>
+      <path d="M278 68 L322 68 L300 46 Z" class="coppo"/><path d="M300 46 L322 68 L313 68 Z" fill="#B08F63"/>
+      <rect x="282" y="72" width="36" height="3" fill="#B9A784"/>
+      <rect x="282" y="150" width="36" height="2.4" fill="#B9A784"/><rect x="282" y="222" width="36" height="2.4" fill="#B9A784"/><rect x="282" y="272" width="36" height="2.4" fill="#B9A784"/>
+      <use href="#bGlo" transform="translate(293 92)"/>
+      <rect x="290" y="288" width="10" height="14" class="ink"/>
+    </g>
+    <g>
+      <rect x="582" y="68" width="36" height="242" class="pl"/><rect x="605" y="68" width="13" height="242" class="sh"/>
+      <path d="M578 68 L622 68 L600 46 Z" class="coppo"/><path d="M600 46 L622 68 L613 68 Z" fill="#B08F63"/>
+      <rect x="582" y="72" width="36" height="3" fill="#B9A784"/>
+      <rect x="582" y="150" width="36" height="2.4" fill="#B9A784"/><rect x="582" y="222" width="36" height="2.4" fill="#B9A784"/><rect x="582" y="272" width="36" height="2.4" fill="#B9A784"/>
+      <use href="#bGlo" transform="translate(593 92)"/>
+      <rect x="590" y="288" width="10" height="14" class="ink"/>
+    </g>
+
+    <!-- mid sisters -->
+    <g>
+      <rect x="189" y="128" width="32" height="182" class="pl"/><rect x="209" y="128" width="12" height="182" class="sh"/>
+      <path d="M185 128 L225 128 L205 108 Z" class="coppo"/>
+      <rect x="189" y="132" width="32" height="2.8" fill="#B9A784"/><rect x="189" y="196" width="32" height="2.2" fill="#B9A784"/><rect x="189" y="256" width="32" height="2.2" fill="#B9A784"/>
+      <use href="#bGlo" transform="translate(199 150)"/>
+    </g>
+    <g>
+      <rect x="679" y="128" width="32" height="182" class="pl"/><rect x="699" y="128" width="12" height="182" class="sh"/>
+      <path d="M675 128 L715 128 L695 108 Z" class="coppo"/>
+      <rect x="679" y="132" width="32" height="2.8" fill="#B9A784"/><rect x="679" y="196" width="32" height="2.2" fill="#B9A784"/><rect x="679" y="256" width="32" height="2.2" fill="#B9A784"/>
+      <use href="#bGlo" transform="translate(689 150)"/>
+    </g>
+
+    <!-- low sisters -->
+    <g>
+      <rect x="103" y="178" width="30" height="132" class="pl"/><rect x="122" y="178" width="11" height="132" class="sh"/>
+      <path d="M99 178 L137 178 L118 160 Z" class="coppo"/>
+      <rect x="103" y="182" width="30" height="2.6" fill="#B9A784"/><rect x="103" y="240" width="30" height="2.2" fill="#B9A784"/>
+      <use href="#bGlo" transform="translate(112 198)"/>
+    </g>
+    <g>
+      <rect x="767" y="178" width="30" height="132" class="pl"/><rect x="786" y="178" width="11" height="132" class="sh"/>
+      <path d="M763 178 L801 178 L782 160 Z" class="coppo"/>
+      <rect x="767" y="182" width="30" height="2.6" fill="#B9A784"/><rect x="767" y="240" width="30" height="2.2" fill="#B9A784"/>
+      <use href="#bGlo" transform="translate(776 198)"/>
+    </g>
+
+    <!-- forecourt arcade wall -->
+    <g>
+      <rect x="60" y="330" width="780" height="38" class="pl"/>
+      <rect x="60" y="330" width="780" height="4" class="sh"/>
+      <path d="M92 368 v-16 a9 9 0 0 1 18 0 v16 Z M142 368 v-16 a9 9 0 0 1 18 0 v16 Z M192 368 v-16 a9 9 0 0 1 18 0 v16 Z M242 368 v-16 a9 9 0 0 1 18 0 v16 Z M292 368 v-16 a9 9 0 0 1 18 0 v16 Z M342 368 v-16 a9 9 0 0 1 18 0 v16 Z" fill="#403B36" opacity=".82"/>
+      <path d="M500 368 v-16 a9 9 0 0 1 18 0 v16 Z M550 368 v-16 a9 9 0 0 1 18 0 v16 Z M600 368 v-16 a9 9 0 0 1 18 0 v16 Z M650 368 v-16 a9 9 0 0 1 18 0 v16 Z M700 368 v-16 a9 9 0 0 1 18 0 v16 Z M750 368 v-16 a9 9 0 0 1 18 0 v16 Z M790 368 v-16 a9 9 0 0 1 18 0 v16 Z" fill="#403B36" opacity=".82"/>
+      <!-- central gate -->
+      <path d="M428 368 v-22 a22 22 0 0 1 44 0 v22 Z" class="ink"/>
+      <path d="M425 368 v-22 a25 25 0 0 1 50 0 v22" fill="none" stroke="#D4AF37" stroke-width="1.4"/>
+    </g>
+
+    <!-- axis path + cypress court foreground -->
+    <path d="M418 420 L482 420 L468 368 L432 368 Z" fill="#F0E6D0" opacity=".7"/>
+    <use href="#bCyp" transform="translate(76 412) scale(1.7)"/><use href="#bCyp" transform="translate(116 418) scale(1.3)"/>
+    <use href="#bCyp" transform="translate(824 412) scale(1.7)"/><use href="#bCyp" transform="translate(784 418) scale(1.3)"/>
+    <path d="M79 411 L188 398 L196 403 L83 416 Z" class="cast"/>
+    <path d="M827 411 L900 402 L900 408 L831 416 Z" class="cast"/>
+  </svg>
+  <figcaption><strong>Elevatieschets</strong> — zeven zusters in drie hoogtes (2×34&nbsp;m die nét boven de koepel uitsteken, paren van 26 en 18&nbsp;m, plus de kleine zevende): glad plaster, pietra-serena-banden, laag coppo-tentdak en één gloeiend venster per toren. De twee grote zusters kaderen de tympaan-gevel; westflanken in vuur, oostflanken ink; torenschaduwen strijken over het voorplein.</figcaption>
+  </figure>
+
+  <p class="sig"><strong>Signature-move:</strong> de torenfamilie als coulissen-parallax — tijdens de 18s-dolly schuiven
+  zeven verticalen langs elkaar en op 7,5&nbsp;s staat de naam precies in het kader tussen de twee grote zusters.
+  <br><strong>Haalbaarheid:</strong> goedkoopste van de vier; torens mergen per materiaal, vensters zijn puur emissive
+  (<code>M.win</code>), geen nieuwe lichten. Volledig additief. Score <strong>5/5</strong>.</p>
+
+  <div class="photos">
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/San_Gimignano_skyline_%285996515909%29.jpg/960px-San_Gimignano_skyline_%285996515909%29.jpg" alt="San Gimignano-skyline boven olijfgaarden" loading="lazy">
+      <figcaption>San Gimignano vanaf de olijfgaarden — de torenfamilie boven één laag stadslichaam.
+      <em>Leent: het silhouet dat vanaf elke afstand herkenbaar blijft; torens in drie hoogtes rond één hart. · Wikimedia Commons</em></figcaption>
+    </figure>
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/San_Gimignano_skyline_%286082044552%29.jpg/960px-San_Gimignano_skyline_%286082044552%29.jpg" alt="San Gimignano-torens in laag avondlicht" loading="lazy">
+      <figcaption>San Gimignano in laag avondlicht: zonflanken goud, schaduwflanken donker.
+      <em>Leent: exact de golden-hour-werking van het concept — goud/ink/goud/ink over de hele breedte. · Wikimedia Commons</em></figcaption>
+    </figure>
+  </div>
+</section>
+
+
+<!-- ============================================================ CONCEPT 3 -->
+<section class="concept" id="specchio">
+  <div class="concept-head"><div class="num">3</div><h2>LO SPECCHIO D’ORO</h2></div>
+  <p class="pitch">Villa Lante uitvergroot: een 200&nbsp;m lange waterspiegel als voorhof, en het paleis bestaat twee keer — één keer in steen, één keer in gesmolten goud.</p>
+  <div class="meta"><span class="badge">Score 3/5</span><span>Δ draw calls +10–16</span><span>Hergebruik ~80%</span><span>Vroeg prototypen: spiegel-proxy</span></div>
+
+  <figure class="elev">
+  <svg viewBox="0 0 900 420" role="img" aria-label="Front-elevatie: koepelvilla op podium boven een 200 meter lange waterspiegel; travertijn-causeway over de as, cipres-paren die zich verdubbelen, en het complete paleis ondersteboven in goud gereflecteerd">
+    <defs>
+      <linearGradient id="cSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFDCAE"/><stop offset="1" stop-color="#EFCB98"/></linearGradient>
+      <radialGradient id="cGlow" cx=".5" cy=".58" r=".5"><stop offset="0" stop-color="#FFECC9" stop-opacity=".95"/><stop offset="1" stop-color="#FFECC9" stop-opacity="0"/></radialGradient>
+      <linearGradient id="cWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EFC98E"/><stop offset="1" stop-color="#C6A26C"/></linearGradient>
+      <filter id="cBlur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.4"/></filter>
+      <g id="cCyp" fill="#4C4735"><path d="M0 0 C8 -12 9 -34 0 -58 C-9 -34 -8 -12 0 0 Z"/><rect x="-1.2" y="-1" width="2.4" height="3.5"/></g>
+      <g id="cWin"><path d="M0 16 V6 a5 5 0 0 1 10 0 V16 Z" fill="#403B36"/></g>
+      <!-- simplified proxy of the palace, used only for the golden reflection -->
+      <g id="cProxy" fill="currentColor">
+        <path d="M406 158 C406 118 428 104 450 104 C472 104 494 118 494 158 Z"/>
+        <rect x="406" y="104" width="88" height="54"/>
+        <rect x="443" y="90" width="14" height="14"/>
+        <rect x="360" y="158" width="180" height="74"/>
+        <path d="M398 158 L502 158 L450 128 Z"/>
+        <rect x="300" y="196" width="60" height="36"/><rect x="540" y="196" width="60" height="36"/>
+        <rect x="340" y="232" width="220" height="18"/>
+        <path d="M330 232 C336 222 337 206 330 188 C323 206 324 222 330 232 Z"/>
+        <path d="M570 232 C576 222 577 206 570 188 C563 206 564 222 570 232 Z"/>
+      </g>
+    </defs>
+
+    <rect width="900" height="250" fill="url(#cSky)"/>
+    <rect width="900" height="250" fill="url(#cGlow)"/>
+    <path d="M0 244 Q160 232 300 242 L300 250 L0 250 Z" fill="#E6D6B6"/>
+    <path d="M900 244 Q740 232 600 242 L600 250 L900 250 Z" fill="#E6D6B6"/>
+    <g fill="#6A6448" opacity=".65">
+      <path d="M238 250 C241 244 242 236 238 228 C234 236 235 244 238 250 Z"/>
+      <path d="M258 250 C261 245 262 238 258 231 C254 238 255 245 258 250 Z"/>
+      <path d="M642 250 C645 245 646 238 642 231 C638 238 639 245 642 250 Z"/>
+      <path d="M662 250 C665 244 666 236 662 228 C658 236 659 244 662 250 Z"/>
+    </g>
+
+    <!-- palace on its podium -->
+    <g>
+      <rect x="300" y="196" width="60" height="36" class="s2"/>
+      <path d="M306 226 v-14 a8 8 0 0 1 16 0 v14 Z M330 226 v-14 a8 8 0 0 1 16 0 v14 Z" fill="#403B36" opacity=".8"/>
+      <rect x="300" y="192.5" width="60" height="3.5" class="pl"/>
+      <rect x="540" y="196" width="60" height="36" class="sh"/>
+      <path d="M548 226 v-14 a8 8 0 0 1 16 0 v14 Z M572 226 v-14 a8 8 0 0 1 16 0 v14 Z" fill="#403B36" opacity=".8"/>
+      <rect x="540" y="192.5" width="60" height="3.5" class="pl"/>
+
+      <rect x="360" y="158" width="180" height="74" class="pl"/>
+      <rect x="510" y="158" width="30" height="74" class="s2"/>
+      <rect x="360" y="158" width="180" height="5" class="sh"/>
+      <use href="#cWin" transform="translate(368 172) scale(.9)"/><use href="#cWin" transform="translate(386 172) scale(.9)"/><use href="#cWin" transform="translate(404 172) scale(.9)"/>
+      <use href="#cWin" transform="translate(487 172) scale(.9)"/><use href="#cWin" transform="translate(505 172) scale(.9)"/><use href="#cWin" transform="translate(523 172) scale(.9)"/>
+      <rect x="371" y="204" width="8" height="10" class="ink"/><rect x="389" y="204" width="8" height="10" class="ink"/><rect x="407" y="204" width="8" height="10" class="ink"/>
+      <rect x="484" y="204" width="8" height="10" class="ink"/><rect x="502" y="204" width="8" height="10" class="ink"/><rect x="520" y="204" width="8" height="10" class="ink"/>
+
+      <rect x="414" y="158" width="72" height="74" class="pl"/>
+      <rect x="414" y="158" width="3.5" height="74" class="s2"/><rect x="482.5" y="158" width="3.5" height="74" class="s2"/>
+      <path d="M437 232 v-20 a13 13 0 0 1 26 0 v20 Z" class="ink"/>
+      <path d="M435 232 v-20 a15 15 0 0 1 30 0 v20" fill="none" stroke="#D4AF37" stroke-width="1.3"/>
+
+      <rect x="406" y="104" width="88" height="54" class="pl"/>
+      <rect x="466" y="104" width="28" height="54" class="s2"/>
+      <use href="#cWin" transform="translate(413 114) scale(.72)"/><use href="#cWin" transform="translate(429 114) scale(.72)"/><use href="#cWin" transform="translate(445 114) scale(.72)"/><use href="#cWin" transform="translate(461 114) scale(.72)"/><use href="#cWin" transform="translate(477 114) scale(.72)"/>
+      <rect x="404" y="100.5" width="92" height="3.5" class="au"/>
+      <path d="M406 101 C406 68 429 56 450 56 C471 56 494 68 494 101 Z" class="pl"/>
+      <path d="M450 56 C471 56 494 68 494 101 L473 101 C473 73 461 62 452 58.5 Z" class="sh"/>
+      <path d="M431 59.5 C423 69 418 80 417 101 M450 56 V101 M469 59.5 C477 69 482 80 483 101" stroke="#C9B592" stroke-width="1" fill="none"/>
+      <rect x="443" y="43" width="14" height="13" class="pl"/><rect x="446" y="45.5" width="2.6" height="7.5" class="ink"/><rect x="451.4" y="45.5" width="2.6" height="7.5" class="ink"/>
+      <path d="M441 43 Q450 32 459 43 Z" class="au"/>
+      <rect x="449.3" y="31" width="1.4" height="5" class="au"/><circle cx="450" cy="28.5" r="2.6" class="au"/>
+      <!-- tympaan vóór de tamboer (paint order) -->
+      <path d="M406 158 L494 158 L450 128 Z" class="pl"/>
+      <path d="M412 155 L488 155 L450 132.5 Z" fill="#EADDC2"/>
+      <path d="M406 158 L494 158 L450 128 Z" fill="none" stroke="#C9B592" stroke-width="1.5"/>
+      <text x="450" y="153.5" class="nm" font-size="8" letter-spacing="1.4">MUSEO&#160;VIVO</text>
+
+      <!-- podium rising from the water -->
+      <rect x="340" y="232" width="220" height="18" class="s2"/>
+      <rect x="340" y="232" width="220" height="3.5" class="pl"/>
+      <path d="M434 250 L466 250 L462 232 L438 232 Z" fill="#EFE4CC" stroke="#C9B590" stroke-width="1"/>
+      <path d="M436 245.5 H464 M437 241 H463 M438 236.5 H462" stroke="#C9B590" stroke-width="1"/>
+      <use href="#cCyp" transform="translate(330 232) scale(1.05)"/><use href="#cCyp" transform="translate(570 232) scale(1.05)"/>
+    </g>
+
+    <!-- THE WATER -->
+    <rect y="250" width="900" height="170" fill="url(#cWater)"/>
+    <!-- golden reflection of the palace (proxy, blurred) -->
+    <use href="#cProxy" transform="matrix(1 0 0 -1.12 0 530)" color="#B98F4C" opacity=".5" filter="url(#cBlur)"/>
+    <!-- burning light lane pointing at the door -->
+    <path d="M436 250 L464 250 L565 420 L335 420 Z" fill="#D4AF37" opacity=".26"/>
+    <path d="M444 250 L456 250 L520 420 L380 420 Z" fill="#FFDCAE" opacity=".5"/>
+    <!-- ripples -->
+    <g stroke="#E8C99A" opacity=".55" fill="none">
+      <path d="M120 262 H340 M560 262 H790" stroke-width="1" stroke-dasharray="16 12"/>
+      <path d="M80 276 H350 M545 274 H830" stroke-width="1.1" stroke-dasharray="20 14"/>
+      <path d="M150 294 H360 M540 292 H760" stroke-width="1.2" stroke-dasharray="24 16"/>
+      <path d="M60 316 H330 M560 314 H850" stroke-width="1.4" stroke-dasharray="30 18"/>
+      <path d="M120 344 H340 M555 342 H820" stroke-width="1.6" stroke-dasharray="36 22"/>
+      <path d="M70 378 H320 M570 376 H860" stroke-width="1.8" stroke-dasharray="42 26"/>
+    </g>
+
+    <!-- causeway on the axis -->
+    <path d="M392 420 L442 252 L458 252 L508 420 Z" fill="#EFE4CC" stroke="#C9B590" stroke-width="1.2"/>
+    <path d="M400 394 H500 M407 370 H493 M413 350 H487 M418 333 H482 M423 318 H477 M427 305 H473 M430 294 H470 M433 284 H467 M436 275 H464 M438 267 H462 M440 260 H460" stroke="#C9B590" stroke-width="1" opacity=".8"/>
+    <path d="M498 420 L508 420 L458 252 L455 252 Z" fill="#D2C2A3" opacity=".7"/>
+
+    <!-- bronze bowl pedestals along the causeway -->
+    <g>
+      <rect x="382" y="384" width="11" height="13" class="s2"/><path d="M381 384 h13 l-2 -4 h-9 Z" fill="#5A503C"/>
+      <rect x="507" y="384" width="11" height="13" class="s2"/><path d="M506 384 h13 l-2 -4 h-9 Z" fill="#5A503C"/>
+      <rect x="404" y="340" width="9" height="11" class="s2"/><path d="M403 340 h11 l-1.6 -3.4 h-7.8 Z" fill="#5A503C"/>
+      <rect x="487" y="340" width="9" height="11" class="s2"/><path d="M486 340 h11 l-1.6 -3.4 h-7.8 Z" fill="#5A503C"/>
+      <rect x="420" y="306" width="7" height="9" class="s2"/><path d="M419 306 h9 l-1.3 -2.8 h-6.4 Z" fill="#5A503C"/>
+      <rect x="473" y="306" width="7" height="9" class="s2"/><path d="M472 306 h9 l-1.3 -2.8 h-6.4 Z" fill="#5A503C"/>
+      <rect x="430" y="282" width="6" height="8" class="s2"/><path d="M429 282 h8 l-1.1 -2.4 h-5.8 Z" fill="#5A503C"/>
+      <rect x="464" y="282" width="6" height="8" class="s2"/><path d="M463 282 h8 l-1.1 -2.4 h-5.8 Z" fill="#5A503C"/>
+    </g>
+
+    <!-- cypress pairs that double themselves in the water -->
+    <g>
+      <use href="#cCyp" transform="translate(372 392) scale(1.75)"/>
+      <path d="M372 394 C378 416 378 442 372 468 C366 442 366 416 372 394 Z" fill="#59533D" opacity=".4" filter="url(#cBlur)"/>
+      <use href="#cCyp" transform="translate(528 392) scale(1.75)"/>
+      <path d="M528 394 C534 416 534 442 528 468 C522 442 522 416 528 394 Z" fill="#59533D" opacity=".4" filter="url(#cBlur)"/>
+      <use href="#cCyp" transform="translate(398 344) scale(1.35)"/>
+      <path d="M398 346 C403 362 403 382 398 402 C393 382 393 362 398 346 Z" fill="#59533D" opacity=".38" filter="url(#cBlur)"/>
+      <use href="#cCyp" transform="translate(502 344) scale(1.35)"/>
+      <path d="M502 346 C507 362 507 382 502 402 C497 382 497 362 502 346 Z" fill="#59533D" opacity=".38" filter="url(#cBlur)"/>
+      <use href="#cCyp" transform="translate(416 309) scale(1.05)"/>
+      <path d="M416 311 C420 323 420 338 416 353 C412 338 412 323 416 311 Z" fill="#59533D" opacity=".36" filter="url(#cBlur)"/>
+      <use href="#cCyp" transform="translate(484 309) scale(1.05)"/>
+      <path d="M484 311 C488 323 488 338 484 353 C480 338 480 323 484 311 Z" fill="#59533D" opacity=".36" filter="url(#cBlur)"/>
+    </g>
+  </svg>
+  <figcaption><strong>Elevatieschets</strong> — de W2-villa op een podium dat uit een 200&nbsp;m-peschiera oprijst; één travertijn-causeway van 6&nbsp;m over de as met bronzen vuurschaal-sokkels en cipres-paren om de 25&nbsp;m die zich in het water verdubbelen. De lage zon legt een brandende lichtbaan naar de deur en het complete silhouet — koepel incluis — staat ondersteboven in goud in het bekken.</figcaption>
+  </figure>
+
+  <p class="sig"><strong>Signature-move:</strong> de omgekeerde villa in het water tijdens de eerste 4 dolly-seconden —
+  de helft van het openingsframe is reflectie.
+  <br><strong>Haalbaarheid:</strong> geen echte planar reflection (tweede render-pass = verboden op mobiel); in plaats
+  daarvan een low-poly spiegel-proxy (~15 grove vormen, goud-getint) onder het wateroppervlak — precies wat deze schets
+  toont. De proxy-illusie is het hele concept: vroeg prototypen op een oude iPad. Score <strong>3/5</strong>.</p>
+
+  <div class="photos">
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Quadrato_at_Villa_Lante_%28Bagnaia%29.jpg/960px-Quadrato_at_Villa_Lante_%28Bagnaia%29.jpg" alt="Het Quadrato-waterparterre van Villa Lante" loading="lazy">
+      <figcaption>Villa Lante (Bagnaia), het Quadrato: het formele waterparterre als voorhof-machine.
+      <em>Leent: het rechthoekige bekken met de as eroverheen — hier uitgerekt tot 200&nbsp;m. · Wikimedia Commons</em></figcaption>
+    </figure>
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Quadrato_and_the_Casini_-_Villa_Lante%2C_Bagnaia%2C_Italy_-_DSC01764.jpg/960px-Quadrato_and_the_Casini_-_Villa_Lante%2C_Bagnaia%2C_Italy_-_DSC01764.jpg" alt="De twee casini van Villa Lante boven het parterre op één as" loading="lazy">
+      <figcaption>Villa Lante, de casini boven het parterre, gelezen langs de centrale as.
+      <em>Leent: het paleis dat zich boven zijn eigen voorhof “opricht” op de aankomst-as. · Wikimedia Commons</em></figcaption>
+    </figure>
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/La_Vasca_dell%27Isola_%28Giardino_di_Boboli%2C_Firenze%29_-_panoramio_%286%29.jpg/960px-La_Vasca_dell%27Isola_%28Giardino_di_Boboli%2C_Firenze%29_-_panoramio_%286%29.jpg" alt="De Vasca dell'Isola in de Boboli-tuinen, groot spiegelbekken met balustrades" loading="lazy">
+      <figcaption>Boboli (Firenze), Vasca dell’Isola: een écht groot bekken waarin balustrades en beelden verdubbelen.
+      <em>Leent: de maat en de spiegelwerking — architectuur die twee keer bestaat. · Wikimedia Commons</em></figcaption>
+    </figure>
+  </div>
+</section>
+
+
+<!-- ============================================================ CONCEPT 4 -->
+<section class="concept" id="crinale">
+  <div class="concept-head"><div class="num">4</div><h2>IL CRINALE</h2></div>
+  <p class="pitch">Het paleis is niet op de heuvelrug gebouwd — het is de heuvelrug: een Pienza-achtige boog-substructie draagt de villa, en de ene deur zit in een reuzennis in de rots.</p>
+  <div class="meta"><span class="badge">Score 3/5</span><span>Δ draw calls +12–20</span><span>Hergebruik ~55–60%</span><span>Grootste ingreep · terrein-resculpt</span></div>
+
+  <figure class="elev">
+  <svg viewBox="0 0 900 420" role="img" aria-label="Front-elevatie: villa met koepel op een twaalf meter hoge boog-substructie over de hele heuvelrug; de middelste boog is een reuzennis van tien meter met de ene deur; links verweert de substructie tot rots met olijfterrassen, rechts trapt de massing af in loggia's">
+    <defs>
+      <linearGradient id="dSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFDCAE"/><stop offset="1" stop-color="#E8C99A"/></linearGradient>
+      <radialGradient id="dGlow" cx=".13" cy=".6" r=".55"><stop offset="0" stop-color="#FFEBC8" stop-opacity=".9"/><stop offset="1" stop-color="#FFEBC8" stop-opacity="0"/></radialGradient>
+      <g id="dCyp" fill="#4C4735"><path d="M0 0 C8 -12 9 -34 0 -58 C-9 -34 -8 -12 0 0 Z"/><rect x="-1.2" y="-1" width="2.4" height="3.5"/></g>
+      <g id="dWin"><path d="M0 16 V6 a5 5 0 0 1 10 0 V16 Z" fill="#403B36"/></g>
+      <!-- one arch of the substructure: opening + golden lit left jamb -->
+      <g id="dArc">
+        <path d="M0 62 V22 a12 15 0 0 1 24 0 V62 Z" fill="#403B36" opacity=".88"/>
+        <path d="M2.5 62 V22.5 a10 13 0 0 1 7 -12.5 a14 16 0 0 0 -6 12 V62 Z" fill="#E3B25F" opacity=".95"/>
+      </g>
+    </defs>
+
+    <rect width="900" height="420" fill="url(#dSky)"/>
+    <rect width="900" height="420" fill="url(#dGlow)"/>
+    <path d="M900 300 Q800 286 700 296 L900 310 Z" fill="#EBDFC5"/>
+
+    <!-- valley floor -->
+    <rect y="335" width="900" height="85" fill="#E7D9BC"/>
+    <path d="M0 360 H900 M0 384 H900 M0 404 H900" stroke="#D9C9A5" stroke-width="1" opacity=".55"/>
+    <path d="M820 345 L900 368 L900 386 L826 356 Z" class="cast"/>
+
+    <!-- the promontory: rock mass carrying everything -->
+    <path d="M60 420 L78 358 L112 336 L134 300 L150 210 L760 210 L780 298 L822 346 L848 420 Z" fill="#DCC9A6"/>
+    <path d="M78 358 L112 336 L134 300 M780 298 L822 346" stroke="#B9A784" stroke-width="1.2" fill="none" opacity=".8"/>
+    <path d="M92 372 l26 -18 M104 344 l22 -16 M126 316 l16 -14 M796 322 l18 20 M810 352 l16 22" stroke="#B9A784" stroke-width="1" opacity=".6"/>
+
+    <!-- olive terraces weathering into the left slope -->
+    <g>
+      <path d="M84 352 Q120 342 148 344 M96 326 Q126 316 150 318 M112 300 Q136 292 152 294 M124 274 Q140 268 152 270" stroke="#B39F79" stroke-width="2" fill="none"/>
+      <g fill="#9C9878">
+        <circle cx="102" cy="346" r="5"/><circle cx="118" cy="343" r="4.4"/><circle cx="134" cy="341" r="4.8"/>
+        <circle cx="110" cy="320" r="4.6"/><circle cx="126" cy="317" r="4.2"/><circle cx="141" cy="315" r="4.5"/>
+        <circle cx="124" cy="295" r="4.2"/><circle cx="138" cy="292" r="3.9"/>
+        <circle cx="134" cy="269" r="3.8"/><circle cx="146" cy="267" r="3.6"/>
+      </g>
+    </g>
+    <!-- olive dots weathering off to the right rock -->
+    <g fill="#9C9878"><circle cx="792" cy="318" r="4.2"/><circle cx="806" cy="336" r="4.6"/><circle cx="818" cy="356" r="4.2"/></g>
+
+    <!-- substructure wall + arcade -->
+    <path d="M150 210 L760 210 L768 335 L142 335 Z" class="s2"/>
+    <path d="M150 210 L760 210 L761 218 L151 218 Z" class="sh"/>
+    <path d="M142 335 L768 335 L768 330 L142 330 Z" fill="#C9B48C"/>
+    <!-- twenty arches (schematisch), golden half-moons on every left jamb -->
+    <use href="#dArc" transform="translate(168 268)"/><use href="#dArc" transform="translate(206 268)"/><use href="#dArc" transform="translate(244 268)"/><use href="#dArc" transform="translate(282 268)"/><use href="#dArc" transform="translate(320 268)"/><use href="#dArc" transform="translate(358 268)"/>
+    <use href="#dArc" transform="translate(512 268)"/><use href="#dArc" transform="translate(550 268)"/><use href="#dArc" transform="translate(588 268)"/><use href="#dArc" transform="translate(626 268)"/><use href="#dArc" transform="translate(664 268)"/><use href="#dArc" transform="translate(702 268)"/><use href="#dArc" transform="translate(736 268)"/>
+
+    <!-- THE GIANT NICHE with the one door -->
+    <path d="M398 335 V228 a52 58 0 0 1 104 0 V335 Z" fill="#332F2A"/>
+    <path d="M402 335 V228 a48 55 0 0 1 26 -49 a54 58 0 0 0 -22 47 V335 Z" fill="#E3B25F" opacity=".9"/>
+    <path d="M398 335 V228 a52 58 0 0 1 104 0 V335" fill="none" stroke="#C9B48C" stroke-width="2.5"/>
+    <!-- the small, sacred door inside -->
+    <path d="M436 335 v-26 a14 14 0 0 1 28 0 v26 Z" fill="#55503F"/>
+    <path d="M438.5 335 v-24 a11.5 11.5 0 0 1 23 0 v24 Z" fill="#403B36"/>
+    <path d="M434 335 v-26 a16 16 0 0 1 32 0 v26" fill="none" stroke="#D4AF37" stroke-width="1.3"/>
+    <rect x="449.2" y="311" width="1.6" height="24" fill="#6B6353"/>
+
+    <!-- villa massing crowning the ridge -->
+    <g>
+      <!-- left short return -->
+      <rect x="330" y="176" width="30" height="34" class="s2"/>
+      <use href="#dWin" transform="translate(340 184) scale(.7)"/>
+      <!-- main block -->
+      <rect x="350" y="150" width="215" height="60" class="pl"/>
+      <rect x="530" y="150" width="35" height="60" class="s2"/>
+      <rect x="350" y="150" width="215" height="5" class="sh"/>
+      <use href="#dWin" transform="translate(358 163) scale(.85)"/><use href="#dWin" transform="translate(377 163) scale(.85)"/><use href="#dWin" transform="translate(396 163) scale(.85)"/>
+      <use href="#dWin" transform="translate(504 163) scale(.85)"/><use href="#dWin" transform="translate(523 163) scale(.85)"/><use href="#dWin" transform="translate(542 163) scale(.85)"/>
+      <rect x="360" y="192" width="8" height="10" class="ink"/><rect x="379" y="192" width="8" height="10" class="ink"/><rect x="398" y="192" width="8" height="10" class="ink"/>
+      <rect x="505" y="192" width="8" height="10" class="ink"/><rect x="524" y="192" width="8" height="10" class="ink"/><rect x="543" y="192" width="8" height="10" class="ink"/>
+      <!-- bay + pediment, hoog boven de nis -->
+      <rect x="412" y="150" width="76" height="60" class="pl"/>
+      <rect x="412" y="150" width="3.5" height="60" class="s2"/><rect x="484.5" y="150" width="3.5" height="60" class="s2"/>
+      <use href="#dWin" transform="translate(432 166)"/><use href="#dWin" transform="translate(458 166)"/>
+      <rect x="428" y="192" width="44" height="2.5" fill="#D8C9A8"/>
+      <!-- drum + dome -->
+      <rect x="408" y="96" width="84" height="54" class="pl"/>
+      <rect x="466" y="96" width="26" height="54" class="s2"/>
+      <use href="#dWin" transform="translate(415 106) scale(.72)"/><use href="#dWin" transform="translate(431 106) scale(.72)"/><use href="#dWin" transform="translate(447 106) scale(.72)"/><use href="#dWin" transform="translate(463 106) scale(.72)"/><use href="#dWin" transform="translate(479 106) scale(.72)"/>
+      <rect x="406" y="92.5" width="88" height="3.5" class="au"/>
+      <path d="M408 93 C408 60 430 48 450 48 C470 48 492 60 492 93 Z" class="pl"/>
+      <path d="M450 48 C470 48 492 60 492 93 L472 93 C472 65 460 54 452 50.5 Z" class="sh"/>
+      <path d="M432 51.5 C424 61 419 72 418 93 M450 48 V93 M468 51.5 C476 61 481 72 482 93" stroke="#C9B592" stroke-width="1" fill="none"/>
+      <rect x="443" y="35" width="14" height="13" class="pl"/><rect x="446" y="37.5" width="2.6" height="7.5" class="ink"/><rect x="451.4" y="37.5" width="2.6" height="7.5" class="ink"/>
+      <path d="M441 35 Q450 24 459 35 Z" class="au"/>
+      <rect x="449.3" y="23" width="1.4" height="5" class="au"/><circle cx="450" cy="20.5" r="2.6" class="au"/>
+      <!-- tympaan vóór de tamboer (paint order) -->
+      <path d="M404 150 L496 150 L450 120 Z" class="pl"/>
+      <path d="M410 147 L490 147 L450 124.5 Z" fill="#EADDC2"/>
+      <path d="M404 150 L496 150 L450 120 Z" fill="none" stroke="#C9B592" stroke-width="1.5"/>
+      <text x="450" y="145.5" class="nm" font-size="8" letter-spacing="1.4">MUSEO&#160;VIVO</text>
+      <!-- loggias stepping down to the right -->
+      <rect x="565" y="172" width="75" height="38" class="pl"/>
+      <rect x="625" y="172" width="15" height="38" class="s2"/>
+      <rect x="565" y="168.5" width="75" height="3.5" class="coppo"/>
+      <path d="M574 204 v-14 a8 8 0 0 1 16 0 v14 Z M598 204 v-14 a8 8 0 0 1 16 0 v14 Z" fill="#403B36" opacity=".8"/>
+      <rect x="640" y="188" width="66" height="22" class="pl"/>
+      <rect x="692" y="188" width="14" height="22" class="s2"/>
+      <rect x="640" y="184.5" width="66" height="3.5" class="coppo"/>
+      <path d="M648 206 v-8 a6 6 0 0 1 12 0 v8 Z M668 206 v-8 a6 6 0 0 1 12 0 v8 Z M688 206 v-8 a5.5 5.5 0 0 1 11 0 v8 Z" fill="#403B36" opacity=".8"/>
+      <rect x="706" y="200" width="54" height="3" class="pl"/><rect x="706" y="203" width="54" height="5.5" fill="#C4B18B"/><rect x="706" y="208.5" width="54" height="2" class="pl"/>
+      <!-- long cast shadow of the villa to the right, over the wall top -->
+      <path d="M565 210 L700 210 L760 218 L640 218 Z" class="cast"/>
+    </g>
+
+    <!-- holle weg climbing into the niche -->
+    <path d="M436 420 C428 392 436 362 443 337 L469 337 C462 366 466 392 472 420 Z" fill="#ECDFC2" stroke="#C9B590" stroke-width="1"/>
+    <path d="M441 404 h26 M441 382 h25 M443 360 h23 M444 344 h22" stroke="#C9B590" stroke-width="1" opacity=".8"/>
+    <path d="M436 420 C428 392 436 362 443 337 l4 0 C440 364 434 392 441 420 Z" class="cast"/>
+
+    <!-- cypresses at the foot -->
+    <use href="#dCyp" transform="translate(196 402) scale(1.6)"/>
+    <use href="#dCyp" transform="translate(226 410) scale(1.15)"/>
+    <use href="#dCyp" transform="translate(670 406) scale(1.5)"/>
+    <use href="#dCyp" transform="translate(816 414) scale(1.2)"/>
+    <path d="M199 401 L300 390 L308 395 L203 406 Z" class="cast"/>
+    <path d="M673 405 L770 396 L777 401 L677 410 Z" class="cast"/>
+  </svg>
+  <figcaption><strong>Elevatieschets</strong> — de villa-massing (koepel, tamboer, tympaan) kroont een 12&nbsp;m hoge boog-arcade over de hele rug; de middelste boog is uitvergroot tot een reuzennis van 10&nbsp;m waarin de ene deur klein en heilig staat. De lage zon schiet dwars door de arcade: elke boog-dagkant een gouden halve maan, de nissen ink-donker. Links verweert de substructie tot rots met olijfterrassen, rechts trapt de massing af in loggia’s; een holle weg klimt de nis in.</figcaption>
+  </figure>
+
+  <p class="sig"><strong>Signature-move:</strong> de reuzennis — de ene deur niet bovenop een trap maar onderin een boog
+  van kathedraal-formaat: nederigheid en monumentaliteit in hetzelfde beeld, en de arcade-contre-jour is gratis bij één
+  gouden-uur-zon.
+  <br><strong>Haalbaarheid:</strong> arcade als één InstancedMesh is goedkoop, maar dit is de grootste ingreep van de
+  vier: terrein, paden, wing-plaatsing én de EntranceHall-overgang (deur ~12&nbsp;m lager) moeten opnieuw; dolly volledig
+  her-authoren. Score <strong>3/5</strong>.</p>
+
+  <div class="photos">
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Pienza_panorama.jpg/960px-Pienza_panorama.jpg" alt="Pienza op de klifrand met cipressen tegen de substructie" loading="lazy">
+      <figcaption>Pienza op de klifrand — bebouwing die uit de rand van de rug “groeit”, cipressen ertegenaan.
+      <em>Leent: massa boven, landschap onder, en de deur-onder-massa-verhouding. · Wikimedia Commons</em></figcaption>
+    </figure>
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/PienzaPanoramaSO.JPG/960px-PienzaPanoramaSO.JPG" alt="Pienza vanaf de Val d'Orcia: één rug, één kroon" loading="lazy">
+      <figcaption>Pienza vanaf de Val d’Orcia: het crinale-silhouet — één rug, één kroon, velden eronder.
+      <em>Leent: de aankomst laag over de velden waar de dolly mee opent. · Wikimedia Commons</em></figcaption>
+    </figure>
+    <figure class="photo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/Civita_di_Bagnoregio_Panorama_2017.jpg/960px-Civita_di_Bagnoregio_Panorama_2017.jpg" alt="Civita di Bagnoregio op zijn rots" loading="lazy">
+      <figcaption>Civita di Bagnoregio (Lazio) op zijn rots: architectuur en berg als één massa.
+      <em>Leent: de “verwering” naar landschap aan beide flanken, alsof het er al vijfhonderd jaar staat. · Wikimedia Commons</em></figcaption>
+    </figure>
+  </div>
+</section>
+
+<footer>
+  <hr class="rule">
+  <p>Bron: <code>docs/EXTERIOR_FANTASY_CONCEPTS.md</code> · schetsen in het canon-golden-hour-palet
+  (#FFDCAE→#E8C99A / #F2E9DA / #D2C2A3 / #403B36 / #D4AF37) · foto’s gehotlinkt van
+  <a href="https://commons.wikimedia.org/">Wikimedia Commons</a> (licenties op de bestandspagina’s aldaar).<br>
+  Staging-only conceptboard — geen prod; uitvoering pas na owner-keuze.</p>
+</footer>
+
+</main>
+</body>
+</html>

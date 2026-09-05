@@ -1,7 +1,25 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminOrAnonClient } from "@/lib/supabase/server";
+import { rateLimit } from "@/lib/rate-limit";
+import { headers } from "next/headers";
+import { hashPasscode, signPasscodeToken } from "./passcode-crypto";
 import crypto from "crypto";
+
+/** Best-effort client IP inside a server action (no NextRequest available). */
+async function getActionClientIp(): Promise<string> {
+  try {
+    const h = await headers();
+    const fwd = h.get("x-forwarded-for");
+    if (fwd) {
+      const first = fwd.split(",")[0]?.trim();
+      if (first) return first;
+    }
+    return h.get("x-real-ip")?.trim() || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 
 /** Generate a random 6-character alphanumeric passcode */
 function generatePasscode(): string {
@@ -38,31 +56,47 @@ export async function createPasscode(input: {
     return { ok: false, error: "Must specify a wing or room to share" };
   }
 
-  // Verify ownership of the wing/room
+  // Callers pass LOCAL identifiers (wing slug e.g. "roots"; room local id stored in
+  // rooms.name), but public_shares.wing_id/room_id (and every reader) use the DB uuid.
+  // Resolve the local id -> uuid here so a slug no longer fails as "not found" and the
+  // stored value stays a real uuid. Try the local column first, then the uuid column
+  // only when the value actually looks like a uuid (avoids an invalid-uuid cast error).
+  const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+  let wingUuid: string | null = null;
   if (input.wingId) {
-    const { data: wing } = await supabase
-      .from("wings")
-      .select("id")
-      .eq("id", input.wingId)
-      .eq("user_id", user.id)
-      .single();
+    const bySlug = await supabase
+      .from("wings").select("id").eq("slug", input.wingId).eq("user_id", user.id).maybeSingle();
+    const wing = bySlug.data
+      ?? (isUuid(input.wingId)
+        ? (await supabase.from("wings").select("id").eq("id", input.wingId).eq("user_id", user.id).maybeSingle()).data
+        : null);
     if (!wing) return { ok: false, error: "Wing not found or not owned by you" };
+    wingUuid = wing.id;
   }
 
+  let roomUuid: string | null = null;
   if (input.roomId) {
-    const { data: room } = await supabase
-      .from("rooms")
-      .select("id, wing_id")
-      .eq("id", input.roomId)
-      .eq("user_id", user.id)
-      .single();
+    const byName = await supabase
+      .from("rooms").select("id").eq("name", input.roomId).eq("user_id", user.id).maybeSingle();
+    const room = byName.data
+      ?? (isUuid(input.roomId)
+        ? (await supabase.from("rooms").select("id").eq("id", input.roomId).eq("user_id", user.id).maybeSingle()).data
+        : null);
     if (!room) return { ok: false, error: "Room not found or not owned by you" };
+    roomUuid = room.id;
   }
 
   const passcode = (input.passcode?.trim() || generatePasscode()).toLowerCase();
-  if (passcode.length < 4 || passcode.length > 20) {
-    return { ok: false, error: "Passcode must be between 4 and 20 characters" };
+  // Raised minimum length (was 4) to shrink the brute-force search space.
+  if (passcode.length < 6 || passcode.length > 20) {
+    return { ok: false, error: "Passcode must be between 6 and 20 characters" };
   }
+
+  // Store ONLY the sha256 hash — never cleartext — so a table/RLS leak cannot
+  // reveal usable passcodes. The cleartext is returned to the owner in-memory
+  // this one time so they can share it.
+  const passcodeHash = hashPasscode(passcode);
 
   const slug = generateSlug();
   const expiresAt = new Date(
@@ -72,16 +106,16 @@ export async function createPasscode(input: {
   const { data: share, error } = await supabase
     .from("public_shares")
     .insert({
-      wing_id: input.wingId || null,
-      room_id: input.roomId || null,
+      wing_id: wingUuid,
+      room_id: roomUuid,
       slug,
       created_by: user.id,
       is_active: true,
-      passcode,
+      passcode: passcodeHash,
       expires_at: expiresAt,
       scope: "passcode",
     })
-    .select("id, slug, passcode, expires_at, wing_id, room_id, created_at")
+    .select("id, slug, expires_at, wing_id, room_id, created_at")
     .single();
 
   if (error) return { ok: false, error: error.message };
@@ -91,7 +125,7 @@ export async function createPasscode(input: {
     share: {
       id: share.id,
       slug: share.slug,
-      passcode: share.passcode || passcode,
+      passcode, // cleartext, shown to the owner only at creation time
       expiresAt: share.expires_at!,
       wingId: share.wing_id,
       roomId: share.room_id,
@@ -105,23 +139,49 @@ export async function createPasscode(input: {
  */
 export async function validatePasscode(
   code: string
-): Promise<{ ok: boolean; share?: ValidatedShare; error?: string }> {
-  const supabase = await createClient();
+): Promise<{ ok: boolean; share?: ValidatedShare; error?: PasscodeErrorCode }> {
+  // Service-role client: a passcode visitor is NOT the share owner, so the
+  // owner-scoped RLS policy would hide the row. This action enforces the
+  // passcode check itself and never returns the stored hash, so using the
+  // admin client here is safe. Falls back to anon on Preview (no key).
+  const supabase = createAdminOrAnonClient();
   const normalizedCode = code.trim().toLowerCase();
 
-  if (!normalizedCode) return { ok: false, error: "Passcode is required" };
+  if (!normalizedCode) return { ok: false, error: "required" };
 
-  const { data: share } = await supabase
+  // Brute-force throttle: this server action is the passcode-guessing entry
+  // point and was previously unlimited. Rate-limit per-IP AND per-guessed-code
+  // (10 attempts / 10 min). Fails closed on trip. rateLimit() fails open only
+  // when Redis is entirely unavailable (same posture as other public routes).
+  const ip = await getActionClientIp();
+  const attemptHash = hashPasscode(normalizedCode);
+  const [ipRl, codeRl] = await Promise.all([
+    rateLimit(`passcode-validate:ip:${ip}`, 10, 10 * 60_000),
+    rateLimit(`passcode-validate:code:${attemptHash.slice(0, 16)}`, 10, 10 * 60_000),
+  ]);
+  if (!ipRl.success || !codeRl.success) {
+    return { ok: false, error: "rateLimited" };
+  }
+
+  // Compare against the stored SHA-256 hash — the cleartext is never persisted.
+  const codeHash = attemptHash;
+
+  // Passcodes are not guaranteed globally unique among active shares, so a
+  // collision must not surface as "Invalid passcode". Deterministically take
+  // the most-recent active match instead of failing on multi-row via .single().
+  const { data: shares } = await supabase
     .from("public_shares")
     .select(
       "id, slug, wing_id, room_id, created_by, expires_at, is_active, scope"
     )
-    .eq("passcode", normalizedCode)
+    .eq("passcode", codeHash)
     .eq("is_active", true)
     .eq("scope", "passcode")
-    .single();
+    .order("created_at", { ascending: false })
+    .limit(1);
 
-  if (!share) return { ok: false, error: "Invalid passcode" };
+  const share = shares?.[0];
+  if (!share) return { ok: false, error: "invalid" };
 
   // Check expiry
   if (share.expires_at && new Date(share.expires_at) < new Date()) {
@@ -130,7 +190,7 @@ export async function validatePasscode(
       .from("public_shares")
       .update({ is_active: false })
       .eq("id", share.id);
-    return { ok: false, error: "This passcode has expired" };
+    return { ok: false, error: "expired" };
   }
 
   // Fetch owner info
@@ -167,6 +227,9 @@ export async function validatePasscode(
     share: {
       id: share.id,
       slug: share.slug,
+      // Signed proof the passcode was entered — the public route requires this
+      // for scope='passcode' shares so knowing the slug alone is not enough.
+      accessToken: signPasscodeToken(share.id),
       wingId: share.wing_id,
       roomId: share.room_id,
       ownerName: owner?.display_name || "Someone",
@@ -192,9 +255,13 @@ export async function getMyPasscodes(): Promise<{
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, shares: [], error: "Not authenticated" };
 
+  // Note: `passcode` is now stored as a one-way sha256 hash, so it CANNOT be
+  // shown back to the owner for previously-created codes. We don't select it —
+  // returning the hash would render a meaningless string in the UI. The
+  // cleartext is only ever available at creation time (createPasscode).
   const { data: shares, error } = await supabase
     .from("public_shares")
-    .select("id, slug, passcode, expires_at, wing_id, room_id, created_at")
+    .select("id, slug, expires_at, wing_id, room_id, created_at")
     .eq("created_by", user.id)
     .eq("scope", "passcode")
     .eq("is_active", true)
@@ -214,7 +281,7 @@ export async function getMyPasscodes(): Promise<{
       active.push({
         id: s.id,
         slug: s.slug,
-        passcode: s.passcode || "",
+        passcode: "", // hash is never surfaced; cleartext only exists at creation
         expiresAt: s.expires_at || "",
         wingId: s.wing_id,
         roomId: s.room_id,
@@ -259,6 +326,17 @@ export async function deletePasscode(
 
 /* ── Types ── */
 
+/**
+ * Stable error code returned by validatePasscode. The component maps each code
+ * to a localized string via t(); returning prose here would ship raw English to
+ * non-English users. 'rateLimited' reuses the existing shared throttle copy.
+ */
+export type PasscodeErrorCode =
+  | "required"
+  | "invalid"
+  | "expired"
+  | "rateLimited";
+
 export interface PasscodeShare {
   id: string;
   slug: string;
@@ -272,6 +350,8 @@ export interface PasscodeShare {
 export interface ValidatedShare {
   id: string;
   slug: string;
+  /** Signed, short-lived proof of passcode entry; required by the public route. */
+  accessToken: string;
   wingId: string | null;
   roomId: string | null;
   ownerName: string;

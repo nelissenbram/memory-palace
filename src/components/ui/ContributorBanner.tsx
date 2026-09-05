@@ -27,7 +27,7 @@ export default function ContributorBanner({ ownerName, permission }: Contributor
       borderRadius: "0.75rem",
       padding: "0.5rem 1rem",
       border: `1px solid ${isContributor ? T.color.sage + "40" : T.color.cream}`,
-      boxShadow: "0 2px 12px rgba(44,44,42,.1)",
+      boxShadow: "0 2px 12px rgba(64,59,54,.1)",
     }}>
       <div style={{
         width: "0.5rem", height: "0.5rem", borderRadius: "0.25rem",

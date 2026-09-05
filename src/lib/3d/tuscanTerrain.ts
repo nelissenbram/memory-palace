@@ -14,20 +14,26 @@ export function getHeightAt(x: number, z: number): number {
   const r = Math.sqrt(x * x + z * z);
 
   // Rolling hills from layered sine/cosine (suppressed near palace)
-  const noiseMask = Math.min(1, Math.max(0, (r - 55) / 40)); // 0 inside r<55, ramps to 1 by r=95
+  // Rolling hills only WELL BEYOND the palace, and kept below the hilltop so the
+  // villa always crowns the scene (Gladiator height variation lives out in the fields).
+  const noiseMask = Math.min(1, Math.max(0, (r - 78) / 55));
   let hills = 0;
-  hills += Math.sin(x * 0.008) * Math.cos(z * 0.006) * 10;
-  hills += Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.014 + 0.7) * 4;
-  hills += Math.sin(x * 0.035 + 2.1) * Math.cos(z * 0.028 + 1.4) * 2;
-  hills += Math.sin(x * 0.07 + 0.5) * Math.cos(z * 0.06 + 3.0) * 0.8;
+  hills += Math.sin(x * 0.008) * Math.cos(z * 0.006) * 14;   // deep rolling Tuscan hills
+  hills += Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.014 + 0.7) * 6;
+  hills += Math.sin(x * 0.035 + 2.1) * Math.cos(z * 0.028 + 1.4) * 2.5;
+  hills += Math.sin(x * 0.07 + 0.5) * Math.cos(z * 0.06 + 3.0) * 1;
   hills *= noiseMask;
 
   // Central plateau — flat at HILL_Y, smooth falloff (wider sigma for larger flat area)
   const sigma = 70;
   const plateau = HILL_Y * Math.exp(-(r * r) / (2 * sigma * sigma));
 
-  // Combine: plateau dominates near center, hills dominate far away
-  let h = plateau + hills;
+  // The villa CROWNS the hill: the surrounding land falls away BELOW HILL_Y as it
+  // goes out, so the palace sits on top instead of in a bowl of higher hills.
+  const descent = Math.min(1, Math.max(0, (r - 42) / 120)) * 16;
+
+  // Combine: plateau + hilltop crown near centre, land descends + rolls far away
+  let h = plateau + hills - descent;
 
   // Hard clamp: terrain is exactly HILL_Y inside courtyard radius (r < 42)
   // Smooth blend between hard clamp and natural terrain from r=42 to r=55
@@ -39,9 +45,33 @@ export function getHeightAt(x: number, z: number): number {
     h = HILL_Y * (1 - smooth) + h * smooth;
   }
 
+  // RECTANGULAR hilltop pad under the full palace footprint (x ±55, z −48..44):
+  // the radial clamp (r<42) left the wing/pavilion corners overhanging the
+  // falling ground — black shadow wedges under every slab edge and floating
+  // props. Ground now rises to meet every edge, blending out over 14 units.
+  // (Owner: "de rest van het platform moet genivelleerd" — wider dead-flat pad,
+  // crisper 10-unit roll-off into the wheat instead of a long visible tilt.)
+  // Front edge runs to z −48: the walled forecourt terrace reaches its
+  // retaining wall at z −47, and the old −30 edge left the ground INSIDE the
+  // walls sagging into the downhill blend ("grond in het platform verzonken").
+  const dxp = Math.max(0, Math.abs(x) - 60);
+  const dzp = Math.max(0, z < 0 ? -z - 48 : z - 44);
+  const dRect = Math.hypot(dxp, dzp);
+  if (dRect < 10) {
+    const t = dRect / 10, sm = t * t * (3 - 2 * t);
+    h = HILL_Y * (1 - sm) + h * sm;
+  }
+
   // Gentle bowl — edges slope down
   const edge = r / (SIZE * 0.5);
   h -= edge * edge * 6;
+
+  // Beyond the far-hills ring rim (r=380) the SQUARE terrain corners (out to
+  // r≈565) poked ABOVE the ring hills and read as floating pale slabs in the
+  // distance. Dive them steeply below the ring surface. (Legacy is unaffected:
+  // its camera far plane is 300, nothing out here ever renders.)
+  const corner = Math.min(1, Math.max(0, (r - 390) / 170));
+  h -= corner * corner * 45;
 
   return h;
 }
@@ -59,6 +89,15 @@ export function createTuscanTerrain(
     cropMap?: THREE.Texture;
     cropNormal?: THREE.Texture;
     cropRoughness?: THREE.Texture;
+    cropAO?: THREE.Texture;
+  },
+  opts?: {
+    /** Anisotropic filtering samples for the terrain maps (MUSEO VIVO WS2-1: 4 mobile / 8 desktop). */
+    anisotropy?: number;
+    /** Golden-hour vertex-tint variant (MUSEO VIVO WS3-4: warm field tints, no cold greens). */
+    warm?: boolean;
+    /** W3: lift the material past the dark crop map — sun-bleached pale ground. */
+    bright?: boolean;
   }
 ) {
   const segments = getQuality().terrainSegments;
@@ -68,12 +107,27 @@ export function createTuscanTerrain(
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
 
-  // Golden wheat color for peaks, greener for valleys, atmospheric fade at edges
-  const colPeak = new THREE.Color("#C8A850"); // golden wheat
-  const colValley = new THREE.Color("#7A8A48"); // green valley
-  const colEdge = new THREE.Color("#D8C890"); // warm haze at edges
-  const colPlateau = new THREE.Color("#A8985A"); // warm golden for hilltop
+  // Golden wheat color for peaks, greener for valleys, atmospheric fade at edges.
+  // Warm variant (MUSEO VIVO): valleys shift from cool green to sun-dried olive so
+  // every terrain hue stays in the golden-hour earth family.
+  const warm = !!opts?.warm;
+  // Owner: the ground reads WHITE — sun-bleached pale dusty Tuscan summer earth.
+  // (Second lighten pass: the crop texture map multiplies these down, so the
+  // vertex palette sits near-white to compensate.)
+  const colPeak = new THREE.Color(warm ? "#F4ECD8" : "#F2EAD4");
+  const colValley = new THREE.Color(warm ? "#EAE2CA" : "#E8DFC6");
+  const colEdge = new THREE.Color(warm ? "#F8F2E4" : "#F6F0E0");
+  const colPlateau = new THREE.Color(warm ? "#F0E8D2" : "#EEE4CC");
   const tmpColor = new THREE.Color();
+  // W3 (bright): the rolling hills beyond the palace pad read as bare pale
+  // dunes — tint them as wheat/pasture parcels so every hill is "populated".
+  // Same sheared-cell recipe as the far-hills ring so the two zones knit.
+  const parcelPal = ["#E2BC6A", "#D9AE55", "#EDD28F", "#9BA05A", "#C99F55", "#7E8C4E", "#E6C87E"]
+    .map((c) => new THREE.Color(c));
+  const pHash = (a: number, b: number) => {
+    const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  };
 
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -100,17 +154,31 @@ export function createTuscanTerrain(
     tmpColor.copy(colValley).lerp(colPeak, normalizedH);
     tmpColor.lerp(colPlateau, plateauBlend * 0.6);
 
-    // Darken the plateau center so it doesn't glow
+    // Keep the plateau pale too (owner: white ground) — no darken at all.
     if (dist < 50) {
-      const darken = Math.max(0, 1 - dist / 50) * 0.3;
+      const darken = 0;
       tmpColor.r *= (1 - darken);
       tmpColor.g *= (1 - darken);
       tmpColor.b *= (1 - darken);
     }
 
-    // Atmospheric haze at edges
+    if (opts?.bright && dist > 90) {
+      const pb = Math.min(1, (dist - 90) / 60);
+      // same domain-warped cells as the far-hills ring — organic, not square
+      const u = (x + z * 0.35) / 165 + Math.sin(z * 0.012 + x * 0.004) * 0.33;
+      const v = (z - x * 0.22) / 135 + Math.sin(x * 0.01 - z * 0.005) * 0.33;
+      const cell = pHash(Math.floor(u), Math.floor(v));
+      tmpColor.lerp(parcelPal[Math.floor(cell * parcelPal.length) % parcelPal.length], pb * 0.55);
+      const fu = u - Math.floor(u), fv = v - Math.floor(v);
+      if (Math.min(fu, 1 - fu) < 0.045 || Math.min(fv, 1 - fv) < 0.055) {
+        tmpColor.lerp(new THREE.Color("#5F6B3F"), pb * 0.4);
+      }
+    }
+
+    // Atmospheric haze at edges (softened under W3-bright: the heavy fade
+    // washed the whole mid-zone to a pale blank)
     const edgeFade = Math.max(0, Math.min(1, (dist - 200) / 200));
-    tmpColor.lerp(colEdge, edgeFade * 0.6);
+    tmpColor.lerp(colEdge, edgeFade * (opts?.bright ? 0.2 : 0.6));
 
     colors[i * 3] = tmpColor.r;
     colors[i * 3 + 1] = tmpColor.g;
@@ -119,6 +187,15 @@ export function createTuscanTerrain(
 
   geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
+
+  // WS2-1: anisotropic filtering on the terrain maps — the terrain is the single
+  // most grazing-angle surface in the palace; zero anisotropy reads as smear.
+  const aniso = opts?.anisotropy ?? 0;
+  if (aniso > 1) {
+    for (const tex of [textures.cropMap, textures.cropNormal, textures.cropRoughness, textures.cropAO]) {
+      if (tex) { tex.anisotropy = aniso; tex.needsUpdate = true; }
+    }
+  }
 
   const mat = new THREE.MeshStandardMaterial({
     vertexColors: true,
@@ -129,7 +206,15 @@ export function createTuscanTerrain(
     normalMap: textures.cropNormal || null,
     normalScale: new THREE.Vector2(0.5, 0.5),
     roughnessMap: textures.cropRoughness || null,
+    aoMap: textures.cropAO || null,
+    aoMapIntensity: textures.cropAO ? 0.35 : 1,
   });
+  if (opts?.bright) {
+    // The crop map multiplies the pale vertex palette back down to amber-brown;
+    // an over-unity material colour lifts it to sun-bleached pale ground.
+    mat.color.setRGB(1.35, 1.30, 1.18);
+    mat.aoMapIntensity = 0.15;
+  }
 
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;

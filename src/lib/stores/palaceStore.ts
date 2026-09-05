@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 
 type NavMode = "atrium" | "library" | "3d";
 
@@ -14,7 +13,6 @@ interface PalaceState {
   portalAnim: boolean;
   _timer: ReturnType<typeof setTimeout> | null;
   _raf: number | null;
-  roomLayouts: Record<string, string>; // roomId → layout override id
   /** Deep-link target for Library view — consumed once then cleared */
   libraryTarget: { wingId: string; roomId: string; memoryId?: string } | null;
 
@@ -32,16 +30,10 @@ interface PalaceState {
   enterWingRoom: (wingId: string, roomId: string) => void;
   exitToCorridor: () => void;
   switchWing: (id: string) => void;
-  setRoomLayout: (roomId: string, layoutId: string) => void;
 }
 
-function loadRoomLayouts(): Record<string, string> {
-  try {
-    const raw = typeof window !== "undefined" ? localStorage.getItem("mp_room_layouts") : null;
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return {};
-}
+// Room-layout overrides are retired (single Enfilade salon interior). Any old
+// "mp_room_layouts" localStorage blob is deliberately left in place and ignored.
 
 function loadNavMode(): NavMode {
   // Always start in atrium on fresh page load.
@@ -61,7 +53,6 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   portalAnim: false,
   _timer: null,
   _raf: null,
-  roomLayouts: loadRoomLayouts(),
   libraryTarget: null,
 
   setNavMode: (mode) => {
@@ -139,12 +130,6 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
     get().fade(() => set({ view: "corridor", activeRoomId: null, opacity: 1 }));
   },
 
-  setRoomLayout: (roomId, layoutId) => set((s) => {
-    const updated = { ...s.roomLayouts, [roomId]: layoutId };
-    try { localStorage.setItem("mp_room_layouts", JSON.stringify(updated)); syncSettingsToServer(); } catch {}
-    return { roomLayouts: updated };
-  }),
-
   switchWing: (id) => {
     const { activeWing, view } = get();
     if (view === "exterior") { get().enterCorridor(id); return; }
@@ -156,10 +141,3 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
     }
   },
 }));
-
-// Re-read localStorage when cross-device sync completes
-if (typeof window !== "undefined") {
-  window.addEventListener("mp-settings-synced", () => {
-    usePalaceStore.setState({ roomLayouts: loadRoomLayouts() });
-  });
-}

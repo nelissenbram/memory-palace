@@ -123,19 +123,28 @@ export async function exportUserData(
       safeQuery(supabase, "wing_shares", "owner_id", uid),
     ]);
 
-    // Collect file paths from memories
+    // Collect ONLY real storage keys from memories. file_path is canonical for
+    // both the Supabase and R2 backends. file_url is a full signed http(s) URL
+    // or a "/api/media/..." proxy path — NOT a valid storage key — so feeding it
+    // into storage.download() always fails and inflates the failure count. Mirror
+    // the client ExportPanel filter: skip http(s) and proxy paths, and dedup.
+    const seenFiles = new Set<string>();
     const storageFiles: string[] = [];
     for (const memory of memories) {
-      if (memory.file_path) {
-        storageFiles.push(memory.file_path as string);
-      }
+      const candidate =
+        (memory.file_path as string | undefined) ||
+        (typeof memory.file_url === "string" ? (memory.file_url as string) : undefined);
+      if (!candidate) continue;
       if (
-        memory.file_url &&
-        typeof memory.file_url === "string" &&
-        !storageFiles.includes(memory.file_url)
+        candidate.startsWith("http://") ||
+        candidate.startsWith("https://") ||
+        candidate.startsWith("/api/media/")
       ) {
-        storageFiles.push(memory.file_url);
+        continue;
       }
+      if (seenFiles.has(candidate)) continue;
+      seenFiles.add(candidate);
+      storageFiles.push(candidate);
     }
 
     // Enrich room names — DB stores IDs like "fr3", resolve to display names

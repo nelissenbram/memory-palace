@@ -20,6 +20,9 @@ export async function GET() {
 
     const state = generateOAuthState();
     const redirectUri = `${getBaseUrl()}/api/integrations/box/callback`;
+    // Box OAuth has no select_account/prompt/force-reauth param (unlike Google/Microsoft/Dropbox),
+    // so we cannot force an account picker here for the wrong-account-linked bug. Box shows its own
+    // login screen whenever no matching Box/SSO session exists in the browser.
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,

@@ -9,12 +9,21 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
-import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
+import { EXPOSURE, GOLDEN, PLASTER_RAMP, CLEAR_COLOR, GOLD, EMBER, INK, TRAVERTINE_GROUT } from "@/lib/3d/canon";
+import { flag3d } from "@/lib/3d/flags3d";
+import { mountAmbientMusic } from "@/lib/3d/ambientAudio";
+import { MAX_YAW_DEG_S } from "@/lib/3d/cameraComfort";
+import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadSandstoneTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { createGrassSystem, createWheatField, createSharedWheatMaterial } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
-import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
+import { getQuality, getGPUTier, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
+import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
-import { useTranslation } from "@/lib/hooks/useTranslation";
+import { loadModel, warmDracoDecoder } from "@/lib/3d/modelLoader";
+import { useOverridableTranslation } from "@/lib/hooks/useTranslation";
+import type { Locale } from "@/i18n/config";
 import { hapticLight } from "@/lib/native/haptics";
 
 // ── Wing SVG icon strings for hover labels (matches WingRoomIcons.tsx) ──
@@ -28,13 +37,27 @@ const WING_SVG_STRINGS: Record<string,string> = {
 };
 
 // ═══ EXTERIOR — Fantasy Castle ═══
-function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo,onReady,onboardingMode,onCinematicPause,cinematicResumed}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null,onReady?: () => void,onboardingMode?: boolean,onCinematicPause?: () => void,cinematicResumed?: boolean}){
+function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo,onReady,onboardingMode,onCinematicPause,cinematicResumed,userNameOverride,localeOverride}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null,onReady?: () => void,onboardingMode?: boolean,onCinematicPause?: () => void,cinematicResumed?: boolean,userNameOverride?: string|null,localeOverride?: Locale}){
   const WINGS = wingsProp || DEFAULT_WINGS;
-  const ownerName = useUserStore((s) => s.userName);
-  const { t } = useTranslation("exterior3d");
+  // Tympanum name: store-less hosts (the /flythrough onboarding preview) pass
+  // the demo name as userNameOverride; in-app the user store is canonical
+  // (the wizard's name card writes it before the cinematic mounts). Same
+  // pattern as InteriorScene's mantel plaque.
+  const storeUserName = useUserStore((s) => s.userName);
+  const ownerName = userNameOverride ?? storeUserName;
+  // localeOverride (demo hosts only): baked canvas labels resolve in the
+  // demo-local language instead of the global stored locale.
+  const { t } = useOverridableTranslation("exterior3d", localeOverride);
   const entranceHallLabel = t("entranceHall");
   const entranceHallLabelRef = useRef(entranceHallLabel);
   entranceHallLabelRef.current = entranceHallLabel;
+  // W2 (WS3-5): the tympanum-name canvas lives inside the mount effect; these
+  // refs let a late store hydration (or name change) redraw it in place.
+  const ownerNameRef = useRef(ownerName);
+  const tymNameRedrawRef = useRef<(() => void) | null>(null);
+  // entranceHallLabel in the deps: the localized fallback (and a late
+  // locale-message load under localeOverride) redraws the tympanum in place too.
+  useEffect(() => { ownerNameRef.current = ownerName; tymNameRedrawRef.current?.(); }, [ownerName, entranceHallLabel]);
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const camDebugRef=useRef<HTMLPreElement|null>(null);
   const camDebug=false; // set true to show camera debug overlay
@@ -46,7 +69,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
   const onCinematicPauseRef = useRef(onCinematicPause);
   useEffect(() => { onCinematicPauseRef.current = onCinematicPause; }, [onCinematicPause]);
   // Camera starts at waypoint 1 of the cinematic trajectory
-  const camO=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camOT=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camD=useRef(180);
+  const camO=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camOT=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camD=useRef(220);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);
@@ -75,7 +98,77 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const dlPreset=getLightingPreset();
     const Q=getQuality();
     const isMobileQ=Q.maxEagerTextureSets<=6;
-    const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(dlPreset.fogColor,.0018*dlPreset.fogDensity);
+    // Potato sub-tier (matches the GLB LOD picks below): mobile-not-potato gets
+    // modest instanced-scenery bumps (owner 2026-08-20 "level of detail"), potato keeps the floor.
+    const isPotatoQ=Q.maxEagerTextureSets<=3;
+    // MUSEO VIVO Wave-1 exterior pass (WS3-4 retunes, WS2-1/3/4 terrain + shared
+    // field materials, emissive-lerp kill). Staging ON / prod OFF via flags3d.
+    const W1=flag3d("w1_exterior");
+    // MUSEO VIVO Wave-2 exterior pass (WS3-5..11): owner's name on the
+    // tympanum, Fraunces signposts replacing the hover label, Renaissance
+    // coercion, instanced cypresses, per-frame material-mutation deletion,
+    // 18s establishing dolly, tap-is-travel entrance. W2 builds on the W1
+    // infrastructure, so it requires W1; flag OFF ⇒ W1 behavior intact.
+    const W2=W1&&flag3d("w2_exterior");
+    // MUSEO VIVO Wave-3 (Blender-authored hero assets, docs/BLENDER_EXTERIOR_MASTERPLAN.md).
+    // W3 = W2 && flag; staging ON / prod OFF automatically. First deliverable is
+    // the dome-shell pipeline canary: a DRACO-compressed GLB with baked AO on UV0
+    // streamed through modelLoader, replacing the procedural terracotta shell +
+    // ribs. Additive-safe: any load failure keeps the procedural dome (fallback).
+    const W3=W2&&flag3d("w3_exterior");
+    // W3 (owner): the view opens from the BOTTOM of the hill — low, far, looking
+    // up the cypress road at the palace crowning the ridge (Gladiator arrival).
+    // Owner r2 2026-08-20 ("zoom out start moet ook op mobile"): portrait now
+    // opens from the SAME zoomed-out stance as desktop (φ=0.484π, camD 252) —
+    // the closer 185/0.470π portrait reframe from r1 is retired.
+    if(W3){camO.current.phi=camOT.current.phi=Math.PI*0.484;camD.current=252;}
+    // W3: keep the Gladiator approach corridor clear of stray random scenery
+    // (nothing lands on the dusty road / avenue). Hoisted above ALL scatter loops.
+    const inApproach = (x: number, z: number) => W3 && z < -2 && z > -295 && Math.abs(x) < 13;
+    // ══ ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23: "it loads in parts… pre-load
+    // all?") — the W3 exterior streams six hero GLBs, the cypress GLB, the pano
+    // backdrop and the eager PBR sets asynchronously, so the palace visibly
+    // assembled piece by piece after the overlay lifted. Every async attach
+    // with visible pop-in registers its promise here; onReady (the contract
+    // MemoryPalace/the viewer use to drop their overlay/veil) now fires only
+    // when the FIRST FRAME has rendered AND this barrier has settled
+    // (Promise.allSettled — a single failed GLB must never strand the reveal)
+    // OR the 8s cap has elapsed (slow networks reveal what's there). All loads
+    // stay exactly as parallel as before — only the reveal moment moves.
+    // Deliberately NOT gated: the 7k pano hi-res swap (idle-scheduled polish),
+    // the courtyard HDR env-map swap (procedural env shows from frame 0, the
+    // swap is a subtle lighting shift), and distant LOD/instanced vegetation.
+    const revealGates: Promise<unknown>[] = [];
+    let revealBarrierDone = !W3; // non-W3 keeps the legacy first-frame reveal
+    // ══════════════════════════════════════════════════════════════════════
+    // W2 MASTERPLAN — GRONDPLAN v3: "un corpo unico, cresciuto nei secoli"
+    // (owner-APPROVED plan, public/concepts/moodboard.html §3). Replaces the
+    // W1 radial 5-wing windmill with ONE CONTINUOUS ASYMMETRIC CORPS: a high
+    // compact hoofdblok carries the terracotta dome (the hero on world (0,0),
+    // footprint ~7% of total — it rules by HEIGHT, not by ground), from which a
+    // long low galerij grows east, a teruglig-tak folds back to embrace an
+    // irregular cortile, a lower dienstvleugel closes rear-west, and a walled
+    // broncourt-range hangs off the gallery. Seven casa-torri rise from the
+    // knots/corners as a grown hill-town profile; two poorttorens flank the
+    // entrance. The five WINGS[0..4] chapters survive only as invisible interior
+    // anchors — no wing is entered from outside (entrance hall only).
+    //
+    // GROUNDS (Stage 1, BUILT, kept verbatim below): stone apron at the stair,
+    // gravel parterre + four buxus + centre urn on the −Z axis, marble benches,
+    // cypressenlaan up the hill for the 18s dolly. Dome + drum + gold lantern,
+    // the monumental stair + gold tympanum with the owner's name — all kept.
+    //
+    // NEW MASSA / TOWERS / ANCHORS: see the fully-documented block/tower/anchor
+    // tables at the W2 build (`if (W2) {` after the wing loop), with the
+    // collision proof. All new geometry merges per material into a handful of
+    // static meshes; the −Z arrival wedge (±22°) stays mass-free; the ~7.5s
+    // name-beat frames the tympanum between poorttorens T1(−13,−14)/T2(+11,−14).
+    // Flag OFF ⇒ radial W1 legacy, byte-identical.
+    // ══════════════════════════════════════════════════════════════════════
+    // W1 (WS10-2): mount the ONE ambient score — idempotent singleton, plays on
+    // across scene transitions, so deliberately NOT stopped in cleanup.
+    if(W1)mountAmbientMusic();
+    const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(GOLDEN.fogExterior,.0018*dlPreset.fogDensity);
     // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
     // Mobile: 512x256 (4x fewer pixels), Desktop: 2048x1024
     const skyGeo=new THREE.SphereGeometry(500,Q.skyCanvasWidth>=2048?64:24,Q.skyCanvasHeight>=1024?40:16);
@@ -176,16 +269,27 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Procedural sky sphere used as fallback only — hidden when HDRI background loads
     const skySphere=new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide}));
     scene.add(skySphere);
-    // On mobile (no HDRI background), set scene.background to the procedural sky texture.
-    // The sky sphere mesh alone can be clipped by the camera far plane (300) since its
-    // radius (500) exceeds it, causing a black background on Android/mobile.
-    if(!Q.loadBackgroundHDRI){scene.background=skyTex;scene.backgroundIntensity=1.0;skySphere.visible=false;}
+    // UNCONDITIONAL golden sky at mount, every tier (MUSEO VIVO WS1-5/WS9-1):
+    // the procedural sky is the background from the very first frame — the
+    // black void while the 6.5MB HDRI decoded is dead. Where the HDRI still
+    // loads (desktop) it replaces this background asynchronously below.
+    // (The sky sphere mesh alone can be clipped by the camera far plane (300)
+    // since its radius (500) exceeds it — the background texture cannot.)
+    scene.background=skyTex;scene.backgroundIntensity=1.0;
+    if(!Q.loadBackgroundHDRI){skySphere.visible=false;}
 
-    const camera=new THREE.PerspectiveCamera(32,w/h,1.0,300);
+    // Owner feedback 2026-08-06 #6 (z-fighting): near 1.0→2.5 — the dolly/orbit
+    // never comes closer than ~14 world units to any geometry (min camD is 35,
+    // user zoom clamps at 40), and depth precision at the far haze scales with
+    // near, so this alone buys 2.5× depth resolution on the distant planes.
+    // W3: far plane reaches the far-hills ring (~4.5km) — at 300 the real
+    // world stopped ~300m out and the photo band had to carry the midground.
+    const camera=new THREE.PerspectiveCamera(32,w/h,2.5,W3?5200:300);
     let ren:THREE.WebGLRenderer;
     try{ren=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:"high-performance"});}catch{ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"default"});}
     ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,Q.maxPixelRatio));
-    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=2048?THREE.PCFSoftShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.4*dlPreset.exposure;
+    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=2048?THREE.PCFSoftShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.NoToneMapping;ren.toneMappingExposure=EXPOSURE;// grade lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE)
+    ren.setClearColor(CLEAR_COLOR,1);
     ren.outputColorSpace=THREE.SRGBColorSpace;
     ren.domElement.addEventListener("webglcontextlost",(e)=>{e.preventDefault();});
     ren.domElement.addEventListener("webglcontextrestored",()=>{ren.shadowMap.needsUpdate=true;});
@@ -197,13 +301,55 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
     const envMapProc=createExteriorEnvMap(ren,{sunIntensity:0.9*dlPreset.sunIntensity,skyBrightness:0.7*dlPreset.envBrightness/0.45});
     scene.environment=envMapProc;
-    scene.environmentIntensity=0.6;
+    // Owner feedback 2026-08-06 #6A (contrast): under W1 the IBL fill comes down a
+    // step so shadow sides deepen — contrast lives in the light RATIO, never in a
+    // per-scene exposure tweak (the one-grade law stands).
+    const ENV_INT=W1?0.5:0.6, ENV_INT_HDRI=W1?0.55:0.7;
+    scene.environmentIntensity=ENV_INT;
     let envMapHDRI: THREE.Texture|null=null;
     let bgMapHDRI: THREE.Texture|null=null;
-    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_EXTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=0.6;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.7;}}).catch(()=>{});}
-    // Load Rolling Hills HDRI as background panorama — warm sunrise over dry grassy hilltops (Tuscan feel)
-    // Skipped on mobile (6.5 MB) — the procedural sky sphere provides adequate background
-    if(Q.loadBackgroundHDRI){loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});}
+    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_EXTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=ENV_INT;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=ENV_INT_HDRI;}}).catch(()=>{});}
+    // Background panorama — the old tuscan_landscape file is actually an ALPS
+    // village photo (out of context); it stays for !W3.
+    // W3 backdrop = OWNER-SUPPLIED photographic 360 pano (2026-08-12): real
+    // Tuscan summer far-view, golden fields to the horizon. LDR equirect JPG
+    // → TextureLoader + equirect mapping + sRGB, NOT the RGBE loader.
+    // Desktop gets the native 7096x3548 source (needs 8192 texture support,
+    // ~100MB GPU); mobile gets 4096x2048 (owner 2026-08-20: mobile had NO photo
+    // backdrop at all — flat procedural sky = "background not good"; the 1.3MB
+    // static texture is cheap on GPU). Only potato keeps the procedural sky.
+    if(W3&&getGPUTier()!=="potato"){
+      // Core W3 visual — gate on the NATIVE tier, not Q (a governor demotion
+      // flips Q.loadBackgroundHDRI off and the backdrop silently vanished).
+      // Progressive: the 1.2MB 4k shows almost immediately; full desktops
+      // swap in the native 7096px source once it has downloaded + decoded.
+      const setBg=(tex:THREE.Texture)=>{
+        tex.mapping=THREE.EquirectangularReflectionMapping;
+        tex.colorSpace=THREE.SRGBColorSpace;
+        const old=bgMapHDRI;
+        bgMapHDRI=tex;scene.background=tex;scene.backgroundIntensity=1.0;
+        scene.backgroundBlurriness=0;skySphere.visible=false;
+        if(old)old.dispose();
+      };
+      const wantHi=!isMobileQ&&ren.capabilities.maxTextureSize>=8192;
+      let hiLoaded=false;
+      // Reveal gate: the pano swap flips the whole horizon from procedural sky
+      // to the photo backdrop — hold the reveal for the 4k (error ⇒ resolve;
+      // the 7k idle upgrade stays deliberately outside the barrier).
+      revealGates.push(new Promise<void>((resolve)=>{
+        new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_4k.jpg",
+          (tex)=>{if(hiLoaded){tex.dispose();}else{setBg(tex);}resolve();},undefined,()=>resolve());
+      }));
+      if(wantHi){
+        // Launch de-fracture: the multi-MB 7k swap is pure polish — push it past
+        // the GLB/texture burst instead of competing with it on the wire.
+        const loadHi=()=>{new THREE.TextureLoader().load("/textures/hdri/tuscan_pano_photo_7k.jpg",
+          (tex)=>{hiLoaded=true;setBg(tex);},undefined,()=>{});};
+        if(typeof requestIdleCallback==="function")requestIdleCallback(loadHi,{timeout:8000});else setTimeout(loadHi,4000);
+      }
+    } else if(Q.loadBackgroundHDRI&&!W3){
+      loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});
+    }
 
     // ── POST-PROCESSING ──
     // Quality tier from mobilePerf.ts automatically disables SSAO/DOF/Bloom/SMAA on mobile
@@ -225,31 +371,85 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const cropTex=isMobileQ?paintedPlasterTex:loadCropTextures([6,6]);
     const whiteGravelTex=isMobileQ?stoneTex:loadWhiteGravelTextures([4,4]);
     const roadTex=isMobileQ?stoneTex:loadGravelRoadTextures([3,3]);
-    const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,clayPlasterTex,paintedPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex];
+    // WS2-3: real terrain textures. The plaster stand-in terrain is replaced by the
+    // sandstone PBR set (dry Tuscan soil read) on ALL tiers — the terrain is the
+    // largest visible surface in the scene, so it earns an eager 1k set even on mobile.
+    const terrainTex=W1?loadSandstoneTextures([64,64]):null;
+    const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,clayPlasterTex,paintedPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex,...(terrainTex?[terrainTex]:[])];
+    // Reveal gate: the eager PBR sets visibly RETEXTURE the biggest surfaces on
+    // arrival (walls/roofs/terrain flip from flat colour to full maps). The
+    // sets are sync clone-sharing textures (assetLoader loadPBRSet) with no
+    // promise API, but a clone's `version` stays 0 until its base image lands
+    // (cloneTex/finishBaseLoad) — poll that marker. Bounded: ~9s of attempts,
+    // then resolve regardless (the 8s barrier cap fires first anyway).
+    if(W3){
+      const _gateTexes=allTexSets.flatMap((s)=>[s.map,s.normalMap,s.roughnessMap,s.aoMap]);
+      revealGates.push(new Promise<void>((resolve)=>{
+        let _tries=0;
+        const check=()=>{
+          if(_tries++>60||_gateTexes.every((tx)=>tx.version>0))resolve();
+          else setTimeout(check,150);
+        };
+        check();
+      }));
+    }
+    // WS2-1: anisotropic filtering on ground-plane texture sets (4 mobile / 8 desktop,
+    // clamped to hardware max). Grazing-angle floor blur is the most visible cheapness.
+    const aniso=W1?Math.min(isMobileQ?4:8,ren.capabilities.getMaxAnisotropy()):0;
+    if(W1&&aniso>1){
+      for(const set of [terrainTex,whiteGravelTex,roadTex,cropTex,grassTex,groundTex]){
+        if(!set)continue;
+        for(const tex of [set.map,set.normalMap,set.roughnessMap]){tex.anisotropy=aniso;tex.needsUpdate=true;}
+      }
+    }
 
-    // Hover label overlay
-    const hovLabel=document.createElement("div");
-    hovLabel.style.cssText="position:absolute;display:none;pointer-events:none;z-index:10;transform:translate(-50%,-100%);font-family:'Cormorant Garamond',serif;font-size:1.375rem;font-weight:600;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(42,34,24,.5);padding:0.5rem 1.25rem;background:rgba(42,34,24,0.85);border-radius:0.75rem;backdrop-filter:blur(6px);white-space:nowrap;border:1px solid rgba(255,255,255,.2);";
-    el.appendChild(hovLabel);
+    // Hover label overlay — W2 (WS3-6/WS3-10): the hover-only Cormorant label
+    // and its per-frame screen projection are dead; the persistent Fraunces
+    // travertine signposts below replace it (dogma 7: all 3D type Fraunces).
+    const hovLabel: HTMLDivElement|null=W2?null:document.createElement("div");
+    if(hovLabel){
+      hovLabel.style.cssText="position:absolute;display:none;pointer-events:none;z-index:10;transform:translate(-50%,-100%);font-family:'Cormorant Garamond',serif;font-size:1.375rem;font-weight:600;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(42,34,24,.5);padding:0.5rem 1.25rem;background:rgba(42,34,24,0.85);border-radius:0.75rem;backdrop-filter:blur(6px);white-space:nowrap;border:1px solid rgba(255,255,255,.2);";
+      el.appendChild(hovLabel);
+    }
+    // W2 (WS3-10 dolly): cream veil for the reduced-motion stills crossfade (lazy)
+    let rmVeil: HTMLDivElement|null=null;
+    const ensureRmVeil=()=>{
+      if(!rmVeil){
+        rmVeil=document.createElement("div");
+        rmVeil.style.cssText=`position:absolute;inset:0;background:${CLEAR_COLOR};opacity:0;pointer-events:none;z-index:5;`;
+        el.appendChild(rmVeil);
+      }
+      return rmVeil;
+    };
 
     // Dramatic golden-hour lighting
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#8A7858",0.6*dlPreset.ambientIntensity/0.5));
-    const sun=new THREE.DirectionalLight(dlPreset.sunColor,3.2*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
+    // ══ Owner feedback 2026-08-06 #6A — CONTRAST, inside the one-grade law ══
+    // The grade (NeutralToneMapping @ canon EXPOSURE in the shared EffectPass)
+    // is untouched. Contrast comes from the light RATIO instead: sun up ~35%,
+    // hemisphere/fill/bounce down ~45%, and a tighter shadow frustum (sharper
+    // shadow texels over the palace instead of a 160m blur). Lit faces stay
+    // golden; shadow sides finally fall away — the palace reads sculptural
+    // against the sky instead of bathing evenly in gold. W1-gated (staging
+    // iteration inside the wave); flag OFF keeps the legacy balance.
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,dlPreset.groundBounceColor,(W1?0.36:0.6)*dlPreset.ambientIntensity/0.5));
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,(W1?4.4:3.2)*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
+    const shadowExt=W1?58:80; // W1: frustum hugs palace+wings+courtyard — crisper, deeper shadows
     sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
-    sun.shadow.camera.left=-80;sun.shadow.camera.right=80;sun.shadow.camera.top=80;sun.shadow.camera.bottom=-80;sun.shadow.bias=-0.0003;scene.add(sun);
-    const fill=new THREE.DirectionalLight(dlPreset.fillColor,0.4*dlPreset.fillIntensity/0.35);fill.position.set(-25,20,-15);scene.add(fill);
-    if(!isMobileGPU()){const rim=new THREE.DirectionalLight(dlPreset.sunColor,0.8*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);}
-    // Warm uplight for drama
-    if(!isMobileGPU()){const uplight=new THREE.PointLight(dlPreset.fillColor,.4*dlPreset.fillIntensity/0.35,80);uplight.position.set(0,2,0);scene.add(uplight);}
+    sun.shadow.camera.left=-shadowExt;sun.shadow.camera.right=shadowExt;sun.shadow.camera.top=shadowExt;sun.shadow.camera.bottom=-shadowExt;sun.shadow.bias=-0.0003;scene.add(sun);
+    const fill=new THREE.DirectionalLight(dlPreset.fillColor,(W1?0.22:0.4)*dlPreset.fillIntensity/0.35);fill.position.set(-25,20,-15);scene.add(fill);
+    // Rim slightly up under W1: golden-hour edge on the dome/cornice silhouette
+    if(!isMobileGPU()){const rim=new THREE.DirectionalLight(dlPreset.sunColor,(W1?1.0:0.8)*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);}
+    // Warm uplight for drama — W1: halved so courtyard-facing shadow walls stay dim
+    if(!isMobileGPU()){const uplight=new THREE.PointLight(dlPreset.fillColor,(W1?.18:.4)*dlPreset.fillIntensity/0.35,80);uplight.position.set(0,2,0);scene.add(uplight);}
     if(!isMobileGPU()){const porticoWarm=new THREE.SpotLight("#FFE0A0",0.3,60,Math.PI*0.3);porticoWarm.position.set(0,2,-20);porticoWarm.target.position.set(0,5,0);scene.add(porticoWarm);scene.add(porticoWarm.target);}
 
     const M={
-      // ── WALLS — warm golden Tuscan ochre stucco with subtle plaster normalMap
-      stone:new THREE.MeshStandardMaterial({color:"#FFDD78",roughness:.72,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.9,.9),roughnessMap:clayPlasterTex.roughnessMap}),
-      stoneL:new THREE.MeshStandardMaterial({color:"#FFE898",roughness:.65,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.8,.8),roughnessMap:clayPlasterTex.roughnessMap}),
-      stoneW:new THREE.MeshStandardMaterial({color:"#FFD468",roughness:.70,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
-      stoneD:new THREE.MeshStandardMaterial({color:"#FFCC58",roughness:.75,metalness:0,envMapIntensity:.6,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
-      stoneDk:new THREE.MeshStandardMaterial({color:"#D8B050",roughness:.82,metalness:0,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(1,1),roughnessMap:clayPlasterTex.roughnessMap}),
+      // ── WALLS — sun-bleached canon plaster (MUSEO VIVO: honey comes from the sun, not albedo)
+      stone:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.base,roughness:.72,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.9,.9),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneL:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.light,roughness:.65,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.8,.8),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneW:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.mid,roughness:.70,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneD:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.shade,roughness:.75,metalness:0,envMapIntensity:.6,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneDk:new THREE.MeshStandardMaterial({color:PLASTER_RAMP.dark,roughness:.82,metalness:0,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(1,1),roughnessMap:clayPlasterTex.roughnessMap}),
       // ── TRIM — pietra serena (cool blue-grey sandstone) & aged gold
       trim:new THREE.MeshStandardMaterial({color:"#EDE4D4",roughness:.60,metalness:0,envMapIntensity:.6,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
       gold:mkPhys(THREE,{color:"#B8973A",roughness:.35,metalness:.92,emissive:"#3D3010",emissiveIntensity:.08,clearcoat:.15,clearcoatRoughness:.4,envMapIntensity:1.0}),
@@ -290,6 +490,47 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       barkD:new THREE.MeshStandardMaterial({color:"#5A4428",roughness:.72,normalMap:woodDoorTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       ivy:new THREE.MeshStandardMaterial({color:"#3A6030",roughness:.8}),
     };
+
+    // ══ MUSEO VIVO WS3-4 — material/emissive/envMap retune for Neutral@1.15 ══
+    // Every value below was tuned for ACESFilmic@2.4; under the Neutral grade the
+    // scene reads dimmer and flatter, so envMapIntensity lifts recover the sun-
+    // bleached warmth while emissives come DOWN (no neon under the honest grade).
+    // Hues anchor to canon.ts tokens or restrained earth tones — teal/verdigris die.
+    if(W1){
+      // Walls already on PLASTER_RAMP (atomic commit) — lift env response so plaster catches the golden PMREM
+      M.stone.envMapIntensity=.85;M.stoneL.envMapIntensity=.85;M.stoneW.envMapIntensity=.85;M.stoneD.envMapIntensity=.8;
+      // Gold: canon #D4AF37, calmer emissive/clearcoat — gold may gleam, never glow
+      M.gold.color.set(GOLD);M.gold.emissiveIntensity=.05;
+      M.goldBright.color.set(GOLD);M.goldBright.emissiveIntensity=.06;M.goldBright.envMapIntensity=1.1;
+      // Copper was teal (#5A9A80) — off-canon; retone to aged bronze
+      M.copper.color.set("#8A6B4E");M.copper.emissive.set("#2A2014");M.copper.emissiveIntensity=.04;M.copper.metalness=.5;
+      // Terracotta roofs — warmer, sun-struck, catching more sky
+      M.roof.color.set("#B08262");M.roof.envMapIntensity=.5;
+      M.roofD.color.set("#8C6F5C");M.roofD.envMapIntensity=.35;
+      M.roofSlate.color.set("#8A7A66");M.roofSlate.metalness=.1;
+      // Owner r7 #1: roofs read too shiny + too white — darken the coppo to a muted
+      // aged terracotta and kill the specular (envMap 1.0→.22, rougher).
+      M.tile.color.set("#96684A");M.tile.envMapIntensity=.22;M.tile.roughness=.9;
+      M.roof.color.set("#9A6B50");M.roof.envMapIntensity=.22;
+      // Owner r7 #1: the palace reads too white/shiny overall — warm-down the near-
+      // white travertine trim + marble and drop their specular so the stone reads matte.
+      M.trim.color.set("#DBCDB0");M.trim.envMapIntensity=.3;M.trim.roughness=.72;
+      M.marble.color.set("#D6CBB4");M.marble.envMapIntensity=.14;M.marble.roughness=.66;
+      M.marbleVein.color.set("#CEC3AC");M.marbleVein.envMapIntensity=.14;
+      M.col.roughness=.62;
+      // Windows: warm glass, emissive down .25→.16 so panes never bloom at 1.15
+      M.win.emissive.set("#FFC488");M.win.emissiveIntensity=.16;
+      M.winBlue.color.set("#F2ECDC");M.winBlue.emissive.set("#FFD8A0");M.winBlue.emissiveIntensity=.06;
+      // Doors: lift from near-black walnut so they read as wood at golden hour (60+ eyes)
+      M.door.color.set("#6B4526");M.doorRich.color.set("#7A4E2C");
+      // Water: kill the teal — hazy golden-sky reflection tones
+      M.water.color.set("#8C9884");M.waterDeep.color.set("#76806C");
+      // Vegetation: cool greens → sun-dried olive family
+      M.grass.color.set("#7A7E48");M.grassL.color.set("#8A8C54");M.grassD.color.set("#6A7040");M.grassRich.color.set("#6E7242");
+      M.hedge.color.set("#44502E");M.hedgeL.color.set("#525E38");M.ivy.color.set("#4E5C38");
+      // Travertine columns — modest golden env (owner r7 #1: dial back the shine)
+      M.col.envMapIntensity=.5;
+    }
 
     // Helper to build a tower with conical roof
     const buildTower=(parent: THREE.Group|THREE.Object3D,x: number,z: number,radius: number,height: number,roofH: number,mat: THREE.Material,roofMat: THREE.Material)=>{
@@ -344,33 +585,321 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── TERRAIN — Continuous rolling Tuscan hills (single displaced mesh) ──
     const HILL_Y = 8; // Palace hill elevation
-    const terrain = createTuscanTerrain(scene, {
-      cropMap: cropTex.map, cropNormal: cropTex.normalMap, cropRoughness: cropTex.roughnessMap,
-    });
-    // Cobblestone courtyard — completely matte to avoid specular glare
-    const courtyardMat = new THREE.MeshStandardMaterial({ color: "#C8B898", roughness: 0.92, metalness: 0, map: groundTex.map, normalMap: groundTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3), roughnessMap: groundTex.roughnessMap });
-    const cyGeo = new THREE.CircleGeometry(39, 64);
-    cyGeo.rotateX(-Math.PI / 2);
-    const cyMesh = new THREE.Mesh(cyGeo, courtyardMat);
-    cyMesh.position.y = HILL_Y + 0.35;
-    cyMesh.receiveShadow = true;
-    scene.add(cyMesh);
-    // Decorative courtyard rings — cobblestone pattern
-    scene.add(mk(new THREE.TorusGeometry(28,.12,8,48),M.stoneD,0,HILL_Y+.42,0));
-    scene.add(mk(new THREE.TorusGeometry(20,.08,4,48),M.stoneD,0,HILL_Y+.38,0));
-    scene.add(mk(new THREE.TorusGeometry(14,.06,4,36),M.stoneD,0,HILL_Y+.38,0));
-    // Compass rose / medallion at courtyard centre
-    const medallion = new THREE.Mesh(new THREE.CircleGeometry(2,16),M.goldBright);
-    medallion.rotation.x = -Math.PI/2;
-    medallion.position.set(0,HILL_Y+0.4,0);
-    scene.add(medallion);
+    const terrain = W1
+      ? createTuscanTerrain(scene, {
+          cropMap: terrainTex!.map, cropNormal: terrainTex!.normalMap, cropRoughness: terrainTex!.roughnessMap, cropAO: terrainTex!.aoMap,
+        }, { anisotropy: aniso, warm: true, bright: W3 })
+      : createTuscanTerrain(scene, {
+          cropMap: cropTex.map, cropNormal: cropTex.normalMap, cropRoughness: cropTex.roughnessMap,
+        }, { bright: W3 });
+    // Cobblestone courtyard — completely matte to avoid specular glare.
+    // W1: real sandstone maps (WS2-3) instead of the tinted plaster stand-in.
+    const courtyardGroundTex = W1 ? terrainTex! : groundTex;
+    const courtyardMat = new THREE.MeshStandardMaterial({ color: W1 ? "#CDBC9A" : "#C8B898", roughness: 0.92, metalness: 0, map: courtyardGroundTex.map, normalMap: courtyardGroundTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3), roughnessMap: courtyardGroundTex.roughnessMap });
+    if (!W2) {
+      const cyGeo = new THREE.CircleGeometry(39, 64);
+      cyGeo.rotateX(-Math.PI / 2);
+      const cyMesh = new THREE.Mesh(cyGeo, courtyardMat);
+      cyMesh.position.y = HILL_Y + 0.35;
+      cyMesh.receiveShadow = true;
+      scene.add(cyMesh);
+      // Decorative courtyard rings — cobblestone pattern (legacy only: under the
+      // W2 masterplan the whole "target-disc" hardscape is retired below)
+      for(const [rr,tube,rSeg,ry] of [[28,.12,8,.42],[20,.08,4,.38],[14,.06,4,.38]] as [number,number,number,number][]){
+        const ring=mk(new THREE.TorusGeometry(rr,tube,rSeg,rr===14?36:48),M.stoneD,0,HILL_Y+ry,0);
+        scene.add(ring);
+      }
+      // Compass rose / medallion at courtyard centre
+      // W1: gold is reserved for entrance/tympanum (canon dogma) — medallion reads as pale travertine inlay
+      const medallion = new THREE.Mesh(new THREE.CircleGeometry(2,16),W1?M.trim:M.goldBright);
+      medallion.rotation.x = -Math.PI/2;
+      medallion.position.set(0,HILL_Y+0.4,0);
+      scene.add(medallion);
+    } else {
+      // ══ W2 MASTERPLAN GROUNDS — the circle disc dies ══
+      // Paving lives ONLY around the stair: a rectangular stone apron under the
+      // stair foot / urn plinths / signpost. South of it the formal parterre
+      // rides a low gravel garden terrace (its 1.6-deep body walls down to the
+      // falling ground at the far corners, so the garden itself reads terraced).
+      // Everything else is terrain, grass and planting. All shared/canon
+      // materials, receive-only shadows, deterministic literals.
+      // Stone apron — courtyardMat (sandstone under W1), top 8.42, sunk 0.5
+      const apron = mk(new THREE.BoxGeometry(26, 0.5, 7.5), courtyardMat, 0, HILL_Y + 0.17, -19.75);
+      apron.castShadow = false; scene.add(apron);
+      // W3 (owner): the pale pad around the palace read as a blank WHITE
+      // plane — pave it with procedural travertine TILES (canvas texture:
+      // per-tile tonal variation, darker joints, faint diagonal veins).
+      // Top 8.20 clears the terrain micro-noise (max ~8.13) and steps below
+      // the apron (8.42) / parterre carpet (8.36). Disposed via the scene
+      // material traversal (extraDisposables is declared further down).
+      if (W3) {
+        const tc = document.createElement("canvas"); tc.width = 512; tc.height = 512;
+        const ctx2 = tc.getContext("2d");
+        if (ctx2) {
+          const T = 8, S = 512 / T;
+          for (let ty = 0; ty < T; ty++) for (let tx = 0; tx < T; tx++) {
+            const h2 = Math.sin(tx * 127.1 + ty * 311.7) * 43758.5453;
+            const v2 = Math.floor((h2 - Math.floor(h2)) * 16 - 8);
+            ctx2.fillStyle = `rgb(${232 + v2},${224 + v2},${205 + v2})`;
+            ctx2.fillRect(tx * S, ty * S, S, S);
+            ctx2.strokeStyle = "rgba(180,168,145,0.2)"; ctx2.lineWidth = 1;
+            for (let vn = 0; vn < 3; vn++) {
+              const h3 = Math.sin((tx * 3 + ty * 7 + vn) * 91.7) * 4375.5;
+              const o = (h3 - Math.floor(h3)) * S;
+              ctx2.beginPath(); ctx2.moveTo(tx * S + o, ty * S); ctx2.lineTo(tx * S + o - S * 0.35, ty * S + S); ctx2.stroke();
+            }
+          }
+          ctx2.strokeStyle = "#C6BBA0"; ctx2.lineWidth = 2;
+          for (let i = 0; i <= T; i++) {
+            ctx2.beginPath(); ctx2.moveTo(i * S, 0); ctx2.lineTo(i * S, 512); ctx2.stroke();
+            ctx2.beginPath(); ctx2.moveTo(0, i * S); ctx2.lineTo(512, i * S); ctx2.stroke();
+          }
+        }
+        const tileTex = new THREE.CanvasTexture(tc);
+        tileTex.wrapS = tileTex.wrapT = THREE.RepeatWrapping;
+        tileTex.repeat.set(9, 7);        // ≈13 world units per tile — monumental slabs, soft joints (owner: "te kunstmatig")
+        tileTex.anisotropy = aniso || 4;
+        tileTex.colorSpace = THREE.SRGBColorSpace;
+        const paveMat = new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.9, envMapIntensity: 0.15 });
+        const pave = mk(new THREE.BoxGeometry(116, 0.5, 88), paveMat, 2, HILL_Y - 0.05, -2);
+        pave.castShadow = false; pave.receiveShadow = true; scene.add(pave);
+        // Apron step (level 2): its own DARKER rustic tile so the step reads
+        // as a distinct material against the pale plein (owner) — same canvas,
+        // smaller tiles, warm earthy multiplier.
+        const aprTex = tileTex.clone();
+        aprTex.repeat.set(10, 3);
+        aprTex.needsUpdate = true;
+        const aprMat = new THREE.MeshStandardMaterial({ map: aprTex, roughness: 0.94, envMapIntensity: 0.1, color: new THREE.Color(0.80, 0.72, 0.60) });
+        apron.material = aprMat;
+      }
+      // Parterre garden terrace — warm gravel carpet x ±17, z -23.25..-46.85.
+      // Overlaps the apron 0.25 in z (stepped tops 8.42→8.36, never coplanar).
+      const parterreGravelMat = new THREE.MeshStandardMaterial({
+        color: "#D9CCAC", roughness: .94, envMapIntensity: .12,
+        map: whiteGravelTex.map, normalMap: whiteGravelTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
+        roughnessMap: whiteGravelTex.roughnessMap, aoMap: whiteGravelTex.aoMap, aoMapIntensity: .3,
+      });
+      // W3: warm sandy gravel, clearly DARKER than the travertine pave — when
+      // this carpet was lifted to white it fused visually with the marble and
+      // the box compartments read as beds sitting ON the marble (owner:
+      // "perkjes overlappen met marmer"). The garden terrace must read as its
+      // own gravel ground against the pale stone plein.
+      if (W3) { parterreGravelMat.color.setRGB(1.04, 0.97, 0.80); parterreGravelMat.aoMapIntensity = 0.3; }
+      // W3: the carpet no longer abuts the raised apron — a 1.7-wide strip of
+      // travertine pave shows between apron (level 2) and garden terrace, so
+      // the north beds can never read as overlapping the marble step (owner).
+      const carpet = mk(new THREE.BoxGeometry(34, 1.6, W3 ? 20.4 : 23.6), parterreGravelMat, 0, HILL_Y - 0.44, W3 ? -36.6 : -35.05);
+      carpet.castShadow = false; scene.add(carpet);
+      // ══ Owner review 2026-08-08 r6 #5 — the forecourt must read as a real
+      // giardino all'italiana, not flat green panels ("de tuin is te knullig").
+      // Four box-parterre compartments: a clipped-hedge broderie enclosing four
+      // coloured flower beds, corner topiary balls + a central topiary cone, on a
+      // gravel bed; potted lemon trees line the walks and a stone fountain sits on
+      // the cross-axis. Everything merges per material → a handful of draw calls.
+      {
+        // Owner r7 #2: keep the forecourt SOBER — clipped-green box parterre on
+        // gravel, muted santolina/sage infill (no bright flower blocks), green
+        // potted bays (no yellow lemons). Restrained giardino, not a flower show.
+        const sageMat = new THREE.MeshStandardMaterial({ color: "#7E8A5E", roughness: 0.88 });
+        const santoMat = new THREE.MeshStandardMaterial({ color: "#94997A", roughness: 0.9 });
+        const gHedge: THREE.BufferGeometry[] = [], gBed: THREE.BufferGeometry[] = [],
+              gTopi: THREE.BufferGeometry[] = [], gSage: THREE.BufferGeometry[] = [],
+              gSanto: THREE.BufferGeometry[] = [];
+        const B = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number) =>
+          arr.push(new THREE.BoxGeometry(w, h, d).translate(x, y, z));
+        const y0 = HILL_Y + 0.42;
+        // W3: whole parterre shifted south — from the owner's high camera the
+        // 0.6-tall hedges projected onto the apron step; north row now sits
+        // 4.7 clear of it (owner asked twice for more separation)
+        const nz = W3 ? -32.2 : -29, sz2 = W3 ? -42.2 : -41;
+        for (const [px, pz] of [[-11.5, nz], [11.5, nz], [-11.5, sz2], [11.5, sz2]] as [number, number][]) {
+          B(gBed, 8.2, 0.14, 8.0, px, y0, pz);                                           // gravel bed
+          for (const s of [-1, 1]) { B(gHedge, 8.2, 0.6, 0.5, px, y0 + 0.3, pz + s * 3.75); B(gHedge, 0.5, 0.6, 8.0, px + s * 3.85, y0 + 0.3, pz); } // clipped border
+          B(gHedge, 7.0, 0.44, 0.34, px, y0 + 0.24, pz); B(gHedge, 0.34, 0.44, 7.0, px, y0 + 0.24, pz); // broderie cross
+          const fm = [gSage, gSanto, gSanto, gSage]; let qi = 0;
+          for (const sz of [-1, 1]) for (const sx of [-1, 1]) B(fm[qi++], 2.5, 0.16, 2.5, px + sx * 1.9, y0 + 0.11, pz + sz * 1.9); // low muted infill
+          for (const sz of [-1, 1]) for (const sx of [-1, 1]) gTopi.push(new THREE.SphereGeometry(0.46, 8, 6).translate(px + sx * 3.4, y0 + 0.55, pz + sz * 3.4)); // corner topiary
+          gTopi.push(new THREE.ConeGeometry(0.62, 2.1, 8).translate(px, y0 + 1.15, pz)); // central cone
+        }
+        ([[gBed, parterreGravelMat], [gHedge, M.hedge], [gTopi, M.hedgeL], [gSage, sageMat], [gSanto, santoMat]] as [THREE.BufferGeometry[], THREE.Material][])
+          .forEach(([geos, mat]) => { if (!geos.length) return; const m = mergeGeometries(geos); geos.forEach(g => g.dispose()); if (m) { const mesh = new THREE.Mesh(m, mat); mesh.receiveShadow = true; mesh.castShadow = true; scene.add(mesh); } });
+        // Potted clipped bays along the walks (terracotta pot + green ball) — a
+        // sober pair flanking the cross-axis, not a row of fruit trees.
+        // W3: at ±18 the pots stood just OFF the gravel carpet (x±17) on the
+        // travertine pad ("perkje overlapt met de marmer") — moved onto the
+        // carpet's cross-walk at ±16.
+        for (const [lx, lz] of (W3 ? [[-16, -37.3], [16, -37.3]] : [[-18, -35], [18, -35]]) as [number, number][]) {
+          scene.add(mk(new THREE.CylinderGeometry(0.6, 0.42, 1.0, 10), M.tile, lx, HILL_Y + 0.9, lz));
+          scene.add(mk(new THREE.CylinderGeometry(0.66, 0.6, 0.18, 10), M.trim, lx, HILL_Y + 1.42, lz));
+          const ball = mk(new THREE.SphereGeometry(1.0, 10, 8), M.hedge, lx, HILL_Y + 2.45, lz); ball.castShadow = true; scene.add(ball);
+        }
+        // Stone fountain on the cross-axis (0,-35): water disc always; the stone
+        // structure is procedural under !W3, and replaced under W3 by a modeled
+        // CC-BY fountain GLB (yorre.detavernier) for a richer cortile centrepiece.
+        const fountainWater = new THREE.MeshStandardMaterial({ color: "#5E7E86", roughness: 0.24, metalness: 0.1, transparent: true, opacity: 0.85, envMapIntensity: 0.6 });
+        if (!W3) {
+          scene.add(mk(new THREE.CylinderGeometry(2.7, 2.7, 0.45, 20), fountainWater, 0, HILL_Y + 0.62, -35)); // water (W3 model brings its own)
+          scene.add(mk(new THREE.CylinderGeometry(3.1, 3.3, 0.8, 20), M.trim, 0, HILL_Y + 0.4, -35));        // basin wall
+          scene.add(mk(new THREE.CylinderGeometry(0.5, 0.75, 1.3, 12), M.trim, 0, HILL_Y + 1.1, -35));       // pedestal
+          scene.add(mk(new THREE.CylinderGeometry(1.3, 0.5, 0.35, 16), M.trim, 0, HILL_Y + 1.85, -35));      // upper tazza
+          scene.add(mk(new THREE.CylinderGeometry(0.18, 0.28, 0.7, 10), M.trim, 0, HILL_Y + 2.3, -35));      // stem
+          scene.add(mk(new THREE.SphereGeometry(0.26, 10, 8), M.bronze, 0, HILL_Y + 2.75, -35));             // finial
+        }
+      }
+      // Two marble benches on the cross path (gap between hedge rows; W3 walk
+      // moved with the shifted north row)
+      const benchZ = W3 ? -37.3 : -35;
+      for (const bx of [-13, 13]) {
+        scene.add(mk(new THREE.BoxGeometry(2.5, 0.06, 1), M.marble, bx, HILL_Y + 0.71, benchZ));
+        scene.add(mk(new THREE.BoxGeometry(2.5, 0.35, 0.7), M.marbleVein, bx, HILL_Y + 0.52, benchZ));
+        for (const s of [-0.9, 0.9]) scene.add(mk(new THREE.BoxGeometry(0.4, 0.35, 0.7), M.stoneD, bx + s, HILL_Y + 0.5, benchZ));
+      }
+
+      // ══ Owner review 2026-08-07 #4 (MOST IMPORTANT) — BUILT ON A HILL, TERRACED ══
+      // A monumental cascade of garden terraces descends the slope in front of the
+      // palace. The parterre forecourt is retained as terrace 1; below it two more
+      // balustraded terraces step DOWN the hillside, linked by a grand central
+      // stair on the −Z axis. Big retained bodies bury into the falling terrain so
+      // the whole palace reads as a hilltop villa on multiple levels. All merged.
+      {
+        const gPave: THREE.BufferGeometry[] = [], gWallR: THREE.BufferGeometry[] = [],
+              gTrimR: THREE.BufferGeometry[] = [], gGrassR: THREE.BufferGeometry[] = [];
+        // W3 exterior: instead of merging ~311 crude 8-gon cylinder balusters into
+        // gTrimR (flat, and un-replaceable), collect their world centres here and
+        // draw them as ONE InstancedMesh of a properly turned lathe baluster — one
+        // draw call, shared geometry, GPU-tier radial LOD. !W3 keeps the cylinders.
+        const baluInst: { x: number; y: number; z: number }[] = [];
+        const B = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number) =>
+          arr.push(new THREE.BoxGeometry(w, h, d).translate(x, y, z));
+        // Rusticated retaining-wall face (proud ashlar courses) on a downhill edge.
+        const retainX = (halfX: number, z: number, yTop: number, drop: number) => {
+          B(gWallR, halfX * 2 + 0.4, drop + 0.6, 1.2, 0, yTop - drop / 2, z);       // wall body
+          for (let ry = yTop - 0.3; ry > yTop - drop; ry -= 0.9)
+            B(gTrimR, halfX * 2 + 0.7, 0.5, 0.4, 0, ry, z - 0.55);                  // proud courses
+        };
+        // Balustrade along X at (z), coping at yTop; central gap for the stair.
+        const baluX = (halfX: number, z: number, yTop: number, gap: boolean) => {
+          B(gTrimR, halfX * 2, 0.28, 0.7, 0, yTop + 0.15, z);                        // plinth rail
+          B(gTrimR, halfX * 2, 0.24, 0.85, 0, yTop + 1.5, z);                        // coping
+          for (let bx = -halfX + 0.7; bx <= halfX - 0.7; bx += 0.9) {
+            if (gap && Math.abs(bx) < 7) continue;
+            if (W3) baluInst.push({ x: bx, y: yTop + 0.85, z });
+            else gTrimR.push(new THREE.CylinderGeometry(0.17, 0.21, 1.1, 8).translate(bx, yTop + 0.85, z));
+          }
+        };
+        const baluZ = (x: number, z0: number, z1: number, yTop: number) => {
+          B(gTrimR, 0.7, 0.28, z1 - z0, x, yTop + 0.15, (z0 + z1) / 2);
+          B(gTrimR, 0.85, 0.24, z1 - z0, x, yTop + 1.5, (z0 + z1) / 2);
+          for (let bz = z0 + 0.7; bz <= z1 - 0.7; bz += 0.9) {
+            if (W3) baluInst.push({ x, y: yTop + 0.85, z: bz });
+            else gTrimR.push(new THREE.CylinderGeometry(0.17, 0.21, 1.1, 8).translate(x, yTop + 0.85, bz));
+          }
+        };
+        // Terrace 1 = the parterre forecourt (top ≈ HILL_Y+0.3): retain its front
+        // (z −47) and flanks so it reads as a raised terrace, not flat ground.
+        const t1 = HILL_Y + 0.3;
+        if (W3) {
+          // ── CENTRAL OPENING (owner: the road must reach the entrance) ──
+          // The front retaining wall + rails split into two halves around a
+          // 9.6-wide gateway on the axis; a dusty ramp carries the road up
+          // through it onto the forecourt. Balusters flank the opening.
+          const GAP = 4.8, half = (40 - GAP) / 2;
+          for (const side of [-1, 1]) {
+            const cx = side * (GAP + half);
+            B(gWallR, half * 2, 3.8, 1.2, cx, t1 - 1.6, -47);                    // retaining wall half
+            for (let ry = t1 - 0.3; ry > t1 - 3.2; ry -= 0.9) B(gTrimR, half * 2 + 0.3, 0.5, 0.4, cx, ry, -47.55); // proud courses
+            B(gTrimR, half * 2, 0.28, 0.7, cx, t1 + 0.15, -47);                  // plinth rail
+            B(gTrimR, half * 2, 0.24, 0.85, cx, t1 + 1.5, -47);                  // coping
+            // gate piers framing the opening
+            B(gTrimR, 1.0, 2.4, 1.0, side * (GAP + 0.5), t1 + 1.0, -47);
+            for (let bx = side * (GAP + 1.6); Math.abs(bx) <= 39.3; bx += side * 0.9) baluInst.push({ x: bx, y: t1 + 0.85, z: -47 });
+          }
+          // dusty ramp: road level (z −55.5) → forecourt deck (z −45.8)
+          {
+            const rampMat = M.trim; // shared pale travertine — reads as the dusty road continuing up
+            const segs = 10, pos: number[] = [], nrm: number[] = [], idx: number[] = [];
+            for (let i = 0; i <= segs; i++) {
+              const u = i / segs, z = -55.5 + u * 9.7;
+              const yLow = getHeightAt(0, -55.5) + 1.25, s = u * u * (3 - 2 * u); // matches the causeway height where they meet
+              const y = yLow + (t1 + 0.16 - yLow) * s;
+              pos.push(-3.6, y, z, 3.6, y, z); nrm.push(0, 1, 0, 0, 1, 0);
+              if (i < segs) { const b = i * 2; idx.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); } // wound UP (see road ribbon)
+            }
+            const rg = new THREE.BufferGeometry();
+            rg.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+            rg.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
+            rg.setIndex(idx);
+            const rm2 = new THREE.Mesh(rg, rampMat); rm2.receiveShadow = false; scene.add(rm2); // same clean sunlit read as the road
+          }
+        } else {
+          retainX(40, -47, t1, 3.2); baluX(40, -47, t1, true);
+        }
+        for (const sx of [-1, 1]) { B(gWallR, 1.2, 3.8, 31, sx * 40, t1 - 1.9, -31.5); baluZ(sx * 40, -47, -16, t1); }
+        // Terraces 2 & 3 + the grand central stair — the formal stepped descent.
+        // W3 (owner): drop them — the approach is a plain dusty road up the hill,
+        // no extra terraces and no steps. !W3 keeps the full cascade.
+        if (!W3) {
+          const terr: [number, number, number, number][] = [
+            [HILL_Y - 3.0, -63, -47, 34], // T2
+            [HILL_Y - 6.4, -79, -63, 28], // T3
+          ];
+          for (const [topY, zF, zB, hx] of terr) {
+            const dep = zB - zF;
+            B(gPave, hx * 2, 0.5, dep, 0, topY + 0.2, (zF + zB) / 2);         // paving deck
+            B(gWallR, hx * 2, 14, dep, 0, topY - 7, (zF + zB) / 2);           // massive retained body (buried)
+            retainX(hx, zF, topY, 3.4);
+            baluX(hx, zF, topY, true);
+            for (const sx of [-1, 1]) baluZ(sx * hx, zF, zB, topY);
+            for (const sx of [-1, 1]) B(gGrassR, hx - 7, 0.16, dep - 5, sx * (hx * 0.48), topY + 0.46, (zF + zB) / 2);
+          }
+          // GRAND CENTRAL STAIR — cascades T1 → T2 → T3 on the −Z axis.
+          { let y = t1 - 0.1, z = -47.4; for (let s = 0; s < 34; s++) { B(gPave, 13, 0.34, 1.3, 0, y, z); y -= 0.30; z -= 1.15; } }
+        }
+        ([[gPave, courtyardMat, false], [gWallR, M.stoneD, true], [gTrimR, M.trim, true], [gGrassR, M.grassRich, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
+          .forEach(([geos, mat, sh]) => {
+            if (!geos.length) return;
+            const m = mergeGeometries(geos); geos.forEach(g => g.dispose());
+            if (!m) return;
+            const mesh = new THREE.Mesh(m, mat); mesh.castShadow = sh; mesh.receiveShadow = true; scene.add(mesh);
+          });
+        // W3 turned balusters — one InstancedMesh for all terrace runs.
+        if (W3 && baluInst.length) {
+          const seg = isMobileQ ? 6 : 10;                       // radial LOD by GPU tier
+          // Classical turned profile (radius,height) over a 1.1-tall baluster:
+          // capped foot → lower vase belly → neck → upper vase → capped top.
+          const P = (y: number, r: number) => new THREE.Vector2(r, y);
+          const prof = [
+            P(0.00, 0.00), P(0.00, 0.20), P(0.06, 0.20), P(0.10, 0.15),   // foot
+            P(0.17, 0.19), P(0.25, 0.215), P(0.33, 0.185), P(0.42, 0.125), // lower vase
+            P(0.52, 0.095),                                                 // neck
+            P(0.60, 0.115), P(0.70, 0.155), P(0.78, 0.135), P(0.86, 0.10),  // upper vase
+            P(0.95, 0.115), P(1.00, 0.19), P(1.06, 0.19), P(1.10, 0.00),    // top
+          ];
+          const baluGeo = new THREE.LatheGeometry(prof, seg).translate(0, -0.55, 0); // centre on origin → place at yTop+0.85
+          const im = new THREE.InstancedMesh(baluGeo, M.trim, baluInst.length);
+          im.castShadow = true; im.receiveShadow = true;
+          const m4 = new THREE.Matrix4();
+          baluInst.forEach((p, i) => { m4.makeTranslation(p.x, p.y, p.z); im.setMatrixAt(i, m4); });
+          im.instanceMatrix.needsUpdate = true;
+          scene.add(im);
+        }
+      }
+    }
 
     const palace=new THREE.Group(),clickTargets: THREE.Mesh[]=[];
+    // Owner feedback 2026-08-06 #6B: under W2 the exterior is no longer a click-hub.
+    // Wing hit-boxes move OUT of the raycast list into these anchors — they still
+    // feed targetWorldPos (walkthrough highlightDoor light keeps working) but no
+    // click target fires onRoomClick for a wing anymore; wings are reached through
+    // the entrance hall. The onRoomClick/onRoomHover props and contracts are unchanged.
+    const wingAnchors: THREE.Mesh[]=[];
     palace.position.y=HILL_Y+0.3; // Elevate palace slightly above terrain to prevent clipping
     // Track each section group for split/lift animation: {group, id, targetY, currentY, meshes}
     const sectionGroups: {group:THREE.Group,id:string,targetY:number,currentY:number,meshes:THREE.Mesh[],accent:string}[]=[];
 
-    const isRenaissance = styleEra === "renaissance";
+    // W2 (WS3-7, owner decision 2): styleEra is coerced to the canon Roman
+    // path under the flag — no data migration; flag OFF keeps the era fork.
+    const isRenaissance = !W2 && styleEra === "renaissance";
 
     // Shared variables for entrance click target (assigned inside era branch)
     let centralGroup: THREE.Group;
@@ -381,6 +910,448 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Collect standalone materials/geometries for explicit cleanup
     const extraDisposables: THREE.Material[] = [];
     const extraGeoDisposables: THREE.BufferGeometry[] = [];
+
+    // ── W3 FAR-HILLS RING — real 3D midground out to the horizon ──
+    // A 60° view slice of even an 8k equirect pano is only ~1200px on screen,
+    // so the photo can never read sharp as midground, and it met the terrain
+    // in a hard blurry band. This ring is real geometry: ridged golden
+    // patchwork hills from UNDER the terrain rim (inner edge dropped to −55,
+    // "onder de berg gestoken") out to ~4.5km, with golden-hour haze baked
+    // into the vertex colors. The pano now only supplies sky + last horizon.
+    // Unlit MeshBasicMaterial: distant land reads flat-lit and needs no sun;
+    // fog=false because FogExp2 would wash everything past ~1km to one tone.
+    // Shared W3 landscape helpers — the far-hills ring, the extended approach
+    // road and every scatter exclusion sample the same fields, so nothing
+    // floats and nothing lands on the road.
+    const rHash = (a: number, b: number) => {
+      const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+      return s - Math.floor(s);
+    };
+    const sstep = (e0: number, e1: number, v: number) => {
+      const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0)));
+      return t * t * (3 - 2 * t);
+    };
+    const ringY = (x: number, z: number) => {
+      const r = Math.hypot(x, z);
+      const s = sstep(420, 1500, r);
+      let y = -30 - 10 * s;
+      y += Math.sin(x * 0.009 + 1.1) * Math.cos(z * 0.007 + 2.3) * (9 + 14 * s);
+      y += Math.sin(x * 0.003 + 0.9) * Math.cos(z * 0.0024 + 2.2) * 45 * s;
+      y += Math.sin(x * 0.0016 + 1.7) * Math.cos(z * 0.0013 + 0.4) * 110 * s * s;
+      return y;
+    };
+    // Gladiator approach centreline (also used by the road builder below) —
+    // extended far past the terrain onto the ring, to a vanishing point.
+    const w3ApX = (a: number) => Math.sin(a * 0.16) * (a * 0.55);
+    const w3ApZ = (a: number) => -48 - a * 7;
+    // ground height that blends terrain → ring across the rim overlap
+    const w3GroundY = (x: number, z: number) => {
+      const r = Math.hypot(x, z);
+      if (r < 360) return getHeightAt(x, z);
+      const s = Math.min(1, (r - 360) / 40);
+      return getHeightAt(x, z) * (1 - s) + ringY(x, z) * s;
+    };
+    // keep ring plantings off the extended road corridor
+    const w3OnFarRoad = (x: number, z: number) =>
+      z < -270 && z > -1980 && Math.abs(x - w3ApX((-48 - z) / 7)) < 11;
+    // organic parcel coordinates — a gentle domain warp bends the cell grid
+    // so fields read as smooth organic shapes, not squares (owner)
+    const w3ParcelUV = (x: number, z: number): [number, number] => {
+      const u = (x + z * 0.35) / 165 + Math.sin(z * 0.012 + x * 0.004) * 0.33;
+      const v = (z - x * 0.22) / 135 + Math.sin(x * 0.01 - z * 0.005) * 0.33;
+      return [u, v];
+    };
+    if (W3) {
+      // Owner: the ring must read as densely FARMED hills — wheat golds,
+      // pasture greens, vineyards, olive groves, cypress rows.
+      const AZ = 256, RAD = 26, R0 = 380, R1 = 2200;
+      const rPos = new Float32Array(AZ * RAD * 3);
+      const rCol = new Float32Array(AZ * RAD * 3);
+      // parcel palette: ripe wheat golds + grass/pasture greens (owner: the
+      // hills must read as populated fields, not bare dunes)
+      const pal = ["#E2BC6A", "#D9AE55", "#EDD28F", "#9BA05A", "#C99F55", "#7E8C4E", "#E6C87E", "#A8A05E"]
+        .map((c) => new THREE.Color(c));
+      const hazeC = new THREE.Color("#EAD9B8");
+      const rimC = new THREE.Color("#F2E9D2");
+      const hedgeC = new THREE.Color("#5F6B3F");
+      const treeC = new THREE.Color("#4F5C36");
+      const tmpC = new THREE.Color();
+      for (let j = 0; j < RAD; j++) {
+        // log-spaced rings: dense near the rim where the eye lands
+        const r = R0 * Math.pow(R1 / R0, j / (RAD - 1));
+        for (let i = 0; i < AZ; i++) {
+          const a = (i / AZ) * Math.PI * 2;
+          const x = Math.cos(a) * r, z = Math.sin(a) * r;
+          let y = ringY(x, z);
+          if (j === 0) y = -55; // tuck the inner rim under the terrain edge
+          const k3 = (j * AZ + i) * 3;
+          rPos[k3] = x; rPos[k3 + 1] = y; rPos[k3 + 2] = z;
+          // patchwork parcels: domain-warped cell hash → palette pick
+          const [u, v] = w3ParcelUV(x, z);
+          const cell = rHash(Math.floor(u), Math.floor(v));
+          tmpC.copy(pal[Math.floor(cell * pal.length) % pal.length]);
+          // hedgerow lines along the (warped, organic) parcel borders
+          const fu = u - Math.floor(u), fv = v - Math.floor(v);
+          if (Math.min(fu, 1 - fu) < 0.04 || Math.min(fv, 1 - fv) < 0.05) tmpC.lerp(hedgeC, 0.5);
+          // scattered tree clusters on the upper slopes
+          if (rHash(Math.floor(x / 55), Math.floor(z / 55)) > 0.82 && y > -28) tmpC.lerp(treeC, 0.5);
+          // near the rim fade to the pale terrain-edge tone so the square
+          // terrain border melts into the ring instead of drawing a seam
+          tmpC.lerp(rimC, 1 - sstep(400, 520, r));
+          // light warm haze with distance — kept subtle so the outer hills
+          // stay coloured fields (a heavy haze read as a pale back WALL)
+          tmpC.lerp(hazeC, sstep(1000, 2200, r) * 0.28);
+          rCol[k3] = tmpC.r; rCol[k3 + 1] = tmpC.g; rCol[k3 + 2] = tmpC.b;
+        }
+      }
+      const rIdx: number[] = [];
+      for (let j = 0; j < RAD - 1; j++) for (let i = 0; i < AZ; i++) {
+        const a = j * AZ + i, b = j * AZ + ((i + 1) % AZ);
+        rIdx.push(a, a + AZ, b, b, a + AZ, b + AZ);
+      }
+      const rge = new THREE.BufferGeometry();
+      rge.setIndex(rIdx);
+      rge.setAttribute("position", new THREE.BufferAttribute(rPos, 3));
+      rge.setAttribute("color", new THREE.BufferAttribute(rCol, 3));
+      const rmat = new THREE.MeshBasicMaterial({ vertexColors: true, fog: false, side: THREE.DoubleSide });
+      const farHillsRing = new THREE.Mesh(rge, rmat);
+      scene.add(farHillsRing);
+      extraDisposables.push(rmat); extraGeoDisposables.push(rge);
+
+      // Cypress rows on the ring — short hash-seeded lines of dark spires,
+      // the signature Tuscan field boundary. One instanced draw call.
+      const cypGeo = new THREE.ConeGeometry(1.7, 12, 6);
+      cypGeo.translate(0, 6, 0);
+      const cypMat = new THREE.MeshBasicMaterial({ fog: false });
+      // near-zone placement test: the terrain hills directly around the
+      // palace (owner: populate these MUCH more) — everywhere except the
+      // southern wheat blanket, the approach corridor and the palace pad
+      const nearOK = (x: number, z: number) => {
+        const r = Math.hypot(x, z);
+        if (r < 112 || r > 385) return false;
+        // trees may stand IN the wheat sea (they rise above it) — only the
+        // road corridors stay clear
+        if (inApproach(x, z) || w3OnFarRoad(x, z)) return false;
+        return true;
+      };
+      const rows: { x: number; z: number; sc: number }[] = [];
+      // near hills: cypress lines on the flanks/back of the palace hill
+      for (let m = 400; m < 540; m++) {
+        const ang = rHash(m, 7.3) * Math.PI * 2;
+        const rr = 115 + Math.pow(rHash(m, 3.1), 1.1) * 270;
+        const ax = Math.cos(ang) * rr, az2 = Math.sin(ang) * rr;
+        if (!nearOK(ax, az2)) continue;
+        const dir = rHash(m, 9.7) * Math.PI;
+        const n = 3 + Math.floor(rHash(m, 5.5) * 4);
+        const step = 6 + rHash(m, 2.9) * 2.5;
+        for (let i2 = 0; i2 < n; i2++) {
+          const t = i2 - (n - 1) / 2;
+          const px2 = ax + Math.cos(dir) * t * step, pz2 = az2 + Math.sin(dir) * t * step;
+          if (!nearOK(px2, pz2)) continue;
+          rows.push({ x: px2, z: pz2, sc: 0.55 + rHash(m * 31 + i2, 4.4) * 0.35 });
+        }
+      }
+      for (let m = 0; m < 380; m++) {
+        const ang = rHash(m, 7.3) * Math.PI * 2;
+        const rr = 430 + Math.pow(rHash(m, 3.1), 1.15) * 1620;
+        const ax = Math.cos(ang) * rr, az2 = Math.sin(ang) * rr;
+        const dir = rHash(m, 9.7) * Math.PI;
+        const n = 3 + Math.floor(rHash(m, 5.5) * 4);
+        const step = 7 + rHash(m, 2.9) * 3;
+        for (let i2 = 0; i2 < n; i2++) {
+          const t = i2 - (n - 1) / 2;
+          const px2 = ax + Math.cos(dir) * t * step, pz2 = az2 + Math.sin(dir) * t * step;
+          if (w3OnFarRoad(px2, pz2)) continue;
+          rows.push({ x: px2, z: pz2, sc: 0.8 + rHash(m * 31 + i2, 4.4) * 0.55 });
+        }
+      }
+      // the avenue continues along the extended road to the vanishing point
+      for (let a = 36; a <= 250; a += 2.2) {
+        const cx2 = w3ApX(a), cz2 = w3ApZ(a);
+        const tx = w3ApX(a + 0.5) - w3ApX(a - 0.5), tz = -7;
+        const tl = Math.hypot(tx, tz) || 1;
+        const nx = -tz / tl, nz = tx / tl;
+        const lsc = 0.5 - sstep(36, 250, a) * 0.24;
+        for (const sd of [-6.8, 6.8]) {
+          rows.push({ x: cx2 + nx * sd, z: cz2 + nz * sd, sc: lsc * (0.9 + rHash(a * 17 + sd, 3.3) * 0.25) });
+        }
+      }
+      const cyp = new THREE.InstancedMesh(cypGeo, cypMat, rows.length);
+      const dummy = new THREE.Object3D();
+      const cypC = new THREE.Color("#3E4A2C");
+      rows.forEach((p, i2) => {
+        const y = w3GroundY(p.x, p.z);
+        dummy.position.set(p.x, y - 0.9, p.z);
+        dummy.scale.set(p.sc, p.sc * (0.9 + rHash(i2, 6.1) * 0.35), p.sc);
+        dummy.updateMatrix();
+        cyp.setMatrixAt(i2, dummy.matrix);
+        tmpC.copy(cypC).lerp(hazeC, sstep(600, 1900, Math.hypot(p.x, p.z)) * 0.55);
+        cyp.setColorAt(i2, tmpC);
+      });
+      scene.add(cyp);
+      extraDisposables.push(cypMat); extraGeoDisposables.push(cypGeo);
+
+      // Olive groves on the ring — loose grid rows of rounded silver-green
+      // canopies, the second signature Tuscan planting. One instanced draw.
+      const olGeo = new THREE.SphereGeometry(2.3, 6, 5);
+      olGeo.scale(1, 0.72, 1);
+      olGeo.translate(0, 2.9, 0);
+      const olMat = new THREE.MeshBasicMaterial({ fog: false });
+      const olives: { x: number; z: number; sc: number }[] = [];
+      for (let m = 0; m < 240; m++) {
+        const ang = rHash(m, 11.3) * Math.PI * 2;
+        const rr = 440 + Math.pow(rHash(m, 8.2), 1.2) * 1500;
+        const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
+        const dir = rHash(m, 13.7) * Math.PI;
+        const cols = 2 + Math.floor(rHash(m, 6.6) * 3), rws = 2 + Math.floor(rHash(m, 4.9) * 2);
+        const stepC = 9 + rHash(m, 3.8) * 3, stepR = 10 + rHash(m, 2.2) * 3;
+        for (let c2 = 0; c2 < cols; c2++) for (let r2 = 0; r2 < rws; r2++) {
+          const u2 = (c2 - (cols - 1) / 2) * stepC, v2 = (r2 - (rws - 1) / 2) * stepR;
+          olives.push({
+            x: gx + Math.cos(dir) * u2 - Math.sin(dir) * v2 + (rHash(m * 91 + c2 * 7 + r2, 5.1) - 0.5) * 4,
+            z: gz + Math.sin(dir) * u2 + Math.cos(dir) * v2 + (rHash(m * 57 + c2 * 3 + r2, 9.9) - 0.5) * 4,
+            sc: 0.85 + rHash(m * 13 + c2 + r2 * 5, 7.7) * 0.55,
+          });
+        }
+      }
+      // near hills: olive orchards on the flanks/back of the palace hill
+      for (let m = 300; m < 420; m++) {
+        const ang = rHash(m, 11.3) * Math.PI * 2;
+        const rr = 125 + Math.pow(rHash(m, 8.2), 1.1) * 255;
+        const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
+        if (!nearOK(gx, gz)) continue;
+        const dir = rHash(m, 13.7) * Math.PI;
+        const cols = 2 + Math.floor(rHash(m, 6.6) * 3), rws = 2 + Math.floor(rHash(m, 4.9) * 2);
+        const stepC = 8 + rHash(m, 3.8) * 2.5, stepR = 9 + rHash(m, 2.2) * 2.5;
+        for (let c2 = 0; c2 < cols; c2++) for (let r2 = 0; r2 < rws; r2++) {
+          const u2 = (c2 - (cols - 1) / 2) * stepC, v2 = (r2 - (rws - 1) / 2) * stepR;
+          const px2 = gx + Math.cos(dir) * u2 - Math.sin(dir) * v2 + (rHash(m * 91 + c2 * 7 + r2, 5.1) - 0.5) * 3;
+          const pz2 = gz + Math.sin(dir) * u2 + Math.cos(dir) * v2 + (rHash(m * 57 + c2 * 3 + r2, 9.9) - 0.5) * 3;
+          if (!nearOK(px2, pz2)) continue;
+          olives.push({ x: px2, z: pz2, sc: 0.7 + rHash(m * 13 + c2 + r2 * 5, 7.7) * 0.4 });
+        }
+      }
+      const olivesKept = olives.filter((p) => !w3OnFarRoad(p.x, p.z));
+      const oliv = new THREE.InstancedMesh(olGeo, olMat, olivesKept.length);
+      const olC = new THREE.Color("#7E8A5A");
+      olivesKept.forEach((p, i2) => {
+        const y = w3GroundY(p.x, p.z);
+        dummy.position.set(p.x, y - 0.7, p.z);
+        dummy.scale.set(p.sc, p.sc, p.sc);
+        dummy.updateMatrix();
+        oliv.setMatrixAt(i2, dummy.matrix);
+        tmpC.copy(olC).lerp(hazeC, sstep(600, 1900, Math.hypot(p.x, p.z)) * 0.5);
+        oliv.setColorAt(i2, tmpC);
+      });
+      scene.add(oliv);
+      extraDisposables.push(olMat); extraGeoDisposables.push(olGeo);
+
+      // Vineyards (owner: "wijngaarden!") — parallel green row-hedges on the
+      // hillsides, each row one stretched instanced box. One draw call.
+      const vinGeo = new THREE.BoxGeometry(1, 1, 1);
+      vinGeo.translate(0, 0.5, 0);
+      const vinMat = new THREE.MeshBasicMaterial({ fog: false });
+      const vinRows: { x: number; z: number; dir: number; len: number; sc: number }[] = [];
+      for (let m = 0; m < 120; m++) {
+        const ang = rHash(m, 21.7) * Math.PI * 2;
+        const rr = 430 + Math.pow(rHash(m, 17.3), 1.2) * 1300;
+        const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
+        const dir = rHash(m, 23.9) * Math.PI;
+        const nRows = 6 + Math.floor(rHash(m, 19.1) * 6);
+        const len = 28 + rHash(m, 15.7) * 18;
+        const gap = 4.6;
+        for (let r2 = 0; r2 < nRows; r2++) {
+          const off = (r2 - (nRows - 1) / 2) * gap;
+          const cx3 = gx - Math.sin(dir) * off, cz3 = gz + Math.cos(dir) * off;
+          if (w3OnFarRoad(cx3, cz3)) continue;
+          vinRows.push({ x: cx3, z: cz3, dir, len, sc: 0.9 + rHash(m * 7 + r2, 12.3) * 0.3 });
+        }
+      }
+      // near hills: vineyards only on the OUTER band — the inner hills are
+      // now one contiguous wheat sea (green rows inside it would break it up)
+      for (let m = 200; m < 275; m++) {
+        const ang = rHash(m, 21.7) * Math.PI * 2;
+        const rr = 305 + Math.pow(rHash(m, 17.3), 1.2) * 80;
+        const gx = Math.cos(ang) * rr, gz = Math.sin(ang) * rr;
+        if (!nearOK(gx, gz)) continue;
+        const dir = rHash(m, 23.9) * Math.PI;
+        const nRows = 5 + Math.floor(rHash(m, 19.1) * 6);
+        const len = 20 + rHash(m, 15.7) * 18;
+        const gap = 4.2;
+        for (let r2 = 0; r2 < nRows; r2++) {
+          const off = (r2 - (nRows - 1) / 2) * gap;
+          const cx3 = gx - Math.sin(dir) * off, cz3 = gz + Math.cos(dir) * off;
+          if (!nearOK(cx3, cz3)) continue;
+          vinRows.push({ x: cx3, z: cz3, dir, len, sc: 0.85 + rHash(m * 7 + r2, 12.3) * 0.3 });
+        }
+      }
+      // long rigid row-boxes floated off the curved slopes ("zwevende
+      // vlakken") — split every row into short segments that each sample
+      // the ground and sit embedded
+      const vinSegs: { x: number; z: number; dir: number; len: number; sc: number }[] = [];
+      vinRows.forEach((p) => {
+        const nSeg = Math.max(1, Math.round(p.len / 7));
+        const segLen = p.len / nSeg + 0.7;
+        for (let s2 = 0; s2 < nSeg; s2++) {
+          const t = (s2 - (nSeg - 1) / 2) * (p.len / nSeg);
+          vinSegs.push({ x: p.x + Math.cos(p.dir) * t, z: p.z + Math.sin(p.dir) * t, dir: p.dir, len: segLen, sc: p.sc });
+        }
+      });
+      const vin = new THREE.InstancedMesh(vinGeo, vinMat, vinSegs.length);
+      const vinC = new THREE.Color("#5E7042");
+      vinSegs.forEach((p, i2) => {
+        const y = w3GroundY(p.x, p.z);
+        dummy.position.set(p.x, y - 0.55, p.z);
+        dummy.rotation.set(0, -p.dir, 0);
+        dummy.scale.set(p.len, 1.3 * p.sc, 0.85);
+        dummy.updateMatrix();
+        vin.setMatrixAt(i2, dummy.matrix);
+        tmpC.copy(vinC).lerp(hazeC, sstep(600, 1900, Math.hypot(p.x, p.z)) * 0.5);
+        vin.setColorAt(i2, tmpC);
+      });
+      dummy.rotation.set(0, 0, 0);
+      scene.add(vin);
+      extraDisposables.push(vinMat); extraGeoDisposables.push(vinGeo);
+
+      // ── FACADE IVY (owner: "zeer realistische klimop/planten, random en
+      // anders, ev. bloemen") — textured 5-lobed leaf cards instanced along
+      // climbing tendrils on a varied selection of walls. Every patch differs:
+      // its own footprint, tendril count, palette (fresh green / autumn russet
+      // / flowering bougainvillea or jasmine), irregular silhouette, denser at
+      // the base. Depth-shading: leaves tucked closer to the wall render
+      // darker, which sells volume. One draw call.
+      {
+        const lc = document.createElement("canvas"); lc.width = 128; lc.height = 128;
+        const lctx = lc.getContext("2d");
+        if (lctx) {
+          lctx.clearRect(0, 0, 128, 128);
+          lctx.fillStyle = "#9DB87E";
+          // classic ivy: centre lobe + two side lobes + two small base lobes
+          const lobe = (cx2: number, cy2: number, rx2: number, ry2: number, rot: number) => {
+            lctx.save(); lctx.translate(cx2, cy2); lctx.rotate(rot);
+            lctx.beginPath(); lctx.ellipse(0, 0, rx2, ry2, 0, 0, Math.PI * 2); lctx.fill(); lctx.restore();
+          };
+          lobe(64, 38, 20, 34, 0);            // centre
+          lobe(38, 58, 17, 26, 0.75);         // left
+          lobe(90, 58, 17, 26, -0.75);        // right
+          lobe(30, 86, 12, 17, 1.2);          // base left
+          lobe(98, 86, 12, 17, -1.2);         // base right
+          lctx.fillRect(60, 88, 8, 34);       // stem
+          lctx.strokeStyle = "#7C9A60"; lctx.lineWidth = 3;
+          lctx.beginPath(); lctx.moveTo(64, 110); lctx.lineTo(64, 22); lctx.stroke();
+          lctx.beginPath(); lctx.moveTo(64, 66); lctx.lineTo(36, 48); lctx.stroke();
+          lctx.beginPath(); lctx.moveTo(64, 66); lctx.lineTo(92, 48); lctx.stroke();
+        }
+        const leafTex = new THREE.CanvasTexture(lc);
+        leafTex.colorSpace = THREE.SRGBColorSpace;
+        const leafGeo = new THREE.PlaneGeometry(0.58, 0.58);
+        const leafMat = new THREE.MeshStandardMaterial({ map: leafTex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 });
+        // {x,z, nx,nz outward normal, w,h, kind: 0 green /1 russet /2 bougainvillea /3 jasmine}
+        const IVY: [number, number, number, number, number, number, number][] = [
+          [-33, -25.15, 0, -1, 7.0, 10.5, 1],  // W pavilion front — autumn, broad
+          [-19.5, -25.15, 0, -1, 4.2, 7.5, 2], // W pavilion front corner — bougainvillea
+          [21, -25.15, 0, -1, 6.0, 11.0, 0],   // E pavilion front — deep green
+          [31, -25.15, 0, -1, 3.6, 7.0, 3],    // E pavilion front corner — jasmine
+          [38.15, -18, 1, 0, 5.5, 8.5, 3],     // E pavilion east flank — jasmine
+          [-13.85, -18, 1, 0, 4.0, 7.0, 0],    // W pavilion court flank — green
+          [-17.15, -2, -1, 0, 6.5, 12.5, 0],   // block A west flank — tall green
+          [17.15, 3, 1, 0, 5.0, 11.0, 2],      // block A east flank — bougainvillea
+          // block A FRONT (entrance facade) — heavy, varied coverage flanking
+          // the portico (owner: "sterker bedekken"); centre x ±7 stays clear
+          [-14, -10.15, 0, -1, 5.0, 14.0, 0],
+          [-8.6, -10.15, 0, -1, 3.0, 8.0, 2],
+          [8.6, -10.15, 0, -1, 4.2, 12.0, 0],
+          [14, -10.15, 0, -1, 4.6, 15.0, 1],
+          [-44, -6.15, 0, -1, 8.0, 9.0, 1],    // W wing front — autumn spread, broad
+          [-26, -6.15, 0, -1, 4.5, 10.0, 3],   // W wing front bay — jasmine
+          [50.15, 2, 1, 0, 6.5, 8.5, 2],       // E wing east flank — bougainvillea
+          [40, 18.15, 0, 1, 6.0, 8.0, 1],      // E wing rear — autumn
+          [36, -26.6, 0, -1, 3.8, 9.5, 0],     // clock-tower foot — green climber
+          [-38.15, -10, -1, 0, 6.0, 7.5, 3],   // W pavilion west flank — jasmine
+          [10, 39.15, 0, 1, 7.5, 9.0, 0],      // rear range — broad green
+          [-18, 39.15, 0, 1, 5.0, 7.5, 2],     // rear range west — bougainvillea
+        ];
+        const GREENS = ["#2F4A1E", "#3C5C26", "#4C6B2C", "#40602A"].map((c) => new THREE.Color(c));
+        const RUSSET = new THREE.Color("#7A5B2E");
+        const FLOWER = [new THREE.Color("#B03A6E"), new THREE.Color("#F2EFE2")]; // bougainvillea, jasmine
+        type Leaf = { x: number; y: number; z: number; nx: number; nz: number; off: number; sc: number; col: THREE.Color; };
+        const leaves: Leaf[] = [];
+        const baseY = 8.2;
+        // Ivy blossom — real ivy carries small cream-green umbels; a few of
+        // these on EVERY patch (owner), on top of the showier bougainvillea /
+        // jasmine of the flowering kinds.
+        const BLOSSOM = new THREE.Color("#E8E2C2");
+        IVY.forEach(([px, pz, nx, nz, w2, h2, kind], pi) => {
+          // 3-5 organic LOBES per patch (owner: not a rectangular column —
+          // the mat is the union of soft blobs, denser at the base)
+          const nLobes = 3 + Math.floor(rHash(pi, 51.2) * 3);
+          const lobes: [number, number, number][] = [];
+          for (let li = 0; li < nLobes; li++) {
+            lobes.push([
+              (rHash(pi * 13 + li, 21.4) - 0.5) * w2 * 0.9,                  // lobe centre x
+              Math.pow(rHash(pi * 29 + li, 27.8), 1.25) * h2 * 0.85,         // lobe centre y (bias low)
+              (0.22 + rHash(pi * 41 + li, 33.1) * 0.4) * Math.max(w2, h2 * 0.55), // lobe radius
+            ]);
+          }
+          const attempts = Math.round(w2 * h2 * 26);
+          for (let i2 = 0; i2 < attempts; i2++) {
+            const s1 = rHash(pi * 997 + i2, 3.7), s2 = rHash(pi * 631 + i2, 8.1), s3 = rHash(pi * 389 + i2, 5.9);
+            const lat = (s2 - 0.5) * w2 * 1.1 + Math.sin(s1 * 11 + pi) * 0.4;
+            const hy = Math.pow(s1, 0.85) * h2;
+            // coverage = strongest lobe at this spot + a base-mat bias
+            let cover = 0.3 * (1 - hy / h2);
+            for (const [lxr, lyr, lr] of lobes) {
+              const d2 = ((lat - lxr) ** 2 + (hy - lyr) ** 2) / (lr * lr);
+              cover = Math.max(cover, Math.exp(-d2));
+            }
+            if (rHash(i2 * 23 + pi, 44.6) > cover) continue;
+            const y = baseY + 0.15 + hy;
+            const off = 0.06 + rHash(i2 * 7 + pi, 6.6) * 0.22;  // depth off the wall
+            const lx2 = px + (nz !== 0 ? lat : 0) + nx * off;
+            const lz2 = pz + (nx !== 0 ? lat : 0) + nz * off;
+            const fr = rHash(i2 * 3 + pi, 12.9);
+            const isShowFlower = kind >= 2 && fr > 0.93;
+            const isBlossom = !isShowFlower && fr < 0.035;      // subtle, every patch
+            const col = new THREE.Color();
+            if (isShowFlower) col.copy(FLOWER[kind - 2]);
+            else if (isBlossom) col.copy(BLOSSOM);
+            else {
+              col.copy(GREENS[Math.floor(rHash(i2 * 11 + pi, 4.4) * GREENS.length) % GREENS.length]);
+              if (kind === 1 && rHash(i2 * 5 + pi, 7.2) > 0.55) col.lerp(RUSSET, 0.5 + rHash(i2, 3.3) * 0.4);
+            }
+            col.multiplyScalar(0.6 + (off / 0.28) * 0.4);       // deeper = darker
+            leaves.push({ x: lx2, y, z: lz2, nx, nz, off, sc: (isShowFlower || isBlossom ? 0.45 : 0.75) + s3 * 0.55, col });
+          }
+        });
+        const ivyMesh = new THREE.InstancedMesh(leafGeo, leafMat, leaves.length);
+        const q = new THREE.Quaternion(), q2 = new THREE.Quaternion(), eul = new THREE.Euler();
+        leaves.forEach((L, i2) => {
+          dummy.position.set(L.x, L.y, L.z);
+          q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(L.nx, 0, L.nz));
+          eul.set((rHash(i2, 14.2) - 0.5) * 1.1, (rHash(i2, 15.8) - 0.5) * 1.1, rHash(i2, 16.4) * Math.PI * 2);
+          q2.setFromEuler(eul);
+          dummy.quaternion.copy(q).multiply(q2);
+          dummy.scale.setScalar(L.sc);
+          dummy.updateMatrix();
+          ivyMesh.setMatrixAt(i2, dummy.matrix);
+          ivyMesh.setColorAt(i2, L.col);
+        });
+        dummy.quaternion.identity();
+        ivyMesh.castShadow = false;
+        scene.add(ivyMesh);
+        extraDisposables.push(leafMat); extraGeoDisposables.push(leafGeo);
+      }
+    }
+    // W3 canary handles (see the dome-load block below): the loaded GLB group,
+    // the procedural rib mesh (to re-show on load failure), and an unmount guard.
+    let w3DomeCanary: THREE.Group | null = null;
+    let w3EntranceCaps: THREE.Group | null = null;
+    let w3Roofs: THREE.Group | null = null;
+    let w3Statuary: THREE.Group | null = null;
+    let w3Fountain: THREE.Group | null = null;
+    let w3Obelisks: THREE.Group | null = null;
+    let w3RibMesh: THREE.Mesh | null = null;
+    let w3Disposed = false;
 
     // ═══ RENAISSANCE PALAZZO — alternative to castle when era is "renaissance" ═══
     if (isRenaissance) {
@@ -619,20 +1590,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         clickTargets.push(ct);
       });
 
-      // Distance: Arno river
-      const arnoGeo = new THREE.PlaneGeometry(200, 15);
-      const arnoMat = mkPhys(THREE,{ color: "#5A8A7A", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6, envMapIntensity: 1.0 });
-      const arno = new THREE.Mesh(arnoGeo, arnoMat);
-      arno.rotation.x = -Math.PI / 2;
-      arno.position.set(0, getHeightAt(0,-85)+0.1, -85);
-      scene.add(arno);
+      // Distance: Arno river — W3 drops it: a flat 200×15 water plane at one
+      // height cuts straight through the rolling wheat hills AND the approach
+      // road (half buried, half floating). The Gladiator landscape has no river.
+      if (!W3) {
+        const arnoGeo = new THREE.PlaneGeometry(200, 15);
+        const arnoMat = mkPhys(THREE,{ color: "#5A8A7A", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6, envMapIntensity: 1.0 });
+        const arno = new THREE.Mesh(arnoGeo, arnoMat);
+        arno.rotation.x = -Math.PI / 2;
+        arno.position.set(0, getHeightAt(0,-85)+0.1, -85);
+        scene.add(arno);
+      }
 
-      // Distant dome silhouette (Duomo-like)
-      const distDome = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.4), M.copper);
-      distDome.position.set(-60, 6, -120);
-      scene.add(distDome);
-      const distDrum = mk(new THREE.CylinderGeometry(7, 7.5, 5, 8), M.stoneD, -60, 3, -120);
-      scene.add(distDrum);
+      // Distant dome silhouette (Duomo-like) — W3 drops it: it now lands in a
+      // terrain dip, leaving only a weird lit-facet sliver hovering over the
+      // hill crest (the "floating dashes"). The Gladiator vista is pure farmland.
+      if (!W3) {
+        const ddY = getHeightAt(-60, -120);
+        const distDome = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.4), M.copper);
+        distDome.position.set(-60, ddY + 5.4, -120);
+        scene.add(distDome);
+        const distDrum = mk(new THREE.CylinderGeometry(7, 7.5, 5, 8), M.stoneD, -60, ddY + 2.4, -120);
+        scene.add(distDrum);
+      }
 
     } else {
     // ═══ ROMAN VILLA — authentic Roman compound ═══
@@ -641,12 +1621,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     const vW = 20, vD = 18, vH = 7;
     const ochreWall = M.stone; // reuse identical material from M dictionary
-    const gardenGreen = new THREE.MeshStandardMaterial({ color: "#4A7A3A", roughness: 0.9 });
-    const waterMat = new THREE.MeshStandardMaterial({ color: "#4A7A7A", roughness: 0.7, metalness: 0, transparent: true, opacity: 0.45, envMapIntensity: 0.1 });
+    // W1 retunes: garden green → sun-dried olive, teal water → warm sky reflection, mullions → canon ink
+    const gardenGreen = new THREE.MeshStandardMaterial({ color: W1 ? "#66703E" : "#4A7A3A", roughness: 0.9 });
+    const waterMat = new THREE.MeshStandardMaterial({ color: W1 ? "#8C9884" : "#4A7A7A", roughness: 0.7, metalness: 0, transparent: true, opacity: 0.45, envMapIntensity: W1 ? 0.3 : 0.1 });
     extraDisposables.push(gardenGreen, waterMat);
 
     // ── Helper: arched window assembly with shutters & deep reveal ──
-    const mullionMat = new THREE.MeshStandardMaterial({ color: "#1A1A1A", roughness: 0.9, metalness: 0 });
+    const mullionMat = new THREE.MeshStandardMaterial({ color: W1 ? INK : "#1A1A1A", roughness: 0.9, metalness: 0 });
     const shutterMat = new THREE.MeshStandardMaterial({ color: "#6B7A5A", roughness: 0.75, metalness: 0, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3) });
     extraDisposables.push(mullionMat, shutterMat);
     const addArchedWindow = (parent: THREE.Group | THREE.Object3D, x: number, y: number, z: number, width: number, height: number, facingSide: "x" | "z", mat: THREE.Material) => {
@@ -756,20 +1737,48 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.3, 0.15, vD + 0.3), M.trim, 0, vH + 1.3, 0));
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.3, 0.15, vD + 0.3), M.trim, 0, 1.3 + vH * 0.5, 0));
 
+    // ══ W2 grandeur pass (owner feedback 2026-08-06 #6B) — EAVE PARAPET RING ══
+    // Raises the cornice line of the central block: a plaster parapet with
+    // travertine cap and corner piers ringing the ROOF EAVE (outside the
+    // overhang, so it never cuts the hipped tile slopes — Villa Rotonda-style
+    // roof balustrade). The massing now steps: stair → facade → parapet ring →
+    // roof ridge → crossing attic → drum → dome → lantern.
+    // Shared canon materials, 12 static meshes, no new lights.
+    if (W2) {
+      const parX = vW / 2 + 1.45, parZ = vD / 2 + 1.15, parY = vH + 1.9; // eave line
+      for (const s of [-1, 1]) {
+        // Front/back parapet walls + caps — cap length ends 0.04 INSIDE the
+        // corner piers (0.62 not 0.70): at 0.70 the cap end faces sat exactly
+        // coplanar with the pier faces at ±(parX+0.35) and z-fought (#6).
+        centralGroup.add(mk(new THREE.BoxGeometry(parX * 2 + 0.4, 0.8, 0.35), M.stoneL, 0, parY, s * parZ));
+        centralGroup.add(mk(new THREE.BoxGeometry(parX * 2 + 0.62, 0.14, 0.5), M.trim, 0, parY + 0.45, s * parZ));
+        // Side parapet walls + caps
+        centralGroup.add(mk(new THREE.BoxGeometry(0.35, 0.8, parZ * 2 + 0.4), M.stoneL, s * parX, parY, 0));
+        centralGroup.add(mk(new THREE.BoxGeometry(0.5, 0.14, parZ * 2 + 0.62), M.trim, s * parX, parY + 0.45, 0));
+      }
+      // Corner piers
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        centralGroup.add(mk(new THREE.BoxGeometry(0.7, 1.1, 0.7), M.trim, sx * parX, parY + 0.1, sz * parZ));
+      }
+    }
+
     // Arched windows on central domus walls (front and back)
-    const waterStainMat = new THREE.MeshStandardMaterial({ color: "#8A7860", roughness: 0.95, transparent: true, opacity: 0.15 });
+    // Water stains: transparent facade decals — no depth write, and at +0.09
+    // off the wall (was +0.06, which straddled the decorative wall panels'
+    // front faces at +0.06 by only 0.01 — z-fighting sweep #6)
+    const waterStainMat = new THREE.MeshStandardMaterial({ color: "#8A7860", roughness: 0.95, transparent: true, opacity: 0.15, depthWrite: false });
     for (let wi = 0; wi < 3; wi++) {
       const wx = -6 + wi * 6;
       // Front face (-Z), skip center (entrance)
       if (Math.abs(wx) > 2) {
         addArchedWindow(centralGroup, wx, vH * 0.5 + 1.3, -(vD / 2 + 0.05), 1.4, 2.2, "x", M.trim);
         // Water staining streak below front window
-        centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, -(vD / 2 + 0.06)));
+        centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, -(vD / 2 + 0.09)));
       }
       // Back face (+Z)
       addArchedWindow(centralGroup, wx, vH * 0.5 + 1.3, (vD / 2 + 0.05), 1.4, 2.2, "x", M.trim);
       // Water staining streak below back window
-      centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, (vD / 2 + 0.06)));
+      centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, (vD / 2 + 0.09)));
     }
     // Side arched windows
     for (let wi = 0; wi < 3; wi++) {
@@ -788,39 +1797,63 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.5, 0.06, vD + 0.5), new THREE.MeshStandardMaterial({ color: "#6A5E50", roughness: 0.95 }), 0, vH + 1.2, 0));
 
     // Ivy/vine patches on back wall (+Z face)
+    if (!W3) { // W3: no flat ivy rectangles (read as green stickers)
     centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy, -7,   vH * 0.5 + 1.3 - 0.5, (vD / 2 + 0.03)));
     centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy, -5.2, vH * 0.5 + 1.3 + 0.8, (vD / 2 + 0.03)));
     centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy,  7.5, vH * 0.5 + 1.3 - 0.3, (vD / 2 + 0.03)));
     centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy,  5.8, vH * 0.5 + 1.3 + 1.0, (vD / 2 + 0.03)));
+    }
 
     // ── ENTRANCE VESTIBULUM (Front — 6 Corinthian columns) ──
     const vestZ = -(vD / 2 + 3);
+    // ══ Owner review 2026-08-07 #3 — the entrance must read as the app LOGO:
+    // a temple-front (columns + pediment) on a 3-STEP STYLOBATE. The steps nest
+    // directly under the colonnade (the grand cascade continues down in front),
+    // widening toward the ground exactly like the logo's crepidoma.
+    if (W2) {
+      centralGroup.add(mk(new THREE.BoxGeometry(15.6, 0.36, 8.2), M.marble, 0, 0.18, vestZ));
+      centralGroup.add(mk(new THREE.BoxGeometry(14.0, 0.36, 7.4), M.marble, 0, 0.54, vestZ));
+      centralGroup.add(mk(new THREE.BoxGeometry(12.6, 0.36, 6.8), M.marble, 0, 0.90, vestZ));
+    }
     // Portico platform
     centralGroup.add(mk(new THREE.BoxGeometry(12, 0.4, 7), M.marble, 0, 1.12, vestZ));
 
     // 6 Corinthian columns
     // Fluting material — subtle dark lines for column grooves
     const fluteMat = new THREE.MeshStandardMaterial({ color: "#C8C0A8", roughness: 0.7, metalness: 0 });
-    extraDisposables.push(fluteMat);
+    // ══ Owner review 2026-08-08 r6 #4 — "de ingang valt niet op (anders kleuren?)".
+    // The temple-front now reads as a distinct PIETRA-SERENA (grey-blue) order —
+    // Brunelleschi's signature grey stone against the cream plaster — so the whole
+    // colonnade + pediment pops as a framed entrance instead of blending in.
+    const serenaOrder = new THREE.MeshStandardMaterial({ color: "#7C8288", roughness: 0.72, metalness: 0, envMapIntensity: 0.5, normalMap: stoneTex.normalMap, normalScale: new THREE.Vector2(0.2, 0.2) });
+    extraDisposables.push(fluteMat, serenaOrder);
     const centralFluteGeo = new THREE.BoxGeometry(0.02, 5.2, 0.06);
     extraGeoDisposables.push(centralFluteGeo);
-    for (let ci = 0; ci < 6; ci++) {
-      const cx = -5 + ci * 2;
-      // Column shaft — thicker radius 0.55
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.55, 0.55, 5.5, 16), M.col, cx, 4.3, vestZ));
+    // Owner 2026-08-10: FIVE pillars, not six — a pentastyle front (real ancient
+    // precedent: Hera I at Paestum is enneastyle). Wider, calmer bays; the centre
+    // column stands proud of the deep shadowed portal behind.
+    const COLX = W3 ? [-5.2, -2.6, 0, 2.6, 5.2] : null;
+    for (let ci = 0; ci < (COLX ? COLX.length : 6); ci++) {
+      const cx = COLX ? COLX[ci] : -5 + ci * 2;
+      // Column shaft — thicker radius 0.65 (owner review #3: columns must read)
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.65, 0.7, 5.5, 18), serenaOrder, cx, 4.3, vestZ));
       // Column fluting — 8 thin dark vertical stripes around circumference
       for (let fl = 0; fl < 8; fl++) {
         const fa = (fl / 8) * Math.PI * 2;
         const stripe = mk(centralFluteGeo, fluteMat,
-          cx + Math.cos(fa) * 0.56, 4.3, vestZ + Math.sin(fa) * 0.56);
+          cx + Math.cos(fa) * 0.67, 4.3, vestZ + Math.sin(fa) * 0.67);
         stripe.rotation.y = fa;
         centralGroup.add(stripe);
       }
+      // Echinus + flared box-capital — W3 replaces these with a scanned
+      // Corinthian capital GLB (entrance_w3.glb), so skip when the flag is on.
+      if (!W3) {
       // Echinus — small cylinder below capital for abacus/echinus effect
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.6, 0.55, 0.15, 16), M.trim, cx, 6.775, vestZ));
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.65, 0.15, 16), serenaOrder, cx, 6.775, vestZ));
       // Flared capital — wider box + transitional cylinder
-      centralGroup.add(mk(new THREE.BoxGeometry(1.4, 0.3, 1.4), M.trim, cx, 7.15, vestZ));
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.6, 0.3, 16), M.trim, cx, 6.95, vestZ));
+      centralGroup.add(mk(new THREE.BoxGeometry(1.4, 0.3, 1.4), serenaOrder, cx, 7.15, vestZ));
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.6, 0.3, 16), serenaOrder, cx, 6.95, vestZ));
+      }
       // Attic base
       centralGroup.add(mk(new THREE.CylinderGeometry(0.6, 0.65, 0.2, 16), M.stoneD, cx, 1.4, vestZ));
       centralGroup.add(mk(new THREE.BoxGeometry(0.9, 0.12, 0.9), M.stoneD, cx, 1.24, vestZ));
@@ -835,36 +1868,44 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Frieze band between entablature and pediment
     centralGroup.add(mk(new THREE.BoxGeometry(12, 0.4, 2.1), M.stoneL, 0, 7.8, vestZ));
 
-    // Marble entablature beam
-    centralGroup.add(mk(new THREE.BoxGeometry(12, 0.5, 2), M.marble, 0, 7.55, vestZ));
+    // Marble entablature beam — 11.94 not 12: at 12 its end faces at x=±6 were
+    // exactly coplanar with the frieze-band end faces in their y-overlap
+    // (7.6–7.8) and z-fought from side angles (z-fighting sweep #6)
+    centralGroup.add(mk(new THREE.BoxGeometry(11.94, 0.5, 2), serenaOrder, 0, 7.55, vestZ));
 
-    // TRIGLYPHS — 6 grooved vertical panels across the frieze area
-    for (let ti = 0; ti < 6; ti++) {
-      const tx = -5 + ti * 2;
-      centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.5, 0.15), M.trim, tx, 7.6, vestZ - 1.05));
+    // TRIGLYPHS — grooved vertical panels aligned over each column axis
+    for (const tx of (COLX ?? [-5, -3, -1, 1, 3, 5])) {
+      centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.5, 0.15), serenaOrder, tx, 7.6, vestZ - 1.05));
     }
 
     // Classical triangular pediment — spans full entablature (12 units wide)
     const pedBaseY = 7.9, pedHalfSpan = 6.2, pedAngle = Math.atan2(1.1, pedHalfSpan);
     const pedSlab = Math.sqrt(pedHalfSpan * pedHalfSpan + 1.1 * 1.1) + 0.3; // slab length
     const pedApexY = pedBaseY + 1.1;
-    const pedLeft = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.2), M.marbleVein, -pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
+    const pedLeft = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.2), serenaOrder, -pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
     pedLeft.rotation.z = pedAngle;
     centralGroup.add(pedLeft);
-    const pedRight = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.2), M.marbleVein, pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
+    // Right slab is 0.04 shallower (2.16): both raking slabs cross at the apex
+    // and their front/back faces at vestZ±1.1 were exactly coplanar in the
+    // overlap — the left slab now wins cleanly there (z-fighting sweep #6).
+    const pedRight = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.16), serenaOrder, pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
     pedRight.rotation.z = -pedAngle;
     centralGroup.add(pedRight);
-    // Pediment base beam
-    centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1, 0.2, 2.2), M.trim, 0, pedBaseY, vestZ));
+    // Pediment base beam — depth 2.16 (was 2.2: its faces sat coplanar with the
+    // raking-slab faces where the slab ends dip to y≈7.74) and +0.02 up so its
+    // top face no longer shares the frieze-band top plane at y 8.0 (#6).
+    centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1, 0.2, 2.16), serenaOrder, 0, pedBaseY + 0.02, vestZ));
 
     // CORONA / GEISON — projecting cornice shelf
-    centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1.2, 0.15, 2.5), M.marble, 0, pedBaseY - 0.15, vestZ));
+    centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1.2, 0.15, 2.5), serenaOrder, 0, pedBaseY - 0.15, vestZ));
 
     // RAKING CORNICE MOLDING — gilded strips along pediment slopes
     const rakLeft = mk(new THREE.BoxGeometry(pedSlab, 0.10, 0.15), M.gold, -pedHalfSpan / 2, pedBaseY + 0.55 + 0.18, vestZ);
     rakLeft.rotation.z = pedAngle;
     centralGroup.add(rakLeft);
-    const rakRight = mk(new THREE.BoxGeometry(pedSlab, 0.10, 0.15), M.gold, pedHalfSpan / 2, pedBaseY + 0.55 + 0.18, vestZ);
+    // 0.13 deep (left strip is 0.15): the two gilded strips cross at the apex —
+    // equal depths left their front faces coplanar there (z-fighting sweep #6)
+    const rakRight = mk(new THREE.BoxGeometry(pedSlab, 0.10, 0.13), M.gold, pedHalfSpan / 2, pedBaseY + 0.55 + 0.18, vestZ);
     rakRight.rotation.z = -pedAngle;
     centralGroup.add(rakRight);
 
@@ -888,33 +1929,124 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       tymShape.lineTo(0, 1.1);
       tymShape.closePath();
       const tymGeo = new THREE.ShapeGeometry(tymShape);
+      // W1 (WS3-4): tympanum reads as honed travertine — the gold hue moves to the sun, not the stone
       const tymMat = new THREE.MeshStandardMaterial({
-        color: "#D8B458", roughness: 0.75, metalness: 0,
+        color: W1 ? TRAVERTINE_GROUT : "#D8B458", roughness: W1 ? 0.7 : 0.75, metalness: 0,
+        envMapIntensity: W1 ? 0.7 : 1,
         normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
       });
       const tymMesh = new THREE.Mesh(tymGeo, tymMat);
-      tymMesh.position.set(0, pedBaseY + 0.05, vestZ - 1.11);
+      // 0.03 in front of the raking-slab faces (was 0.01 — depth-marginal on
+      // the long dolly; z-fighting sweep #6)
+      tymMesh.position.set(0, pedBaseY + 0.05, vestZ - 1.13);
       tymMesh.rotation.y = Math.PI; // face outward (-Z, toward entrance)
       centralGroup.add(tymMesh);
 
-      // SCULPTURAL RELIEF — laurel wreath frame in bronze
-      const wreathGeo = new THREE.TorusGeometry(1.2, 0.08, 8, 24);
-      const wreathMesh = new THREE.Mesh(wreathGeo, M.bronze);
-      wreathMesh.position.set(0, 8.65, vestZ - 1.12);
-      centralGroup.add(wreathMesh);
-      // Ribbon tails at bottom of wreath — two angled crossing strips
-      const ribbonL = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, -0.3, 7.5, vestZ - 1.12);
-      ribbonL.rotation.z = 0.35;
-      centralGroup.add(ribbonL);
-      const ribbonR = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, 0.3, 7.5, vestZ - 1.12);
-      ribbonR.rotation.z = -0.35;
-      centralGroup.add(ribbonR);
+      if(!W2){
+        // SCULPTURAL RELIEF — laurel wreath frame in bronze (legacy: empty wreath)
+        // (tracks the tympanum plane at vestZ-1.13 so the bronze keeps the same
+        // relief now the plane moved 0.02 forward — z-fighting sweep #6)
+        const wreathGeo = new THREE.TorusGeometry(1.2, 0.08, 8, 24);
+        const wreathMesh = new THREE.Mesh(wreathGeo, M.bronze);
+        wreathMesh.position.set(0, 8.65, vestZ - 1.145);
+        centralGroup.add(wreathMesh);
+        // Ribbon tails at bottom of wreath — two angled crossing strips
+        const ribbonL = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, -0.3, 7.5, vestZ - 1.145);
+        ribbonL.rotation.z = 0.35;
+        centralGroup.add(ribbonL);
+        const ribbonR = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, 0.3, 7.5, vestZ - 1.145);
+        ribbonR.rotation.z = -0.35;
+        centralGroup.add(ribbonR);
+      }else{
+        // ══ W2 (WS3-5) — the owner's name on the tympanum, in Fraunces ══
+        // Owner 2026-08-23 (item 1): NO gold leaf — "find alternative less
+        // tacky". The name now reads CARVED into the honed travertine
+        // (tympanum face = TRAVERTINE_GROUT #E3D6BC): ink-umber #5A4F44 fill a
+        // few tones darker than the stone, a faint shadow above and a subtle
+        // warm-light bevel below each stroke — the classic sun-from-above
+        // incised-letter illusion. Mat-brons canon: no #D4AF37, no sheen.
+        // Redraws when the Fraunces webfont lands or the store hydrates the
+        // name; falls back to the localized hall label so the pediment never
+        // reads blank. Personal by ~0:08 of the dolly.
+        const nameC=document.createElement("canvas");nameC.width=1024;nameC.height=160;
+        const nameCtx=nameC.getContext("2d")!;
+        const nameTex=new THREE.CanvasTexture(nameC);nameTex.colorSpace=THREE.SRGBColorSpace;nameTex.anisotropy=4;
+        const drawTymName=()=>{
+          const label=(ownerNameRef.current||entranceHallLabelRef.current||"").toUpperCase();
+          nameCtx.clearRect(0,0,1024,160);
+          nameCtx.font="600 92px Fraunces, Georgia, serif";
+          nameCtx.textAlign="center";nameCtx.textBaseline="middle";
+          try{
+            (nameCtx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing="10px";
+          }catch{/* letterSpacing unsupported — plain tracking is fine */}
+          nameCtx.fillStyle="rgba(32,26,20,0.4)";nameCtx.fillText(label,512,78,940);   // incision shadow above
+          nameCtx.fillStyle="rgba(255,250,240,0.6)";nameCtx.fillText(label,512,82,940); // light bevel below
+          nameCtx.fillStyle="#5A4F44";nameCtx.fillText(label,512,80,940);               // carved ink-umber stone
+          nameTex.needsUpdate=true;
+        };
+        drawTymName();
+        if(document.fonts?.ready)document.fonts.ready.then(drawTymName).catch(()=>{});
+        tymNameRedrawRef.current=drawTymName;
+        // Transparent decal over the tympanum: 0.03 in front of the tym plane
+        // (which itself moved to vestZ-1.13), no depth write + late renderOrder
+        // so the carved lettering can never depth-spar with the stone or the
+        // window glass on the long dolly (z-fighting sweep #6).
+        const namePlane=new THREE.Mesh(new THREE.PlaneGeometry(5.6,0.875),new THREE.MeshBasicMaterial({map:nameTex,transparent:true,depthWrite:false}));
+        namePlane.position.set(0,8.28,vestZ-1.16);
+        namePlane.rotation.y=Math.PI; // face outward with the tympanum (-Z)
+        namePlane.renderOrder=2;
+        centralGroup.add(namePlane);
+      }
 
     }
 
+    // ── DEEP PORTAL (owner r6 #4 — the entrance must READ) — the doors sit in a
+    //    dark recessed niche framed by a bold pietra-serena architrave + a
+    //    projecting hood cornice, so the opening reads as a deep shadowed portal
+    //    that draws the eye (dark void + grey stone frame against cream walls).
+    const portalDark = new THREE.MeshStandardMaterial({ color: "#17120C", roughness: 0.95, metalness: 0 });
+    extraDisposables.push(portalDark);
+    if (W3) {
+      // ══ OPEN GATE (owner: "behind the pillar entrance there is a wall") ══
+      // A wide, DEEP arched portal that reads as a real opening from the axis:
+      // dark tunnel into block A, both door leaves swung OPEN against the
+      // reveal, warm interior glow spilling out.
+      // The portal must cut BLOCK A's grown front face (z ≈ −10.15) — the first
+      // cut sat at the old villa wall z=−9, fully hidden BEHIND block A's wall.
+      const pf = -10.15;
+      // Z-FIGHT NOTE: block A's rustication courses front at −10.3 and string
+      // courses at −10.26 — every portal plane stays ≥0.1 clear of both.
+      // deep dark tunnel — proud face at −10.55 (0.25 clear of the courses)
+      centralGroup.add(mk(new THREE.BoxGeometry(6.2, 7.6, 3.2), portalDark, 0, 5.0, pf + 1.2));
+      // serena surround — jambs + lintel + projecting hood, well proud
+      for (const s of [-1, 1]) centralGroup.add(mk(new THREE.BoxGeometry(0.65, 8.2, 0.6), serenaOrder, s * 3.4, 5.2, pf - 0.6));
+      centralGroup.add(mk(new THREE.BoxGeometry(7.5, 0.65, 0.6), serenaOrder, 0, 9.25, pf - 0.6));
+      centralGroup.add(mk(new THREE.BoxGeometry(8.2, 0.45, 0.85), serenaOrder, 0, 9.8, pf - 0.78));
+      // door leaves swung OPEN against the inner reveal walls (clamped inside the
+      // tunnel sides at ±3.1 — at ±2.8 the rotated leaf edge poked through)
+      for (const s of [-1, 1]) {
+        const leaf = mk(new THREE.BoxGeometry(2.8, 6.8, 0.18), M.doorRich, 0, 0, 0);
+        leaf.position.set(s * 2.55, 4.5, pf + 0.7);
+        leaf.rotation.y = s * 1.25; // ~72° open into the tunnel
+        centralGroup.add(leaf);
+      }
+      // warm interior glow spilling from the opening
+      if (!isMobileGPU()) {
+        const glow = new THREE.PointLight("#FFC878", 0.9, 16);
+        glow.position.set(0, 4.4, pf + 0.9);
+        centralGroup.add(glow);
+      }
+      // threshold slab — top 1.36 rides 0.04 PROUD of the portico platform top
+      // (1.32; equal heights z-fought), out from the portal to the platform
+      centralGroup.add(mk(new THREE.BoxGeometry(6.2, 0.16, 2.4), M.marble, 0, 1.28, pf - 1.05));
+    } else {
+    centralGroup.add(mk(new THREE.BoxGeometry(4.9, 6.0, 0.5), portalDark, 0, 4.5, -(vD / 2 - 0.15)));   // dark reveal behind the doors
+    // bold serena architrave frame (proud), + jambs, + hood cornice
+    centralGroup.add(mk(new THREE.BoxGeometry(5.5, 0.55, 0.45), serenaOrder, 0, 7.7, -(vD / 2 + 0.12)));  // lintel/architrave head
+    centralGroup.add(mk(new THREE.BoxGeometry(6.2, 0.4, 0.7), serenaOrder, 0, 8.05, -(vD / 2 + 0.22)));   // projecting hood cornice
+    for (const s of [-1, 1]) centralGroup.add(mk(new THREE.BoxGeometry(0.55, 6.4, 0.42), serenaOrder, s * 2.72, 4.5, -(vD / 2 + 0.12))); // jambs
     // Grand double doors
     centralGroup.add(mk(new THREE.BoxGeometry(4.5, 5.5, 0.25), M.doorRich, 0, 4.3, -(vD / 2 + 0.1)));
-    centralGroup.add(mk(new THREE.BoxGeometry(5, 6, 0.12), M.trim, 0, 4.5, -(vD / 2 + 0.02)));
     // Door divider
     centralGroup.add(mk(new THREE.BoxGeometry(0.08, 5.5, 0.12), M.gold, 0, 4.3, -(vD / 2 + 0.2)));
     // Bronze ring handles (TorusGeometry)
@@ -940,6 +2072,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       }
     }
+    }
     // Semicircular transom window above grand entrance
     const transomGeo = new THREE.CylinderGeometry(2.0, 2.0, 0.08, 16, 1, false, 0, Math.PI);
     const transomMesh = new THREE.Mesh(transomGeo, M.win);
@@ -947,13 +2080,33 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     transomMesh.rotation.z = Math.PI / 2; // orient flat semicircle facing -Z
     centralGroup.add(transomMesh);
     // Pilasters flanking the grand entrance
-    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 5.5, 0.15), M.trim, -2.8, 4.3, -(vD / 2 + 0.18)));
-    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 5.5, 0.15), M.trim,  2.8, 4.3, -(vD / 2 + 0.18)));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 5.5, 0.15), serenaOrder, -2.8, 4.3, -(vD / 2 + 0.18)));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 5.5, 0.15), serenaOrder,  2.8, 4.3, -(vD / 2 + 0.18)));
     // Pilaster capitals
-    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.2), M.trim, -2.8, 7.25, -(vD / 2 + 0.18)));
-    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.2), M.trim,  2.8, 7.25, -(vD / 2 + 0.18)));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.2), serenaOrder, -2.8, 7.25, -(vD / 2 + 0.18)));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.2), serenaOrder,  2.8, 7.25, -(vD / 2 + 0.18)));
     // Threshold / entrance step
     centralGroup.add(mk(new THREE.BoxGeometry(5.5, 0.2, 1.5), M.marble, 0, 1.2, -(vD / 2 + 0.8)));
+
+    // ══ W2 grandeur pass (owner feedback 2026-08-06 #6B) — MONUMENTAL STAIR ══
+    // A widening marble cascade from the portico platform down to the courtyard:
+    // the royal approach to the ONE door. Widths are capped at 15 so the lowest
+    // tread clears the wing-2/3 gallery foundations that flank the forecourt
+    // (perp distance > 4.5 at every tread corner). Two travertine plinths with
+    // bronze urns flank the foot of the stair. Shared materials, 10 meshes.
+    if (W2 && !W3) { // W3 replaces the cascade + urns with entrance_w3.glb (grander stair, parapets, scanned urns)
+      for (let si = 0; si < 4; si++) {
+        centralGroup.add(mk(new THREE.BoxGeometry(12 + si, 0.22, 1.5), M.marble, 0, 0.92 - si * 0.21, -(15.6 + si * 1.05)));
+      }
+      for (const s of [-1, 1]) {
+        // Plinth 0.03 lower so its base sinks just below the courtyard disc at
+        // world y 8.35 instead of resting exactly ON its plane (z-fighting
+        // sweep #6); the urn follows to keep the same seat.
+        centralGroup.add(mk(new THREE.BoxGeometry(1.7, 1.6, 1.7), M.trim, s * 9.4, 0.82, -21.2));
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.42, 0.62, 1.15, 10), M.bronze, s * 9.4, 2.22, -21.2));
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.55, 0.38, 0.35, 10), M.bronze, s * 9.4, 2.97, -21.2));
+      }
+    }
 
     // ── WALL SCONCES — central domus front face (-Z) ──
     for (const [x, y] of [[-8, vH * 0.4 + 1.3], [-3, vH * 0.4 + 1.3], [3, vH * 0.4 + 1.3], [8, vH * 0.4 + 1.3]] as [number, number][]) {
@@ -1003,8 +2156,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Stacked marble rim
     centralGroup.add(mk(new THREE.BoxGeometry(8, 0.12, 6.5), M.marble, 0, 1.86, 0));
 
-    // ── MOSAIC FLOOR BORDER — gold ring around impluvium ──
-    const mosaicRing = new THREE.Mesh(new THREE.TorusGeometry(4.5, 0.08, 4, 32), M.goldBright);
+    // ── MOSAIC FLOOR BORDER — ring around impluvium (W1: travertine, gold is frames/tympanum only) ──
+    const mosaicRing = new THREE.Mesh(new THREE.TorusGeometry(4.5, 0.08, 4, 32), W1 ? M.trim : M.goldBright);
     mosaicRing.rotation.x = -Math.PI / 2;
     mosaicRing.position.set(0, 1.38, 0);
     centralGroup.add(mosaicRing);
@@ -1313,10 +2466,43 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     centralGroup.add(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze,  (vW / 2 + 0.5), vH + 1.85, 0));
 
     // ── PANTHEON-STYLE DOME (critical for transition coherence) ──
-    const rDomeR = 8;
-    // Drum base (slightly wider, 3.5m tall)
-    const rDrumR = 8.5, rDrumH = 3.5;
-    const drumBaseY = vH + 1.8;
+    // ══ Owner review 2026-08-06 #1 — THE DOME IS THE HERO, BY HEIGHT ══
+    // The render read the dome as too low/small, drowning between the towers and
+    // eaves. The 10%-rule governs the GROUND footprint, not the height — so the
+    // TAMBOER (drum) is lengthened dramatically (rDrumH 5.2→11.0) while the
+    // diameter drops to ⌀~16.4 (rDrumR 8.2) so the footprint stays ~7%. A tall
+    // TWO-STAGE crossing attic (a broad lower storey + a stepped upper stage,
+    // both travertine-corniced) lifts the drum monumentally off the roof so the
+    // transition block→attic→drum→shell→lantern is gradual — no thin stem.
+    // Result (local frame, palace at world +8.3): drum top L≈19.5, shell apex
+    // L≈27.7 (world ≈36), lantern finial L≈35 (world ≈43). Every casa-torre is
+    // now capped well below (tallest world 31.3), so the lantern-crowned dome
+    // unmistakably bekroont the silhouette from the arrival dolly. Materials stay
+    // canon; geometry counts stay flat (same pilaster/window/rib loops, bigger
+    // dimensions + two extra attic boxes).
+    const rDomeR = W2 ? 8.0 : 8;
+    const rDrumR = W2 ? 8.2 : 8.5, rDrumH = W2 ? 11.0 : 3.5;
+    const drumBaseY = W2 ? vH + 5.5 : vH + 1.8;
+    if (W2) {
+      // TWO-STAGE monumental crossing carrying the raised drum. Stage 1 (broad)
+      // rises from the roof ridge; stage 2 (stepped-in) meets the drum base. Each
+      // stage tops with a travertine cornice band; the drum base cornice lands
+      // INSIDE the upper stage so nothing is coplanar (all cornice tops offset in
+      // Y from the box tops they cap — no z-fight from a high camera, #6).
+      // Stage 1: broad lower attic (villa roof → ~L 12), 19×17.4.
+      centralGroup.add(mk(new THREE.BoxGeometry(19, 4.6, 17.4), ochreWall, 0, vH + 2.6, 0));
+      centralGroup.add(mk(new THREE.BoxGeometry(19.8, 0.34, 18.2), M.trim, 0, vH + 5.0, 0));
+      // Stage 2: stepped-in upper drum-base storey carrying the drum (⌀16.4),
+      // 17.4×17.4 so the drum base cornice (⌀17.2) lands inside it — the drum
+      // sits ON a masonry crossing, never on a thin stem. Rises to just under the
+      // drum base cornice.
+      centralGroup.add(mk(new THREE.BoxGeometry(17.4, 3.4, 17.4), ochreWall, 0, vH + 5.9, 0));
+      centralGroup.add(mk(new THREE.BoxGeometry(18.0, 0.3, 18.0), M.trim, 0, vH + 7.55, 0));
+      // Corner acroteria piers on stage 2 anchoring the drum visually (canon
+      // travertine, no gold) — four squat piers at the upper-stage corners.
+      for (const sx of [-1, 1]) for (const sz of [-1, 1])
+        centralGroup.add(mk(new THREE.BoxGeometry(1.1, 1.6, 1.1), M.trim, sx * 7.7, vH + 7.0, sz * 7.7));
+    }
     centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR, rDrumR + 0.3, rDrumH, 32), ochreWall, 0, drumBaseY + rDrumH / 2, 0));
     // Drum base cornice — wider band at bottom of drum
     centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR + 0.4, rDrumR + 0.6, 0.2, 32), M.trim, 0, drumBaseY + 0.1, 0));
@@ -1330,18 +2516,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       pilaster.rotation.y = pa;
       centralGroup.add(pilaster);
     }
-    // Drum windows — taller for elegant proportions (0.7×1.6)
-    for (let dw = 0; dw < 12; dw++) {
+    // Drum windows — W2: a full tamboer window ring (1.05×2.9) so the golden-hour
+    // glass reads as a glowing band under the dome; legacy 0.7×1.6.
+    // W3 replaces these flat stickers with modeled arched thermal-bay aediculae.
+    if (!W3) for (let dw = 0; dw < 12; dw++) {
       const da = (dw / 12) * Math.PI * 2;
-      centralGroup.add(mk(new THREE.BoxGeometry(0.7, 1.6, 0.12), M.win,
+      centralGroup.add(mk(new THREE.BoxGeometry(W2 ? 1.05 : 0.7, W2 ? 2.9 : 1.6, 0.12), M.win,
         Math.cos(da) * (rDrumR + 0.05), drumBaseY + rDrumH * 0.6, Math.sin(da) * (rDrumR + 0.05)));
     }
-    // Hemispherical dome — verdigris copper with patina texture
+    // Hemispherical dome — W1: verdigris teal is off-canon; aged sun-struck bronze instead.
+    // W2 (Sette Sorelle iter 2, owner brief): the low-roughness metal shell read
+    // as a MIRROR-GOLD Taj-Mahal dome and broke canon dogma (gold = lantern +
+    // tympanum only). Brunelleschi instead: matte terracotta coppo (M.tile
+    // family, one shade deeper red so the big smooth curve doesn't wash pink),
+    // metalness 0, the same coppo maps as the roofs, and calm env response —
+    // the golden hour warms it like every other roof; gold stays the crown.
     const domeMat = new THREE.MeshStandardMaterial({
-      color: '#6B9A85', roughness: 0.65, metalness: 0.35,
-      normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(1.2, 1.2),
-      roughnessMap: clayPlasterTex.roughnessMap,
-      envMapIntensity: 0.7,
+      color: W2 ? '#A5674E' : (W1 ? '#8A6F52' : '#6B9A85'),
+      roughness: W2 ? 0.82 : 0.65, metalness: W2 ? 0 : (W1 ? 0.45 : 0.35),
+      map: W2 ? roofTileTex.map : null,
+      normalMap: W2 ? roofTileTex.normalMap : clayPlasterTex.normalMap,
+      normalScale: new THREE.Vector2(W2 ? 0.7 : 1.2, W2 ? 0.7 : 1.2),
+      roughnessMap: W2 ? roofTileTex.roughnessMap : clayPlasterTex.roughnessMap,
+      envMapIntensity: W2 ? 0.45 : (W1 ? 0.85 : 0.7),
     });
     extraDisposables.push(domeMat);
     const rDome = new THREE.Mesh(
@@ -1350,80 +2547,386 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     );
     rDome.position.set(0, drumBaseY + rDrumH + 0.2, 0);
     rDome.castShadow = true;
+    rDome.visible = !W3; // W3 canary: Blender dome-shell GLB replaces this
     centralGroup.add(rDome);
-    // Dome exterior ribs — 8 radial coffers running from drum top toward oculus
+    // Dome exterior ribs — 8 radial coffers running from drum top toward oculus.
+    // ══ Owner review 2026-08-06 #2 — SOLID SHELL, ribs as ACCENT not frame ══
+    // The old ribs read as a thin parasol frame (spichtig white spokes into the
+    // sky). Now the terracotta shell is the massive read (coppo maps, warm
+    // terracotta, above) and the 8 meridians become BROADER, LOWER-CONTRAST
+    // bands: much wider (Z 1.05→0.7 taper vs 0.46), a touch less proud (0.26),
+    // and a SUBDUED warm-cream travertine (near the shell, not stark white) so
+    // they lie neatly ON the surface as ribs, never as free spokes. All 56
+    // segments merge into ONE static mesh (legacy loop was 40 draw calls).
     const domeOriginY = drumBaseY + rDrumH + 0.2;
-    for (let r = 0; r < 8; r++) {
-      const ra = (r / 8) * Math.PI * 2;
-      for (let seg = 0; seg < 5; seg++) {
-        const phi = (seg / 5) * (Math.PI * 0.45); // equator toward apex
-        const ribR = rDomeR * Math.cos(phi) * 0.95;
-        const ribY = rDomeR * Math.sin(phi);
-        const rib = mk(new THREE.BoxGeometry(0.18, 0.12, 0.5), M.stoneD,
-          Math.cos(ra) * ribR, domeOriginY + ribY, Math.sin(ra) * ribR);
-        rib.rotation.y = ra;
-        rib.rotation.z = -phi;
-        centralGroup.add(rib);
+    if (W2) {
+      // Subdued warm-cream rib stone — lower contrast against the terracotta
+      // shell than stark M.trim white; canon travertine family, no gold.
+      const ribMat = new THREE.MeshStandardMaterial({ color: "#CDBE9E", roughness: 0.64, metalness: 0, envMapIntensity: 0.55 });
+      extraDisposables.push(ribMat);
+      const ribGeos: THREE.BufferGeometry[] = [];
+      const RIB_SEGS = 7, RIB_SWEEP = Math.PI * 0.47; // ends tucked under the oculus disc (r≈0.75 < 1.5)
+      const segLen = (rDomeR * RIB_SWEEP) / RIB_SEGS + 0.30; // overlap so the rib reads continuous
+      for (let r = 0; r < 8; r++) {
+        const ra = (r / 8) * Math.PI * 2;
+        for (let seg = 0; seg < RIB_SEGS; seg++) {
+          const phi = ((seg + 0.5) / RIB_SEGS) * RIB_SWEEP;
+          const g = new THREE.BoxGeometry(0.26, segLen, 1.05 - seg * 0.11); // X=proud depth (lower), Y=meridian run, Z=WIDTH (broad, tapers toward the crown)
+          // Orient: local +X → outward surface normal, local +Y → meridian tangent
+          g.rotateZ(phi);
+          g.rotateY(-ra);
+          const rc = rDomeR + 0.05; // rib center just above the shell — reads as a raised band, most of the 0.26 rides proud but reads flat/wide
+          g.translate(Math.cos(ra) * rc * Math.cos(phi), domeOriginY + rc * Math.sin(phi), Math.sin(ra) * rc * Math.cos(phi));
+          ribGeos.push(g);
+        }
+      }
+      const ribMerged = mergeGeometries(ribGeos);
+      ribGeos.forEach(g => g.dispose());
+      if (ribMerged) {
+        extraGeoDisposables.push(ribMerged);
+        const ribMesh = new THREE.Mesh(ribMerged, ribMat);
+        ribMesh.castShadow = true;
+        ribMesh.visible = !W3; // W3 canary: rib geometry is baked into the GLB
+        w3RibMesh = ribMesh; // handle for the W3 fallback path
+        centralGroup.add(ribMesh);
+      }
+    } else {
+      for (let r = 0; r < 8; r++) {
+        const ra = (r / 8) * Math.PI * 2;
+        for (let seg = 0; seg < 5; seg++) {
+          const phi = (seg / 5) * (Math.PI * 0.45); // equator toward apex
+          const ribR = rDomeR * Math.cos(phi) * 0.95;
+          const ribY = rDomeR * Math.sin(phi);
+          const rib = mk(new THREE.BoxGeometry(0.18, 0.12, 0.5), M.stoneD,
+            Math.cos(ra) * ribR, domeOriginY + ribY, Math.sin(ra) * ribR);
+          rib.rotation.y = ra;
+          rib.rotation.z = -phi;
+          centralGroup.add(rib);
+        }
       }
     }
+    // Oculus + lantern — W3 bakes these into the hero-crown GLB (colonnaded
+    // lantern with an emissive gold finial), so skip the procedural build when on.
+    if (!W3) {
     // Oculus opening (dark circle at apex)
     centralGroup.add(mk(new THREE.CylinderGeometry(1.5, 1.5, 0.15, 24), M.stoneD, 0, drumBaseY + rDrumH + rDomeR + 0.1, 0));
-    // Oculus rim — thicker tube for bold gold band
-    centralGroup.add(mk(new THREE.TorusGeometry(1.5, 0.18, 8, 24), M.gold, 0, drumBaseY + rDrumH + rDomeR + 0.2, 0));
-    // Lantern above oculus — cylinder with 6 tiny windows, cone roof, gold finial
+    // Oculus rim — W2: travertine collar the eight meridians die into (canon:
+    // gold is lantern + tympanum ONLY — the gold band moved off the shell with
+    // the rest of the Taj look); legacy keeps the bold gold band.
+    centralGroup.add(mk(new THREE.TorusGeometry(1.5, 0.18, 8, 24), W2 ? M.trim : M.gold, 0, drumBaseY + rDrumH + rDomeR + 0.2, 0));
+    // Lantern above oculus — cylinder with 8 windows, cone roof, gold finial.
+    // ══ Owner review 2026-08-06 #2 — FORSER lantaarntje, in proportion to the
+    // now much taller/higher dome. Bigger cylinder (R 1.3→1.7), taller (H 2.6→
+    // 3.4), a travertine colonnade collar (8 corner pilasters), a broader kap,
+    // and a bigger gold-finial ball+spike so the crown reads unmistakably from
+    // the arrival dolly. Gold stays lantern-finial + tympanum ONLY (canon).
     const lanternY = drumBaseY + rDrumH + rDomeR + 0.35;
-    centralGroup.add(mk(new THREE.CylinderGeometry(0.8, 0.8, 1.5, 16), M.stoneL, 0, lanternY + 0.75, 0));
-    for (let lw = 0; lw < 6; lw++) {
-      const lwa = (lw / 6) * Math.PI * 2;
-      centralGroup.add(mk(new THREE.BoxGeometry(0.25, 0.55, 0.1), M.win,
-        Math.cos(lwa) * 0.82, lanternY + 0.75, Math.sin(lwa) * 0.82));
+    const lanR = W2 ? 1.7 : 0.8, lanH = W2 ? 3.4 : 1.5;
+    // Travertine base ring the lantern stands on (reads as a proper podium)
+    if (W2) centralGroup.add(mk(new THREE.CylinderGeometry(lanR + 0.5, lanR + 0.6, 0.4, 16), M.trim, 0, lanternY + 0.2, 0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(lanR, lanR, lanH, 16), M.stoneL, 0, lanternY + lanH / 2 + (W2 ? 0.4 : 0), 0));
+    const lanCoreY = lanternY + lanH / 2 + (W2 ? 0.4 : 0);
+    for (let lw = 0; lw < (W2 ? 8 : 6); lw++) {
+      const lwa = (lw / (W2 ? 8 : 6)) * Math.PI * 2;
+      centralGroup.add(mk(new THREE.BoxGeometry(W2 ? 0.55 : 0.25, W2 ? 1.7 : 0.55, 0.1), M.win,
+        Math.cos(lwa) * (lanR + 0.02), lanCoreY, Math.sin(lwa) * (lanR + 0.02)));
+      // Corner colonnette (canon travertine) between each pair of lights
+      if (W2) {
+        const cpa = ((lw + 0.5) / 8) * Math.PI * 2;
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.13, 0.13, lanH, 8),
+          M.col, Math.cos(cpa) * (lanR + 0.05), lanCoreY, Math.sin(cpa) * (lanR + 0.05)));
+      }
     }
-    centralGroup.add(mk(new THREE.ConeGeometry(0.6, 1.0, 16), M.trim, 0, lanternY + 1.5 + 0.5, 0));
-    centralGroup.add(mk(new THREE.SphereGeometry(0.18, 12, 8), M.goldBright, 0, lanternY + 2.05, 0));
+    const lanTopY = lanternY + lanH + (W2 ? 0.4 : 0);
+    // Lantern entablature + broad cone kap
+    if (W2) centralGroup.add(mk(new THREE.CylinderGeometry(lanR + 0.35, lanR + 0.2, 0.35, 16), M.trim, 0, lanTopY + 0.18, 0));
+    centralGroup.add(mk(new THREE.ConeGeometry(W2 ? 1.65 : 0.6, W2 ? 2.4 : 1.0, 16), M.trim, 0, lanTopY + (W2 ? 1.55 : 0.5), 0));
+    // Gold finial: ball + spike (canon gold — lantern/tympanum only)
+    centralGroup.add(mk(new THREE.SphereGeometry(W2 ? 0.45 : 0.18, 12, 8), M.goldBright, 0, lanTopY + (W2 ? 3.0 : 0.55), 0));
+    if (W2) centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6), M.goldBright, 0, lanTopY + 3.9, 0));
+    } // end !W3 — procedural oculus + lantern (replaced by the W3 crown GLB)
 
     // ── DISTANT ROMAN ELEMENTS ──
     // (Aqueduct moved to landscape section where atmosColor is available)
 
-    // Via Appia: straight stone road
-    const viaAppia = new THREE.Mesh(new THREE.PlaneGeometry(6, 200), M.path);
-    viaAppia.rotation.x = -Math.PI / 2;
-    viaAppia.position.set(50, 0.15, -60);
-    viaAppia.rotation.z = 0.3;
-    scene.add(viaAppia);
+    // Via Appia: straight stone road — W3 drops it (a second flat road plane at
+    // fixed height gets buried/floats on the rolling hills; the Gladiator
+    // approach is the ONE road).
+    if (!W3) {
+      const viaAppia = new THREE.Mesh(new THREE.PlaneGeometry(6, 200), M.path);
+      viaAppia.rotation.x = -Math.PI / 2;
+      viaAppia.position.set(50, 0.15, -60);
+      viaAppia.rotation.z = 0.3;
+      scene.add(viaAppia);
+    }
 
-    // Distant temple silhouette on hillside
+    // Distant temple silhouette on hillside — W3 drops it (it lands half-buried
+    // in a terrain dip on the rolling hills; the Gladiator vista is farmland)
+    if (!W3) {
     const templeZ = -130, templeX = 60;
-    scene.add(mk(new THREE.BoxGeometry(10, 1, 8), M.stoneD, templeX, 4, templeZ));
-    scene.add(mk(new THREE.BoxGeometry(8, 6, 6), M.stoneL, templeX, 7.5, templeZ));
+    // Seat on the terrain (was hard-coded y=4 — floated once the hills deepened)
+    const templeY = Math.min(getHeightAt(templeX - 5, templeZ - 4), getHeightAt(templeX + 5, templeZ - 4),
+      getHeightAt(templeX - 5, templeZ + 4), getHeightAt(templeX + 5, templeZ + 4)) - 0.3;
+    scene.add(mk(new THREE.BoxGeometry(10, 1, 8), M.stoneD, templeX, templeY + 0.5, templeZ));
+    scene.add(mk(new THREE.BoxGeometry(8, 6, 6), M.stoneL, templeX, templeY + 4, templeZ));
     // Temple columns (front)
     for (let tc = 0; tc < 4; tc++) {
-      scene.add(mk(new THREE.CylinderGeometry(0.3, 0.3, 5, 8), M.col, templeX - 3 + tc * 2, 7, templeZ - 3.2));
+      scene.add(mk(new THREE.CylinderGeometry(0.3, 0.3, 5, 8), M.col, templeX - 3 + tc * 2, templeY + 3.5, templeZ - 3.2));
     }
     // Temple pediment
-    const tPedL = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX - 2, 11.2, templeZ);
+    const tPedL = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX - 2, templeY + 7.7, templeZ);
     tPedL.rotation.z = 0.15;
     scene.add(tPedL);
-    const tPedR = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX + 2, 11.2, templeZ);
+    const tPedR = mk(new THREE.BoxGeometry(5.5, 0.25, 7), M.stoneL, templeX + 2, templeY + 7.7, templeZ);
     tPedR.rotation.z = -0.15;
     scene.add(tPedR);
+    }
 
     // Collect central meshes for hover/glow
     centralGroup.traverse((child: THREE.Object3D) => {
       if (child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) centralBodyMeshes.push(child);
     });
     palace.add(centralGroup);
-    entrClickRadius = 12; entrClickHeight = vH + rDrumH + rDomeR + 4;
+    // ══ W3 CANARY — Blender dome-shell GLB (docs/BLENDER_EXTERIOR_MASTERPLAN.md,
+    // Wave 0 pipeline canary). Streams a Blender-authored dome shell (terracotta
+    // coppo + travertine meridian ribs, baked AO on UV0) through the production
+    // modelLoader, dropping it onto the exact procedural dome origin and hiding
+    // the procedural shell/ribs. try/catch: any failure silently keeps the
+    // (re-shown) procedural dome. Material is CLONED before mutation so the
+    // shared cache master is never poisoned; the clone is only removed — never
+    // disposed — at unmount (loadModel returns a geometry/material-sharing clone).
+    //
+    // Wave-1 hero crown: an ogival ribbed terracotta shell + 12 arched drum
+    // thermal-bay aediculae (dark glass + keystone) replacing the procedural dome,
+    // ribs and flat drum-window stickers. DRACO-compressed GLB with AO baked on
+    // UV0 (CSP allows the decoder worker + embedded textures: next.config.ts
+    // worker-src/connect-src blob:). The crown is authored at absolute
+    // centralGroup heights, so it drops in at the origin. A decimated LOD1
+    // (~4.4k tris) serves mobile GPUs. try/catch keeps the procedural crown.
+    if (W3) {
+      warmDracoDecoder(); // pre-warm the decoder worker so the first load doesn't stall the dolly
+      const domeOrigin = new THREE.Vector3(0, 0, 0);
+      // 3 baked LODs by GPU tier (maxEagerTextureSets: desktop 20 / mobile 4 / potato 2)
+      const _q = getQuality();
+      const _domeV = "?v=25"; // asset version — bump when re-authoring the crown/entrance/roof GLBs (cache-bust); keep W3_GLB_V in palace/page.tsx prewarm in sync
+      const domePath = (_q.maxEagerTextureSets >= 12
+        ? "/models/exterior/dome_w3.glb"         // desktop — full stepped courses
+        : _q.maxEagerTextureSets <= 3
+        ? "/models/exterior/dome_w3_lod2.glb"    // potato
+        : "/models/exterior/dome_w3_lod1.glb")   // mobile
+        + _domeV;
+      revealGates.push(loadModel(domePath).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const mat = (m.material as THREE.MeshStandardMaterial).clone(); // don't poison the cache master
+          if (mat.aoMap) { mat.aoMap.channel = 0; mat.aoMapIntensity = 0.5; } // AO on UV0, softened so tiles/stone read brighter
+          mat.envMapIntensity = 0.7; // brighter ambient for the tiled terracotta + cream stone
+          // Terracotta now carries its colour in per-tile vertex colours (same
+          // palette as the roofs); white base + matched envMap so the dome and
+          // the roofs share the exact same colour combination + lighting response.
+          if (mat.name.includes("clay")) { mat.color.setHex(0xFFFFFF); mat.vertexColors = true; mat.envMapIntensity = 0.55; mat.roughness = 0.9; }
+          mat.needsUpdate = true;
+          m.material = mat;
+          m.castShadow = true;
+          m.receiveShadow = true;
+        });
+        g.position.copy(domeOrigin);
+        g.name = "w3_dome_canary";
+        if (w3Disposed) return;
+        centralGroup.add(g);
+        w3DomeCanary = g;
+      }).catch((err) => {
+        // Fallback: re-show the procedural dome/ribs the flag had hidden.
+        rDome.visible = true;
+        if (w3RibMesh) w3RibMesh.visible = true;
+        console.warn("[W3] dome canary load failed, using procedural dome", err);
+      }));
+      // Wave-2 hero: scanned Corinthian capitals (Sketchfab, CC-BY — credit
+      // "fts_ltx") on the 6 entrance columns, replacing the procedural box-caps.
+      revealGates.push(loadModel("/models/exterior/entrance_w3.glb" + _domeV).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const mat = (m.material as THREE.MeshStandardMaterial).clone();
+          mat.envMapIntensity = 0.6;
+          mat.needsUpdate = true;
+          m.material = mat;
+          m.castShadow = true; m.receiveShadow = true;
+        });
+        g.name = "w3_entrance_caps";
+        if (w3Disposed) return;
+        centralGroup.add(g);
+        w3EntranceCaps = g;
+      }).catch(() => { /* columns simply keep no ornate cap on load failure */ }));
+      // Wave-3 roofs (proof): modeled Tuscan coppi hip-roofs over the two front
+      // pavilions, laid ADDITIVELY over the procedural roof slabs (the corps roofs
+      // live in a merged bucket that can't be hidden without a step-0 un-merge).
+      const roofPath = _q.maxEagerTextureSets >= 12
+        ? "/models/exterior/roofs_w3.glb"        // desktop — full coppi
+        : _q.maxEagerTextureSets <= 3
+        ? "/models/exterior/roofs_w3_lod2.glb"   // potato
+        : "/models/exterior/roofs_w3_lod1.glb";  // mobile
+      revealGates.push(loadModel(roofPath + _domeV).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const mat = (m.material as THREE.MeshStandardMaterial).clone();
+          // Per-tile terracotta lives in the GLB vertex colours (like the dome);
+          // white base + DoubleSide so no coppo is culled from any angle.
+          mat.color.setHex(0xFFFFFF);
+          mat.vertexColors = true;
+          mat.side = THREE.DoubleSide;
+          mat.roughness = 0.9;
+          mat.envMapIntensity = 0.55;
+          mat.needsUpdate = true;
+          m.material = mat;
+          m.castShadow = true; m.receiveShadow = true;
+        });
+        g.name = "w3_roofs";
+        // The corps blocks live in massGroup (position.x = 2); these roofs are
+        // authored in raw block coords, so shift +2 in X to seat on their walls.
+        g.position.x = 2;
+        if (w3Disposed) return;
+        centralGroup.add(g);
+        w3Roofs = g;
+      }).catch(() => {}));
+      // Rooftop statuary — travertine urns along the central roof balustrade and
+      // robed acroteria-figures on its four corner piers, ringing the base of the
+      // drum against the sky. Two GLB pieces (Urn, Statue), each drawn as ONE
+      // InstancedMesh so all ~18 pieces cost just two draw calls.
+      revealGates.push(loadModel("/models/exterior/statuary_w3.glb" + _domeV).then((g) => {
+        if (w3Disposed) return;
+        let urnGeo: THREE.BufferGeometry | null = null, statueGeo: THREE.BufferGeometry | null = null;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          if (/urn/i.test(m.name)) urnGeo = m.geometry;
+          else if (/statue/i.test(m.name)) statueGeo = m.geometry;
+        });
+        // Parapet ring geometry (matches the Villa-Rotonda roof balustrade above):
+        // parX = vW/2+1.45, parZ = vD/2+1.15, cap top ≈ vH+1.9+0.52, pier top ≈ +0.65.
+        const parX = 11.45, parZ = 10.15, capY = 9.28, pierY = 9.45; // seat plinths into the cap/piers (no float)
+        const grp = new THREE.Group();
+        const place = (geo: THREE.BufferGeometry | null, pos: [number, number][], y: number) => {
+          if (!geo || !pos.length) return;
+          const im = new THREE.InstancedMesh(geo, M.trim, pos.length);
+          im.castShadow = true; im.receiveShadow = true;
+          const m4 = new THREE.Matrix4();
+          pos.forEach((p, i) => { m4.makeTranslation(p[0], y, p[1]); im.setMatrixAt(i, m4); });
+          im.instanceMatrix.needsUpdate = true;
+          grp.add(im);
+        };
+        place(statueGeo, [[-parX, -parZ], [-parX, parZ], [parX, -parZ], [parX, parZ]], pierY);
+        const urnPos: [number, number][] = [];
+        for (const x of [-8, -3, 3, 8]) { urnPos.push([x, -parZ], [x, parZ]); }
+        for (const z of [-5, 0, 5]) { urnPos.push([-parX, z], [parX, z]); }
+        place(urnGeo, urnPos, capY);
+        grp.name = "w3_statuary";
+        if (w3Disposed) return;
+        centralGroup.add(grp);
+        w3Statuary = grp;
+      }).catch(() => {}));
+      // Cortile fountain — modeled CC-BY fountain (Sketchfab, credit
+      // "yorre.detavernier") replacing the simple procedural basin/tazza, seated
+      // on the cross-axis over the kept procedural water disc.
+      revealGates.push(loadModel("/models/exterior/fountain_w3.glb" + _domeV).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const src = m.material as THREE.MeshStandardMaterial;
+          if (src.transparent) { // the basin water pane (own to the model)
+            const w = src.clone(); w.opacity = 0.85; w.roughness = 0.15; w.metalness = 0.1; w.envMapIntensity = 0.7; w.needsUpdate = true;
+            m.material = w;
+          } else {
+            m.material = M.trim; // palace travertine for the carved stone
+          }
+          m.castShadow = true; m.receiveShadow = true;
+        });
+        g.position.set(0, HILL_Y, -35);
+        g.scale.setScalar(1.15); // grander cortile centrepiece
+        g.name = "w3_fountain";
+        if (w3Disposed) return;
+        scene.add(g); // WORLD coords — matches the procedural garden, not the palace group
+        w3Fountain = g;
+      }).catch(() => {}));
+      // A pair of stone obelisks on pedestals flanking the cortile approach — a
+      // classic Italian-villa vertical accent framing the axis to the entrance.
+      revealGates.push(loadModel("/models/exterior/obelisk_w3.glb" + _domeV).then((g) => {
+        if (w3Disposed) return;
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          m.material = M.trim; m.castShadow = true; m.receiveShadow = true;
+        });
+        const grp = new THREE.Group();
+        for (const gx of [-10, 10]) { const o = g.clone(); o.position.set(gx, HILL_Y, -24); grp.add(o); }
+        grp.name = "w3_obelisks";
+        if (w3Disposed) return;
+        scene.add(grp); // WORLD coords — flanks the garden approach
+        w3Obelisks = grp;
+      }).catch(() => {}));
+    }
+    // W2 grandeur: the raised two-stage crossing lifts the dome far higher — the
+    // tap-is-travel cylinder grows with it so the whole silhouette (lantern
+    // included) stays one big entrance target.
+    entrClickRadius = 12; entrClickHeight = vH + rDrumH + rDomeR + (W2 ? 12 : 4);
 
     // ══════════════════════════════════════════
     // 5 ROMAN VILLA WINGS — colonnaded galleries with arched arcades & tower pavilions
     // ══════════════════════════════════════════
     const wingDefs = [{ room: WINGS[0], length: 22 }, { room: WINGS[1], length: 20 }, { room: WINGS[2], length: 18 }, { room: WINGS[3], length: 19 }, { room: WINGS[4], length: 21 }];
+    // ══ W2 (Sette Sorelle iter 2, owner: "niet manu militari") — WING VARIATIO ══
+    // Five identical wings read as a barracks diagram. Under W2 every wing keeps
+    // its FUNCTIONAL contract — same length, same pavilion + door position, the
+    // invisible anchor box (targetWorldPos → walkthrough highlight) untouched —
+    // but the MASS varies: ridge heights ±15-25%, per-wing coppo pitch, one
+    // broad-and-low wing, one wing carrying an open loggia storey under a
+    // lifted roof, and shallow risalits (0.6-0.8 proud) with their own shed
+    // roofs. From the dolly the plus-plan now reads as a complex grown around
+    // the dome. Flag OFF: the exact legacy literals (7 / 5 / 0.26 everywhere).
+    // [wall height, gallery width, roof pitch, loggia storey height, risalit depth]
+    const WING_VAR: { wH: number, wW: number, pitch: number, loggia: number, risalit: number }[] = [
+      { wH: 6.2, wW: 7,   pitch: 0.30, loggia: 0,   risalit: 0.6 }, // 0 rear — tallest ridge (+24%): the "oldest grange" behind the dome, beside the free rear tower
+      { wH: 5.0, wW: 7,   pitch: 0.26, loggia: 2.4, risalit: 0   }, // 1 E — open loggia storey under a roof lifted 2.4; the low-E tower rises through it
+      { wH: 4.2, wW: 7,   pitch: 0.30, loggia: 0,   risalit: 0   }, // 2 front-E — low (-16%) under Sorella E
+      { wH: 5.9, wW: 7,   pitch: 0.22, loggia: 0,   risalit: 0.8 }, // 3 front-W — taller (+18%) + risalit: the front pair is deliberately unequal
+      { wH: 4.3, wW: 8.6, pitch: 0.24, loggia: 0,   risalit: 0   }, // 4 W — broad & low (stockier profile; hooks to the lone W tower)
+    ];
+    // ══ W2 CORPS-DE-LOGIS re-layout (owner: "groter in de breedte / niet
+    // manu militari") — bespoke world-bearing + length + attach-offset per
+    // wing, replacing the (i/5)·2π radial windmill. The bearing IS the world
+    // compass of the wing's outward axis (wg.rotation.y=angle+π maps local −Z
+    // → world (sinθ,cosθ)). Two long ±X side-arms (breadth), two forward
+    // returns framing the court, one rear wing; the −Z entrance axis is kept
+    // wing-free (nearest wing 55° off). `len` OVERRIDES def.length under W2
+    // (side-arms grow to 29). `att` is the radial attach-offset (was a flat 2).
+    // Flag OFF ⇒ legacy angle=(i/5)·2π, len=def.length, att=2 (byte-identical).
+    const D2R = Math.PI / 180;
+    const WING_W2: { angle: number, len: number, att: number }[] = [
+      { angle:   0 * D2R, len: 20, att: 2 }, // 0 rear — closes behind the dome (+Z)
+      { angle:  82 * D2R, len: 29, att: 3 }, // 1 E side-arm — long, canted 8° forward
+      { angle: 125 * D2R, len: 18, att: 2 }, // 2 front-E return — frames the court
+      { angle: 235 * D2R, len: 19, att: 2 }, // 3 front-W return — deliberately unequal to #2
+      { angle: 278 * D2R, len: 29, att: 3 }, // 4 W side-arm — long, broad & low
+    ];
     const wingFluteGeo = new THREE.BoxGeometry(0.015, (5 - 0.5) * 0.9, 0.04); // colH = wH - 0.5, shared across all wing columns
     extraGeoDisposables.push(wingFluteGeo);
-    wingDefs.forEach((def, i) => {
-      const angle = (i / 5) * Math.PI * 2;
+    // ── LEGACY/W1 RADIAL MASSING (flag OFF) ──────────────────────────────────
+    // The 5 radial wings + their end-pavilions are the pre-W2 (W1) massing. Under
+    // W2 (grondplan v3) this whole windmill is REPLACED by the one continuous
+    // asymmetric corps below (blocks A–E + 7 casa-torri + 5 invisible anchors),
+    // so it runs ONLY when the flag is off — flag OFF stays byte-identical.
+    if (!W2) wingDefs.forEach((def, i) => {
+      const angle = W2 ? WING_W2[i].angle : (i / 5) * Math.PI * 2;
       const wg = new THREE.Group();
-      const wW = 7, wH = 5, wL = def.length;
+      const WV = W2 ? WING_VAR[i] : null;
+      const wW = WV ? WV.wW : 7, wH = WV ? WV.wH : 5, wL = W2 ? WING_W2[i].len : def.length;
+      const roofLift = WV ? WV.loggia : 0; // loggia storey height — the roof rides up by this
       const wingMeshes: THREE.Mesh[] = [];
       function addM(m: any) { wg.add(m); if (m.material && !m.material.transparent) wingMeshes.push(m); return m; }
 
@@ -1450,27 +2953,31 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
 
       // ── HIPPED TERRACOTTA ROOF (four-sided hip roof) ──
+      // W2 variatio: per-wing pitch, and the whole roof block rides on rB —
+      // the wall top PLUS the loggia storey (wing 1), so a lifted roof needs
+      // no duplicated geometry.
       const roofOverhang = 1.2;
-      const roofAngle = 0.26; // ~15 degrees
+      const roofAngle = WV ? WV.pitch : 0.26; // legacy ~15 degrees
+      const rB = wH + roofLift; // roof base line
       const roofSlabW = (wW + roofOverhang * 2) / 2 + 0.3;
       const roofSlabL = wL + roofOverhang * 2;
-      const wRidgeY = wH + 2.0 + Math.sin(roofAngle) * roofSlabW;
+      const wRidgeY = rB + 2.0 + Math.sin(roofAngle) * roofSlabW;
       const wRidgeCenterZ = -(vD / 2 + wL / 2);
       // Left slope
-      const roofLeft = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, -(roofSlabW / 2 - 0.15), wH + 1.8, wRidgeCenterZ);
+      const roofLeft = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, -(roofSlabW / 2 - 0.15), rB + 1.8, wRidgeCenterZ);
       roofLeft.rotation.z = roofAngle;
       addM(roofLeft);
       // Right slope
-      const roofRight = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, (roofSlabW / 2 - 0.15), wH + 1.8, wRidgeCenterZ);
+      const roofRight = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, (roofSlabW / 2 - 0.15), rB + 1.8, wRidgeCenterZ);
       roofRight.rotation.z = -roofAngle;
       addM(roofRight);
       // Front hip slope (triangular end piece — approximated as tapered box)
       const hipEndL = roofSlabW * 2 - 0.2;
-      const roofFront = mk(new THREE.BoxGeometry(hipEndL, 0.18, roofSlabW * 1.05), M.tile, 0, wH + 1.8, wRidgeCenterZ + roofSlabL / 2 - roofSlabW * 0.4);
+      const roofFront = mk(new THREE.BoxGeometry(hipEndL, 0.18, roofSlabW * 1.05), M.tile, 0, rB + 1.8, wRidgeCenterZ + roofSlabL / 2 - roofSlabW * 0.4);
       roofFront.rotation.x = -roofAngle;
       addM(roofFront);
       // Back hip slope
-      const roofBack = mk(new THREE.BoxGeometry(hipEndL, 0.18, roofSlabW * 1.05), M.tile, 0, wH + 1.8, wRidgeCenterZ - roofSlabL / 2 + roofSlabW * 0.4);
+      const roofBack = mk(new THREE.BoxGeometry(hipEndL, 0.18, roofSlabW * 1.05), M.tile, 0, rB + 1.8, wRidgeCenterZ - roofSlabL / 2 + roofSlabW * 0.4);
       roofBack.rotation.x = roofAngle;
       addM(roofBack);
       // Ridge beam along the top
@@ -1478,11 +2985,44 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Ridge cap tiles (half-cylinder) along the main ridge
       { const wrc = mk(new THREE.CylinderGeometry(0.15, 0.15, roofSlabL - roofSlabW * 1.6, 6, 1, false, 0, Math.PI), M.tile, 0, wRidgeY + 0.1, wRidgeCenterZ); wrc.rotation.x = -Math.PI / 2; addM(wrc); }
       // Fascia boards under eave overhangs (long sides)
-      addM(mk(new THREE.BoxGeometry(roofSlabW * 2 + 0.1, 0.1, 0.15), M.door, 0, wH + 1.55, wRidgeCenterZ - roofSlabL / 2));
-      addM(mk(new THREE.BoxGeometry(roofSlabW * 2 + 0.1, 0.1, 0.15), M.door, 0, wH + 1.55, wRidgeCenterZ + roofSlabL / 2));
+      addM(mk(new THREE.BoxGeometry(roofSlabW * 2 + 0.1, 0.1, 0.15), M.door, 0, rB + 1.55, wRidgeCenterZ - roofSlabL / 2));
+      addM(mk(new THREE.BoxGeometry(roofSlabW * 2 + 0.1, 0.1, 0.15), M.door, 0, rB + 1.55, wRidgeCenterZ + roofSlabL / 2));
       // Fascia boards on short (hip) ends
-      addM(mk(new THREE.BoxGeometry(0.15, 0.1, roofSlabL + 0.1), M.door, -(roofSlabW - 0.1), wH + 1.55, wRidgeCenterZ));
-      addM(mk(new THREE.BoxGeometry(0.15, 0.1, roofSlabL + 0.1), M.door, (roofSlabW - 0.1), wH + 1.55, wRidgeCenterZ));
+      addM(mk(new THREE.BoxGeometry(0.15, 0.1, roofSlabL + 0.1), M.door, -(roofSlabW - 0.1), rB + 1.55, wRidgeCenterZ));
+      addM(mk(new THREE.BoxGeometry(0.15, 0.1, roofSlabL + 0.1), M.door, (roofSlabW - 0.1), rB + 1.55, wRidgeCenterZ));
+      // ── W2: LOGGIA STOREY (wing 1) — an open colonnaded belvedere between
+      // the wall cornice and the lifted roof: recessed plaster core, twin
+      // travertine column screens, low parapets. The low-E tower shaft rises
+      // through it (San Gimignano houses grow around their towers). Static
+      // meshes in the wing group (they ride the section lift), canon mats.
+      if (roofLift > 0) {
+        const lgY = wH + 1.55, lgL = wL - 4;
+        // Recessed core wall (0.8 in from each face; faces never coplanar with the gallery walls)
+        addM(mk(new THREE.BoxGeometry(wW - 1.6, roofLift + 0.25, lgL), ochreWall, 0, lgY + roofLift / 2, wRidgeCenterZ));
+        for (const s of [-1, 1]) {
+          // Parapet + top beam under the eave
+          addM(mk(new THREE.BoxGeometry(0.18, 0.55, lgL), M.stoneL, s * (wW / 2 - 0.35), lgY + 0.28, wRidgeCenterZ));
+          addM(mk(new THREE.BoxGeometry(0.26, 0.16, lgL), M.trim, s * (wW / 2 - 0.35), lgY + roofLift + 0.12, wRidgeCenterZ));
+          // Column screen — 7 slender travertine columns per side
+          for (let lc = 0; lc < 7; lc++) {
+            const lz = wRidgeCenterZ - lgL / 2 + 1 + lc * (lgL - 2) / 6;
+            wg.add(mk(new THREE.CylinderGeometry(0.16, 0.19, roofLift - 0.4, 8), M.col, s * (wW / 2 - 0.35), lgY + 0.35 + (roofLift - 0.4) / 2, lz));
+          }
+        }
+      }
+      // ── W2: RISALIT (wings 0 & 3) — a shallow avant-corps (0.6-0.8 proud)
+      // mid-gallery on the outward face, with its own tilted coppo shed and a
+      // travertine sill: the façade depth-step that breaks the extruded read.
+      if (WV && WV.risalit > 0) {
+        const rd = WV.risalit;
+        const rx = wW / 2 + rd / 2 - 0.2; // embedded 0.2 in the gallery wall
+        addM(mk(new THREE.BoxGeometry(rd + 0.2, wH - 0.9, 6), ochreWall, rx, (wH - 0.9) / 2 + 1.35, wRidgeCenterZ));
+        addM(mk(new THREE.BoxGeometry(rd + 0.5, 0.13, 6.5), M.trim, rx, wH + 0.52, wRidgeCenterZ));
+        const shed = mk(new THREE.BoxGeometry(rd + 1.0, 0.14, 6.6), M.tile, rx + 0.12, wH + 0.88, wRidgeCenterZ);
+        shed.rotation.z = -0.32; // leans back against the gallery wall
+        addM(shed);
+        addArchedWindow(wg, wW / 2 + rd - 0.05, wH * 0.5 + 1.3, wRidgeCenterZ, 1.0, 2.0, "z", M.trim);
+      }
       // ── ARCHED COLONNADED PORTICO (columns with arches between them) ──
       const nCols = 6;
       // Continuous entablature above colonnade — one per side
@@ -1499,11 +3039,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           wg.add(mk(new THREE.CylinderGeometry(0.3, 0.35, colH, 12), M.col, cx, colH / 2 + 1.3, cz));
           // Entasis bulge at 1/3 height
           wg.add(mk(new THREE.CylinderGeometry(0.33, 0.28, colH * 0.3, 12), M.col, cx, colH * 0.33 + 1.3, cz));
-          // Column fluting — 6 thin dark vertical stripes (shared geometry)
+          // Column fluting — 6 thin dark vertical stripes (shared geometry;
+          // W2 variatio: scaled to the per-wing column height so stripes
+          // never overshoot the capitals on the shorter wings)
           for (let fl = 0; fl < 6; fl++) {
             const fa = (fl / 6) * Math.PI * 2;
             const stripe = mk(wingFluteGeo, fluteMat,
               cx + Math.cos(fa) * 0.36, colH / 2 + 1.3, cz + Math.sin(fa) * 0.36);
+            if (WV) stripe.scale.y = colH / 4.5;
             stripe.rotation.y = fa;
             wg.add(stripe);
           }
@@ -1609,13 +3152,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
 
       // ── DECORATIVE MEDALLION (clock face) between floors, front face ──
-      addM(mk(new THREE.CircleGeometry(0.8, 16), M.goldBright, 0, eH * 0.5 + 1.3, eZ - eD / 2 - 0.06));
+      // W1: wing towers lose their gold — bronze accents; gold is entrance/tympanum only
+      addM(mk(new THREE.CircleGeometry(0.8, 16), W1 ? M.bronze : M.goldBright, 0, eH * 0.5 + 1.3, eZ - eD / 2 - 0.06));
 
       // Tower entrance door
       addM(mk(new THREE.BoxGeometry(2.8, 4.5, 0.2), M.doorRich, 0, 3.7, eZ - eD / 2 - 0.08));
       addM(mk(new THREE.BoxGeometry(3.2, 5, 0.1), M.trim, 0, 3.9, eZ - eD / 2 - 0.04));
       // Tower door divider
-      addM(mk(new THREE.BoxGeometry(0.07, 4.5, 0.1), M.gold, 0, 3.7, eZ - eD / 2 - 0.19));
+      addM(mk(new THREE.BoxGeometry(0.07, 4.5, 0.1), W1 ? M.bronze : M.gold, 0, 3.7, eZ - eD / 2 - 0.19));
       // Tower door panels — two recessed panels per leaf
       for (let tdp = -1; tdp <= 1; tdp += 2) {
         addM(mk(new THREE.BoxGeometry(1.1, 1.5, 0.03), M.door, tdp * 0.65, 2.7, eZ - eD / 2 - 0.1));
@@ -1731,7 +3275,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       addM(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze, 0, tRoofPeak + 0.25, eZ));
 
       wg.rotation.y = angle + Math.PI;
-      const att = 2;
+      const att = W2 ? WING_W2[i].att : 2;
       wg.position.set(Math.sin(angle) * att, 0, Math.cos(angle) * att);
       palace.add(wg);
       sectionGroups.push({ group: wg, id: def.room.id, targetY: 0, currentY: 0, meshes: wingMeshes, accent: def.room.accent });
@@ -1741,8 +3285,933 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       ct.position.set(0, eH / 2 + 2, -(tLen + 2) / 2);
       ct.userData = { roomId: def.room.id, wingMeshes, accent: def.room.accent };
       wg.add(ct);
-      clickTargets.push(ct);
+      // W2 grandeur pass (owner feedback 2026-08-06 #6B): wings are no longer
+      // clickable from the exterior — the hit-box becomes a position anchor only
+      // (targetWorldPos → walkthrough highlight light). Wings are entered via
+      // the entrance hall; onRoomClick contract untouched, just never fired here.
+      if (W2) wingAnchors.push(ct); else clickTargets.push(ct);
     });
+
+    // ══════════════════════════════════════════════════════════════════════
+    // W2 — GRONDPLAN v3: "un corpo unico, cresciuto nei secoli"
+    // (owner-approved plan, public/concepts/moodboard.html §3). Replaces the
+    // W1 radial windmill above with ONE continuous asymmetric corps around the
+    // kept terracotta dome (the hero on world (0,0), footprint ~7% of total).
+    // World coords: X=east+, Z=rear/north+, −Z=arrival(front). All literals
+    // deterministic (no random). Everything merges per-material into a handful
+    // of static meshes — draw budget stays flat vs the old massing.
+    //
+    // MASSA BLOCKS  centre(X,Z) · w×d · h   (built as ONE overlapping volume —
+    // adjacent blocks interpenetrate ~1.5 w.u. at every seam so the outline
+    // reads continuous, walkable corner-to-corner, staggered ridge-lines):
+    //   A Hoofdblok      (−2 ,+2 ) · 30×28 · 18   carries the dome, entree −Z
+    //   B Galerij        (+52,+2.5) · 78×13 ·  9   long low east arm, arcade
+    //   C Teruglig-tak   (+26,+22) · 46×12 · 11   folds back, embraces cortile
+    //   D Dienstvleugel  (−28,+8.5) · 26×11 ·  8   lower rear-west
+    //   E Broncourt-rng  (+68,+16.5)· 20× 9 ·  8   walled well-court
+    //   (cortile grande & broncourt are VOID — courts, not built volumes)
+    //
+    // 7 CASA-TORRI  centre(X,Z) · fp · topY   (square, H:B 4-6:1, rising from
+    // the knots/corners; quoins + one serena band + glowing bifora + double
+    // corbel or low coppo cap, NO gold; all top below the lantern finial 30.4):
+    //   T1 poort-W (−13,−14)·7 ·29   T2 poort-E (+11,−14)·7 ·29  (gatehouse)
+    //   T3 (+90,+12)·5.5·24  T4 (+90,−6)·5·23  (far-east "oude stad")
+    //   T6 (−41,+16)·6·24                       (rear-west)
+    //   T5 (+50,+32)·5·13    T7 (−13,+30)·5·12  (low, teruglig knots)
+    // COLLISION CHECK (tower fp-square vs each block rect; centre never fully
+    // inside a block — T1/T2/T4/T6 deliberately embed ≤1.5 into a corner):
+    //   T1 embeds 1.5 into A-SW corner   T2 embeds 1.5 into A-SE corner
+    //   T3/T4 graze B far-east corner    T6 embeds 1 into D-NW corner
+    //   T5,T7 fully free (north of C).   NO tower fully inside a roof. PASS.
+    //
+    // 5 ANCHORS (invisible, opacity 0, wingAnchors → targetWorldPos only):
+    //   0 roots(−28,+9)∈D  1 nest(+28,0)∈B  2 craft(+79,0)∈B
+    //   3 travel(+54,−2)∈B  4 passions(+28,+22)∈C   — all clear of the ±22°
+    //   arrival wedge and of every tower footprint.
+    // ══════════════════════════════════════════════════════════════════════
+    if (W2) {
+      // ── shared merge buckets (per material → min meshes) ──
+      const gWall: THREE.BufferGeometry[] = [], gWallL: THREE.BufferGeometry[] = [],
+            gWallD: THREE.BufferGeometry[] = [], gTrimM: THREE.BufferGeometry[] = [],
+            gRoof: THREE.BufferGeometry[] = [], gWinM: THREE.BufferGeometry[] = [],
+            gSerenaM: THREE.BufferGeometry[] = [], gPlinthM: THREE.BufferGeometry[] = [];
+      // Owner review 2026-08-07 r4 — DETAIL/RUSTIC pass: wood joinery (shutters,
+      // muntins, doors), wrought iron (railings, muntin bars), climbing ivy, and
+      // weathering (water-stain streaks + damp/discolour patches). Own buckets so
+      // draw calls stay flat. HI-detail (muntins/shutters/balconies/ivy) is gated
+      // off the weakest GPUs.
+      const gWood: THREE.BufferGeometry[] = [], gIron: THREE.BufferGeometry[] = [],
+            gIvy: THREE.BufferGeometry[] = [], gStain: THREE.BufferGeometry[] = [],
+            gMoss: THREE.BufferGeometry[] = [], gMun: THREE.BufferGeometry[] = [],
+            gIvy2: THREE.BufferGeometry[] = [], gIvy3: THREE.BufferGeometry[] = [],
+            gGlass: THREE.BufferGeometry[] = [];
+      const HI = !isMobileGPU();
+      // Dark recessed window glass (owner r7 #3: the windows read as a bright card
+      // stuck on the wall — "karton voorgeplakt"). Real glass reads DARK from
+      // outside; a deep-slate, faintly reflective pane set back in the reveal lets
+      // the bold pale-stone cross in front read unmistakably as a kruisraam.
+      const glassMat = new THREE.MeshStandardMaterial({ color: "#2B333A", roughness: 0.22, metalness: 0.15, envMapIntensity: 0.7, emissive: "#241A0E", emissiveIntensity: 0.12 });
+      // Muntin lattice — very dark, near-matte (owner r5: "kruislatten, donker").
+      // Kept off the iron bucket so it reads darker than the semi-metallic railings.
+      const munMat = new THREE.MeshStandardMaterial({ color: "#14110D", roughness: 0.9, metalness: 0.15, envMapIntensity: 0.15 });
+      extraDisposables.push(glassMat);
+      // Deep recess/reveal — window & belfry openings, rusticated joints, arch soffits
+      // (the gWallD bucket). It was mis-assigned to M.stoneD (beige PLASTER), so every
+      // "dark reveal" read as a flat beige panel: window mullions vanished into it and
+      // the belfry bifora looked boarded up. A genuinely dark, low-env material makes
+      // the recesses read as depth/openings and lets the pale stone cross pop.
+      const recessDark = new THREE.MeshStandardMaterial({ color: "#141009", roughness: 1.0, metalness: 0, envMapIntensity: 0.04 });
+      extraDisposables.push(recessDark);
+      const serenaMat = new THREE.MeshStandardMaterial({ color: "#3E3933", roughness: 0.86, metalness: 0, envMapIntensity: 0.3 });
+      const woodMat = new THREE.MeshStandardMaterial({ color: "#5A4630", roughness: 0.82, metalness: 0, envMapIntensity: 0.2 });
+      const ironMat = new THREE.MeshStandardMaterial({ color: "#2B2723", roughness: 0.6, metalness: 0.5, envMapIntensity: 0.5 });
+      const ivyMat = new THREE.MeshStandardMaterial({ color: "#4A5C34", roughness: 0.9, metalness: 0, side: THREE.DoubleSide });
+      // ivy colour variants (owner r6 #3: "meer klimop, in verschillende kleuren")
+      const ivyMat2 = new THREE.MeshStandardMaterial({ color: "#6E8248", roughness: 0.88, metalness: 0, side: THREE.DoubleSide }); // fresh light green
+      const ivyMat3 = new THREE.MeshStandardMaterial({ color: "#9C6B3A", roughness: 0.9, metalness: 0, side: THREE.DoubleSide });  // autumnal russet
+      const stainMat = new THREE.MeshStandardMaterial({ color: "#6B5B45", roughness: 0.96, transparent: true, opacity: 0.22, depthWrite: false });
+      const mossMat = new THREE.MeshStandardMaterial({ color: "#6E7248", roughness: 0.98, transparent: true, opacity: 0.3, depthWrite: false });
+      extraDisposables.push(serenaMat, woodMat, ironMat, ivyMat, stainMat, mossMat, munMat, ivyMat2, ivyMat3);
+      // A rough climbing-ivy patch: a cluster of small leaf quads scattered up a
+      // wall corner/pier (deterministic jitter via index; NO Math.random).
+      // ── IVY LEAF template (owner r7 #5: the ivy read as post-its — flat squares).
+      // A small rounded three-lobe ivy leaf, cloned + jittered per leaf so patches
+      // read as a dense leafy mat instead of stuck-on cards.
+      const ivyLeafShape = new THREE.Shape();
+      ivyLeafShape.moveTo(0, 0.55);
+      ivyLeafShape.bezierCurveTo(0.30, 0.50, 0.52, 0.20, 0.44, -0.04);
+      ivyLeafShape.bezierCurveTo(0.54, -0.02, 0.56, -0.20, 0.40, -0.28);
+      ivyLeafShape.bezierCurveTo(0.26, -0.34, 0.12, -0.44, 0, -0.5);
+      ivyLeafShape.bezierCurveTo(-0.12, -0.44, -0.26, -0.34, -0.40, -0.28);
+      ivyLeafShape.bezierCurveTo(-0.56, -0.20, -0.54, -0.02, -0.44, -0.04);
+      ivyLeafShape.bezierCurveTo(-0.52, 0.20, -0.30, 0.50, 0, 0.55);
+      const ivyLeafGeo = new THREE.ShapeGeometry(ivyLeafShape);
+      ivyLeafGeo.translate(0, -0.05, 0);
+      extraGeoDisposables.push(ivyLeafGeo);
+      const ivyPatch = (x: number, y: number, z: number, up: number, wide: number, faceX: boolean, n: number, bucket: THREE.BufferGeometry[] = gIvy) => {
+        for (let i = 0; i < n; i++) {
+          const t = i / n;
+          // leaves cluster along a meandering vine climbing the wall
+          const spread = Math.sin(t * 6.3 + x + i) * wide * 0.35 + ((i * 29) % 13 / 13 - 0.5) * wide;
+          const py = y + t * up + ((i * 53) % 7 / 7 - 0.5) * 0.5;
+          const depth = 0.06 + ((i * 17) % 5) / 5 * 0.16;    // sit slightly proud of the wall
+          const s = 0.20 + ((i * 13) % 6) / 6 * 0.22;        // SMALL varied leaves (0.20–0.42), not slabs
+          const g = ivyLeafGeo.clone();
+          g.scale(s, s, s);
+          // random 3D orientation so each leaf catches the light differently
+          g.rotateX(((i * 41) % 9 / 9 - 0.5) * 1.7);
+          g.rotateZ(((i * 61) % 11 / 11 - 0.5) * 2.0);
+          g.rotateY((faceX ? Math.PI / 2 : 0) + ((i * 23) % 7 / 7 - 0.5) * 1.3);
+          g.translate(faceX ? x + depth : x + spread, py, faceX ? z + spread : z + depth);
+          // mixed foliage: mostly base green, some fresh green, some autumnal russet
+          (bucket === gIvy ? (i % 4 === 0 ? gIvy2 : i % 6 === 0 ? gIvy3 : gIvy) : bucket).push(g);
+        }
+      };
+      const box = (arr: THREE.BufferGeometry[], w: number, h: number, d: number, x: number, y: number, z: number, ry = 0, rz = 0) => {
+        const g = new THREE.BoxGeometry(w, h, d);
+        if (rz) g.rotateZ(rz); if (ry) g.rotateY(ry);
+        g.translate(x, y, z); arr.push(g);
+      };
+      // Palace floor line: the whole group sits at palace.position.y = HILL_Y+0.3,
+      // so local y=0 IS the plinth top; foot geometry sinks ~0.4 below it.
+      // ══ Owner review 2026-08-06 #4 — MASSA DICHT (no doorkijk at the naden) ══
+      // SEAM 0.75→1.15 so every neighbour overlaps ~2.3 at the joins and the
+      // corps reads as ONE continuous mass (the old gap between galerij B and
+      // hoofdblok A closes). Explicit seam-filler blocks + a continuous crown
+      // string + a risaliet on B are added right after the block calls below.
+      const SEAM = 1.15; // per-side seam growth → neighbours overlap ~2.3 at joins
+
+      // ══ Owner review 2026-08-07 (screenshot palace design5) ═══════════════════
+      // 1) balance L/R  2) meerdere niveau's  3) detail↑ (ramen/klok/ingang+zuilen
+      //    = app-logo temple-front)  4) puntdaken minder kinderachtig.
+      // The helpers below carry those: a REAL Tuscan hip roof (ridge + overhang),
+      // a richly-moulded arched window, and a two-storey window ritme.
+
+      // ── REAL HIP ROOF — ridge along the longer plan axis + 4 slopes + eave
+      // overhang. One BufferGeometry per roof, pushed to the DoubleSide roof
+      // bucket so a stray winding can never drop a slope (replaces the childish
+      // 4-seg pyramid cone). Near-square blocks collapse to a proper pyramid.
+      const gRoofDS: THREE.BufferGeometry[] = [];
+      // W3 un-merge: the MAIN block hip-roof slabs go in their own bucket so they
+      // merge into a separate, individually-hideable mesh (w3BlockHipMesh). W3
+      // hides it and streams modeled coppi hip-roofs in its place; the small
+      // dormer hips stay in gRoofDS. Flag off ⇒ both buckets render as before.
+      const gBlockHip: THREE.BufferGeometry[] = [];
+      const roofMatDS = (M.tile as THREE.Material).clone();
+      (roofMatDS as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+      extraDisposables.push(roofMatDS);
+      const hipRoof = (cx: number, cz: number, bw: number, bd: number, eaveY: number, riseH: number, ov: number, mainHip = false) => {
+        const bucket = mainHip ? gBlockHip : gRoofDS;
+        const ex = bw / 2 + ov, ez = bd / 2 + ov, ry = eaveY + riseH;
+        const P: number[] = [];
+        const tri = (a: number[], b: number[], c: number[]) => { P.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]); };
+        const e0 = [-ex, eaveY, -ez], e1 = [ex, eaveY, -ez], e2 = [ex, eaveY, ez], e3 = [-ex, eaveY, ez];
+        if (bw >= bd) {
+          const rx = Math.max(0.001, ex - ez);
+          const R0 = [-rx, ry, 0], R1 = [rx, ry, 0];
+          tri(e0, e1, R1); tri(e0, R1, R0);   // -z slope
+          tri(e2, e3, R0); tri(e2, R0, R1);   // +z slope
+          tri(e0, R0, e3);                      // -x hip
+          tri(e1, e2, R1);                      // +x hip
+        } else {
+          const rz = Math.max(0.001, ez - ex);
+          const R0 = [0, ry, -rz], R1 = [0, ry, rz];
+          tri(e1, e2, R1); tri(e1, R1, R0);   // +x slope
+          tri(e3, e0, R0); tri(e3, R0, R1);   // -x slope
+          tri(e0, e1, R0);                      // -z hip
+          tri(e2, e3, R1);                      // +z hip
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+        g.computeVertexNormals();
+        g.translate(cx, 0, cz);
+        bucket.push(g);
+      };
+
+      // ── RICH ARCHED WINDOW (merged) — deep reveal + glowing pane, moulded
+      // travertine surround, keystone, sill on two corbels, a semicircular arch,
+      // and (piano-nobile only) a projecting cornice on brackets. `face` gives the
+      // outward wall normal; wx/wy/wz = opening centre; ww/wh = light size.
+      const richWindow = (face: "+x"|"-x"|"+z"|"-z", wx: number, wy: number, wz: number, ww: number, wh: number, ped: boolean) => {
+        const onX = face === "+x" || face === "-x";
+        const nx = face === "+x" ? 1 : face === "-x" ? -1 : 0;
+        const nz = face === "+z" ? 1 : face === "-z" ? -1 : 0;
+        const aR = ww / 2;                       // arch radius
+        const jamb = 0.16, deep = 0.34;
+        // No solid reveal box behind the light — it read as a black/beige plank
+        // covering the opening. The reflective dark-glass pane below IS the window;
+        // the proud stone frame + cross stand in front of it.
+        // DARK glass pane, RECESSED at the wall face (behind the proud stone frame +
+        // cross below) so the opening reads as a real recessed window, not a card.
+        if (onX) box(gGlass, 0.10, wh, ww - 0.08, wx + nx * 0.03, wy, wz);
+        else     box(gGlass, ww - 0.08, wh, 0.10, wx, wy, wz + nz * 0.03);
+        // arch fill (half-disc dark glass) + arch ring
+        const archFill = new THREE.CylinderGeometry(aR - 0.05, aR - 0.05, 0.10, 12, 1, false, 0, Math.PI);
+        archFill.rotateZ(Math.PI); // opening downward → upper half
+        if (onX) { archFill.rotateY(Math.PI / 2); archFill.translate(wx + nx * 0.03, wy + wh / 2, wz); }
+        else archFill.translate(wx, wy + wh / 2, wz + nz * 0.03);
+        gGlass.push(archFill);
+        const archRing = new THREE.TorusGeometry(aR, 0.09, 6, 14, Math.PI);
+        if (onX) { archRing.rotateY(Math.PI / 2); archRing.translate(wx + nx * 0.24, wy + wh / 2, wz); }
+        else archRing.translate(wx, wy + wh / 2, wz + nz * 0.24);
+        gTrimM.push(archRing);
+        // moulded surround — two jambs + a proud outer frame
+        for (const s of [-1, 1]) {
+          if (onX) box(gTrimM, 0.22, wh + 0.2, jamb, wx + nx * 0.20, wy, wz + s * (ww / 2 + jamb / 2));
+          else     box(gTrimM, jamb, wh + 0.2, 0.22, wx + s * (ww / 2 + jamb / 2), wy, wz + nz * 0.20);
+        }
+        // keystone at the crown
+        if (onX) box(gTrimM, 0.34, 0.42, 0.28, wx + nx * 0.26, wy + wh / 2 + aR - 0.05, wz);
+        else     box(gTrimM, 0.28, 0.42, 0.34, wx, wy + wh / 2 + aR - 0.05, wz + nz * 0.26);
+        // sill + two corbels
+        if (onX) box(gTrimM, 0.30, 0.14, ww + 0.5, wx + nx * 0.22, wy - wh / 2 - 0.10, wz);
+        else     box(gTrimM, ww + 0.5, 0.14, 0.30, wx, wy - wh / 2 - 0.10, wz + nz * 0.22);
+        for (const s of [-1, 1]) {
+          if (onX) box(gSerenaM, 0.18, 0.22, 0.16, wx + nx * 0.18, wy - wh / 2 - 0.24, wz + s * ww * 0.32);
+          else     box(gSerenaM, 0.16, 0.22, 0.18, wx + s * ww * 0.32, wy - wh / 2 - 0.24, wz + nz * 0.18);
+        }
+        // piano-nobile cornice on two little brackets
+        if (ped) {
+          const cy = wy + wh / 2 + aR + 0.34;
+          if (onX) box(gTrimM, 0.30, 0.16, ww + 0.9, wx + nx * 0.26, cy, wz);
+          else     box(gTrimM, ww + 0.9, 0.16, 0.30, wx, cy, wz + nz * 0.26);
+          for (const s of [-1, 1]) {
+            if (onX) box(gSerenaM, 0.20, 0.30, 0.16, wx + nx * 0.20, cy - 0.22, wz + s * (ww / 2 + 0.1));
+            else     box(gSerenaM, 0.16, 0.30, 0.20, wx + s * (ww / 2 + 0.1), cy - 0.22, wz + nz * 0.20);
+          }
+          // ── W3 AEDICULA CROWN — a true classical pediment over the cornice.
+          // Alternating triangular / segmental (deterministic by bay position) as
+          // on a Renaissance piano nobile. Raking cornices via rz-rotated trim on
+          // the front (-z/+z) faces; a shallow segmental arch on the side faces.
+          if (W3) {
+            const span = ww + 1.1, hs = span / 2, rise = hs * 0.52;
+            const seg = (Math.round(wx + wz) % 2 === 0); // ~half segmental, half triangular
+            const py = cy + 0.14;
+            if (!seg && !onX) {
+              // TRIANGULAR (front/back faces) — solid: two raking cornices meeting
+              // at the apex + recessed tympanum + apex acroterion.
+              const rake = Math.hypot(hs, rise) + 0.12, ang = Math.atan2(rise, hs);
+              box(gTrimM, rake, 0.15, 0.30, wx - hs / 2, py + rise / 2, wz + nz * 0.26, 0, ang);
+              box(gTrimM, rake, 0.15, 0.30, wx + hs / 2, py + rise / 2, wz + nz * 0.26, 0, -ang);
+              box(gWallD, span - 0.3, rise * 0.7, 0.14, wx, py + rise * 0.34, wz + nz * 0.19); // recessed tympanum
+              box(gTrimM, 0.34, 0.34, 0.34, wx, py + rise + 0.06, wz + nz * 0.28);            // apex acroterion
+            } else {
+              // SEGMENTAL (both faces) — now FILLED so it reads as a solid crown, not
+              // a thin floating arc: base cornice + recessed tympanum + curved cornice
+              // moulding + apex acroterion (same visual weight as the triangular).
+              const arc = new THREE.TorusGeometry(hs + 0.06, 0.15, 6, 20, Math.PI * 0.6);
+              arc.rotateZ(Math.PI * 0.5 - Math.PI * 0.30);
+              if (onX) {
+                box(gTrimM, 0.30, 0.14, span, wx + nx * 0.26, py, wz);                          // base cornice
+                box(gWallD, 0.14, rise * 0.6, span - 0.5, wx + nx * 0.19, py + rise * 0.28, wz); // tympanum
+                arc.rotateY(Math.PI / 2); arc.translate(wx + nx * 0.28, py + rise * 0.26, wz);
+                box(gTrimM, 0.30, 0.30, 0.30, wx + nx * 0.30, py + rise * 0.55, wz);             // acroterion
+              } else {
+                box(gTrimM, span, 0.14, 0.30, wx, py, wz + nz * 0.26);                           // base cornice
+                box(gWallD, span - 0.5, rise * 0.6, 0.14, wx, py + rise * 0.28, wz + nz * 0.19); // tympanum
+                arc.translate(wx, py + rise * 0.26, wz + nz * 0.28);
+                box(gTrimM, 0.30, 0.30, 0.30, wx, py + rise * 0.55, wz + nz * 0.30);             // acroterion
+              }
+              gTrimM.push(arc);
+            }
+          }
+        }
+        // ── r4 fine detail: iron muntins, wood shutters, iron balcony, weather
+        // streak below the sill. Gated to HI-detail GPUs (dense per-window geo).
+        if (HI) {
+          // ── KRUISRAAM (owner r7 #3 — the cross must READ) — a BOLD pale-stone
+          //    mullion (vertical) + transom (horizontal) stand well PROUD of the
+          //    recessed dark glass, forming an unmistakable stone cross in the middle
+          //    of every light; fine dark leaded bars subdivide each of the four
+          //    panes. Depth (proud stone cross over recessed dark glass) kills the
+          //    "cardboard stuck on the wall" read.
+          const po = onX ? nx * 0.17 : nz * 0.17;   // cross stands ~0.14 proud of the glass
+          const mw = 0.22;                          // mullion / transom thickness (bold, reads at distance)
+          const tY = wy + wh * 0.05;                // transom just above centre
+          const bt = 0.05, bo = onX ? nx * 0.10 : nz * 0.10; // fine leaded bars, over the glass
+          if (onX) {
+            box(gTrimM, 0.26, wh + aR + 0.1, mw, wx + po, wy + aR * 0.2, wz);           // vertical stone mullion (into the arch)
+            box(gTrimM, 0.26, mw, ww + 0.14, wx + po, tY, wz);                           // horizontal stone transom
+            for (const sz of [-ww * 0.26, ww * 0.26]) {
+              box(gMun, bt, (tY - (wy - wh / 2)) - 0.06, bt, wx + bo, (tY + wy - wh / 2) / 2, wz + sz);
+              box(gMun, bt, (wy + wh / 2 - tY) - 0.06, bt, wx + bo, (tY + wy + wh / 2) / 2, wz + sz);
+            }
+          } else {
+            box(gTrimM, mw, wh + aR + 0.1, 0.26, wx, wy + aR * 0.2, wz + po);
+            box(gTrimM, ww + 0.14, mw, 0.26, wx, tY, wz + po);
+            for (const sx of [-ww * 0.26, ww * 0.26]) {
+              box(gMun, bt, (tY - (wy - wh / 2)) - 0.06, bt, wx + sx, (tY + wy - wh / 2) / 2, wz + bo);
+              box(gMun, bt, (wy + wh / 2 - tY) - 0.06, bt, wx + sx, (tY + wy + wh / 2) / 2, wz + bo);
+            }
+          }
+          // shutters — a weathered wood leaf on each side, slightly open
+          const shW = ww * 0.52, shH = wh + 0.1, shPo = onX ? nx * 0.12 : nz * 0.12;
+          for (const s of [-1, 1]) {
+            if (onX) box(gWood, 0.06, shH, shW, wx + shPo, wy, wz + s * (ww / 2 + shW * 0.42), s * 0.3);
+            else     box(gWood, shW, shH, 0.06, wx + s * (ww / 2 + shW * 0.42), wy, wz + shPo, -s * 0.3);
+          }
+          // piano-nobile: a small iron-railed balcony on a corbelled slab
+          if (ped) {
+            const by = wy - wh / 2 - 0.16, bw2 = ww + 0.8, bd2 = 0.7;
+            if (onX) box(gTrimM, bd2, 0.14, bw2, wx + nx * (bd2 / 2 + 0.1), by, wz);
+            else     box(gTrimM, bw2, 0.14, bd2, wx, by, wz + nz * (bd2 / 2 + 0.1));
+            // rail: top bar + uprights
+            const ry2 = by + 0.62;
+            if (onX) { box(gIron, 0.06, 0.06, bw2, wx + nx * (bd2 + 0.05), ry2, wz); for (let u = -bw2 / 2; u <= bw2 / 2; u += 0.32) box(gIron, 0.05, 0.62, 0.05, wx + nx * (bd2 + 0.05), by + 0.31, wz + u); }
+            else { box(gIron, bw2, 0.06, 0.06, wx, ry2, wz + nz * (bd2 + 0.05)); for (let u = -bw2 / 2; u <= bw2 / 2; u += 0.32) box(gIron, 0.05, 0.62, 0.05, wx + u, by + 0.31, wz + nz * (bd2 + 0.05)); }
+          }
+          // weather streak below the sill (translucent damp stain)
+          if (onX) box(gStain, 0.02, wh * 0.9, ww * 0.5, wx + nx * 0.24, wy - wh - 0.3, wz);
+          else     box(gStain, ww * 0.5, wh * 0.9, 0.02, wx, wy - wh - 0.3, wz + nz * 0.24);
+        }
+      };
+
+      // ── ONE PARAMETRIC BLOCK ─────────────────────────────────────────────
+      // plaster core (grown by SEAM so joins overlap), travertine plinth + floor
+      // string courses (one per storey → reads as levels), crown cornice + corner
+      // quoins, a projecting eave, a REAL hip roof (flat-topped for the dome block
+      // A so the cupola stays the hero), and a two-storey rich window ritme.
+      // W3: subtle per-building plaster tints (owner: walls "té egaal") —
+      // each corps leans its own hue inside the golden-hour family; four
+      // extra buckets → four extra draw calls, well inside budget.
+      const gWallT: THREE.BufferGeometry[][] = [[], [], [], []];
+      const buildBlock = (
+        cx: number, cz: number, w: number, d: number, h: number,
+        opts: { winFaces?: ("+x"|"-x"|"+z"|"-z")[]; loggiaFace?: "+z"|"-z"|"+x"|"-x"; flatRoof?: boolean; tint?: number } = {}
+      ) => {
+        const bw = w + SEAM * 2, bd = d + SEAM * 2; // grown footprint (seam overlap)
+        const twoStorey = h >= 11;                   // tall blocks read as two floors
+        // plinth (foot sunk 0.4) — travertine base band
+        box(gTrimM, bw + 0.6, 1.0, bd + 0.6, cx, 0.1, cz);
+        // plaster body
+        box(W3 && opts.tint !== undefined ? gWallT[opts.tint] : gWall, bw, h, bd, cx, h / 2 + 0.5, cz);
+        // ── RUSTICATED GROUND FLOOR (owner review 2026-08-07 #1 — no blank walls):
+        // proud travertine ashlar courses wrapping the lower storey give the base
+        // texture + weight and read as the ground floor of a multi-storey palazzo.
+        // Cyclopean rusticated ashlar (owner: "rustiek mastodontisch") — deep,
+        // heavy courses with vertical joints marking big blocks.
+        // W3: rustication stops BELOW the ground-floor window sills (the proud
+        // courses ran straight through the lower window aediculae)
+        const rustTop = W3 ? Math.min(twoStorey ? h * 0.34 + 0.5 : h * 0.46 + 0.5, 2.9)
+          : (twoStorey ? h * 0.34 + 0.5 : h * 0.46 + 0.5);
+        for (let ry = 1.6; ry < rustTop; ry += 1.35) {
+          box(gTrimM, bw + 0.3, 0.85, bd + 0.3, cx, ry, cz);                    // deep proud course
+          // vertical joints (dark reveals) staggered per course along both long faces
+          const stagger = (Math.round(ry) % 2) ? 1.5 : 0;
+          for (let jx = -bw / 2 + 1.5 + stagger; jx < bw / 2 - 1; jx += 3) {
+            box(gWallD, 0.16, 0.7, bd + 0.34, cx + jx, ry, cz);
+          }
+          for (let jz = -bd / 2 + 1.5 + stagger; jz < bd / 2 - 1; jz += 3) {
+            box(gWallD, bw + 0.34, 0.7, 0.16, cx, ry, cz + jz);
+          }
+        }
+        // floor string courses — one datum per storey so the mass reads as levels
+        // ONE string course between the two storeys (was two bands at h*0.34/0.66,
+        // which sat right on the window rows at h*0.32/0.68 and cut through them).
+        const floorYs = twoStorey ? [h * 0.50 + 0.5] : [h * 0.5 + 0.5];
+        for (const fy of floorYs) box(gTrimM, bw + 0.22, 0.22, bd + 0.22, cx, fy, cz);
+        // crown cornice (two travertine bands, interpenetrating in Y — no coplanar)
+        box(gTrimM, bw + 0.4, 0.28, bd + 0.4, cx, h + 0.45, cz);
+        box(gTrimM, bw + 0.7, 0.24, bd + 0.7, cx, h + 0.66, cz);
+        // projecting eave fascia (shadow line under the roof overhang) — owner r7
+        // #4: trimmed the overhang (1.4→0.9) so no thin fascia tab projects over the
+        // gaps between blocks and reads as a floating bar.
+        box(gTrimM, bw + 0.9, 0.22, bd + 0.9, cx, h + 0.86, cz);
+        // corner quoins (travertine chains, stop under the cornice)
+        for (const sx of [-1, 1]) for (const sz of [-1, 1])
+          box(gTrimM, 0.5, h - 0.6, 0.5, cx + sx * bw / 2, (h - 0.6) / 2 + 0.5, cz + sz * bd / 2);
+        // ── ROOF ──────────────────────────────────────────────────────────
+        if (opts.flatRoof) {
+          // Block A: flat tiled deck (dome + parapet crown it) — no competing hip.
+          box(gRoof, bw + 1.0, 0.2, bd + 1.0, cx, h + 1.0, cz);
+        } else {
+          // real Tuscan hip roof: ~24° pitch (lower so it reads as roof, not tent),
+          // capped rise, generous overhang.
+          const eaveY = h + 0.95;
+          const riseH = Math.min(Math.min(bw, bd) * 0.26, 4.3);
+          hipRoof(cx, cz, bw, bd, eaveY, riseH, 0.95, true); // main block hip → hideable W3 bucket
+          // ridge cresting tile for the long wings
+          const longAxisX = bw >= bd;
+          if (Math.abs(bw - bd) > 6) {
+            const along = longAxisX ? bw : bd, rl = along - Math.min(bw, bd);
+            if (longAxisX) box(gRoof, rl, 0.3, 0.4, cx, eaveY + riseH - 0.12, cz);   // embedded onto the ridge (owner r7 #4)
+            else box(gRoof, 0.4, 0.3, rl, cx, eaveY + riseH - 0.12, cz);
+          }
+          // ── DORMERS + CHIMNEYS (owner review #2 — roofs must read, not blank
+          // brown slabs). Dormers march along the front (−z / −x) slope; slim
+          // rusticated chimney stacks rise near the ridge ends.
+          const longDim = longAxisX ? bw : bd;
+          if (longDim > 22) {
+            const nd = Math.floor(longDim / 11);
+            const dstep = (longDim - 8) / Math.max(1, nd - 1);
+            for (let di = 0; di < nd; di++) {
+              const q = -(longDim - 8) / 2 + di * dstep;
+              const dx = longAxisX ? cx + q : cx - bw / 2 + 0.9;
+              const dz = longAxisX ? cz - bd / 2 + 0.9 : cz + q;
+              const dY = eaveY + 1.0;
+              box(gWall, 1.5, 1.7, 1.4, dx, dY, dz);                 // dormer cheek
+              box(gTrimM, 1.7, 0.16, 1.5, dx, dY + 0.9, dz);         // dormer cornice
+              if (longAxisX) box(gWinM, 0.8, 1.0, 0.12, dx, dY + 0.05, dz - 0.72);
+              else box(gWinM, 0.12, 1.0, 0.8, dx - 0.72, dY + 0.05, dz);
+              hipRoof(dx, dz, 1.7, 1.6, dY + 0.98, 0.7, 0.18);       // little dormer hip
+            }
+            // chimneys near the two ridge ends — owner r6 #2: "zwevende schouwen".
+            // On near-square blocks the hip slope drops below the old fixed base so
+            // the stack floated. Anchor the base at the EAVE line (always ≤ the roof
+            // surface at any x/z) and run the shaft up through the roof, poking ~3.4
+            // above the ridge. Now embedded on every block shape.
+            for (const cs of [-1, 1]) {
+              const chx = longAxisX ? cx + cs * longDim * 0.32 : cx;
+              const chz = longAxisX ? cz : cz + cs * longDim * 0.32;
+              const chH = riseH + 3.4, chTop = eaveY + chH;             // base at eaveY, top well above the ridge
+              box(gWall, 1.0, chH, 1.0, chx, eaveY + chH / 2, chz);
+              box(gTrimM, 1.1, 0.4, 1.1, chx, chTop - 0.75, chz);        // banding just under the cap
+              box(gTrimM, 1.35, 0.34, 1.35, chx, chTop, chz);           // cap
+            }
+          }
+        }
+        // ── ROOFLINE ORNAMENT (owner review r2 #2/#3 — frivoler, richer). An urn
+        // on a plinth (travertine) — scattered on the parapet of the flat dome
+        // block, and as acroteria on the eave corners of the hipped wings.
+        const urn = (ux: number, uy: number, uz: number, s = 1) => {
+          box(gTrimM, 0.7 * s, 0.5 * s, 0.7 * s, ux, uy + 0.25 * s, uz);                                    // plinth
+          gTrimM.push(new THREE.CylinderGeometry(0.34 * s, 0.16 * s, 0.7 * s, 10).translate(ux, uy + 0.85 * s, uz)); // vase body
+          gTrimM.push(new THREE.CylinderGeometry(0.30 * s, 0.36 * s, 0.22 * s, 10).translate(ux, uy + 1.28 * s, uz)); // lip
+          gTrimM.push(new THREE.SphereGeometry(0.12 * s, 8, 6).translate(ux, uy + 1.5 * s, uz));            // finial
+        };
+        if (opts.flatRoof) {
+          // balustraded parapet ring on the flat deck + urns at corners & midpoints
+          const py = h + 1.1;
+          for (const sz of [-1, 1]) { box(gTrimM, bw + 1.0, 0.22, 0.5, cx, py + 1.15, cz + sz * (bd / 2 + 0.4)); for (let bx = -bw / 2; bx <= bw / 2; bx += 1.0) gTrimM.push(new THREE.CylinderGeometry(0.14, 0.18, 1.0, 6).translate(cx + bx, py + 0.6, cz + sz * (bd / 2 + 0.4))); }
+          for (const sx of [-1, 1]) { box(gTrimM, 0.5, 0.22, bd + 1.0, cx + sx * (bw / 2 + 0.4), py + 1.15, cz); for (let bz = -bd / 2; bz <= bd / 2; bz += 1.0) gTrimM.push(new THREE.CylinderGeometry(0.14, 0.18, 1.0, 6).translate(cx + sx * (bw / 2 + 0.4), py + 0.6, cz + bz)); }
+          for (const sx of [-1, 1]) for (const sz of [-1, 1]) urn(cx + sx * (bw / 2 + 0.4), py + 1.3, cz + sz * (bd / 2 + 0.4), 1.3);
+        } else if (!W3) {
+          // W3 drops these: on hip-roofed blocks the corner urns sit 0.2 OUTSIDE
+          // the footprint at eave height with nothing under them — they read as
+          // small pale blocks floating beside every roof corner.
+          for (const sx of [-1, 1]) for (const sz of [-1, 1]) urn(cx + sx * (bw / 2 + 0.2), h + 0.9, cz + sz * (bd / 2 + 0.2), 1.15);
+        }
+        // ── TWO-STOREY RICH WINDOW RITME ────────────────────────────────────
+        const cl = THREE.MathUtils.clamp;
+        // Window height scales with the storey so tall blocks get taller lights
+        // (no fixed squat windows on high walls); width follows for a classic
+        // ~1:1.7 aspect.
+        const rows = twoStorey
+          ? [{ y: h * 0.32 + 0.5, hh: cl(h * 0.145, 1.5, 2.2), ped: false },   // ground
+             { y: h * 0.68 + 0.5, hh: cl(h * 0.175, 1.7, 2.6), ped: true }]    // piano nobile
+          : [{ y: h * 0.55 + 0.5, hh: cl(h * 0.20, 1.6, 2.4), ped: false }];
+        for (const face of (opts.winFaces || [])) {
+          const onX = face === "+x" || face === "-x";
+          const along = onX ? bd : bw;
+          // ONE shared bay grid: n bays between n+1 pilasters, one window centred
+          // in each bay — windows and the giant order now line up as a rhythm.
+          const nBays = Math.max(2, Math.round(along / 6));
+          const inset = 1.5, first = -along / 2 + inset, pStep = (along - inset * 2) / nBays;
+          const at = (p: number): [number, number] =>
+            face === "+z" ? [cx + p, cz + bd / 2] :
+            face === "-z" ? [cx + p, cz - bd / 2] :
+            face === "+x" ? [cx + bw / 2, cz + p] : [cx - bw / 2, cz + p];
+          // windows at the bay centres
+          for (let k = 0; k < nBays; k++) {
+            const [wx, wz] = at(first + (k + 0.5) * pStep);
+            for (const row of rows) {
+              const ww = cl(row.hh * 0.72, 1.4, 1.8);
+              richWindow(face, wx, row.y, wz, ww, row.hh, row.ped);
+            }
+          }
+          // ── GIANT-ORDER PILASTERS at the bay edges (owner review #1) — travertine
+          // strips from the plinth to the cornice, framing each window bay.
+          const pilBot = 1.6, pilTop = h + 0.3, pilMid = (pilBot + pilTop) / 2, pilH = pilTop - pilBot;
+          const proud = 0.18;
+          for (let j = 0; j <= nBays; j++) {
+            const [bx, bz] = at(first + j * pStep);
+            const px = bx + (onX ? (face === "+x" ? proud : -proud) : 0);
+            const pz = bz + (!onX ? (face === "+z" ? proud : -proud) : 0);
+            const pw = onX ? 0.34 : 0.72, pd = onX ? 0.72 : 0.34;
+            box(gTrimM, pw, pilH, pd, px, pilMid, pz);                              // shaft
+            box(gTrimM, pw + 0.28, 0.28, pd + 0.28, px, pilTop - 0.1, pz);          // capital
+            box(gTrimM, pw + 0.22, 0.22, pd + 0.22, px, pilBot + 0.1, pz);          // base
+          }
+        }
+        // loggia/arcade screen along one long face (travertine colonnade proud
+        // of the plaster) — used on the long gallery B
+        if (opts.loggiaFace) {
+          const face = opts.loggiaFace;
+          const along = (face === "+x" || face === "-x") ? bd : bw;
+          const n = Math.max(4, Math.floor(along / 5.5));
+          const step = (along - 2) / (n - 1);
+          const colH = Math.min(h - 1.2, 6.5);
+          for (let k = 0; k < n; k++) {
+            const p = -(along - 2) / 2 + k * step;
+            let clx = cx, clz = cz;
+            if (face === "+z") { clz = cz + bd / 2 + 0.6; clx = cx + p; }
+            else if (face === "-z") { clz = cz - bd / 2 - 0.6; clx = cx + p; }
+            else if (face === "+x") { clx = cx + bw / 2 + 0.6; clz = cz + p; }
+            else { clx = cx - bw / 2 - 0.6; clz = cz + p; }
+            gWallL.push(new THREE.CylinderGeometry(0.28, 0.32, colH, 10).translate(clx, colH / 2 + 0.5, clz));
+            box(gTrimM, 0.7, 0.16, 0.7, clx, colH + 0.6, clz);        // capital
+            box(gTrimM, 0.62, 0.14, 0.62, clx, 0.62, clz);            // base
+          }
+          // entablature band riding the capitals
+          if (face === "+z" || face === "-z")
+            box(gTrimM, bw, 0.22, 0.3, cx, colH + 0.75, (face === "+z" ? cz + bd / 2 + 0.6 : cz - bd / 2 - 0.6));
+          else
+            box(gTrimM, 0.3, 0.22, bd, (face === "+x" ? cx + bw / 2 + 0.6 : cx - bw / 2 - 0.6), colH + 0.75, cz);
+        }
+        // ── r5 #1 RUSTIC HARDWARE (owner: "nog meer detail / rustiekheid") ──
+        // Wrought-iron tie-rod plates (capochiave) march along the floor string
+        // course between the bays; a downpipe drops at each rear corner; a couple
+        // of thin damp weather-streaks bleed down the plaster. All merged, all-GPU.
+        for (const face of (opts.winFaces || [])) {
+          const onX = face === "+x" || face === "-x";
+          const along = onX ? bd : bw;
+          // Same bay grid as the windows/pilasters, inset from the corners — the
+          // capochiave plates now line up on the string course, none float at a corner.
+          const nBays = Math.max(2, Math.round(along / 6));
+          const inset = 1.5, first = -along / 2 + inset, pStep = (along - inset * 2) / nBays;
+          const nx2 = face === "+x" ? 1 : face === "-x" ? -1 : 0;
+          const nz2 = face === "+z" ? 1 : face === "-z" ? -1 : 0;
+          const fx = cx + nx2 * (bw / 2 + 0.1), fz = cz + nz2 * (bd / 2 + 0.1);
+          for (const fy of floorYs) for (let k = 0; k <= nBays; k++) {
+            const p = first + k * pStep;
+            const tx2 = onX ? fx : cx + p, tz2 = onX ? cz + p : fz;
+            box(gIron, onX ? 0.08 : 0.44, 0.44, onX ? 0.44 : 0.08, tx2, fy, tz2, 0, Math.PI / 4); // lozenge plate
+            gIron.push(new THREE.SphereGeometry(0.10, 8, 6).translate(tx2 + nx2 * 0.06, fy, tz2 + nz2 * 0.06)); // boss
+          }
+          // damp weather-streaks near the corners (thin, translucent) — off the windows
+          for (const p of [-along * 0.42, along * 0.42]) {
+            const tx2 = onX ? fx : cx + p, tz2 = onX ? cz + p : fz;
+            box(gStain, onX ? 0.02 : 0.5, floorYs[0] * 0.8, onX ? 0.5 : 0.02, tx2, floorYs[0] * 0.5, tz2);
+          }
+        }
+        // downpipes at the two rear (+z) corners — iron pipe + collar brackets
+        for (const sx of [-1, 1]) {
+          const dpx = cx + sx * (bw / 2 - 0.35), dpz = cz + bd / 2 + 0.22;
+          gIron.push(new THREE.CylinderGeometry(0.12, 0.12, h - 0.4, 8).translate(dpx, (h - 0.4) / 2 + 0.5, dpz));
+          for (const cy2 of [h * 0.3, h * 0.6]) gIron.push(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 8).translate(dpx, cy2, dpz));
+        }
+      };
+
+      // ══ Owner review 2026-08-07 r2 — "RUSTIEK MASTODONTISCH": deeper not wider ══
+      // Shorter L↔R, more mass FRONT + BACK. Around the central dome block: two
+      // SHORTER + DEEPER side wings, a DEEP REAR RANGE piling up behind the dome,
+      // and two FRONT PAVILIONS projecting forward to form a cour d'honneur whose
+      // open centre gives the approach to the entrance. The whole complex rides a
+      // colossal rusticated SUBSTRUCTURE (below) so it grows out of the hill.
+      // Symmetric about x=−2. Overlaps at every join → one continuous mass.
+      const WING_E = 32, WING_W = -36;
+      // A Hoofdblok — tall central hart carrying the dome (flatRoof: dome crowns it).
+      buildBlock(-2, 6, 32, 30, 19, { winFaces: ["+x", "-x", "+z"], flatRoof: true, tint: 0 });
+      // Side wings — SHORTER + DEEPER (mass front-to-back), differently filled.
+      buildBlock(WING_E, 6, 30, 22, 13, { winFaces: ["+z", "+x"], loggiaFace: "-z", tint: 1 }); // east: arcaded court, warm ochre
+      buildBlock(WING_W, 6, 30, 22, 13, { winFaces: ["+z", "-z", "-x"], tint: 2 });             // west: solid palazzo, soft rose
+      // Deep REAR RANGE piling behind the dome (mass back).
+      buildBlock(-2, 30, 54, 16, 15, { winFaces: ["+z", "-z"], tint: 3 });
+      // FRONT PAVILIONS projecting forward → cour d'honneur; centre open for the
+      // approach to the entrance (mass front).
+      buildBlock(24, -14, 22, 20, 12, { winFaces: ["-z", "+x"], tint: 2 });   // east front pavilion — rose
+      buildBlock(-28, -14, 22, 20, 12, { winFaces: ["-z", "-x"], tint: 1 });  // west front pavilion — ochre
+
+      // ── SEAM FILLERS — close the A↔wing and A↔rear joins (front pavilions already
+      // overlap A + the wings, so those joins read continuous without fillers).
+      box(gWall, 4, 13, 20, 15.5, 7.0, 6);   box(gWall, 4, 13, 20, -19.5, 7.0, 6);   // A↔wings
+      box(gWall, 22, 15, 4, -2, 8.0, 21.5);                                          // A↔rear
+
+      // ── BLOCK A FRONT (−z) upper articulation flanking the central pediment.
+      // These live in massGroup (x World = local + 2), but the portico/tympanum
+      // axis is WORLD x=0 — so the pair must be centred on local −2, not 0
+      // (owner: "ramen en ornamenten boven de ingang staan niet symmetrisch").
+      {
+        const aFz = 6 - 32.3 / 2; // block A grown front face z ≈ −10.15
+        for (const wx of [-7.5, 3.5]) richWindow("-z", wx, 14.0, aFz, 1.4, 2.0, true);
+        for (const px of [-9.6, 5.6]) {
+          box(gTrimM, 0.7, 16.0, 0.34, px, 8.5, aFz - 0.18);
+          box(gTrimM, 1.02, 0.3, 0.5, px, 16.6, aFz - 0.18);
+          box(gTrimM, 0.94, 0.24, 0.45, px, 1.5, aFz - 0.18);
+        }
+      }
+
+      // ── COLOSSAL RUSTICATED SUBSTRUCTURE (owner r2 #4/#5 — built INTO the hill,
+      // not floating; "rustiek mastodontisch"). One massive base the whole complex
+      // rides on: solid to well below terrain on every side, its downhill faces
+      // cyclopean rusticated courses + a blind arcade — the hill's man-made cliff.
+      {
+        const px0 = -56, px1 = 52, pz0 = -27, pz1 = 40;
+        const pcx = (px0 + px1) / 2, pcz = (pz0 + pz1) / 2, pw = px1 - px0, pd = pz1 - pz0;
+        gPlinthM.push(new THREE.BoxGeometry(pw, 15, pd).translate(pcx, 0.5 - 7.5, pcz)); // body, buried deep
+        // cyclopean rusticated courses on all four faces
+        for (let ry = 0.0; ry > -6.5; ry -= 1.5) {
+          box(gTrimM, pw + 0.6, 1.05, 0.6, pcx, ry, pz0 - 0.1);
+          box(gTrimM, pw + 0.6, 1.05, 0.6, pcx, ry, pz1 + 0.1);
+          box(gTrimM, 0.6, 1.05, pd + 0.6, px0 - 0.1, ry, pcz);
+          box(gTrimM, 0.6, 1.05, pd + 0.6, px1 + 0.1, ry, pcz);
+        }
+        // arcade on the downhill (−z) face — big rusticated arches; the central
+        // ones hold studded wood doors (owner r4: "meer detail in deuren"), the
+        // rest read as deep shadowed openings with a keystone.
+        // W3 drops the blind arcade entirely: outside the parterre (x ±17) its
+        // big dark arch half-discs stand exposed above the levelled ground —
+        // the row of "black quarter circles" the owner kept circling.
+        if (!W3) {
+        const na = 9;
+        for (let i = 0; i < na; i++) {
+          const ax = px0 + (i + 0.5) * (pw / na), aw = pw / na - 1.4;
+          box(gWallD, aw, 3.4, 0.6, ax, -2.1, pz0 - 0.2);
+          const arch = new THREE.CylinderGeometry(aw / 2, aw / 2, 0.6, 12, 1, false, 0, Math.PI);
+          arch.rotateZ(Math.PI); arch.translate(ax, -0.4, pz0 - 0.2); gWallD.push(arch);
+          box(gTrimM, 0.5, 0.6, 0.7, ax, -0.5 + aw / 2, pz0 - 0.35);   // keystone
+          if (i >= 3 && i <= 5) {
+            // studded double doors set into the arch
+            for (const s of [-1, 1]) {
+              box(gWood, aw / 2 - 0.12, 3.0, 0.16, ax + s * aw / 4, -2.3, pz0 - 0.42);
+              for (let py = -3.4; py < -1.3; py += 0.5) for (let pxo = -1; pxo <= 1; pxo += 1) // bronze studs
+                gIron.push(new THREE.SphereGeometry(0.05, 6, 4).translate(ax + s * aw / 4 + pxo * (aw / 8), py, pz0 - 0.5));
+            }
+            box(gIron, 0.1, 3.0, 0.1, ax, -2.3, pz0 - 0.5);           // meeting stile
+          }
+        }
+        }
+        // heavy cornice capping the podium (the terrace-floor edge)
+        box(gTrimM, pw + 1.2, 0.55, pd + 1.2, pcx, 0.35, pcz);
+      }
+
+      // ── 7 CASA-TORRI ─────────────────────────────────────────────────────
+      // ══ Owner review 2026-08-06 #3 — SUBORDINATE, STURDIER, VARIED ══
+      // No tower may top the dome apex (world ≈36 / local ≈27.7): all capped well
+      // below (tallest world 31.3). Old towers were thin picket-fence spikes
+      // (H:B ~4-8:1, near-equal heights) prikked op dakranden. New rule: each
+      // torenvoet is EMBEDDED IN A BLOCK CORNER (footprint straddles the grown
+      // block hoek, coords below), footprints 5-8, H:B ~2.2-2.9 (STEVIG), and
+      // big height variatie — 2 poort (23), 2 middelhoog (17/19), 3 low (12-14).
+      // Vormregels intact (square, quoins, serena-band, bifora, corbel/coppo,
+      // NO gold). Block corners (grown by SEAM 0.75/side):
+      //  A(-2,2,30×28)→x{-17.75,13.75} z{-12.75,16.75}
+      //  B(52,2.5,78×13)→x{12.25,91.75} z{-4.75,9.75}
+      //  C(26,22,46×12)→x{2.25,49.75} z{15.25,28.75}
+      //  D(-28,8.5,26×11)→x{-41.75,-14.25} z{2.25,14.75}
+      // ══ Owner review 2026-08-07 #1/#3/#4 ══
+      // #1 BALANCE: the WEST gate-tower becomes a tall CLOCK CAMPANILE (belfry +
+      //    clock face + cupola) — a strong west vertical that counter-weights the
+      //    long east gallery; the EAST gate-tower is demoted below block A (18) so
+      //    the dome reads as the hero (no more "chimneys hiding the cupola").
+      // #4 ROOFS: every tower gets a proper steep pyramidal roof with an
+      //    overhanging eave + a finial (kills the childish flat/thin caps).
+      // kind: "campanile" | "tower". All caps stay below the dome apex (local ~28).
+      // SYMMETRIC PAIRS about x=−2, on the NEW compact footprint: a pair on the
+      // FRONT-PAVILION outer corners flanking the cour d'honneur (west = clock
+      // campanile), a pair on the wing outer corners, and a rear pair on C.
+      // [x, z, fp, topY, kind, serena-bandY]
+      const TOWERS: [number, number, number, number, "campanile"|"tower", number][] = [
+        [-38, -24, 6.5, 21.0, "campanile", 12.0], // front-W — CLOCK CAMPANILE (court gate)
+        [ 34, -24, 6.5, 18.5, "tower",     11.0], // front-E — plain (mirror)
+        [-50,  16, 6.0, 16.0, "tower",     10.0], // west-wing outer corner
+        [ 46,  16, 6.0, 16.0, "tower",     10.0], // east-wing outer corner
+        [-28,  38, 5.5, 18.5, "tower",     11.0], // rear-west (C corner) — raised above the rear range (h15) so it isn't buried
+        [ 26,  38, 5.5, 18.5, "tower",     11.0], // rear-east (C corner) — raised above the rear range (h15) so it isn't buried
+      ];
+      TOWERS.forEach(([tx, tz, fp, topY, kind, bandY]) => {
+        // Shaft — square casa-torre, foot sunk 0.6
+        gWall.push(new THREE.BoxGeometry(fp, topY + 0.6, fp).translate(tx, (topY - 0.6) / 2, tz));
+        // Stone footing plinth
+        gPlinthM.push(new THREE.BoxGeometry(fp + 0.8, 1.7, fp + 0.8).translate(tx, 0.15, tz));
+        // Quoin chains on 4 corners (stop under crown)
+        const qh = topY - 1.6;
+        for (const sx of [-1, 1]) for (const sz of [-1, 1])
+          gTrimM.push(new THREE.BoxGeometry(0.3, qh, 0.3).translate(tx + sx * fp / 2, qh / 2 - 0.4, tz + sz * fp / 2));
+        // Two staggered pietra-serena bands (floor lines → the tower reads leveled)
+        gSerenaM.push(new THREE.BoxGeometry(fp + 0.2, 0.5, fp + 0.2).translate(tx, bandY, tz));
+        gSerenaM.push(new THREE.BoxGeometry(fp + 0.2, 0.5, fp + 0.2).translate(tx, bandY * 0.55, tz));
+        // Crown — double corbelled cornice (interpenetrate 0.02 Y; no gold)
+        const crownY = topY + 0.1;
+        gTrimM.push(new THREE.BoxGeometry(fp + 0.5, 0.22, fp + 0.5).translate(tx, crownY, tz));
+        gTrimM.push(new THREE.BoxGeometry(fp + 0.7, 0.20, fp + 0.7).translate(tx, crownY + 0.19, tz));
+        for (const s of [-1, 1]) for (const off of [-fp / 3, 0, fp / 3]) {
+          gSerenaM.push(new THREE.BoxGeometry(0.28, 0.55, 0.34).translate(tx + off, crownY - 0.36, tz + s * (fp / 2 + 0.05)));
+          gSerenaM.push(new THREE.BoxGeometry(0.34, 0.55, 0.28).translate(tx + s * (fp / 2 + 0.05), crownY - 0.36, tz + off));
+        }
+        const zF = tz - fp / 2; // arrival (−Z) face
+
+        if (kind === "campanile") {
+          // ══ Owner review 2026-08-08 r5 #3 — "bell-tower mag veel beter zijn" ══
+          // A properly-articulated Tuscan campanile: a bifora belfry (twin arches +
+          // colonnette per face) framed by pier-pilasters, a bronze bell hung on a
+          // headstock, four corner pinnacle spirelets, an octagonal drum + coppo
+          // cupola + lantern finial, and a pedimented clock aedicule on the shaft.
+          const belfryY0 = crownY + 0.4, belfryH = 3.4, belfryTop = belfryY0 + belfryH;
+          // corner pier-pilasters with caps
+          for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+            gTrimM.push(new THREE.BoxGeometry(0.78, belfryH, 0.78).translate(tx + sx * (fp / 2 - 0.39), belfryY0 + belfryH / 2, tz + sz * (fp / 2 - 0.39)));
+            gSerenaM.push(new THREE.BoxGeometry(0.98, 0.26, 0.98).translate(tx + sx * (fp / 2 - 0.39), belfryTop - 0.13, tz + sz * (fp / 2 - 0.39)));
+          }
+          // belfry-floor parapet band
+          gTrimM.push(new THREE.BoxGeometry(fp + 0.3, 0.4, fp + 0.3).translate(tx, belfryY0 + 0.05, tz));
+          // BIFORA per face: OPEN twin arched lights (no dark backing panel — the
+          // belfry reads through to the bell inside and out the far side, as a real
+          // open campanile should; the old recess box read as a solid black plank).
+          for (const [ox, oz, ry] of [[0, -fp / 2, 0], [0, fp / 2, 0], [-fp / 2, 0, Math.PI / 2], [fp / 2, 0, Math.PI / 2]] as [number, number, number][]) {
+            const span = fp - 1.7;
+            // central colonnette
+            gSerenaM.push(new THREE.CylinderGeometry(0.13, 0.15, belfryH - 1.9, 8).translate(tx + ox, belfryY0 + 0.4 + (belfryH - 1.9) / 2, tz + oz));
+            gSerenaM.push(new THREE.BoxGeometry(0.34, 0.2, 0.34).translate(tx + ox, belfryY0 + belfryH - 1.35, tz + oz)); // capital
+            // twin arches
+            for (const s of [-1, 1]) {
+              const q = s * span / 4;
+              const arch = new THREE.TorusGeometry(span / 4 - 0.04, 0.09, 6, 12, Math.PI);
+              if (ry) { arch.rotateY(Math.PI / 2); arch.translate(tx + ox, belfryY0 + belfryH - 1.2, tz + oz + q); }
+              else arch.translate(tx + ox + q, belfryY0 + belfryH - 1.2, tz + oz);
+              gTrimM.push(arch);
+            }
+          }
+          // BRONZE BELL hung compactly from a SHORT yoke tucked right under the
+          // belfry entablature (owner r7 #4: the old full-width headstock beam
+          // silhouetted through the open belfry as a floating horizontal bar). The
+          // short yoke stays behind the piers so nothing reads as a floating stick.
+          gSerenaM.push(new THREE.CylinderGeometry(0.34, 0.58, 0.78, 10).translate(tx, belfryY0 + belfryH - 1.35, tz));
+          gSerenaM.push(new THREE.SphereGeometry(0.34, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5).translate(tx, belfryY0 + belfryH - 0.98, tz));
+          gTrimM.push(new THREE.BoxGeometry(1.0, 0.16, 0.16).translate(tx, belfryY0 + belfryH - 0.72, tz)); // short yoke
+          // belfry entablature
+          gTrimM.push(new THREE.BoxGeometry(fp + 0.6, 0.44, fp + 0.6).translate(tx, belfryTop + 0.12, tz));
+          // FOUR CORNER PINNACLE SPIRELETS
+          for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+            const pcx2 = tx + sx * (fp / 2 - 0.02), pcz2 = tz + sz * (fp / 2 - 0.02);
+            gSerenaM.push(new THREE.BoxGeometry(0.5, 0.62, 0.5).translate(pcx2, belfryTop + 0.5, pcz2));
+            gSerenaM.push(new THREE.ConeGeometry(0.28, 1.1, 4).translate(pcx2, belfryTop + 1.35, pcz2));
+            gSerenaM.push(new THREE.SphereGeometry(0.1, 8, 6).translate(pcx2, belfryTop + 2.0, pcz2));
+          }
+          // OCTAGONAL DRUM + COPPO CUPOLA + LANTERN FINIAL. Owner r7 #4: the lantern
+          // read as FLOATING above the campanile — the thin pyramid apex vanished at
+          // distance, leaving sky between cupola and lantern. Fix: a squatter cupola,
+          // a SOLID neck bridging the apex, and a lantern drum that overlaps DOWN into
+          // it, so the crown reads as one continuous mass.
+          gWall.push(new THREE.CylinderGeometry(fp * 0.4, fp * 0.44, 0.9, 8).translate(tx, belfryTop + 0.8, tz));
+          gTrimM.push(new THREE.CylinderGeometry(fp * 0.46, fp * 0.46, 0.2, 8).translate(tx, belfryTop + 1.3, tz));
+          const cuRise = fp * 0.30;
+          hipRoof(tx, tz, fp * 0.82, fp * 0.82, belfryTop + 1.35, cuRise, 0.3, true); // W3 hides → coppi cupola cap
+          const cuApex = belfryTop + 1.35 + cuRise;
+          gTrimM.push(new THREE.CylinderGeometry(0.32, 0.6, cuRise * 0.85, 8).translate(tx, cuApex - cuRise * 0.35, tz)); // solid neck into the apex
+          gTrimM.push(new THREE.CylinderGeometry(0.26, 0.36, 1.0, 8).translate(tx, cuApex + 0.1, tz));                     // lantern drum, overlaps down
+          gTrimM.push(new THREE.SphereGeometry(0.22, 10, 8).translate(tx, cuApex + 0.78, tz));
+          gTrimM.push(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 6).translate(tx, cuApex + 1.18, tz));
+          // ── CLOCK AEDICULE on the −Z shaft face: moulded bezel, pale dial, dark
+          //    hands/markers (munMat), and a semicircular hood-mould over it.
+          const ckY = topY - 3.4, ck = 1.2;
+          gSerenaM.push(new THREE.BoxGeometry(ck * 2 + 0.7, ck * 2 + 0.7, 0.16).translate(tx, ckY, zF - 0.02)); // stone panel
+          gSerenaM.push(new THREE.CylinderGeometry(ck + 0.14, ck + 0.14, 0.14, 20).rotateX(Math.PI / 2).translate(tx, ckY, zF - 0.10)); // bezel
+          gWinM.push(new THREE.CylinderGeometry(ck, ck, 0.14, 20).rotateX(Math.PI / 2).translate(tx, ckY, zF - 0.14)); // pale dial
+          const hood = new THREE.TorusGeometry(ck + 0.32, 0.11, 6, 16, Math.PI); hood.translate(tx, ckY, zF - 0.12); gTrimM.push(hood);
+          for (let hh = 0; hh < 12; hh++) { const a = hh / 12 * Math.PI * 2; gMun.push(new THREE.BoxGeometry(0.1, 0.1, 0.05).translate(tx + Math.cos(a) * (ck - 0.28), ckY + Math.sin(a) * (ck - 0.28), zF - 0.19)); }
+          box(gMun, 0.11, ck - 0.45, 0.05, tx, ckY + (ck - 0.45) / 2 - 0.05, zF - 0.2, 0, 0.5);   // hour hand
+          box(gMun, 0.08, ck - 0.15, 0.05, tx, ckY + (ck - 0.15) / 2 - 0.02, zF - 0.2, 0, -0.9);  // minute hand
+        } else {
+          // ══ Owner review 2026-08-08 r5 #4 — "puntdaken beter afgewerkt" ══
+          // A moulded two-band stone eave cornice, a terracotta coppo pyramid with
+          // an antefix roll-tile course ringing the eave, and a real drum+ball+spike
+          // finial (no more bare cone poking a naked sphere).
+          gTrimM.push(new THREE.BoxGeometry(fp + 1.0, 0.3, fp + 1.0).translate(tx, topY + 0.2, tz));
+          gTrimM.push(new THREE.BoxGeometry(fp + 0.6, 0.22, fp + 0.6).translate(tx, topY + 0.42, tz));
+          const eY = topY + 0.55, rH = fp * 0.66, apexY = eY + rH;
+          hipRoof(tx, tz, fp + 0.3, fp + 0.3, eY, rH, 0.45, true); // W3 hides this → coppi tower cap
+          // antefix coppo roll-tiles ringing the eave — W3 drops them: the coppi
+          // GLB caps carry their own tile ends, and on towers hidden behind the
+          // wings the proud antefix ring peeked past the silhouette as a row of
+          // floating terracotta dashes against the sky.
+          const ne = W3 ? 0 : Math.max(3, Math.round(fp));
+          for (const [ex, ez, along] of [[0, -1, 1], [0, 1, 1], [-1, 0, 0], [1, 0, 0]] as [number, number, number][]) {
+            for (let e = 0; e < ne; e++) {
+              const q = -fp / 2 + 0.4 + (e / (ne - 1)) * (fp - 0.8);
+              const px2 = along ? tx + q : tx + ex * (fp / 2 + 0.28);
+              const pz2 = along ? tz + ez * (fp / 2 + 0.28) : tz + q;
+              gRoofDS.push(new THREE.CylinderGeometry(0.11, 0.11, 0.3, 6).rotateX(Math.PI / 2).translate(px2, eY + 0.13, pz2));
+            }
+          }
+          // finial: drum + ball + spike — owner r7 #4: the drum overlaps DOWN into the
+          // pyramid apex (bottom well below apexY) so the finial never reads as
+          // floating above the thin roof point.
+          gSerenaM.push(new THREE.CylinderGeometry(0.28, 0.44, 1.0, 8).translate(tx, apexY - 0.1, tz)); // bottom apexY-0.6, into the pyramid
+          gTrimM.push(new THREE.SphereGeometry(0.2, 10, 8).translate(tx, apexY + 0.5, tz));
+          gTrimM.push(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6).translate(tx, apexY + 0.95, tz));
+          // Bifora facing arrival (−Z): serena surround, two arched lights + colonnette
+          const biYs = topY > 16 ? [topY - 2.1, topY - 6.0] : [topY - 2.1];
+          for (const biY of biYs) {
+            gSerenaM.push(new THREE.BoxGeometry(1.18, 1.62, 0.12).translate(tx, biY + 0.12, zF - 0.01));
+            for (const lx of [-0.27, 0.27]) {
+              gWinM.push(new THREE.BoxGeometry(0.34, 0.92, 0.16).translate(tx + lx, biY, zF - 0.02));
+              const arch = new THREE.CylinderGeometry(0.17, 0.17, 0.16, 10, 1, false, 0, Math.PI);
+              arch.rotateX(Math.PI / 2); arch.rotateZ(Math.PI / 2);
+              arch.translate(tx + lx, biY + 0.46, zF - 0.02); gWinM.push(arch);
+            }
+            gTrimM.push(new THREE.CylinderGeometry(0.06, 0.075, 0.95, 8).translate(tx, biY - 0.02, zF - 0.06));
+          }
+        }
+      });
+
+      // ── r4: CLIMBING IVY + WEATHERING (owner: klimop op bepaalde plekken +
+      // verkleuring). Ivy climbs a few piers / tower-bases / pavilion corners;
+      // a damp moss skirt + broad discolour patches break the flat plaster.
+      if (HI) {
+        // owner r6 #3: MORE ivy, in varied colours (the mixed-bucket scatter in
+        // ivyPatch gives each patch base-green + fresh-green + russet leaves).
+        // W3 keeps ONLY wall-pinned ivy (owner: floating klimop all over). The
+        // substructure-arcade row and the terrace-flank rows anchored to faces
+        // below the plateau hang in mid-air on the new terrain — dropped.
+        if (!W3) {
+          for (let i = 0; i < 9; i += 2) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; ivyPatch(ax, -2.5, -27.5, 5.2, 1.7, false, 46); }
+          ivyPatch(-40, 0.5, -25, 9, 1.6, false, 48);
+          ivyPatch(40, 0.5, -25, 9, 1.6, false, 48);
+        }
+        for (const [tx, tz] of [[-38, -24], [-28, 38], [26, 38], [46, 16], [-50, 16]] as [number, number][]) ivyPatch(tx, 0.5, tz - 3.4, 7.5, 1.9, false, 52);
+        ivyPatch(-49, 4, 6, 8, 1.7, true, 44, gIvy2);   // west palazzo flank — fresh green
+        ivyPatch(45, 4, 6, 8, 1.7, true, 44, gIvy3);    // east gallery flank — russet
+        // a curtain spilling down each front-pavilion corner
+        for (const [px, pz] of [[-26, -25.5], [24, -25.5]] as [number, number][]) ivyPatch(px, 1, pz, 9, 2.1, false, 54);
+        // ivy creeping onto the campanile & rear-tower bases
+        for (const [tx, tz] of (W3 ? [[34, -24], [26, 38]] : [[36, -24], [22, 37]]) as [number, number][]) ivyPatch(tx, 2, tz - 3.4, 10, 1.5, false, 40, gIvy2);
+      }
+      // damp moss skirt along the front bases (subtle, all GPUs)
+      for (let i = 0; i < 9; i++) { const aw = 108 / 9, ax = -56 + (i + 0.5) * aw; box(gMoss, aw - 0.4, 1.0, 0.12, ax, 0.6, -27.6); }
+      for (const [sx, sz] of [[-28, -25.3], [24, -25.3]] as [number, number][]) box(gMoss, 20, 0.9, 0.12, sx, 0.7, sz);
+      // broad soft discolour patches on the big front faces ("verkleuring")
+      for (const [sx, sy, sz, sw, sh2] of [[-28, 7, -25.3, 11, 8], [24, 7, -25.3, 11, 8], [-2, 9, -10.4, 10, 10], [-49, 6, -0.5, 8, 8], [45, 6, -0.5, 8, 8]] as [number, number, number, number, number][])
+        box(gStain, sw, sh2, 0.05, sx, sy, sz);
+
+      // ── 5 INVISIBLE CHAPTER-ANCHORS (targetWorldPos only; NOT click targets;
+      // NOT raycastable — opacity 0). Redistributed over the balanced wings, all
+      // inside the mass, clear of towers + the ±22° arrival wedge. roomId = WING id.
+      const ANCHORS: [number, number][] = [
+        [-36,  6],  // 0 roots    — west wing
+        [ 32,  6],  // 1 nest     — east wing
+        [ 24, -14], // 2 craft    — east front pavilion
+        [-28, -14], // 3 travel   — west front pavilion
+        [ -2, 30],  // 4 passions — deep rear range
+      ];
+      // ══ Owner review 2026-08-08 r5 #5 — "de koepel moet centraal van het gebouw
+      // staan waar het op staat". The WHOLE arrival axis (dome+entrance in
+      // centralGroup, the stair, parterre, terraces, cypress avenue and the camera)
+      // lives on world x=0, but the built MASS (blocks + towers + substructure) is
+      // symmetric about x=−2 — so the dome reads ~2u off-centre over block A. Fix:
+      // mount every mass mesh + anchor in a group shifted +2 so the mass centres on
+      // the x=0 axis (block A now sits directly under the dome). centralGroup and
+      // the landscape are untouched → dolly/name-beat need no retune.
+      const massGroup = new THREE.Group();
+      massGroup.position.x = 2;
+      palace.add(massGroup);
+
+      ANCHORS.forEach(([ax, az], i) => {
+        const wing = WINGS[i]; if (!wing) return;
+        const anc = new THREE.Mesh(
+          new THREE.BoxGeometry(4, 6, 4),
+          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+        );
+        anc.position.set(ax, 6, az);
+        anc.userData = { roomId: wing.id, wingMeshes: [], accent: wing.accent };
+        massGroup.add(anc);
+        wingAnchors.push(anc);
+      });
+
+      // ── MERGE & MOUNT — each bucket → one static mesh ──
+      // W3 (owner): ALL scattered ivy leaves read as unrealistic green confetti
+      // on the sun-bleached walls — drop every ivy bucket before the merge.
+      if (W3) { gIvy.length = 0; gIvy2.length = 0; gIvy3.length = 0; }
+      // W3 wall-tint materials: pale rose-cream / warm ochre / soft rose / sand
+      const wallTintMats = [[1.04, 1.0, 0.93], [1.0, 0.92, 0.76], [1.05, 0.92, 0.85], [0.92, 0.89, 0.79]].map((t) => {
+        const m2 = (ochreWall as THREE.MeshStandardMaterial).clone();
+        m2.color.multiply(new THREE.Color(t[0], t[1], t[2]));
+        extraDisposables.push(m2);
+        return m2;
+      });
+      ([[gWall, ochreWall, true],
+        [gWallT[0], wallTintMats[0], true], [gWallT[1], wallTintMats[1], true],
+        [gWallT[2], wallTintMats[2], true], [gWallT[3], wallTintMats[3], true],
+        [gWallL, M.stoneL, true], [gWallD, recessDark, true],
+        [gTrimM, M.trim, false], [gRoof, M.tile, true], [gRoofDS, roofMatDS, true], [gWinM, M.win, false],
+        [gSerenaM, serenaMat, false], [gPlinthM, M.stoneD, false],
+        [gWood, woodMat, true], [gIron, ironMat, true], [gIvy, ivyMat, false],
+        [gIvy2, ivyMat2, false], [gIvy3, ivyMat3, false], [gGlass, glassMat, false],
+        [gStain, stainMat, false], [gMoss, mossMat, false], [gMun, munMat, false]] as [THREE.BufferGeometry[], THREE.Material, boolean][])
+        .forEach(([geos, mat, shadow]) => {
+          if (!geos.length) return;
+          const merged = mergeGeometries(geos);
+          geos.forEach(g => g.dispose());
+          if (!merged) return;
+          extraGeoDisposables.push(merged);
+          const mesh = new THREE.Mesh(merged, mat);
+          mesh.castShadow = shadow;
+          mesh.receiveShadow = true;
+          massGroup.add(mesh);
+        });
+      // W3 un-merge: main block hip-roofs as their OWN mesh, hidden when W3 streams
+      // modeled coppi roofs in their place. Flag off ⇒ renders identically.
+      if (gBlockHip.length) {
+        const mergedHip = mergeGeometries(gBlockHip);
+        gBlockHip.forEach(g => g.dispose());
+        if (mergedHip) {
+          extraGeoDisposables.push(mergedHip);
+          // Under W3 this solid hip stays visible to BACK the coppi GLB (which is
+          // only proud half-pipe tile columns with open valleys + apex gaps). But
+          // the coppi carry per-tile terracotta in VERTEX COLOURS and no texture,
+          // so the textured tile material read as a different palette in the
+          // valleys. Back them with a FLAT terracotta matching the coppi's
+          // typical exposed-tile colour. !W3 keeps the textured tile material.
+          let hipMat: THREE.Material = roofMatDS;
+          if (W3) {
+            const bm = (roofMatDS as THREE.MeshStandardMaterial).clone();
+            bm.map = null; bm.normalMap = null; bm.roughnessMap = null; bm.aoMap = null;
+            bm.vertexColors = false;
+            bm.color.setRGB(0.273, 0.133, 0.069, THREE.LinearSRGBColorSpace); // ≈ coppi bright-tile terracotta
+            bm.roughness = 0.9; bm.envMapIntensity = 0.55;
+            bm.needsUpdate = true;
+            extraDisposables.push(bm);
+            hipMat = bm;
+          }
+          const hipMesh = new THREE.Mesh(mergedHip, hipMat);
+          hipMesh.castShadow = true; hipMesh.receiveShadow = true;
+          // Coppi sit proud of the slope plane, so this backing never z-fights;
+          // each procedural apex point also fills the tip the coppi stop short of.
+          hipMesh.visible = true;
+          massGroup.add(hipMesh);
+        }
+      }
+    }
     } // end else (Roman castle)
 
     // ══════════════════════════════════════════
@@ -1852,7 +4321,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── COURTYARD OLIVE TREES — gnarled, silver-green Mediterranean olives ──
-    const oliveCourtPositions = [[-18, -15], [18, -15], [-18, 15], [18, 15], [-25, 0], [25, 0]];
+    // W3: none — the whole forecourt is a travertine plein now, and a tree
+    // standing on the marble reads wrong (owner: "olijfboom op het marmer").
+    const oliveCourtPositions = W3 ? [] : [[-18, -15], [18, -15], [-18, 15], [18, 15], [-25, 0], [25, 0]];
+    const oliveMats = [
+      new THREE.MeshStandardMaterial({ color: "#7A8A5A", roughness: 0.85 }),
+      new THREE.MeshStandardMaterial({ color: "#8A9A68", roughness: 0.82 }),
+      new THREE.MeshStandardMaterial({ color: "#6E7C4E", roughness: 0.85 }),
+    ];
     oliveCourtPositions.filter(([ox, oz]) => !isInWingZone(ox, oz, 4)).forEach(([ox, oz]) => {
       // Gnarled trunk — thicker, with visible twist
       const trunk = mk(new THREE.CylinderGeometry(0.2, 0.35, 3, 8), M.bark, ox, 1.5, oz);
@@ -1862,25 +4338,44 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const branch = mk(new THREE.CylinderGeometry(0.06, 0.15, 2, 6), M.bark, ox + 0.4, 2.8, oz + 0.2);
       branch.rotation.z = 0.3;
       cAdd(branch);
-      // Wide spreading canopy — flattened, silver-green
-      const canopy1 = mk(new THREE.SphereGeometry(2.5, 10, 8), new THREE.MeshStandardMaterial({ color: "#7A8A5A", roughness: 0.85 }), ox, 4.0, oz);
-      canopy1.scale.set(1.2, 0.35, 1.1);
-      canopy1.castShadow = true;
-      cAdd(canopy1);
-      // Secondary canopy lobe
-      const canopy2 = mk(new THREE.SphereGeometry(1.8, 8, 6), new THREE.MeshStandardMaterial({ color: "#8A9A68", roughness: 0.82 }), ox + 1.2, 3.8, oz - 0.5);
-      canopy2.scale.set(1, 0.3, 0.9);
-      cAdd(canopy2);
-      // Dappled shadow disc on ground
-      const shadow = mk(new THREE.CircleGeometry(2.5, 12), new THREE.MeshStandardMaterial({ color: "#2A3A1A", roughness: 1, transparent: true, opacity: 0.12 }), ox, 0.06, oz);
-      shadow.rotation.x = -Math.PI / 2;
-      cAdd(shadow);
+      if (W3) {
+        // Bushy, irregular silver-green olive canopy — overlapping rounded clumps
+        // read as a real tree, not a flat disc.
+        const clumps: [number, number, number, number][] = [
+          [0, 4.3, 0, 2.0], [1.4, 3.9, -0.4, 1.5], [-1.2, 4.0, 0.6, 1.4],
+          [0.5, 5.1, 0.2, 1.35], [-0.5, 4.7, -0.8, 1.25], [1.0, 4.6, 0.8, 1.2],
+        ];
+        clumps.forEach(([dx, dy, dz, r], i) => {
+          const c = mk(new THREE.SphereGeometry(r, 9, 7), oliveMats[i % 3], ox + dx, dy, oz + dz);
+          c.scale.set(1, 0.82, 1); c.castShadow = true; cAdd(c);
+        });
+      } else {
+        // Wide spreading canopy — flattened, silver-green (flag off ⇒ identical)
+        const canopy1 = mk(new THREE.SphereGeometry(2.5, 10, 8), oliveMats[0], ox, 4.0, oz);
+        canopy1.scale.set(1.2, 0.35, 1.1); canopy1.castShadow = true; cAdd(canopy1);
+        const canopy2 = mk(new THREE.SphereGeometry(1.8, 8, 6), oliveMats[1], ox + 1.2, 3.8, oz - 0.5);
+        canopy2.scale.set(1, 0.3, 0.9); cAdd(canopy2);
+      }
+      // Dappled shadow disc on ground — 0.09 up (courtyard disc sits at +0.05
+      // in this group's frame; 0.06 left only 0.01 clearance) and no depth
+      // write: a transparent ground decal must never depth-spar with the
+      // courtyard plane at distance (z-fighting sweep #6)
+      // W3: no fake shadow discs — where they hang past the courtyard edge they
+      // read as floating BLACK QUARTER-CIRCLES against the walls below.
+      if (!W3) {
+        const shadow = mk(new THREE.CircleGeometry(2.5, 12), new THREE.MeshStandardMaterial({ color: "#2A3A1A", roughness: 1, transparent: true, opacity: 0.12, depthWrite: false }), ox, 0.09, oz);
+        shadow.rotation.x = -Math.PI / 2;
+        cAdd(shadow);
+      }
     });
 
     // Symmetrical parterre gardens with flower beds
-    const parterreData=[[-16,-25],[16,-25],[-16,-45],[16,-45],[-24,-35],[24,-35]];
-    const hedgeDark=new THREE.MeshStandardMaterial({color:"#2E4A22",roughness:.88});
-    const hedgeMid=new THREE.MeshStandardMaterial({color:"#3A5A2A",roughness:.85});
+    // W3 drops these LEGACY raised beds: the W2 forecourt has its own box
+    // parterre; the legacy beds double it up and the [±16,−25] pair clips
+    // half-into the pale stone apron ("groenperk deels ingekleurd door marmer").
+    const parterreData=W3?[]:[[-16,-25],[16,-25],[-16,-45],[16,-45],[-24,-35],[24,-35]];
+    const hedgeDark=new THREE.MeshStandardMaterial({color:W1?"#3E4828":"#2E4A22",roughness:.88});
+    const hedgeMid=new THREE.MeshStandardMaterial({color:W1?"#4C5A32":"#3A5A2A",roughness:.85});
     const gravelWarm=new THREE.MeshStandardMaterial({color:"#C8B898",roughness:.92});
     const lavenderMat=new THREE.MeshStandardMaterial({color:"#7A6898",roughness:.82});
     const rosedustMat=new THREE.MeshStandardMaterial({color:"#B88A7A",roughness:.8});
@@ -1923,38 +4418,45 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // Simple potted plants — rustic terracotta pots with low greenery
-    const potPositions2=[[-10,-35],[10,-35],[-10,-45],[10,-45]];
+    // W3: none — they land in the middle of the W3 box-parterre compartments.
+    const potPositions2=W3?[]:[[-10,-35],[10,-35],[-10,-45],[10,-45]];
     potPositions2.filter(([tx,tz]: any)=>!isInWingZone(tx,tz,2)).forEach(([tx,tz]: any)=>{
       cAdd(mk(new THREE.CylinderGeometry(.4,.3,.6,8),M.tile,tx,.3,tz));
       const bush=mk(new THREE.SphereGeometry(.5,7,6),hedgeDark,tx,.8,tz);
       bush.scale.set(1,.6,1);cAdd(bush);
     });
 
-    // A few simple terracotta pots near paths
-    for(const[ux,uz]of[[-8,-35],[8,-35]].filter(([x,z])=>!isInWingZone(x,z,2))){
+    // A few simple terracotta pots near paths — W3: none (see potPositions2)
+    for(const[ux,uz]of(W3?[]:[[-8,-35],[8,-35]]).filter(([x,z])=>!isInWingZone(x,z,2))){
       cAdd(mk(new THREE.CylinderGeometry(.2,.28,.5,8),M.tile,ux,.25,uz));
       cAdd(mk(new THREE.SphereGeometry(.18,6,5),hedgeDark,ux,.55,uz));
     }
 
-    // Stone benches
-    for(const[bx,bz]of[[-13,-35],[13,-35]].filter(([x,z])=>!isInWingZone(x,z,3))){
+    // Stone benches — W3: none; the W2 forecourt already places its own pair at
+    // world (±13, −35), so these legacy twins z-fight 0.13 above them.
+    for(const[bx,bz]of(W3?[]:[[-13,-35],[13,-35]]).filter(([x,z])=>!isInWingZone(x,z,3))){
       cAdd(mk(new THREE.BoxGeometry(2.5,.06,1),M.marble,bx,.54,bz));
       cAdd(mk(new THREE.BoxGeometry(2.5,.35,.7),M.marbleVein,bx,.18+.17,bz));
       for(const s of[-.9,.9])cAdd(mk(new THREE.BoxGeometry(.4,.35,.7),M.stoneD,bx+s,.18+.17,bz));
     }
 
-    // Main gravel path — wide avenue from entrance gate south to hilltop edge (skip wing zones)
-    for(let pi=0;pi<18;pi++){
-      const pz=-14-pi*1.6;
-      if(!isInWingZone(0,pz,4))cAdd(mk(new THREE.BoxGeometry(5.5,.05,2.2),M.pathD,0,.04,pz));
-    }
-    // Radiating side paths (skip wing zones)
-    for(let ri=0;ri<6;ri++){
-      const pa=(ri/6)*Math.PI*2;if(Math.abs(Math.sin(pa))<.3&&Math.cos(pa)<0)continue;
-      for(let s=0;s<6;s++){
-        const pd=22+s*3;
-        const px=Math.cos(pa)*pd,pz=Math.sin(pa)*pd;
-        if(!isInWingZone(px,pz,2))cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.03,pz));
+    // Main gravel path + radiating side paths — W3 drops them ALL: the slab
+    // ladder sat exactly under the new dusty road (reading as loose wooden
+    // boards) and the radial spurs read as roads where no road belongs.
+    if(!W3){
+      for(let pi=0;pi<18;pi++){
+        const pz=-14-pi*1.6;
+        if(!isInWingZone(0,pz,4))cAdd(mk(new THREE.BoxGeometry(5.5,.05,2.2),M.pathD,0,.04,pz));
+      }
+      // y .05 not .03: these stones lie ON the courtyard disc (world 8.35) and
+      // at .03 their top faces landed exactly coplanar with it (sweep #6)
+      for(let ri=0;ri<6;ri++){
+        const pa=(ri/6)*Math.PI*2;if(Math.abs(Math.sin(pa))<.3&&Math.cos(pa)<0)continue;
+        for(let s=0;s<6;s++){
+          const pd=22+s*3;
+          const px=Math.cos(pa)*pd,pz=Math.sin(pa)*pd;
+          if(!isInWingZone(px,pz,2))cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.05,pz));
+        }
       }
     }
 
@@ -1962,7 +4464,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // No courtyard disc — terrain itself serves as the ground
     const herbGreen=new THREE.MeshStandardMaterial({color:"#5A6A3A",roughness:.88});
     const herbSilver=new THREE.MeshStandardMaterial({color:"#8A9878",roughness:.85});
-    for(const[hx,hz]of[[20,12],[-20,12],[20,-12],[-20,-12]].filter(([x,z])=>!isInWingZone(x,z,4))){
+    // W3 drops the herb beds: their positions test against the OLD radial wing
+    // zones, not the new corps blocks — they now poke half-through the pavilion
+    // walls as floating pale boxes.
+    if(!W3)for(const[hx,hz]of[[20,12],[-20,12],[20,-12],[-20,-12]].filter(([x,z])=>!isInWingZone(x,z,4))){
       cAdd(mk(new THREE.BoxGeometry(4,.2,2),M.stoneD,hx,.1,hz));
       cAdd(mk(new THREE.BoxGeometry(3.6,.15,1.6),herbGreen,hx,.2,hz));
       for(let hi=0;hi<3;hi++){
@@ -1970,8 +4475,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         hm.scale.set(1,.4,1);cAdd(hm);
       }
     }
-    // Aged stone path segments radiating from courtyard (skip wing zones)
-    for(let r=0;r<6;r++){
+    // Aged stone path segments radiating from courtyard — W3 drops them (stray
+    // "roads" across the hillsides; several radials crossed the approach axis)
+    if(!W3)for(let r=0;r<6;r++){
       const pa=(r/6)*Math.PI*2;
       for(let s=0;s<8;s++){
         const pd=42+s*3;
@@ -1996,7 +4502,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // (terrain already created above via createTuscanTerrain)
 
     // ── INSTANCED GRASS — dense wind-animated shader grass on the hilltop ──
-    // Mobile: 25% density (3750 blades), Desktop: 15000 blades
+    // Owner r2 2026-08-20 vegetation parity: mobile = desktop 15000 blades
+    // (vegetationDensity 1); potato keeps 0.
     const grassSystem = createGrassSystem(scene, {
       count: Math.round(15000*Q.vegetationDensity),
       radius: 90,
@@ -2006,10 +4513,39 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       tipColor1: "#B8A860",
       tipColor2: "#8A8038",
       yOffset: HILL_Y,
+      // W3: seat every blade on the rolling terrain (fixed-height blades hovered
+      // over the falling ground beyond the plateau) and keep the road clear
+      getHeightAt: W3 ? getHeightAt : undefined,
+      // W3: keep the road AND the paved travertine pad clear — blades poking
+      // through the marble read as "gras groeit op marmer" (owner)
+      exclude: W3 ? (gx: number, gz: number) => inApproach(gx, gz) || (gx > -58 && gx < 62 && gz > -48 && gz < 44) : undefined,
     });
 
     // ── PALACE CYPRESS RING — LatheGeometry with vertex noise for natural columnar shape ──
+    // W1 (WS2-4): ~150 unique per-tree hsl foliage materials collapse to 3 shared warm
+    // olive tones picked by seed — silhouette variety stays in the per-tree geometry noise.
+    // (Full cypress instancing deferred to Wave 2: it breaks per-tree Lathe silhouettes.)
+    const cypressFoliageMats=W1?[
+      new THREE.MeshStandardMaterial({color:"#26301E",roughness:.92,flatShading:true}),
+      new THREE.MeshStandardMaterial({color:"#2E3A22",roughness:.92,flatShading:true}),
+      new THREE.MeshStandardMaterial({color:"#39452B",roughness:.92,flatShading:true}),
+    ]:null;
+    // Distance-bucketed shared materials for the far columnar cypresses (3 haze bands)
+    const farCypressMats=W1?[
+      new THREE.MeshStandardMaterial({color:atmosColor("#33402A",200),roughness:.9}),
+      new THREE.MeshStandardMaterial({color:atmosColor("#33402A",300),roughness:.9}),
+      new THREE.MeshStandardMaterial({color:atmosColor("#33402A",430),roughness:.9}),
+    ]:null;
+    if(cypressFoliageMats)extraDisposables.push(...cypressFoliageMats);
+    if(farCypressMats)extraDisposables.push(...farCypressMats);
+    // ══ W2 (WS3-8) — instanced cypresses: collect per-tree transforms here and
+    // materialize them as InstancedMesh per W1 foliage-material group after the
+    // last planting site. Deterministic — reuses the exact positions/heights the
+    // per-mesh path produced; each tree's seed derives from its position.
+    const cypressNear: {px:number,pz:number,h:number,baseY:number,seed:number}[]|null=W2?[]:null;
+    const cypressFar: {px:number,pz:number,h:number,baseY:number,band:number}[]|null=W2?[]:null;
     const buildCypress=(px: number,pz: number,h: number,baseY: number)=>{
+      if(cypressNear){cypressNear.push({px,pz,h,baseY,seed:px*137.5+pz*281.3});return;}
       // Trunk
       scene.add(mk(new THREE.CylinderGeometry(.04,.14,h*.3,5),M.barkD,px,baseY+h*.15,pz));
       scene.add(mk(new THREE.CylinderGeometry(.12,.18,.25,5),M.barkD,px,baseY+.12,pz));
@@ -2049,12 +4585,17 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         pos.setY(v,vy+Math.sin(angle*7+ht*23+seed)*.02*foliageH);
       }
       cypGeo.computeVertexNormals();
-      const hue=126+Math.sin(seed)*14;
-      const sat=38+Math.abs(Math.cos(seed*.5))*10;
-      const lt=9+Math.abs(Math.sin(seed*.3))*4;
-      const foliageMat=new THREE.MeshStandardMaterial({
-        color:new THREE.Color(`hsl(${hue},${sat}%,${lt}%)`),roughness:.92,flatShading:true,
-      });
+      let foliageMat: THREE.MeshStandardMaterial;
+      if(cypressFoliageMats){
+        foliageMat=cypressFoliageMats[Math.abs(Math.floor(seed*7))%3];
+      }else{
+        const hue=126+Math.sin(seed)*14;
+        const sat=38+Math.abs(Math.cos(seed*.5))*10;
+        const lt=9+Math.abs(Math.sin(seed*.3))*4;
+        foliageMat=new THREE.MeshStandardMaterial({
+          color:new THREE.Color(`hsl(${hue},${sat}%,${lt}%)`),roughness:.92,flatShading:true,
+        });
+      }
       const lean=(Math.sin(seed*1.7)-.5)*.03;
       const mesh=new THREE.Mesh(cypGeo,foliageMat);
       mesh.position.set(px+lean,baseY+h*.18,pz);
@@ -2071,44 +4612,104 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       buildCypress(ccx,ccz,cch,getHeightAt(ccx,ccz));
     }
 
-    // ── NEAR-PALACE VINEYARD — organized rows on south-east slope ──
-    const vineRowMat=new THREE.MeshStandardMaterial({color:"#3A5828",roughness:.84});
-    const vineRowCount=isMobileQ?5:14;
-    for(let row=0;row<vineRowCount;row++){
-      const vx=35+row*2.2;const vz=35+Math.sin(row*.3)*3;
-      const vBaseY=getHeightAt(vx,vz);
-      const vr=mk(new THREE.BoxGeometry(.35,.6,16),vineRowMat,vx,vBaseY+.3,vz);
-      vr.rotation.y=.15;scene.add(vr);
+    // ── NEAR-PALACE VINEYARD — W3 drops it (dark striped rows read as an odd
+    // brown rectangle from the arrival; the Gladiator vista is pure wheat) ──
+    if(!W3){
+      const vineRowMat=new THREE.MeshStandardMaterial({color:W1?"#4C5A30":"#3A5828",roughness:.84});
+      const vineRowCount=isPotatoQ?5:14; // r2 parity: mobile = desktop, potato keeps the floor
+      for(let row=0;row<vineRowCount;row++){
+        const vx=35+row*2.2;const vz=35+Math.sin(row*.3)*3;
+        const vBaseY=getHeightAt(vx,vz);
+        const vr=mk(new THREE.BoxGeometry(.35,.6,16),vineRowMat,vx,vBaseY+.3,vz);
+        vr.rotation.y=.15;scene.add(vr);
+      }
     }
 
-    // ── COURTYARD BOXWOOD HEDGES ──
-    const boxwoodMat=new THREE.MeshStandardMaterial({color:"#2A4A1E",roughness:.88});
-    for(let hi=0;hi<24;hi++){
-      const ha=(hi/24)*Math.PI*2;
-      const hx2=Math.cos(ha)*34,hz2=Math.sin(ha)*34;
-      if(isInWingZone(hx2,hz2,3))continue;
-      const hedge2=mk(new THREE.BoxGeometry(3,.8,.6),boxwoodMat,hx2,.4,hz2);
-      hedge2.rotation.y=ha+Math.PI/2;courtyardGroup.add(hedge2);
-    }
-
-    // ── LOW DRY STONE WALL around courtyard edge (rustic, not fancy) ──
-    const dryWallMat=new THREE.MeshStandardMaterial({color:"#A09078",roughness:.92,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4)});
-    for(let wi=0;wi<20;wi++){
-      const wa=(wi/20)*Math.PI*2;
-      const wx=Math.cos(wa)*42,wz=Math.sin(wa)*42;
-      if(isInWingZone(wx,wz,3))continue;
-      const seg=mk(new THREE.BoxGeometry(4,.45,.35),dryWallMat,wx,.22,wz);
-      seg.rotation.y=wa+Math.PI/2;cAdd(seg);
+    // ── COURTYARD BOXWOOD HEDGES + LOW DRY STONE WALL rings — W3 drops both:
+    // the dark hedge blocks and pale wall segments ride the plateau LIP and read
+    // as odd unfinished clutter on the terrace edges from the arrival.
+    if(!W3){
+      const boxwoodMat=new THREE.MeshStandardMaterial({color:W1?"#3C4828":"#2A4A1E",roughness:.88});
+      for(let hi=0;hi<24;hi++){
+        const ha=(hi/24)*Math.PI*2;
+        const hx2=Math.cos(ha)*34,hz2=Math.sin(ha)*34;
+        if(isInWingZone(hx2,hz2,3))continue;
+        const hedge2=mk(new THREE.BoxGeometry(3,.8,.6),boxwoodMat,hx2,.4,hz2);
+        hedge2.rotation.y=ha+Math.PI/2;courtyardGroup.add(hedge2);
+      }
+      const dryWallMat=new THREE.MeshStandardMaterial({color:"#A09078",roughness:.92,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4)});
+      for(let wi=0;wi<20;wi++){
+        const wa=(wi/20)*Math.PI*2;
+        const wx=Math.cos(wa)*42,wz=Math.sin(wa)*42;
+        if(isInWingZone(wx,wz,3))continue;
+        const seg=mk(new THREE.BoxGeometry(4,.45,.35),dryWallMat,wx,.22,wz);
+        seg.rotation.y=wa+Math.PI/2;cAdd(seg);
+      }
     }
 
     // ── PATCHWORK FIELDS: Tuscan summer — golden wheat blankets the landscape ──
     const cropDispMap=loadDisplacementMap("/textures/pbr/crop/crop_disp_1k.jpg",[4,4]);
     // Sunny crop yellow palette — warm golden tints dominate
     const wheatTints=["#D8B848","#C8A848","#E0C060","#B8A040","#C8B050","#E4C868","#D0B048","#CCB258","#D4B450","#C0A048","#DAC058","#C4A838","#E2C468","#D6B850","#CCAA48"];
-    const greenTints=["#8A9848","#7A8840","#909850"];
+    // W1 (WS3-4): warm field tints — greens shift to sun-dried olive
+    const greenTints=W1?["#9A9850","#8C8C48","#A29C58"]:["#8A9848","#7A8840","#909850"];
     const earthTints=["#B0A070","#A09060","#B8A878"];
-    // VERY dense field coverage — 500 patches for a sea of golden wheat (60 on mobile)
-    const fieldPatchCount=isMobileQ?60:500;
+    // ══ W1 (WS2-4): SHARED FIELD MATERIALS + VERTEX-COLOR TINTING ══
+    // The ~500 per-patch (+~250 per-vineyard-row, +25 sunflower) unique
+    // MeshStandardMaterials collapse to 4 shared materials; the per-patch tint
+    // moves into a baked vertex-color attribute, and every bucket merges into
+    // ONE mesh — ~790 materials → 4 and ~790 draw calls → 4 on desktop.
+    const fieldMats=W1?{
+      wheat:new THREE.MeshStandardMaterial({
+        map:cropTex.map,normalMap:cropTex.normalMap,normalScale:new THREE.Vector2(.6,.6),
+        roughnessMap:cropTex.roughnessMap,aoMap:cropTex.aoMap,aoMapIntensity:.3,
+        displacementMap:cropDispMap,displacementScale:0.8,
+        vertexColors:true,roughness:.92,envMapIntensity:.15,
+      }),
+      green:new THREE.MeshStandardMaterial({
+        map:grassTex.map,normalMap:grassTex.normalMap,normalScale:new THREE.Vector2(.5,.5),
+        roughnessMap:grassTex.roughnessMap,
+        vertexColors:true,roughness:.90,envMapIntensity:.12,
+      }),
+      earth:new THREE.MeshStandardMaterial({
+        map:groundTex.map,normalMap:groundTex.normalMap,normalScale:new THREE.Vector2(.4,.4),
+        roughnessMap:groundTex.roughnessMap,
+        vertexColors:true,roughness:.94,envMapIntensity:.1,
+      }),
+      vine:new THREE.MeshStandardMaterial({vertexColors:true,roughness:.84}),
+    }:null;
+    if(fieldMats)extraDisposables.push(fieldMats.wheat,fieldMats.green,fieldMats.earth,fieldMats.vine);
+    const fieldBuckets=fieldMats?{
+      wheat:[] as THREE.BufferGeometry[],green:[] as THREE.BufferGeometry[],
+      earth:[] as THREE.BufferGeometry[],vine:[] as THREE.BufferGeometry[],
+    }:null;
+    const _fieldDummy=new THREE.Object3D();
+    // Bake a uniform tint into a color attribute, apply the world transform, queue for merge
+    const pushTinted=(bucket:THREE.BufferGeometry[],geo:THREE.BufferGeometry,tint:THREE.Color,px:number,py:number,pz:number,rx:number,ry:number,rz:number)=>{
+      const n=geo.attributes.position.count;const arr=new Float32Array(n*3);
+      for(let i=0;i<n;i++){arr[i*3]=tint.r;arr[i*3+1]=tint.g;arr[i*3+2]=tint.b;}
+      geo.setAttribute("color",new THREE.BufferAttribute(arr,3));
+      _fieldDummy.position.set(px,py,pz);_fieldDummy.rotation.set(rx,ry,rz);_fieldDummy.updateMatrix();
+      geo.applyMatrix4(_fieldDummy.matrix);
+      bucket.push(geo);
+    };
+    // W3: DRAPE a field patch over the rolling terrain (per-vertex getHeightAt)
+    // instead of a flat plane at centre height — flat patches floated hugely off
+    // hillsides once the terrain gained real relief.
+    const drapeTinted=(bucket:THREE.BufferGeometry[],fw:number,fl:number,tint:THREE.Color,fx:number,fz:number,yaw:number)=>{
+      const geo=new THREE.PlaneGeometry(fw,fl,8,8);
+      geo.rotateX(-Math.PI/2);geo.rotateY(yaw);geo.translate(fx,0,fz);
+      const p=geo.attributes.position;
+      for(let i=0;i<p.count;i++)p.setY(i,getHeightAt(p.getX(i),p.getZ(i))+0.22);
+      geo.computeVertexNormals();
+      const arr=new Float32Array(p.count*3);
+      for(let i=0;i<p.count;i++){arr[i*3]=tint.r;arr[i*3+1]=tint.g;arr[i*3+2]=tint.b;}
+      geo.setAttribute("color",new THREE.BufferAttribute(arr,3));
+      bucket.push(geo);
+    };
+    // VERY dense field coverage — 500 patches for a sea of golden wheat
+    // (r2 parity: mobile = desktop 500; potato keeps 60)
+    const fieldPatchCount=isPotatoQ?60:500;
     for(let fi=0;fi<fieldPatchCount;fi++){
       const angle=Math.random()*Math.PI*2;
       const dist=65+Math.random()*480;
@@ -2118,6 +4719,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const d=Math.sqrt(fx*fx+fz*fz);
       // 90% golden wheat, 6% green crop, 4% plowed earth
       const fieldType=Math.random();
+      if(fieldBuckets){
+        const frz=Math.random()*.5-.25;
+        if(W3){
+          // Drape onto the terrain — flat centre-height planes floated off the hills.
+          // ALL patches stay in the golden-wheat family (the pale earth/green
+          // variants read as random "roads" criss-crossing the hills), lightened
+          // toward sun-bleached gold (owner: ground too dark).
+          // skip any patch whose FOOTPRINT can reach the road corridor (centre-only
+          // tests let wide patches poke through the ribbon as regular "planks")
+          const reach=14+(fw+fl)/2;
+          if(!(Math.abs(fx)<reach&&fz<-30&&fz>-345)){
+            const tint=atmosColor(wheatTints[fi%wheatTints.length],d).lerp(new THREE.Color("#F0E6C8"),0.5);
+            drapeTinted(fieldBuckets.wheat,fw,fl,tint,fx,fz,frz);
+          }
+          continue;
+        }
+        const geo=new THREE.PlaneGeometry(fw,fl,16,16);
+        const fy=getHeightAt(fx,fz)+.2;
+        if(fieldType<0.90)pushTinted(fieldBuckets.wheat,geo,atmosColor(wheatTints[fi%wheatTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
+        else if(fieldType<0.96)pushTinted(fieldBuckets.green,geo,atmosColor(greenTints[fi%greenTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
+        else pushTinted(fieldBuckets.earth,geo,atmosColor(earthTints[fi%earthTints.length],d),fx,fy,fz,-Math.PI/2,0,frz);
+        continue;
+      }
       let fieldMat: THREE.MeshStandardMaterial;
       if(fieldType<0.90){
         const tint=atmosColor(wheatTints[fi%wheatTints.length],d);
@@ -2149,42 +4773,64 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     }
 
     // ── VINEYARDS: organized rows on gentle slopes ──
-    const vineM=[new THREE.MeshStandardMaterial({color:"#3A5828",roughness:.85}),new THREE.MeshStandardMaterial({color:"#4A6830",roughness:.82})];
-    const vineyardCount=isMobileQ?3:14;
+    // W1: warm olive vine tones; every row's unique material collapses into the shared
+    // vertex-tinted vine bucket (one merged mesh) instead of ~250 materials/draws.
+    const vineM=[new THREE.MeshStandardMaterial({color:W1?"#4C5A30":"#3A5828",roughness:.85}),new THREE.MeshStandardMaterial({color:W1?"#5C6A38":"#4A6830",roughness:.82})];
+    extraDisposables.push(...vineM);
+    // W3: no vineyards at all — from the arrival they read as odd brown
+    // striped rectangles on the hills; the Gladiator vista is pure wheat.
+    const vineyardCount=W3?0:(isPotatoQ?3:14); // r2 parity: mobile = desktop
     for(let vi=0;vi<vineyardCount;vi++){
       const vAngle=Math.random()*Math.PI*2;
       const vDist=90+vi*28+Math.random()*25;
       const vx=Math.cos(vAngle)*vDist,vz=Math.sin(vAngle)*vDist-40;
       if(Math.sqrt(vx*vx+(vz+40)*(vz+40))<85)continue;
+      // W3: no vineyard anywhere near the approach corridor — rows crossing the
+      // road read as a regular ladder of low boxes over the pale ribbon (THE
+      // "wooden boards"). Coarse whole-vineyard skip; rows are up to 24 long.
+      if(W3&&Math.abs(vx)<40&&vz<-25&&vz>-305)continue;
       const vRot=vAngle+Math.PI/2+Math.random()*.2-.1;
       const nRows=12+Math.floor(Math.random()*15);
       for(let row=0;row<nRows;row++){
         const rx=vx+Math.cos(vRot)*row*1.8,rz=vz+Math.sin(vRot)*row*1.8;
         const rowLen=14+Math.random()*10;
+        // belt-and-braces: skip any individual row that still touches the corridor
+        if(inApproach(rx,rz)||inApproach(rx+Math.sin(vRot)*rowLen/2,rz+Math.cos(vRot)*rowLen/2)||inApproach(rx-Math.sin(vRot)*rowLen/2,rz-Math.cos(vRot)*rowLen/2))continue;
+        // Row runs along local +Z after yaw vRot → world dir (sin(vRot), cos(vRot)).
+        // Seat on the LOWEST of centre/ends so no row-end floats off a hillside.
+        const rdx=Math.sin(vRot)*rowLen/2, rdz=Math.cos(vRot)*rowLen/2;
+        const rowY=Math.min(getHeightAt(rx,rz),getHeightAt(rx+rdx,rz+rdz),getHeightAt(rx-rdx,rz-rdz));
         const vCol=atmosColor(vineM[row%2].color.getStyle(),Math.sqrt(rx*rx+rz*rz));
-        const rm=mk(new THREE.BoxGeometry(.35,.7,rowLen),new THREE.MeshStandardMaterial({color:vCol,roughness:.84}),rx,getHeightAt(rx,rz)+.35,rz);
+        if(fieldBuckets){
+          pushTinted(fieldBuckets.vine,new THREE.BoxGeometry(.35,.7,rowLen),vCol,rx,rowY+.3,rz,0,vRot,0);
+          continue;
+        }
+        const rm=mk(new THREE.BoxGeometry(.35,.7,rowLen),new THREE.MeshStandardMaterial({color:vCol,roughness:.84}),rx,rowY+.3,rz);
         rm.rotation.y=vRot;scene.add(rm);
       }
     }
 
     // ── CYPRESS TREES: dense Tuscan signature ──
-    // Mobile: ~75% fewer trees (only road avenue + 8 hilltop clusters)
+    // r2 parity 2026-08-20: mobile plants the FULL desktop counts (instanced /
+    // merged — draw-call cheap); only potato keeps the reduced floor.
     const cypressPositions: number[][]=[];
     // Along winding road — dense avenue
-    const roadCypressCount=isMobileQ?15:50;
+    // W3 (owner): drop this second winding cypress avenue — the Gladiator approach
+    // is ONE clean cypress road on the axis. !W3 keeps it.
+    const roadCypressCount=W3?0:(isPotatoQ?15:50);
     for(let ri=0;ri<roadCypressCount;ri++){
       const rz=-45-ri*7;const rx=Math.sin(ri*.22)*28;
       if(Math.random()>.3)cypressPositions.push([rx-4.5+Math.random()*1.5,rz+Math.random()*2]);
       if(Math.random()>.3)cypressPositions.push([rx+4.5+Math.random()*1.5,rz+Math.random()*2]);
     }
     // Hilltop clusters
-    const hilltopClusterCount=isMobileQ?8:35;
+    const hilltopClusterCount=isPotatoQ?8:35;
     for(let ci=0;ci<hilltopClusterCount;ci++){
-      const angle=Math.random()*Math.PI*2,dist=55+Math.random()*(isMobileQ?120:280);
+      const angle=Math.random()*Math.PI*2,dist=55+Math.random()*(isPotatoQ?120:280);
       cypressPositions.push([Math.cos(angle)*dist,Math.sin(angle)*dist-50]);
     }
-    // Iconic ridge lines of 4-8 trees (skip on mobile)
-    if(!isMobileQ){for(let g=0;g<12;g++){
+    // Iconic ridge lines of 4-8 trees (skip on potato only — r2 parity)
+    if(!isPotatoQ){for(let g=0;g<12;g++){
       const gx=-250+Math.random()*500,gz=-60-Math.random()*320;
       const gCount=4+Math.floor(Math.random()*5);
       const gAngle=Math.random()*Math.PI;
@@ -2192,59 +4838,198 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         cypressPositions.push([gx+Math.cos(gAngle)*t*4+Math.random()*1.5,gz+Math.sin(gAngle)*t*4+Math.random()*1.5]);
       }
     }}
-    // Farmhouse accompaniment (fewer on mobile)
-    const farmCypressCount=isMobileQ?5:20;
+    // Farmhouse accompaniment (fewer on potato)
+    const farmCypressCount=isPotatoQ?5:20;
     for(let f=0;f<farmCypressCount;f++){
-      const angle=Math.random()*Math.PI*2,dist=100+Math.random()*(isMobileQ?120:250);
+      const angle=Math.random()*Math.PI*2,dist=100+Math.random()*(isPotatoQ?120:250);
       for(let t=0;t<2+Math.floor(Math.random()*3);t++){
         cypressPositions.push([Math.cos(angle)*dist+Math.random()*6-3,Math.sin(angle)*dist-50+Math.random()*6-3]);
       }
     }
     cypressPositions.forEach(([cx2,cz])=>{
       if(Math.sqrt(cx2*cx2+cz*cz)<50)return;
+      if(inApproach(cx2,cz))return;
       const d=Math.sqrt(cx2*cx2+cz*cz);
       const ch=5+Math.random()*6;
       const cyBaseY=getHeightAt(cx2,cz);
       // Near cypresses get full layered detail; far ones get simpler geometry
       if(d<180){
         buildCypress(cx2,cz,ch,cyBaseY);
+      }else if(cypressFar){
+        // W2 (WS3-8): far tier joins the per-haze-band instanced buckets
+        cypressFar.push({px:cx2,pz:cz,h:ch,baseY:cyBaseY,band:d<260?0:d<360?1:2});
       }else{
-        const cCol=atmosColor(`hsl(${126+Math.random()*12},${32+Math.random()*10}%,${10+Math.random()*5}%)`,d);
         scene.add(mk(new THREE.CylinderGeometry(.06,.12,ch*.2,5),M.barkD,cx2,cyBaseY+ch*.1,cz));
         // Columnar silhouette — tapered cylinder (narrow, not cone-shaped)
-        const mat=new THREE.MeshStandardMaterial({color:cCol,roughness:.9});
+        // W1: 3 shared distance-band materials instead of a unique material per tree
+        const mat=farCypressMats
+          ?farCypressMats[d<260?0:d<360?1:2]
+          :new THREE.MeshStandardMaterial({color:atmosColor(`hsl(${126+Math.random()*12},${32+Math.random()*10}%,${10+Math.random()*5}%)`,d),roughness:.9});
         const col=new THREE.Mesh(new THREE.CylinderGeometry(.12,.3,ch*.8,6),mat);
         col.position.set(cx2,cyBaseY+ch*.5,cz);col.castShadow=d<250;scene.add(col);
       }
     });
 
+    // ── W2 CYPRESSENLAAN — the arrival avenue on the entrance axis ──
+    // Owner redesign 2026-08-06: a double file of cypresses leads the 18s dolly
+    // up the hillside to the stair, so the palace reads as something you come
+    // upon in the Tuscan landscape. Deterministic pairs (no random); under W2
+    // they join the instanced buckets via buildCypress → cypressNear.
+    // Placed south of the parterre (which ends at z≈-47), clear of every wing,
+    // tower and the cross-axis path.
+    if (W2 && !W3) {
+      for (let a = 0; a < 11; a++) {
+        const az = -50 - a * 6;      // z -50 → -110 down the descending slope
+        const ax = 6 + a * 0.18;     // splay outward very slightly with distance
+        const ah = 8.6 - a * 0.16;   // tall near, tapering into the haze
+        for (const sx of [-ax, ax]) buildCypress(sx, az, ah, getHeightAt(sx, az));
+      }
+    } else if (W3) {
+      // ── GLADIATOR APPROACH — a long cypress-lined dirt road winding up through
+      // the ripe wheat to the palace (owner: "exactly like the Gladiator scene").
+      // Straight & on-axis near the stair (frames the dolly), winding into the
+      // distance. Flanking wheat is added to the wheat fields below.
+      const APPROACH_N = 35;
+      const apX = w3ApX;                                    // shared centreline (hoisted:
+      const apZ = w3ApZ;                                    // the ribbon runs far past 35)
+      // vertexColors: white core fading to a dusty berm tone at the edges, so the
+      // road "runs over" into the cypress verge instead of a hard pale cut.
+      const roadMat = new THREE.MeshStandardMaterial({ color: "#FFFFFF", vertexColors: true, roughness: 1, envMapIntensity: 0.05, side: THREE.DoubleSide });
+      extraDisposables.push(roadMat);
+      for (let a = 0; a < APPROACH_N; a++) {
+        const x = apX(a), z = apZ(a);
+        const ax = 5.2 + a * 0.06;                          // avenue half-width (slight splay)
+        const ah = Math.max(4.2, 8.8 - a * 0.11);           // tall near → tapering into haze
+        for (const sx of [-ax, ax]) buildCypress(x + sx, z, ah, getHeightAt(x + sx, z));
+      }
+      // Continuous dusty-road ribbon(s) draped over the terrain — no stepped
+      // segments (those read as treden). Road bed + two darker wheel ruts.
+      // 4-across vertex-coloured strip: bright core → dusty edge, sub-sampled
+      // 8× per avenue segment, normals forced UP (coarse facets shaded as
+      // banding), winding UP (the first cut rendered as a culled backface),
+      // receiveShadow OFF (perpendicular on-axis cypress shadows read as a
+      // board-ladder), yBias 1.25 = the empirically-clean causeway height.
+      {
+        // Extended to a VANISHING POINT (owner): the ribbon runs past the
+        // terrain edge onto the far-hills ring (w3GroundY blends the two
+        // height fields), narrowing and fading into the haze until it
+        // disappears over a far crest at ~1.9km.
+        const A_END = 265, SUB = 8, N = A_END * SUB + 1;
+        // 6 columns: soft berm edge → pale wheel track → dry-grass CENTRE STRIP
+        // (middenberm, owner) → track → berm; vertex colours blend the bands.
+        // Column order +→− keeps the proven UP winding (−→+ flipped it to a backface)
+        const track = new THREE.Color("#F4EDDC"), edge = new THREE.Color("#D9C9A6"), centre = new THREE.Color("#B7AE7F");
+        const rHaze = new THREE.Color("#EAD9B8");
+        const offs = [4.4, 2.8, 1.0, -1.0, -2.8, -4.4];
+        const cols = [edge, track, centre, centre, track, edge];
+        const pos: number[] = [], nrm: number[] = [], col: number[] = [], idx: number[] = [];
+        const fadeC = new THREE.Color();
+        for (let k = 0; k < N; k++) {
+          const a = k / SUB;
+          const pax = apX(Math.max(0, a - 0.5)), paz = apZ(Math.max(0, a - 0.5));
+          const pbx = apX(Math.min(A_END, a + 0.5)), pbz = apZ(Math.min(A_END, a + 0.5));
+          const dx = pbx - pax, dz = pbz - paz, dl = Math.hypot(dx, dz) || 1;
+          const nx = -dz / dl, nz = dx / dl;                 // XZ perpendicular
+          const cxx = apX(a), czz = apZ(a);
+          const dist = -czz;
+          const wsc = 1 - 0.55 * sstep(250, 1750, dist);     // narrows with distance
+          const yB = 1.25 + sstep(300, 900, dist) * 1.0;     // coarser ring mesh → higher bias
+          const fadeF = sstep(450, 1750, dist);              // melts into the haze
+          const NC = offs.length;
+          for (let j = 0; j < NC; j++) {
+            const px = cxx + nx * offs[j] * wsc, pzz = czz + nz * offs[j] * wsc;
+            pos.push(px, w3GroundY(px, pzz) + yB, pzz);
+            nrm.push(0, 1, 0);
+            fadeC.copy(cols[j]).lerp(rHaze, fadeF);
+            col.push(fadeC.r, fadeC.g, fadeC.b);
+          }
+          if (k < N - 1) for (let j = 0; j < NC - 1; j++) {
+            const b = k * NC + j;
+            idx.push(b, b + NC, b + 1, b + 1, b + NC, b + NC + 1);
+          }
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        g.setAttribute("normal", new THREE.Float32BufferAttribute(nrm, 3));
+        g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+        g.setIndex(idx);
+        const m = new THREE.Mesh(g, roadMat); m.receiveShadow = false; scene.add(m);
+      }
+    }
+
     // ── OLIVE GROVES: silver-green, gnarled ──
-    const oliveCount=isMobileQ?10:40;
-    for(let oi=0;oi<oliveCount;oi++){
-      const angle=Math.random()*Math.PI*2,dist=38+Math.random()*120;
-      const ox=Math.cos(angle)*dist,oz=Math.sin(angle)*dist-20;
-      if(Math.sqrt(ox*ox+oz*oz)<48)continue;
-      const d=Math.sqrt(ox*ox+oz*oz);
-      const oCol=atmosColor(`hsl(${102+Math.random()*18},${22+Math.random()*18}%,${36+Math.random()*12}%)`,d);
-      const olBaseY=getHeightAt(ox,oz);
-      scene.add(mk(new THREE.CylinderGeometry(.12,.2,2,5),M.bark,ox,olBaseY+1,oz));
-      const cn=new THREE.Mesh(new THREE.SphereGeometry(1.8+Math.random()*.8,8,7),new THREE.MeshStandardMaterial({color:oCol,roughness:.84}));
-      cn.position.set(ox,olBaseY+2.8+Math.random()*.3,oz);cn.scale.set(1,.4,1);cn.castShadow=d<120;scene.add(cn);
+    if (W3) {
+      // Real GROVES — planted rows on the hillsides (agriculture, not random
+      // scatter); each tree a leaning gnarled trunk + a 3-clump canopy.
+      const groveMats = [
+        new THREE.MeshStandardMaterial({ color: "#7E8C5C", roughness: 0.85 }),
+        new THREE.MeshStandardMaterial({ color: "#8C9A6A", roughness: 0.83 }),
+        new THREE.MeshStandardMaterial({ color: "#72804F", roughness: 0.86 }),
+      ];
+      extraDisposables.push(...groveMats);
+      // r2 parity: mobile = desktop 4 groves; potato keeps 2
+      const groves: [number, number, number][] = isPotatoQ
+        ? [[-70, -100, 0.35], [85, -130, -0.5]]
+        : [[-70, -100, 0.35], [85, -130, -0.5], [-125, -185, 0.9], [135, -215, 0.2]];
+      groves.forEach(([gcx, gcz, gRot]) => {
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+          const lx = (c - 1.5) * 7 + (Math.random() * 2 - 1), lz = (r - 1) * 7 + (Math.random() * 2 - 1);
+          const ox = gcx + lx * Math.cos(gRot) - lz * Math.sin(gRot);
+          const oz = gcz + lx * Math.sin(gRot) + lz * Math.cos(gRot);
+          if (inApproach(ox, oz)) continue;
+          const d = Math.sqrt(ox * ox + oz * oz);
+          const oy = getHeightAt(ox, oz), s = 0.85 + Math.random() * 0.4;
+          const trunk = mk(new THREE.CylinderGeometry(.14, .24, 2.2 * s, 5), M.bark, ox, oy + 1.1 * s - 0.35, oz); // sunk into the slope
+          trunk.rotation.z = Math.random() * 0.14 - 0.07; scene.add(trunk);
+          for (let cl = 0; cl < 3; cl++) {
+            const ca = cl * 2.1 + ox, cr = 0.85 + Math.random() * 0.5;
+            const cn = new THREE.Mesh(new THREE.SphereGeometry(cr * s, 8, 6), groveMats[(cl + r + c) % 3]);
+            cn.position.set(ox + Math.cos(ca) * 0.8 * s, oy + (2.3 + cl * 0.45) * s, oz + Math.sin(ca) * 0.8 * s);
+            cn.scale.set(1, 0.78, 1); cn.castShadow = false; scene.add(cn); // W3 grove: no field shadow blobs
+          }
+        }
+      });
+    } else {
+      const oliveCount=isPotatoQ?10:40; // r2 parity: mobile = desktop
+      for(let oi=0;oi<oliveCount;oi++){
+        const angle=Math.random()*Math.PI*2,dist=38+Math.random()*120;
+        const ox=Math.cos(angle)*dist,oz=Math.sin(angle)*dist-20;
+        if(Math.sqrt(ox*ox+oz*oz)<48)continue;
+        if(inApproach(ox,oz))continue;
+        const d=Math.sqrt(ox*ox+oz*oz);
+        const oCol=atmosColor(`hsl(${102+Math.random()*18},${22+Math.random()*18}%,${36+Math.random()*12}%)`,d);
+        const olBaseY=getHeightAt(ox,oz);
+        scene.add(mk(new THREE.CylinderGeometry(.12,.2,2,5),M.bark,ox,olBaseY+1,oz));
+        const cn=new THREE.Mesh(new THREE.SphereGeometry(1.8+Math.random()*.8,8,7),new THREE.MeshStandardMaterial({color:oCol,roughness:.84}));
+        cn.position.set(ox,olBaseY+2.8+Math.random()*.3,oz);cn.scale.set(1,.4,1);cn.castShadow=d<120;scene.add(cn);
+      }
     }
 
     // ── STONE PINES (umbrella pines) ──
-    const stonePineCount=isMobileQ?4:18;
+    const stonePineCount=isPotatoQ?4:18; // r2 parity: mobile = desktop 18
     for(let pi=0;pi<stonePineCount;pi++){
       const angle=Math.random()*Math.PI*2,dist=70+Math.random()*200;
       const px=Math.cos(angle)*dist,pz=Math.sin(angle)*dist-50;
       if(Math.sqrt(px*px+(pz+50)*(pz+50))<55)continue;
+      if(inApproach(px,pz))continue;
       const d=Math.sqrt(px*px+pz*pz);
       const ph=5+Math.random()*4;
       const pCol=atmosColor("#3A6830",d);
       const pnBaseY=getHeightAt(px,pz);
-      scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,pnBaseY+ph/2,pz));
-      const canopy=new THREE.Mesh(new THREE.SphereGeometry(2.5+Math.random()*1.2,10,8),new THREE.MeshStandardMaterial({color:pCol,roughness:.82}));
-      canopy.position.set(px,pnBaseY+ph+.8,pz);canopy.scale.set(1,.28,1);canopy.castShadow=d<130;scene.add(canopy);
+      scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,pnBaseY+ph/2-(W3?0.4:0),pz)); // W3: sunk into the slope
+      if(W3){
+        // Layered umbrella-pine crown: broad main canopy + smaller offset cap
+        const pMat=new THREE.MeshStandardMaterial({color:pCol,roughness:.82});
+        const r1=2.4+Math.random()*1.0;
+        const c1=new THREE.Mesh(new THREE.SphereGeometry(r1,10,8),pMat);
+        c1.position.set(px,pnBaseY+ph+r1*.35,pz);c1.scale.set(1,.5,1);c1.castShadow=false;scene.add(c1); // W3: no field shadow blobs
+        const c2=new THREE.Mesh(new THREE.SphereGeometry(r1*.55,8,6),pMat);
+        c2.position.set(px+(Math.random()*1.4-.7),pnBaseY+ph+r1*.75,pz+(Math.random()*1.4-.7));
+        c2.scale.set(1,.55,1);scene.add(c2);
+      }else{
+        const canopy=new THREE.Mesh(new THREE.SphereGeometry(2.5+Math.random()*1.2,10,8),new THREE.MeshStandardMaterial({color:pCol,roughness:.82}));
+        canopy.position.set(px,pnBaseY+ph+.8,pz);canopy.scale.set(1,.28,1);canopy.castShadow=d<130;scene.add(canopy);
+      }
     }
 
     // ── FARMHOUSES & VILLAS: warm stone, terracotta roofs, shutters ──
@@ -2255,9 +5040,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const farmPositions=isMobileQ?farmPositionsAll.slice(0,6):farmPositionsAll;
     farmPositions.forEach(([fx,fz])=>{
       const d=Math.sqrt(fx*fx+fz*fz);
+      // W3: no farms on the NEAR hills — their dark windows/shutters read as
+      // dirty spots scattered in the golden wheat from the arrival view.
+      if(W3&&d<190)return;
       const fh=2+Math.random()*2.5;const fw=3.5+Math.random()*3;const fd=fw*.65+Math.random();
       const wallCol=atmosColor(`hsl(${28+Math.random()*10},${18+Math.random()*12}%,${78+Math.random()*10}%)`,d);
-      const farmBaseY=getHeightAt(fx,fz);
+      // Seat on the LOWEST footprint corner and sink — on the rolling terrain a
+      // centre-sampled base left the downhill side floating in mid-air.
+      const farmBaseY=Math.min(
+        getHeightAt(fx-fw/2,fz-fd/2),getHeightAt(fx+fw/2,fz-fd/2),
+        getHeightAt(fx-fw/2,fz+fd/2),getHeightAt(fx+fw/2,fz+fd/2))-0.4;
+      // Skip farms on slopes too steep to seat believably
+      if(getHeightAt(fx,fz)-farmBaseY>2.6)return;
       // Main building
       scene.add(mk(new THREE.BoxGeometry(fw,fh,fd),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx,farmBaseY+fh/2+.3,fz));
       // Terracotta roof — slight overhang
@@ -2301,23 +5095,26 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const m=new THREE.Mesh(geo,mat);
       m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.rotation.z=rotY;
       m.receiveShadow=true;scene.add(m);
-      // Dusty shoulder — wider, softer
+      // Dusty shoulder — wider, softer. Transparent overlay: no depth write
+      // (z-fighting sweep #6 — decal planes never contest the depth buffer)
       const dustGeo=new THREE.PlaneGeometry(w+2.5,len+1);
       const dustMat=new THREE.MeshStandardMaterial({
-        color:atmosColor("#E8DCC4",d),roughness:.96,transparent:true,opacity:.3,
+        color:atmosColor("#E8DCC4",d),roughness:.96,transparent:true,opacity:.3,depthWrite:false,
       });
       const dust=new THREE.Mesh(dustGeo,dustMat);
       dust.rotation.x=-Math.PI/2;dust.position.set(x,y-.04,z);dust.rotation.z=rotY;
       scene.add(dust);
-      // Wheel ruts — two subtle darker tracks
+      // Wheel ruts — two subtle darker tracks. +0.03 over the gravel (was +0.01:
+      // right at the 24-bit depth epsilon for the farthest road segments, the
+      // classic distance shimmer) + no depth write (z-fighting sweep #6)
       for(const offset of[-w*.28,w*.28]){
         const rutGeo=new THREE.PlaneGeometry(w*.12,len-.5);
         const rutMat=new THREE.MeshStandardMaterial({
-          color:atmosColor("#C8B8A0",d),roughness:.96,transparent:true,opacity:.22,
+          color:atmosColor("#C8B8A0",d),roughness:.96,transparent:true,opacity:.22,depthWrite:false,
         });
         const rut=new THREE.Mesh(rutGeo,rutMat);
         rut.rotation.x=-Math.PI/2;
-        rut.position.set(x+Math.cos(rotY)*offset,y+.01,z-Math.sin(rotY)*offset);
+        rut.position.set(x+Math.cos(rotY)*offset,y+.03,z-Math.sin(rotY)*offset);
         rut.rotation.z=rotY;
         scene.add(rut);
       }
@@ -2327,6 +5124,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Entrance vestibulum faces -Z at world coords (0, HILL_Y, vestZ≈-12)
     // Road descends from hilltop courtyard edge down to flat ground, then continues south
     // Courtyard path connects entrance to road at z≈-40
+    // W3 drops ALL the old strada segments: the axis sections lie directly
+    // under the new causeway ribbon, and the winding main/east/west branches
+    // read as chains of brown patches ("oude wegen") across the wheat hills.
+    if(!W3){
     // Hill slope section (on the hill surface, angled slightly)
     for(let ri=0;ri<12;ri++){
       const rz=-40-ri*3.5;
@@ -2363,10 +5164,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const rz3=-65-ri*6;
       mkStrada(rx3,rz3,2.8,7,0);
     }}
+    }
 
     // ── ROMAN AQUEDUCT — Pont du Gard-style two-tier structure ──
     // Skipped on mobile — hundreds of geometry pieces, very far from camera
-    if(!isRenaissance&&!isMobileQ){
+    // W3: dropped — it sat beyond the old 300-unit far plane (never visible)
+    // and popped in as pale ghost arches + giant bald dome-hills when the far
+    // plane moved to 5.2km. The far-hills ring owns that zone now.
+    if(!isRenaissance&&!isMobileQ&&!W3){
     const aqZ=220; // behind palace, far in background
     const aqSpans=12;
     const aqSpacing=10;
@@ -2601,7 +5406,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
     // ── SUNFLOWER/WHEAT FIELDS: dense textured golden patches ──
     const sunflowerTones=["#D8B848","#C8A840","#E4C050","#B89838","#D0B048","#DCC058","#C4A040","#E0C460"];
-    const sunflowerCount=isMobileQ?4:25;
+    const sunflowerCount=isPotatoQ?4:25; // r2 parity: mobile = desktop
     for(let sf=0;sf<sunflowerCount;sf++){
       const angle=Math.random()*Math.PI*2,dist=100+Math.random()*180;
       const sx=Math.cos(angle)*dist,sz=Math.sin(angle)*dist-30;
@@ -2609,6 +5414,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       const d=Math.sqrt(sx*sx+sz*sz);
       const sfCol=atmosColor(sunflowerTones[sf%sunflowerTones.length],d);
       const sfGeo=new THREE.PlaneGeometry(22+Math.random()*18,16+Math.random()*12,12,12);
+      if(fieldBuckets){
+        // W1: fold into the shared wheat bucket (same crop maps — one merged mesh)
+        pushTinted(fieldBuckets.wheat,sfGeo,sfCol,sx,getHeightAt(sx,sz)+.25,sz,-Math.PI/2,0,Math.random()*.4);
+        continue;
+      }
       const sfm=new THREE.Mesh(sfGeo,new THREE.MeshStandardMaterial({
         map:cropTex.map,normalMap:cropTex.normalMap,normalScale:new THREE.Vector2(.5,.5),
         roughnessMap:cropTex.roughnessMap,
@@ -2617,6 +5427,112 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }));
       sfm.rotation.x=-Math.PI/2;sfm.position.set(sx,getHeightAt(sx,sz)+.25,sz);sfm.rotation.z=Math.random()*.4;
       sfm.receiveShadow=true;scene.add(sfm);
+    }
+
+    // ══ W1 (WS2-4): merge each shared-material field bucket into ONE mesh ══
+    if(fieldBuckets&&fieldMats){
+      ([["wheat",fieldMats.wheat],["green",fieldMats.green],["earth",fieldMats.earth],["vine",fieldMats.vine]] as const).forEach(([key,mat])=>{
+        const geos=fieldBuckets[key as keyof typeof fieldBuckets];
+        if(!geos.length)return;
+        const merged=mergeGeometries(geos);
+        geos.forEach(g=>g.dispose());
+        if(!merged)return;
+        const mesh=new THREE.Mesh(merged,mat);
+        mesh.receiveShadow=true;
+        scene.add(mesh);
+      });
+    }
+
+    // ══ W2 (WS3-8) — materialize the instanced cypresses ══
+    // Near tier: ONE canonical unit-height Lathe silhouette (fixed seed) × the
+    // 3 shared W1 olive foliage materials + one instanced trunk; far tier: ONE
+    // tapered column × the 3 haze-band materials + one instanced trunk.
+    // ~200 per-tree meshes/geometries collapse to ≤8 draw calls; per-instance
+    // scale/lean (from each tree's deterministic seed) keeps the variety.
+    if(W2&&cypressNear&&cypressFar&&cypressFoliageMats&&farCypressMats){
+      const _cyDummy=new THREE.Object3D();
+      const NSEED=12.7,profSegs=18;
+      const prof: THREE.Vector2[]=[];
+      for(let i=0;i<=profSegs;i++){
+        const tt=i/profSegs;let r: number;
+        if(tt<0.05)r=.5*.35*(tt/.05);
+        else if(tt<0.2)r=.5*(.35+.65*((tt-.05)/.15));
+        else if(tt<0.9){const tp=(tt-.2)/.7;r=.5*(1-.4*tp);}
+        else{const tp=(tt-.9)/.1;r=.5*.6*(1-tp);}
+        const n=Math.sin(NSEED+tt*47.3)*Math.cos(NSEED*.7+tt*31.1);
+        prof.push(new THREE.Vector2(Math.max(r*(1+n*.12),.02),tt));
+      }
+      const nearFoliageGeo=new THREE.LatheGeometry(prof,8);
+      nearFoliageGeo.computeVertexNormals();
+      const nearTrunkGeo=new THREE.CylinderGeometry(.04,.14,.3,5);nearTrunkGeo.translate(0,.15,0);
+      const farColGeo=new THREE.CylinderGeometry(.12,.3,.8,6);farColGeo.translate(0,.38,0); // base ~at ground (was +0.1h stilt over a thin trunk)
+      const farTrunkGeo=new THREE.CylinderGeometry(.06,.12,.2,5);farTrunkGeo.translate(0,.1,0);
+      const setInstances=(mesh:THREE.InstancedMesh,items:{px:number,pz:number,h:number,baseY:number,seed?:number}[],foliage:boolean)=>{
+        items.forEach((c,i)=>{
+          const seed=c.seed??0;
+          if(foliage){
+            const lean=(Math.sin(seed*1.7)-.5)*.03;
+            const s=1+Math.sin(seed*1.3)*.1;
+            _cyDummy.position.set(c.px+lean,c.baseY+c.h*.18,c.pz);
+            _cyDummy.rotation.set(0,seed,0);
+            _cyDummy.scale.set(s,c.h*.82,s);
+          }else{
+            _cyDummy.position.set(c.px,c.baseY-0.3,c.pz); // sunk — no floating column feet on slopes
+            _cyDummy.rotation.set(0,0,0);
+            _cyDummy.scale.set(1,c.h,1);
+          }
+          _cyDummy.updateMatrix();
+          mesh.setMatrixAt(i,_cyDummy.matrix);
+        });
+        mesh.instanceMatrix.needsUpdate=true;
+        scene.add(mesh);
+      };
+      if(!W3){
+        for(let b=0;b<3;b++){
+          const items=cypressNear.filter(c=>Math.abs(Math.floor(c.seed*7))%3===b);
+          if(!items.length)continue;
+          const im=new THREE.InstancedMesh(nearFoliageGeo,cypressFoliageMats[b],items.length);
+          im.castShadow=true;
+          setInstances(im,items,true);
+        }
+        if(cypressNear.length){
+          setInstances(new THREE.InstancedMesh(nearTrunkGeo,M.barkD,cypressNear.length),cypressNear,false);
+        }else{nearFoliageGeo.dispose();nearTrunkGeo.dispose();}
+      }else{
+        // W3: realistic Sketchfab Italian cypress (CC-BY guillemvilah? — smaugthedeceiver,
+        // alpha-cut foliage) for every NEAR tree, one InstancedMesh scaled per tree
+        // (GLB is 3 m tall). Far trees stay the cheap procedural columns below.
+        nearFoliageGeo.dispose();nearTrunkGeo.dispose();
+        revealGates.push(loadModel("/models/exterior/cypress_w3.glb?v=25").then((g)=>{
+          if(w3Disposed||!cypressNear.length)return;
+          let geo:THREE.BufferGeometry|null=null,mat:THREE.Material|null=null;
+          g.traverse((c)=>{const m=c as THREE.Mesh;if(m.isMesh){geo=m.geometry;mat=m.material as THREE.Material;}});
+          if(!geo||!mat)return;
+          const fm=mat as THREE.MeshStandardMaterial;fm.alphaTest=0.5;fm.transparent=false;fm.side=THREE.DoubleSide;fm.needsUpdate=true;
+          // castShadow OFF: the wheat shader can't RECEIVE shadows, so tree
+          // shadows landed on the terrain UNDER the stalks as detached black
+          // blobs scattered over the fields (owner: "rare zwarte vlekken").
+          const im=new THREE.InstancedMesh(geo,mat,cypressNear.length);im.castShadow=false;
+          const d4=new THREE.Object3D();
+          cypressNear.forEach((c,i)=>{
+            const s=1+Math.sin(c.seed*1.3)*.1,sc=c.h/3.0;
+            // sunk 0.35 so no trunk-foot hovers on the downhill side of a slope
+            d4.position.set(c.px,c.baseY-0.35,c.pz);d4.rotation.set(0,c.seed,0);d4.scale.set(s*sc,sc,s*sc);
+            d4.updateMatrix();im.setMatrixAt(i,d4.matrix);
+          });
+          im.instanceMatrix.needsUpdate=true;im.name="w3_cypress";scene.add(im);
+        }).catch(()=>{}));
+      }
+      for(let b=0;b<3;b++){
+        const items=cypressFar.filter(c=>c.band===b);
+        if(!items.length)continue;
+        const im=new THREE.InstancedMesh(farColGeo,farCypressMats[b],items.length);
+        im.castShadow=b===0&&!W3; // W3: no field shadow blobs (wheat shader cannot receive)
+        setInstances(im,items,false);
+      }
+      if(cypressFar.length){
+        setInstances(new THREE.InstancedMesh(farTrunkGeo,M.barkD,cypressFar.length),cypressFar,false);
+      }else{farColGeo.dispose();farTrunkGeo.dispose();}
     }
 
     // ── 3D WHEAT/GRAIN FIELDS: dense instanced stalks — Tuscan golden harvest ──
@@ -2641,8 +5557,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       [-200, -300, 50, 38], [170, -310, 45, 32], [-80, -360, 48, 35],
       [50, -380, 42, 30], [-160, -340, 50, 38],
     ];
-    // Add many procedurally generated fields across wider area (skip on mobile)
-    const extraFieldCount=isMobileQ?0:35;
+    // Add many procedurally generated fields across wider area (skip on potato;
+    // W3's blanket grid above already covers the whole vista)
+    const extraFieldCount=(isPotatoQ||W3)?0:35;
     for(let extra=0;extra<extraFieldCount;extra++){
       const angle=Math.random()*Math.PI*2;
       const dist=120+Math.random()*250;
@@ -2651,31 +5568,96 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if(Math.sqrt(wx2*wx2+(wz2+60)*(wz2+60))<90)continue;
       wheatPositions.push([wx2,wz2,30+Math.random()*25,20+Math.random()*18]);
     }
-    // On mobile, skip far wheat fields entirely and reduce near-field density
-    const wheatSubset=isMobileQ?wheatPositions.slice(0,8):wheatPositions;
-    wheatSubset.forEach(([wx, wz, ww, wd], i) => {
-      const isFar = i >= 16;
-      const baseCount=isFar ? 600 : (1500 + Math.floor(Math.random() * 1000));
+    // ── GLADIATOR HILLS — W3 replaces the hand-placed patchwork with (a) dense
+    // ripe wheat hugging the cypress avenue and (b) a systematic BLANKET of
+    // full-grown fields over every visible hill, so the landscape reads as one
+    // continuous golden harvest (owner: "full grown crops all over the hills").
+    if (W3) {
+      wheatPositions.length = 0;
+      // (a) approach flanking — first entries so potato's slice(0,8) keeps them
+      for (let a = 1; a < 35; a += 2) {
+        const x = Math.sin(a * 0.16) * (a * 0.55), z = -48 - a * 7;
+        for (const sx of [-1, 1]) wheatPositions.push([x + sx * 17, z, 28, 20, 0]); // 0 = potato-only (the sea covers this on desktop AND mobile; the extra dense 28x20 blocks read as rectangles)
+      }
+      // (b) ONE CONTIGUOUS GOLDEN SEA (owner: "echt grote aaneengesloten
+      // graanvelden") — edge-to-edge cells with NO jitter and NO gaps, tiled
+      // over the whole hill out to the terrain rim. The 5th tuple entry is an
+      // ABSOLUTE density (stalks/m²), tiered by distance so huge cells stay
+      // payable; potato is untouched (slice(0,8) keeps the approach flanks).
+      for (let gx = -366; gx <= 366; gx += 61) {
+        for (let gz = 366; gz >= -366; gz -= 61) {
+          if (Math.abs(gx) < 78 && Math.abs(gz) < 58) continue;  // palace pad
+          const r = Math.hypot(gx, gz);
+          if (r < 52 || r > 372) continue;
+          // CONTINUOUS density curve — hard tiers stepped along the cell grid
+          // and read as rectangular field seams
+          const t = Math.min(1, Math.max(0, (372 - r) / 300));
+          wheatPositions.push([gx, gz, 63, 63, 0.32 + 3.7 * t * t]);
+        }
+      }
+    }
+    // r2 parity 2026-08-20: mobile renders the SAME wheat sea as desktop
+    // (W3: all density-carrying sea cells; flank cells p[4]===0 are covered by
+    // the sea, exactly like desktop). Only potato keeps the 8-cell approach slice.
+    const wheatSubset=isPotatoQ?wheatPositions.slice(0,8):(W3?wheatPositions.filter(p=>p[4]!==0):wheatPositions);
+    // W1 (WS2-4): ONE shared wheat shader material for every field (~45 ShaderMaterials → 1);
+    // per-field hsl uniforms are replaced by per-instance variation baked into the shared shader.
+    const W1_WHEAT_STALK_H=1.7;
+    const sharedWheatMat=W1?createSharedWheatMaterial(W1_WHEAT_STALK_H,W3):null; // W3: ripe gold
+    if(sharedWheatMat)extraDisposables.push(sharedWheatMat);
+    wheatSubset.forEach(([wx, wz, ww, wd, dens]) => {
+      // dens (stalks/m²) = W3 sea cells → absolute area-based count;
+      // legacy entries (approach flanks, !W3 patchwork) keep the old bases.
+      const d0 = Math.hypot(wx, wz + 60);
+      const baseCount = dens
+        ? ww * wd * dens
+        : (d0 > 165 ? 800 : (2600 + Math.floor(Math.random() * 1000))) * (W3 ? 1.6 : 1);
       wheatFields.push(createWheatField(scene, {
         count: Math.round(baseCount*Q.vegetationDensity),
         centerX: wx, centerZ: wz, width: ww, depth: wd,
-        stalkHeight: 1.4 + Math.random() * 0.9,
+        stalkHeight: sharedWheatMat ? W1_WHEAT_STALK_H : 1.4 + Math.random() * 0.9,
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
         headColor: `hsl(${40 + Math.random() * 12}, ${50 + Math.random() * 20}%, ${64 + Math.random() * 12}%)`,
         getHeightAt,
+        // W3 (owner): wheat starts only BEYOND the cypress verge — the whole
+        // road + verge + tree line stays a clear dusty band (Gladiator ref).
+        // Interior sea cells stay SOLID (one contiguous field); only cells on
+        // the sea's OUTER boundary get an organic wobbled edge.
+        exclude: W3 ? (() => {
+          const seed = wx * 12.9898 + wz * 78.233;
+          const rim = Math.hypot(wx, wz) > 310;
+          return (sx: number, sz: number) => {
+            if (sz < -40 && sz > -295 && Math.abs(sx - Math.sin(((-sz - 48) / 7) * 0.16) * (((-sz - 48) / 7) * 0.55)) < 8.2) return true;
+            // paved travertine pad — no wheat on the marble (cell centres are
+            // outside the pad but 63-wide cells overlap its corners)
+            if (sx > -58 && sx < 62 && sz > -48 && sz < 44) return true;
+            if (!rim) return false;
+            const dx = (sx - wx) / (ww * 0.5), dz = (sz - wz) / (wd * 0.5);
+            const ang = Math.atan2(dz, dx);
+            const edge = 1 - 0.22 * (0.5 + 0.5 * Math.sin(ang * 3 + seed)) - 0.14 * (0.5 + 0.5 * Math.sin(ang * 7 + seed * 1.7));
+            return dx * dx + dz * dz > edge * edge;
+          };
+        })() : undefined,
+        material: sharedWheatMat ?? undefined,
       }));
     });
 
     // ── STONE WALLS: dry stone walls between fields ──
-    const stoneWallCount=isMobileQ?5:20;
+    // W3 drops them: pale strips on the golden hills read as stray "roads".
+    const stoneWallCount=W3?0:(isMobileQ?5:20);
     for(let sw=0;sw<stoneWallCount;sw++){
       const angle=Math.random()*Math.PI*2,dist=60+Math.random()*200;
       const wx=Math.cos(angle)*dist,wz=Math.sin(angle)*dist-40;
       if(Math.sqrt(wx*wx+(wz+40)*(wz+40))<70)continue;
-      const wLen=8+Math.random()*20,wAng=Math.random()*Math.PI;
+      if(inApproach(wx,wz))continue;
+      const wLen=8+Math.random()*12,wAng=Math.random()*Math.PI;
       const d=Math.sqrt(wx*wx+wz*wz);
       const wCol=atmosColor("#B0A888",d);
-      const wall=mk(new THREE.BoxGeometry(wLen,.5,.3),new THREE.MeshStandardMaterial({color:wCol,roughness:.9}),wx,getHeightAt(wx,wz)+.3,wz);
+      // Wall runs along local +X after yaw wAng → world dir (cos(wAng), -sin(wAng)).
+      // Seat on the LOWEST of centre/ends so wall ends don't hover off slopes.
+      const wdx=Math.cos(wAng)*wLen/2, wdz=-Math.sin(wAng)*wLen/2;
+      const wallY=Math.min(getHeightAt(wx,wz),getHeightAt(wx+wdx,wz+wdz),getHeightAt(wx-wdx,wz-wdz));
+      const wall=mk(new THREE.BoxGeometry(wLen,.5,.3),new THREE.MeshStandardMaterial({color:wCol,roughness:.9}),wx,wallY+.22,wz);
       wall.rotation.y=wAng;scene.add(wall);
     }
 
@@ -2733,67 +5715,133 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     ect.position.set(0,HILL_Y+entrClickHeight/2+2,0);ect.userData={roomId:entranceId,wingMeshes:centralMeshes,accent:"#E0C060"};
     scene.add(ect);clickTargets.push(ect);
 
-    // ── HOVER POINT LIGHTS (one per wing + entrance) ──
-    const hoverLights: {light:THREE.PointLight,targetIntensity:number,wingId:string}[]=[];
-    clickTargets.forEach((ct: any)=>{
-      const pos=new THREE.Vector3();ct.getWorldPosition(pos);
-      const hl=new THREE.PointLight(ct.userData.accent,0,45);
-      hl.position.set(pos.x,12,pos.z);
-      scene.add(hl);
-      hoverLights.push({light:hl,targetIntensity:0,wingId:ct.userData.roomId});
-    });
+    // ── HOVER / WALKTHROUGH AFFORDANCE ──
+    // W1 (WS3-7 + perf audit): the idle emissive-lerp loop that mutated ~1000 cloned
+    // materials every frame is DEAD, along with the per-mesh material cloning that fed
+    // it and the 12 idle per-wing PointLights. Replacement: ONE shared ember hover
+    // light + ONE shared gold walkthrough light, repositioned on state CHANGE only.
+    const targetWorldPos=new Map<string,THREE.Vector3>();
+    [...clickTargets,...wingAnchors].forEach((ct: any)=>{const pos=new THREE.Vector3();ct.getWorldPosition(pos);targetWorldPos.set(ct.userData.roomId,pos);});
 
-    // ── PER-WING WINDOW MATERIALS ──
+    // ══ W2 (WS3-10/11) — persistent travertine signposts in Fraunces ink ══
+    // Always-visible wayfinding replacing the hover-only label: a travertine
+    // stele + Fraunces plaque beside every wing and at the entrance approach,
+    // each with an oversized invisible hit box (tremor-friendly) that joins
+    // clickTargets under the same roomId — so a signpost tap runs the exact
+    // wing/entrance tap contract, and the W1 ember hover light answers hover.
+    // Unlit label (MeshBasicMaterial) + existing materials: zero new lights.
+    // ── Owner feedback 2026-08-06 #6B: the click-hub is retired. Per-wing
+    // signposts are DISABLED — the exterior has one goal, the monumental
+    // entrance; wings are reached through the entrance hall. The machinery is
+    // kept behind this const so the W2 wayfinding can be restored in one flip.
+    const WING_SIGNPOSTS_ENABLED=false;
+    if(W2){
+      const addSignpost=(id: string,label: string,sx: number,sz: number,ry: number)=>{
+        const g=new THREE.Group();
+        g.position.set(sx,HILL_Y+0.3,sz);g.rotation.y=ry;
+        // W3 (owner): no visible stele — it read as a strange named statue in
+        // front of the pillars. The open gate IS the target; the oversized
+        // invisible hit box below keeps the tap contract intact.
+        if(!W3){
+        g.add(mk(new THREE.BoxGeometry(0.9,0.3,0.9),M.stoneD,0,0.15,0));
+        g.add(mk(new THREE.BoxGeometry(0.34,2.1,0.34),M.trim,0,1.35,0));
+        g.add(mk(new THREE.BoxGeometry(0.5,0.12,0.5),M.trim,0,2.46,0));
+        const lbl=makeFrauncesLabel(label,{width:2.3,height:0.55});
+        lbl.position.set(0,1.85,0.19);
+        g.add(lbl);
+        }
+        const hit=new THREE.Mesh(new THREE.BoxGeometry(3.2,3.4,1.6),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+        hit.position.set(0,1.7,0);hit.userData={roomId:id,wingMeshes:[],accent:EMBER};
+        g.add(hit);clickTargets.push(hit);
+        scene.add(g);
+      };
+      if(WING_SIGNPOSTS_ENABLED){
+        WINGS.forEach((wing: Wing)=>{
+          const p=targetWorldPos.get(wing.id);if(!p)return;
+          const r0=Math.hypot(p.x,p.z)||1;
+          // Beside the wing (perpendicular offset clears the portico), facing the courtyard
+          const sx=p.x+(-p.z/r0)*6.5,sz=p.z+(p.x/r0)*6.5;
+          addSignpost(wing.id,wing.name,sx,sz,Math.atan2(-sx,-sz));
+        });
+      }
+      // Entrance signpost stays (tremor-friendly named tap target) — moved off
+      // the new monumental stair to the left flank of its foot, facing arrival.
+      addSignpost(entranceId,entranceHallLabelRef.current,-7.2,-20.4,Math.PI);
+    }
+    const hoverLights: {light:THREE.PointLight,targetIntensity:number,wingId:string}[]=[];
+    let w1HoverLight: THREE.PointLight|null=null;
+    let w1HlLight: THREE.PointLight|null=null;
+    if(W1){
+      w1HoverLight=new THREE.PointLight(EMBER,0,45);scene.add(w1HoverLight);
+      w1HlLight=new THREE.PointLight(GOLD,0,50);scene.add(w1HlLight);
+    }else{
+      // Legacy: one accent PointLight per wing + entrance
+      clickTargets.forEach((ct: any)=>{
+        const pos=targetWorldPos.get(ct.userData.roomId)!;
+        const hl=new THREE.PointLight(ct.userData.accent,0,45);
+        hl.position.set(pos.x,12,pos.z);
+        scene.add(hl);
+        hoverLights.push({light:hl,targetIntensity:0,wingId:ct.userData.roomId});
+      });
+    }
+
+    // ── PER-WING WINDOW MATERIALS (legacy path only) ──
     // Clone window materials for each wing so hover glow is independent
     const wingWindowMats: Map<string,{mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]>=new Map();
-    clickTargets.forEach((ct: any)=>{
-      const entries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
-      ct.userData.wingMeshes.forEach((wm: THREE.Mesh)=>{
+    if(!W1){
+      clickTargets.forEach((ct: any)=>{
+        const entries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
+        ct.userData.wingMeshes.forEach((wm: THREE.Mesh)=>{
+          const mat=wm.material as THREE.MeshStandardMaterial;
+          if(mat===M.win||mat===M.winBlue){
+            const cl=mat.clone();wm.material=cl;
+            entries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
+          }
+        });
+        wingWindowMats.set(ct.userData.roomId,entries);
+      });
+      // For the entrance, also clone window materials on central meshes
+      const centralWinEntries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
+      centralMeshes.forEach((wm: THREE.Mesh)=>{
         const mat=wm.material as THREE.MeshStandardMaterial;
         if(mat===M.win||mat===M.winBlue){
           const cl=mat.clone();wm.material=cl;
-          entries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
+          centralWinEntries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
         }
       });
-      wingWindowMats.set(ct.userData.roomId,entries);
-    });
-    // For the entrance, also clone window materials on central meshes
-    const centralWinEntries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
-    centralMeshes.forEach((wm: THREE.Mesh)=>{
-      const mat=wm.material as THREE.MeshStandardMaterial;
-      if(mat===M.win||mat===M.winBlue){
-        const cl=mat.clone();wm.material=cl;
-        centralWinEntries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
-      }
-    });
-    wingWindowMats.set(entranceId,centralWinEntries);
+      wingWindowMats.set(entranceId,centralWinEntries);
 
-    // ── CLONE ALL BODY MATERIALS per section so emissive glow is fully isolated ──
-    // Without this, shared materials like ochreWall cause glow to bleed across all buildings
-    sectionGroups.forEach(sg=>{
-      sg.meshes.forEach((wm: any)=>{
-        if(!wm.material||wm.material.transparent)return;
-        const mat=wm.material as THREE.MeshStandardMaterial;
-        if(!mat.emissive)return;
-        // Skip already-cloned window materials
-        if(mat===M.win||mat===M.winBlue)return;
-        wm.material=mat.clone();
+      // ── CLONE ALL BODY MATERIALS per section so emissive glow is fully isolated ──
+      // Without this, shared materials like ochreWall cause glow to bleed across all buildings
+      sectionGroups.forEach(sg=>{
+        sg.meshes.forEach((wm: any)=>{
+          if(!wm.material||wm.material.transparent)return;
+          const mat=wm.material as THREE.MeshStandardMaterial;
+          if(!mat.emissive)return;
+          // Skip already-cloned window materials
+          if(mat===M.win||mat===M.winBlue)return;
+          wm.material=mat.clone();
+        });
       });
-    });
+    }
 
     scene.add(palace);
     if(!isMobileGPU()){scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(-5).translateY(HILL_Y+5).translateZ(0));
     scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(5).translateY(HILL_Y+5).translateZ(0));}
 
-    // ── WALKTHROUGH HIGHLIGHT — golden glow on target wing/entrance meshes ──
+    // ── WALKTHROUGH HIGHLIGHT — golden glow on target wing/entrance (legacy: one light per target) ──
     const hlLights: Map<string,THREE.PointLight>=new Map();
-    clickTargets.forEach((ct: any)=>{
-      const pos=new THREE.Vector3();ct.getWorldPosition(pos);
-      const light=new THREE.PointLight("#D4AF37",0,50);light.position.set(pos.x,12,pos.z);scene.add(light);
-      hlLights.set(ct.userData.roomId,light);
-    });
+    if(!W1){
+      clickTargets.forEach((ct: any)=>{
+        const pos=targetWorldPos.get(ct.userData.roomId)!;
+        const light=new THREE.PointLight("#D4AF37",0,50);light.position.set(pos.x,12,pos.z);scene.add(light);
+        hlLights.set(ct.userData.roomId,light);
+      });
+    }
 
     let prevHovered: string|null=null;
+    // W1 affordance state — lights update only when these change (no per-frame writes)
+    let _w1PrevHover: string|null=null,_w1PrevHl: string|null=null;
     const clock=new THREE.Clock();
     const goldColor=new THREE.Color("#D4AF37");
     // Pre-allocated objects reused every frame to avoid GC pressure
@@ -2815,6 +5863,57 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
     let _lastHovId:string|null=null;
+    // ── W3 ARRIVAL-BY-CART (owner 2026-08-20): a palace tap from the FAR stance
+    // (camD>100, i.e. the initial framing) rides a low Catmull-Rom approach OVER
+    // the road — cart height above the dust, entrance/tympanum centred so the
+    // owner's name is legible in the final seconds — then fires the ORIGINALLY
+    // tapped roomId via the existing arrival contract. Near taps keep today's
+    // behaviors (camD<45 direct, 45-100 the __entrance__ autoWalk).
+    // Same θ/φ/dist orbit representation + the shared MAX_YAW_DEG_S cap below;
+    // prefersReducedMotion() never reaches here (guarded at the trigger).
+    let approachFlight:{t0:number,target:string,wp:[number,number,number][]}|null=null;
+    const AP_DUR=7.0; // seconds road-ride before the arrival handoff
+    // ── ITEM 3 (owner 2026-08-20): onboarding arrival THROUGH the gate ──
+    // The onboarding cinematic's final approach captures the camera's ACTUAL
+    // orbit at the name beat and dollies it forward along the road axis to eye
+    // height between the poorttorens — the handoff fires as the camera crosses
+    // the gate line, so the hall cut reads as walking in through the poort,
+    // not dropping in from above. (Onboarding-only; the R2 approachFlight and
+    // normal-click paths above/below are untouched.)
+    let obGate:{th0:number,ph0:number}|null=null;
+    // ── ITEM 1 (owner 2026-08-20): FREE-LOOK during the WP1 prompt hold ──
+    // While the "Begin the walk" prompt is up (pause fired, not yet resumed)
+    // the drag handlers own camOT — mouse + touch rotate with the scene's
+    // normal orbit math. Zoom stays LOCKED (wheel + pinch ignored while
+    // onboardingMode is on; camD keeps easing to the hold distance). On
+    // resume the flyover spline's FIRST control point is re-seeded from the
+    // user's actual pose (obResume) so the walk eases out of wherever they
+    // were looking — global smoothstep = zero start velocity, no snap.
+    let obResume:{th:number,ph:number,d:number}|null=null;
+    let obFreeLook=false; // per-frame: true only during the prompt-hold free-look
+    const OB_FREELOOK_PHI_MIN=Math.PI*0.30;                 // don't rise into a top-down map view mid-prompt
+    const OB_FREELOOK_PHI_MAX=Math.PI*(W3?0.492:0.44);      // scene's normal ground clamp
+    // ITEM 2 (walk fluidity): stall-proof onboarding cinematic clock — the
+    // flyover ran on absolute wall-clock while all camera smoothing runs on
+    // clamped dt, so any hitch JUMPED the spline parameter (stutter-jump)
+    // against smoothers that only advanced one clamped step. Accumulate the
+    // clamped dt instead (hall w3hCinT / corridor w3cCinT / room obCinT parity).
+    let obCinT=0;
+    // Look-target override (world y) — non-null ONLY during the onboarding
+    // gate approach (and its reduced-motion gate still); every other frame
+    // keeps the shared dome-crown look target below.
+    let obLookY:number|null=null;
+    const startApproachFlight=(target:string)=>{
+      // Camera y = dist*cos(φ)+5: the three road beats all sit at y≈13 — a cart
+      // seat over the descending road (ground 8→0) — before the arrival rise.
+      approachFlight={t0:clock.getElapsedTime(),target,wp:[
+        [camO.current.theta,camO.current.phi,camD.current],            // wherever the far stance is
+        [Math.PI*1.5,Math.PI*0.487,Math.max(140,camD.current*0.75)],   // settle low onto the road axis
+        [Math.PI*1.5,Math.PI*0.478,112],                               // low ride up the hill, palace looming
+        [Math.PI*1.5,Math.PI*0.455,60],                                // name beat — tympanum name legible overhead
+        [Math.PI*1.5,Math.PI*0.220,35],                                // rise into the existing arrival framing
+      ]};
+    };
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);
       // Skip the entire animation pass (emissive lerps, particles, render) when
@@ -2829,10 +5928,36 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Framerate-independent smoothing helper: 1-exp(-k*dt) with k=-ln(1-f)*60
       // preserves the old per-frame factors f exactly at 60fps.
       const _sm=(k:number)=>1-Math.exp(-k*dt);
+      obLookY=null; // ITEM 3: look override only lives while a branch below sets it this frame
+      obFreeLook=false; // ITEM 1: re-asserted below only while the prompt hold is live
 
-      // Walkthrough highlight — pulse golden emissive on target meshes
+      // Walkthrough highlight
       const hlTarget=highlightDoorRef.current;
-      if(hlTarget){
+      if(W1){
+        // W1: shared lights, repositioned/stepped on state CHANGE only — the per-frame
+        // emissive-lerp over ~1000 cloned materials is dead (WS3-7 / audit finding).
+        const hovNow=hoveredRoomRef.current;
+        if(hovNow!==_w1PrevHover){
+          _w1PrevHover=hovNow;
+          const p=hovNow?targetWorldPos.get(hovNow):undefined;
+          if(w1HoverLight){
+            if(p){w1HoverLight.position.set(p.x,12,p.z);w1HoverLight.intensity=1.8;}
+            else w1HoverLight.intensity=0;
+          }
+        }
+        const hlNow=hlTarget??null;
+        if(hlNow!==_w1PrevHl){
+          _w1PrevHl=hlNow;
+          const p=hlNow?targetWorldPos.get(hlNow):undefined;
+          if(w1HlLight){
+            if(p)w1HlLight.position.set(p.x,12,p.z);
+            else w1HlLight.intensity=0;
+          }
+        }
+        // Gentle pulse on the single active walkthrough light (one scalar write)
+        if(hlNow&&w1HlLight&&targetWorldPos.has(hlNow))w1HlLight.intensity=3+Math.sin(t*2)*1.5;
+      }else if(hlTarget){
+        // Legacy: pulse golden emissive on target meshes
         clickTargets.forEach((ct: any)=>{
           const active=hlTarget===ct.userData.roomId;
           if(active){
@@ -2846,45 +5971,139 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         });
       }
       // ── Onboarding cinematic: WP1 (hold + prompt) → WP2-5 flyover → zoom to entrance ──
-      if (onboardingModeRef.current && !autoWalkToRef.current && !camDebugRef.current) {
-        const rawT = clock.getElapsedTime();
+      if (onboardingModeRef.current && !autoWalkToRef.current && !approachFlight && !camDebugRef.current) {
+        // ASSEMBLE-BEFORE-REVEAL: hold the cinematic clock until the reveal has
+        // fired — the WP1 drift+prompt must not run over a half-built palace
+        // (the wizard/viewer veil lifts on onReady). The camera keeps drifting
+        // to WP1 beneath the veil. Prompt fallbacks stay intact: the viewer's
+        // 8s hold-fallback arms on onReady (loading→hold) so it is unaffected;
+        // the wizard's 8s cinematic fallback arms at phase entry and still
+        // surfaces the prompt at 8s worst-case (== the barrier cap).
+        if (_revealFired) obCinT += dt; // ITEM 2: same clamped-dt clock as the camera smoothing (see decl)
+        const rawT = obCinT;
         const HOLD_DUR = 1.5; // seconds to drift to WP1 before showing prompt
 
-        // Detect cinematicResumed prop becoming true → capture clock time
+        // Detect cinematicResumed prop becoming true → capture clock time and
+        // (ITEM 1) the user's CURRENT free-look pose as the flyover's seed.
+        // θ is wrapped to the nearest turn of the first flight target so the
+        // spline takes the short way round after a full-circle drag; camOT is
+        // pinned to camO so the slow onboarding lerp starts with zero error.
         if (cinematicResumedRef.current && cinematicResumeTimeRef.current === null && cinematicPauseFiredRef.current) {
           cinematicResumeTimeRef.current = rawT;
+          const thRef = Math.PI * (W2 ? 1.62 : 1.6197); // first post-seed flight waypoint's θ
+          const th = thRef + Math.atan2(Math.sin(camO.current.theta - thRef), Math.cos(camO.current.theta - thRef));
+          camO.current.theta = camOT.current.theta = th;
+          camOT.current.phi = camO.current.phi;
+          obResume = { th, ph: camO.current.phi, d: camD.current };
         }
 
         // Phase 0: drift to waypoint 1 & fire pause callback
         if (cinematicResumeTimeRef.current === null) {
-          camOT.current.theta = Math.PI * 1.4987;
-          camOT.current.phi   = Math.PI * 0.4387;
-          camD.current += (180 - camD.current) * _sm(3.0776); // f=.05 @60fps
+          if (!cinematicPauseFiredRef.current) {
+            // Pre-prompt drift: the cinematic still owns the orbit
+            camOT.current.theta = Math.PI * 1.4987;
+            camOT.current.phi   = Math.PI * 0.4387;
+          } else {
+            // ITEM 1 free-look: drag handlers own camOT.theta/phi; only clamp
+            // pitch to a sensible band. Zoom stays locked (camD pinned below).
+            obFreeLook = true;
+            camOT.current.phi = Math.max(OB_FREELOOK_PHI_MIN, Math.min(OB_FREELOOK_PHI_MAX, camOT.current.phi));
+          }
+          camD.current += (210 - camD.current) * _sm(3.0776); // f=.05 @60fps — hold at the far end of the approach
           if (rawT >= HOLD_DUR && !cinematicPauseFiredRef.current) {
             cinematicPauseFiredRef.current = true;
             if (onCinematicPauseRef.current) onCinematicPauseRef.current();
           }
+        } else if (W2 && prefersReducedMotion()) {
+          // W2 (WS3-10): reduced-motion = crossfade between 3 composed stills
+          // of the same dolly (wide → tympanum beat, name in frame → before
+          // the door), cream veil at each cut, then the same entrance handoff.
+          const ot = rawT - cinematicResumeTimeRef.current;
+          const SHOT=2.4,FADE=.5;
+          const stills: [number,number,number][]=[
+            [Math.PI*1.4987,Math.PI*0.4387,210],
+            [Math.PI*1.5480,Math.PI*0.3060,118], // name-beat (owner review #1): matches the dolly beat — poorttorens ±~13,−13, tall lantern-crowned dome bekroont above
+            [Math.PI*1.5,Math.PI*0.392,19], // ITEM 3 gate framing → ITEM 2: dist 19 not 16 — at 16 the 2.5 near plane (camera z≈−15.1, reach ≈−12.6) sliced open the centre portico column (front face z=−12.7); 19 ⇒ z≈−17.9, ~2.4 clear
+          ];
+          const si=Math.min(Math.floor(ot/SHOT),2);
+          const s=stills[si];
+          camO.current.theta=camOT.current.theta=s[0];
+          camO.current.phi=camOT.current.phi=s[1];
+          camD.current=s[2];
+          if(si===2)obLookY=HILL_Y+4; // ITEM 3: look through the portal arch, not up at the dome
+          const local=ot-si*SHOT;
+          const veil=ensureRmVeil();
+          let vo=0;
+          if(si>0&&local<FADE)vo=1-local/FADE;
+          if(si<2&&local>SHOT-FADE)vo=Math.max(vo,(local-(SHOT-FADE))/FADE);
+          veil.style.opacity=String(vo*.9);
+          if(si===2&&local>=SHOT){
+            veil.style.opacity="0";
+            onboardingModeRef.current=false;
+            onRoomClickRef.current("__entrance__",true); // cinematic arrival → direct enter
+          }
+        } else if (W1 && prefersReducedMotion()) {
+          // W1 (WS12-1): prefers-reduced-motion skips the WP2-5 flyover pans —
+          // cut straight to the end framing and hand off to the entrance. The
+          // pause-prompt flow above (phase 0, camera already at WP1) still ran.
+          camO.current.theta = camOT.current.theta = Math.PI * 1.5;
+          camO.current.phi   = camOT.current.phi   = Math.PI * 0.22;
+          camD.current = 35;
+          onboardingModeRef.current = false;
+          onRoomClickRef.current("__entrance__", true); // cinematic arrival → direct enter
         } else {
           // Resumed — compute time since resume
           const ot = rawT - cinematicResumeTimeRef.current;
-          // 5 waypoints, Catmull-Rom interpolated
-          const WP: [number,number,number][] = [
-            [Math.PI*1.4987, Math.PI*0.4387, 180.0], // 1: wide establishing shot
+          // W2 (WS3-10) → ITEM 3 retune (owner 2026-08-20: "over de weg
+          // aanvliegen en door de poort naar binnen, en vlotter"): the 18s
+          // aerial dolly is condensed to ~7.5s that flies IN OVER THE ROAD —
+          // one tightened sun-side sweep (cypress contre-jour, the tall
+          // lantern-crowned dome crowning the ridge, poorttorens/galerij as
+          // sliding coulisses), then a drop onto the road axis at cart height
+          // exactly like the R2 approachFlight ride (φ≈.45-.47π, y≈13-14),
+          // with the NAME BEAT from the road at dist 58 (tympanum name
+          // legible overhead between the poorttorens, mirroring the R2 beat
+          // at 60). The last 2.5s hand over to the GATE APPROACH below:
+          // forward through the poort at eye height — no more aerial
+          // drop-in at φ=0.22π. Same Catmull-Rom machinery, same
+          // Skip/pause/resume contract; yaw stays far under the shared
+          // MAX_YAW_DEG_S clamp applied below.
+          // Legacy (flag off): 5-waypoint flyover, 7s + 3.8s zoom.
+          // ITEM 1: WP[0] is seeded from the user's free-look pose captured at
+          // resume (fallback = the WP1 hold pose, value-equal to the old first
+          // point) so the flyover eases out of wherever the user left the camera.
+          const WP0: [number,number,number] = obResume
+            ? [obResume.th, obResume.ph, obResume.d]
+            : [Math.PI*1.4987, Math.PI*0.4387, W2 ? 215.0 : 180.0];
+          const WP: [number,number,number][] = W2 ? [
+            WP0,                                     // 0s: the user's prompt-hold pose (or the WP1 hold)
+            [Math.PI*1.6200, Math.PI*0.3980, 152.0], // ~1.7s: condensed sun-side sweep — cypress contre-jour, tall dome crowning the broad ridge, galerij sweeping east
+            [Math.PI*1.5000, Math.PI*0.4700, 100.0], // ~3.3s: settle onto the road axis at cart height (y≈14) — riding the road in, palace looming ahead
+            [Math.PI*1.5000, Math.PI*0.4520,  58.0], // 5s: NAME BEAT from the road — tympanum name legible overhead, both poorttorens bracketing the x=0 axis
+          ] : [
+            WP0,                                     // 1: wide establishing shot (ITEM 1: user pose when free-looked)
             [Math.PI*1.6197, Math.PI*0.3967, 175.0], // 2: pan right & up
             [Math.PI*1.4910, Math.PI*0.3471, 150.0], // 3: sweep left, higher angle
             [Math.PI*1.3854, Math.PI*0.4336, 150.0], // 4: continue left, drop down
             [Math.PI*1.4809, Math.PI*0.4400, 115.0], // 5: settle front, closer
           ];
-          const FLY_DUR = 7.0;
-          const ZOOM_DUR = 3.8; // extended zoom for dramatic effect
+          const FLY_DUR = W2 ? 5.0 : 7.0;
+          const ZOOM_DUR = W2 ? 2.5 : 3.8; // W2: 5+2.5 = the vlotter road dolly + gate approach; legacy: extended zoom
 
           if (ot < FLY_DUR) {
+            // ITEM 2: the smoothstep used to be applied PER SEGMENT (lt), so the
+            // spline parameter's velocity hit zero at every waypoint — the camera
+            // pumped to a near-stop 3× mid-flyover ("pretty shaky"). One global
+            // ease over the whole leg + the raw local parameter keeps Catmull-Rom
+            // C1-continuous across waypoints: ease-in at start, ease-out into the
+            // gate-approach handoff (whose aD=p² also starts at zero velocity).
             const progress = ot / FLY_DUR;
+            const gEase = progress * progress * (3 - 2 * progress);
             const n = WP.length - 1;
-            const scaled = progress * n;
+            const scaled = gEase * n;
             const seg = Math.min(Math.floor(scaled), n - 1);
             const local = scaled - seg;
-            const lt = local * local * (3 - 2 * local);
+            const lt = local;
             const p0 = WP[Math.max(seg - 1, 0)];
             const p1 = WP[seg];
             const p2 = WP[Math.min(seg + 1, n)];
@@ -2894,6 +6113,49 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             camOT.current.theta = cr(p0[0],p1[0],p2[0],p3[0],lt);
             camOT.current.phi   = cr(p0[1],p1[1],p2[1],p3[1],lt);
             camD.current += (cr(p0[2],p1[2],p2[2],p3[2],lt) - camD.current) * _sm(5.0029); // f=.08 @60fps
+          } else if (W2) {
+            // ── ITEM 3 GATE APPROACH: dolly FORWARD through the entrance
+            // poort. From the name beat the camera pushes straight down the
+            // road axis (θ pinned to 1.5π), easing from cart height toward eye
+            // height while the look target sinks dome-crown → portal arch, and
+            // the handoff fires as the camera reaches the gate (camD<18 ⇒
+            // z≈−17, still surging toward the poorttoren line z=−14) — the
+            // hall cut lands MID-FORWARD-MOTION, like stepping through the
+            // door, instead of the old drop from φ=0.22π/dist 35. camO is
+            // written directly (camOT pinned to match) so the slow onboarding
+            // camLerp can't lag the real camera down into the stair; the φ/θ
+            // rates here (<6°/s) stay far under MAX_YAW_DEG_S.
+            const p = Math.min((ot - FLY_DUR) / ZOOM_DUR, 1.0);
+            if (!obGate) obGate = { th0: camO.current.theta, ph0: camO.current.phi }; // capture the ACTUAL orbit (post-lerp) for a seamless join
+            const aD = p * p;     // dolly: lingers on the name beat (~1s legible), then surges through the gate
+            const aP = p * p * p; // height: holds cart height longer, settles to eye level late
+            // ITEM 2 (owner: "hangs IN a pillar"): the pentastyle portico has a
+            // CENTRE column dead on the road axis (x=0, z=−12, r≈0.7, world y
+            // 9.85–15.35) and the camera near plane is 2.5 — the old end
+            // (GATE_D 13.5 ⇒ z=−12.7, handoff at camD<15 ⇒ z=−14.1) parked the
+            // near plane ~1 unit PAST the column's front face (z=−12.7),
+            // slicing it open on screen. End-dist is nudged out to 17
+            // (z≈−16.0, near-plane reach ≈−13.6, 0.9 clear of the face) and
+            // the handoff fires at camD<18 (z≈−17.0) — still gliding forward
+            // toward the poorttoren line (z=−14), so the cut lands mid-stride,
+            // but the camera can never reach the column. The cream veil below
+            // is fully opaque before the handoff, so no frame ever shows the
+            // column filling the screen (also covers the hall-load frames
+            // after the handoff, when the look target snaps back to the dome).
+            const GATE_TH = Math.PI * 1.5, GATE_PH = Math.PI * 0.392, GATE_D = 17; // eye-ish height (y≈10.7) centred between the poorttorens, short of the centre portico column
+            camO.current.theta = camOT.current.theta = obGate.th0 + (GATE_TH - obGate.th0) * aD;
+            camO.current.phi   = camOT.current.phi   = obGate.ph0 + (GATE_PH - obGate.ph0) * aP;
+            camD.current += ((GATE_D + (WP[WP.length - 1][2] - GATE_D) * (1 - aD)) - camD.current) * _sm(5.0029); // f=.08 @60fps
+            obLookY = HILL_Y + 13 - 9 * aD; // dome crown → portal arch: the view levels out to look THROUGH the door
+            // ITEM 2: cream veil rises over the last metres (camD 24→18.5, view
+            // still clean — the centre column subtends <15° at those distances)
+            // so the handoff always fires under a fully covered frame.
+            const gateVeil = ensureRmVeil();
+            gateVeil.style.opacity = String(Math.min(1, Math.max(0, (24 - camD.current) / 5.5)));
+            if (camD.current < 18) { // at the gate line, veiled, still mid-stride — enter NOW
+              onboardingModeRef.current = false;
+              onRoomClickRef.current("__entrance__", true); // cinematic arrival → direct enter
+            }
           } else {
             const p = Math.min((ot - FLY_DUR) / ZOOM_DUR, 1.0);
             const accel = p * p * p;
@@ -2906,9 +6168,35 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             camD.current += ((entrD + (lastWP[2] - entrD) * (1 - accel)) - camD.current) * _sm(5.0029); // f=.08 @60fps
             if (camD.current < 40) {
               onboardingModeRef.current = false;
-              onRoomClickRef.current("__entrance__");
+              onRoomClickRef.current("__entrance__", true); // cinematic arrival → direct enter
             }
           }
+        }
+      }
+      // ── Arrival-by-cart: low road dolly, then fire the tapped target ──
+      if(approachFlight){
+        const ap=approachFlight;
+        const p=Math.min((t-ap.t0)/AP_DUR,1);
+        if(p<1){
+          const n=ap.wp.length-1;
+          const scaled=p*n;
+          const seg=Math.min(Math.floor(scaled),n-1);
+          const local=scaled-seg;
+          const lt=local*local*(3-2*local);
+          const p0=ap.wp[Math.max(seg-1,0)],p1=ap.wp[seg],p2=ap.wp[Math.min(seg+1,n)],p3=ap.wp[Math.min(seg+2,n)];
+          const cr=(a:number,b:number,c:number,d:number,tt:number)=>
+            0.5*((2*b)+(-a+c)*tt+(2*a-5*b+4*c-d)*tt*tt+(-a+3*b-3*c+d)*tt*tt*tt);
+          camOT.current.theta=cr(p0[0],p1[0],p2[0],p3[0],lt);
+          camOT.current.phi=cr(p0[1],p1[1],p2[1],p3[1],lt);
+          camD.current+=(cr(p0[2],p1[2],p2[2],p3[2],lt)-camD.current)*_sm(5.0029); // f=.08 @60fps
+        }else{
+          // Handoff: same arrival behavior/framing as the __entrance__ autoWalk.
+          // arrived=true (owner r2 2026-08-20): the ride ends AT the door, so the
+          // parent enters directly — mobile must NOT park this in the pending
+          // pre-enter selection (that left the owner staring at a door + Enter tap).
+          camOT.current.theta=Math.PI*1.5;camOT.current.phi=Math.PI*0.22;
+          camD.current+=(35-camD.current)*_sm(2.4493); // f=.04 @60fps
+          if(camD.current<40){approachFlight=null;onRoomClickRef.current(ap.target,true);}
         }
       }
       // Auto-walk: zoom toward entrance (fast exponential approach)
@@ -2918,15 +6206,32 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         camD.current+=(35-camD.current)*_sm(2.4493); // f=.04 @60fps
         if(Math.abs(camD.current-35)<2){
           autoWalkToRef.current=null;
-          onRoomClickRef.current("__entrance__");
+          onRoomClickRef.current("__entrance__",true); // arrived at the door → parent enters (also on mobile)
         }
       }
-      const camLerp=_sm(onboardingModeRef.current?0.9068:autoWalkToRef.current?1.2122:2.4493); // f=.015/.02/.04 @60fps
-      camO.current.theta+=(camOT.current.theta-camO.current.theta)*camLerp;
-      camO.current.phi+=(camOT.current.phi-camO.current.phi)*camLerp;
+      // ITEM 1: during the prompt-hold free-look the camera follows the drag at
+      // the normal-view rate (f=.04), not the slow cinematic glide (f=.015).
+      const camLerp=_sm((autoWalkToRef.current||approachFlight)?1.2122:(onboardingModeRef.current&&!obFreeLook)?0.9068:2.4493); // f=.02/.015/.04 @60fps
+      let _dTh=(camOT.current.theta-camO.current.theta)*camLerp;
+      let _dPh=(camOT.current.phi-camO.current.phi)*camLerp;
+      // W1 (WS8-2, WS12-5): automatic pans (cinematic/autoWalk) obey the shared
+      // MAX_YAW_DEG_S cap; user drags stay direct-manipulation (legacy when flag
+      // off) — incl. the ITEM 1 free-look drag during the onboarding hold.
+      if(W1&&(onboardingModeRef.current||autoWalkToRef.current||approachFlight)&&!obFreeLook){
+        const _yawCap=MAX_YAW_DEG_S*(Math.PI/180)*dt;
+        _dTh=THREE.MathUtils.clamp(_dTh,-_yawCap,_yawCap);
+        _dPh=THREE.MathUtils.clamp(_dPh,-_yawCap,_yawCap);
+      }
+      camO.current.theta+=_dTh;
+      camO.current.phi+=_dPh;
       const r=camD.current;
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
-      camera.lookAt(0,HILL_Y+8,0);
+      // W2 grandeur (owner review #1): look target rises with the now much higher
+      // dome (shell apex world ≈36, lantern finial ≈43) so the lantern-crowned
+      // silhouette bekroont the frame at every distance. ITEM 3: the onboarding
+      // gate approach overrides the height (obLookY, dome crown → portal arch)
+      // so the final meters read as looking THROUGH the door; null every other frame.
+      camera.lookAt(0,obLookY!==null?obLookY:HILL_Y+(W2?13:8),0);
 
       // ── Camera debug overlay (activated via ?cam=debug) ──
       if(camDebugRef.current){
@@ -2934,11 +6239,15 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         el.textContent=`theta: Math.PI * ${(camO.current.theta/Math.PI).toFixed(4)}\nphi: Math.PI * ${(camO.current.phi/Math.PI).toFixed(4)}\ndistance: ${camD.current.toFixed(1)}`;
       }
 
-      // Subtle water opacity animation
+      // Subtle water opacity animation — W2 (WS3-9): the audit's remaining
+      // per-frame material mutations are deleted; water reads as a still
+      // golden mirror (W1 already killed the emissive-lerp clone system).
+      if(!W2){
       if (pool) (pool.material as THREE.MeshStandardMaterial).opacity=.5+Math.sin(t*.8)*.03;
       if (fW1) (fW1.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*.9)*.03;
       if (fW2) (fW2.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*1.0)*.03;
       if (fW3) (fW3.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*1.1)*.02;
+      }
 
       // ── HOVER GLOW — handled entirely in the per-wing block below ──
       // (removed shared-material sectionGroups loop that caused bleed across sections)
@@ -2984,9 +6293,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         }
       }
 
-      // Wing & entrance hover glow — emissive body + accent point light + window brightening
-      // Materials are cloned per section, so emissive changes are fully isolated
+      // Wing & entrance hover glow — LEGACY path only (W1 killed the per-frame
+      // emissive mutation; its affordance is the shared ember light above)
       const _hovRoom=hoveredRoomRef.current;
+      if(!W1){
       clickTargets.forEach((ct: any)=>{
         const isHov=_hovRoom===ct.userData.roomId;
         const isWtHl=hlTarget===ct.userData.roomId;
@@ -3033,6 +6343,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           hl.light.intensity+=Math.sin(t*2.5)*.15;
         }
       });
+      } // end !W1 legacy hover path
 
       // Animate particles — throttle to every 2nd frame on mobile for performance
       const _doParticles=!_isMobile||(_frameCount&1)===0;
@@ -3054,7 +6365,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         // Animate mist drift
         mistMeshes.forEach((mm,i)=>{
           mm.position.x+=Math.sin(t*.02+i)*.01;
-          (mm.material as THREE.MeshBasicMaterial).opacity=.03+Math.sin(t*.1+i*2)*.015;
+          // W2 (WS3-9): no per-frame material mutations — mist opacity is static
+          if(!W2)(mm.material as THREE.MeshBasicMaterial).opacity=.03+Math.sin(t*.1+i*2)*.015;
         });
 
         // Animate birds
@@ -3065,26 +6377,65 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
 
       // Update grass and wheat wind animation
       grassSystem.update();
-      wheatFields.forEach(wf => wf.update());
+      if(sharedWheatMat)sharedWheatMat.uniforms.time.value=t; // W1: one uniform write for ALL fields
+      else wheatFields.forEach(wf => wf.update());
 
       composer.render();
-      if (!_firstFrameDone) { _firstFrameDone = true; try { onReady?.(); } catch {} console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
+      if (!_firstFrameDone) { _firstFrameDone = true; console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); fireRevealWhenAssembled(); }
     };
     let _firstFrameDone = false;
+    let _revealFired = false;
+    // ASSEMBLE-BEFORE-REVEAL: onReady (the overlay/veil-lift contract) fires
+    // only when the first frame has rendered AND the reveal barrier is done —
+    // all W3 GLBs/pano/eager textures settled (see revealGates), or the 8s cap.
+    // The overlay above lifts onto a COMPLETE palace instead of watching it
+    // assemble; nothing about the loads themselves is serialized or delayed.
+    const fireRevealWhenAssembled = () => {
+      if (_revealFired || !_firstFrameDone || !revealBarrierDone) return;
+      _revealFired = true;
+      try { onReady?.(); } catch {}
+      console.log("[palace] reveal (assembled) at", Math.round(performance.now() - _mountStart), "ms");
+    };
+    if (!revealBarrierDone) {
+      const REVEAL_CAP_MS = 8000; // slow networks: reveal what's there rather than strand the spinner (MemoryPalace's WS9-7 watchdog is also 8s)
+      Promise.race([
+        Promise.allSettled(revealGates),
+        new Promise((res) => setTimeout(res, REVEAL_CAP_MS)),
+      ]).then(() => { revealBarrierDone = true; fireRevealWhenAssembled(); });
+    }
     const _mountStart = performance.now();
     console.log("[palace] ExteriorScene mount start");
     animate();
 
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.current.x,dy=e.clientY-prev.current.y;if(Math.abs(dx)>3||Math.abs(dy)>3)drag.current=true;
-      if(e.buttons===1){camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:e.clientX,y:e.clientY};}
+      if(e.buttons===1){camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(W3?Math.PI*.492:Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:e.clientX,y:e.clientY};}
       const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);onRoomHover(hits.length>0?hits[0].object.userData.roomId:null);};
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
-      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0){hapticLight();onRoomClickRef.current(hits[0].object.userData.roomId);}};
-    const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
+      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0){hapticLight();const hitId=hits[0].object.userData.roomId;
+      // Arrival-by-cart (owner 2026-08-20): ANY palace tap from the far initial
+      // stance rides the low road approach in first, then fires the tapped id.
+      // A tap DURING the flight only retargets it (no double navigation).
+      if(W2&&approachFlight){approachFlight.target=hitId;return;}
+      if(W2&&camD.current>100&&!prefersReducedMotion()){startApproachFlight(hitId);return;}
+      // Reduced-motion far tap: skip the ride but still auto-enter (arrived=true)
+      // so mobile doesn't park the tap in the pending pre-enter selection.
+      if(W2&&camD.current>100){onRoomClickRef.current(hitId,true);return;}
+      // W2 (WS3-11): tap-is-travel — an entrance tap from any distance first
+      // runs the existing comfort-capped camD approach (the __entrance__
+      // autoWalk path fires the same onRoomClick contract on arrival);
+      // reduced-motion keeps the direct enter.
+      if(W2&&hitId==="__entrance__"&&camD.current>45){
+        // Reduced-motion mid-range entrance tap: no autoWalk ride, but still an
+        // arrival (arrived=true) — matching the >100 branch — so mobile enters
+        // directly instead of parking the tap in the pending Enter selection.
+        if(prefersReducedMotion()){onRoomClickRef.current(hitId,true);return;}
+        autoWalkToRef.current="__entrance__";return;}
+      onRoomClickRef.current(hitId);}};
+    const onWh=(e: WheelEvent)=>{if(onboardingModeRef.current)return;/* ITEM 1: zoom locked during the onboarding cinematic (rotate-only free-look) */camD.current=Math.max(40,Math.min(280,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
-    el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=aspect<1?115:140;};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
+    el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const refitFraming=()=>{const aspect=el.clientWidth/Math.max(1,el.clientHeight);camD.current=W3?252:(aspect<1?115:140);};const onOrient=()=>{onRs();refitFraming();setTimeout(()=>{onRs();refitFraming();},80);setTimeout(()=>{onRs();refitFraming();},300);};window.addEventListener("orientationchange",onOrient);
 
     // ── TOUCH SUPPORT ──
     let touchStartDist=0,touchStartCamD=camD.current,touchTap=true;
@@ -3096,10 +6447,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       e.preventDefault();
       if(e.touches.length===1){const t=e.touches[0];const dx=t.clientX-prev.current.x,dy=t.clientY-prev.current.y;
         if(Math.abs(dx)>10||Math.abs(dy)>10){drag.current=true;touchTap=false;}
-        camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:t.clientX,y:t.clientY};
+        camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(W3?Math.PI*.492:Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:t.clientX,y:t.clientY};
       }
       if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
-        const dist=Math.hypot(dx,dy);if(touchStartDist>0){camD.current=Math.max(40,Math.min(180,touchStartCamD*(touchStartDist/dist)));}
+        const dist=Math.hypot(dx,dy);if(touchStartDist>0&&!onboardingModeRef.current){/* ITEM 1: pinch-zoom locked during the onboarding cinematic */camD.current=Math.max(40,Math.min(280,touchStartCamD*(touchStartDist/dist)));}
       }
     };
     // Single-tap model: tap shows glow + calls onRoomClick (parent decides
@@ -3112,6 +6463,19 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
           const hitId=hits[0].object.userData.roomId;
           onRoomHover(hitId);
           hapticLight();
+          // Arrival-by-cart: same far-tap road approach as the mouse path;
+          // a tap during the flight only retargets it (no double navigation)
+          if(W2&&approachFlight){approachFlight.target=hitId;return;}
+          if(W2&&camD.current>100&&!prefersReducedMotion()){startApproachFlight(hitId);return;}
+          // Reduced-motion far tap: skip the ride but still auto-enter (arrived=true)
+          if(W2&&camD.current>100){onRoomClickRef.current(hitId,true);return;}
+          // W2 (WS3-11): tap-is-travel — same walk-then-enter as the mouse path
+          if(W2&&hitId==="__entrance__"&&camD.current>45){
+        // Reduced-motion mid-range entrance tap: no autoWalk ride, but still an
+        // arrival (arrived=true) — matching the >100 branch — so mobile enters
+        // directly instead of parking the tap in the pending Enter selection.
+        if(prefersReducedMotion()){onRoomClickRef.current(hitId,true);return;}
+        autoWalkToRef.current="__entrance__";return;}
           onRoomClickRef.current(hitId);
         }else{
           onRoomHover(null);
@@ -3120,9 +6484,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     };
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
 
-    return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
+    return()=>{w3Disposed=true;if(w3DomeCanary){w3DomeCanary.removeFromParent();w3DomeCanary=null;}if(w3EntranceCaps){w3EntranceCaps.removeFromParent();w3EntranceCaps=null;}if(w3Roofs){w3Roofs.removeFromParent();w3Roofs=null;}if(w3Statuary){w3Statuary.removeFromParent();w3Statuary=null;}if(w3Fountain){w3Fountain.removeFromParent();w3Fountain=null;}if(w3Obelisks){w3Obelisks.removeFromParent();w3Obelisks=null;}/* remove only — clone shares geometry/material with the modelLoader cache master, never dispose here */if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
-      if(el.contains(hovLabel))el.removeChild(hovLabel);
+      if(hovLabel&&el.contains(hovLabel))el.removeChild(hovLabel);
+      if(rmVeil&&el.contains(rmVeil))el.removeChild(rmVeil);
+      tymNameRedrawRef.current=null;
       const _cachedSet=buildCachedTextureSet();
       scene.traverse((obj: any) => {
         if (obj.geometry) obj.geometry.dispose();
@@ -3146,7 +6512,9 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // Release (not dispose) — these are refcounted entries in the shared env-map cache
       releaseEnvMap(envMapProc);
       if(envMapHDRI){releaseEnvMap(envMapHDRI);envMapHDRI=null;}
-      if(bgMapHDRI){releaseEnvMap(bgMapHDRI);bgMapHDRI=null;}
+      // W3 background is a plain TextureLoader texture (owner pano JPG), not a
+      // refcounted env-map cache entry — dispose directly.
+      if(bgMapHDRI){if(W3)bgMapHDRI.dispose();else releaseEnvMap(bgMapHDRI);bgMapHDRI=null;}
       composer.dispose();
       try{ren.forceContextLoss();}catch{}
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();

@@ -1,0 +1,211 @@
+{
+  "changes": [
+    {
+      "rank": 1,
+      "area": "filters",
+      "title": "Ungate the wall: default __all__, feed PhotoWall the cross-wing aggregate on entry",
+      "spec": "Flip initial state to selectedWing='__all__', selectedRoom=null (LibraryView.tsx:414-415). Add wallMems = useMemo(() => wings.flatMap(w=>getWingRooms(w.id)).flatMap(r=>getMemsForRoom(r.id))) run through the SAME q/filterType/sort predicate pipeline as filteredRoomMems (L853-874), generalizing the existing allWingMems flatten (L847). Replace the `if(!selectedRoom) return []` gate (L854) and the render branch (~L2282) so a null room falls through to wallMems and PhotoWall paints unconditionally. Mount prefetch (L832-839) already warms every room; PhotoWall groups any Mem[] by month band (PhotoWall.tsx:122). This single change delivers the owner's model: open Library -> whole life, newest first, zero taps to the first photo.",
+      "effort": "M",
+      "wow": 9,
+      "unconditionallyVisible": true
+    },
+    {
+      "rank": 2,
+      "area": "filters",
+      "title": "Kill the destructive reset — make query + facets compound across wing/room taps",
+      "spec": "Remove setQuery('') and setFilterType(null) from the wing/room tap handlers (LibraryView.tsx:1205 for 'All', L1232 for each wing, and the Rooms-bar equivalents). Selecting a scope must narrow in place, never wipe search/filters/scroll. This is THE change that turns a 'gate' into a 'facet': today every scope tap silently resets the user's search and filters — the current tap-tax.",
+      "effort": "S",
+      "wow": 8,
+      "unconditionallyVisible": true
+    },
+    {
+      "rank": 3,
+      "area": "filters",
+      "title": "Reframe Wings/Rooms bars as an in-place facet shelf with progressive disclosure",
+      "spec": "Keep the sticky Wings bar (~L1184-1254) and Rooms bar (~L1300); 'All' pre-lit gold by default (existing isAllActive styling). Tapping a wing NARROWS wallMems client-side via roomWingMap (L983) with no screen change and no scroll reset; room selection becomes a filterRoom facet (wallMems.filter(m=>m.roomId===filterRoom)), not a container swap. Rooms row renders only once a wing is active so 'All memories' stays the zero-tap default. Tint active chips with wing accent + wingWarmth (L905).",
+      "effort": "M",
+      "wow": 8,
+      "unconditionallyVisible": true
+    },
+    {
+      "rank": 4,
+      "area": "detail-nav",
+      "title": "Scope-agnostic reliving: unbind RoomMediaPlayer from selectedRoom",
+      "spec": "Change the player gate (LibraryView.tsx:2672) from `mediaPlayerIndex!==null && selectedRoom` to `mediaPlayerIndex!==null` and feed memories={wallMems}. PhotoWall.onOpen already emits the index within the array it was handed (PhotoWall.tsx:177), so prev/next, swipe and thumb strip span the whole wall for free. Fix onEdit's hardcoded roomId:selectedRoom (L2679) and onUpdate's updateMemory(selectedRoom,...) (L2681) to derive per-mem room via roomWingMap. HARD PREREQUISITE — without it, tapping a tile on the __all__ wall does nothing and the new default is worse than today.",
+      "effort": "S",
+      "wow": 6,
+      "unconditionallyVisible": true
+    },
+    {
+      "rank": 5,
+      "area": "filters",
+      "title": "Search always spans the full library (invert the room-scoped search trap)",
+      "spec": "crossWingResults (L882) returns null the moment selectedRoom is set, collapsing search to one room. Fold the query into the same predicate that builds wallMems so search runs against the current faceted base and room is just another facet, never a scope that disables cross-library search. Feed final wallMems.length into LibrarySearch's resultCount badge so it is truthful. Enables compounding: type 'Rome' -> tap Has-place -> tap Travel wing, the same wall narrows progressively.",
+      "effort": "M",
+      "wow": 8,
+      "unconditionallyVisible": true
+    },
+    {
+      "rank": 6,
+      "area": "sort",
+      "title": "One persisted Sort as single source of truth, applied before the wall/timeline/list branch",
+      "spec": "Sort is honoured only inside filteredRoomMems (L865-873) which early-returns [] with no room, so on the unified wall it does nothing; the timeline branch re-sorts locally hard-wired newest (~L2375). Extract the sort switch into src/lib/library/sort.ts as sortMems(mems, mode); apply to wallMems AND any scoped list; persist sortMode to localStorage mirroring viewMode (L426-431); delete the timeline's local sort so it consumes the shared ordered array.",
+      "effort": "S",
+      "wow": 6,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 7,
+      "area": "filters",
+      "title": "Persistent facet shelf: Media / Has place / Described / On this day / Unplaced",
+      "spec": "Always-mounted horizontal chip shelf under Search+Sort, rendered for BOTH the unified wall and inside a room so nothing unmounts on navigation. facetPredicate(m): media->normalizeDisplayType===sel, place->!!m.locationName, described->(m.desc||'').trim()||m.historicalContext, onThisDay->membership in onThisDayMems set (L922), unplaced->!m.roomId (a curation driver). Promote LibrarySearch's local Chip to a named export. Atrium style: ember #B85C38 active fill/border, hairline #E3D6BC inactive, INK #403B36 label; overflowX:auto with the existing edge-fade mask (L1197). Gold reserved for warmth, never generic chips.",
+      "effort": "M",
+      "wow": 7,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 8,
+      "area": "nav",
+      "title": "Right-edge jump-to-date scrubber built on PhotoWall's month sections",
+      "spec": "Thin gutter pinned to PhotoWall's scroll-container right edge (thumb-natural zone; ember hairline, gold on active). On drag, read the section (PhotoWall.tsx:122-142, keys newest->oldest) whose offsetTop is nearest the drag position, show a floating 'June 2019' bubble, scrollIntoView that section anchor on release. No new data — reads existing section keys. The temporal index a flat river needs to beat spatial recall; directly answers 'a flat wall is a blind fling.'",
+      "effort": "M",
+      "wow": 8,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 9,
+      "area": "perf",
+      "title": "Row virtualization (PhotoWall Phase 2) for lifetime-scale walls",
+      "spec": "PhotoWall header (L9-11) flags virtualization as unbuilt. packed already computes exact per-row heights and containIntrinsicSize per row (L169). Sum row heights per section for absolute offsets, render only rows intersecting viewport + overscan via a scroll listener, and cap the arVersion re-pack (L145-156) to visible sections so a decode doesn't re-pack the whole list. content-visibility:auto already skips paint; this skips MOUNT of thousands of <img> nodes on low-end Android. Guard with fallbackAspect (justify.ts:16) deterministic ratios to avoid layout shift. Load-bearing enabler — removes the last honest argument for hierarchy-first.",
+      "effort": "L",
+      "wow": 8,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 10,
+      "area": "filters",
+      "title": "Per-tile wing-accent provenance dot so place-identity survives the flat wall",
+      "spec": "Thread roomId into PhotoWall tiles; render a small wing-accent dot (w.accent via roomWingMap L983) in the tile corner, warmth-tinted by wingWarmth/computeWarmthLevel (L905) so the wall glows warmer where life has been active. Keeps 'this memory lives somewhere' visible on the unified river without a folder — the palace metaphor rides along on the default surface.",
+      "effort": "S",
+      "wow": 6,
+      "unconditionallyVisible": true
+    },
+    {
+      "rank": 11,
+      "area": "reliving",
+      "title": "Gilt On-This-Day strip above the wall as a paged slideshow entry",
+      "spec": "Render onThisDayMems (L922-939, pre-sorted, capped 8) as a gold-hairline 'X years ago today' strip pinned above the newest month, using Atrium gold #D4AF37. Tapping a seal builds a transient wallMems=onThisDayMems.map(x=>x.mem) scope and opens RoomMediaPlayer at that index (autoplay already exists). Turns the emotional resurfacing hook into an instant relive with zero drill-down — ports the Atrium seal-warmth language onto the wall.",
+      "effort": "M",
+      "wow": 8,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 12,
+      "area": "filters",
+      "title": "Live result count + one-tap Clear on the facet shelf",
+      "spec": "Memo facetCounts once over the active base; render counts in Chip's existing count prop; count-0 chips render disabled (opacity .45, pointerEvents:none) so users never tap into an empty wall. Show 'Showing N of TOTAL' in muted #716A5E when any facet/query is active (reuse foundCount i18n). A single ember Clear pill appears only when filters differ from default and resets ALL filters WITHOUT changing selected wing/room — clearing returns to the full wall in place, not a hierarchy screen.",
+      "effort": "S",
+      "wow": 6,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 13,
+      "area": "nav",
+      "title": "One-tap Rooms lens — re-band the same tiles by room instead of month",
+      "spec": "Add a lens toggle in the sort/search bar. Default = month bands; 'By room' re-keys PhotoWall's grouping reduce (L122-142) on roomId, labels via translateRoomName + roomWingMap. SAME tiles, re-banded — the bounded-room 'closure' feeling as a lens over the one library, never a separate destination. 'It's in the Japan room' works, but a wrong guess is never a dead end because the photo is also in its month band.",
+      "effort": "M",
+      "wow": 7,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 14,
+      "area": "detail-nav",
+      "title": "Preserve scroll + shared-element lift open/close on the wall",
+      "spec": "Add data-mem-id={item.id} to the il-muro-tile button (PhotoWall.tsx:174). On open, capture the tapped tile rect and animate the player media FROM rect TO fullscreen (transform/scale, no layout, no library); reverse on close. On dismiss, scrollIntoView({block:'center'}) the current mem's tile so paging far from the open point never dumps the user at the top of a 10k-item river. GPU-only, no reflow — matters most on the tall single-column mobile wall.",
+      "effort": "M",
+      "wow": 7,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 15,
+      "area": "reliving",
+      "title": "Directional finger-tracked page transition (album-turn feel)",
+      "spec": "goTo (RoomMediaPlayer.tsx:58-66) is a symmetric 150ms opacity dip — prev/next look identical and media never tracks the finger. Track live dx in the touch handlers, translateX(dx*0.6) with transition:none during drag; on release past threshold animate outgoing off-screen + incoming from the opposite edge (transform+opacity, 220ms), else spring back. Give goTo a dir arg so arrows/edge buttons share the slide. Honor prefers-reduced-motion (fall back to the dip). Transform/opacity only, no blur, cheap on phones — makes 'a room reads like an album you page through' literally true.",
+      "effort": "M",
+      "wow": 8,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 16,
+      "area": "reliving",
+      "title": "Month-aware pager context header — 'June 2020 · 4 of 240' chapters",
+      "spec": "Compute the current mem's YYYY-MM on index change and render the localized month (reuse the monthLabel closure) next to the n/total counter (RoomMediaPlayer.tsx:395), giving the album chapters. Optional gold hairline on the first thumb of each new month in the strip so it mirrors the wall's bands. Reuses existing data only.",
+      "effort": "S",
+      "wow": 6,
+      "unconditionallyVisible": false
+    },
+    {
+      "rank": 17,
+      "area": "nav",
+      "title": "Pinch / segmented time-granularity (day · month · year zoom)",
+      "spec": "Parameterize targetRowHeight (justify.ts:68-72, fixed 116px on phone) so a 'year' segment packs tiny tiles (life overview) and 'day' packs large ones. The packer is pure O(n) and re-packs on arVersion, so this is a prop, not new layout math. Replaces the weak grid/list/timeline toggle with a continuous density dial — the Apple/Google years-months-days zoom.",
+      "effort": "M",
+      "wow": 7,
+      "unconditionallyVisible": false
+    }
+  ],
+  "verdict": "Ship the HYBRID, and be honest that it is not a compromise but the answer both authoritative benchmarks converged on: default the Library to ONE unified, unfiltered, reverse-chronological wall of every memory (Il Muro fed by all wings, zero taps to the first photo), and demote wing/room from a mandatory two-tap gate to an in-place FILTER that survives as a one-tap 'Rooms lens.' On the core question — hierarchy-first vs unified wall — the evidence is one-sided: Apple Photos and Google Photos independently tried the alternatives and both open on one chronological river with organization as an opt-in second surface. Hierarchy-first is the WRONG default on mobile, where the current model taxes the user twice in the worst thumb-reach zone (top-anchored Wings bar, then Rooms bar) before a single photo appears, and even returns [] until a room is picked — the exact inversion of every phone user's muscle memory. But pure deletion of the hierarchy is also wrong: rooms are real emotional equity, not folders. The hybrid honors both because this is a re-DEFAULT, not a rewrite — the code already flattens across wings (allWingMems, L847), prefetches every room on mount (L832-839), has the __all__ sentinel wired to the 'All' pill (L1202), and PhotoWall already month-bands any Mem[]. The single load-bearing gate is filteredRoomMems returning [] when !selectedRoom (L854); relax it to fall through to the sorted/faceted aggregate and the wall paints on entry. Apple's own iOS-18->26 walk-back is the guardrail and the decisive nuance: they over-corrected by smearing albums INTO the river and had to reverse it — so the rule is unify the WALL but keep wings/rooms/On-this-day as a deliberate facet shelf BESIDE it, never mixed into the scroll. One pure river + a facets shelf. This is the only option that is simultaneously low-risk, mobile-correct, and metaphor-preserving.",
+  "recommendedModel": "WHAT THE LIBRARY OPENS ON: PhotoWall (Il Muro) fed by ALL memories across every wing, newest-first, grouped by sticky gold month bands — zero taps to the first photo. Concretely: init selectedWing='__all__', selectedRoom=null (LibraryView.tsx:414-415); add a wallMems memo = wings.flatMap(w=>getWingRooms(w.id)).flatMap(r=>getMemsForRoom(r.id)) run through the SAME query/facet/sort pipeline as filteredRoomMems; relax the L854 gate and the render branch so a null room feeds wallMems into PhotoWall unconditionally. Mount prefetch (L832-839) already warms the data, so the month-banded river paints on first paint.\\n\\nHOW WINGS/ROOMS APPEAR ON MOBILE: The existing sticky Wings bar (~L1184) and Rooms bar (~L1300) stay, but reframed as a FACET SHELF, not a navigation ladder. 'All' is pre-lit gold by default. Tapping a wing chip NARROWS the same wall in place via roomWingMap (L983) — no screen change, no blank, no scroll reset. The Rooms row appears only once a wing is active (progressive disclosure), so 'All memories' stays the zero-tap default. Room selection becomes a filterRoom facet, not a container swap. Each wall tile carries a small wing-accent provenance dot so a memory still visibly 'lives' in a room even on the flat river. A one-tap 'Rooms lens' toggle re-bands the SAME tiles under room headers instead of month headers (re-key PhotoWall's grouping reduce on roomId) — the bounded-room 'closure' as a reading of the same data, never a separate destination.\\n\\nHOW FILTERS WORK: A single persistent facet shelf under Search+Sort, always mounted for both the unified wall and inside a room, so nothing unmounts on navigation. CRITICAL: remove setQuery('')+setFilterType(null) at L1205/1232 (and the Rooms-bar equivalents) so query and facets COMPOUND across wing/room switches instead of silently wiping — this is what turns 'gate' into 'filter.' Facets are pure predicates over wallMems: Media (photo/video/story/voice), Has place, Described, On this day (onThisDayMems membership, L922), Unplaced (!roomId, a curation driver). Search ALWAYS spans the full library — invert crossWingResults' `if(!q||selectedRoom)` guard (L882) so room is just another facet, never a scope that disables cross-library search. Sort is one persisted comparator (extract L866-872 to src/lib/library/sort.ts) applied to wallMems BEFORE it branches to wall/timeline/list. Clearing any facet returns to the full wall in place, not to a hierarchy screen.",
+  "whyMobile": "On a phone two facts dominate: thumb-reach and tap-cost. Today's mandatory wing->room descent lives in two TOP-anchored horizontally-scrollable pill strips — the single worst reach zone one-handed — and gates every photo behind 1-2 taps, with the wall rendering [] until a room is chosen. That is the exact inversion of the Apple/Google muscle memory: open app, see your whole life, filter only if you want. The unified default collapses taps-to-first-photo from 1-2 to 0, and the only gesture the 80% 'just show me everything' case needs is vertical scroll — the one motion a phone does effortlessly one-handed. Making wing/room in-place facets renders the top strips ignorable rather than mandatory, and removing the destructive resets means a mobile user can tap wing->room->search without the current silent state-and-scroll reset tax. At lifetime scale the flat river needs two thumb-natural primitives the app lacks: a right-edge jump-to-date scrubber (thumb-arc zone, floating 'June 2019' bubble reading the existing month sections) and row virtualization (PhotoWall's own flagged Phase 2) so a 4,000+ item wall stays smooth on a low-end Android by mounting only ~3 screens of <img> nodes. Reliving is the other mobile-critical unlock: swipe-to-page is THE phone gesture, so unbinding RoomMediaPlayer from selectedRoom (L2672) is what makes tapping any tile on the unified wall open a pageable album spanning the whole wall — without it the new default is a dead end.",
+  "palaceMetaphor": "Rooms stay meaningful; they stop being a toll gate and become a first-class LENS and provenance stamp. Five preservations: (1) STORAGE UNCHANGED — a memory still physically lives in one room; addMemory(roomId) is untouched and roomId stays the storage key. Wing/room are presented as saved views/facets over one library, never membership changes, so 'it's in the Japan room' is still true and addressable. (2) PROVENANCE ON EVERY TILE — a small wing-accent dot (via roomWingMap + w.accent) means a memory always visibly belongs to a room even on the flat river; you never lose 'it lives somewhere.' (3) THE ROOMS LENS — a one-tap toggle re-bands the exact same tiles under room headers (Japan, Nonna's kitchen), delivering the bounded-room 'closure' feeling as a reading of the same data, and a wrong guess is never a dead end because the photo is also in its month band. (4) GILT SEAMS PORT THE ATRIUM LANGUAGE — onThisDayMems (L922) as a gold 'X years ago today' resurfacing strip, and wingWarmth/computeWarmthLevel (L905) tinting each tile's wing-dot so the wall literally glows warmer where life has been active — the house breathing, not a neutral grid. (5) 3D PALACE UNTOUCHED — it stays the spatial/emotional home; the 2D Library is explicitly the temporal/searchable index of the same room-anchored data. Two surfaces, one library: 3D = where memories live, Library = how you find them fast. Apple's iOS-18->26 walkback is the guardrail: keep the wall a PURE river and keep wings/rooms/On-this-day as a deliberate facet shelf beside it, not smeared into the scroll.",
+  "phase4": [
+    {
+      "area": "detail-nav",
+      "title": "Scope-agnostic reliving: any wall pages as one album",
+      "spec": "Drop `&& selectedRoom` from the player gate (LibraryView.tsx:2672) and pass memories={wallMems}. PhotoWall.onOpen emits the index within the handed array (PhotoWall.tsx:177), so prev/next, swipe (RoomMediaPlayer touch handlers) and thumb strip span the unified wall for free. Route onEdit's hardcoded roomId (L2679) and onUpdate's updateMemory(selectedRoom,...) (L2681) through roomWingMap per-mem so cross-room edit/update work. The load-bearing unlock that stops the unified wall being a tap dead-end.",
+      "effort": "S"
+    },
+    {
+      "area": "reliving",
+      "title": "Directional parallax swipe so paging feels like turning an album",
+      "spec": "Replace goTo's symmetric opacity dip (RoomMediaPlayer.tsx:58-66) with a finger-tracked translateX(dx*0.6) drag + directional slide (outgoing off-screen, incoming from the opposite edge, 220ms cubic-bezier), spring-back under threshold, dir arg so arrows share it. Transform/opacity only, no blur, prefers-reduced-motion falls back to the dip. Makes paging feel like turning an album on mobile.",
+      "effort": "M"
+    },
+    {
+      "area": "detail-nav",
+      "title": "Shared-element lift + preserve scroll on dismiss",
+      "spec": "Add data-mem-id to the il-muro tile (PhotoWall.tsx:174); animate the player media FROM the tapped tile rect TO fullscreen and back (transform-based, no library); on close scrollIntoView({block:'center'}) the current mem so reliving never dumps the user at the top of a tall unified river. GPU transforms, no reflow — matters most on the single-column mobile wall.",
+      "effort": "M"
+    },
+    {
+      "area": "reliving",
+      "title": "On-This-Day gilt strip -> instant paged slideshow",
+      "spec": "Render onThisDayMems (L922) as a gold 'X years ago today' strip above the newest month; tapping builds a transient wallMems scope and opens the pager with existing autoplay. Emotional pull to return, zero drill-down.",
+      "effort": "M"
+    },
+    {
+      "area": "reliving",
+      "title": "Month-aware pager header + month-marked thumb strip",
+      "spec": "Show the localized month + n/total in the pager top bar (RoomMediaPlayer.tsx:395) via the monthLabel closure — 'June 2020 · 4 of 240'; gold hairline on each month's first thumb. Album gains chapters; mirrors the wall's bands.",
+      "effort": "M"
+    }
+  ],
+  "phasing": [
+    "Phase A — Re-default (low risk, ships the answer; must ship together): flip selectedWing='__all__' + build wallMems + relax the L854 gate to feed PhotoWall on entry (rank 1); DELETE the setQuery('')/setFilterType(null) resets at L1205/1232 so query+facets compound (rank 2); reframe Wings/Rooms as in-place facet chips with progressive disclosure (rank 3); unbind the player from selectedRoom so tiles open (rank 4). This quartet alone delivers the owner's model — and rank 4 is a HARD prerequisite: shipping the wall while tiles do nothing on tap is worse than today.",
+    "Phase B — Findability at scale: search always spans the whole library (rank 5); one persisted shared Sort applied before the branch (rank 6); persistent facet shelf with Media/Has-place/Described/On-this-day/Unplaced (rank 7) + live counts and one-tap Clear (rank 12); per-tile wing-accent dot (rank 10). Makes the flat river usable and honest, and keeps the metaphor visible.",
+    "Phase C — Scale + navigation primitives (do BEFORE promoting to production for large libraries): right-edge jump-to-date scrubber (rank 8) and PhotoWall row virtualization / capped re-pack (rank 9). Load-bearing enablers — without them a 10k-item un-virtualized wall janks low-end Android and a blind fling is unnavigable. These are not optional.",
+    "Phase D — Reliving joy + metaphor gilt: gilt On-This-Day slideshow strip (rank 11), one-tap Rooms lens re-band (rank 13), shared-element lift + preserve-scroll (rank 14), directional parallax swipe (rank 15), month-aware pager header (rank 16), pinch time-granularity (rank 17). Polish that deepens the album feel and ports Atrium warmth onto the wall once the spine is solid."
+  ],
+  "doNot": [
+    "Do NOT delete or hide the wing/room hierarchy — it stays as first-class, warmth-lit facet chips and the 3D palace is untouched. This is a re-default, not a removal; the palace metaphor is real equity.",
+    "Do NOT smear Collections/albums/rooms INTO the photo river — that is exactly the iOS-18 mistake Apple had to walk back. Keep the wall a PURE chronological river and keep wings/rooms/On-this-day as a deliberate facet shelf BESIDE it.",
+    "Do NOT keep the destructive tap reset. Removing setQuery('')/setFilterType(null) at L1205/1232 (and the Rooms-bar equivalents) is the single change that turns a 'gate' into a 'facet'; leaving it in means every scope tap silently wipes the user's search and scroll — the current tap-tax.",
+    "Do NOT change the storage model — a memory still physically lives in one room (addMemory(roomId)); roomId stays the storage key. Wing/room are presented as saved views/filters over one library, never membership changes.",
+    "Do NOT default to the unified wall WITHOUT first unbinding the player from selectedRoom (rank 4). Shipping the wall while tiles do nothing on tap is worse than today.",
+    "Do NOT add a hard [All | Rooms] tab or segmented mode split as the primary model — it re-introduces a mode the facet-chip approach avoids. Facet chips over ONE wall are strictly calmer and fewer taps. (A Rooms-lens re-band toggle is fine as a secondary, opt-in power affordance.)",
+    "Do NOT promote the unbounded wall to production on large libraries without virtualization + a scrubber in the same release train — a 10k-item un-virtualized wall janks low-end Android and a blind fling is unnavigable. These are Phase C, not optional.",
+    "Do NOT use gold #D4AF37 for generic filter chips — gold is reserved for palace/warmth accents (On-this-day strip, active wing warmth, active scrubber). Facet chips use ember #B85C38 active, hairline #E3D6BC inactive, INK #403B36 label.",
+    "Do NOT introduce backdrop-blur in the grid/shelf/pager paint path — the wall's cheap-paint discipline (content-visibility:auto, transform-only) must be preserved on mobile.",
+    "Do NOT let the horizontal facet shelf fight vertical wall scroll — it must be a wrap/rail with the existing edge-fade mask (L1197), thumb-scrollable horizontally, never a full-width gesture trap."
+  ]
+}

@@ -125,7 +125,7 @@ export default function ReportButton({
                 <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut, margin: "0 0 1rem", lineHeight: 1.5 }}>
                   {t("safetyReportDesc")}
                 </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
+                <div role="radiogroup" aria-label={t("safetyReportTitle")} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1rem" }}>
                   {REASONS.map((r) => (
                     <label key={r} style={{ display: "flex", alignItems: "center", gap: "0.625rem", fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, cursor: "pointer", padding: "0.375rem 0" }}>
                       <input type="radio" name="public-report-reason" checked={reason === r} onChange={() => setReason(r)} />

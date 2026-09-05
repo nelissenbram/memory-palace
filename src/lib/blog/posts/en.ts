@@ -1366,7 +1366,7 @@ const posts: BlogPost[] = [
 <p>Before evaluating specific tools, clarify your priorities:</p>
 
 <ul>
-<li><strong>Privacy:</strong> Who owns your data? Can the company use your photos or stories for AI training? Is end-to-end encryption available?</li>
+<li><strong>Privacy:</strong> Who owns your data? Can the company use your photos or stories for AI training? Is your data encrypted at rest and in transit?</li>
 <li><strong>Longevity:</strong> Will the platform exist in 10 years? What happens to your data if it shuts down? Can you export everything?</li>
 <li><strong>Collaboration:</strong> Can multiple family members contribute? Are there permission levels for different roles?</li>
 <li><strong>Media support:</strong> Does it handle photos, video, audio, and documents? Can you add context and narrative?</li>

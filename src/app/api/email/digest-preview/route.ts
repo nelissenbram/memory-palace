@@ -19,14 +19,15 @@ export async function GET() {
     },
     streakWeeks: 12,
     memoryOfTheWeek: {
+      id: "preview-motw",
       title: "Opa's verhalen over de oorlog",
       thumbnailUrl: null,
       roomName: "Grootouders",
     },
     onThisDayMemories: [
-      { title: "Mama's verjaardag", yearsAgo: 1 },
-      { title: "Eerste schooldag van Lotte", yearsAgo: 3 },
-      { title: "Verhuizing naar Antwerpen", yearsAgo: 5 },
+      { id: "preview-otd-1", title: "Mama's verjaardag", yearsAgo: 1 },
+      { id: "preview-otd-2", title: "Eerste schooldag van Lotte", yearsAgo: 3 },
+      { id: "preview-otd-3", title: "Verhuizing naar Antwerpen", yearsAgo: 5 },
     ],
     upcomingCapsules: [
       { title: "Brief aan mijn toekomstige zelf", revealDate: "2026-04-15" },

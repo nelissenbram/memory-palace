@@ -1,0 +1,510 @@
+{
+    "changes":  [
+                    {
+                        "rank":  1,
+                        "severity":  "P0",
+                        "zone":  "wing-room-nav",
+                        "title":  "Enter Palace / Enter 3D from the default All Memories state passes wingId \u0027__all__\u0027 into 3D nav â€” blank scene",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1139,
+                        "evidence":  "handleEnter3D (1139-1147) calls enterWingRoom(selectedWing, selectedRoom)/enterCorridor(selectedWing) with selectedWing defaulting to \u0027__all__\u0027 (414). palaceStore.ts:109-112 blindly stores it; useNavigation.ts:30 resolves wingData=null; MemoryPalace.tsx:1147 gates CorridorScene on wingData so nothing mounts and the loading overlay auto-hides to a blank 3D view (MemoryPalace.tsx:494/519-529). Reachable from the sidebar Enter-3D button (LibrarySidebar.tsx:1091) and the mobile Enter Palace button (1460). Room variant: room selection never rewrites selectedWing, so enterWingRoom(\u0027__all__\u0027, roomId) mounts InteriorScene with a bogus wing id.",
+                        "fix":  "In handleEnter3D: if selectedRoom, resolve the real wing via roomWingMap[selectedRoom] before enterWingRoom; if selectedWing===\u0027__all__\u0027 with no room, call enterEntrance()/exitToPalace() instead of enterCorridor(\u0027__all__\u0027). Also fix the mislabeled sidebar button (LibrarySidebar.tsx:1123: pass selectedWingName undefined when \u0027__all__\u0027 so it falls back to t(\u0027enterPalace\u0027))."
+                    },
+                    {
+                        "rank":  2,
+                        "severity":  "P0",
+                        "zone":  "state-persist",
+                        "title":  "Stale selectMode survives leaving a room: wall clicks hijacked, select-all + delete runs deleteMemory(null) â€” real server-side deletions with a UI that never updates",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2061,
+                        "evidence":  "No navigation path resets selectMode/selectedMemIds (handleBackToRooms 1057-1062, onSelectRoom 1181/1208/1400, wing pills). The Select/Done toggle only renders inside a room (1682) but the bulk bar renders on bare selectMode (2033) and PhotoWall gets selectMode in ALL scopes (2219) â€” tile clicks stop opening the viewer (PhotoWall.tsx:222). Select-all (2042-2048) then selects the whole palace and delete runs deleteMemory(selectedRoom!, memId) (2061) with selectedRoom=null: memoryStore.ts:311-325 writes userMems[\u0027null\u0027] locally but still calls deleteMemoryAction(memId) server-side per id. Bulk move/tag silently no-op in the same state (1127, 2124).",
+                        "fix":  "Reset selectMode/selectedMemIds/showBatchTag whenever scope changes (useEffect on [selectedRoom, selectedWing] plus in handleBackToRooms). In bulk delete/move/tag, resolve each memory\u0027s real room via memRoomMap.get(memId)?.roomId instead of selectedRoom!; hard-guard the delete handler with if(!selectedRoom \u0026\u0026 !memRoomMap-resolution) return."
+                    },
+                    {
+                        "rank":  3,
+                        "severity":  "P0",
+                        "zone":  "add-import-publish",
+                        "title":  "Dropbox/OneDrive cloud import silently discards the user\u0027s selection when no room is selected (the Library\u0027s default state)",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2821,
+                        "evidence":  "CloudBrowser onImport: if (selectedRoom \u0026\u0026 items.length \u003e 0) {...fetch...} setCloudBrowserProvider(null); (2820-2854). Default Library state is selectedWing=\u0027__all__\u0027, selectedRoom=null, and the Import pill (1632) is available there. User selects files, clicks \u0027Import n selected\u0027 (CloudBrowser 384), guard fails, modal closes â€” zero feedback, selection thrown away.",
+                        "fix":  "Thread an explicit target roomId into the cloud flow (from ImportHub\u0027s targetRoomId â€” see rank 6); if none resolvable, show an error/room-picker instead of silently closing. Never close the modal on a skipped import."
+                    },
+                    {
+                        "rank":  4,
+                        "severity":  "P1",
+                        "zone":  "detail-viewer",
+                        "title":  "RoomMediaPlayer crashes (TypeError on m.type) or silently swaps memories when the live filtered array shrinks during an inline edit",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/RoomMediaPlayer.tsx",
+                        "line":  149,
+                        "evidence":  "memories is the live filteredRoomMems (LibraryView.tsx:2587). The player\u0027s inline title/desc editors call onUpdate â†’ updateMemory, which can drop the current mem out of an active search/facet filter; const mem = memories[index] (51) shifts or becomes undefined, and getMediaType(mem) (149) executes m.type.toLowerCase() (141) on undefined â†’ uncaught TypeError white-screening the overlay. index is only clamped at mount (36).",
+                        "fix":  "Track the current memory by id (derive index via findIndex on id, re-clamp when memories changes, close/return null when it disappears); at minimum guard getMediaType behind if(!mem)."
+                    },
+                    {
+                        "rank":  5,
+                        "severity":  "P1",
+                        "zone":  "timeline",
+                        "title":  "Timeline click opens the WRONG memory in RoomMediaPlayer whenever sortMode is not \u0027newest\u0027",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2326,
+                        "evidence":  "Timeline re-sorts locally: const sorted = [...filteredRoomMems.slice(0, visibleMemCount)].sort(byCreatedAtDesc) (2288/2310) and item onClick does setMediaPlayerIndex(i) with i indexing sorted (2326/2348). RoomMediaPlayer receives the un-resorted memories={filteredRoomMems} initialIndex={mediaPlayerIndex} (2586-2610). With sortMode oldest/alpha/type (persisted via mobile sort sheet, 467/1506) the orders diverge â€” tapping an entry opens a different memory. Grid is safe (PhotoWall passes original _i, PhotoWall.tsx:218-222).",
+                        "fix":  "Pass identity, not position: setMediaPlayerIndex(filteredRoomMems.findIndex(m =\u003e m.id === mem.id)) in the timeline onClick (or hand the sorted array itself to the player)."
+                    },
+                    {
+                        "rank":  6,
+                        "severity":  "P1",
+                        "zone":  "add-import-publish",
+                        "title":  "ImportHub\u0027s Destination wing/room selector is ignored for ALL cloud providers; Google Photos picker fails with \u0027no room\u0027 only AFTER the user finishes picking",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/ImportHub.tsx",
+                        "line":  706,
+                        "evidence":  "ImportHub renders a Destination selector (targetWingId/targetRoomId, 505-580) directly above the cloud buttons, but onOpenCloudProvider is typed (provider: string) =\u003e void (91) and invoked without the room (706) â€” only local-file import passes targetRoomId (351). LibraryView\u0027s handleCloudProvider then uses selectedRoom (584/592); the Google Photos flow stores roomId:null, sends the user through the full external Picker, and only at completion hits the \u0027no room\u0027 error (LibraryView.tsx:645-650), persisting the stale null to localStorage (582-584, resumed 681-696).",
+                        "fix":  "Change the prop to onOpenCloudProvider(provider, roomId) passing targetRoomId; use that roomId in handleCloudProvider, startPickerPolling and CloudBrowser\u0027s onImport instead of selectedRoom; refuse to start the picker with no room resolved. Root-cause fix for rank 3."
+                    },
+                    {
+                        "rank":  7,
+                        "severity":  "P1",
+                        "zone":  "state-persist",
+                        "title":  "Persisted list/timeline viewMode applies to the whole wall where the view toggle is hidden â€” user stuck out of grid; retired list view still shipped and persisted",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2211,
+                        "evidence":  "viewMode hydrates unvalidated from localStorage including \u0027list\u0027 (427-432) and the content render branches on it for EVERY scope (2211+: grid/list(2230)/timeline(2301)), but the grid/list/timeline toggle only renders {selectedRoom \u0026\u0026 ...} (1700). A user who last used list/timeline in a room gets the default all-memories wall as a flat capped list with no control to escape. The list button (1712) and full list branch contradict the retired-list architecture; the Month/Rooms lens toggle stays visible but only affects PhotoWall (2198).",
+                        "fix":  "Force grid when !selectedRoom (const effectiveView = selectedRoom ? viewMode : \u0027grid\u0027). Retire list fully: remove the button (1712-1714) and branch (2230-2300), narrow the union to \u0027grid\u0027|\u0027timeline\u0027, and migrate/validate persisted values on read (like sortMode does at 468)."
+                    },
+                    {
+                        "rank":  8,
+                        "severity":  "P1",
+                        "zone":  "search",
+                        "title":  "Search inside a wing is hijacked by crossWingResults: wing scope AND filterType/facet/filterYear silently stop compounding",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  920,
+                        "evidence":  "crossWingResults (919-940) fires whenever q \u0026\u0026 !selectedRoom \u0026\u0026 selectedWing !== \u0027__all__\u0027 and matches memories across ALL wings on the query string only â€” no filterType/facet/filterYear in the predicate or deps. When non-null it replaces the wall entirely (render at 1723, wall gated by !crossWingResults at 2030) while the active filter pills stay lit (1591-1608). The correctly-scoped filteredRoomMems (886-902) is never shown. Header count, badge and list can show three different numbers (1534/998).",
+                        "fix":  "Share one predicate helper: apply filterType/facet/filterYear inside crossWingResults, and render \u0027in this wing\u0027 (scoped, fully filtered wall) separate from a clearly-labeled \u0027elsewhere in your palace\u0027 section; feed the header/badge one consistent count."
+                    },
+                    {
+                        "rank":  9,
+                        "severity":  "P1",
+                        "zone":  "search",
+                        "title":  "Search result badge always shows \u00270 found\u0027 on the default All Memories wall",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  996,
+                        "evidence":  "searchResultCount (995-1001): if(!query) undefined; if(selectedRoom) filteredRoomMems.length; if(crossWingResults) its length; return 0. On the default scope crossWingResults is hard-nulled (920: \u0027__all__\u0027 guard) so every query returns 0 â€” while the wall renders real matches from filteredRoomMems (890, fed to PhotoWall 2194). LibrarySearch shows \u0027foundCount 0\u0027 (LibrarySearch.tsx:110/216) on both mobile (1435) and desktop (1549).",
+                        "fix":  "Add a branch before crossWingResults: if (selectedRoom || selectedWing === \u0027__all__\u0027) return filteredRoomMems.length."
+                    },
+                    {
+                        "rank":  10,
+                        "severity":  "P1",
+                        "zone":  "timeline",
+                        "title":  "Timeline paginates BEFORE re-sorting and silently overrides the user\u0027s sort choice â€” \u0027Load more\u0027 interleaves new items anywhere",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2288,
+                        "evidence":  "[...filteredRoomMems.slice(0, visibleMemCount)].sort(newestFirst) (2288-2289) takes the first 50 in the user\u0027s chosen order then force-resorts newest-first: (a) sort control has zero visible effect in timeline; (b) with \u0027oldest\u0027 the first page is the 50 OLDEST rendered newest-first; (c) Load more (2391) appends the next 50 of the other ordering, which the re-sort interleaves between groups the user already scrolled past.",
+                        "fix":  "If timeline is always-chronological, sort the FULL array then slice: [...filteredRoomMems].sort(byDateDesc).slice(0, visibleMemCount), and hide/disable non-chronological sort options in timeline mode; honor \u0027oldest\u0027 by ascending order. Memoize the derivation."
+                    },
+                    {
+                        "rank":  11,
+                        "severity":  "P1",
+                        "zone":  "sort",
+                        "title":  "\u0027Oldest\u0027/\u0027alpha\u0027/\u0027type\u0027 sort has essentially no effect on the default grid wall â€” PhotoWall month sections are always forced newest-first",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/PhotoWall.tsx",
+                        "line":  152,
+                        "evidence":  "PhotoWall re-buckets the already-sorted mems into month sections and unconditionally orders sections newestâ†’oldest (152-156: b.key.localeCompare(a.key)). With sortMode=\u0027oldest\u0027 bands descend while tiles inside ascend â€” self-contradictory; alpha/type order is destroyed by banding. Grid is the only view outside a room and the default entry, so the mobile sort popup (1506) visibly does almost nothing exactly where it is offered.",
+                        "fix":  "Pass sortMode into PhotoWall: for \u0027oldest\u0027 sort sections ascending; for \u0027alpha\u0027/\u0027type\u0027 skip month banding (single section or letter/type bands); or disable those options while the grid wall is active."
+                    },
+                    {
+                        "rank":  12,
+                        "severity":  "P1",
+                        "zone":  "sort",
+                        "title":  "Sort control exists only on mobile; desktop silently applies a persisted sort it cannot see or change",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1487,
+                        "evidence":  "The ONLY setSortMode call site (1487) is inside the mobile sort popup (1457-1518) within the isMobile branch (1218). sortMode hydrates from localStorage on every mount (468) and sorts filteredRoomMems (903-911), so a value set on a narrow window keeps re-sorting the desktop Library with no visible control or indicator (grep: no sort UI in the desktop branch, LibrarySearch or LibrarySidebar).",
+                        "fix":  "Add the same sort dropdown to the desktop control band (next to the Month/Rooms lens toggle, 1598-1603), driven by the existing sortMode state. Also fix the comparator to use createdAt || date like every other date path (905, cf. 871/899/901)."
+                    },
+                    {
+                        "rank":  13,
+                        "severity":  "P1",
+                        "zone":  "controls:overlay",
+                        "title":  "Global Escape chain misses CloudBrowser, Google-picker, PublishModal, bulk-move AND all three tool panels â€” Esc navigates underneath and leaves activeToolPanel armed to reopen stale",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1067,
+                        "evidence":  "The Escape handler (1064-1080) checks showImportHub/mediaPlayerIndex/lightboxMem/detailPanelMem/movingMem/detailMem/showUploadFor then falls through to handleBackToRooms. It never checks cloudBrowserProvider, pickerStatus, showPublishModal, bulkMoving, or activeToolPanel. Consequences: Esc with CloudBrowser open exits the room BEHIND the modal, nulling the selectedRoom the import depends on; Esc with AI-label/Write-Story/Add-Location open unmounts the panel via selectedRoom=null while activeToolPanel + drafts/results stay populated â€” selecting ANY room later instantly re-opens the panel with stale content (gates at 2926/3010/3150; handleBackToRooms 1057-1062 clears none of it).",
+                        "fix":  "Add branches at the top of the chain (and to the dep array): cloudBrowserProvider â†’ close it; pickerStatus!==\u0027idle\u0027 â†’ cancel; showPublishModal â†’ return (its own handler closes); bulkMoving â†’ close; activeToolPanel â†’ handleClosePanel()/setActiveToolPanel(null)+reset drafts. Belt-and-braces: also clear activeToolPanel inside handleBackToRooms."
+                    },
+                    {
+                        "rank":  14,
+                        "severity":  "P1",
+                        "zone":  "detail-viewer",
+                        "title":  "Escape while inline-editing title/description closes the whole player and discards the edit",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/RoomMediaPlayer.tsx",
+                        "line":  513,
+                        "evidence":  "RoomMediaPlayer\u0027s input onKeyDown cancels the edit on Escape (513, 560) but never calls e.stopPropagation(), so the event bubbles to LibraryView\u0027s window handler (LibraryView.tsx:1066-1068) which does setMediaPlayerIndex(null) â€” unmounting the player mid-edit. The player\u0027s own window handler guards editing (75); the parent\u0027s does not.",
+                        "fix":  "Call e.stopPropagation() in the title/desc Escape branches (and in the player\u0027s own Escape path), or have LibraryView\u0027s handler skip Escape when (e.target as HTMLElement).closest(\u0027input, textarea\u0027)."
+                    },
+                    {
+                        "rank":  15,
+                        "severity":  "P1",
+                        "zone":  "detail-viewer",
+                        "title":  "Swipe detection bound to the entire overlay: scrolling the thumbnail strip or dragging a video/audio seek bar triggers prev/next navigation",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/RoomMediaPlayer.tsx",
+                        "line":  370,
+                        "evidence":  "onTouchStart/onTouchEnd live on the root fixed container (368-371); handleTouchEnd fires goNext/goPrev on any horizontal move \u003e50px within 500ms (126-129). The thumbnail strip is a horizontally scrollable child (617-625) and the native seek sliders (198-211, 266-274) are horizontal touches â€” both yank the user to another memory.",
+                        "fix":  "Attach the touch handlers only to the main media area div (453), or bail when e.target.closest(\u0027.rmp-thumb, video, audio, button, input, textarea\u0027) matches; also suppress swipe while zoom \u003e 1."
+                    },
+                    {
+                        "rank":  16,
+                        "severity":  "P1",
+                        "zone":  "detail-viewer",
+                        "title":  "Opening a \u0027document\u0027 memory renders its raw base64 dataUrl as story text; no viewer or download",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/RoomMediaPlayer.tsx",
+                        "line":  321,
+                        "evidence":  "getMediaType maps document/story/documentBlob to \u0027text\u0027 (145) and the text renderer prints {mem.desc || mem.dataUrl || t(\u0027mediaPlayerNoContent\u0027)} (321). UploadPanel stores documents as data URLs (UploadPanel.tsx:107-141), so a description-less document shows a wall of \u0027data:application/pdf;base64,...\u0027. Legacy type \u0027voice\u0027 (mapped to text at 143 before the voiceBlob check at 144) prints data:audio base64.",
+                        "fix":  "In the text branch treat dataUrl starting with data:/api:/http as a file: render an open/download affordance (anchor/iframe) for documents; route \u0027voice\u0027 with an audio dataUrl to the audio renderer."
+                    },
+                    {
+                        "rank":  17,
+                        "severity":  "P1",
+                        "zone":  "ai-label",
+                        "title":  "No real cancel on AI labeling: closing the panel mid-run keeps POSTing /api/ai-label (paid calls), and the orphaned loop resurrects stale \u0027Done!\u0027 state",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2997,
+                        "evidence":  "handleStartLabeling loops await fetch(\u0027/api/ai-label\u0027) per photo with no AbortController and no cancelled check (2992-3009/3019-3028). handleClosePanel resets state but the async closure keeps running, repopulating aiLabelResults and finally setAiLabelDone(true) (3007/3029). Reopening later shows a stale done screen; if the user changed rooms, the done-state Save runs updateMemory(selectedRoom!, oldMemId) against the WRONG room while updateMemoryAction still persists server-side.",
+                        "fix":  "Hold a run-id ref/AbortController: snapshot at loop start, check after each await, bump/abort in handleClosePanel; never write final state from a dead run."
+                    },
+                    {
+                        "rank":  18,
+                        "severity":  "P1",
+                        "zone":  "ai-label",
+                        "title":  "AI-label run where every photo fails still shows green \u0027Done! 0 photos successfully labeled\u0027 with a disabled \u0027Saved\u0027 button",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  3007,
+                        "evidence":  "setAiLabelDone(true) is unconditional after the loop (3007). Total failure (server down, 401, 429, 503 â€” every non-403 just failCount++/continue at 3002/3005) leaves aiLabelResults={}: the banner renders \u0027Done! 0 photos\u0027 in success-green (3051) and the footer\u0027s save-all disabled condition is vacuously true on an empty object, labeled \u0027Saved\u0027 (3120). The selection grid is hidden (3059) so retry requires close+reopen.",
+                        "fix":  "Track successes in a local variable and only setAiLabelDone(successes\u003e0); on total failure keep the selection grid visible with the error banner. Also stop hammering the API on guaranteed-repeat statuses: abort the loop on 401/429/503 with status-specific i18n messages (mirror the 403 branch)."
+                    },
+                    {
+                        "rank":  19,
+                        "severity":  "P1",
+                        "zone":  "ai-label",
+                        "title":  "Atrium \u0027ai-enhance\u0027 spotlight is fully unwired: no consumer, target button doesn\u0027t exist on Library landing, pulse keyframes never applied",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  533,
+                        "evidence":  "HomeView sets mp_spotlight_target=\u0027ai-enhance\u0027 (HomeView.tsx:744/1159); LibraryView maps it to \u0027aiLabel\u0027 (533) but (1) no element carries data-spotlight-id=\u0027aiLabel\u0027 or checks it â€” the only consumer is the importUpload pill (1613/1632); (2) the aiLabel pill only renders with a selectedRoom (1609) while the Library lands on \u0027__all__\u0027; (3) @keyframes spotlightPulse (1144/1161) is referenced by nothing repo-wide. Clicking the Atrium \u0027Restore a Photo\u0027 card silently does nothing; state auto-clears after 5s (548). Same for \u0027write-stories\u0027/\u0027organize\u0027/\u0027import-cloud\u0027 mappings.",
+                        "fix":  "Either make spotlight targets real: apply animation: spotlightPulse + data-spotlight-id to the tool pills, map \u0027import-cloud\u0027, and have room-scoped targets auto-select a sensible room / open the panel; or delete the whole spotlight state machine + keyframes."
+                    },
+                    {
+                        "rank":  20,
+                        "severity":  "P1",
+                        "zone":  "photo-wall",
+                        "title":  "Right-click / long-press toggles selection outside select mode: phantom selected tiles with no bulk UI, native context menu always suppressed",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/PhotoWall.tsx",
+                        "line":  219,
+                        "evidence":  "onContextMenu={(e)=\u003e{e.preventDefault(); onToggleSelect(item.id);}} is unconditional (219-223) and selected styling keys off selectedMemIds alone (gold inset 227/239 + badge 236-249). The bulk bar needs selectMode (LibraryView.tsx:2033) and the Select toggle needs a room (1663), so on the wall a right-click/long-press marks tiles with nothing to act on and no visible clear; entering select mode later wipes the set (1684). e.preventDefault also kills Save-Image in normal mode.",
+                        "fix":  "Gate on selectMode, or make it the select-mode entry point: onEnterSelect(id) prop that sets selectMode=true and seeds the set (requires scope-safe bulk ops from rank 2)."
+                    },
+                    {
+                        "rank":  21,
+                        "severity":  "P1",
+                        "zone":  "photo-wall",
+                        "title":  "Real-AR repack check reads the fallback without mem type â€” square photos never trigger a repack; correct-AR photos trigger spurious ones",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/PhotoWall.tsx",
+                        "line":  118,
+                        "evidence":  "onMeasured: const prev = getAspect(id); ... if (Math.abs(prev - ar) \u003e 0.02 ...) (117-121). getAspect without a type returns 1.0 (justify.ts:33-35) while the wall packed the tile at 1.5 for photo/video (justify.ts:16-26, PhotoWall.tsx:165). A square photo measures ~1.0 == prev â†’ no arVersion bump â†’ the 3:2 fallback layout can persist permanently; a photo measuring exactly 1.5 computes diff 0.5 â†’ useless repack. Wrong in both directions.",
+                        "fix":  "Thread the type: onMeasured(id, type, ar) (TileMedia has mem) and compute prev = getAspect(id, type) before setAspect."
+                    },
+                    {
+                        "rank":  22,
+                        "severity":  "P1",
+                        "zone":  "scrubber",
+                        "title":  "Scrubber tick column is unbounded â€” on multi-year libraries older-month ticks render below the viewport and are permanently unreachable",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/PhotoWall.tsx",
+                        "line":  182,
+                        "evidence":  "One ~11px button per non-empty month with no cap/maxHeight/year condensation (183+) inside a sticky top:0 height:0 wrapper (181-182): ~65+ sections exceed a viewport and the column scrolls WITH the viewport, so past-the-fold ticks stay unreachable forever; the overflow also forms a zIndex:6 tap-stealing strip. The spec targets 10k-item lifetime walls where overflow is guaranteed. On mobile the -0.1rem offset additionally overlaps the rightmost tiles (182) stealing photo taps.",
+                        "fix":  "Condense to year ticks past a threshold (or maxHeight:100vh with proportional offsetTop mapping per spec) so every period stays reachable; reserve a real gutter on mobile so ticks never overlap tiles."
+                    },
+                    {
+                        "rank":  23,
+                        "severity":  "P1",
+                        "zone":  "scrubber",
+                        "title":  "Scrubber has no drag/touch interaction and no month labels on mobile â€” spec\u0027d drag-with-bubble unimplemented",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/PhotoWall.tsx",
+                        "line":  187,
+                        "evidence":  "Click-only ticks with mouse-hover labels (onClick scrollIntoView 187, onMouseEnter 188); zero pointer/touch handlers in the file. On touch, hover doesn\u0027t exist so the month bubble (192-194) is unreachable before committing â€” mobile users blind-tap unlabeled ~3px ticks. Mapping is ordinal, not the spec\u0027d positional offsetTop mapping (docs/LIBRARY_ARCHITECTURE_DECISION.json rank 8).",
+                        "fix":  "Add pointer-drag on the rail (onPointerDown/Move with setPointerCapture): map pointer Y to nearest tick, show the label bubble during drag, scrollIntoView on pointerup; keep click for desktop; clear scrubHover on tap so the bubble doesn\u0027t stick."
+                    },
+                    {
+                        "rank":  24,
+                        "severity":  "P1",
+                        "zone":  "search",
+                        "title":  "Externally cleared search query resurrects after 300ms â€” pending debounce timer not cancelled on external reset",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibrarySearch.tsx",
+                        "line":  62,
+                        "evidence":  "The external-sync effect (62-67) only does setLocalQuery(query) and never touches debounceRef; handleQueryChange (70-81) schedules onQueryChange after 300ms. LibraryView clears externally via the âœ• pill (1585) and Escapeâ†’handleBackToRooms (1056-1074): a keystroke within 300ms of the clear fires the stale timer and the search comes back â€” in the Escape case silently filtering the wall the user just returned to.",
+                        "fix":  "In the sync effect: if (query !== localQuery) { if (debounceRef.current) clearTimeout(debounceRef.current); setLocalQuery(query); }."
+                    },
+                    {
+                        "rank":  25,
+                        "severity":  "P1",
+                        "zone":  "filters",
+                        "title":  "Type filter is unreachable dead code: filterType state filters the pipeline but no UI ever sets it",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  417,
+                        "evidence":  "filterType (417) is applied at 896 but the only setters are setFilterType(null) (1059, 1585). LibraryFilterBar (LibrarySearch.tsx:294) is not rendered by LibraryView; roomTypes memo (988) is computed and unused. Every branch keyed on filterType â€” anyActive (1568), empty-state type (2369) â€” is dead. Users have no type filter in the Library at all.",
+                        "fix":  "Either render a type-filter control (reuse LibraryFilterBar with normalized types from the current scope, wired to setFilterType, labels through t()) or delete filterType + roomTypes + the dead branches."
+                    },
+                    {
+                        "rank":  26,
+                        "severity":  "P1",
+                        "zone":  "rooms-lens",
+                        "title":  "Selecting a room from the All-scope room bar never sets selectedWing â€” breaks 3D deep-link, upload/detail wing context, and accent identity",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1381,
+                        "evidence":  "The room bar shows ALL palace rooms when selectedWing===\u0027__all__\u0027 (wingRooms 829-833) but its onClick only sets selectedRoom (1381; same at 1181/1208 and RoomManagerPanel onEnterRoom 2655-2659). With \u0027__all__\u0027 left in place: handleEnter3D breaks (rank 1), currentWing silently falls back to wings[0] (1007) for accents/breadcrumb/RoomManagerPanel, and showUploadFor/setDetailMem leak wingId \u0027__all__\u0027 â†’ UploadPanel/MemoryDetail get wing=null AND room=null (2635-2637, 2897). The only correct remap lives in the dead false\u0026\u0026 block (~1946).",
+                        "fix":  "In every room-select handler: if the current wing is \u0027__all__\u0027 or doesn\u0027t contain the room, also setSelectedWing(roomWingMap[room.id]); resolve the real wing at showUploadFor/setDetailMem use sites via roomWingMap."
+                    },
+                    {
+                        "rank":  27,
+                        "severity":  "P1",
+                        "zone":  "mobile-chrome",
+                        "title":  "Mobile rooms-bar \u0027+\u0027 (and All-scope Add room pill) silently creates rooms in wings[0]",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1424,
+                        "evidence":  "The add-room pill (1424, also 1405-1419) opens RoomManagerPanel with wing={currentWing} (2651-2653), and currentWing = wings.find(w=\u003ew.id===selectedWing) || wings[0] (1008) â€” \u0027__all__\u0027 never matches, so from the default all-memories view a created room lands in the first wing with no wing choice or indication. Same fallback also mis-tints the rooms bar with wings[0].accent (1381).",
+                        "fix":  "When selectedWing===\u0027__all__\u0027, require a wing pick before RoomManagerPanel (wing picker step or hide the pill); tint All-scope room pills by their own wing via roomWingMap."
+                    },
+                    {
+                        "rank":  28,
+                        "severity":  "P1",
+                        "zone":  "on-this-day",
+                        "title":  "\u0027On this day\u0027 facet counts and shows memories created TODAY (current year not excluded) â€” pill and gilt strip disagree on the same screen",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  899,
+                        "evidence":  "Facet filter (899) and pill count isOtd (1561) match month+day only; the strip memo correctly requires d.getFullYear() !== yr (971). On any upload day the pill counts brand-new photos as anniversaries and clicking the facet shows them, while the strip (correctly) shows nothing.",
+                        "fix":  "Add \u0026\u0026 d.getFullYear() !== now.getFullYear() to both the facet predicate (899) and isOtd (1561) to match onThisDayMems semantics."
+                    },
+                    {
+                        "rank":  29,
+                        "severity":  "P1",
+                        "zone":  "on-this-day",
+                        "title":  "Demo/sample memories surface in the gilt On This Day strip as personal anniversaries",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  966,
+                        "evidence":  "onThisDayMems iterates getMemsForRoom (966) = userMems[roomId] || getDemoMems(roomId) (854-856). Demo mems (defaults.ts:55-60) carry fixed dates and realistic titles (\u0027The Day I Graduated\u0027); on those month/days users with empty rooms see gilt-framed fake anniversaries with nothing marking them as examples. Demo mems also inflate the facet count (1559).",
+                        "fix":  "Filter demo memories out of onThisDayMems (skip demo-id-prefixed mems or iterate userMems only), or render strip entries with the example-media badge."
+                    },
+                    {
+                        "rank":  30,
+                        "severity":  "P1",
+                        "zone":  "empty-states",
+                        "title":  "Facet/year filters and slow fetches produce the wrong empty state: \u0027This room is waiting for you â€” Add your first memory\u0027 on populated scopes",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2391,
+                        "evidence":  "Two causes: (a) empty-state type only checks q/filterType (2391: type={(!!q||!!filterType)?\u0027search\u0027:\u0027room\u0027}) but filteredRoomMems is also emptied by facet (898-901) and filterYear (902) â€” an \u0027On this day\u0027 day with no anniversaries tells a user with hundreds of memories their library is empty and pushes an add-first flow; (b) roomLoading is a fixed 300ms timer decoupled from the actual fetch (509-516) while data arrives via async fetchRoomMemories â€” any fetch \u003e300ms flashes the same false empty state (2389-2396). The default \u0027__all__\u0027 wall has no loading gate at all and shows room-scoped copy despite no room being selected.",
+                        "fix":  "(a) Widen the condition to all narrowing filters (q||filterType||facet||filterYear â‡’ \u0027search\u0027) and add a clear-filters action; add a \u0027library\u0027 copy variant for the \u0027__all__\u0027 scope. (b) Tie roomLoading (and a wall-level loading flag) to fetchRoomMemories completion, keeping 300ms only as a minimum skeleton floor."
+                    },
+                    {
+                        "rank":  31,
+                        "severity":  "P1",
+                        "zone":  "media-loading",
+                        "title":  "Media route streams Supabase-backed files with the visitor\u0027s session client after authorizing published-wing access â€” storage RLS blocks the download, visitor gets 404",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/app/api/media/[...path]/route.ts",
+                        "line":  257,
+                        "evidence":  "The route authorizes non-owners for published wings (131-147) then streamFromSupabase downloads with the SESSION client (255-257). storage.objects SELECT policies cover only own files and shared rooms/wings (005_rls_policies.sql:92-116, 022_sharing_overhaul.sql:128-137) â€” no policy for published wings exists in supabase/migrations. Any supabase-backed memory in a published wing returns 404 to authorized visitors (259).",
+                        "fix":  "After route-level authorization succeeds, download with the admin client (createAdminClient) in streamFromSupabase, falling back to the session client only when SUPABASE_SERVICE_ROLE_KEY is absent; or add a storage SELECT policy for published wings."
+                    },
+                    {
+                        "rank":  32,
+                        "severity":  "P1",
+                        "zone":  "header-band",
+                        "title":  "\u0027Unplaced\u0027 facet pill is permanently disabled â€” count is 0 by construction",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1585,
+                        "evidence":  "Count: base.filter(m =\u003e !memRoomMap.get(m.id)?.roomId).length (1585), but base (1578) and memRoomMap (875-879) are built from the identical wingsâ†’roomsâ†’getMemsForRoom iteration â€” every mem in base has a truthy roomId. Count===0 always, so disabled = d.count===0 \u0026\u0026 !active (1594) keeps the pill at opacity 0.4/pointerEvents none forever; the facet branch at 901 can never match. A shipped control no user can ever use. (Related: unplaced memories also can\u0027t be edited/moved/deleted through the overlay chain, 2615-2617.)",
+                        "fix":  "Source \u0027unplaced\u0027 from a real unassigned pool (keps/attic uploads not grounded to a room, fetched outside the room iteration) or remove the pill + facet branch + the undated-room fallback chain."
+                    },
+                    {
+                        "rank":  33,
+                        "severity":  "P1",
+                        "zone":  "header-band",
+                        "title":  "\u0027Clear examples\u0027 pill hides itself but demo memories stay on the wall â€” stale memo chain",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1626,
+                        "evidence":  "onClick does setDemosHidden(true); setShowDemos(false) â€” but setDemosHidden only writes localStorage (defaults.ts:85-90) and getMemsForRoom = useCallback((roomId)=\u003e userMems[roomId] || getDemoMems(roomId), [userMems]) (854-856) keeps its identity, so allWingMems/libAllMems/memRoomMap/filteredRoomMems all stay cached with the demo memories until an unrelated userMems change or remount.",
+                        "fix":  "Make demo visibility part of React state flow: getMemsForRoom = useCallback((roomId)=\u003e userMems[roomId] || (showDemos ? getDemoMems(roomId) : []), [userMems, showDemos])."
+                    },
+                    {
+                        "rank":  34,
+                        "severity":  "P1",
+                        "zone":  "state-persist",
+                        "title":  "getWings() returns a fresh array every render, defeating ALL palace-wide memoization â€” O(total mems) recompute per keystroke and full PhotoWall re-pack",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  413,
+                        "evidence":  "const wings = getWings() (413) runs per render; roomStore.getWings (roomStore.ts:138-142) maps to new objects each call. wings is a dep of nearly every heavy memo (wingRooms 829, libAllMems 865, memRoomMap 875, wingWarmth 944, onThisDayMems 961, roomWingMap 1011, crossWingResults 920) so every state change recomputes all palace-wide maps and hands PhotoWall a new mems identity (2214), forcing full section/justify re-packs. The control-band IIFE (1577-1586) adds four full base.filter passes per render.",
+                        "fix":  "Subscribe to stable store state (customWings/extraWings) and wrap getWings() output in useMemo keyed on it (or memoize in the store); useCallback the six PhotoWall props and wrap PhotoWall in React.memo; then verify the wall stops re-packing on unrelated state."
+                    },
+                    {
+                        "rank":  35,
+                        "severity":  "P1",
+                        "zone":  "i18n",
+                        "title":  "Two demo-room nameKeys don\u0027t match any message key â€” English shown in nl/de/es/fr despite translations existing",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/lib/constants/wings.ts",
+                        "line":  62,
+                        "evidence":  "wings.ts:62 nameKey:\u0027roomHouseOnElmStreet\u0027 and :67 \u0027roomBigProject2019\u0027, but all 5 locales contain \u0027roomTheHouseOnElmStreet\u0027 and \u0027roomTheBigProject\u0027. translateRoomName (44-48) falls back to hardcoded English when t() returns the raw key, so non-English users see \u0027The House on Elm Street\u0027 / \u0027The Big Project of 2019\u0027 untranslated everywhere the Library renders room names.",
+                        "fix":  "Rename the two nameKeys in wings.ts to match the existing keys (\u0027roomTheHouseOnElmStreet\u0027, \u0027roomTheBigProject\u0027)."
+                    },
+                    {
+                        "rank":  36,
+                        "severity":  "P1",
+                        "zone":  "controls:mobile-search-row",
+                        "title":  "Mobile sort popup cannot be dismissed by tapping outside or Escape",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1494,
+                        "evidence":  "mobileSortOpen is only set at 479 (init), 1478 (toggle) and 1506 (item select). No backdrop, no document pointerdown listener, no onBlur, no Escape handler anywhere â€” tapping the wall/search/Enter Palace leaves the menu floating open. Trigger also lacks aria-haspopup/aria-expanded; items lack menuitemradio/aria-checked.",
+                        "fix":  "Render a fixed transparent backdrop under the popup closing on pointerdown (mirror the sidebar scrim pattern 1167-1175) plus Escape handling; add aria-haspopup=\u0027menu\u0027/aria-expanded to the trigger and role=\u0027menu\u0027/menuitemradio semantics to the items."
+                    },
+                    {
+                        "rank":  37,
+                        "severity":  "P1",
+                        "zone":  "controls:sidebar",
+                        "title":  "Wing color dot is a \u003cbutton\u003e nested inside the wing-row \u003cbutton\u003e â€” invalid HTML, SSR/hydration hazard, AT-unreachable",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibrarySidebar.tsx",
+                        "line":  631,
+                        "evidence":  "Outer wing-row \u003cbutton\u003e opens at 476 and closes at 662; inside sits \u003cbutton onClick={e=\u003e{e.stopPropagation(); setColorPickerWing(...)}} aria-label={t(\u0027customizeColor\u0027)}\u003e (631-645). Nested buttons: the SSR HTML parser implicitly closes the outer button at the inner start tag (hydration mismatch/DOM reshuffle) and nested interactive content is unreachable for AT. The dot is also a 12px target. Note the whole picker is near-cosmetic: wingColors only recolor the dot+chevron (636/651), nothing else.",
+                        "fix":  "Render the dot as a sibling absolutely-positioned button over the row (pattern at LibraryView.tsx:1224) or make the row a div[role=button]; grow the hit area to â‰¥1.5rem; route the color through roomStore.changeWingAccent so the pick actually changes the wing accent everywhere (and syncs)."
+                    },
+                    {
+                        "rank":  38,
+                        "severity":  "P1",
+                        "zone":  "controls:mobile-wings-bar",
+                        "title":  "Shared-with-me mobile pill has no accessible name â€” screen readers announce only a raw number",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1315,
+                        "evidence":  "The button (1315-1338) contains a decorative chain-link svg (no title, no aria-hidden) and {sharedCount} only. No aria-label; accessible name is e.g. \u00273\u0027. Desktop sibling shows full text (LibrarySidebar.tsx:806). Sighted users also get an unexplained number.",
+                        "fix":  "Add aria-label={t(\u0027sharedWithMe\u0027)} (key exists in all 5 locales) + aria-hidden on the svg; ideally render the visible label like the sidebar."
+                    },
+                    {
+                        "rank":  39,
+                        "severity":  "P1",
+                        "zone":  "controls:ai-label-panel",
+                        "title":  "AI-label panel primary/selected affordances use pale sandstone #D6CCBA with white text (~1.6:1 contrast) instead of EMBER â€” ONE RULE + WCAG failure",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  3140,
+                        "evidence":  "Start button 3140, save-all 3142, per-result Save 3125, edit-Save 3116: background T.color.sandstone (#D6CCBA, theme.ts:5) with #FFF text; selected-tile outline 3091 and checkbox 3093 sandstone; progress fill 3067 sandstone. libraryTokens.ts:9 mandates EMBER #B85C38 for interactive/active. White on sandstone is ~1.6:1 (AA needs 4.5:1) and the 40-alpha disabled tint is nearly indistinguishable from enabled.",
+                        "fix":  "Swap all interactive/selected/progress accents to EMBER #B85C38 (ember bg + #FCFAF5 text passes contrast); disabled = ember at reduced alpha with muted text; progress track rgba(154,79,42,0.14) per the steward recipe."
+                    },
+                    {
+                        "rank":  40,
+                        "severity":  "design",
+                        "zone":  "card-bg",
+                        "title":  "Apply the merged Atrium card-background canon restyle (header band, sidebar, room cards, modals, select bar, detail chrome) â€” see cardBgSpec",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/lib/libraryTokens.ts",
+                        "line":  1,
+                        "evidence":  "Root cause verified across all four proposals: libraryTokens.ts is imported by ZERO files (grep hits only its own header), so every Library surface hand-rolls frosted glass (rgba-white + backdropFilter at LibrarySidebar.tsx:270-273, LibraryAnimations.tsx:173-175, LibraryView.tsx:1560-1562, LibraryCards.tsx:134-136, and 7 modal shells at LibraryView.tsx:172/2680/2940/3040/3164/3265/3450), invisible cream-on-white #FCFAF5 borders, off-grammar shadows, and misspent gold â€” none of which exist in the Atrium canon.",
+                        "fix":  "Implement cardBgSpec verbatim: import the tokens, replace glass with flat tintâ†’cream gradients, cream borders with HAIRLINE #E3D6BC, bespoke shadows with SHADOW[1]/HOVER_SHADOW + TOP_HIGHLIGHT, and confine gold to its licensed ceremonial uses. Photo wall stays chromeless."
+                    },
+                    {
+                        "rank":  41,
+                        "severity":  "P2",
+                        "zone":  "media-loading",
+                        "title":  "List, timeline, and detail-panel render raw mem.dataUrl in an \u003cimg\u003e for ALL types â€” video/audio memories show broken images and burn rate-limited media requests",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2248,
+                        "evidence":  "Three sites render \u003cImage src={mem.dataUrl}\u003e with no type check, no thumbnailUrl preference, no onError: list rows 2248-2256, timeline 2364-2366, detail panel 2483-2495. For video, dataUrl is the .mp4 (memoryStore.ts:77); for audio it can be data:audio base64 â€” an img renders neither, and /api/media URLs waste authorized requests against the 200/min limit. MediaThumb.tsx:25-36 already guards correctly.",
+                        "fix":  "Replace all three with \u003cMediaThumb mem={mem}/\u003e (already imported at LibraryView.tsx:18) or gate on type + prefer thumbnailUrl."
+                    },
+                    {
+                        "rank":  42,
+                        "severity":  "P2",
+                        "zone":  "media-loading",
+                        "title":  "MediaThumb has no onError â€” failed loads show the browser broken-image glyph, and PhotoWall\u0027s exhausted fallback re-requests the known-dead URL",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/MediaThumb.tsx",
+                        "line":  58,
+                        "evidence":  "MediaThumb renders \u003cimg src={thumbSrc}\u003e with no onError (57-69); the gradient/TypeIcon fallback only renders when !thumbSrc (71). PhotoWall\u0027s TileMedia falls back to MediaThumb only after ALL sources errored (PhotoWall.tsx:59/64) â€” but MediaThumb re-derives the same dataUrl (MediaThumb.tsx:31), so the \u0027fallback\u0027 is a second fetch of the dead URL plus a broken image; dead video thumbs get a play overlay over a broken img (74-93).",
+                        "fix":  "Add a failed state in MediaThumb (onError â†’ render gradient/TypeIcon), and in TileMedia render the terminal glyph directly (or pass a skip-image flag) when sources are exhausted."
+                    },
+                    {
+                        "rank":  43,
+                        "severity":  "P2",
+                        "zone":  "media-loading",
+                        "title":  "Video thumbnail backfill never runs on the default unified wall (requires selectedRoom), so wall video tiles fire doomed .mp4 \u003cimg\u003e requests",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/lib/hooks/useThumbnailBackfill.ts",
+                        "line":  39,
+                        "evidence":  "useThumbnailBackfill early-returns if (!roomId) (36-39) and is called with selectedRoom (LibraryView.tsx:917) â€” null on the default \u0027__all__\u0027 wall, so no thumbnails generate there; every thumbnail-less video walks TileMedia\u0027s source chain issuing an \u003cimg\u003e request for the raw video before erroring to the glyph (PhotoWall.tsx:23-38). The hook also writes only to userMems[roomId] (83-86).",
+                        "fix":  "Run the backfill for wall scopes: resolve each video\u0027s real roomId via memRoomMap and pass (memId, roomId) pairs so the queue and store update use the true room key."
+                    },
+                    {
+                        "rank":  44,
+                        "severity":  "P2",
+                        "zone":  "media-loading",
+                        "title":  "Wall loads full-resolution originals for every photo tile (photos never get thumbnails) and can exhaust the 200/min media rate limit; 429\u0027d tiles never retry",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/PhotoWall.tsx",
+                        "line":  31,
+                        "evidence":  "tileSources = thumbnail then original (31-38) but thumbnails are only ever created for videos (useThumbnailBackfill.ts:42, memoryStore.ts:239) â€” photos always request full-size originals via /api/media, which rate-limits at 200 req/min (route.ts:70-73). Fast-scrolling a few hundred tiles 429s; onError immediately requests the next (heavier) source, and once exhausted the tile permanently shows the glyph (idx only increments, 59).",
+                        "fix":  "Generate photo thumbnails at upload/backfill (or add a width param to /api/media); burst-tolerate thumbnail traffic; reset TileMedia\u0027s idx after a delay when the failure was 429."
+                    },
+                    {
+                        "rank":  45,
+                        "severity":  "P2",
+                        "zone":  "add-import-publish",
+                        "title":  "UploadPanel is unreachable on mobile â€” its only opener lives in the desktop-only header branch",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  1552,
+                        "evidence":  "The only opener is onAdd on LibraryHeader (1552), which sits in the desktop branch of the isMobile ternary; the mobile chrome has no add button. Worse, LibraryHeader accepts onAdd but never renders any element using it (LibraryAnimations.tsx:161-310) â€” so the header add button doesn\u0027t exist on desktop either. UploadPanel is the only surface offering URL media, display-type choice, time-capsule fields and AI context (UploadPanel.tsx:179-390).",
+                        "fix":  "Render the + add button in LibraryHeader when onAdd is provided, and add an in-room add entry to the mobile chrome (control-band pill when selectedRoom is set) calling setShowUploadFor."
+                    },
+                    {
+                        "rank":  46,
+                        "severity":  "P2",
+                        "zone":  "selection-bulk",
+                        "title":  "Select-all uses size equality instead of membership and selection is never pruned on filter change â€” checked-state lies and bulk delete acts on invisible items",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2023,
+                        "evidence":  "checked={selectedMemIds.size === filteredRoomMems.length} (2023-2029) compares counts only; nothing clears selectedMemIds when q/facet/filterYear change. After a filter swap the box can show checked over unselected items and clicking it deselects; bulk delete (2041-2043) acts on ALL selected ids including hidden ones while batch tag only tags visible ones (2104/2122) â€” same selection deletes hidden items but won\u0027t tag them.",
+                        "fix":  "Prune selection on filteredRoomMems change and compute checked as filteredRoomMems.every(m =\u003e selectedMemIds.has(m.id)); scope bulk actions to the visible-selected intersection (or explicitly to all-selected with an accurate count)."
+                    },
+                    {
+                        "rank":  47,
+                        "severity":  "P2",
+                        "zone":  "i18n",
+                        "title":  "Library dates format with the browser locale instead of the app-selected mp_locale â€” English month names for nl/de/es/fr users",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  2223,
+                        "evidence":  "toLocaleDateString(undefined, ...) at LibraryView.tsx:2204/2223 (PhotoWall month bands), 2293/2315 + 2357/2379 (timeline headers/time chips), 2525 (detail panel), and LibraryCards.tsx:43/496. The app locale is mp_locale (useTranslation.ts:52-57); the established convention passes localeDateCodes[locale] explicitly (MemoryDetail.tsx:888).",
+                        "fix":  "Pull locale from useTranslation and pass localeDateCodes[locale as Locale] as the first argument to every toLocaleDateString/toLocaleTimeString in LibraryView and LibraryCards."
+                    },
+                    {
+                        "rank":  48,
+                        "severity":  "P2",
+                        "zone":  "state-persist",
+                        "title":  "Mount issues two full-palace fetch sweeps with no dedupe â€” 2 requests per room, each store write cascading a full recompute",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  837,
+                        "evidence":  "With default \u0027__all__\u0027, the wingRoomIds effect (837-841) fetches every room; the mount prefetch effect (844-851) fetches every room AGAIN. memoryStore.fetchRoomMemories (54-73) has no cache or in-flight dedupe; each resolution replaces userMems, invalidating getMemsForRoom and recomputing libAllMems/memRoomMap/wingWarmth/onThisDayMems/filteredRoomMems â€” O(rooms Ã— total mems) during initial load, amplified by the getWings() identity issue (rank 34).",
+                        "fix":  "Drop one of the two effects and add in-flight/staleness dedupe to fetchRoomMemories; batch the initial load via fetchAllRoomMemories with a single set."
+                    },
+                    {
+                        "rank":  49,
+                        "severity":  "P2",
+                        "zone":  "ai-label",
+                        "title":  "\u0027Saved\u0027 checkmark shown without verifying persistence â€” updateMemory swallows server errors so failed saves look successful",
+                        "file":  "C:/Users/nelis/memory-palace-staging/src/components/ui/LibraryView.tsx",
+                        "line":  3013,
+                        "evidence":  "handleSaveResult (3010-3014) calls updateMemory and immediately sets saved:true. memoryStore.updateMemory (252-309) never checks the {error} result of updateMemoryAction (memory-actions.ts:203/209) â€” DB failures (demo-id rows, RLS, offline) are silently ignored; the label appears saved but is lost on refresh. deleteMemory (320-325) shows the correct pattern.",
+                        "fix":  "Make updateMemory return/throw on result.error; in handleSaveResult await it and only set saved:true on success, with failure feedback."
+                    }
+                ],
+    "cardBgSpec":  "MERGED CARD-BACKGROUND CANON RESTYLE (single coherent minimal set; photo wall/grid explicitly untouched â€” stays chromeless over the TIME_WASH cream canvas at LibraryView.tsx:1155).\n\nFOUNDATION (do first â€” root cause): libraryTokens.ts currently has ZERO importers. Add to LibraryView.tsx, LibrarySidebar.tsx, LibraryCards.tsx, LibrarySearch.tsx, LibraryAnimations.tsx, PhotoWall.tsx: import { RT, SHADOW, HOVER_SHADOW, TOP_HIGHLIGHT, HOVER_LIFT, EASE, INK, MUTED, HAIRLINE, CREAM, TRAY, EMBER, GOLD, wingAccent, accentRule, focusRing } from \u0027@/lib/libraryTokens\u0027. Values used below: HAIRLINE=#E3D6BC, CREAM=#FCFAF5, TRAY=#F6EBE3, EMBER=#B85C38, SHADOW[1]=\u00270 0.25rem 1rem rgba(64,59,54,0.07)\u0027, SHADOW[2]=\u00270 0.5rem 1.5rem rgba(64,59,54,0.14)\u0027, HOVER_SHADOW=\u00270 0.75rem 1.75rem rgba(64,59,54,0.16)\u0027, TOP_HIGHLIGHT=\u0027inset 0 0.0625rem 0 rgba(255,255,255,0.5)\u0027, HOVER_LIFT=\u0027translateY(-0.1875rem)\u0027. Delete the per-file EASE duplicates (LibraryCards.tsx:17-18, LibrarySidebar.tsx:46).\n\n[1] HEADER BAND (desktop). Hoist const headerAccent = selectedWing===\u0027__all__\u0027 ? \u0027#9A4F2A\u0027 : currentWing.accent (already computed inline at LibraryView.tsx:1550). Edit LibraryView.tsx:1542 row wrapper: add background: `linear-gradient(160deg, ${headerAccent}0C 0%, #FCFAF5 78%)`; boxShadow: TOP_HIGHLIGHT. (0C â‰ˆ 4.7% alpha reproduces the Atrium tileBg tint for any accent.) Edit LibraryAnimations.tsx:173-175 AND LibraryView.tsx:1560-1562: background:\u0027transparent\u0027; DELETE backdropFilter/WebkitBackdropFilter. Edit LibraryAnimations.tsx:304-305 header bottom rule: height:\u00270.0625rem\u0027; background: `linear-gradient(90deg, ${accent}59, transparent)` (= accentRule). No borderRadius, no gold â€” the header takes the WING accent rule per THE ONE RULE.\n\n[2] SIDEBAR. Edit LibrarySidebar.tsx:270-274,280 desktop nav: background:\u0027linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)\u0027; DELETE backdropFilter/WebkitBackdropFilter; borderRight:\u00270.0625rem solid #E3D6BC\u0027; boxShadow:\u00270.25rem 0 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)\u0027. Optional ceremonial: header divider :326 background â†’ \u0027linear-gradient(to right, #D4AF37, rgba(212,175,55,0.35) 40%, transparent)\u0027 (giltRule â€” sanctioned palace seam). Optional row alignment :494-507: active bg \u0027#FCFAF5\u0027, active boxShadow `${SHADOW[1]}, ${TOP_HIGHLIGHT}`. Mobile strip :182: borderBottom â†’ \u00270.0625rem solid #E3D6BC\u0027 (keep its translucency â€” functional overlay, not a card).\n\n[3] ROOM/MEMORY CARDS (LibraryCards.tsx). Card shell :132-151 (and memory card :443-463): background: `linear-gradient(160deg, ${accent}14 0%, #FCFAF5 78%)`; DELETE backdropFilter/WebkitBackdropFilter; border:\u00270.0625rem solid #E3D6BC\u0027 static (no hover border swap); boxShadow: hovered ? `${HOVER_SHADOW}, ${TOP_HIGHLIGHT}` : `${SHADOW[1]}, ${TOP_HIGHLIGHT}` (delete the accent ring + hue glow layers); transform: hovered ? HOVER_LIFT : \u0027translateY(0)\u0027; transition:\u0027transform 0.2s ease, box-shadow 0.2s ease\u0027. Kill the HSL coverGradient/patternBg (:100-118) â€” derive cover tints from wingAccent. \u0027+ Add Room\u0027 card (LibraryView.tsx:1974-1990): borderRadius \u00271rem\u0027; border \u00270.0625rem dashed #E3D6BC\u0027; background \u0027transparent\u0027; hover borderColor \u0027#B85C38\u0027 (EMBER = interactive), background \u0027#FCFAF5\u0027, boxShadow SHADOW[1].\n\n[4] MODAL SHELLS (7 sites: LibraryView.tsx:172-177, 2680-2683, 2940-2946, 3040, 3164-3170, 3265-3271, 3450-3456): background:\u0027#FCFAF5\u0027; DELETE backdropFilter/WebkitBackdropFilter (keep blur on the SCRIM only); borderRadius:\u00271.25rem\u0027 (unchanged); border:\u00270.0625rem solid #E3D6BC\u0027; boxShadow:\u00270 1.5rem 3rem rgba(64,59,54,0.18), inset 0 0.0625rem 0 rgba(255,255,255,0.5)\u0027. ALL internal header/footer dividers (LibraryView.tsx:186, 2954, 2978, 3041, 3177, 3282, 3466) and input borders currently `${T.color.cream}` â†’ \u00270.0625rem solid #E3D6BC\u0027. AI-LABEL MODAL ONLY (:3040) additionally gets the steward gilt left rule: absolute child span left:0 top:0 bottom:0 width:\u00270.25rem\u0027 background:\u0027linear-gradient(180deg, #D4AF37, #B85C38)\u0027 (verbatim AtriumRelay steward mark; overflow:hidden already set); its interactive accents go EMBER per rank 39. No other modal gets gold.\n\n[5] SELECT BAR (LibraryView.tsx:2033-2034): wrap in the recessed tray â€” background:\u0027#F6EBE3\u0027 (TRAY); borderRadius:\u00271.25rem\u0027; borderLeft:\u00270.1875rem solid #B85C38\u0027 (EMBER: select mode is an ACTIVE state â€” not wing accent, not gold); boxShadow:\u0027inset 0 0.0625rem 0.1875rem rgba(64,59,54,0.06)\u0027; padding:\u00270.5rem 0.75rem\u0027. One-line toggle fix (:1687-1690): selectMode-active uses \u0027#B85C38\u0027 border/text + \u0027rgba(184,92,56,0.12)\u0027 fill instead of currentWing.accent.\n\n[6] DETAIL CHROME. Detail side panel (LibraryView.tsx:2448-2461): background \u0027#FCFAF5\u0027; add borderLeft \u00270.0625rem solid #E3D6BC\u0027; header divider â†’ \u0027#E3D6BC\u0027; keep existing warm-ink shadow. RoomMediaPlayer dark register â€” warm the neutral black to espresso/charcoal: :374 \u0027rgba(0,0,0,0.92)\u0027 â†’ \u0027rgba(31,27,26,0.94)\u0027; :493 â†’ \u0027rgba(36,28,21,0.72)\u0027; :614 â†’ \u0027rgba(36,28,21,0.6)\u0027; :221 â†’ \u0027rgba(36,28,21,0.65)\u0027; :209/:218 shadows â†’ \u00270 0.5rem 2rem rgba(36,28,21,0.5)\u0027. Lightbox img shadow :2884 â†’ \u0027rgba(36,28,21,0.4)\u0027. No gold in the viewer.\n\n[7] GOLD/EMBER DISCIPLINE (one-value swaps riding this pass): PhotoWall selection :239/:249 gold â†’ EMBER ring \u0027inset 0 0 0 0.1875rem #B85C38\u0027 + badge \u0027#B85C38\u0027/check \u0027#FCFAF5\u0027; mobile \u0027All\u0027 pill :1268-1278 gold â†’ ember active (border \u0027#B85C38\u0027, bg \u0027rgba(184,92,56,0.12)\u0027 or filled ember, text ink/cream); sidebar active-wing gold borderLeft :501 â†’ `0.1875rem solid ${w.accent}`; Month/Rooms toggle active :1620 ink â†’ \u0027#B85C38\u0027. Unify the global focus ring (LibraryAnimations.tsx:126-128) to the token: \u0027outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem;\u0027 no glow.\n\nNON-CHANGES (verified already canon): On-This-Day gilt strip LibraryView.tsx:1644; warm-ink scrims rgba(64,59,54,.35); moved toast; the photo wall and its tiles.",
+    "cleanupTail":  [
+                        "Delete dead state: mobileSearchOpen (478), toolsMenuOpen (442), toolbarHint (447), lightboxMem + its 2862-2909 overlay and Escape branch, the unreachable mobile sidebar drawer (1165-1197 + state 474)",
+                        "Delete the false\u0026\u0026 room-overview block (LibraryView.tsx:1884-~2027) and the now-unused LibraryRoomCard, after extracting its roomâ†’wing remap + visibleMemCount reset into the live onSelectRoom handlers; restore a create-room invite for empty wings",
+                        "Delete unused keyframes/classes: libPulseGlow/libFloat/libBorderGlow/libCountUp/libWingSwitch/.lib-stagger-1..8 (LibraryAnimations), lc-wave/lc-shimmer/lc-empty-float + lc-float 0s no-op (LibraryCards), lsSearchFocus (LibrarySearch), lsb-shimmer/lsb-glow-pulse (LibrarySidebar); spotlightPulse if rank 19 chooses deletion",
+                        "Gate ALL Library motion behind prefers-reduced-motion (no-preference wrapper + reduce kill switch, mirroring AtriumRelay.tsx:571/605); collapse staggered per-item entrance delays to the single canon rise",
+                        "Add real .lib-pill CSS (transition + hover per Atrium chip grammar) or remove the dead className from the ~10 control-band buttons; hide Chrome/Edge horizontal scrollbar on the band",
+                        "Touch-target sweep: bring mobile pills (2.125rem), control-band pills (1.9rem), modal âœ• buttons (2rem), footer CTAs and the sort/Enter-Palace squares up to 2.75rem hit areas; add safe-area-inset-left/right to the mobile bars",
+                        "Escape/back-path consistency: unify handleBackToRooms vs header back (query/filter reset), add selectMode/bulkMoving Escape branches, add Escape-in-search clears the field, add wingâ†’All Escape step",
+                        "a11y batch: aria-pressed on facet/wing/view toggles, aria-label on the âœ• clear-filters pill and batch-tag input, dialog semantics + focus traps on all overlays (shared ModalShell), fix orphaned role=listitem on wall tiles, scrub-rail aria-hidden-vs-focusable contradiction (tabIndex -1)",
+                        "Sort/date hardening: comparator createdAt||date fallback, normalizeDisplayType in \u0027type\u0027 sort, secondary sort keys, date-only strings parsed as local not UTC (PhotoWall banding, OTD, timeline)",
+                        "Batch-tag: extract one applyBatchTag() (dedupe the Enter/Apply copies), word-boundary tag matching instead of substring includes(), feedback when zero memories were updated",
+                        "i18n batch: pluralize bulkDeleteConfirm, fix fr/es/de tagSelected mistranslations, add social.loadingContent key, remove orphaned roomStatsTotal, use t(\u0027allMemories\u0027) for the mobile All pill, rooms-lens unplaced bucket says facetUnplaced not \u0027Undated\u0027, drop the 14 dead t()!==key fallbacks, remove or translate the 18 dead room*Sub subtitleKeys",
+                        "Misc: cross-wing results cap \u0027showing 50 of N\u0027/pagination, HighlightText all occurrences + list-view highlighting, timeline undated section header + month grouping, mark mp_otd_seen from the Library strip, remove write-only mp_room_locations, clear movedToast timers, validate libraryViewMode on read, remove googlePhotos/box dead endpointMap entries, LIKE-escape filePath in the media route ilike + clamp Range end"
+                    ],
+    "summary":  "The Library\u0027s unified-wall architecture holds, but the seams leak badly. Three P0s can lose data or strand users: Enter Palace from the default view opens a blank 3D scene, leftover select-mode silently deletes memories server-side while the wall keeps showing them, and cloud imports throw away the user\u0027s selection whenever no room is open. A correctness cluster follows: the timeline opens the WRONG memory unless sort is \u0027newest\u0027, search says \u00270 found\u0027 beside visible results, wing search silently drops all active filters, and the sort control mostly does nothing on the main wall. Escape handling is inconsistent across every overlay, and the AI-label panel keeps spending Anthropic money after Cancel and shows \u0027Done!\u0027 on total failure. Several shipped controls are dead on arrival: the type filter, the always-disabled \u0027Unplaced\u0027 pill, the Atrium spotlight deep-links, and the retired list view is still reachable via localStorage. The media pipeline needs attention â€” photos always load full-res originals against a 200/min rate limit, video tiles fire doomed .mp4 image requests on the default wall, and published-wing visitors 404 on Supabase-backed files. Visually the Library drifted off the Atrium canon (frosted glass, invisible cream borders, misspent gold, zero imports of libraryTokens); the merged cardBgSpec fixes it with a small exact-CSS set. Perf root cause: getWings() returns a fresh array every render, so every keystroke recomputes the whole palace and re-packs the wall. Fix order: the 3 P0s, then wrong-memory/search/sort correctness, then Escape/state hygiene, then the canon restyle â€” roughly 2-3 focused sessions, nothing architectural."
+}

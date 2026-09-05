@@ -8,14 +8,35 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { isIOS } from "@/lib/native/platform";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
+
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 const F = T.font;
-const C = T.color;
+// Re-skin the whole /help page to the app canon by remapping the local color
+// tokens: cream canvas, ink/muted text, hairline borders, ember interactive.
+// Gold stays (ceremonial: the ticket-ID chip). Everything reads through C.*.
+const C = {
+  ...T.color,
+  linen: "#FCFAF5",     // page canvas → cream
+  charcoal: "#403B36",  // primary text → ink
+  walnut: "#716A5E",    // secondary text → muted
+  sandstone: "#E3D6BC", // borders/hairlines
+  terracotta: "#B85C38",// interactive/CTA → ember
+  sage: "#56683C",      // success hue → canon SAGE
+};
+
+// Two canonical hairline steps so every border on /help reads uniformly with
+// its sibling settings pages: full HAIRLINE for active/emphasised edges, one
+// softened step for the resting state (replaces the old ad-hoc 40/60/80 alphas).
+const HAIRLINE = C.sandstone;              // active / emphasised (full #E3D6BC)
+const HAIRLINE_SOFT = `${C.sandstone}66`;  // resting borders (single soft step)
 
 export default function HelpPage() {
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("help");
   const { t: tc } = useTranslation("common");
+  const isMobile = useIsMobile();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [category, setCategory] = useState("general");
   const [message, setMessage] = useState("");
@@ -39,6 +60,7 @@ export default function HelpPage() {
     { q: t("faq6q"), a: t("faq6a") },
     { q: t("faq7q"), a: t("faq7a") },
     { q: t("faq8q"), a: t("faq8a") },
+    { q: t("faq9q"), a: t("faq9a") },
   ];
 
   const categories = [
@@ -82,13 +104,13 @@ export default function HelpPage() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 clamp(1.25rem, 5vw, 3.75rem)", height: "4rem",
         background: "rgba(250,250,247,0.92)", backdropFilter: "blur(0.75rem)",
-        borderBottom: `1px solid ${C.sandstone}40`,
+        borderBottom: `1px solid ${HAIRLINE_SOFT}`,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <button onClick={() => router.back()} aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: "2rem", height: "2rem", borderRadius: "0.5rem",
-            border: `1px solid ${C.sandstone}50`, background: "none",
+            border: `1px solid ${HAIRLINE_SOFT}`, background: "none",
             color: C.walnut, cursor: "pointer",
           }}>
             <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -97,14 +119,16 @@ export default function HelpPage() {
           </button>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: "0.625rem", textDecoration: "none" }}>
             <PalaceLogo variant="mark" color="dark" size="sm" />
-            <span style={{ fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500, color: C.charcoal, letterSpacing: "-0.3px" }}>
-              The Memory Palace
-            </span>
+            {!isMobile && (
+              <span style={{ fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500, color: C.charcoal, letterSpacing: "-0.3px" }}>
+                The Memory Palace
+              </span>
+            )}
           </Link>
         </div>
         <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
-          background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
-          padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
+          background: "none", border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.375rem",
+          padding: "0.25rem 0.5rem", fontSize: "1rem", fontFamily: F.body,
           fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
           textTransform: "uppercase", appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
           backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
@@ -134,7 +158,7 @@ export default function HelpPage() {
           <h2 style={{
             fontFamily: F.display, fontSize: "1.375rem", fontWeight: 500,
             color: C.charcoal, marginBottom: "1.25rem",
-            paddingBottom: "0.5rem", borderBottom: `1px solid ${C.sandstone}40`,
+            paddingBottom: "0.5rem", borderBottom: `1px solid ${HAIRLINE_SOFT}`,
           }}>
             {t("faqTitle")}
           </h2>
@@ -142,13 +166,16 @@ export default function HelpPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {faqs.map((faq, i) => (
               <div key={i} style={{
-                border: `1px solid ${openFaq === i ? C.sandstone : `${C.sandstone}40`}`,
+                border: `1px solid ${openFaq === i ? HAIRLINE : HAIRLINE_SOFT}`,
                 borderRadius: "0.75rem",
                 overflow: "hidden",
                 transition: "border-color 0.2s",
               }}>
                 <button
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  aria-expanded={openFaq === i}
+                  aria-controls={`help-faq-answer-${i}`}
+                  id={`help-faq-trigger-${i}`}
                   style={{
                     width: "100%", padding: "1rem 1.25rem",
                     display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -160,7 +187,7 @@ export default function HelpPage() {
                   }}
                 >
                   {faq.q}
-                  <span style={{
+                  <span aria-hidden="true" style={{
                     flexShrink: 0, marginLeft: "1rem",
                     transform: openFaq === i ? "rotate(180deg)" : "rotate(0)",
                     transition: "transform 0.2s", fontSize: "0.75rem", color: C.muted,
@@ -169,10 +196,15 @@ export default function HelpPage() {
                   </span>
                 </button>
                 {openFaq === i && (
-                  <div style={{
-                    padding: "0 1.25rem 1rem",
-                    fontSize: "0.875rem", color: C.walnut, lineHeight: 1.7,
-                  }}>
+                  <div
+                    id={`help-faq-answer-${i}`}
+                    role="region"
+                    aria-labelledby={`help-faq-trigger-${i}`}
+                    style={{
+                      padding: "0 1.25rem 1rem",
+                      fontSize: "0.875rem", color: C.walnut, lineHeight: 1.7,
+                    }}
+                  >
                     {faq.a}
                   </div>
                 )}
@@ -186,7 +218,7 @@ export default function HelpPage() {
           <h2 style={{
             fontFamily: F.display, fontSize: "1.375rem", fontWeight: 500,
             color: C.charcoal, marginBottom: "0.5rem",
-            paddingBottom: "0.5rem", borderBottom: `1px solid ${C.sandstone}40`,
+            paddingBottom: "0.5rem", borderBottom: `1px solid ${HAIRLINE_SOFT}`,
           }}>
             {t("contactTitle")}
           </h2>
@@ -197,7 +229,7 @@ export default function HelpPage() {
           {ticketId ? (
             <div style={{
               background: `${C.sage}15`, border: `1px solid ${C.sage}40`,
-              borderRadius: "0.75rem", padding: "2rem", textAlign: "center",
+              borderRadius: "0.75rem", padding: isMobile ? "1.5rem 1.25rem" : "2rem", textAlign: "center",
             }}>
               <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>{"\u2713"}</div>
               <p style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal, marginBottom: "0.5rem" }}>
@@ -229,16 +261,17 @@ export default function HelpPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {/* Category */}
               <div>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
+                <label htmlFor="help-category" style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
                   {t("contactCategory")}
                 </label>
                 <select
+                  id="help-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   style={{
                     width: "100%", padding: "0.625rem 0.875rem",
-                    border: `1px solid ${C.sandstone}60`, borderRadius: "0.5rem",
-                    background: C.white || "#FFF", fontFamily: F.body, fontSize: "0.875rem",
+                    border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.5rem",
+                    background: C.white || "#FFF", fontFamily: F.body, fontSize: "1rem",
                     color: C.charcoal, appearance: "none", WebkitAppearance: "none",
                     backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
                     backgroundRepeat: "no-repeat", backgroundPosition: "right 0.75rem center",
@@ -250,18 +283,19 @@ export default function HelpPage() {
 
               {/* Message */}
               <div>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
+                <label htmlFor="help-message" style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
                   {t("contactMessage")}
                 </label>
                 <textarea
+                  id="help-message"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={t("contactPlaceholder")}
                   rows={5}
                   style={{
                     width: "100%", padding: "0.625rem 0.875rem",
-                    border: `1px solid ${C.sandstone}60`, borderRadius: "0.5rem",
-                    background: C.white || "#FFF", fontFamily: F.body, fontSize: "0.875rem",
+                    border: `1px solid ${HAIRLINE_SOFT}`, borderRadius: "0.5rem",
+                    background: C.white || "#FFF", fontFamily: F.body, fontSize: "1rem",
                     color: C.charcoal, resize: "vertical", lineHeight: 1.6,
                   }}
                 />
@@ -269,20 +303,32 @@ export default function HelpPage() {
 
               {/* Attachment */}
               <div>
-                <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
+                <label htmlFor="help-attachment" style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: C.charcoal, marginBottom: "0.375rem" }}>
                   {t("contactAttachment")}
                 </label>
                 <input
+                  id="help-attachment"
                   ref={fileRef}
                   type="file"
                   accept="image/*,.pdf,.txt"
-                  onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (file && file.size > MAX_ATTACHMENT_BYTES) {
+                      setError(t("contactAttachTooLarge"));
+                      setAttachment(null);
+                      if (fileRef.current) fileRef.current.value = "";
+                      return;
+                    }
+                    setError(null);
+                    setAttachment(file);
+                  }}
                   style={{ display: "none" }}
                 />
                 <button
                   onClick={() => fileRef.current?.click()}
+                  aria-label={t("contactAttachment")}
                   style={{
-                    padding: "0.5rem 1rem", border: `1px dashed ${C.sandstone}80`,
+                    padding: "0.5rem 1rem", border: `1px dashed ${HAIRLINE_SOFT}`,
                     borderRadius: "0.5rem", background: "transparent",
                     fontFamily: F.body, fontSize: "0.8125rem", color: C.walnut,
                     cursor: "pointer", transition: "border-color 0.2s",
@@ -311,11 +357,11 @@ export default function HelpPage() {
                 onClick={handleSubmit}
                 disabled={sending || !message.trim()}
                 style={{
-                  padding: "0.75rem 2rem", background: sending ? C.sandstone : C.terracotta,
+                  padding: "0.75rem 2rem", background: C.terracotta,
                   color: "#FFF", border: "none", borderRadius: "0.5rem",
                   fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 600,
                   cursor: sending ? "wait" : "pointer", alignSelf: "flex-start",
-                  opacity: !message.trim() ? 0.5 : 1,
+                  opacity: sending ? 0.6 : (!message.trim() ? 0.5 : 1),
                   transition: "background 0.2s, opacity 0.2s",
                 }}
               >
@@ -325,38 +371,11 @@ export default function HelpPage() {
           )}
         </section>
 
-        {/* Community link */}
-        <section style={{
-          marginTop: "3rem", padding: "2rem", textAlign: "center",
-          background: `${C.sandstone}12`, borderRadius: "1rem",
-          border: `1px solid ${C.sandstone}30`,
-        }}>
-          <p style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal, marginBottom: "0.5rem" }}>
-            {t("communityTitle")}
-          </p>
-          <p style={{ fontSize: "0.875rem", color: C.walnut, lineHeight: 1.6, marginBottom: "1rem" }}>
-            {t("communityDesc")}
-          </p>
-          <a
-            href="https://www.reddit.com/r/TheMemoryPalace/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: "0.5rem",
-              padding: "0.625rem 1.5rem", background: "#FF4500",
-              color: "#FFF", borderRadius: "0.5rem", textDecoration: "none",
-              fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-              transition: "opacity 0.2s",
-            }}
-          >
-            {t("communityBtn")}
-          </a>
-        </section>
       </main>
 
       {/* Footer */}
       <footer style={{
-        borderTop: `1px solid ${C.sandstone}30`, padding: "1.5rem",
+        borderTop: `1px solid ${HAIRLINE_SOFT}`, padding: "1.5rem",
         textAlign: "center", fontSize: "0.75rem", color: C.muted,
       }}>
         <div style={{ display: "flex", justifyContent: "center", gap: "1.5rem", marginBottom: "0.5rem" }}>

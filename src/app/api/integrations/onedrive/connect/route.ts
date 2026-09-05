@@ -32,6 +32,8 @@ export async function GET() {
       response_type: "code",
       scope: scopes.join(" "),
       response_mode: "query",
+      // Force the Microsoft account picker — without this, an existing browser session (e.g. a family member's MS account) is silently reused and the wrong account gets linked.
+      prompt: "select_account",
       state,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",

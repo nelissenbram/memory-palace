@@ -4,7 +4,6 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
-import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { getAllDemoMems } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -13,6 +12,8 @@ import { translateRoomName } from "@/lib/constants/wings";
 import { RoomIcon } from "@/components/ui/WingRoomIcons";
 import { DateInputAssisted } from "@/app/(app)/family-tree/DateInputAssisted";
 import { syncSettingsToServer } from "@/lib/stores/settingsSync";
+import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 
 /** Thumbnail with fallback — uses plain <img> to avoid Next.js Image optimization issues */
 function TimelineThumbnail({ src, roomId, wingId, color }: {
@@ -232,9 +233,7 @@ interface MemoryTimelineProps {
 export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTimelineProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryTimeline");
-  const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
-  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { userMems, setSelMem, fetchRoomMemories } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -407,22 +406,21 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
 
   const inputStyle: React.CSSProperties = {
     fontFamily: T.font.body,
-    fontSize: "16px",
-    color: T.color.charcoal,
+    fontSize: "1rem", /* px→rem; keep ≥16px so iOS Safari does not zoom inputs */
+    color: "#403B36", /* Atrium ink */
     padding: "0.4375rem 0.625rem",
-    borderRadius: "0.375rem",
-    border: `1px solid ${T.color.cream}`,
+    borderRadius: "0.75rem",
+    border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
     background: T.color.white,
-    outline: "none",
     width: "100%",
   };
 
   const smallBtnStyle: React.CSSProperties = {
     background: "none",
-    border: `1px solid ${T.color.cream}`,
+    border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
     cursor: "pointer",
     padding: "0.5rem",
-    borderRadius: "0.375rem",
+    borderRadius: "0.75rem",
     minWidth: "2.25rem",
     minHeight: "2.25rem",
     display: "flex",
@@ -445,22 +443,22 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
     ];
     return (
       <>
-        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal }}>
+        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E" /* Atrium overline voice */ }}>
           {t("dateTitle")}
         </label>
         <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("datePlaceholder")} style={inputStyle} />
 
-        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal }}>
+        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E" /* Atrium overline voice */ }}>
           {t("dateDate")}
         </label>
         <DateInputAssisted id="tl-imp-date" value={date} onChange={setDate} isMobile={isMobile} />
 
-        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal }}>
+        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E" /* Atrium overline voice */ }}>
           {t("dateDesc")}
         </label>
         <input type="text" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={t("dateDescPlaceholder")} style={inputStyle} />
 
-        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal }}>
+        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E" /* Atrium overline voice */ }}>
           {t("dateIcon")}
         </label>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", maxWidth: "15rem" }}>
@@ -472,19 +470,19 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
               title={t(ic.labelKey)}
               style={{
                 width: "2rem", height: "2rem",
-                border: icon === ic.id ? `2px solid ${T.color.gold}` : `1px solid ${T.color.cream}`,
-                borderRadius: "0.375rem",
-                background: icon === ic.id ? `${T.color.gold}18` : T.color.white,
+                border: icon === ic.id ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", /* Atrium ember state / hairline */
+                borderRadius: "0.75rem",
+                background: icon === ic.id ? "rgba(154,79,42,0.11)" : T.color.white,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               }}
               aria-label={t(ic.labelKey)}
             >
-              <CategoryIcon iconId={ic.id} size={16} color={icon === ic.id ? T.color.gold : T.color.walnut} />
+              <CategoryIcon iconId={ic.id} size={16} color={icon === ic.id ? "#9A4F2A" : "#716A5E"} />
             </button>
           ))}
         </div>
 
-        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal, marginTop: "0.25rem" }}>
+        <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E" /* Atrium overline voice */, marginTop: "0.25rem" }}>
           {t("recurrence")}
         </label>
         <div style={{ display: "flex", gap: "0.25rem" }}>
@@ -494,12 +492,12 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
               type="button"
               onClick={() => setRecurrence(o.key)}
               style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
+                fontFamily: T.font.body, fontSize: "0.8125rem", /* Atrium meta */
                 fontWeight: recurrence === o.key ? 600 : 500,
-                color: recurrence === o.key ? T.color.gold : T.color.muted,
-                background: recurrence === o.key ? `${T.color.gold}15` : "none",
-                border: `1px solid ${recurrence === o.key ? T.color.gold + "40" : T.color.cream}`,
-                borderRadius: "0.375rem", padding: "0.25rem 0.5rem", cursor: "pointer",
+                color: recurrence === o.key ? "#9A4F2A" : "#716A5E", /* Atrium terracotta state / muted */
+                background: recurrence === o.key ? "rgba(154,79,42,0.11)" : "none",
+                border: `0.0625rem solid ${recurrence === o.key ? "#E7D9C4" : "#E3D6BC"}`,
+                borderRadius: "0.75rem", padding: "0.25rem 0.5rem", cursor: "pointer",
               }}
             >
               {t(o.labelKey)}
@@ -510,98 +508,55 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
     );
   };
 
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: "rgba(42,34,24,.4)",
-        backdropFilter: "blur(8px)",
-        zIndex: 55,
-        animation: "fadeIn .2s ease",
-      }}
-    >
-      <div
-        ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }}
-        onClick={(e) => e.stopPropagation()}
+  const headerTitle = (
+    <div>
+      <h3
         style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: isMobile ? "100%" : "min(28rem, 94vw)",
-          background: `${T.color.linen}f8`,
-          backdropFilter: "blur(20px)",
-          borderRight: `1px solid ${T.color.cream}`,
-          padding: 0,
-          overflowY: "auto",
-          animation: "slideInLeft .3s cubic-bezier(.23,1,.32,1)",
-          display: "flex",
-          flexDirection: "column",
+          fontFamily: T.font.display,
+          fontSize: "1.375rem", /* Atrium titleL */
+          fontWeight: 600,
+          color: "#403B36", /* Atrium ink */
+          lineHeight: 1.15,
+          margin: 0,
         }}
       >
-        <style>{`@keyframes slideInLeft{from{opacity:0;transform:translateX(-2.5rem)}to{opacity:1;transform:translateX(0)}}`}</style>
+        {t("title")}
+      </h3>
+      <p
+        style={{
+          fontFamily: T.font.body,
+          fontSize: "0.8125rem", /* Atrium meta */
+          color: "#716A5E", /* Atrium muted */
+          margin: "0.25rem 0 0",
+        }}
+      >
+        {t("memoriesAcrossTime", { count: String(totalCount) })}
+      </p>
+    </div>
+  );
 
-        {/* Header */}
-        <div
-          style={{
-            padding: "1.5rem 1.5rem 0",
-            paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px))",
-            paddingLeft: "max(1.5rem, env(safe-area-inset-left, 0px))",
-            paddingRight: "max(1.5rem, env(safe-area-inset-right, 0px))",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "0.75rem",
-            flexShrink: 0,
-          }}
-        >
-          <div>
-            <h3
-              style={{
-                fontFamily: T.font.display,
-                fontSize: "1.5rem",
-                fontWeight: 500,
-                color: T.color.charcoal,
-                margin: 0,
-              }}
-            >
-              {t("title")}
-            </h3>
-            <p
-              style={{
-                fontFamily: T.font.body,
-                fontSize: "0.6875rem",
-                color: T.color.muted,
-                margin: "0.25rem 0 0",
-              }}
-            >
-              {t("memoriesAcrossTime", { count: String(totalCount) })}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label={tc("close")}
-            style={{
-              width: "2rem",
-              height: "2rem",
-              minWidth: "2.75rem",
-              minHeight: "2.75rem",
-              borderRadius: "1rem",
-              border: `1px solid ${T.color.cream}`,
-              background: T.color.warmStone,
-              color: T.color.muted,
-              fontSize: "0.875rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {"\u2715"}
-          </button>
-        </div>
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title={headerTitle}
+      icon={<RelayIcons.timeline />}
+      side="right"
+      maxWidth="30rem"
+      background={`${T.color.linen}f8`}
+      fullBleed
+      contentStyle={{ display: "flex", flexDirection: "column" }}
+    >
+      <div
+        className="mp-tl-root"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        <style>{`@media (prefers-reduced-motion: reduce){.mp-tl-root,.mp-tl-root *{animation:none !important;transition:none !important}}.mp-tl-root :is(button,input):focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}`}</style>
 
         {/* Toolbar */}
         <div
@@ -610,7 +565,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
             display: "flex",
             gap: "0.5rem",
             flexWrap: "wrap",
-            borderBottom: `1px solid ${T.color.cream}`,
+            borderBottom: "0.0625rem solid #E3D6BC", /* Atrium hairline */
             marginBottom: "0",
             flexShrink: 0,
           }}
@@ -619,12 +574,12 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
             onClick={() => setShowAddForm(!showAddForm)}
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.6875rem",
+              fontSize: "0.8125rem", /* Atrium meta */
               fontWeight: 600,
-              color: T.color.gold,
-              background: `${T.color.gold}12`,
-              border: `1px solid ${T.color.gold}30`,
-              borderRadius: "0.375rem",
+              color: "#8A6410", /* Atrium gold-lane glyph */
+              background: "#FAF3E0", /* Atrium gold tray */
+              border: "0.0625rem solid #E9DCBE",
+              borderRadius: "0.75rem",
               padding: "0.375rem 0.625rem",
               cursor: "pointer",
               display: "flex",
@@ -632,18 +587,18 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
               gap: "0.25rem",
             }}
           >
-            <PlusIcon size={12} color={T.color.gold} /> {t("addImportantDate")}
+            <PlusIcon size={12} color="#8A6410" /> {t("addImportantDate")}
           </button>
           <button
             onClick={() => { onClose(); onNavigateLibrary(); }}
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.6875rem",
+              fontSize: "0.8125rem", /* Atrium meta */
               fontWeight: 600,
-              color: T.color.walnut,
-              background: `${T.color.walnut}10`,
-              border: `1px solid ${T.color.walnut}25`,
-              borderRadius: "0.375rem",
+              color: "#403B36", /* Atrium ink */
+              background: "#F2EDE4", /* pre-mixed linen */
+              border: "0.0625rem solid #E3D6BC",
+              borderRadius: "0.75rem",
               padding: "0.375rem 0.625rem",
               cursor: "pointer",
               display: "flex",
@@ -651,7 +606,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
               gap: "0.25rem",
             }}
           >
-            <BookIcon size={12} color={T.color.walnut} /> {t("goToLibrary")}
+            <BookIcon size={12} color="#403B36" /> {t("goToLibrary")}
           </button>
         </div>
 
@@ -663,7 +618,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
               display: "flex",
               gap: "0.375rem",
               flexWrap: "wrap",
-              borderBottom: `1px solid ${T.color.cream}`,
+              borderBottom: "0.0625rem solid #E3D6BC", /* Atrium hairline */
               flexShrink: 0,
             }}
           >
@@ -673,21 +628,21 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                 onClick={() => scrollToYear(year)}
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: "0.6875rem",
+                  fontSize: "0.8125rem", /* Atrium meta */
                   fontWeight: 600,
-                  color: T.color.walnut,
-                  background: `${T.color.walnut}0a`,
-                  border: `1px solid ${T.color.walnut}20`,
-                  borderRadius: "1rem",
+                  color: "#403B36", /* Atrium ink */
+                  background: "#F2EDE4", /* pre-mixed linen */
+                  border: "0.0625rem solid #E3D6BC",
+                  borderRadius: "2rem", /* pill */
                   padding: "0.1875rem 0.625rem",
                   cursor: "pointer",
-                  transition: "all .15s",
+                  transition: "all 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = `${T.color.walnut}18`;
+                  (e.currentTarget as HTMLElement).style.background = "#E5DDD0";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = `${T.color.walnut}0a`;
+                  (e.currentTarget as HTMLElement).style.background = "#F2EDE4";
                 }}
               >
                 {year}
@@ -705,9 +660,9 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
               style={{
                 margin: "1rem 1.5rem",
                 padding: "0.875rem",
-                borderRadius: "0.625rem",
-                background: `${T.color.gold}08`,
-                border: `1px solid ${T.color.gold}25`,
+                borderRadius: "1rem", /* card */
+                background: "#FCF6E5", /* Atrium gold-lane tile */
+                border: "0.0625rem solid #E9DCBE",
                 display: "flex",
                 flexDirection: "column",
                 gap: "0.5rem",
@@ -725,11 +680,11 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                   onClick={() => setShowAddForm(false)}
                   style={{
                     fontFamily: T.font.body,
-                    fontSize: "0.75rem",
-                    color: T.color.muted,
+                    fontSize: "0.8125rem", /* Atrium meta */
+                    color: "#716A5E", /* Atrium muted */
                     background: "none",
-                    border: `1px solid ${T.color.cream}`,
-                    borderRadius: "0.375rem",
+                    border: "0.0625rem solid #E3D6BC",
+                    borderRadius: "0.75rem",
                     padding: "0.375rem 0.75rem",
                     cursor: "pointer",
                   }}
@@ -741,12 +696,12 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                   disabled={!formTitle.trim() || !formDate}
                   style={{
                     fontFamily: T.font.body,
-                    fontSize: "0.75rem",
+                    fontSize: "0.8125rem", /* Atrium meta */
                     fontWeight: 600,
                     color: T.color.white,
-                    background: T.color.gold,
+                    background: "#B85C38", /* Atrium ember — primary action */
                     border: "none",
-                    borderRadius: "0.375rem",
+                    borderRadius: "0.75rem",
                     padding: "0.375rem 0.75rem",
                     cursor: formTitle.trim() && formDate ? "pointer" : "default",
                     opacity: formTitle.trim() && formDate ? 1 : 0.5,
@@ -782,8 +737,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                         width: "0.75rem",
                         height: "0.75rem",
                         borderRadius: "0.375rem",
-                        background: T.color.walnut,
-                        border: `2px solid ${T.color.warmStone}`,
+                        background: "#9A4F2A", /* Atrium terracotta glyph */
+                        border: "0.125rem solid #E5DDD0",
                         flexShrink: 0,
                         position: "relative",
                         zIndex: 2,
@@ -792,9 +747,10 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                     <h4
                       style={{
                         fontFamily: T.font.display,
-                        fontSize: "1rem",
+                        fontSize: "1.0625rem", /* Atrium titleS */
                         fontWeight: 600,
-                        color: T.color.walnut,
+                        color: "#403B36", /* Atrium ink */
+                        lineHeight: 1.15,
                         margin: 0,
                         flex: 1,
                       }}
@@ -805,11 +761,11 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                     <span
                       style={{
                         fontFamily: T.font.body,
-                        fontSize: "0.625rem",
+                        fontSize: "0.8125rem", /* Atrium meta */
                         fontWeight: 600,
-                        color: T.color.muted,
-                        background: `${T.color.walnut}0c`,
-                        borderRadius: "0.75rem",
+                        color: "#716A5E", /* Atrium muted */
+                        background: "#EDE8DD", /* pre-mixed */
+                        borderRadius: "2rem", /* pill */
                         padding: "0.125rem 0.5rem",
                         flexShrink: 0,
                       }}
@@ -845,8 +801,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                               left: "0.3125rem",
                               top: isFirst ? "-0.75rem" : "-0.5rem",
                               bottom: isLast ? "50%" : "-0.5rem",
-                              width: 2,
-                              background: T.color.cream,
+                              width: "0.125rem",
+                              background: "#E3D6BC", /* Atrium hairline */
                               zIndex: 1,
                             }}
                           />
@@ -859,7 +815,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                               width: "0.5rem",
                               height: "0.5rem",
                               borderRadius: "0.25rem",
-                              background: T.color.gold,
+                              background: "#C99A2E", /* Atrium gold-lane tileTop */
                               zIndex: 2,
                             }}
                           />
@@ -870,9 +826,9 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                               style={{
                                 width: "100%",
                                 padding: "0.75rem",
-                                borderRadius: "0.75rem",
-                                border: `1px solid ${T.color.gold}50`,
-                                background: `${T.color.gold}0a`,
+                                borderRadius: "1rem", /* card */
+                                border: "0.0625rem solid #E9DCBE",
+                                background: "#FCF6E5", /* Atrium gold-lane tile */
                                 display: "flex",
                                 flexDirection: "column",
                                 gap: "0.5rem",
@@ -886,13 +842,13 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 editRecurrence, setEditRecurrence,
                               )}
                               <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", marginTop: "0.25rem" }}>
-                                <button onClick={() => setEditingDateId(null)} style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, background: "none", border: `1px solid ${T.color.cream}`, borderRadius: "0.375rem", padding: "0.375rem 0.75rem", cursor: "pointer" }}>
+                                <button onClick={() => setEditingDateId(null)} style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", background: "none", border: "0.0625rem solid #E3D6BC", borderRadius: "0.75rem", padding: "0.375rem 0.75rem", cursor: "pointer" }}>
                                   {t("cancel")}
                                 </button>
                                 <button
                                   onClick={handleSaveEdit}
                                   disabled={!editTitle.trim() || !editDate}
-                                  style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, color: T.color.white, background: T.color.gold, border: "none", borderRadius: "0.375rem", padding: "0.375rem 0.75rem", cursor: editTitle.trim() && editDate ? "pointer" : "default", opacity: editTitle.trim() && editDate ? 1 : 0.5 }}
+                                  style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.white, background: "#B85C38" /* Atrium ember */, border: "none", borderRadius: "0.75rem", padding: "0.375rem 0.75rem", cursor: editTitle.trim() && editDate ? "pointer" : "default", opacity: editTitle.trim() && editDate ? 1 : 0.5 }}
                                 >
                                   {t("saveEdit")}
                                 </button>
@@ -907,9 +863,9 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 alignItems: "center",
                                 gap: "0.625rem",
                                 padding: "0.625rem 0.75rem",
-                                borderRadius: "0.75rem",
-                                border: `1px solid ${T.color.gold}35`,
-                                background: isRecurring ? `${T.color.gold}05` : `${T.color.gold}08`,
+                                borderRadius: "1rem", /* card */
+                                border: "0.0625rem solid #E9DCBE",
+                                background: isRecurring ? "#FDFAF0" : "#FCF6E5", /* pre-mixed gold lane */
                                 textAlign: "left",
                               }}
                             >
@@ -918,16 +874,16 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 style={{
                                   width: "2.25rem",
                                   height: "2.25rem",
-                                  borderRadius: "0.5rem",
-                                  background: `linear-gradient(135deg, ${T.color.gold}30, ${T.color.gold}15)`,
+                                  borderRadius: "0.75rem",
+                                  background: "rgba(169,116,27,0.14)", /* Atrium gold-lane medallion */
                                   flexShrink: 0,
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  color: T.color.gold,
+                                  color: "#8A6410", /* Atrium gold-lane glyph */
                                 }}
                               >
-                                <CategoryIcon iconId={displayIconId} size={18} color={T.color.gold} />
+                                <CategoryIcon iconId={displayIconId} size={18} color="#8A6410" />
                               </div>
 
                               {/* Info */}
@@ -937,7 +893,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                     fontFamily: T.font.body,
                                     fontSize: "0.8125rem",
                                     fontWeight: 600,
-                                    color: T.color.charcoal,
+                                    color: "#403B36", /* Atrium ink */
                                     whiteSpace: "nowrap",
                                     overflow: "hidden",
                                     textOverflow: "ellipsis",
@@ -948,8 +904,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 <div
                                   style={{
                                     fontFamily: T.font.body,
-                                    fontSize: "0.625rem",
-                                    color: T.color.muted,
+                                    fontSize: "0.8125rem", /* Atrium meta */
+                                    color: "#716A5E", /* Atrium muted */
                                     marginTop: "0.0625rem",
                                     display: "flex",
                                     alignItems: "center",
@@ -957,13 +913,13 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                     flexWrap: "wrap",
                                   }}
                                 >
-                                  <span style={{ color: T.color.gold, fontWeight: 600 }}>{t("importantDate")}</span>
+                                  <span style={{ color: "#8A6410", fontWeight: 600 }}>{t("importantDate")}</span>
                                   {isRecurring && (
-                                    <span style={{ color: T.color.sandstone, fontStyle: "italic" }}>
+                                    <span style={{ color: "#716A5E", fontStyle: "italic" }}>
                                       ({importantDate.recurrence === "yearly" ? t("recurrenceYearly") : t("recurrenceMonthly")})
                                     </span>
                                   )}
-                                  <span style={{ color: T.color.sandstone }}>{"\u00B7"}</span>
+                                  <span style={{ color: "#716A5E" }}>{"\u00B7"}</span>
                                   <span>
                                     {date.toLocaleDateString(localeDateCodes[locale as Locale], {
                                       month: "short",
@@ -976,8 +932,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                   <div
                                     style={{
                                       fontFamily: T.font.body,
-                                      fontSize: "0.625rem",
-                                      color: T.color.muted,
+                                      fontSize: "0.8125rem", /* Atrium meta */
+                                      color: "#716A5E", /* Atrium muted */
                                       marginTop: "0.125rem",
                                       whiteSpace: "nowrap",
                                       overflow: "hidden",
@@ -996,39 +952,39 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                   aria-label={t("memoryOptions")}
                                   style={{
                                     ...smallBtnStyle,
-                                    color: T.color.muted,
+                                    color: "#716A5E",
                                   }}
-                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.gold}15`; }}
+                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.14)"; }}
                                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                                 >
-                                  <DotsIcon size={14} color={T.color.muted} />
+                                  <DotsIcon size={14} color={"#716A5E"} />
                                 </button>
 
                                 {showDateMenu && (
                                   <div style={{
                                     position: "absolute", right: 0, top: "2.25rem", zIndex: 10,
-                                    background: T.color.white, border: `1px solid ${T.color.cream}`,
-                                    borderRadius: "0.5rem", boxShadow: "0 0.25rem 1rem rgba(0,0,0,.1)",
+                                    background: T.color.white, border: "0.0625rem solid #E3D6BC",
+                                    borderRadius: "0.75rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium S2 */
                                     minWidth: "8rem", overflow: "hidden",
                                   }}>
                                     <button
                                       onClick={() => { setDateMenuId(null); startEditDate(importantDate); }}
                                       style={{
-                                        width: "100%", fontFamily: T.font.body, fontSize: "0.75rem",
-                                        color: T.color.charcoal, background: "none", border: "none",
+                                        width: "100%", fontFamily: T.font.body, fontSize: "0.8125rem",
+                                        color: "#403B36", background: "none", border: "none",
                                         padding: "0.5rem 0.75rem", cursor: "pointer", textAlign: "left",
                                         display: "flex", alignItems: "center", gap: "0.375rem",
                                       }}
                                       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = T.color.warmStone; }}
                                       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                                     >
-                                      <PencilIcon size={12} color={T.color.gold} />
+                                      <PencilIcon size={12} color="#8A6410" />
                                       {t("editDate")}
                                     </button>
                                     <button
                                       onClick={() => { setDateMenuId(null); handleDeleteDate(importantDate.id); }}
                                       style={{
-                                        width: "100%", fontFamily: T.font.body, fontSize: "0.75rem",
+                                        width: "100%", fontFamily: T.font.body, fontSize: "0.8125rem",
                                         color: T.color.error, background: "none", border: "none",
                                         padding: "0.5rem 0.75rem", cursor: "pointer", textAlign: "left",
                                         display: "flex", alignItems: "center", gap: "0.375rem",
@@ -1049,7 +1005,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                   width: "0.25rem",
                                   height: "1.5rem",
                                   borderRadius: "0.125rem",
-                                  background: T.color.gold,
+                                  background: "#C99A2E", /* Atrium gold-lane tileTop */
                                   opacity: isRecurring ? 0.25 : 0.5,
                                   flexShrink: 0,
                                 }}
@@ -1080,8 +1036,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                             left: "0.3125rem",
                             top: isFirst ? "-0.75rem" : "-0.5rem",
                             bottom: isLast ? "50%" : "-0.5rem",
-                            width: 2,
-                            background: T.color.cream,
+                            width: "0.125rem",
+                            background: "#E3D6BC", /* Atrium hairline */
                             zIndex: 1,
                           }}
                         />
@@ -1108,10 +1064,10 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                             gap: "0.625rem",
                             padding: "0.625rem 0.75rem",
                             borderRadius: "0.75rem",
-                            border: `1px solid ${T.color.cream}`,
+                            border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                             background: T.color.white,
                             textAlign: "left",
-                            transition: "all .15s",
+                            transition: "all 0.2s ease",
                             position: "relative",
                           }}
                           onMouseEnter={(e) => {
@@ -1120,7 +1076,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                           }}
                           onMouseLeave={(e) => {
                             (e.currentTarget as HTMLElement).style.background = T.color.white;
-                            (e.currentTarget as HTMLElement).style.borderColor = T.color.cream;
+                            (e.currentTarget as HTMLElement).style.borderColor = "#E3D6BC";
                           }}
                         >
                           {/* Thumbnail — clickable */}
@@ -1147,10 +1103,10 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 src={(entry.mem.thumbnailUrl || entry.mem.dataUrl)!}
                                 roomId={entry.roomId}
                                 wingId={entry.wingId}
-                                color={entry.wingAccent || T.color.muted}
+                                color={entry.wingAccent || "#716A5E"}
                               />
                             ) : (
-                              <RoomIcon roomId={entry.roomId} wingId={entry.wingId} size={14} color={entry.wingAccent || T.color.muted} />
+                              <RoomIcon roomId={entry.roomId} wingId={entry.wingId} size={14} color={entry.wingAccent || "#716A5E"} />
                             )}
                           </button>
 
@@ -1172,7 +1128,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 fontFamily: T.font.body,
                                 fontSize: "0.8125rem",
                                 fontWeight: 600,
-                                color: T.color.charcoal,
+                                color: "#403B36", /* Atrium ink */
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
@@ -1183,17 +1139,17 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                             <div
                               style={{
                                 fontFamily: T.font.body,
-                                fontSize: "0.625rem",
-                                color: T.color.muted,
+                                fontSize: "0.8125rem", /* Atrium meta */
+                                color: "#716A5E", /* Atrium muted */
                                 marginTop: "0.0625rem",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: "0.25rem",
                               }}
                             >
-                              <RoomIcon roomId={entry.roomId} wingId={entry.wingId} size={10} color={entry.wingAccent || T.color.muted} />
+                              <RoomIcon roomId={entry.roomId} wingId={entry.wingId} size={10} color={entry.wingAccent || "#716A5E"} />
                               <span>{entry.roomName}</span>
-                              <span style={{ color: T.color.sandstone }}>{"\u00B7"}</span>
+                              <span style={{ color: "#716A5E" }}>{"\u00B7"}</span>
                               <span>
                                 {entry.date.toLocaleDateString(localeDateCodes[locale as Locale], {
                                   month: "short",
@@ -1210,12 +1166,12 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                             style={{
                               ...smallBtnStyle,
                               flexShrink: 0,
-                              color: T.color.muted,
+                              color: "#716A5E",
                             }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.walnut}10`; }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(154,79,42,0.11)"; /* Atrium terracotta medallion */ }}
                             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                           >
-                            <DotsIcon size={14} color={T.color.muted} />
+                            <DotsIcon size={14} color={"#716A5E"} />
                           </button>
 
                           {/* Dropdown menu */}
@@ -1226,9 +1182,9 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 right: "0.5rem",
                                 top: "2.75rem",
                                 background: T.color.white,
-                                border: `1px solid ${T.color.cream}`,
-                                borderRadius: "0.5rem",
-                                boxShadow: "0 0.25rem 1rem rgba(0,0,0,.1)",
+                                border: "0.0625rem solid #E3D6BC",
+                                borderRadius: "0.75rem",
+                                boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium S2 */
                                 zIndex: 10,
                                 minWidth: "9rem",
                                 overflow: "hidden",
@@ -1239,8 +1195,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 style={{
                                   width: "100%",
                                   fontFamily: T.font.body,
-                                  fontSize: "0.75rem",
-                                  color: T.color.charcoal,
+                                  fontSize: "0.8125rem",
+                                  color: "#403B36", /* Atrium ink */
                                   background: "none",
                                   border: "none",
                                   padding: "0.5rem 0.75rem",
@@ -1253,7 +1209,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.warmStone}`; }}
                                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                               >
-                                <BookIcon size={12} color={T.color.walnut} />
+                                <BookIcon size={12} color="#403B36" />
                                 {t("viewInLibrary")}
                               </button>
                               <button
@@ -1261,8 +1217,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 style={{
                                   width: "100%",
                                   fontFamily: T.font.body,
-                                  fontSize: "0.75rem",
-                                  color: T.color.charcoal,
+                                  fontSize: "0.8125rem",
+                                  color: "#403B36", /* Atrium ink */
                                   background: "none",
                                   border: "none",
                                   padding: "0.5rem 0.75rem",
@@ -1275,7 +1231,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.warmStone}`; }}
                                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                               >
-                                <PencilIcon size={12} color={T.color.walnut} />
+                                <PencilIcon size={12} color="#403B36" />
                                 {t("editDetails")}
                               </button>
                             </div>
@@ -1311,8 +1267,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                           left: "0.3125rem",
                           top: 0,
                           bottom: 0,
-                          width: 2,
-                          background: T.color.cream,
+                          width: "0.125rem",
+                          background: "#E3D6BC", /* Atrium hairline */
                           zIndex: 1,
                         }}
                       />
@@ -1324,12 +1280,12 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
 
             {groups.length === 0 && (
               <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
-                <CalendarIcon size={36} color={T.color.muted} />
+                <CalendarIcon size={36} color={"#716A5E"} />
                 <p
                   style={{
                     fontFamily: T.font.body,
-                    fontSize: "0.875rem",
-                    color: T.color.muted,
+                    fontSize: "0.9375rem", /* Atrium body */
+                    color: "#716A5E", /* Atrium muted */
                     marginTop: "0.75rem",
                   }}
                 >
@@ -1338,8 +1294,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                 <p
                   style={{
                     fontFamily: T.font.body,
-                    fontSize: "0.75rem",
-                    color: T.color.sandstone,
+                    fontSize: "0.8125rem", /* Atrium meta */
+                    color: "#716A5E", /* Atrium muted — sandstone under-inked as text */
                     marginTop: "0.25rem",
                     marginBottom: "1.25rem",
                   }}
@@ -1351,12 +1307,12 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                     onClick={() => { onClose(); onNavigateLibrary(); }}
                     style={{
                       fontFamily: T.font.body,
-                      fontSize: "0.75rem",
+                      fontSize: "0.8125rem", /* Atrium meta */
                       fontWeight: 600,
-                      color: T.color.walnut,
-                      background: `${T.color.walnut}12`,
-                      border: `1px solid ${T.color.walnut}30`,
-                      borderRadius: "0.375rem",
+                      color: "#403B36", /* Atrium ink */
+                      background: "#F2EDE4", /* pre-mixed linen */
+                      border: "0.0625rem solid #E3D6BC",
+                      borderRadius: "0.75rem",
                       padding: "0.5rem 0.875rem",
                       cursor: "pointer",
                       display: "flex",
@@ -1364,18 +1320,18 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                       gap: "0.25rem",
                     }}
                   >
-                    <BookIcon size={13} color={T.color.walnut} /> {t("goToLibrary")}
+                    <BookIcon size={13} color="#403B36" /> {t("goToLibrary")}
                   </button>
                   <button
                     onClick={() => setShowAddForm(true)}
                     style={{
                       fontFamily: T.font.body,
-                      fontSize: "0.75rem",
+                      fontSize: "0.8125rem", /* Atrium meta */
                       fontWeight: 600,
-                      color: T.color.gold,
-                      background: `${T.color.gold}12`,
-                      border: `1px solid ${T.color.gold}30`,
-                      borderRadius: "0.375rem",
+                      color: "#8A6410", /* Atrium gold-lane glyph */
+                      background: "#FAF3E0", /* Atrium gold tray */
+                      border: "0.0625rem solid #E9DCBE",
+                      borderRadius: "0.75rem",
                       padding: "0.5rem 0.875rem",
                       cursor: "pointer",
                       display: "flex",
@@ -1383,7 +1339,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                       gap: "0.25rem",
                     }}
                   >
-                    <PlusIcon size={12} color={T.color.gold} /> {t("addImportantDate")}
+                    <PlusIcon size={12} color="#8A6410" /> {t("addImportantDate")}
                   </button>
                 </div>
               </div>
@@ -1391,6 +1347,6 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
           </div>
         </div>
       </div>
-    </div>
+    </Sheet>
   );
 }

@@ -38,10 +38,6 @@
       "schedule": "0 9 * * *"
     },
     {
-      "path": "/api/email/digest",
-      "schedule": "0 9 * * 1"
-    },
-    {
       "path": "/api/cron/legacy-check",
       "schedule": "2 9 * * *"
     },
@@ -56,6 +52,14 @@
     {
       "path": "/api/cron/drip-and-reengage",
       "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/email/digest",
+      "schedule": "15 9 * * 1"
+    },
+    {
+      "path": "/api/email/monthly",
+      "schedule": "20 9 1 * *"
     }
   ]
 }

@@ -3,7 +3,7 @@
 import React from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import TuscanCard, { TuscanSectionHeader } from "@/components/ui/TuscanCard";
 import CommentThread from "@/components/social/CommentThread";
 import ReactionBar from "@/components/social/ReactionBar";
@@ -12,6 +12,8 @@ import type { PublishedMemory } from "@/lib/social/visit-actions";
 import type { Comment, ReactionSummary } from "@/lib/social/comment-actions";
 
 interface RoomVisitClientProps {
+  /** Route userId — always defined, used to build breadcrumb hrefs. */
+  userId: string;
   room: {
     id: string;
     name: string;
@@ -34,6 +36,17 @@ interface RoomVisitClientProps {
   currentUserId?: string;
 }
 
+/** Constrain a stored memory hue toward the warm canon palette: cap saturation
+ *  so vivid blues/greens stop clashing with the cream ground, and keep lightness
+ *  in a soft mid-band. Returns an HSL string that harmonizes with CREAM/EMBER. */
+function warmHsl(hue: number, saturation: number, lightness: number, opts?: { satCap?: number; lightBias?: number }) {
+  const satCap = opts?.satCap ?? 34;
+  const lightBias = opts?.lightBias ?? 0;
+  const s = Math.min(saturation, satCap);
+  const l = Math.min(Math.max(lightness + lightBias, 52), 78);
+  return `hsl(${hue}, ${s}%, ${l}%)`;
+}
+
 function MemoryCard({
   memory,
   index,
@@ -43,11 +56,17 @@ function MemoryCard({
   index: number;
   isMobile: boolean;
 }) {
-  const isImage =
-    memory.type === "photo" || memory.type === "image" || memory.type === "video";
+  const isImage = memory.type === "photo" || memory.type === "image";
+  const isVideo = memory.type === "video";
   const isAudio = memory.type === "audio";
-  const hasMedia = isImage && (memory.file_url || memory.thumbnail_url);
+  const hasImage = isImage && (memory.file_url || memory.thumbnail_url);
+  const hasVideo = isVideo && !!memory.file_url;
+  const hasMedia = hasImage || hasVideo;
+  // Full-saturation hue only backs real media (hidden behind the image/video).
   const bgColor = `hsl(${memory.hue}, ${memory.saturation}%, ${memory.lightness}%)`;
+  // Warm, cream-friendly tones for the color-only text and audio surfaces.
+  const warmBase = warmHsl(memory.hue, memory.saturation, memory.lightness);
+  const warmSoft = warmHsl(memory.hue, memory.saturation, memory.lightness, { satCap: 24, lightBias: 10 });
 
   return (
     <TuscanCard
@@ -59,7 +78,7 @@ function MemoryCard({
       }}
     >
       {/* Image / thumbnail */}
-      {hasMedia && (
+      {hasImage && (
         <div
           style={{
             width: "100%",
@@ -69,9 +88,15 @@ function MemoryCard({
           }}
         >
           <img
-            src={memory.file_url || memory.thumbnail_url || ""}
+            // Grid cards are ~16rem wide; prefer the pre-scaled thumbnail so an
+            // image-heavy room doesn't download full-resolution originals into a
+            // tiny card (falls back to file_url when no thumbnail exists). hasImage
+            // already guards on (file_url || thumbnail_url), so this order is free.
+            src={memory.thumbnail_url || memory.file_url || ""}
             alt={memory.title}
             loading="lazy"
+            decoding="async"
+            sizes={isMobile ? "100vw" : "16rem"}
             style={{
               width: "100%",
               height: "100%",
@@ -83,44 +108,121 @@ function MemoryCard({
         </div>
       )}
 
-      {/* Colored header for text-only memories */}
-      {!hasMedia && !isAudio && (
+      {/* Video with native controls */}
+      {hasVideo && (
         <div
           style={{
             width: "100%",
-            height: "4.5rem",
-            background: `linear-gradient(135deg, ${bgColor}, hsl(${memory.hue}, ${Math.max(memory.saturation - 10, 0)}%, ${Math.min(memory.lightness + 15, 90)}%))`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "1.5rem",
-            color: "rgba(255,255,255,0.8)",
-            fontFamily: T.font.display,
-            fontWeight: 600,
+            aspectRatio: isMobile ? "4 / 3" : "16 / 10",
+            overflow: "hidden",
+            background: bgColor,
           }}
         >
-          {memory.title?.[0]?.toUpperCase() || "?"}
+          <video
+            controls
+            preload="none"
+            playsInline
+            poster={memory.thumbnail_url || undefined}
+            src={memory.file_url || undefined}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+              background: "#000",
+            }}
+          />
         </div>
       )}
 
-      {/* Audio player */}
+      {/* Colored header for text-only memories — warm, desaturated wash with a
+          cream veil so the initial reads in ink rather than on a vivid banner. */}
+      {!hasMedia && !isAudio && (
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            height: "4.5rem",
+            background: `linear-gradient(135deg, ${warmBase}, ${warmSoft})`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+          }}
+        >
+          {/* Cream veil to knock back saturation and lift toward canon. */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(135deg, rgba(252,250,245,0.42), rgba(252,250,245,0.14))",
+            }}
+          />
+          <span
+            style={{
+              position: "relative",
+              fontSize: "1.75rem",
+              color: T.color.ink,
+              opacity: 0.72,
+              fontFamily: T.font.display,
+              fontWeight: 600,
+            }}
+          >
+            {memory.title?.[0]?.toUpperCase() || "?"}
+          </span>
+        </div>
+      )}
+
+      {/* Audio player — framed in a warm, desaturated strip with a small
+          waveform glyph so the raw native control sits in canon rather than
+          floating on a saturated tint. */}
       {isAudio && memory.file_url && (
         <div
           style={{
-            padding: "1rem 1rem 0.5rem",
-            background: `linear-gradient(135deg, ${bgColor}30, transparent)`,
+            padding: "0.875rem 1rem 0.625rem",
+            background: `linear-gradient(135deg, ${warmSoft}, ${T.color.cream})`,
+            borderBottom: `0.0625rem solid ${T.color.hairline}`,
           }}
         >
-          <audio
-            controls
-            preload="none"
-            src={memory.file_url}
+          <div
             style={{
-              width: "100%",
-              height: "2.5rem",
-              borderRadius: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.625rem",
             }}
-          />
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                flexShrink: 0,
+                width: "2rem",
+                height: "2rem",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: T.color.cream,
+                border: `0.0625rem solid ${T.color.hairline}`,
+                color: T.color.ember,
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                <path d="M4 12v0M8 8v8M12 5v14M16 8v8M20 12v0" />
+              </svg>
+            </span>
+            <audio
+              controls
+              preload="none"
+              src={memory.file_url}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                height: "2.5rem",
+                borderRadius: "0.5rem",
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -131,7 +233,7 @@ function MemoryCard({
             fontFamily: T.font.display,
             fontSize: "0.9375rem",
             fontWeight: 600,
-            color: T.color.charcoal,
+            color: T.color.ink,
             margin: 0,
             lineHeight: 1.3,
           }}
@@ -143,7 +245,7 @@ function MemoryCard({
             style={{
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
-              color: T.color.walnut,
+              color: T.color.inkMuted,
               margin: "0.375rem 0 0",
               lineHeight: 1.5,
               display: "-webkit-box",
@@ -160,7 +262,84 @@ function MemoryCard({
   );
 }
 
+// Reactions are heart-only now (ReactionBar was reduced to a single love
+// toggle); the guest view mirrors that — legacy candle/key/scroll/star/amphora
+// rows still exist in the DB but render nowhere.
+const GUEST_REACTION_SVG: Record<string, string> = {
+  heart:
+    '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+};
+
+/** Read-only reaction summary + sign-in nudge shown to logged-out visitors,
+ *  in place of the interactive ReactionBar (which needs an auth session). */
+function GuestReactions({
+  reactions,
+  t,
+}: {
+  reactions: ReactionSummary[];
+  t: (key: string, vars?: Record<string, string>) => string;
+}) {
+  const known = reactions.filter((r) => GUEST_REACTION_SVG[r.emoji] && r.count > 0);
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.5rem",
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      {known.map((r) => (
+        <span
+          key={r.emoji}
+          aria-label={t(`reaction_${r.emoji}`)}
+          title={t(`reaction_${r.emoji}`)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.25rem",
+            padding: "0.375rem 0.625rem",
+            borderRadius: "1rem",
+            border: `0.0625rem solid ${T.color.hairline}`,
+            background: "transparent",
+            fontFamily: T.font.body,
+            fontSize: "0.75rem",
+            color: T.color.ink,
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{ width: "1rem", height: "1rem", display: "inline-block", color: T.color.inkMuted }}
+            dangerouslySetInnerHTML={{ __html: GUEST_REACTION_SVG[r.emoji] }}
+          />
+          <span>{r.count}</span>
+        </span>
+      ))}
+      <a
+        href="/login"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          minHeight: "2.75rem",
+          padding: "0.375rem 0.75rem",
+          fontFamily: T.font.body,
+          fontSize: "0.8125rem",
+          fontWeight: 600,
+          color: T.color.ember,
+          textDecoration: "none",
+          transition: "opacity 0.15s ease",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.75"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+      >
+        {t("guestReactPrompt")}
+      </a>
+    </div>
+  );
+}
+
 export default function RoomVisitClient({
+  userId,
   room,
   wing,
   owner,
@@ -171,16 +350,19 @@ export default function RoomVisitClient({
 }: RoomVisitClientProps) {
   const { t } = useTranslation("social");
   const isMobile = useIsMobile();
+  // Compact = phone landscape / iPad split-view (≤1024px). Narrow the reading
+  // column and trim the banner so the header doesn't dominate a short viewport.
+  const isCompact = useIsCompact();
 
   return (
     <div
       style={{
         minHeight: "100dvh",
-        background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
+        background: T.color.cream,
         padding: isMobile ? "1rem 0.75rem 4rem" : "2rem 1rem 4rem",
       }}
     >
-      <div style={{ maxWidth: "56rem", margin: "0 auto" }}>
+      <div style={{ maxWidth: isCompact ? "48rem" : "56rem", margin: "0 auto" }}>
         {/* Breadcrumb navigation */}
         <div
           style={{
@@ -201,7 +383,7 @@ export default function RoomVisitClient({
               textDecoration: "none",
               transition: "color 0.15s ease",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.ember; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = T.color.muted; }}
           >
             {t("exploreBackToExplore")}
@@ -211,7 +393,7 @@ export default function RoomVisitClient({
           {owner && (
             <>
               <a
-                href={owner.username ? `/u/${owner.username}` : `/visit/${owner.id}/${wing.slug}`}
+                href={owner.username ? `/u/${owner.username}` : `/visit/${userId}`}
                 style={{
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
@@ -219,7 +401,7 @@ export default function RoomVisitClient({
                   textDecoration: "none",
                   transition: "color 0.15s ease",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = T.color.ember; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = T.color.muted; }}
               >
                 {owner.name || t("anonymous")}
@@ -228,8 +410,11 @@ export default function RoomVisitClient({
             </>
           )}
 
+          {/* Wing subpage no longer exists — /visit/[userId]/[wingSlug]
+              redirects to the palace overview, so link there directly to
+              avoid the extra hop. */}
           <a
-            href={`/visit/${owner?.id}/${wing.slug}`}
+            href={`/visit/${userId}`}
             style={{
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
@@ -238,7 +423,7 @@ export default function RoomVisitClient({
               fontWeight: 500,
               transition: "color 0.15s ease",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.ember; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = T.color.walnut; }}
           >
             {wing.name}
@@ -257,7 +442,7 @@ export default function RoomVisitClient({
           {/* Room color banner */}
           <div
             style={{
-              height: isMobile ? "3.5rem" : "4.5rem",
+              height: isMobile ? "3.5rem" : isCompact ? "4rem" : "4.5rem",
               background: `linear-gradient(135deg, hsl(${room.coverHue}, 45%, 65%), hsl(${room.coverHue}, 35%, 50%))`,
               display: "flex",
               alignItems: "center",
@@ -274,7 +459,7 @@ export default function RoomVisitClient({
                 fontFamily: T.font.display,
                 fontSize: isMobile ? "1.375rem" : "1.75rem",
                 fontWeight: 600,
-                color: T.color.charcoal,
+                color: T.color.ink,
                 margin: 0,
               }}
             >
@@ -293,13 +478,20 @@ export default function RoomVisitClient({
               </p>
             )}
 
-            {/* Reactions */}
+            {/* Reactions — interactive only for signed-in visitors, since
+                toggling a reaction requires an authenticated session and would
+                fail server-side for guests. Guests see the existing reaction
+                counts (read-only) plus a gentle sign-in nudge. */}
             <div style={{ marginTop: "1rem" }}>
-              <ReactionBar
-                targetType="room"
-                targetId={room.id}
-                initialReactions={initialReactions}
-              />
+              {currentUserId ? (
+                <ReactionBar
+                  targetType="room"
+                  targetId={room.id}
+                  initialReactions={initialReactions}
+                />
+              ) : (
+                <GuestReactions reactions={initialReactions} t={t} />
+              )}
             </div>
           </div>
         </TuscanCard>

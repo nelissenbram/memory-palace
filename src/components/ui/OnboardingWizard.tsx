@@ -1,79 +1,157 @@
 "use client";
-import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
+import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
-import { navigateInApp, isIOS } from "@/lib/native/platform";
+import { isIOS, isNative } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useUserStore } from "@/lib/stores/userStore";
+import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
-import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
-import { WINGS } from "@/lib/constants/wings";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import { track } from "@/lib/analytics";
+import { useAccessibility, type ScaleLevel } from "@/components/providers/AccessibilityProvider";
+import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
+import WalkCinematicCaption, { WalkCaptionPill, WalkCtaButton } from "@/components/ui/OnboardingWalkCaption";
+import type { OnboardingScene } from "@/components/ui/OnboardingSceneHost";
 
 const OnboardingSceneHost = lazy(() => import("@/components/ui/OnboardingSceneHost"));
-const OnboardingTooltip = lazy(() => import("@/components/ui/OnboardingTooltip"));
 const OnboardingCelebration = lazy(() => import("@/components/ui/OnboardingCelebration"));
+const ConfettiBurst = lazy(() =>
+  import("@/components/ui/OnboardingCelebration").then((m) => ({ default: m.ConfettiBurst })),
+);
 const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
 
-/* ── State machine ── */
+/* ── State machine (CAPTURE-FIRST, SUCCESS_PLAYBOOK wk 2 / Pillar 1 §3) ──
+   video_intro -> lang_a11y -> name -> capture (pick up to 3 photos — the
+   memories exist BEFORE the tour) -> guided walkthrough (cinematic exterior
+   flyover, entrance-hall look-around+blinks, corridor procession, room leg
+   that REVEALS the just-captured photos hanging) -> celebration (endowed
+   progress: hooks strip + "add one more") -> paywall (gated) -> done.
+   `upload` (room + ImportHub) survives as the ZERO-CAPTURE fallback only: a
+   user who tapped "later" on the capture card still gets a first-memory ask
+   at the end of the walk — nobody exits without passing a capture beat.
+   The walkthrough teaches wings physically — the style_era confirmation and
+   wing_orient card are unrouted (components kept for settings/reuse; saved
+   phases remapped below). */
 type Phase =
-  | "video_intro"      // Emotional video plays first
-  | "lang_a11y"        // Language + text size (video loops bg)
-  | "name"             // Name input (video loops bg)
-  | "quiz"             // REMOVED — kept for backward compat with saved phases
-  | "style_era"        // Roman vs Renaissance (video loops bg)
-  | "cinematic"        // Live 3D — "Welcome to X's Palace"
-  | "walk_exterior"
-  | "walk_entrance"
-  | "walk_corridor"
-  | "walk_room"
-  | "paywall"          // Soft paywall — trial offer after sunk-cost walkthrough
-  | "upload"
-  | "celebration"
+  | "video_intro"      // Intro video plays first (full-screen)
+  | "lang_a11y"        // Language + legibility (warm-cream card)
+  | "name"             // Name input
+  | "capture"          // Pick 3 photos (capture-first — before the walk)
+  | "cinematic"        // Live 3D exterior — WP1 hold -> prompt -> 5-waypoint flyover
+  | "walk_exterior"    // Skip-path exterior leg: direct auto-walk to the entrance
+  | "walk_entrance"    // Hall look-around + blinks -> slow walk to the roots door
+  | "walk_corridor"    // Corridor steps 0-7: demo painting -> room prompt -> door
+  | "walk_room"        // Room steps 0-9: look-around -> THEIR photos revealed
+  | "upload"           // Zero-capture fallback: seeded room + ImportHub
+  | "celebration"      // Ceremonial threshold + confetti + endowed progress
+  | "paywall"          // Soft trial offer (web / iOS-with-IAP only)
   | "done";
 
+const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "capture"];
 const WALK_PHASES: Phase[] = ["walk_exterior", "walk_entrance", "walk_corridor", "walk_room"];
-const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "style_era"];
 const PHASE_ORDER: Phase[] = [
-  "video_intro", "lang_a11y", "name", "style_era", "cinematic",
-  "walk_exterior", "walk_entrance", "walk_corridor", "walk_room",
+  "video_intro", "lang_a11y", "name", "capture",
+  "cinematic", "walk_exterior", "walk_entrance", "walk_corridor", "walk_room",
   "upload", "celebration", "paywall", "done",
 ];
+
+/* Retired phases -> nearest surviving phase, so any stale saved state resolves
+   instead of resurrecting a removed phase. quiz sat between name and style_era
+   (resume at name — its inputs may be missing); style_era/wing_orient sat after
+   name (resume at the walkthrough, which now teaches the wings physically).
+   cinematic/walk_* are LIVE phases again and resume in place — each leg's scene
+   replays its own choreography from the top of that leg on mount. */
+const RETIRED_PHASE_MAP: Record<string, Phase> = {
+  quiz: "name",
+  style_era: "cinematic",
+  wing_orient: "cinematic",
+};
 
 const STORAGE_KEY = "mp_onboarding_phase";
 const WALK_DONE_KEY = "mp_onboarding_walk_done";
 
+/* Centralized paywall platform gate (canon — mirrors MemoryPalace's upgrade
+   gate): web always; iOS only when IAP is live (Apple 3.1.1 — /pricing drives
+   StoreKit there); Android native NEVER (no Play Billing — routing the
+   Capacitor Android app to Stripe would violate Play's payments policy). */
+function paywallAllowed(): boolean {
+  return !isNative() || (isIOS() && IAP_ENABLED);
+}
+
 function persistPhase(p: Phase) { try { localStorage.setItem(STORAGE_KEY, p); } catch {} }
 function loadPhase(): Phase | null {
   try {
-    const v = localStorage.getItem(STORAGE_KEY) as Phase | null;
-    if (v && PHASE_ORDER.includes(v)) return v;
+    const v = localStorage.getItem(STORAGE_KEY) as string | null;
+    if (!v) return null;
+    // Paywall platform gate: /pricing drives Apple IAP on iOS (never Stripe)
+    // and Stripe on web. A saved 'paywall' may only resume where the paywall is
+    // allowed (web, or iOS with IAP live) — on iOS while IAP is off (3.1.1
+    // seal) and on Android native (no Play Billing) it remaps to 'done'.
+    if (v === "paywall" && !paywallAllowed()) return "done";
+    // Reduced-motion: a resumed 'video_intro' skips the 12.5s video to the same
+    // phase the fresh-run RM path starts at (initial-phase pick below).
+    if (v === "video_intro" && prefersReducedMotion()) return "lang_a11y";
+    if (PHASE_ORDER.includes(v as Phase)) return v as Phase;
+    if (RETIRED_PHASE_MAP[v]) return RETIRED_PHASE_MAP[v];
   } catch {}
   return null;
 }
 function cleanupStorage() { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
 
-/* ── Text size ── */
-type TextSize = "standard" | "comfortable" | "large";
-const TEXT_SIZE_SCALE: Record<TextSize, number> = { standard: 1, comfortable: 1.125, large: 1.25 };
-
-/* ── (flags removed — clean text-only language buttons) ── */
-
-/* ── Branding header shared across all 3 setup screens ── */
-function StepIndicator({ current, total }: { current: number; total: number }) {
+/* Reduced-motion — mirrors OnboardingSceneHost/OnboardingCelebration so the
+   intro video (the most prominent motion in the flow) is skipped for
+   motion-sensitive users instead of autoplaying 12.5s of moving footage. */
+function prefersReducedMotion(): boolean {
   return (
-    <div style={{ position: "absolute", top: "calc(2rem + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+/* ── Text size (mirrors AccessibilityProvider ScaleLevel) ── */
+type TextSize = ScaleLevel;
+
+/* ── Quiet canon step dots (AtriumRelay lane-dot grammar): filled=EMBER_GLYPH,
+   unfilled=HAIRLINE, no numeric total, no growing bar. Intentionally scoped to
+   the 3 setup cards (lang_a11y 1/3, name 2/3, capture 3/3 — the capture card
+   IS a setup step now, and the visible 3rd dot is cheap endowed progress) —
+   the full-screen video intro, the guided walkthrough and the celebration are
+   ceremonial beats, not numbered setup steps, so they carry no dot. ── */
+function StepDots({ current, total, label }: { current: number; total: number; label: string }) {
+  return (
+    <div
+      role="progressbar"
+      aria-valuenow={current}
+      aria-valuemin={1}
+      aria-valuemax={total}
+      aria-label={label}
+      style={{ position: "absolute", top: "calc(2rem + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "0.5rem", alignItems: "center" }}
+    >
       {Array.from({ length: total }, (_, i) => (
-        <div key={i} style={{
-          width: i + 1 === current ? "1.5rem" : "0.375rem", height: "0.375rem", borderRadius: "0.1875rem",
-          background: i < current ? T.color.terracotta : "rgba(255,255,255,0.12)",
-          transition: "all .4s ease",
+        <div key={i} aria-hidden style={{
+          width: "0.6rem", height: "0.6rem", borderRadius: "50%",
+          background: i + 1 <= current ? EMBER_GLYPH : HAIRLINE,
+          transition: "background .4s ease",
         }} />
       ))}
     </div>
+  );
+}
+
+/* ── Canon stroked check ── a thin, round-capped tick drawn in the same hand as
+   the laurel wreath and divider ticks (strokeWidth ~1.6, round caps, currentColor),
+   replacing the literal '✓' glyph for a more intentional selected affordance.
+   Size + color are driven by the caller via width/height/color. ── */
+function CheckMark({ size = "0.875rem", color = EMBER, strokeWidth = 2.4 }: { size?: string; color?: string; strokeWidth?: number }) {
+  return (
+    <svg aria-hidden width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ display: "block", flexShrink: 0 }}>
+      <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -84,6 +162,8 @@ const KEYFRAMES = `
 @keyframes onb-subtitleReveal{0%{opacity:0;transform:translateY(0.5rem)}100%{opacity:1;transform:translateY(0)}}
 @keyframes onb-pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
 @keyframes onb-slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes onb-welcomeIn{0%{opacity:0}30%{opacity:0}100%{opacity:1}}
+@keyframes onb-taglineIn{from{opacity:0;transform:translateY(0.75rem)}to{opacity:1;transform:translateY(0)}}
 `;
 
 interface OnboardingWizardProps {
@@ -93,170 +173,533 @@ interface OnboardingWizardProps {
 export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const isMobile = useIsMobile();
   const isPortrait = useIsPortrait();
-  // Landscape phone: full-screen centered setup cards clip at the top when taller
-  // than the short viewport. Switch to top-aligned + scrollable. Portrait unchanged.
+  // Landscape phone: setup cards now scroll on ALL viewports (R8, pageScrollerStyle);
+  // this flag remains only for the celebration/paywall landscape forks below.
   const isLandscapePhone = isMobile && !isPortrait;
-  const { t, locale, setLocaleNoReload } = useTranslation("onboarding");
-  const { t: tPalace } = useTranslation("palace");
-  const {
-    userName, styleEra,
-    setUserName, setUserGoal, setFirstWing, setStyleEra, setOnboarded,
-  } = useUserStore();
+  const { t, setLocaleNoReload } = useTranslation("onboarding");
+  // tr(): inline EN-fallback lookup. t() returns the key itself when a key is
+  // missing from every locale (the restored walkthrough keys land in a
+  // follow-up i18n pass); tr() then falls back to English copy, applying
+  // {var} interpolation to the fallback by hand (a missing key can't).
+  const tr = useCallback(
+    (key: string, fallback: string, vars?: Record<string, string>): string => {
+      const v = t(key as any, vars);
+      if (v !== key) return v;
+      if (!vars) return fallback;
+      return Object.entries(vars).reduce((s, [k, val]) => s.split(`{${k}}`).join(val), fallback);
+    },
+    [t],
+  );
+  // Selector: subscribe ONLY to userName (the sole reactive store field this
+  // render reads). Setters are stable action references, pulled once via
+  // getState() so the wizard no longer re-renders on every unrelated store write
+  // (styleEra/bust*/goal/wing) the 3D host makes while the canvas is live.
+  const userName = useUserStore((s) => s.userName);
+  const { setUserName, setUserGoal, setFirstWing, setStyleEra } = useUserStore.getState();
+  const { scaleLevel, setScaleLevel } = useAccessibility();
 
   useEffect(() => {
-    // Goal is now set by the quiz phase; only default firstWing here
+    // Default firstWing; goal default is set explicitly at completion (change 21).
     setFirstWing("roots");
   }, [setFirstWing]);
 
-  // ── Phase state ──
-  const [phase, setPhaseRaw] = useState<Phase>(() => {
-    const saved = loadPhase();
-    if (saved && WALK_PHASES.includes(saved)) return "walk_exterior";
-    if (saved && SETUP_PHASES.includes(saved)) return "video_intro";
-    if (saved === "cinematic" || saved === "upload" || saved === "paywall") return "walk_exterior";
-    if (saved === "celebration") return "celebration";
-    return "video_intro";
-  });
+  // Apply the initial locale to the ACTIVE translation on mount, so the whole
+  // flow renders in the starting language from the first screen. Owner canon:
+  // a fresh run STARTS in English (selectedLocale init below) — a mid-flow
+  // resume re-applies whatever the user already picked. Runs once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setLocaleNoReload(selectedLocale); }, []);
+
+  // ── Phase state ── (retired saved phases remapped by loadPhase) ──
+  // Brand-new run (no saved phase) -> "video_intro" (the intro video plays first),
+  // UNLESS the user prefers reduced motion — then skip straight to the first setup
+  // card (no autoplaying full-screen video), mirroring the reduced-motion swaps in
+  // OnboardingSceneHost/OnboardingCelebration.
+  const [phase, setPhaseRaw] = useState<Phase>(() => loadPhase() || (prefersReducedMotion() ? "lang_a11y" : "video_intro"));
 
   const setPhase = useCallback((p: Phase) => {
     setPhaseRaw(p);
     persistPhase(p);
   }, []);
 
+  // Funnel: one paywall impression when the soft-trial phase is shown (pairs with
+  // the existing paywall_trial_clicked / paywall_skipped click events).
+  useEffect(() => {
+    if (phase === "paywall") track("paywall_viewed", { source: "onboarding" });
+  }, [phase]);
+
+  // Funnel: every onboarding phase transition (SUCCESS_PLAYBOOK 1.3). Fires once
+  // per phase change (incl. the initial/resumed phase) — an effect on `phase`
+  // mirrors the paywall_viewed pattern above and covers every setPhase() path.
+  useEffect(() => {
+    track("onboarding_phase_entered", { phase });
+  }, [phase]);
+
+  // Endowed progress (Pillar 1 §4): one impression event when the celebration
+  // shows open hooks (1–2 captured) — pairs with second_memory_prompt_captured
+  // fired by the "Add one more" picker.
+  const secondPromptShownRef = useRef(false);
+  useEffect(() => {
+    if (phase !== "celebration" || secondPromptShownRef.current) return;
+    const c = capturedMemsRef.current.length;
+    if (c > 0 && c < 3) {
+      secondPromptShownRef.current = true;
+      track("second_memory_prompt_shown", { count: c });
+    }
+  }, [phase]);
+
   const memoryUploadedRef = useRef(false);
   const [uploadedMemory, setUploadedMemory] = useState<any>(null);
-  const [sceneReady, setSceneReady] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // ── Capture-first state (SUCCESS_PLAYBOOK wk 2, Pillar 1 §3) ──
+  // The photos picked on the capture card. Optimistic: each entry appears the
+  // moment its dataURL is read (thumbnail + walk-reveal source) while
+  // addMemory persists in the background during the cinematic — the playbook's
+  // "upload in background during the walk". A persist that fails while the
+  // card is still up removes the slot + surfaces the error; memoryUploadedRef
+  // flips only on a CONFIRMED persist. Array identity is state-stable, so the
+  // scene host's structural fingerprint never churns mid-walk.
+  const [capturedMems, setCapturedMems] = useState<any[]>([]);
+  const capturedMemsRef = useRef<any[]>([]);
+  useEffect(() => { capturedMemsRef.current = capturedMems; }, [capturedMems]);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  const [captureBusy, setCaptureBusy] = useState(false);
+  const captureInputRef = useRef<HTMLInputElement | null>(null);
+  const celebInputRef = useRef<HTMLInputElement | null>(null);
+  const CAPTURE_MAX = 3;
+  // The 3D scenes get a FROZEN snapshot of the captured photos, taken once
+  // when the walk starts: a celebration-time "add one more" (or a late persist
+  // rollback) must never change the structural fingerprint of the LIVE room
+  // scene — that forces a full rebuild (seconds of blank beige under the
+  // confetti, the exact regression owner item 6 fixed). The 2D strip reads the
+  // live capturedMems; the walls read this snapshot.
+  const walkMemsRef = useRef<any[]>([]);
+
+  // Read files → dataURLs → optimistic slots → background persist via the SAME
+  // store path the in-app ImportHub uses (optimistic add + server upload + DB
+  // create; server-side memory_created fires there). Mobile-friendly: callers
+  // open a plain <input type=file accept="image/*" multiple> photo picker.
+  const persistCapturedFiles = useCallback(async (files: File[], source: "capture" | "celebration") => {
+    const room = "ro1";
+    // Capture card: cap at 3 slots total. Celebration "add one more": one at a time.
+    const limit = source === "capture"
+      ? Math.max(0, CAPTURE_MAX - capturedMemsRef.current.length)
+      : 1;
+    const picks = files.filter((f) => f.type.startsWith("image/")).slice(0, limit);
+    if (picks.length === 0) return;
+    setCaptureError(null);
+    setCaptureBusy(true);
+    try {
+      for (const file of picks) {
+        let dataUrl = "";
+        try {
+          dataUrl = await new Promise<string>((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result as string);
+            reader.onerror = rej;
+            reader.readAsDataURL(file);
+          });
+        } catch { /* unreadable file — skip below */ }
+        if (!dataUrl) { setCaptureError(t("uploadFailed")); continue; }
+        const mem = {
+          id: `onboarding-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          title: file.name.replace(/\.[^.]+$/, "") || file.name,
+          type: "photo",
+          dataUrl,
+          hue: 18, s: 50, l: 60, desc: "",
+          createdAt: new Date().toISOString(),
+        };
+        // Optimistic slot first (instant thumbnail; the walk reveals dataUrl
+        // locally either way), then background persist.
+        setCapturedMems((prev) => [...prev, mem]);
+        useMemoryStore.getState().addMemory(room, mem as any)
+          .then((persisted) => {
+            if (persisted) { memoryUploadedRef.current = true; return; }
+            // Rolled back — drop the slot if the user is still on a card where
+            // the strip is live; surface the error either way.
+            setCapturedMems((prev) => prev.filter((m) => m.id !== mem.id));
+            setCaptureError(t("uploadFailed"));
+          })
+          .catch(() => {
+            setCapturedMems((prev) => prev.filter((m) => m.id !== mem.id));
+            setCaptureError(t("uploadFailed"));
+          });
+      }
+    } finally {
+      setCaptureBusy(false);
+    }
+  }, [t]);
+
+  // Leaving the capture card: capture_done{count} on the primary path (task
+  // contract), capture_skipped on "later" — both land on the cinematic so the
+  // walk ALWAYS happens after the capture beat.
+  const advanceFromCapture = useCallback((skipped: boolean) => {
+    const count = capturedMemsRef.current.length;
+    if (count > 0) track("onboarding_capture_done", { count });
+    if (skipped && count === 0) track("onboarding_capture_skipped", {});
+    // Freeze the walk-reveal set (see walkMemsRef doc above).
+    walkMemsRef.current = capturedMemsRef.current.slice(0, CAPTURE_MAX);
+    setPhase("cinematic");
+  }, [setPhase]);
+
+  // ── Walkthrough leg state (restored from the guided walk) ──
   const [cinematicPaused, setCinematicPaused] = useState(false);
   const [cinematicResumed, setCinematicResumed] = useState(false);
   const [corridorStep, setCorridorStep] = useState(-1);
   const [roomStep, setRoomStep] = useState(-1);
+  const [corridorEnterClicked, setCorridorEnterClicked] = useState(false);
+  // Scene-ready per walk leg (E2E slow-env fix): the anti-stranding ceilings
+  // below must NOT burn while a leg's 3D scene is still LOADING (headless/slow
+  // devices: 60s+), or they fire mid-choreography. Each leg's ceiling arms only
+  // once its scene reports REAL readiness — onSceneReady from
+  // OnboardingSceneHost, fired at the scene's first rendered frame (or
+  // immediately on the no-WebGL/error fallback, where the ceilings ARE the
+  // choreography and must keep their original pacing). NEVER fired by the
+  // host's internal 4s reveal-timeout. Reset on every phase change; the
+  // scene-name check rejects a stray late signal from the previous leg's scene
+  // during the host's 250ms crossfade.
+  const [walkSceneReady, setWalkSceneReady] = useState(false);
+  const prevWalkPhaseRef = useRef<Phase>(phase);
+  useEffect(() => {
+    const prev = prevWalkPhaseRef.current;
+    prevWalkPhaseRef.current = phase;
+    // cinematic → walk_exterior (per-leg skip) keeps the SAME live exterior
+    // scene — no fresh onSceneReady will come, so readiness carries over.
+    if (prev === "cinematic" && phase === "walk_exterior") return;
+    setWalkSceneReady(false);
+  }, [phase]);
+  const handleWalkSceneReady = useCallback((readyScene: OnboardingScene) => {
+    const expected =
+      phase === "cinematic" || phase === "walk_exterior" ? "exterior" :
+      phase === "walk_entrance" ? "entrance" :
+      phase === "walk_corridor" ? "corridor" :
+      phase === "walk_room" ? "room" : null;
+    if (readyScene === expected) setWalkSceneReady(true);
+  }, [phase]);
+
 
   // ── Language / A11y state ──
-  // Check localStorage directly — the hook's `locale` hasn't hydrated yet on first render
+  // Owner canon: a FRESH run starts with ENGLISH visibly pre-selected — NOT the
+  // browser/profile locale. Tapping a chip applies + persists immediately
+  // (setLocaleNoReload in the chip handler), so a mid-flow resume (saved phase
+  // in STORAGE_KEY) restores the user's in-wizard pick from mp_locale; without
+  // a saved phase any pre-existing mp_locale is ignored in favor of English.
   const [selectedLocale, setSelectedLocale] = useState<Locale>(() => {
     try {
-      const stored = localStorage.getItem("mp_locale") as Locale | null;
-      if (stored && locales.includes(stored)) return stored;
+      if (localStorage.getItem(STORAGE_KEY)) {
+        const stored = localStorage.getItem("mp_locale") as Locale | null;
+        if (stored && locales.includes(stored)) return stored;
+      }
     } catch {}
-    return detectBrowserLocale();
+    return "en";
   });
-  const [textSize, setTextSize] = useState<TextSize>("standard");
-  const [selectedEra, setSelectedEra] = useState<"roman" | "renaissance">(
-    (styleEra as "roman" | "renaissance") || "roman"
-  );
+  // Text size is owned by the app-wide AccessibilityProvider (persists to
+  // localStorage + DB + documentElement, survives unmount). Change here writes
+  // through it — no local documentElement writer that wipes on unmount (change 11).
+  const textSize = scaleLevel;
+  const setTextSize = setScaleLevel;
+  const [selectedEra] = useState<"roman">("roman");
 
-  // ── Quiz state ──
-  const [quizStep, setQuizStep] = useState(0);
-  const [quizGoal, setQuizGoal] = useState<string | null>(null);
-  const [quizScale, setQuizScale] = useState<string | null>(null);
-  const [quizAudience, setQuizAudience] = useState<string | null>(null);
-
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${TEXT_SIZE_SCALE[textSize] * 100}%`;
-    return () => { document.documentElement.style.fontSize = ""; };
-  }, [textSize]);
-
-  // ── Video state ──
+  // ── Video state ── (intro video plays first, then loops as a soft background) ──
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoPlayed, setVideoPlayed] = useState(false);
+  // Graceful outro: instead of cutting straight to the first menu, fade in a
+  // "Welcome to your Memory Palace" title over the last moments of the video,
+  // then advance — softening the transition.
+  const [showWelcome, setShowWelcome] = useState(false);
+  const outroRef = useRef(false);
+  const outroTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const beginOutro = useCallback(() => {
+    if (outroRef.current) return;
+    outroRef.current = true;
+    setVideoPlayed(true);
+    if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
+    setShowWelcome(true);
+    outroTimerRef.current = setTimeout(() => setPhase("lang_a11y"), 2600);
+  }, [setPhase]);
+  // Own the outro timer's teardown — clear it on unmount so a fast skip/unmount
+  // never fires setPhase on a gone component.
+  useEffect(() => () => { if (outroTimerRef.current) clearTimeout(outroTimerRef.current); }, []);
 
-  // Force-play on mobile — autoplay can fail silently on iOS/Android
+  // ── Tagline beat (§3 SPEC A, R3): ONE centered lockup — in @1.2s, out @6s.
+  // Two setTimeouts; cleared on phase leave (skip advances phase → effect
+  // cleanup), on outro (showWelcome effect below), and on unmount. Reduced-motion
+  // users never mount video_intro (initial-phase pick); the guard here is cheap
+  // defense-in-depth only.
+  const [introBeat, setIntroBeat] = useState<"hidden" | "in" | "out">("hidden");
+  const beatTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  useEffect(() => {
+    if (phase !== "video_intro" || prefersReducedMotion()) return;
+    beatTimersRef.current = [
+      setTimeout(() => setIntroBeat("in"), 1200),
+      setTimeout(() => setIntroBeat("out"), 6000),
+    ];
+    return () => { beatTimersRef.current.forEach(clearTimeout); beatTimersRef.current = []; };
+  }, [phase]);
+  // Outro cancels the beat: an early outro (autoplay-blocked path) must never
+  // have the tagline pop in over the welcome title.
+  useEffect(() => {
+    if (showWelcome) {
+      beatTimersRef.current.forEach(clearTimeout);
+      beatTimersRef.current = [];
+      setIntroBeat("out");
+    }
+  }, [showWelcome]);
+
+  // ── Progress hairline (§3 SPEC A.6): rAF-driven fill (`timeupdate` fires ~4Hz
+  // on iOS Safari = visible stutter). Rendered only after loadedmetadata reports
+  // a real duration (no 0-jump mid-video); writes transform directly on the fill
+  // node (no per-frame React state); cancelled on phase leave/unmount.
+  const [videoMetaReady, setVideoMetaReady] = useState(false);
+  const progressFillRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (phase !== "video_intro" || !videoMetaReady) return;
+    let raf = 0;
+    const tick = () => {
+      const v = videoRef.current;
+      const fill = progressFillRef.current;
+      if (v && fill && Number.isFinite(v.duration) && v.duration > 0) {
+        fill.style.transform = `scaleX(${Math.min(v.currentTime / v.duration, 1)})`;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phase, videoMetaReady]);
+
+  // Force-play on mobile — autoplay can fail silently on iOS/Android. If it's
+  // blocked during the intro, skip straight to the first setup card.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
     if (phase === "video_intro") {
       v.play().catch(() => {
-        // Autoplay blocked — skip directly to next phase
-        setVideoPlayed(true);
-        setPhase("lang_a11y");
+        // Autoplay blocked (common on iOS/Android): route through the same
+        // graceful welcome outro desktop gets, rather than hard-cutting — the
+        // outro beat then advances to lang_a11y on its own timer.
+        beginOutro();
       });
     } else if (SETUP_PHASES.includes(phase)) {
-      // Ensure video keeps playing as background during setup phases
       v.loop = true;
       v.play().catch(() => {});
     }
-  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Preload 3D scene modules during setup phases (before user reaches cinematic) ──
-  useEffect(() => {
-    if (phase === "name" || phase === "quiz" || phase === "style_era") {
-      // User is filling in their name / picking era — perfect time to warm the module cache
-      import("@/lib/3d/scenePreloader").then(({ preloadScene }) => {
-        preloadScene("exterior");
-        preloadScene("entrance");
-      }).catch(() => {});
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
-  // ── Skip ──
-  const handleSkip = useCallback(() => {
-    track("onboarding_skipped", { phase });
-    // Use quiz answer if already chosen, otherwise fall back to "preserve"
+  // ── Name validation (change 13) ──
+  const trimmedName = userName.trim();
+
+  // ── Unified completion (change 21): skip and normal finish converge on the SAME
+  // atomic path. Persist the trimmed name, set a default goal explicitly (the quiz
+  // was the only goal writer), then advance to 'done' whose effect calls onFinish. ──
+  const completeAndFinish = useCallback((target: Phase = "done") => {
+    setUserName(trimmedName);
     const savedGoal = (() => { try { return localStorage.getItem("mp_user_goal"); } catch { return null; } })();
     setUserGoal(savedGoal || "preserve");
     setStyleEra(selectedEra);
     setFirstWing("roots");
     useWalkthroughStore.getState().skip();
-    setOnboarded(true);
-    cleanupStorage();
-    onFinish(false);
-  }, [setUserGoal, setStyleEra, setFirstWing, setOnboarded, onFinish, selectedEra, phase]);
+    setPhase(target);
+  }, [trimmedName, setUserName, setUserGoal, setStyleEra, setFirstWing, selectedEra, setPhase]);
 
-  // ── Scene arrival handlers ──
+  const handleSkip = useCallback(() => {
+    track("onboarding_skipped", { phase });
+    completeAndFinish();
+  }, [completeAndFinish, phase]);
+
+  // ── Where the walk ENDS (capture-first): with ≥1 captured memory the room
+  // leg resolves straight to the celebration (the memory already exists —
+  // playbook: "skippers then skip AFTER the memory exists"); with zero
+  // captures it falls back to the ImportHub upload ask, so nobody exits
+  // onboarding without passing a real capture opportunity. ──
+  const capturedCount = capturedMems.length;
+  const afterWalkTarget: Phase = capturedCount > 0 ? "celebration" : "upload";
+
+  // ── Per-leg skip: every walkthrough leg is skippable to the NEXT phase in
+  // order (cinematic -> walk_exterior -> walk_entrance -> ...); the final
+  // leg's skip lands on afterWalkTarget (celebration when photos were
+  // captured, upload otherwise). Nobody re-walks a skipped leg, nobody strands. ──
+  const skipWalkLeg = useCallback(() => {
+    track("onboarding_walk_leg_skipped", { phase });
+    if (phase === "walk_room") { setPhase(afterWalkTarget); return; }
+    const idx = PHASE_ORDER.indexOf(phase);
+    setPhase(idx >= 0 && idx < PHASE_ORDER.length - 1 ? PHASE_ORDER[idx + 1] : afterWalkTarget);
+  }, [phase, setPhase, afterWalkTarget]);
+
+  // ── Scene arrival handlers (restored walkthrough contract) ──
+  // Exterior arrival: the flyover (or the walk_exterior auto-walk) reaches the
+  // entrance and fires onRoomClick("__entrance__") — hold the door beat 3s,
+  // then cut to the entrance hall. Timer owned by a ref so a fast skip/unmount
+  // never fires setPhase on a gone component.
+  const arrivalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (arrivalTimerRef.current) clearTimeout(arrivalTimerRef.current); }, []);
   const handleExteriorRoomClick = useCallback((id: string) => {
-    // Cinematic phase zooms to entrance → 3s pause, then entrance hall
     if (id === "__entrance__" && (phase === "cinematic" || phase === "walk_exterior")) {
-      setTimeout(() => setPhase("walk_entrance"), 3000);
+      if (arrivalTimerRef.current) clearTimeout(arrivalTimerRef.current);
+      arrivalTimerRef.current = setTimeout(() => setPhase("walk_entrance"), 3000);
     }
   }, [phase, setPhase]);
 
+  // Entrance hall: the look-around + blink cinematic ends (or its in-scene skip
+  // fires) with onDoorClick("roots") at the roots door -> corridor leg.
   const handleEntranceDoorClick = useCallback((id: string) => {
     if (id === "roots" && phase === "walk_entrance") setPhase("walk_corridor");
   }, [phase, setPhase]);
 
-  const [corridorEnterClicked, setCorridorEnterClicked] = useState(false);
+  // Corridor: after "Enter The Room", the scene auto-walks to ro1 and fires
+  // onDoorClick("ro1") on arrival -> room leg.
   const handleCorridorDoorClick = useCallback((id: string) => {
-    // Auto-walk arrived at door → auto-transition to room
-    if (id === "ro1" && phase === "walk_corridor") {
-      setPhase("walk_room");
-    }
+    if (id === "ro1" && phase === "walk_corridor") setPhase("walk_room");
   }, [phase, setPhase]);
 
-  // Safety fallback: auto-transition to room 4s after Enter Room clicked
+  // Room: tapping the empty painting over the mantel fires
+  // onMemoryClick("__upload_painting__") — honored immediately (no step gate,
+  // a dead-feeling painting reads as "unresponsive"). With captures the mantel
+  // already shows photo #1 (the in-place swap disarms isUploadPainting, so
+  // this only fires on the zero-capture placeholder) -> afterWalkTarget.
+  const handleRoomPaintingClick = useCallback((id: string) => {
+    if (id === "__upload_painting__" && phase === "walk_room") setPhase(afterWalkTarget);
+  }, [phase, setPhase, afterWalkTarget]);
+
+  // Cinematic prompt fallback: the exterior scene fires onCinematicPause at the
+  // WP1 hold; if it never does (stalled GL, reduced-motion stills path), surface
+  // the prompt card anyway after 8s so the walk can always be started.
+  useEffect(() => {
+    if (phase !== "cinematic" || cinematicPaused) return;
+    const timer = setTimeout(() => setCinematicPaused(true), 8000);
+    return () => clearTimeout(timer);
+  }, [phase, cinematicPaused]);
+
+  // Cinematic flyover ceiling: once resumed, the flyover + zoom (up to ~18s)
+  // ends in the arrival callback, which holds a 3s door beat before advancing
+  // (~21s natural total). The ceiling is STRICTLY anti-stranding (stalled GL),
+  // never pacing: full choreography + ~8s buffer = 30s, and it only ARMS after
+  // the user resumes (the WP1 prompt wait is unbounded by design) AND the
+  // exterior scene is actually live (walkSceneReady) — on a slow device the 8s
+  // prompt fallback can surface "Yes, let's go!" while the scene is still
+  // loading, and the 30s must not burn during that load. The 90s outer bound
+  // below covers a scene that never goes live.
+  useEffect(() => {
+    if (phase === "cinematic" && cinematicResumed && walkSceneReady) {
+      const timer = setTimeout(() => setPhase("walk_entrance"), 30000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase, cinematicResumed, walkSceneReady, setPhase]);
+
+  // Safety fallback after "Enter The Room": the step-7 auto-walk to ro1 covers
+  // ~4m at the 2.2m/s comfort cap (~2s) then fires the arrival callback. Only
+  // if that callback never comes (stalled loop), open the room after
+  // ~2s natural + 8s buffer = 10s — never mid-walk.
   useEffect(() => {
     if (corridorEnterClicked && phase === "walk_corridor") {
-      const t = setTimeout(() => setPhase("walk_room"), 4000);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setPhase("walk_room"), 10000);
+      return () => clearTimeout(timer);
     }
   }, [corridorEnterClicked, phase, setPhase]);
 
-  // Safety fallback for the auto-walk legs: the exterior/entrance scenes advance
-  // only when their WebGL loop fires a callback. If the scene stalls on iPhone
-  // (GL context loss, throttled rAF), never strand the user — advance after a ceiling.
+  // Safety ceilings for the auto-walk legs — STRICTLY anti-stranding, never
+  // pacing. The scenes advance only when their WebGL loop fires a callback; if
+  // a scene stalls (GL context loss, throttled rAF), advance after a ceiling
+  // set to the leg's FULL computed choreography duration + ~8s buffer, so it
+  // can never fire mid-animation:
+  //  - walk_exterior: 7s cart ride + 3s door beat = 10s        -> 18s ceiling
+  //  - walk_entrance: 7.7s look-around + 12s walk  = 19.7s     -> 28s ceiling
+  //  - walk_corridor: steps 0-5 = 13.5s (+0.5s/step mobile = 16.5s) -> 25s,
+  //    DISARMED once step 6 shows "Enter The Room" (unbounded user decision;
+  //    the post-click 10s ceiling above covers the step-7 auto-walk)
+  //  - walk_room: steps 0-8 = 20.5s (+0.5s/step mobile = 25s)  -> 33s,
+  //    DISARMED once step 9 shows the painting prompt + "Add a Memory" CTA
+  //    (unbounded user-wait; the visible CTA already prevents stranding)
+  // ARMING (E2E slow-env fix): each ceiling counts from the moment the leg is
+  // LIVE — walkSceneReady (real first frame via onSceneReady) or, belt-and-
+  // braces, the leg's first choreography step callback — never from phase
+  // entry, so scene-load time (60s+ headless) can no longer eat the ceiling
+  // and truncate choreography. While not live, the 90s outer bound below is
+  // the only timer. DISARM = HARD CANCEL: when a dep flips (step >= 6/9
+  // reached, phase leaves, liveness changes), the effect cleanup clears the
+  // pending timeout BEFORE re-evaluating — a scheduled advance can never
+  // outlive its disarm condition.
+  const corridorWaitingForEnter = corridorStep >= 6;
+  const roomWaitingForPainting = roomStep >= 9;
+  const walkLegLive =
+    walkSceneReady ||
+    (phase === "walk_corridor" && corridorStep >= 0) ||
+    (phase === "walk_room" && roomStep >= 0);
   useEffect(() => {
+    if (!walkLegLive) return; // scene still loading — outer bound covers stranding
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (phase === "walk_exterior") {
-      const t = setTimeout(() => setPhase("walk_entrance"), 14000);
-      return () => clearTimeout(t);
+      timer = setTimeout(() => setPhase("walk_entrance"), 18000);
+    } else if (phase === "walk_entrance") {
+      timer = setTimeout(() => setPhase("walk_corridor"), 28000);
+    } else if (phase === "walk_corridor" && !corridorWaitingForEnter) {
+      timer = setTimeout(() => setPhase("walk_room"), 25000);
+    } else if (phase === "walk_room" && !roomWaitingForPainting) {
+      timer = setTimeout(() => setPhase(afterWalkTarget), 33000);
     }
-    if (phase === "walk_entrance") {
-      const t = setTimeout(() => setPhase("walk_corridor"), 14000);
-      return () => clearTimeout(t);
-    }
-    // walk_room invites a tap on the upload painting; if the reviewer never finds it,
-    // surface the upload step rather than leaving them stuck in the room forever.
-    if (phase === "walk_room") {
-      const t = setTimeout(() => setPhase("upload"), 30000);
-      return () => clearTimeout(t);
-    }
-  }, [phase, setPhase]);
+    return () => { if (timer) clearTimeout(timer); };
+  }, [phase, walkLegLive, corridorWaitingForEnter, roomWaitingForPainting, setPhase, afterWalkTarget]);
 
-  const handleRoomPaintingClick = useCallback((id: string) => {
-    // Honor the painting tap as soon as the room is shown — gating on roomStep>=9
-    // left the painting dead for ~18s of cinematic clock, reading as "unresponsive".
-    if (id === "__upload_painting__" && phase === "walk_room") {
-      setPhase("upload");
+  // OUTER absolute bound — purely anti-infinite-loading: if a leg's scene
+  // NEVER goes live (chunk never resolves, GL never produces a first frame),
+  // advance 90s after phase entry (cinematic: after resume — the WP1 prompt
+  // wait stays unbounded by design). Cancelled the moment the leg goes live,
+  // when the armed ceilings above take over — so it can never cut real
+  // choreography, and it can never override a step>=6/9 user-wait (steps
+  // firing imply the leg is live, which disables this bound).
+  useEffect(() => {
+    if (walkLegLive) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (phase === "cinematic" && cinematicResumed) {
+      timer = setTimeout(() => setPhase("walk_entrance"), 90000);
+    } else if (phase === "walk_exterior") {
+      timer = setTimeout(() => setPhase("walk_entrance"), 90000);
+    } else if (phase === "walk_entrance") {
+      timer = setTimeout(() => setPhase("walk_corridor"), 90000);
+    } else if (phase === "walk_corridor") {
+      timer = setTimeout(() => setPhase("walk_room"), 90000);
+    } else if (phase === "walk_room") {
+      timer = setTimeout(() => setPhase(afterWalkTarget), 90000);
     }
-  }, [phase, setPhase]);
+    return () => { if (timer) clearTimeout(timer); };
+  }, [phase, cinematicResumed, walkLegLive, setPhase, afterWalkTarget]);
+
+  // ── Paywall trial CTA (change 2): completing onboarding and routing to /pricing
+  // must be ONE coherent flow — never fire setPhase('done') (which lands the user
+  // in the atrium via onFinish) alongside navigation, which races the route/tab.
+  // Instead: persist the wizard fields, AWAIT the atomic onboarding DB write, then
+  // hard-navigate the SAME document to /pricing (Apple IAP on iOS, Stripe on web).
+  // No detached tab, no atrium jump — purchase intent is preserved. ──
+  const trialNavigatingRef = useRef(false);
+  const handleTrialCta = useCallback(async () => {
+    if (trialNavigatingRef.current) return;
+    trialNavigatingRef.current = true;
+    track("paywall_trial_clicked", { source: "onboarding" });
+    // Persist the wizard fields exactly as the unified completion path does.
+    setUserName(trimmedName);
+    const savedGoal = (() => { try { return localStorage.getItem("mp_user_goal"); } catch { return null; } })();
+    setUserGoal(savedGoal || "preserve");
+    setStyleEra(selectedEra);
+    setFirstWing("roots");
+    useWalkthroughStore.getState().skip();
+    try {
+      // Atomic authoritative write — must confirm before we leave onboarding, so a
+      // fresh-device relogin never re-onboards after a purchase.
+      await useUserStore.getState().finishOnboarding();
+    } catch {
+      trialNavigatingRef.current = false;
+      try { window.dispatchEvent(new CustomEvent("mp:toast", { detail: { message: t("paywallFinishError") !== "paywallFinishError" ? t("paywallFinishError") : t("uploadFailed"), type: "error" } })); } catch {}
+      return;
+    }
+    try { localStorage.setItem(WALK_DONE_KEY, "true"); } catch {}
+    cleanupStorage();
+    track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current, memoriesUploaded: capturedMemsRef.current.length });
+    // Same-document navigation to /pricing (new tab would orphan purchase intent on
+    // web; a detached nav would race the WKWebView on iOS). window.location.href
+    // stays in the current tab on web AND inside the WKWebView on native.
+    window.location.href = "/pricing";
+  }, [trimmedName, selectedEra, setUserName, setUserGoal, setStyleEra, setFirstWing, t]);
 
   // ── Upload ──
   const handleMemoryAdded = useCallback(() => {
@@ -264,18 +707,38 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     setPhase("celebration");
   }, [setPhase]);
 
+  // ── Paywall platform gate: where the paywall is disallowed (iOS while IAP is
+  // off — Apple 3.1.1; Android native — no Play Billing) it must be UNREACHABLE
+  // — coerce any stray 'paywall' to 'done'. Web (Stripe) and iOS-with-IAP
+  // (Apple IAP via /pricing) keep it. ──
+  useEffect(() => {
+    if (phase === "paywall" && !paywallAllowed()) setPhase("done");
+  }, [phase, setPhase]);
+
   // ── Done ──
   useEffect(() => {
     if (phase === "done") {
-      track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current });
+      track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current, memoriesUploaded: capturedMemsRef.current.length });
       try { localStorage.setItem(WALK_DONE_KEY, "true"); } catch {}
       cleanupStorage();
       onFinish(memoryUploadedRef.current);
     }
   }, [phase, onFinish]);
 
-  // ── Preload ImportHub during walk phases so it's ready when the user clicks the painting ──
+  // ── Preload the 3D scene modules while the user types their name — perfect
+  // time to warm the module cache before the cinematic; preload ImportHub
+  // during the corridor/room legs so the painting tap opens it instantly. ──
   useEffect(() => {
+    // Warm the 3D module cache while the user types their name AND while they
+    // pick photos (the capture card sits between name and the cinematic now).
+    if (phase === "name" || phase === "capture") {
+      import("@/lib/3d/scenePreloader")
+        .then(({ preloadScene }) => {
+          preloadScene("exterior");
+          preloadScene("entrance");
+        })
+        .catch(() => {});
+    }
     if (phase === "walk_corridor" || phase === "walk_room") {
       import("@/components/ui/ImportHub");
     }
@@ -285,99 +748,280 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const onboardingRoomName: string | undefined = undefined; // Keep default room names from WING_ROOMS
 
   // ══════════════════════════════════════════════
-  // SHARED: Video background for setup phases
+  // SHARED: warm-cream Library canon primitives
   // ══════════════════════════════════════════════
-  const isSetupPhase = SETUP_PHASES.includes(phase);
-
-  const videoBackground = (
-    <video
-      ref={videoRef}
-      autoPlay={phase === "video_intro"}
-      muted
-      loop={videoPlayed}
-      playsInline
-      preload="metadata"
-      onEnded={() => {
-        setVideoPlayed(true);
-        // After first play, switch to loop mode and transition to lang_a11y
-        if (videoRef.current) {
-          videoRef.current.loop = true;
-          videoRef.current.play().catch(() => {});
-        }
-        if (phase === "video_intro") setPhase("lang_a11y");
-      }}
-      style={{
-        position: "fixed", inset: 0,
-        width: "100%", height: "100%",
-        objectFit: "cover",
-        objectPosition: isMobile ? "60% center" : "center center",
-        // During intro: brighter. During setup: match landing page warmth
-        opacity: phase === "video_intro" ? 0.65 : 0.45,
-        filter: phase === "video_intro"
-          ? "saturate(0.7) brightness(1.1)"
-          : "saturate(0.7) brightness(1.0) blur(2px)",
-        transition: "opacity 1.2s ease, filter 1.2s ease",
-        zIndex: 0,
-      }}
-    >
-      <source src="/video/hero-ob.mp4" type="video/mp4" />
-    </video>
+  const canonStyle = (
+    <style>{`
+${KEYFRAMES}
+@keyframes onb-spin{to{transform:rotate(360deg)}}
+.onb-cta{transition:transform .16s ease, filter .16s ease}
+.onb-cta:hover{transform:translateY(-1px);filter:brightness(1.06)}
+.onb-focusable:focus-visible{outline:0.1875rem solid ${EMBER};outline-offset:0.1875rem}
+@media (prefers-reduced-motion: reduce){.onb-anim,.onb-cta,.onb-orient-in{animation:none!important;transition:none!important;transform:none!important}}
+    `}</style>
   );
 
-  const gradientOverlay = (
-    <div style={{
-      position: "fixed", inset: 0,
-      background: phase === "video_intro"
-        ? "linear-gradient(180deg, rgba(26,25,23,0.15) 0%, rgba(26,25,23,0.3) 50%, rgba(26,25,23,0.7) 100%)"
-        : "radial-gradient(ellipse at center, rgba(26,25,23,0.4), rgba(26,25,23,0.65))",
-      transition: "background 1s ease",
-      pointerEvents: "none",
-      zIndex: 1,
-    }} />
+  // Opaque warm-cream card (hairline border, no backdrop blur).
+  // margin:auto (R8): inside the flex-start scroller below this yields the SAME
+  // visual centering as justify-content:center when the card fits the viewport,
+  // but degrades to a scrollable top-aligned card when it doesn't (tall cards on
+  // short phones, keyboard-up name card) — auto margins collapse to 0 on overflow.
+  const cardStyle: React.CSSProperties = {
+    maxWidth: "30rem", width: "92%",
+    padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
+    background: CREAM,
+    borderRadius: "1rem",
+    border: `0.0625rem solid ${HAIRLINE}`,
+    boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
+    animation: "onb-fadeUp .5s ease",
+    margin: "auto",
+  };
+
+  const pageStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
+    // height:100dvh ONLY — a 100vh minHeight floor exceeds the VISIBLE viewport
+    // while mobile URL-bar chrome is expanded, so the inner 100% scroller thinks
+    // its content fits and won't scroll, hiding the card bottom / skip link
+    // behind the browser chrome (R8).
+    width: "100vw", height: "100dvh", position: "relative",
+    overflow: "hidden", background: CREAM, ...extra,
+  });
+
+  // Universal setup-card scroller (R8): flex-start + overflowY:auto on EVERY
+  // viewport (not just landscape phones) so no card can ever clip off-screen;
+  // cardStyle's margin:auto restores centering whenever content fits. Top
+  // padding clears the absolute StepDots row; bottom padding respects the
+  // home-indicator safe area.
+  const pageScrollerStyle: React.CSSProperties = {
+    position: "relative", zIndex: 2,
+    width: "100%", height: "100%",
+    display: "flex", flexDirection: "column", alignItems: "center",
+    justifyContent: "flex-start",
+    overflowY: "auto",
+    padding: "calc(3.5rem + env(safe-area-inset-top, 0px)) 0 calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+  };
+
+  // Canon overline (landing Eyebrow grammar): 0.6875rem / 700 / 0.14em /
+  // uppercase / ember-glyph ink (= landing accentLight on light surfaces).
+  const Overline = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+      <span style={{ width: "2rem", height: "1px", background: `${EMBER_GLYPH}40` }} />
+      <span style={{
+        fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+        color: EMBER_GLYPH, letterSpacing: "0.14em", textTransform: "uppercase",
+      }}>
+        {children}
+      </span>
+      <span style={{ width: "2rem", height: "1px", background: `${EMBER_GLYPH}40` }} />
+    </div>
   );
+
+  // One primary EMBER CTA per card (ctaGrad, EMBER focus ring via .onb-focusable, >=3.25rem).
+  const primaryCtaStyle: React.CSSProperties = {
+    fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
+    padding: "0 1.25rem", borderRadius: "0.75rem", border: "none",
+    background: T.land.ctaGrad, color: "#FFF", cursor: "pointer",
+    minHeight: "3.25rem",
+  };
+
+  const skipLinkStyle: React.CSSProperties = {
+    fontFamily: T.font.body, fontSize: "0.8125rem",
+    color: MUTED, background: "none", border: "none",
+    cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+    minHeight: "2.75rem", padding: "0.5rem",
+  };
+
+  // Warm-ink glass skip chip for the walkthrough legs — same chrome/anchor as
+  // the video skip chip, so "skip" reads as one gesture across the whole flow.
+  const walkSkipChipStyle: React.CSSProperties = {
+    position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))",
+    right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
+    fontFamily: T.font.body, fontSize: "0.75rem",
+    color: "rgba(255,255,255,0.9)", background: "rgba(64,59,54,0.45)",
+    border: "0.0625rem solid rgba(64,59,54,0.55)",
+    borderRadius: "0.5rem", padding: "0.5rem 1rem",
+    cursor: "pointer", backdropFilter: "blur(0.25rem)",
+    minHeight: "2.75rem", minWidth: "2.75rem",
+  };
 
   // Visible fallback for lazy 3D scenes / panels: a spinner plus an always-clickable
-  // Skip, so a slow or failed chunk in WKWebView never leaves a frozen black screen.
+  // Skip, so a slow or failed chunk in WKWebView never leaves a frozen cream screen.
   const sceneLoadingFallback = (
     <div style={{
       position: "absolute", inset: 0, display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: "center", gap: "1.5rem",
-      background: "#1a1917", zIndex: 30,
+      background: CREAM, zIndex: 30,
       paddingBottom: "calc(2rem + env(safe-area-inset-bottom, 0px))",
     }}>
       <style>{`@keyframes onb-spin{to{transform:rotate(360deg)}}`}</style>
       <div style={{
         width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-        border: "3px solid rgba(255,255,255,0.15)", borderTopColor: T.color.terracotta,
+        border: `0.1875rem solid ${HAIRLINE}`, borderTopColor: EMBER,
         animation: "onb-spin 0.8s linear infinite",
       }} />
-      <button onClick={handleSkip} style={{
+      <button className="onb-focusable" onClick={handleSkip} style={{
         fontFamily: T.font.body, fontSize: "0.8125rem",
-        color: "rgba(255,255,255,0.75)", background: "rgba(0,0,0,0.4)",
-        border: "1px solid rgba(255,255,255,0.2)", borderRadius: "0.5rem",
+        color: MUTED, background: "#FFF",
+        border: `0.0625rem solid ${HAIRLINE}`, borderRadius: "0.5rem",
         padding: "0.625rem 1.25rem", cursor: "pointer", minHeight: "2.75rem",
-        backdropFilter: "blur(4px)",
       }}>
         {t("skipExploreOwn")}
       </button>
     </div>
   );
 
+  // Roving-tabindex radiogroup keyboard pattern: Arrow keys (and Home/End) move
+  // selection+focus; only the checked radio is a Tab stop. Fulfills the ARIA
+  // radiogroup contract both radiogroups assert.
+  const handleRadioKeyDown = <V,>(
+    e: React.KeyboardEvent,
+    values: readonly V[],
+    current: V,
+    onSelect: (v: V) => void,
+  ) => {
+    const idx = values.indexOf(current);
+    if (idx < 0) return;
+    let next = idx;
+    switch (e.key) {
+      case "ArrowRight": case "ArrowDown": next = (idx + 1) % values.length; break;
+      case "ArrowLeft": case "ArrowUp": next = (idx - 1 + values.length) % values.length; break;
+      case "Home": next = 0; break;
+      case "End": next = values.length - 1; break;
+      default: return;
+    }
+    e.preventDefault();
+    onSelect(values[next]);
+    // Move focus to the newly selected radio within the same group.
+    const group = e.currentTarget as HTMLElement;
+    const radios = group.querySelectorAll<HTMLElement>('[role="radio"]');
+    radios[next]?.focus();
+  };
+
   // ══════════════════════════════════════════════
   // PHASE RENDERS
   // ══════════════════════════════════════════════
 
-  /* ── Video intro — plays once, then transitions ── */
+  /* ── Video intro — full-screen /video/hero-ob.mp4, plays once then advances ── */
   if (phase === "video_intro") {
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", overflow: "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        {videoBackground}
-        {gradientOverlay}
+        {/* Full canon style block (not bare KEYFRAMES): the skip chip needs the
+            .onb-focusable EMBER focus ring in this phase too. */}
+        {canonStyle}
 
-        {/* Skip button */}
+        {/* Warm-dark fallback UNDER the video — covers decode/network gaps so a
+            slow start never shows a flat black frame (§3.1). */}
+        <div aria-hidden style={{
+          position: "fixed", inset: 0, zIndex: 0,
+          background: "radial-gradient(ellipse at 50% 40%, #2A2622 0%, #1a1917 70%)",
+        }} />
+
+        {/* Background video */}
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          loop={videoPlayed}
+          playsInline
+          preload="metadata"
+          poster="/video/hero-ob-poster.jpg"
+          onEnded={beginOutro}
+          onLoadedMetadata={(e) => {
+            // Progress hairline gate: only a real duration may drive the fill —
+            // rendering before this fires would 0-jump mid-video (§3.6).
+            const d = e.currentTarget.duration;
+            if (Number.isFinite(d) && d > 0) setVideoMetaReady(true);
+          }}
+          style={{
+            position: "fixed", inset: 0,
+            width: "100%", height: "100%",
+            objectFit: "cover",
+            objectPosition: isMobile ? "60% center" : "center center",
+            opacity: 0.65,
+            filter: "saturate(0.7) brightness(1.1)",
+            zIndex: 0,
+          }}
+        >
+          <source src="/video/hero-ob.mp4" type="video/mp4" />
+        </video>
+
+        {/* Gradient overlay for legibility */}
+        <div style={{
+          position: "fixed", inset: 0,
+          background: "linear-gradient(180deg, rgba(26,25,23,0.15) 0%, rgba(26,25,23,0.3) 50%, rgba(26,25,23,0.7) 100%)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }} />
+
+        {/* Tagline beat (§3.3, R3) — the ONE text lockup of the playing state:
+            centered overline + tagline, in @1.2s, out @6s, inert to pointer/SR
+            timing (decorative brand beat). Never rendered once the outro owns
+            the frame. */}
+        {introBeat !== "hidden" && !showWelcome && (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 12,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            gap: "0.75rem", textAlign: "center", pointerEvents: "none", padding: "0 1.5rem",
+            ...(introBeat === "in" && !prefersReducedMotion()
+              ? { animation: "onb-taglineIn 1s ease both" }
+              : introBeat === "in"
+                ? {}
+                : { opacity: 0, transition: "opacity 0.9s ease" }),
+          }}>
+            <div style={{
+              // Canon on-dark Eyebrow grammar (landing hero): 0.6875rem/700/0.14em
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+              letterSpacing: "0.14em", textTransform: "uppercase",
+              color: "rgba(255,255,255,0.72)",
+            }}>
+              {t("appName")}
+            </div>
+            <div style={{
+              fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500,
+              fontSize: isMobile ? "1.1875rem" : "1.5rem",
+              color: "rgba(255,255,255,0.92)", lineHeight: 1.35, maxWidth: "26rem",
+              textShadow: "0 0.125rem 1rem rgba(26,25,23,0.5)",
+            }}>
+              {t("videoTagline") !== "videoTagline" ? t("videoTagline") : "A home for the moments that made you."}
+            </div>
+          </div>
+        )}
+
+        {/* Welcome outro — fades in over the last moments of the video, in the
+            app's cream display voice (landing-hero treatment: Fraunces 500,
+            flat cream, upright — NO gold text anywhere in onboarding), so the
+            hand-off to the first menu isn't an abrupt cut. */}
+        {showWelcome && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 15, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 1.5rem", background: "radial-gradient(ellipse at center, rgba(26,25,23,0.35) 0%, rgba(26,25,23,0.72) 100%)", animation: "onb-welcomeIn 1.1s ease both" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+              <div style={{
+                // True landing-hero treatment: Fraunces 500, flat cream, upright
+                // (the landing hero is not italic — no italic-script drift).
+                fontFamily: T.font.display,
+                fontSize: isMobile ? "1.875rem" : "2.75rem", fontWeight: 500,
+                color: "#FCFAF5", textAlign: "center", lineHeight: 1.2, letterSpacing: "0.01em",
+                textShadow: "0 0.25rem 1.75rem rgba(26,25,23,0.55)",
+              }}>
+                {t("welcomeToPalace") !== "welcomeToPalace" ? t("welcomeToPalace") : "Welcome to your Memory Palace"}
+              </div>
+              {/* Outro subline (R2 — the single subline key) */}
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem",
+                color: "rgba(255,255,255,0.85)", lineHeight: 1.5,
+                marginTop: "0.75rem", maxWidth: "24rem",
+                animation: "onb-subtitleReveal 0.8s ease 0.6s both",
+              }}>
+                {t("welcomeSub") !== "welcomeSub" ? t("welcomeSub") : "Let's make it yours — it takes about two minutes."}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Skip button — warm-ink chrome so even the video overlay stays on palette */}
         <button
+          className="onb-focusable"
           onClick={() => {
+            outroRef.current = true;
+            if (outroTimerRef.current) { clearTimeout(outroTimerRef.current); outroTimerRef.current = null; }
             setVideoPlayed(true);
             if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
             setPhase("lang_a11y");
@@ -385,84 +1029,76 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           style={{
             position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
             fontFamily: T.font.body, fontSize: "0.75rem",
-            color: "rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.2)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-            cursor: "pointer", backdropFilter: "blur(4px)", minHeight: "2.5rem",
+            color: "rgba(255,255,255,0.9)", background: "rgba(64,59,54,0.45)",
+            border: "0.0625rem solid rgba(64,59,54,0.55)",
+            borderRadius: "0.5rem", padding: "0.5rem 1rem",
+            cursor: "pointer", backdropFilter: "blur(0.25rem)", minHeight: "2.75rem", minWidth: "2.75rem",
           }}
         >
           {t("cinematicSkip")}
         </button>
 
-        {/* Auto-advance after 15s if video hasn't ended */}
-        <VideoAutoAdvance seconds={15} onAdvance={() => {
-          setVideoPlayed(true);
-          if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
-          setPhase("lang_a11y");
-        }} />
+        {/* Progress hairline (§3.6) — decorative playback trace, aria-hidden,
+            fill driven by the rAF loop (transform-only, no re-render). Lifted
+            above the home-indicator gesture zone; hidden once the outro owns
+            the frame; rendered only after loadedmetadata reports a duration. */}
+        {videoMetaReady && !showWelcome && (
+          <div aria-hidden style={{
+            position: "fixed", left: 0, right: 0,
+            bottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))",
+            height: "0.125rem", background: "rgba(255,255,255,0.12)",
+            zIndex: 10, overflow: "hidden", pointerEvents: "none",
+          }}>
+            <div ref={progressFillRef} style={{
+              width: "100%", height: "100%",
+              background: "rgba(255,255,255,0.4)",
+              transform: "scaleX(0)", transformOrigin: "left center",
+            }} />
+          </div>
+        )}
+
+        {/* Start the welcome outro at ~12.5s (then advance ~2.6s later), so a
+            long/looping video still hands off gracefully. */}
+        <VideoAutoAdvance seconds={12.5} onAdvance={beginOutro} />
       </div>
     );
   }
 
-  /* ── Language + Accessibility — elevated design ── */
+  /* ── Language + Legibility — warm-cream Library canon ── */
   if (phase === "lang_a11y") {
+    const langLabel = t("chooseLangSubtitle");
+    const sizeLabel = t("textSizeTitle");
     return (
-      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        {videoBackground}
-        {gradientOverlay}
+      <div style={pageStyle()}>
+        {canonStyle}
 
-        <div style={{
-          position: "relative", zIndex: 2,
-          width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: isLandscapePhone ? "flex-start" : "center",
-          overflowY: isLandscapePhone ? "auto" : undefined,
-        }}>
-          <StepIndicator current={1} total={3} />
+        <div style={pageScrollerStyle}>
+          <StepDots current={1} total={3} label={t("stepOf", { current: "1", total: "3" })} />
 
-          {/* Glass card container — warm bronze tint */}
-          <div style={{
-            maxWidth: "30rem", width: "92%",
-            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
-            background: "rgba(40, 34, 26, 0.6)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
-            animation: "onb-fadeUp .6s ease",
-          }}>
+          <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
+              <Overline>{t("appName")}</Overline>
 
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
-                {t("chooseLangTitle")}
+                {t("langA11yTitle") !== "langA11yTitle" ? t("langA11yTitle") : "Let's make this comfortable to read"}
               </h2>
 
-              {/* Language grid — text only, no flags */}
+              {/* Language radiogroup */}
               <div style={{ width: "100%" }}>
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.625rem",
-                  color: "#7A6F63", textAlign: "left", marginBottom: "0.5rem",
-                  fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px",
+                <h3 style={{
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+                  color: EMBER_GLYPH, textAlign: "left", margin: "0 0 0.5rem",
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                 }}>
-                  {t("chooseLangSubtitle")}
-                </p>
-                <div style={{
+                  {langLabel}
+                </h3>
+                <div role="radiogroup" aria-label={langLabel}
+                  onKeyDown={(e) => handleRadioKeyDown(e, locales, selectedLocale, (loc) => { setSelectedLocale(loc); setLocaleNoReload(loc); })}
+                  style={{
                   display: "grid",
                   gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
                   gap: "0.4375rem",
@@ -472,18 +1108,23 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                     return (
                       <button
                         key={loc}
+                        className="onb-focusable"
+                        role="radio"
+                        aria-checked={active}
+                        tabIndex={active ? 0 : -1}
                         onClick={() => { setSelectedLocale(loc); setLocaleNoReload(loc); }}
                         style={{
-                          fontFamily: T.font.body, fontSize: "0.8125rem",
-                          fontWeight: active ? 600 : 500,
+                          fontFamily: T.font.body, fontSize: "0.9375rem",
+                          fontWeight: active ? 700 : 500,
                           padding: "0.6875rem 0.5rem", borderRadius: "0.5rem",
-                          border: `1.5px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
-                          background: active ? `${T.color.terracotta}12` : "rgba(255,255,255,0.02)",
-                          color: active ? T.color.terracotta : "#C4B8A8",
+                          border: `0.125rem solid ${active ? EMBER : HAIRLINE}`,
+                          background: active ? `${EMBER}12` : "#FFF",
+                          color: active ? EMBER : INK,
                           cursor: "pointer", transition: "all .2s", minHeight: "2.75rem",
                           display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                         }}
                       >
+                        {active && <CheckMark color={EMBER} size="0.875rem" />}
                         {localeNames[loc]}
                       </button>
                     );
@@ -492,18 +1133,20 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
               </div>
 
               {/* Divider */}
-              <div style={{ width: "100%", height: "1px", background: "rgba(255,255,255,0.05)" }} />
+              <div style={{ width: "100%", height: "1px", background: HAIRLINE }} />
 
-              {/* Text size */}
+              {/* Text size radiogroup — persists app-wide via AccessibilityProvider */}
               <div style={{ width: "100%" }}>
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.625rem",
-                  color: "#7A6F63", textAlign: "left", marginBottom: "0.5rem",
-                  fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px",
+                <h3 style={{
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+                  color: EMBER_GLYPH, textAlign: "left", margin: "0 0 0.5rem",
+                  textTransform: "uppercase", letterSpacing: "0.14em",
                 }}>
-                  {t("textSizeTitle")}
-                </p>
-                <div style={{ display: "flex", gap: "0.375rem" }}>
+                  {sizeLabel}
+                </h3>
+                <div role="radiogroup" aria-label={sizeLabel}
+                  onKeyDown={(e) => handleRadioKeyDown(e, ["standard", "comfortable", "large"] as TextSize[], textSize, setTextSize)}
+                  style={{ display: "flex", gap: "0.375rem" }}>
                   {(["standard", "comfortable", "large"] as TextSize[]).map((size) => {
                     const active = size === textSize;
                     const label = t(`textSize${size.charAt(0).toUpperCase() + size.slice(1)}` as any);
@@ -511,20 +1154,37 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                     return (
                       <button
                         key={size}
+                        className="onb-focusable"
+                        role="radio"
+                        aria-checked={active}
+                        tabIndex={active ? 0 : -1}
                         onClick={() => setTextSize(size)}
                         style={{
-                          flex: 1, fontFamily: T.font.body, fontSize: "0.6875rem",
-                          fontWeight: active ? 600 : 500,
-                          padding: "0.75rem 0.25rem", borderRadius: "0.5rem",
-                          border: `1.5px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
-                          background: active ? `${T.color.terracotta}12` : "rgba(255,255,255,0.02)",
-                          color: active ? T.color.terracotta : "#A09889",
-                          cursor: "pointer", transition: "all .2s", minHeight: "3.25rem",
-                          display: "flex", flexDirection: "column", alignItems: "center", gap: "0.125rem",
+                          // minWidth:0 + minHeight (not fixed height) + wrapping
+                          // label span: long unbreakable labels ("Komfortabel"
+                          // at the Large root scale on 360px) wrap to a second
+                          // line instead of clipping past the button edge.
+                          flex: 1, minWidth: 0, fontFamily: T.font.body, fontSize: "0.75rem",
+                          fontWeight: active ? 700 : 500,
+                          padding: "0.5rem 0.25rem", borderRadius: "0.5rem",
+                          border: `0.125rem solid ${active ? EMBER : HAIRLINE}`,
+                          background: active ? `${EMBER}12` : "#FFF",
+                          color: active ? EMBER : INK,
+                          cursor: "pointer", transition: "all .2s", minHeight: "3.5rem",
+                          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.125rem",
+                          position: "relative",
                         }}
                       >
-                        <span style={{ fontSize: fz, fontFamily: T.font.display, fontWeight: 300, lineHeight: 1 }}>Aa</span>
-                        <span style={{ fontSize: size === "comfortable" ? "0.8125rem" : size === "large" ? "0.9375rem" : undefined }}>{label}</span>
+                        {active && (
+                          <span aria-hidden style={{
+                            position: "absolute", top: "0.25rem", right: "0.375rem",
+                            display: "flex",
+                          }}>
+                            <CheckMark color={EMBER} size="0.8125rem" />
+                          </span>
+                        )}
+                        <span style={{ fontSize: fz, fontFamily: T.font.display, fontWeight: 400, lineHeight: 1 }}>Aa</span>
+                        <span style={{ maxWidth: "100%", overflowWrap: "anywhere", lineHeight: 1.15, textAlign: "center" }}>{label}</span>
                       </button>
                     );
                   })}
@@ -533,24 +1193,14 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
               {/* Continue */}
               <button
+                className="onb-cta onb-focusable"
                 onClick={() => setPhase("name")}
-                style={{
-                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  padding: "0.8125rem 0", borderRadius: "0.5rem", border: "none",
-                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  color: "#FFF", cursor: "pointer", transition: "all .3s",
-                  boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.25)",
-                  minHeight: "3rem", width: "100%",
-                }}
+                style={{ ...primaryCtaStyle, width: "100%" }}
               >
                 {t("continueButton")}
               </button>
 
-              <button onClick={handleSkip} style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "#5A5248", background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-              }}>
+              <button className="onb-focusable" onClick={handleSkip} style={skipLinkStyle}>
                 {t("skipExploreOwn")}
               </button>
             </div>
@@ -560,110 +1210,154 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     );
   }
 
-  /* ── Name screen — same glass card style ── */
+  /* ── Name screen — warm-cream card, validated + labeled ── */
   if (phase === "name") {
+    const nameValid = trimmedName.length > 0;
+    // Advancing from name enters the walkthrough. The style-era confirmation is
+    // unrouted (walkthrough teaches the palace physically; era stays editable in
+    // Settings) — persist the Roman default here, exactly where the old
+    // style_era card used to write it.
+    const advanceFromName = () => {
+      if (!nameValid) return;
+      setUserName(trimmedName);
+      setStyleEra("roman");
+      updateProfile({ styleEra: "roman" }).catch(() => {});
+      // Capture-first (wk 2): the photo picker comes BEFORE the walk.
+      setPhase("capture");
+    };
     return (
-      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        {videoBackground}
-        {gradientOverlay}
+      <div style={pageStyle()}>
+        {canonStyle}
 
-        <div style={{
-          position: "relative", zIndex: 2,
-          width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: isLandscapePhone ? "flex-start" : "center",
-          overflowY: isLandscapePhone ? "auto" : undefined,
-        }}>
-          <StepIndicator current={2} total={3} />
+        <div style={pageScrollerStyle}>
+          <StepDots current={2} total={3} label={t("stepOf", { current: "2", total: "3" })} />
 
-          {/* Glass card — warm bronze tint */}
-          <div style={{
-            maxWidth: "30rem", width: "92%",
-            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
-            background: "rgba(40, 34, 26, 0.6)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
-            animation: "onb-fadeUp .5s ease",
-          }}>
+          <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
+              <Overline>{t("appName")}</Overline>
 
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
-                {t("whatToCallYou")}
+                {t("nameTitle") !== "nameTitle" ? t("nameTitle") : "Every palace bears a name"}
               </h2>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem",
-                color: "#A09889", maxWidth: "22rem", lineHeight: 1.6, margin: 0,
+                fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.9375rem",
+                color: MUTED, maxWidth: "22rem", lineHeight: 1.6, margin: 0,
               }}>
-                {t("nameDescription")}
+                {t("nameAside") !== "nameAside" ? t("nameAside") : "Tell us yours, and we'll carve it above the door."}
               </p>
+
+              {/* Foundation plaque (§6.5) — live derived-title preview, placed
+                  ABOVE the input so it stays visible while the mobile keyboard
+                  scrolls the focused input into view. Height is ALWAYS reserved
+                  (2-line clamp fits inside 5.75rem) so typing never jumps the
+                  nav row. Plain div — no aria-live (chatty per keystroke); the
+                  empty state is aria-hidden. Title reuses cinematicPalaceName
+                  (R13) — the one source of truth for "{name}'s Palace". */}
+              <div
+                aria-hidden={!nameValid}
+                style={{
+                  minHeight: "5.75rem", width: "100%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <div style={{
+                  width: "100%", maxWidth: "20rem",
+                  padding: "0.75rem 1rem", borderRadius: "0.625rem",
+                  border: `0.0625rem solid ${HAIRLINE}`, background: "#FFFFFF99",
+                  textAlign: "center",
+                  opacity: nameValid ? 1 : 0,
+                  transform: prefersReducedMotion() ? undefined : (nameValid ? "translateY(0)" : "translateY(0.25rem)"),
+                  transition: prefersReducedMotion() ? "opacity .01s linear" : "opacity .3s ease, transform .3s ease",
+                }}>
+                  <div style={{
+                    fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700,
+                    letterSpacing: "0.14em", textTransform: "uppercase", color: EMBER,
+                    marginBottom: "0.375rem",
+                  }}>
+                    {t("namePlaqueOverline") !== "namePlaqueOverline" ? t("namePlaqueOverline") : "Founding deed"}
+                  </div>
+                  <div style={{
+                    fontFamily: T.font.display, fontStyle: "italic", fontSize: "1.125rem",
+                    color: INK, lineHeight: 1.3, overflowWrap: "anywhere",
+                    display: "-webkit-box", WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical", overflow: "hidden",
+                  }}>
+                    {t("cinematicPalaceName", { name: trimmedName }) !== "cinematicPalaceName"
+                      ? t("cinematicPalaceName", { name: trimmedName })
+                      : `${trimmedName}'s Palace`}
+                  </div>
+                </div>
+              </div>
+
               <div style={{ width: "100%", maxWidth: "20rem" }}>
+                <label htmlFor="onb-name-input" style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}>
+                  {t("namePlaceholder")}
+                </label>
                 <input
+                  id="onb-name-input"
+                  className="onb-focusable"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   placeholder={t("namePlaceholder")}
+                  aria-label={t("namePlaceholder")}
+                  maxLength={40}
                   style={{
-                    fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.5rem", textAlign: "center",
-                    padding: "0.875rem 1.5rem", border: "1.5px solid rgba(198,107,61,0.18)",
-                    borderRadius: "0.625rem", background: "rgba(40,34,26,0.4)", color: "#F2EDE7",
+                    // max(1rem, 16px): stays ≥16px computed even under a11y
+                    // down-scaling — kills the iOS focus auto-zoom (§6.6).
+                    fontFamily: T.font.display, fontSize: "max(1rem, 16px)", textAlign: "center",
+                    padding: "0.875rem 1.5rem", border: `0.09375rem solid ${HAIRLINE}`,
+                    borderRadius: "0.625rem", background: "#FFF", color: INK,
                     outline: "none", width: "100%", transition: "border-color .2s",
                   }}
-                  onFocus={(e) => { e.target.style.borderColor = T.color.terracotta; }}
-                  onBlur={(e) => { e.target.style.borderColor = "rgba(198,107,61,0.18)"; }}
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter") setPhase("style_era"); }}
+                  onFocus={(e) => { e.target.style.borderColor = EMBER; }}
+                  onBlur={(e) => { e.target.style.borderColor = HAIRLINE; }}
+                  // Desktop keeps the convenience; on mobile skip autoFocus so we
+                  // don't force the keyboard up / scroll-jump on the AT/touch flow.
+                  autoFocus={!isMobile}
+                  onKeyDown={(e) => { if (e.key === "Enter") advanceFromName(); }}
                 />
+                {!nameValid && (
+                  <p style={{
+                    fontFamily: T.font.body, fontSize: "0.75rem", color: MUTED,
+                    margin: "0.5rem 0 0", lineHeight: 1.4,
+                  }}>
+                    {t("nameHint") !== "nameHint" ? t("nameHint") : "Please enter a name to continue."}
+                  </p>
+                )}
               </div>
 
               <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
                 <button
+                  className="onb-focusable"
                   onClick={() => setPhase("lang_a11y")}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
-                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
+                    padding: "0 1.25rem", borderRadius: "0.75rem", minHeight: "3.25rem",
+                    border: `0.0625rem solid ${HAIRLINE}`, background: "#FFF",
+                    color: MUTED, cursor: "pointer",
                   }}
                 >
                   {"\u2190"} {t("backButton")}
                 </button>
                 <button
-                  onClick={() => setPhase("style_era")}
+                  className="onb-cta onb-focusable"
+                  onClick={advanceFromName}
+                  disabled={!nameValid}
                   style={{
-                    flex: 1, fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
-                    padding: "0.75rem 2rem", borderRadius: "0.5rem", minHeight: "3rem", border: "none",
-                    background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                    color: "#FFF",
-                    cursor: "pointer",
-                    boxShadow: "0 0.25rem 1rem rgba(198,107,61,.3)",
+                    ...primaryCtaStyle, flex: 1,
+                    opacity: nameValid ? 1 : 0.5,
+                    cursor: nameValid ? "pointer" : "not-allowed",
                   }}
                 >
                   {t("continueButton")} {"\u2192"}
                 </button>
               </div>
 
-              <button onClick={handleSkip} style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "#5A5248", background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-              }}>
+              <button className="onb-focusable" onClick={handleSkip} style={skipLinkStyle}>
                 {t("skipExploreOwn")}
               </button>
             </div>
@@ -673,303 +1367,139 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     );
   }
 
-  /* ── Personalization Quiz — 3 questions ── */
-  if (phase === "quiz") {
-    const QUIZ_QUESTIONS = [
-      {
-        key: "quizQ1" as const,
-        options: [
-          { label: "quizQ1o1" as const, icon: "\uD83C\uDFDB\uFE0F", value: "preserve" },
-          { label: "quizQ1o2" as const, icon: "\uD83D\uDCD6", value: "stories" },
-          { label: "quizQ1o3" as const, icon: "\uD83C\uDF33", value: "genealogy" },
-          { label: "quizQ1o4" as const, icon: "\uD83D\uDCF8", value: "organize" },
-        ],
-        selected: quizGoal,
-        onSelect: (v: string) => {
-          setQuizGoal(v);
-          try { localStorage.setItem("mp_user_goal", v); } catch {}
-          setUserGoal(v);
-          setTimeout(() => setPhase("style_era"), 300);
-        },
-      },
-    ];
-
-    const currentQ = QUIZ_QUESTIONS[quizStep];
-
+  /* ── Capture card (SUCCESS_PLAYBOOK wk 2, Pillar 1 §3) — "Pick 3 photos to
+     hang in your palace", BEFORE the walk. Three frame slots + one hidden
+     multi-select photo picker (mobile gallery friendly). Min 1 to take the
+     primary path; "later" never dead-ends (zero-capture walks fall back to
+     the ImportHub ask at the end of the room leg). Persistence runs in the
+     background during the cinematic — see persistCapturedFiles. ── */
+  if (phase === "capture") {
+    const count = capturedMems.length;
+    const openPicker = () => captureInputRef.current?.click();
     return (
-      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}{`
-@keyframes onb-quizFade{from{opacity:0;transform:translateX(1.5rem)}to{opacity:1;transform:translateX(0)}}
-        `}</style>
-        {videoBackground}
-        {gradientOverlay}
+      <div style={pageStyle()}>
+        {canonStyle}
 
-        <div style={{
-          position: "relative", zIndex: 2,
-          width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        }}>
-          <StepIndicator current={3} total={3} />
+        <div style={pageScrollerStyle}>
+          <StepDots current={3} total={3} label={t("stepOf", { current: "3", total: "3" })} />
 
-          {/* Glass card */}
-          <div style={{
-            maxWidth: "30rem", width: "92%",
-            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
-            background: "rgba(40, 34, 26, 0.6)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
-            animation: "onb-fadeUp .5s ease",
-          }}>
+          <div className="onb-anim" style={cardStyle}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
 
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("quizTitle")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
-
-              {/* Question — animated swap */}
-              <div key={quizStep} style={{ animation: "onb-quizFade .4s ease", width: "100%" }}>
-                <h2 style={{
-                  fontFamily: T.font.display, fontSize: isMobile ? "1.25rem" : "1.5rem",
-                  fontWeight: 300, color: "#F2EDE7", lineHeight: 1.3, margin: "0 0 0.25rem",
-                }}>
-                  {t(currentQ.key)}
-                </h2>
-
-                {/* Quiz step dots */}
-                <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem", marginBottom: "1rem" }}>
-                  {QUIZ_QUESTIONS.map((_, i) => (
-                    <div key={i} style={{
-                      width: "0.375rem", height: "0.375rem", borderRadius: "50%",
-                      background: i === quizStep ? T.color.terracotta : i < quizStep ? `${T.color.terracotta}80` : "rgba(255,255,255,0.12)",
-                      transition: "all .3s ease",
-                    }} />
-                  ))}
-                </div>
-
-                {/* Option cards */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {currentQ.options.map((opt) => {
-                    const active = currentQ.selected === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => currentQ.onSelect(opt.value)}
-                        style={{
-                          display: "flex", alignItems: "center", gap: "0.875rem",
-                          width: "100%", padding: isMobile ? "0.875rem 1rem" : "1rem 1.25rem",
-                          borderRadius: "0.75rem",
-                          border: `2px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
-                          background: active ? `${T.color.terracotta}14` : "rgba(255,255,255,0.02)",
-                          cursor: "pointer", transition: "all .2s",
-                          fontFamily: T.font.body, fontSize: isMobile ? "0.875rem" : "0.9375rem",
-                          color: active ? "#F2EDE7" : "#C4B8A8",
-                          fontWeight: active ? 600 : 500,
-                          textAlign: "left",
-                          minHeight: "3.25rem",
-                        }}
-                      >
-                        <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>{opt.icon}</span>
-                        <span>{t(opt.label)}</span>
-                        {active && (
-                          <span style={{
-                            marginLeft: "auto", width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                            background: T.color.terracotta, display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: "0.625rem", color: "#FFF", flexShrink: 0,
-                          }}>&#10003;</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Back button */}
-              <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
-                <button
-                  onClick={() => {
-                    if (quizStep > 0) {
-                      setQuizStep(quizStep - 1);
-                    } else {
-                      setPhase("name");
-                    }
-                  }}
-                  style={{
-                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
-                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
-                  }}
-                >
-                  {"\u2190"} {t("backButton")}
-                </button>
-              </div>
-
-              <button onClick={handleSkip} style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "#5A5248", background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-              }}>
-                {t("skipExploreOwn")}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Style era: Roman vs Renaissance ── */
-  if (phase === "style_era") {
-    return (
-      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        {videoBackground}
-        {gradientOverlay}
-
-        <div style={{
-          position: "relative", zIndex: 2,
-          width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center",
-          justifyContent: isLandscapePhone ? "flex-start" : "center",
-          overflowY: isLandscapePhone ? "auto" : undefined,
-        }}>
-          <StepIndicator current={3} total={3} />
-
-          {/* Glass card — warm bronze tint */}
-          <div style={{
-            maxWidth: "30rem", width: "92%",
-            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
-            background: "rgba(40, 34, 26, 0.6)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
-            animation: "onb-fadeUp .5s ease",
-          }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
-
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
+              <Overline>{t("appName")}</Overline>
 
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
               }}>
-                {tPalace("eraPickerTitle")}
+                {tr("captureTitle", "Pick 3 photos to hang in your palace")}
               </h2>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem",
-                color: "#A09889", maxWidth: "24rem", lineHeight: 1.6, margin: 0,
+                fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.9375rem",
+                color: MUTED, maxWidth: "22rem", lineHeight: 1.6, margin: 0,
               }}>
-                {tPalace("eraPickerSubtitle")}
+                {tr("captureAside", "The three you'd save from a fire. We'll hang them on your walls — then we'll walk you to them.")}
               </p>
 
-              {/* Era cards */}
-              <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
-                {/* Roman Tuscany — selectable */}
-                <button
-                  onClick={() => setSelectedEra("roman")}
-                  style={{
-                    flex: 1, padding: "1.5rem 0.875rem", borderRadius: "0.875rem",
-                    border: `2px solid ${selectedEra === "roman" ? T.era.roman.secondary : "rgba(255,255,255,0.06)"}`,
-                    background: selectedEra === "roman" ? `${T.era.roman.secondary}14` : "rgba(255,255,255,0.02)",
-                    cursor: "pointer", transition: "all .25s",
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: "0.625rem",
-                    position: "relative",
-                  }}
-                >
-                  {/* Elegant laurel wreath icon */}
-                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
-                    <path d="M22 6C18 10 14 16 14 22C14 28 17 32 22 34C27 32 30 28 30 22C30 16 26 10 22 6Z"
-                      stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1.2" fill="none" opacity="0.5" />
-                    <path d="M10 20C12 16 16 13 20 12" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
-                    <path d="M34 20C32 16 28 13 24 12" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
-                    <path d="M8 26C11 22 15 20 19 19" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.35" strokeLinecap="round" />
-                    <path d="M36 26C33 22 29 20 25 19" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.35" strokeLinecap="round" />
-                    <line x1="16" y1="36" x2="28" y2="36" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1.2" opacity="0.6" />
-                    <line x1="18" y1="38" x2="26" y2="38" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="0.8" opacity="0.4" />
-                  </svg>
-                  <span style={{
-                    fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 500,
-                    color: selectedEra === "roman" ? "#F2EDE7" : "#A09889",
-                    letterSpacing: "0.5px",
-                  }}>
-                    {tPalace("eraRoman")}
-                  </span>
-                  <span style={{
-                    fontFamily: T.font.body, fontSize: "0.6875rem",
-                    color: selectedEra === "roman" ? "#D4C5B2" : "#6B6155", lineHeight: 1.4,
-                  }}>
-                    {tPalace("eraRomanDesc")}
-                  </span>
-                  {selectedEra === "roman" && (
-                    <span style={{
-                      position: "absolute", top: "0.5rem", right: "0.5rem",
-                      width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                      background: T.era.roman.secondary, display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "0.625rem", color: "#FFF",
-                    }}>&#10003;</span>
-                  )}
-                </button>
+              {/* Hidden photo picker — accept=image/*, multiple, capped at 3.
+                  A plain input keeps the native mobile gallery sheet. */}
+              <input
+                ref={captureInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  e.target.value = ""; // same files re-pickable after a removal
+                  if (files.length) persistCapturedFiles(files, "capture");
+                }}
+              />
 
+              {/* Three frame slots — filled slots show the photo, empty slots
+                  are click-to-pick hooks. */}
+              <div style={{ display: "flex", gap: "0.75rem", width: "100%", justifyContent: "center" }}>
+                {Array.from({ length: CAPTURE_MAX }, (_, i) => {
+                  const mem = capturedMems[i];
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      className="onb-focusable"
+                      onClick={openPicker}
+                      aria-label={mem ? mem.title : tr("captureSlotEmpty", "Add a photo")}
+                      style={{
+                        flex: 1, maxWidth: "7.5rem", aspectRatio: "1 / 1",
+                        borderRadius: "0.625rem", padding: 0, overflow: "hidden",
+                        cursor: "pointer", position: "relative",
+                        border: mem ? `0.125rem solid ${EMBER}` : `0.125rem dashed ${HAIRLINE}`,
+                        background: mem ? "#FFF" : "#FFFFFF99",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                    >
+                      {mem ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={mem.dataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                          <span aria-hidden style={{
+                            position: "absolute", top: "0.25rem", right: "0.25rem",
+                            width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                            background: CREAM, border: `0.0625rem solid ${HAIRLINE}`,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            <CheckMark color={EMBER} size="0.75rem" />
+                          </span>
+                        </>
+                      ) : (
+                        <span aria-hidden style={{
+                          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 400,
+                          color: MUTED, lineHeight: 1,
+                        }}>
+                          +
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Buttons */}
-              <div style={{ display: "flex", gap: "0.75rem", width: "100%", marginTop: "0.25rem" }}>
-                <button
-                  onClick={() => setPhase("name")}
-                  style={{
-                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
-                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
-                  }}
-                >
-                  {"\u2190"} {t("backButton")}
-                </button>
-                <button
-                  onClick={() => {
-                    setStyleEra(selectedEra);
-                    updateProfile({ styleEra: selectedEra }).catch(() => {});
-                    setPhase("cinematic");
-                  }}
-                  style={{
-                    flex: 1, fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
-                    padding: "0.75rem 2rem", borderRadius: "0.5rem", minHeight: "3rem", border: "none",
-                    background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                    color: "#FFF", cursor: "pointer",
-                    boxShadow: "0 0.25rem 1rem rgba(198,107,61,.3)",
-                  }}
-                >
-                  {t("continueButton")} {"\u2192"}
-                </button>
-              </div>
-
-              <button onClick={handleSkip} style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "#5A5248", background: "none", border: "none",
-                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+              {/* Count line — quiet endowed progress under the slots. */}
+              <p aria-live="polite" style={{
+                fontFamily: T.font.body, fontSize: "0.75rem", color: MUTED,
+                margin: "-0.75rem 0 0", lineHeight: 1.4,
               }}>
-                {t("skipExploreOwn")}
+                {captureBusy
+                  ? tr("captureSaving", "Hanging your photos…")
+                  : tr("captureCount", "{count} of 3 chosen", { count: String(count) })}
+              </p>
+
+              {captureError && (
+                <p role="alert" style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A63D3D",
+                  margin: "-0.5rem 0 0", lineHeight: 1.5,
+                }}>
+                  {captureError}
+                </p>
+              )}
+
+              {/* Primary path is upload-first: with no photos the CTA opens the
+                  picker; with ≥1 it advances into the walk that reveals them. */}
+              <button
+                className="onb-cta onb-focusable"
+                onClick={() => (count > 0 ? advanceFromCapture(false) : openPicker())}
+                style={{ ...primaryCtaStyle, width: "100%" }}
+              >
+                {count > 0
+                  ? `${tr("captureCta", "Hang them in my palace")} →`
+                  : tr("captureChoose", "Choose your photos")}
+              </button>
+
+              <button
+                className="onb-focusable"
+                onClick={() => advanceFromCapture(true)}
+                style={skipLinkStyle}
+              >
+                {tr("captureLater", "I'll add photos later")}
               </button>
             </div>
           </div>
@@ -978,150 +1508,66 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     );
   }
 
-  /* ── Cinematic — "Welcome to [Name]'s Palace" over live 3D ── */
+  /* ── Cinematic — "Welcome to [Name]'s Palace" over the live exterior ──
+     The scene holds at WP1 (onboardingMode); onCinematicPause surfaces the
+     prompt card ("Ready to visit your palace…?" + Yes); cinematicResumed sends
+     the camera on the 5-waypoint low flyover from the path to the entrance;
+     the arrival fires onRoomClick("__entrance__") -> 3s door beat ->
+     walk_entrance. Reduced motion: the scene swaps the flyover for composed
+     stills/instant cuts; the 8s prompt fallback + 30s flyover ceiling
+     guarantee forward motion even if a callback never fires. */
   if (phase === "cinematic") {
+    // Empty-name fallback: a NEUTRAL title ("Your Palace"), never a possessive
+    // built on placeholder copy ("Your name's Palace" — the "Your's" bug family).
+    const displayName = trimmedName;
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-
-        <Suspense fallback={
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: "#6B6155", animation: "onb-pulse 1.5s ease infinite" }}>
-              {t("cinematicLoading")}
-            </p>
-          </div>
-        }>
+        {canonStyle}
+        <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost
             scene="exterior"
-            onboardingMode={true}
+            onboardingMode
             onRoomClick={handleExteriorRoomClick}
-            onReady={() => setSceneReady(true)}
+            onSceneReady={handleWalkSceneReady}
             onCinematicPause={() => setCinematicPaused(true)}
             cinematicResumed={cinematicResumed}
           />
         </Suspense>
 
-        {/* Bottom shadow gradient for text readability over 3D scene */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
-
-        {/* Title floats in from the bottom */}
-        <div style={{
-          position: "absolute",
-          bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
-          left: "50%", transform: "translateX(-50%)",
-          textAlign: "center", zIndex: 10, width: "90%",
-        }}>
-          {/* Decorative line */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
-            marginBottom: "1rem",
-            animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
-          }}>
-            <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-            <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
-            <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-          </div>
-
-          <p style={{
-            fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-            color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
-            margin: "0 0 0.625rem",
-            textShadow: "0 2px 8px rgba(0,0,0,0.7)",
-            animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
-          }}>
-            {t("welcomeTitle")}
-          </p>
-
-          <h1 style={{
-            fontFamily: T.font.display,
-            fontSize: isMobile ? "1.5rem" : "3.5rem",
-            fontWeight: 300, color: "#F2EDE7",
-            lineHeight: 1.05, margin: 0,
-            letterSpacing: "0.04em",
-            animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-            backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-            backgroundSize: "200% 100%",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
-          }}>
-            {t("cinematicPalaceName", { name: userName })}
-          </h1>
-
-          <p style={{
-            fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-            color: "#D4CBC0", margin: "0.75rem 0 0",
-            lineHeight: 1.5,
-            textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-            animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
-          }}>
-            {t("walkExterior")}
-          </p>
-
+        <WalkCinematicCaption
+          isMobile={isMobile}
+          overline={tr("welcomeTitle", "Welcome to")}
+          title={displayName
+            ? tr("cinematicPalaceName", "{name}'s Palace", { name: displayName })
+            : tr("cinematicPalaceNameNeutral", "Your Palace")}
+          caption={tr("walkExterior", "This is your Memory Palace — a beautiful place to store everything you treasure.")}
+        >
           {cinematicPaused && !cinematicResumed && (
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              gap: "1rem", flexWrap: "wrap",
-              marginTop: "1.25rem",
-              animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
-            }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "1rem", flexWrap: "wrap" }}>
               <p style={{
                 fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
                 color: "#D4CBC0", margin: 0, lineHeight: 1.5,
-                textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+                textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
               }}>
-                {t("cinematicPrompt")}
+                {tr("cinematicPrompt", "Ready to visit your palace and fill it with your memories?")}
               </p>
-              <button
+              <WalkCtaButton
+                label={tr("cinematicYes", "Yes, let's go!")}
                 onClick={() => setCinematicResumed(true)}
-                style={{
-                  fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                  letterSpacing: "0.04em",
-                  padding: "0.625rem 1.5rem",
-                  background: T.color.terracotta,
-                  color: "#FAFAF7",
-                  border: "none", borderRadius: "0.5rem",
-                  cursor: "pointer",
-                  boxShadow: `0 0.25rem 1rem ${T.color.terracotta}40`,
-                  transition: "transform .15s ease, box-shadow .15s ease",
-                  whiteSpace: "nowrap",
-                  minHeight: "2.75rem",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}60`; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}40`; }}
-                onPointerDown={e => { e.currentTarget.style.transform = "scale(0.96)"; }}
-                onPointerUp={e => { e.currentTarget.style.transform = ""; }}
-                onPointerCancel={e => { e.currentTarget.style.transform = ""; }}
-              >
-                {t("cinematicYes")}
-              </button>
+              />
             </div>
           )}
-        </div>
+        </WalkCinematicCaption>
 
-        {/* Skip intro */}
-        <button
-          onClick={() => setPhase("walk_exterior")}
-          aria-label={t("cinematicSkip")}
-          style={{
-            position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
-            fontFamily: T.font.body, fontSize: "0.8125rem",
-            color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.45)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-            cursor: "pointer", backdropFilter: "blur(8px)", minHeight: "2.75rem",
-            minWidth: "2.75rem",
-            textShadow: "0 1px 3px rgba(0,0,0,0.5)",
-          }}
-        >
+        {/* Skip chip -> the fast exterior leg (direct auto-walk to the door) */}
+        <button className="onb-focusable" onClick={skipWalkLeg} style={walkSkipChipStyle}>
           {t("cinematicSkip")}
         </button>
       </div>
     );
   }
 
-  /* ── Walk phases (3D + tooltip) ── */
+  /* ── Walk legs (restored guided walkthrough, canon captions) ── */
   if (WALK_PHASES.includes(phase)) {
     const sceneMap: Record<string, "exterior" | "entrance" | "corridor" | "room"> = {
       walk_exterior: "exterior",
@@ -1130,30 +1576,24 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
       walk_room: "room",
     };
     const currentScene = sceneMap[phase] || "exterior";
-    const autoWalkTarget =
-      phase === "walk_exterior" ? "__entrance__" :
-      phase === "walk_entrance" ? null : // entrance cinematic handles the walk internally
-      phase === "walk_corridor" ? null : // cinematic handles the walk internally, auto-walks to door at step 7
-      null;
-
-    const tooltipMessage =
-      phase === "walk_exterior" ? t("walkExterior") :
-      phase === "walk_entrance" ? t("walkEntrance") :
-      phase === "walk_corridor" ? t("walkCorridor") :
-      t("walkRoom");
-
-    const showAddMemoryButton = false; // walk_room now uses cinematic overlay, not tooltip button
-    const hideTooltip = phase === "walk_entrance" || phase === "walk_corridor" || phase === "walk_room";
+    // Exterior skip-leg: direct auto-walk to the entrance. The entrance and
+    // corridor scenes drive their own choreography internally (the corridor
+    // auto-walks to ro1 at step 7 once corridorEnterClicked flips).
+    const autoWalkTarget = phase === "walk_exterior" ? "__entrance__" : null;
+    // Empty-name fallback: neutral titles (the bare wing/room name), never a
+    // possessive built on placeholder copy (the "Your's" bug family).
+    const displayName = trimmedName;
 
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
+        {canonStyle}
         <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost
             scene={currentScene}
             autoWalkTo={autoWalkTarget}
-            onboardingMode={true}
+            onboardingMode
             onRoomClick={handleExteriorRoomClick}
+            onSceneReady={handleWalkSceneReady}
             onDoorClick={
               phase === "walk_entrance" ? handleEntranceDoorClick :
               phase === "walk_corridor" ? handleCorridorDoorClick :
@@ -1168,396 +1608,190 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             roomName={onboardingRoomName}
             isMobile={isMobile}
             corridorEnterClicked={corridorEnterClicked}
+            // Capture-first reveal: photos #2/#3 hang on the left wall for the
+            // room leg's look-around; photo #1 swaps into the mantel frame the
+            // moment the room leg starts (in-place, no rebuild) so the step-9
+            // camera framing ends on THEIR photo. Frozen snapshot — see
+            // walkMemsRef doc (live capturedMems churn must not rebuild).
+            uploadedMemories={walkMemsRef.current}
+            uploadedMemory={phase === "walk_room" ? walkMemsRef.current[0] ?? null : null}
           />
         </Suspense>
 
-        {/* Bottom shadow gradient for text readability — exterior only */}
+        {/* ── Exterior leg: warm-ink glass caption pill (walking to the door) ── */}
         {phase === "walk_exterior" && (
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 4 }} />
+          <WalkCaptionPill
+            isMobile={isMobile}
+            message={tr("walkExterior", "This is your Memory Palace — a beautiful place to store everything you treasure.")}
+            nextLabel={tr("walkNext", "Next")}
+            onNext={skipWalkLeg}
+            skipLabel={tr("walkSkip", "Skip tour")}
+            onSkip={skipWalkLeg}
+          />
         )}
 
+        {/* ── Entrance leg: the hall scene renders its own canon look-around
+            overlay + blinks + skip (legacy pre-Wave-1 cinematic branch,
+            selected by onboardingMode through OnboardingSceneHost). The wizard
+            adds only an SR caption so the leg is announced without doubling
+            the on-screen text. ── */}
+        {phase === "walk_entrance" && (
+          <div role="status" aria-live="polite" style={{ position: "absolute", width: "1px", height: "1px", margin: "-1px", padding: 0, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 }}>
+            {tr("walkEntrance", "Through the entrance, you'll find wings for each part of your life.")}
+          </div>
+        )}
 
-        {/* ── Corridor cinematic overlay ── */}
+        {/* ── Corridor leg: cinematic caption overlay, steps 0-7 ── */}
         {phase === "walk_corridor" && corridorStep >= 0 && (
-          <>
-            {/* Bottom shadow gradient for text readability */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
-
-            {/* Title text overlay */}
-            <div style={{
-              position: "absolute",
-              bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
-              left: "50%", transform: "translateX(-50%)",
-              textAlign: "center", zIndex: 10, width: "90%", maxWidth: "36rem",
-            }}>
-              {/* Decorative line */}
-              <div style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
-                marginBottom: "1rem",
-                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
-              }}>
-                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-                <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
-                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-              </div>
-
-              <p style={{
-                fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-                color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
-                margin: "0 0 0.625rem", textShadow: "0 2px 8px rgba(0,0,0,0.7)",
-                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
-              }}>
-                {t("welcomeTitle")}
-              </p>
-
-              <h1 style={{
-                fontFamily: T.font.display,
-                fontSize: isMobile ? "1.75rem" : "3.5rem",
-                fontWeight: 300, color: "#F2EDE7",
-                lineHeight: 1.05, margin: 0,
-                letterSpacing: "0.04em",
-                animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-                backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-                backgroundSize: "200% 100%",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
-              }}>
-                {t("cinematicPossessive", { name: userName, thing: t("corridorWingName") })}
-              </h1>
-
-              <p style={{
-                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                color: "#D4CBC0", margin: "0.75rem 0 0",
-                lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-                animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
-              }}>
-                {t("corridorSubtitle")}
-              </p>
-
-              {/* Step 6+: room prompt */}
-              {corridorStep >= 6 && (
+          <WalkCinematicCaption
+            isMobile={isMobile}
+            overline={tr("welcomeTitle", "Welcome to")}
+            title={displayName
+              ? tr("cinematicPossessive", "{name}'s {thing}", { name: displayName, thing: tr("corridorWingName", "Roots Wing") })
+              : tr("corridorWingName", "Roots Wing")}
+            caption={
+              corridorStep >= 2
+                ? tr("corridorSubtitle", "Every Wing has Rooms — small spaces within a larger one, each for a chapter with memories of you.")
+                : tr("walkCorridor", "Each wing has rooms for your memories — photos, videos, stories.")
+            }
+          >
+            {corridorStep >= 6 && (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
                 <p style={{
                   fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                  color: "#D4CBC0", margin: "0.75rem 0 0", lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-                  animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
+                  color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                  textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
                 }}>
-                  {t("corridorRoomPromptPrefix")}{" "}
-                  <span style={{ color: T.color.terracotta, fontWeight: 600 }}>{t("corridorRoomName")}</span>
+                  {tr("corridorRoomPromptPrefix", "Your personal Room is")}{" "}
+                  <span style={{ color: EMBER, fontWeight: 600 }}>{tr("corridorRoomName", "Me, Over Time")}</span>
                 </p>
-              )}
-
-              {/* Enter Room button — shown after camera arrives at door */}
-              {corridorStep >= 6 && !corridorEnterClicked && (
-                <button
+                <WalkCtaButton
+                  label={corridorEnterClicked ? `${tr("corridorEnterRoom", "Enter The Room")}…` : tr("corridorEnterRoom", "Enter The Room")}
                   onClick={() => setCorridorEnterClicked(true)}
                   disabled={corridorEnterClicked}
-                  style={{
-                    marginTop: "1.25rem",
-                    fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                    letterSpacing: "0.04em",
-                    padding: "0.625rem 1.75rem",
-                    background: T.color.terracotta,
-                    color: "#FAFAF7",
-                    border: "none", borderRadius: "0.5rem",
-                    cursor: corridorEnterClicked ? "default" : "pointer",
-                    opacity: corridorEnterClicked ? 0.8 : 1,
-                    boxShadow: `0 0.25rem 1rem ${T.color.terracotta}40`,
-                    transition: "transform .15s ease, box-shadow .15s ease",
-                    whiteSpace: "nowrap",
-                    animation: "onb-slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
-                    minHeight: "2.75rem",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}60`; }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}40`; }}
-                  onPointerDown={e => { if (!corridorEnterClicked) e.currentTarget.style.transform = "scale(0.96)"; }}
-                  onPointerUp={e => { e.currentTarget.style.transform = ""; }}
-                  onPointerCancel={e => { e.currentTarget.style.transform = ""; }}
-                >
-                  {corridorEnterClicked ? `${t("corridorEnterRoom")}…` : t("corridorEnterRoom")}
-                </button>
-              )}
-            </div>
-          </>
+                />
+              </div>
+            )}
+          </WalkCinematicCaption>
         )}
 
-        {/* ── Room cinematic overlay ── */}
+        {/* ── Room leg: cinematic caption overlay, steps 0-9 ── */}
         {phase === "walk_room" && roomStep >= 0 && (
-          <div style={{ pointerEvents: "none" }}>
-            {/* Bottom shadow gradient for text readability */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
-
-            {/* Title text overlay */}
-            <div style={{
-              position: "absolute",
-              bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
-              left: "50%", transform: "translateX(-50%)",
-              textAlign: "center", zIndex: 10, width: "90%", maxWidth: "36rem",
-              pointerEvents: "none",
-            }}>
-              {/* Decorative line */}
-              <div style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
-                marginBottom: "1rem",
-                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
-              }}>
-                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-                <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
-                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-              </div>
-
-              <p style={{
-                fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-                color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
-                margin: "0 0 0.625rem", textShadow: "0 2px 8px rgba(0,0,0,0.7)",
-                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
-              }}>
-                {t("welcomeTitle")}
-              </p>
-
-              <h1 style={{
-                fontFamily: T.font.display,
-                fontSize: isMobile ? "1.75rem" : "3.5rem",
-                fontWeight: 300, color: "#F2EDE7",
-                lineHeight: 1.05, margin: 0,
-                letterSpacing: "0.04em",
-                animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-                backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-                backgroundSize: "200% 100%",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
-              }}>
-                {t("cinematicPossessive", { name: userName, thing: t("roomTitle") })}
-              </h1>
-
-              <p style={{
-                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                color: "#D4CBC0", margin: "0.75rem 0 0",
-                lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-                animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
-              }}>
-                {t("roomSubtitle")}
-              </p>
-
-              {/* Step 9+: "Click on the empty painting" prompt */}
-              {roomStep >= 9 && (
-                <div style={{
-                  marginTop: "1.25rem",
-                  animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
-                }}>
+          <WalkCinematicCaption
+            isMobile={isMobile}
+            overline={tr("welcomeTitle", "Welcome to")}
+            title={displayName
+              ? tr("cinematicPossessive", "{name}'s {thing}", { name: displayName, thing: tr("roomTitle", "Me, Over Time Room") })
+              : tr("roomTitle", "Me, Over Time Room")}
+            caption={
+              roomStep >= 4
+                ? (capturedCount > 0
+                    ? tr("roomRevealSubtitle", "Your photos are already hanging — this room is yours now.")
+                    : tr("roomSubtitle", "Every Room in your Palace holds your memories — pictures, videos, voice notes, written stories, and more."))
+                : (capturedCount > 0
+                    ? tr("roomRevealWalk", "This is your first room. Look — the photos you chose made it here first.")
+                    : tr("walkRoom", "This is your first room. Ready to place your first memory?"))
+            }
+          >
+            {roomStep >= 9 && (
+              capturedCount > 0 ? (
+                /* Capture-first finale: the walk ENDS on their photo over the
+                   mantel (in-place swap) — no upload ask, just the claim. */
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
                   <p style={{
                     fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
-                    color: "#D4CBC0", margin: "0 0 0.75rem", lineHeight: 1.5,
-                    textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+                    color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                    textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
                   }}>
-                    {t("roomHangPrompt")}
+                    {tr("roomRevealPrompt", "That's yours now. It lives here — and at 3 memories, your room grows.")}
                   </p>
+                  <WalkCtaButton
+                    label={tr("roomRevealCta", "Continue")}
+                    onClick={() => setPhase("celebration")}
+                  />
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+                  <p style={{
+                    fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                    color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                    textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
+                  }}>
+                    {tr("roomHangPrompt", "Let's hang your first memory on the wall.")}
+                  </p>
+                  {/* Instructional hint chip — points at the empty painting, not a
+                      button. BODY font (canon chip grammar — display is titles). */}
                   <span style={{
                     display: "inline-block",
-                    fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                    letterSpacing: "0.04em",
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                     padding: "0.5rem 1.5rem",
                     background: "rgba(255,255,255,0.08)",
-                    color: "rgba(250,250,247,0.5)",
-                    border: `1px solid rgba(255,255,255,0.12)`,
+                    color: "rgba(250,250,247,0.65)",
+                    border: "0.0625rem solid rgba(255,255,255,0.14)",
                     borderRadius: "0.5rem",
-                    cursor: "default",
                     whiteSpace: "nowrap",
+                    pointerEvents: "none",
                   }}>
-                    {t("roomClickPainting")}
+                    {tr("roomClickPainting", "Click on the empty painting")}
                   </span>
+                  <WalkCtaButton
+                    label={tr("walkAddMemory", "Add a Memory")}
+                    onClick={() => setPhase("upload")}
+                  />
                 </div>
-              )}
-            </div>
-          </div>
+              )
+            )}
+          </WalkCinematicCaption>
         )}
 
-        {/* Skip intro button — shown during entrance hall, corridor & room cinematics */}
-        {hideTooltip && (
-          <button
-            onClick={handleSkip}
-            style={{
-              position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
-              fontFamily: T.font.body, fontSize: "0.75rem",
-              color: "rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.2)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-              cursor: "pointer", backdropFilter: "blur(4px)", minHeight: "2.5rem",
-            }}
-          >
-            {t("cinematicSkip")}
+        {/* Skip chip on the exterior + room legs (the entrance and corridor
+            scenes carry their own in-scene skip buttons at this anchor). */}
+        {(phase === "walk_exterior" || phase === "walk_room") && (
+          <button className="onb-focusable" onClick={skipWalkLeg} style={walkSkipChipStyle}>
+            {tr("walkSkip", "Skip tour")}
           </button>
         )}
-
-        {/* Tooltip for exterior & other non-cinematic walk phases */}
-        {!hideTooltip && (
-          <Suspense fallback={sceneLoadingFallback}>
-            <OnboardingTooltip
-              message={tooltipMessage}
-              nextLabel={showAddMemoryButton ? t("walkAddMemory") : t("walkNext")}
-              skipLabel={t("walkSkip")}
-              onNext={showAddMemoryButton ? () => setPhase("upload") : undefined}
-              onSkip={handleSkip}
-              showNext={showAddMemoryButton}
-              showSkip={true}
-            />
-          </Suspense>
-        )}
       </div>
     );
   }
 
-  /* ── Paywall — soft trial offer after walkthrough ── */
-  if (phase === "paywall") {
-    const paywallFeatures = [
-      t("paywallFeat1"),
-      t("paywallFeat2"),
-      t("paywallFeat3"),
-      t("paywallFeat4"),
-    ];
-
-    return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
-        <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
-        </Suspense>
-
-        {/* Dark overlay */}
-        <div style={{
-          position: "absolute", inset: 0, zIndex: 10,
-          background: "rgba(26,25,23,0.75)",
-          backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          {/* Glass card */}
-          <div style={{
-            maxWidth: "28rem", width: "92%",
-            padding: isMobile ? "2rem 1.5rem" : "2.5rem 2.25rem",
-            background: "rgba(40, 34, 26, 0.85)",
-            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-            borderRadius: "1.25rem",
-            border: "1px solid rgba(198,107,61,0.15)",
-            boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.4), inset 0 1px 0 rgba(198,107,61,0.08)",
-            animation: "onb-fadeUp .6s ease",
-          }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
-
-              {/* Ornamental header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
-                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
-                }}>
-                  {t("appName")}
-                </span>
-                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
-              </div>
-
-              {/* Title */}
-              <h2 style={{
-                fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem",
-                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
-              }}>
-                {t("paywallTitle", { name: userName || t("namePlaceholder") })}
-              </h2>
-
-              {/* Subtitle */}
-              <p style={{
-                fontFamily: T.font.body, fontSize: "0.875rem",
-                color: "#A09889", maxWidth: "24rem", lineHeight: 1.6, margin: 0,
-              }}>
-                {t("paywallSubtitle")}
-              </p>
-
-              {/* Features */}
-              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
-                {paywallFeatures.map((feat) => (
-                  <div key={feat} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                    <span style={{
-                      width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                      background: `${T.color.terracotta}18`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "0.625rem", color: T.color.terracotta, flexShrink: 0,
-                    }}>
-                      {"\u2713"}
-                    </span>
-                    <span style={{
-                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#D4CBC0", lineHeight: 1.4,
-                    }}>
-                      {feat}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Trial CTA */}
-              <button
-                onClick={() => {
-                  track("paywall_trial_clicked", { source: "onboarding" });
-                  navigateInApp("/pricing");
-                  setPhase("done");
-                }}
-                style={{
-                  width: "100%", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  padding: "0.875rem 0", borderRadius: "0.625rem", border: "none",
-                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  color: "#FFF", cursor: "pointer", transition: "all .3s",
-                  boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.3)",
-                  minHeight: "3rem",
-                }}
-              >
-                {t("paywallTrialCta")}
-              </button>
-
-              {/* Subscription disclosure (Apple Guideline 3.1.2) */}
-              <p style={{
-                fontFamily: T.font.body, fontSize: "0.625rem", color: "#8A8073",
-                lineHeight: 1.5, margin: "-0.5rem 0 0", textAlign: "center", maxWidth: "22rem",
-              }}>
-                {t("paywallAutoRenew") !== "paywallAutoRenew" ? t("paywallAutoRenew") : "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings."}{" "}
-                <a href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
-                {" · "}
-                <a href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
-              </p>
-
-              {/* Free continue */}
-              <button
-                onClick={() => {
-                  track("paywall_skipped", { source: "onboarding" });
-                  setPhase("done");
-                }}
-                style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem",
-                  color: "#6B6155", background: "none", border: "none",
-                  cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-                }}
-              >
-                {t("paywallContinueFree")}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Upload — selfie prompt ── */
+  /* ── Upload — seeded room + first-memory placement (do-first) ── */
   if (phase === "upload") {
     return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
+        {canonStyle}
+        {/* Item 6 (owner 2026-08-23): SAME host mount position + SAME demo set
+            as the walk_room leg — React keeps the live walk scene mounted (no
+            remount, no fingerprint rebuild) behind the ImportHub, so the later
+            celebration can inject the photo into the visible room instantly.
+            demoAudio=false: the room leg is over — the gramophone stops. */}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onboardingMode demoAudio={false} uploadedMemories={walkMemsRef.current} />
         </Suspense>
+
+        {/* No seeded-memory tooltip here — the ImportHub's own upload prompt is
+            the guidance; a floating tooltip overlapped it (owner feedback). The
+            ImportHub close button doubles as "skip". */}
+
+        {uploadError && (
+          <div role="alert" style={{
+            position: "absolute",
+            top: "calc(1rem + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)",
+            zIndex: 8100, maxWidth: "26rem", width: "90%",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
+            padding: "0.75rem 1rem", borderRadius: "0.75rem",
+            background: "#F7EEEA", border: `0.0625rem solid #EBD4D0`,
+            boxShadow: SHADOW[2],
+          }}>
+            <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A63D3D", lineHeight: 1.5, textAlign: "center" }}>
+              {uploadError}
+            </span>
+          </div>
+        )}
 
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
-            onClose={() => { if (!memoryUploadedRef.current) setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall"); }}
+            onClose={() => { if (!memoryUploadedRef.current) completeAndFinish(paywallAllowed() ? "paywall" : "done"); }}
             onImportFiles={async (files) => {
               if (files.length === 0) return;
               const f = files[0];
@@ -1572,42 +1806,403 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   });
                 } catch { /* use previewUrl fallback */ }
               }
-              setUploadedMemory({
-                id: "onboarding-upload",
+              // If nothing renderable survived all fallbacks, don't persist/celebrate
+              // an empty memory — surface an error and keep the user on upload.
+              if (!dataUrl) {
+                setUploadError(t("uploadFailed"));
+                throw new Error("no-dataurl");
+              }
+              const mem = {
+                id: `onboarding-${Date.now()}-${Math.random().toString(36).slice(2)}`,
                 title: f.name,
                 type: "photo",
                 dataUrl,
-                hue: 18, s: 50, l: 60,
+                hue: 18, s: 50, l: 60, desc: "",
                 createdAt: new Date().toISOString(),
-              });
+              };
+              // Persist the first memory through the SAME store path the in-app
+              // ImportHub uses (optimistic local add + server upload + DB create).
+              // addMemory returns true ONLY when the write actually persisted
+              // (server id assigned, offline-queued, or supabase not configured).
+              // We must gate on that boolean — inferring persistence from store
+              // length is unreliable because the optimistic add seeds ro1 with the
+              // 5 demo memories (getDemoMems fallback), so a rolled-back failure
+              // still leaves length > 0 and would falsely celebrate an unsaved memory.
+              setUploadError(null);
+              const store = useMemoryStore.getState();
+              let persisted = false;
+              try {
+                persisted = await store.addMemory("ro1", mem as any);
+              } catch {
+                setUploadError(t("uploadFailed"));
+                throw new Error("save-failed");
+              }
+              if (!persisted) {
+                // Optimistic add was rolled back — the write did NOT persist.
+                setUploadError(t("uploadFailed"));
+                throw new Error("save-rolled-back");
+              }
+              setUploadedMemory(mem);
+              // Seed the endowed-progress strip (this fallback path only runs
+              // with zero captures, so the imported photo IS memory #1).
+              setCapturedMems((prev) => (prev.length ? prev : [mem]));
               handleMemoryAdded();
             }}
             onOpenCloudProvider={() => {}}
             initialRoomId="ro1"
             lockRoom
+            titleOverride={t("firstMemHubTitle") !== "firstMemHubTitle" ? t("firstMemHubTitle") : "Your first memory"}
+            subtitleOverride={t("firstMemHubSubtitle") !== "firstMemHubSubtitle" ? t("firstMemHubSubtitle") : "A photo of yourself, family, or a place you love. You can add everything else later."}
           />
         </Suspense>
       </div>
     );
   }
 
-  /* ── Celebration — confetti over the room scene, no dark overlay ── */
+  /* ── Celebration — ceremonial threshold (gold divider-tick GLYPH only; all
+     text is canon INK) + restored confetti over the room scene
+     showing the just-hung memory (walkthrough finale keys). The threshold CTA
+     branches on the centralized paywall gate: where disallowed (iOS with IAP
+     off — Apple 3.1.1; Android native — no Play Billing) it always ENTERS the
+     palace (celebrationContinue -> done, no paywall); elsewhere it offers the
+     soft trial step (celebrationAtrium "Select your plan" -> paywall). ── */
   if (phase === "celebration") {
+    // ── Endowed-progress copy (SUCCESS_PLAYBOOK wk 2, Pillar 1 §4): the
+    // headline states the count honestly and sells capture #2/#3 — someone who
+    // captured 30 seconds ago is the cheapest next capture there is. A resumed
+    // session with lost local state (count 0) keeps the classic congrats. ──
+    const celebTitle =
+      capturedCount >= 3 ? tr("celebrationTitle3", "Three hanging — your palace has begun.")
+      : capturedCount === 2 ? tr("celebrationTitle2of3", "Two hanging. One hook still empty.")
+      : capturedCount === 1 ? tr("celebrationTitle1of3", "One memory home. Two hooks still empty.")
+      : tr("celebrationTitle2", "Congratulations!");
+    const celebSubtitle =
+      capturedCount >= 3 ? tr("celebrationSubtitle3", "This is how a life gets kept — a few moments at a time. Keep the habit: one more today.")
+      : capturedCount >= 1 ? tr("celebrationSubtitleHooks", "Palaces come alive at 3 — watch your room grow.")
+      : tr("celebrationSubtitle2", "Now continue exploring your Memory Palace");
+    // Tutorial-handoff hint (§9): points at the Atrium nudge tour that follows.
+    // Free-tier-safe copy — passed to BOTH forks and BOTH platform branches.
+    const celebHint = t("celebrationHandoffHint") !== "celebrationHandoffHint"
+      ? t("celebrationHandoffHint")
+      : "Step inside — a short tour of your Atrium is waiting.";
+    // ── The 3-hook strip + "Add one more" + Kep teaser — shared by the
+    // portrait (OnboardingCelebration extra) and landscape (inline) forks.
+    // Never rendered on a stateless resume (count 0): no hooks to show. ──
+    const celebrationExtras = capturedCount > 0 ? (
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", width: "100%" }}>
+        {/* Hidden single-photo picker for "Add one more" */}
+        <input
+          ref={celebInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            e.target.value = "";
+            if (files.length) {
+              track("second_memory_prompt_captured", { count: capturedMemsRef.current.length + 1 });
+              persistCapturedFiles(files, "celebration");
+            }
+          }}
+        />
+        {/* 3-hook strip: filled slots = their thumbnails, empty = hooks */}
+        <div aria-label={tr("celebrationHooksAria", "{count} of 3 hooks filled", { count: String(Math.min(capturedCount, 3)) })} style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+          {Array.from({ length: 3 }, (_, i) => {
+            const mem = capturedMems[i];
+            return mem ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={mem.dataUrl} alt="" style={{
+                width: "3rem", height: "3rem", objectFit: "cover", display: "block",
+                borderRadius: "0.5rem", border: `0.125rem solid ${EMBER}`,
+              }} />
+            ) : (
+              <div key={i} aria-hidden style={{
+                width: "3rem", height: "3rem", borderRadius: "0.5rem",
+                border: `0.125rem dashed ${HAIRLINE}`, background: "#FFFFFF66",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontFamily: T.font.display, fontSize: "1.25rem", color: MUTED,
+              }}>
+                +
+              </div>
+            );
+          })}
+        </div>
+        {captureError && (
+          <p role="alert" style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#A63D3D", margin: 0, lineHeight: 1.4 }}>
+            {captureError}
+          </p>
+        )}
+        {/* "Add one more" — the cheapest second capture; quiet bordered CTA so
+            the EMBER continue keeps primacy. */}
+        <button
+          className="onb-focusable"
+          onClick={() => celebInputRef.current?.click()}
+          style={{
+            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+            padding: "0 1.25rem", minHeight: "2.75rem", borderRadius: "0.625rem",
+            border: `0.09375rem solid ${EMBER}`, background: "#FFF",
+            color: EMBER, cursor: "pointer",
+          }}
+        >
+          {captureBusy
+            ? tr("captureSaving", "Hanging your photos…")
+            : tr("celebrationAddMore", "Add one more (30 sec)")}
+        </button>
+        {/* Kep teaser — copy-only card (one-tap linking ships separately) */}
+        <p style={{
+          fontFamily: T.font.body, fontStyle: "italic", fontSize: "0.8125rem",
+          color: MUTED, lineHeight: 1.5, margin: 0, maxWidth: "22rem", textAlign: "center",
+        }}>
+          <span aria-hidden style={{ color: EMBER, opacity: 0.8, marginRight: "0.375rem" }}>✦</span>
+          {tr("celebrationKepTip", "Next time, skip the app: connect Kep on WhatsApp in Settings and text your photos in — they hang themselves.")}
+        </p>
+      </div>
+    ) : null;
     return (
-      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
-        <style>{KEYFRAMES}</style>
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
+        {canonStyle}
+        {/* Item 6 (owner 2026-08-23): keep the SAME live walk-room mount (same
+            position, same demo set → no remount/rebuild — the old
+            memories=[mem] + initialCameraZ=0 forced a cold scene rebuild:
+            seconds of blank beige under the confetti). The uploaded photo is
+            injected IN PLACE into the mantel placeholder via uploadedMemory;
+            the walk's step-9 framing already has the camera on the mantel. */}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} memories={uploadedMemory ? [uploadedMemory] : []} initialCameraZ={0} />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} onboardingMode demoAudio={false} uploadedMemory={uploadedMemory ?? walkMemsRef.current[0] ?? null} uploadedMemories={walkMemsRef.current} />
         </Suspense>
+        {/* Ceremonial threshold. On short landscape phones the bottom-anchored
+            fixed overlay inside OnboardingCelebration can push the CTA past the
+            viewport, so this file renders a top-aligned, scrollable in-place
+            threshold instead (mirroring the setup-card + paywall landscape
+            treatment) keeping the CTA reachable without touching the shared
+            celebration component. */}
+        {isLandscapePhone ? (
+          <div style={{
+            position: "absolute", inset: 0, zIndex: 10000,
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "flex-start",
+            overflowY: "auto", padding: "1.5rem 0",
+          }}>
+            {/* Restored confetti burst — self-guards under reduced motion */}
+            <Suspense fallback={null}>
+              <ConfettiBurst />
+            </Suspense>
+            <div className="onb-anim" style={{
+              display: "flex", flexDirection: "column", alignItems: "center",
+              textAlign: "center", gap: "1.25rem",
+              padding: "2rem 1.5rem", maxWidth: "30rem", width: "92%",
+              // Item 6 (owner 2026-08-23): same compact linen-glass card as the
+              // shared OnboardingCelebration transparent variant — the room
+              // stays visible around it, no cream haze.
+              background: "rgba(252,250,245,0.8)",
+              backdropFilter: "blur(0.75rem)",
+              WebkitBackdropFilter: "blur(0.75rem)",
+              border: `0.0625rem solid ${HAIRLINE}`,
+              borderRadius: "1.25rem",
+              boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
+              animation: "onb-fadeUp .6s ease",
+            }}>
+              {/* No inlay polaroid (owner 2026-08-23): the 3D mantel behind the
+                  card shows the uploaded photo itself (uploadedMemory swap). */}
+              <span aria-hidden style={{
+                display: "block", width: "3rem", height: "0.125rem",
+                background: GOLD, borderRadius: "0.0625rem", opacity: 0.7,
+              }} />
+              <h2 style={{
+                // Mirrors OnboardingCelebration's canon headline: Fraunces 500,
+                // flat INK — no gold gradient, no italic (owner: no gold letters).
+                fontFamily: T.font.display, fontSize: "1.875rem", fontWeight: 500,
+                color: INK, lineHeight: 1.15, margin: 0,
+              }}>
+                {celebTitle}
+              </h2>
+              <p style={{
+                fontFamily: T.font.body, fontSize: "1.0625rem", fontWeight: 400,
+                color: MUTED, lineHeight: 1.55, margin: 0, maxWidth: "24rem",
+              }}>
+                {celebSubtitle}
+              </p>
+              {/* Endowed-progress strip (wk-2) — inline in this landscape fork */}
+              {celebrationExtras}
+              {/* Tutorial-handoff hint (§9 row [4]) — mirrors the shared
+                  OnboardingCelebration hint row; this landscape fork doesn't
+                  use the component, so the row is replicated inline. */}
+              <p style={{
+                fontFamily: T.font.body, fontStyle: "italic", fontSize: "0.9375rem",
+                fontWeight: 400, color: MUTED, lineHeight: 1.5, margin: 0,
+                maxWidth: "22rem", textAlign: "center",
+              }}>
+                <span aria-hidden style={{ color: EMBER, opacity: 0.8, marginRight: "0.375rem" }}>✦</span>
+                {celebHint}
+              </p>
+              <button
+                className="onb-cta onb-focusable"
+                onClick={() => setPhase(paywallAllowed() ? "paywall" : "done")}
+                style={{
+                  fontFamily: T.font.body, fontSize: "1.0625rem", fontWeight: 600,
+                  padding: "0 2.75rem", minHeight: "3.25rem", borderRadius: "0.75rem",
+                  border: "none",
+                  background: T.land.ctaGrad,
+                  color: "#FFFFFF", cursor: "pointer",
+                  boxShadow: SHADOW[1], marginTop: "0.5rem",
+                }}
+              >
+                {paywallAllowed() ? t("celebrationAtrium") : t("celebrationContinue")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <Suspense fallback={sceneLoadingFallback}>
+            <OnboardingCelebration
+              title={celebTitle}
+              subtitle={celebSubtitle}
+              buttonLabel={paywallAllowed() ? t("celebrationAtrium") : t("celebrationContinue")}
+              onContinue={() => setPhase(paywallAllowed() ? "paywall" : "done")}
+              hint={celebHint}
+              extra={celebrationExtras}
+              transparent
+            />
+          </Suspense>
+        )}
+      </div>
+    );
+  }
+
+  /* ── Paywall — soft trial offer after the celebration ──
+     The trial CTA routes to /pricing, which on iOS drives the Apple IAP flow
+     (StoreKit, never Stripe) and on web drives Stripe. The centralized gate
+     (paywallAllowed) keeps it UNREACHABLE on iOS while IAP is off (Apple
+     3.1.1) AND on Android native (no Play Billing — Stripe in the Android app
+     would breach Play's payments policy); when IAP is live iOS reaches it and
+     buys through Apple. */
+  if (phase === "paywall" && paywallAllowed()) {
+    const paywallFeatures = [
+      t("paywallFeat1"),
+      t("paywallFeat2"),
+      t("paywallFeat3"),
+      t("paywallFeat4"),
+    ];
+
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: CREAM }}>
+        {canonStyle}
         <Suspense fallback={sceneLoadingFallback}>
-          <OnboardingCelebration
-            title={t("celebrationTitle2")}
-            subtitle={t("celebrationSubtitle2")}
-            buttonLabel={(isIOS() && !IAP_ENABLED) ? t("celebrationContinue") : t("celebrationAtrium")}
-            onContinue={() => setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall")}
-            transparent
-          />
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
         </Suspense>
+
+        {/* Warm-cream scrim (matches the calm celebration hand-off, not a dark
+            cut). R8 scroller on EVERY viewport — flex-start + overflowY:auto
+            with the card's margin:auto restoring centering when it fits — so a
+            tall card (Comfortable/Large text scale on a short portrait phone)
+            scrolls instead of flex-center clipping the trial CTA and the
+            free-continue link off both edges. */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 10,
+          background: "rgba(252,250,245,0.72)",
+          backdropFilter: "blur(0.375rem)", WebkitBackdropFilter: "blur(0.375rem)",
+          display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "flex-start",
+          overflowY: "auto",
+          padding: "calc(1.5rem + env(safe-area-inset-top, 0px)) 0 calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+        }}>
+          {/* Opaque warm-cream card (Library canon) */}
+          <div className="onb-anim" style={{
+            maxWidth: "28rem", width: "92%", margin: "auto",
+            padding: isMobile ? "2rem 1.5rem" : "2.5rem 2.25rem",
+            background: CREAM,
+            borderRadius: "1rem",
+            border: `0.0625rem solid ${HAIRLINE}`,
+            boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
+            animation: "onb-fadeUp .6s ease",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
+
+              {/* Canon overline */}
+              <Overline>{t("appName")}</Overline>
+
+              {/* Title */}
+              <h2 style={{
+                fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem",
+                fontWeight: 600, color: INK, lineHeight: 1.25, margin: 0,
+              }}>
+                {t("paywallTitle", { name: trimmedName || t("namePlaceholder") })}
+              </h2>
+
+              {/* Subtitle */}
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.875rem",
+                color: MUTED, maxWidth: "24rem", lineHeight: 1.6, margin: 0,
+              }}>
+                {t("paywallSubtitle")}
+              </p>
+
+              {/* Features */}
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
+                {paywallFeatures.map((feat) => (
+                  <div key={feat} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                    <span aria-hidden style={{
+                      width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                      background: `${EMBER}18`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0,
+                    }}>
+                      <CheckMark color={EMBER_GLYPH} size="0.75rem" strokeWidth={2.2} />
+                    </span>
+                    <span style={{
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: INK, lineHeight: 1.4,
+                    }}>
+                      {feat}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Trial CTA — completes onboarding atomically, THEN same-document
+                  nav to /pricing (Apple IAP on iOS, Stripe on web). One coherent
+                  flow: no detached tab, no setPhase('done')/atrium race. */}
+              <button
+                className="onb-cta onb-focusable"
+                onClick={handleTrialCta}
+                style={{ ...primaryCtaStyle, width: "100%" }}
+              >
+                {t("paywallTrialCta")}
+              </button>
+
+              {/* Subscription disclosure — platform-forked: the Apple 3.1.2
+                  wording ("billed to your Apple ID… Settings") only on the
+                  iOS/IAP branch; web (Stripe) gets neutral renewal copy. */}
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED,
+                lineHeight: 1.5, margin: "-0.5rem 0 0", textAlign: "center", maxWidth: "22rem",
+              }}>
+                {isIOS()
+                  ? (t("paywallAutoRenew") !== "paywallAutoRenew" ? t("paywallAutoRenew") : "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings.")
+                  : (t("paywallAutoRenewWeb") !== "paywallAutoRenewWeb" ? t("paywallAutoRenewWeb") : "Auto-renewing subscription. Cancel anytime.")}
+              </p>
+
+              {/* Legal links — own row with ≥2.75rem targets and a spacer glyph
+                  between them (adjacent inline anchors were ~1.5rem mis-tap
+                  hazards inside the disclosure paragraph). */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", margin: "-1rem 0 -0.75rem" }}>
+                <a href="/terms" className="onb-focusable" style={{ display: "inline-flex", alignItems: "center", minHeight: "2.75rem", padding: "0 0.75rem", fontFamily: T.font.body, fontSize: "0.6875rem", color: EMBER_GLYPH, textDecoration: "underline", textUnderlineOffset: "0.1875rem" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
+                <span aria-hidden style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED }}>·</span>
+                <a href="/privacy" className="onb-focusable" style={{ display: "inline-flex", alignItems: "center", minHeight: "2.75rem", padding: "0 0.75rem", fontFamily: T.font.body, fontSize: "0.6875rem", color: EMBER_GLYPH, textDecoration: "underline", textUnderlineOffset: "0.1875rem" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
+              </div>
+
+              {/* Free continue */}
+              <button
+                className="onb-focusable"
+                onClick={() => {
+                  track("paywall_skipped", { source: "onboarding" });
+                  setPhase("done");
+                }}
+                style={skipLinkStyle}
+              >
+                {t("paywallContinueFree")}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

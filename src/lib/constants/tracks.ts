@@ -57,7 +57,6 @@ export const TRACKS: Track[] = [
     steps: [
       { id: "v_visit_5_wings", titleKey: "tracks.visualize.v_visit_5_wings.title", descriptionKey: "tracks.visualize.v_visit_5_wings.desc", hintKey: "tracks.visualize.v_visit_5_wings.hint", pointValue: 10, navigateTo: "entrance" },
       { id: "v_customize_wing", titleKey: "tracks.visualize.v_customize_wing.title", descriptionKey: "tracks.visualize.v_customize_wing.desc", hintKey: "tracks.visualize.v_customize_wing.hint", pointValue: 10, navigateTo: "entrance" },
-      { id: "v_change_layout", titleKey: "tracks.visualize.v_change_layout.title", descriptionKey: "tracks.visualize.v_change_layout.desc", hintKey: "tracks.visualize.v_change_layout.hint", pointValue: 10, navigateTo: "entrance" },
       { id: "v_create_room", titleKey: "tracks.visualize.v_create_room.title", descriptionKey: "tracks.visualize.v_create_room.desc", hintKey: "tracks.visualize.v_create_room.hint", pointValue: 10, navigateTo: "entrance" },
       { id: "v_rename_3_rooms", titleKey: "tracks.visualize.v_rename_3_rooms.title", descriptionKey: "tracks.visualize.v_rename_3_rooms.desc", hintKey: "tracks.visualize.v_rename_3_rooms.hint", pointValue: 10, navigateTo: "entrance" },
       { id: "v_set_5_hues", titleKey: "tracks.visualize.v_set_5_hues.title", descriptionKey: "tracks.visualize.v_set_5_hues.desc", hintKey: "tracks.visualize.v_set_5_hues.hint", pointValue: 10, navigateTo: "library" },

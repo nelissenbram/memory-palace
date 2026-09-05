@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useTouchControls } from "@/lib/hooks/useIsMobile";
 import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
 
 /* ── Animations (injected once) ── */
@@ -53,14 +54,17 @@ export function LibrarySearch({
   query, onQueryChange, accent, resultCount, totalCount, isMobile,
 }: LibrarySearchProps) {
   const { t } = useTranslation("library");
+  const isTouch = useTouchControls();
   const inputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
   const [localQuery, setLocalQuery] = useState(query);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync local state when parent clears the query externally
+  // Sync local state when parent clears the query externally — and cancel any
+  // pending debounce so a stale keystroke can't resurrect the cleared query.
   useEffect(() => {
     if (query !== localQuery) {
+      if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null; }
       setLocalQuery(query);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,7 +141,7 @@ export function LibrarySearch({
           left: "0.5rem",
           top: "50%",
           transform: "translateY(-50%)",
-          color: focused ? accent : T.color.muted,
+          color: focused ? accent : "#716A5E",
           pointerEvents: hasQuery ? "auto" : "none",
           cursor: hasQuery ? "pointer" : "default",
           transition: "color 0.2s ease",
@@ -166,14 +170,14 @@ export function LibrarySearch({
         aria-label={t("searchPlaceholder")}
         style={{
           width: "100%",
-          height: isMobile ? "2.5rem" : "2.75rem",
+          height: (isMobile || isTouch) ? "2.75rem" : "2.75rem", // touch floor >=2.75rem
           padding: `0 ${hasQuery || showResultBadge ? "5.5rem" : "2.5rem"} 0 2.5rem`,
           border: `1px solid ${focused ? accent : T.color.cream}`,
           borderRadius: "1.5rem",
           fontFamily: T.font.body,
-          fontSize: isMobile ? "1rem" : "0.875rem",
+          fontSize: (isMobile || isTouch) ? "1rem" : "0.875rem",
           fontStyle: query ? "normal" : "italic",
-          color: T.color.charcoal,
+          color: "#403B36",
           background: T.color.linen,
           outline: "none",
           boxShadow: focused
@@ -228,7 +232,7 @@ export function LibrarySearch({
               borderRadius: "50%",
               border: "none",
               background: T.color.cream,
-              color: T.color.walnut,
+              color: "#716A5E",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -263,7 +267,7 @@ export function LibrarySearch({
               borderRadius: "0.25rem",
               border: `1px solid ${T.color.cream}`,
               background: T.color.warmStone,
-              color: T.color.muted,
+              color: "#716A5E",
               fontFamily: T.font.body,
               fontSize: "0.625rem",
               fontWeight: 600,
@@ -374,7 +378,7 @@ function Chip({ icon, iconNode, label, count, active, accent, index, onClick }: 
         borderRadius: "1rem",
         border: `1px solid ${active ? accent : hovered ? T.color.sandstone : T.color.cream}`,
         background: active ? accent : T.color.white,
-        color: active ? T.color.white : T.color.walnut,
+        color: active ? T.color.white : "#716A5E",
         cursor: "pointer",
         fontFamily: T.font.body,
         fontSize: "0.75rem",

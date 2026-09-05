@@ -9,7 +9,7 @@ export const T = {
     charcoal: "#1F1B1A",
     cream: "#FCFAF5",
     white: "#FCFAF5",
-    muted: "#857B70",
+    muted: "#716A5E",
     gold: "#D4AF37",
     goldLight: "#C9A84C",
     goldDark: "#B8922E",
@@ -23,10 +23,29 @@ export const T = {
     ivory: "#F9F5EE",
     lineFaint: "#EBE3D4",
     inkSoft: "#403B36",
+    // ── Canon tokens (mirror src/lib/libraryTokens.ts — the single source of
+    //    truth). PREFER THESE in new/refreshed surfaces. The legacy keys above
+    //    (charcoal #1F1B1A, terracotta #C66B3D, gold, sage…) are kept only so
+    //    the ~146 existing callers don't shift; do not spend effort re-tinting
+    //    them app-wide — migrate call sites to the canon keys below instead.
+    hairline: "#E3D6BC",   // canon card border (libraryTokens HAIRLINE)
+    ink: "#403B36",        // canon body ink (libraryTokens INK) — 10.6:1 on cream
+    inkMuted: "#716A5E",   // canon secondary text (libraryTokens MUTED) — 5.1:1 on cream, AA ✓
+    ember: "#B85C38",      // canon interactive / CTA (libraryTokens EMBER) — 4.35:1 on
+                           // cream: use as a fill / large text / icon, NOT as small body ink.
+    danger: "#A6432E",     // canon warm destructive (libraryTokens DANGER) — delete/disconnect/error
+    dangerSoft: "#EFD3D3", // canon danger soft edge/hairline tint (libraryTokens DANGER_SOFT)
+    inkDeep: "#2E2A26",    // canon deepest warm ink (libraryTokens INK_DEEP) — keystone/emphasis panels
+  },
+  /** Warm-ink shadow ramp (libraryTokens SHADOW) — never cold black. */
+  shadow: {
+    1: "0 0.25rem 1rem rgba(64,59,54,0.07)",
+    2: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+    hover: "0 0.75rem 1.75rem rgba(64,59,54,0.16)",
   },
   font: {
-    display: "'Cormorant Garamond', Georgia, serif",
-    body: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+    display: "'Fraunces', Georgia, serif",
+    body: "'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif",
   },
   era: {
     roman: {
@@ -63,6 +82,64 @@ export const T = {
     right: "env(safe-area-inset-right, 0px)",
   },
   layout: { topBarH: "3.5rem", bottomBarH: "4rem", gutter: "clamp(1rem, 5vw, 2rem)" },
+  /* ── Motion tokens (landing v2 + shared micro-interactions). ── */
+  motion: {
+    fast: "100ms",
+    base: "160ms",
+    slow: "400ms",
+    ignite: "520ms",
+    reveal: "280ms",
+    ease: "cubic-bezier(0.22, 1, 0.36, 1)",
+  },
+  /* ── Landing v2 tokens (ADD-only; see docs/overhaul/landing-v2/research). ──
+     Palette = 4-step warm tonal ladder. Gold is a dark-background text accent
+     ONLY (8.1:1 on umber); on light backgrounds it is graphic-only. rustDeep
+     carries accent text on light (5.1:1 on linen). Walnut is non-text ink. ── */
+  land: {
+    canvas: "#FCFAF5",   // page base (cream)
+    surface: "#F2EDE4",  // lifted cards/bands (linen)
+    mid: "#EFE6D4",      // parchment intermediate band
+    dark: "#241C15",     // umber — hero, showcase, final CTA only
+    hairline: "#E3D6BC", // 1px card borders on light
+    inkBody: "#403B36",  // body on light
+    inkMutedLight: "#716A5E", // muted on light (≥4.5:1)
+    inkMutedDark: "#B5ADA3",  // muted on dark (≥4.5:1)
+    accentLight: "#9A4F2A",   // rustDeep — eyebrows/links/stats on light
+    accentDark: "#D4AF37",    // gold — accents on dark only
+    // Interactive CTA gradient built on canon EMBER (#B85C38); #9A4F2A/rustDeep
+    // stays reserved for at-rest accent text (accentLight above).
+    ctaGrad: "linear-gradient(135deg, #B85C38, #6B3318)",
+    // Warm-umber wash + warm-ink shadows for the dark hero/showcase/CTA bands,
+    // so raw rgba values stop being hand-typed at call sites.
+    scrim: {
+      // Bottom-weighted hero gradient over the video.
+      hero: "linear-gradient(180deg, rgba(36,28,21,0.30) 0%, rgba(36,28,21,0.55) 55%, rgba(36,28,21,0.78) 100%)",
+      // Radial vignette for the final CTA band.
+      final: "radial-gradient(ellipse at 50% 45%, rgba(36,28,21,0.30) 0%, rgba(36,28,21,0.82) 85%)",
+    },
+    shadow: {
+      cta: "0 2px 12px rgba(64,59,54,0.28)",
+      ctaHero: "0 4px 20px rgba(64,59,54,0.35)",
+    },
+    type: {
+      micro: "0.75rem",
+      bodyS: "1rem",
+      body: "1.125rem",
+      // Fluid so the longer DE/FR hero subheads ease down on narrow phones
+      // instead of staying at the full 21px and looking cramped.
+      lead: "clamp(1.125rem, 1rem + 0.9vw, 1.3125rem)",
+      h4: "1.5rem",
+      h3: "1.875rem",
+      h2: "clamp(2rem, 3.5vw, 3rem)",
+      h1: "clamp(2.75rem, 5.5vw, 4.25rem)",
+    },
+    space: {
+      sectionY: "clamp(5rem, 8vw, 7.5rem)",
+      bandY: "3rem",
+      wide: "72rem",
+      prose: "42rem",
+    },
+  },
 } as const;
 
 /** Pick a compact value on mobile, a roomier one otherwise. */

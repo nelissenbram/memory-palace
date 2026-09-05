@@ -8,6 +8,8 @@ import { enqueueMemory, cacheMemories, getCachedMemories, type CachedMemory } fr
 
 interface MemoryState {
   userMems: Record<string, Mem[]>;
+  /** true while a room's memories fetch is in flight — drives "Gathering memories…" UI */
+  roomLoading: Record<string, boolean>;
   selMem: Mem | null;
   showUpload: boolean;
   showSharing: boolean;
@@ -24,18 +26,24 @@ interface MemoryState {
   setFilterType: (t: string | null) => void;
   fetchRoomMemories: (roomId: string) => Promise<void>;
   fetchAllRoomMemories: () => Promise<void>;
-  addMemory: (roomId: string, mem: Mem) => Promise<void>;
-  updateMemory: (roomId: string, memId: string, updates: Partial<Mem>) => Promise<void>;
+  addMemory: (roomId: string, mem: Mem) => Promise<boolean>;
+  /** resolves true when the change is persisted (or running local-only) */
+  updateMemory: (roomId: string, memId: string, updates: Partial<Mem>) => Promise<boolean>;
   deleteMemory: (roomId: string, memId: string) => Promise<void>;
-  moveMemory: (fromRoomId: string, toRoomId: string, memId: string) => Promise<void>;
+  /** resolves true when the move is persisted (or running local-only) */
+  moveMemory: (fromRoomId: string, toRoomId: string, memId: string) => Promise<boolean>;
   getRoomSharing: (roomId: string, activeWing: string | null) => SharingInfo;
   updateRoomSharing: (roomId: string, activeWing: string | null, updates: Partial<SharingInfo>) => void;
 }
 
 function isSupabaseReady() { return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); }
 
+// One in-flight fetch per room at a time — duplicate callers await the same promise
+const _inflightRoomFetches = new Map<string, Promise<void>>();
+
 export const useMemoryStore = create<MemoryState>((set, get) => ({
   userMems: {},
+  roomLoading: {},
   selMem: null,
   showUpload: false,
   showSharing: false,
@@ -70,7 +78,32 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       return;
     }
 
-    const { memories } = await fetchMemories(roomId);
+    // Dedupe concurrent fetches for the same room (mount sweeps + card
+    // clicks used to fire 2+ identical requests per room).
+    const inflight = _inflightRoomFetches.get(roomId);
+    if (inflight) return inflight;
+    const p = (async () => {
+    // Owner R2 #5: the FIRST fetch after (mobile) app start can race the auth
+    // session — the server action then answers `{ memories: [] }` (its `!user` /
+    // `!room` guards) or throws outright, and the room sat "empty" until a 30s
+    // poll finally landed data (~1 min on device). A failed/empty first load is
+    // retried twice (2s / 5s) before we accept it; a thrown action never
+    // rejects this promise (callers fire-and-forget from effects).
+    const firstLoad = get().userMems[roomId] === undefined;
+    const delays = firstLoad ? [0, 2000, 5000] : [0];
+    let memories: any[] | null = null;
+    for (const delay of delays) {
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+      try {
+        const res = await fetchMemories(roomId);
+        if (res && !("error" in res && res.error) && res.memories) memories = res.memories;
+      } catch (e) {
+        console.error("[memoryStore] fetchRoomMemories failed:", e);
+      }
+      if (memories && memories.length > 0) break;
+    }
+    // All attempts failed → keep this room UNDEFINED (not []) so the UI keeps
+    // its loading affordance and the fast retry / 30s poll can still fill it.
     if (memories) {
       const mapped: Mem[] = memories.map((m: any) => ({
         id: m.id, title: m.title, hue: m.hue, s: m.saturation, l: m.lightness,
@@ -82,6 +115,8 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.created_at ? { createdAt: m.created_at } : {}),
         ...(m.displayed != null ? { displayed: m.displayed } : {}),
         ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
+        ...(m.display_scale ? { displayScale: m.display_scale } : {}),
+        ...(m.sort_order != null ? { sortOrder: m.sort_order } : {}),
       }));
       set((s) => ({ userMems: { ...s.userMems, [roomId]: mapped } }));
 
@@ -95,11 +130,28 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         cacheMemories(roomId, toCache).catch(() => {});
       } catch { /* IndexedDB unavailable */ }
     }
+    })();
+    _inflightRoomFetches.set(roomId, p);
+    set((s) => ({ roomLoading: { ...s.roomLoading, [roomId]: true } }));
+    try { await p; } finally {
+      _inflightRoomFetches.delete(roomId);
+      set((s) => ({ roomLoading: { ...s.roomLoading, [roomId]: false } }));
+    }
   },
 
   fetchAllRoomMemories: async () => {
     if (!isSupabaseReady()) return;
-    const { roomMemories } = await fetchAllMemories();
+    let roomMemories: Record<string, any[]>;
+    try {
+      ({ roomMemories } = await fetchAllMemories());
+    } catch (e) {
+      console.error("[memoryStore] fetchAllRoomMemories failed:", e);
+      return;
+    }
+    // Owner R2 #5: an EMPTY snapshot (auth-session race → the action's `!user`
+    // guard) must never clobber rooms that already hold data — that made the
+    // in-room media pill vanish until the next successful poll.
+    if (Object.keys(roomMemories).length === 0 && Object.keys(get().userMems).length > 0) return;
     const allMapped: Record<string, Mem[]> = {};
     for (const [roomId, mems] of Object.entries(roomMemories)) {
       allMapped[roomId] = mems.map((m: any) => ({
@@ -112,6 +164,8 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.created_at ? { createdAt: m.created_at } : {}),
         ...(m.displayed != null ? { displayed: m.displayed } : {}),
         ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
+        ...(m.display_scale ? { displayScale: m.display_scale } : {}),
+        ...(m.sort_order != null ? { sortOrder: m.sort_order } : {}),
       }));
     }
     set({ userMems: allMapped });
@@ -123,7 +177,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       const cur = s.userMems[roomId] || getDemoMems(roomId);
       return { userMems: { ...s.userMems, [roomId]: [...cur, mem] } };
     });
-    if (!isSupabaseReady()) return;
+    if (!isSupabaseReady()) return true;
 
     // If offline, queue in IndexedDB for later sync
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -146,8 +200,8 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
           const updated = cur.map((m) => m.id === mem.id ? { ...m, _offline: true } : m);
           return { userMems: { ...s.userMems, [roomId]: updated } };
         });
-      } catch (e) { console.error("[Offline] Queue error:", e); }
-      return;
+      } catch (e) { console.error("[Offline] Queue error:", e); return false; }
+      return true;
     }
 
     // Upload file via server-side upload endpoint
@@ -155,6 +209,9 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     let filePath: string | null = null;
     let fileSize: number | null = null;
     let storageBackend: string | null = null;
+
+    // Week-4 resurface: EXIF taken-date from /api/upload (best-effort) → event_date
+    let eventDate: string | null = mem._eventDate || null;
 
     // If file was already uploaded directly (via FormData in handleImportFiles)
     if (mem._filePath) {
@@ -182,6 +239,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
           filePath = uploadData.path;
           fileUrl = uploadData.url;
           storageBackend = uploadData.storageBackend;
+          if (uploadData.eventDate) eventDate = uploadData.eventDate;
         } else {
           // Upload failed — roll back optimistic add
           console.error("[memoryStore] addMemory upload failed:", uploadRes.status);
@@ -189,7 +247,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
             const cur = s.userMems[roomId] || [];
             return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== mem.id) } };
           });
-          return;
+          return false;
         }
       } catch (e) {
         console.error("Upload error:", e);
@@ -198,7 +256,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
           const cur = s.userMems[roomId] || [];
           return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== mem.id) } };
         });
-        return;
+        return false;
       }
     }
 
@@ -232,6 +290,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl, filePath, fileSize, storageBackend,
       thumbnailUrl,
       locationName: mem.locationName || null, lat: mem.lat ?? null, lng: mem.lng ?? null,
+      eventDate,
     });
     if (result.memory) {
       set((s) => {
@@ -239,6 +298,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         const updated = cur.map((m) => m.id === mem.id ? { ...m, id: result.memory.id, dataUrl: fileUrl, ...(thumbnailUrl ? { thumbnailUrl } : {}) } : m);
         return { userMems: { ...s.userMems, [roomId]: updated } };
       });
+      return true;
     } else if (result.error) {
       // DB save failed — roll back optimistic add
       console.error("[memoryStore] addMemory createMemory failed:", result.error);
@@ -246,7 +306,10 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         const cur = s.userMems[roomId] || [];
         return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== mem.id) } };
       });
+      return false;
     }
+    // No server result returned at all — treat as not persisted.
+    return false;
   },
 
   updateMemory: async (roomId, memId, updates) => {
@@ -258,7 +321,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       const selMem = s.selMem?.id === memId ? { ...s.selMem, ...updates } : s.selMem;
       return { userMems: { ...s.userMems, [roomId]: updated }, selMem };
     });
-    if (!isSupabaseReady()) return;
+    if (!isSupabaseReady()) return true;
 
     // If dataUrl changed (image was edited), upload the new version
     let fileUrl = updates.dataUrl;
@@ -300,11 +363,32 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       ...(updates.lng !== undefined ? { lng: updates.lng } : {}),
       ...("displayed" in updates ? { displayed: updates.displayed ?? null } : {}),
       ...("displayUnit" in updates ? { display_unit: updates.displayUnit ?? null } : {}),
+      ...("displayScale" in updates ? { display_scale: (updates as { displayScale?: string | null }).displayScale ?? null } : {}),
+      ...("sortOrder" in updates ? { sort_order: updates.sortOrder ?? 0 } : {}),
     };
+    // Client-only fields (e.g. hero ★) can leave nothing to persist — an empty
+    // Supabase update() would error, and there is nothing to send anyway.
+    if (Object.keys(supaUpdates).length === 0) return true;
     try {
-      await updateMemoryAction(memId, supaUpdates);
+      let result = await updateMemoryAction(memId, supaUpdates);
+      let err = (result as { error?: string } | null)?.error;
+      // display_scale ships ahead of its migration (20260821_display_scale.sql):
+      // if the column doesn't exist yet, retry without it — the size sticks
+      // optimistically for the session and persists once the owner migrates.
+      if (err && "display_scale" in supaUpdates && /display_scale/i.test(err)) {
+        const { display_scale: _dropped, ...rest } = supaUpdates as Record<string, unknown>;
+        if (Object.keys(rest).length === 0) return true; // nothing else to persist
+        result = await updateMemoryAction(memId, rest as Parameters<typeof updateMemoryAction>[1]);
+        err = (result as { error?: string } | null)?.error;
+      }
+      if (err) {
+        console.error("[memoryStore] updateMemory failed:", err);
+        return false;
+      }
+      return true;
     } catch (e) {
       console.error("Supabase update failed:", e);
+      return false;
     }
   },
 
@@ -330,7 +414,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     const prevFrom = state.userMems[fromRoomId] || getDemoMems(fromRoomId);
     const prevTo = state.userMems[toRoomId] || getDemoMems(toRoomId);
     const mem = prevFrom.find((m) => m.id === memId);
-    if (!mem) return;
+    if (!mem) return false;
 
     // Optimistic: remove from source, add to target (mark as stored in new room)
     const movedMem = { ...mem, displayed: false };
@@ -340,14 +424,16 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       return { userMems: { ...s.userMems, [fromRoomId]: from, [toRoomId]: to } };
     });
 
-    if (!isSupabaseReady()) return;
+    if (!isSupabaseReady()) return true;
     // In DB: update room_id in a single operation to avoid data loss
     const result = await moveMemoryAction(memId, toRoomId);
     if (result.error) {
       // Roll back optimistic update
       console.error("[memoryStore] moveMemory failed:", result.error);
       set((s) => ({ userMems: { ...s.userMems, [fromRoomId]: prevFrom, [toRoomId]: prevTo } }));
+      return false;
     }
+    return true;
   },
 
   getRoomSharing: (roomId, activeWing) => {

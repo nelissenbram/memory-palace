@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
+import { createAdminOrAnonClient } from "@/lib/supabase/server";
+import { verifyPasscodeToken } from "@/lib/social/passcode-crypto";
 
 // Public endpoint — no auth required
 export async function GET(
@@ -20,28 +21,48 @@ export async function GET(
     return NextResponse.json({ error: "Not configured" }, { status: 500 });
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return []; },
-        setAll() {},
-      },
-    }
-  );
+  // Reject malformed slugs before touching the DB.
+  const normalizedSlug = typeof slug === "string" ? slug.trim() : "";
+  if (!normalizedSlug || normalizedSlug.length > 200) {
+    return NextResponse.json({ error: "Share not found" }, { status: 404 });
+  }
 
-  // Find the public share by slug
+  // Use the service-role client (falls back to anon on Preview, where the key
+  // is absent). This lets us read only the non-secret columns we need AFTER the
+  // anon SELECT policy is dropped, and NEVER selects the `passcode` column, so a
+  // client can never receive it.
+  const supabase = createAdminOrAnonClient();
+
+  // Find the share by slug. `scope` decides whether the slug is sufficient
+  // (scope='view' → public) or a passcode token is required (scope='passcode').
   const { data: share, error: shareError } = await supabase
     .from("public_shares")
-    .select("id, room_id, wing_id, slug, created_by, is_active, expires_at")
-    .eq("slug", slug)
+    .select("id, room_id, wing_id, slug, created_by, is_active, expires_at, scope")
+    .eq("slug", normalizedSlug)
     .eq("is_active", true)
     .single();
 
   if (shareError || !share) {
     return NextResponse.json({ error: "Share not found or inactive" }, { status: 404 });
   }
+
+  // Passcode-scoped shares are NOT served by slug alone. Require a signed,
+  // share-scoped, short-lived token minted by validatePasscode. Without it,
+  // knowing the slug reveals nothing — the passcode gate is enforced here.
+  if (share.scope === "passcode") {
+    const token = request.headers.get("x-passcode-token");
+    if (!verifyPasscodeToken(token, share.id)) {
+      return NextResponse.json({ error: "Passcode required" }, { status: 401 });
+    }
+  }
+
+  // Never let a shared CDN cache a passcode-gated payload — it would serve the
+  // protected content to clients that never presented the token. Public
+  // (scope='view') shares keep the short shared-cache window.
+  const cacheControl =
+    share.scope === "passcode"
+      ? "private, no-store"
+      : "public, s-maxage=60, stale-while-revalidate=300";
 
   // Check expiry for time-limited shares
   if (share.expires_at) {
@@ -51,6 +72,57 @@ export async function GET(
       await supabase.from("public_shares").update({ is_active: false }).eq("id", share.id);
       return NextResponse.json({ error: "This share has expired" }, { status: 410 });
     }
+  }
+
+  // Wing-level share (no room_id): return every room's memories in the wing as
+  // one flattened gallery under the wing name, so a shared wing link works the
+  // same as a shared room link instead of dead-ending on a null room lookup.
+  if (!share.room_id) {
+    if (!share.wing_id) {
+      return NextResponse.json({ error: "Share not found" }, { status: 404 });
+    }
+    const [wingResult, roomsResult, ownerResult] = await Promise.all([
+      supabase.from("wings").select("id, slug, name").eq("id", share.wing_id).single(),
+      supabase.from("rooms").select("id").eq("wing_id", share.wing_id),
+      supabase.from("public_profiles").select("display_name").eq("id", share.created_by).single(),
+    ]);
+    const wing = wingResult.data;
+    if (!wing) {
+      return NextResponse.json({ error: "Wing not found" }, { status: 404 });
+    }
+    const roomIds = (roomsResult.data || []).map((r) => r.id);
+    // NOTE on memories.visibility: the column (20260514_social_foundation.sql)
+    // was added with DEFAULT 'private' and is never written by the app —
+    // createMemory/updateMemoryAction omit it, so EVERY row reads 'private'.
+    // Filtering out visibility='private' here would therefore empty every
+    // shared gallery, so no per-memory visibility filter is applied until the
+    // write path persists explicit choices (see MemoryDetail visibility card).
+    const { data: wingMemories } = roomIds.length
+      ? await supabase
+          .from("memories")
+          .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, created_at")
+          .in("room_id", roomIds)
+          .order("created_at", { ascending: true })
+      : { data: [] };
+    return NextResponse.json({
+      room: null,
+      wing: { slug: wing.slug, name: wing.name },
+      memories: (wingMemories || []).map((m) => ({
+        id: m.id,
+        title: m.title,
+        description: m.description,
+        type: m.type,
+        hue: m.hue,
+        saturation: m.saturation,
+        lightness: m.lightness,
+        fileUrl: m.file_url,
+        thumbnailUrl: m.thumbnail_url,
+        createdAt: m.created_at,
+      })),
+      owner: { displayName: ownerResult.data?.display_name || "Someone" },
+    }, {
+      headers: { "Cache-Control": cacheControl },
+    });
   }
 
   // Fetch room info
@@ -73,9 +145,12 @@ export async function GET(
           .eq("id", room.wing_id)
           .single()
       : Promise.resolve({ data: null }),
+    // No visibility filter — memories.visibility has DEFAULT 'private' and the
+    // app never writes it (all rows read 'private'); filtering would blank
+    // every shared gallery. See the wing branch above for the full note.
     supabase
       .from("memories")
-      .select("id, title, description, type, hue, saturation, lightness, file_url, created_at")
+      .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, created_at")
       .eq("room_id", share.room_id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
@@ -108,6 +183,7 @@ export async function GET(
       saturation: m.saturation,
       lightness: m.lightness,
       fileUrl: m.file_url,
+      thumbnailUrl: m.thumbnail_url,
       createdAt: m.created_at,
     })),
     owner: {
@@ -115,7 +191,7 @@ export async function GET(
     },
   }, {
     headers: {
-      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      "Cache-Control": cacheControl,
     },
   });
 }

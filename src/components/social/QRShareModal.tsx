@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { T } from "@/lib/theme";
 import TuscanCard from "@/components/ui/TuscanCard";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 
 interface QRShareModalProps {
   url: string;
@@ -13,10 +14,12 @@ interface QRShareModalProps {
 
 export default function QRShareModal({ url, title, onClose }: QRShareModalProps) {
   const { t } = useTranslation("social");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qrReady, setQrReady] = useState(false);
   const [qrError, setQrError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +47,7 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, t]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -63,17 +66,39 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
   };
 
   const handleCopyLink = async () => {
+    setCopyFailed(false);
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      return;
     } catch {
-      // Fallback: select text
+      // Fallback: legacy execCommand copy via a temporary textarea.
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        if (ok) {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+          return;
+        }
+      } catch { /* ignore */ }
+      setCopyFailed(true);
+      setTimeout(() => setCopyFailed(false), 3000);
     }
   };
 
   return (
     <div
+      ref={containerRef}
+      onKeyDown={handleKeyDown}
       role="dialog"
       aria-modal="true"
       aria-labelledby="qr-title"
@@ -84,7 +109,7 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(0,0,0,0.5)",
+        background: "rgba(42,34,24,.5)",
         backdropFilter: "blur(0.25rem)",
       }}
       onClick={(e) => {
@@ -109,7 +134,7 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
             fontFamily: T.font.display,
             fontSize: "1.375rem",
             fontWeight: 600,
-            color: T.color.charcoal,
+            color: T.color.inkSoft,
             margin: "0 0 0.25rem",
           }}
         >
@@ -134,7 +159,7 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
             padding: "1rem",
             background: T.color.cream,
             borderRadius: "0.75rem",
-            border: `1px solid ${T.color.lineFaint}`,
+            border: `1px solid ${T.color.hairline}`,
             marginBottom: "1.25rem",
           }}
         >
@@ -194,9 +219,10 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
               background: "transparent",
               color: T.color.walnut,
               cursor: "pointer",
+              minHeight: T.touch,
             }}
           >
-            {copied ? t("copied") : t("copyLink")}
+            {copyFailed ? t("copyFailed") : copied ? t("copied") : t("copyLink")}
           </button>
           <button
             onClick={handleDownload}
@@ -209,10 +235,11 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
               padding: "0.625rem",
               borderRadius: "0.625rem",
               border: "none",
-              background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+              background: `linear-gradient(135deg, ${T.color.ember}, ${T.color.rustDeep})`,
               color: T.color.cream,
               cursor: qrReady ? "pointer" : "not-allowed",
               opacity: qrReady ? 1 : 0.5,
+              minHeight: T.touch,
             }}
           >
             {t("downloadQR")}
@@ -229,6 +256,8 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
             border: "none",
             cursor: "pointer",
             marginTop: "1rem",
+            minHeight: T.touch,
+            width: "100%",
           }}
         >
           {t("close")}

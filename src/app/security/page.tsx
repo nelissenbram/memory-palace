@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { T } from "@/lib/theme";
-import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -289,7 +289,8 @@ function CommitmentDove({ size = 40 }: { size?: number }) {
 export default function SecurityPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
-  const { t, locale, setLocale } = useTranslation("securityPage");
+  const isCompact = useIsCompact();
+  const { t, locale, setLocaleNoReload } = useTranslation("securityPage");
   const { t: tc } = useTranslation("common");
 
   return (
@@ -298,9 +299,9 @@ export default function SecurityPage() {
         width: "100vw",
         minHeight: "100vh",
         overflowX: "hidden",
-        background: C.linen,
+        background: C.cream,
         fontFamily: F.body,
-        color: C.charcoal,
+        color: C.ink,
       }}
     >
       {/* --- Nav --- */}
@@ -309,14 +310,17 @@ export default function SecurityPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 clamp(20px, 5vw, 60px)",
-          height: 64,
-          background: "rgba(250,250,247,0.92)",
+          padding: isMobile ? "0 1.25rem" : "0 3.75rem",
+          // Keep the nav content clear of the status bar / notch under
+          // viewport-fit=cover (resolves to 0 on desktop → no-op).
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          height: "calc(4rem + env(safe-area-inset-top, 0px))",
+          background: "rgba(252,250,245,0.92)",
           backdropFilter: "blur(12px)",
-          borderBottom: `1px solid ${C.sandstone}40`,
+          borderBottom: `1px solid ${C.hairline}`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           {/* Back button */}
           <Link
             href="/"
@@ -325,12 +329,12 @@ export default function SecurityPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              border: `1px solid ${C.sandstone}50`,
+              width: "2.75rem",
+              height: "2.75rem",
+              borderRadius: "0.5rem",
+              border: `1px solid ${C.hairline}`,
               background: "none",
-              color: C.walnut,
+              color: C.inkMuted,
               textDecoration: "none",
               transition: "border-color 0.2s",
             }}
@@ -342,7 +346,7 @@ export default function SecurityPage() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
+              gap: "0.625rem",
               textDecoration: "none",
             }}
           >
@@ -351,9 +355,9 @@ export default function SecurityPage() {
               <span
                 style={{
                   fontFamily: F.display,
-                  fontSize: 20,
+                  fontSize: "1.25rem",
                   fontWeight: 500,
-                  color: C.charcoal,
+                  color: C.ink,
                   letterSpacing: "-0.3px",
                 }}
               >
@@ -362,21 +366,22 @@ export default function SecurityPage() {
             )}
           </Link>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           {/* Language selector */}
           <select
             value={locale}
-            onChange={(e) => setLocale(e.target.value as typeof locale)}
+            onChange={(e) => setLocaleNoReload(e.target.value as typeof locale)}
             aria-label={tc("a11ySwitchLanguage")}
             style={{
               background: "none",
-              border: `1px solid ${C.sandstone}60`,
+              border: `1px solid ${C.hairline}`,
               borderRadius: "0.375rem",
-              padding: "0.25rem 0.5rem",
-              fontSize: "0.75rem",
+              padding: "0.5rem 0.5rem",
+              minHeight: "2.75rem",
+              fontSize: "1rem",
               fontFamily: F.body,
               fontWeight: 600,
-              color: C.walnut,
+              color: C.inkMuted,
               cursor: "pointer",
               letterSpacing: "0.5px",
               textTransform: "uppercase",
@@ -384,26 +389,26 @@ export default function SecurityPage() {
               appearance: "none",
               WebkitAppearance: "none",
               paddingRight: "1.25rem",
-              backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+              backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "right 0.375rem center",
             }}
           >
             {locales.map((l) => (
-              <option key={l} value={l} style={{ color: "#333" }}>{l.toUpperCase()}</option>
+              <option key={l} value={l} style={{ color: C.ink }}>{l.toUpperCase()}</option>
             ))}
           </select>
           <Link
             href="/register"
             style={{
               fontFamily: F.body,
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
-              color: C.white,
+              color: C.cream,
               textDecoration: "none",
-              padding: isMobile ? "10px 18px" : "8px 20px",
-              borderRadius: 10,
-              background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+              padding: isMobile ? "0.625rem 1.125rem" : "0.5rem 1.25rem",
+              borderRadius: "0.625rem",
+              background: T.land.ctaGrad,
             }}
           >
             {t("getStarted")}
@@ -415,30 +420,30 @@ export default function SecurityPage() {
       <section
         style={{
           textAlign: "center",
-          padding: isMobile ? "60px 20px 50px" : "80px clamp(20px, 5vw, 60px) 60px",
+          padding: isMobile ? "3.75rem 1.25rem 3.125rem" : "5rem 3.75rem 3.75rem",
           background: `radial-gradient(ellipse at 50% 30%, ${C.warmStone}, ${C.linen} 70%)`,
         }}
       >
-        <div style={{ display: "inline-block", marginBottom: 20 }}>
+        <div style={{ display: "inline-block", marginBottom: "1.25rem" }}>
           <HeroShield size={isMobile ? 48 : 56} />
         </div>
         <h1
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(32px, 5vw, 56px)",
+            fontSize: isMobile ? "2rem" : "3.5rem",
             fontWeight: 300,
             lineHeight: 1.15,
-            color: C.charcoal,
-            marginBottom: 16,
+            color: C.ink,
+            marginBottom: "1rem",
           }}
         >
           {t("heroTitle")}
         </h1>
         <p
           style={{
-            fontSize: "clamp(17px, 2.2vw, 20px)",
-            color: C.walnut,
-            maxWidth: 600,
+            fontSize: isMobile ? "1.0625rem" : "1.25rem",
+            color: C.inkMuted,
+            maxWidth: "37.5rem",
             margin: "0 auto",
             lineHeight: 1.7,
           }}
@@ -450,30 +455,30 @@ export default function SecurityPage() {
       {/* --- Sections --- */}
       <div
         style={{
-          maxWidth: 900,
+          maxWidth: "56.25rem",
           margin: "0 auto",
           padding: isMobile
-            ? "40px 20px 60px"
-            : "60px clamp(20px, 5vw, 60px) 80px",
+            ? "2.5rem 1.25rem 3.75rem"
+            : `3.75rem ${isCompact ? "2rem" : "3.75rem"} 5rem`,
         }}
       >
         {SECTIONS.map((section, si) => (
-          <div key={si} style={{ marginBottom: 56 }}>
+          <div key={si} style={{ marginBottom: "3.5rem" }}>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 12,
-                marginBottom: 24,
+                gap: "0.75rem",
+                marginBottom: "1.5rem",
               }}
             >
               <section.IconComponent size={isMobile ? 24 : 28} />
               <h2
                 style={{
                   fontFamily: F.display,
-                  fontSize: "clamp(24px, 3vw, 32px)",
+                  fontSize: isMobile ? "1.5rem" : "2rem",
                   fontWeight: 500,
-                  color: C.charcoal,
+                  color: C.ink,
                   margin: 0,
                 }}
               >
@@ -489,38 +494,38 @@ export default function SecurityPage() {
                     ? "1fr"
                     : section.items.length === 2
                     ? "repeat(2, 1fr)"
-                    : "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: isMobile ? 16 : 20,
+                    : "repeat(auto-fit, minmax(15.625rem, 1fr))",
+                gap: isMobile ? "1rem" : "1.25rem",
               }}
             >
               {section.items.map((item, ii) => (
                 <div
                   key={ii}
                   style={{
-                    background: C.white,
-                    borderRadius: 16,
-                    padding: isMobile ? "24px 20px" : "28px 24px",
-                    border: `1px solid ${C.sandstone}50`,
+                    background: C.linen,
+                    borderRadius: "1rem",
+                    padding: isMobile ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
+                    border: `1px solid ${C.hairline}`,
                   }}
                 >
-                  <div style={{ marginBottom: 12 }}>
+                  <div style={{ marginBottom: "0.75rem" }}>
                     <ItemIcon category={section.category} index={ii} size={24} />
                   </div>
                   <h3
                     style={{
                       fontFamily: F.display,
-                      fontSize: "clamp(18px, 2vw, 22px)",
+                      fontSize: isMobile ? "1.125rem" : "1.375rem",
                       fontWeight: 500,
-                      color: C.charcoal,
-                      marginBottom: 8,
+                      color: C.ink,
+                      marginBottom: "0.5rem",
                     }}
                   >
                     {t(item.labelKey)}
                   </h3>
                   <p
                     style={{
-                      fontSize: "clamp(15px, 1.6vw, 17px)",
-                      color: C.walnut,
+                      fontSize: isMobile ? "1rem" : "1.0625rem",
+                      color: C.inkMuted,
                       lineHeight: 1.7,
                       margin: 0,
                     }}
@@ -536,26 +541,26 @@ export default function SecurityPage() {
         {/* --- Commitment --- */}
         <div
           style={{
-            background: `linear-gradient(135deg, ${C.charcoal}, #3D3D3A)`,
-            borderRadius: 20,
-            padding: isMobile ? "36px 24px" : "48px 40px",
+            background: `linear-gradient(135deg, ${C.inkDeep}, ${C.ink})`,
+            borderRadius: "1.25rem",
+            padding: isMobile ? "2.25rem 1.5rem" : "3rem 2.5rem",
             textAlign: "center",
-            marginTop: 20,
+            marginTop: "1.25rem",
           }}
         >
-          <div style={{ display: "inline-block", marginBottom: 16 }}>
+          <div style={{ display: "inline-block", marginBottom: "1rem" }}>
             <CommitmentDove size={isMobile ? 36 : 40} />
           </div>
           <h2
             style={{
               fontFamily: F.display,
-              fontSize: "clamp(24px, 3vw, 34px)",
+              fontSize: isMobile ? "1.5rem" : "2.125rem",
               fontWeight: 300,
               fontStyle: "italic",
-              color: C.linen,
+              color: C.cream,
               lineHeight: 1.3,
-              maxWidth: 600,
-              margin: "0 auto 16px",
+              maxWidth: "37.5rem",
+              margin: "0 auto 1rem",
             }}
           >
             {t("commitmentTitle")}
@@ -564,17 +569,17 @@ export default function SecurityPage() {
           </h2>
           <p
             style={{
-              fontSize: "clamp(15px, 1.6vw, 17px)",
-              color: C.muted,
+              fontSize: isMobile ? "1rem" : "1.0625rem",
+              color: T.land.inkMutedDark,
               lineHeight: 1.7,
-              maxWidth: 520,
+              maxWidth: "32.5rem",
               margin: "0 auto",
             }}
           >
             {t("commitmentBody")}{" "}
             <a
               href="mailto:privacy@thememorypalace.ai"
-              style={{ color: C.terracotta, textDecoration: "none" }}
+              style={{ color: T.land.accentDark, textDecoration: "none" }}
             >
               privacy@thememorypalace.ai
             </a>
@@ -586,7 +591,7 @@ export default function SecurityPage() {
       {/* --- CTA --- */}
       <section
         style={{
-          padding: isMobile ? "40px 20px 60px" : "60px clamp(20px, 5vw, 60px) 80px",
+          padding: isMobile ? "2.5rem 1.25rem 3.75rem" : `3.75rem ${isCompact ? "2rem" : "3.75rem"} 5rem`,
           textAlign: "center",
           background: C.warmStone,
         }}
@@ -594,10 +599,10 @@ export default function SecurityPage() {
         <h2
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(24px, 3.5vw, 38px)",
+            fontSize: isMobile ? "1.75rem" : "2.375rem",
             fontWeight: 300,
-            color: C.charcoal,
-            marginBottom: 16,
+            color: C.ink,
+            marginBottom: "1rem",
             lineHeight: 1.2,
           }}
         >
@@ -605,10 +610,10 @@ export default function SecurityPage() {
         </h2>
         <p
           style={{
-            fontSize: "clamp(15px, 1.8vw, 17px)",
-            color: C.walnut,
-            maxWidth: 480,
-            margin: "0 auto 32px",
+            fontSize: isMobile ? "1rem" : "1.0625rem",
+            color: C.inkMuted,
+            maxWidth: "30rem",
+            margin: "0 auto 2rem",
             lineHeight: 1.6,
           }}
         >
@@ -619,14 +624,14 @@ export default function SecurityPage() {
           style={{
             display: "inline-block",
             fontFamily: F.body,
-            fontSize: 16,
+            fontSize: "1rem",
             fontWeight: 600,
-            color: C.white,
+            color: C.cream,
             textDecoration: "none",
-            padding: "16px 36px",
-            borderRadius: 14,
-            background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-            boxShadow: "0 4px 20px rgba(198,107,61,0.3)",
+            padding: "1rem 2.25rem",
+            borderRadius: "0.875rem",
+            background: T.land.ctaGrad,
+            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
           }}
         >
           {t("ctaButton")}
@@ -636,21 +641,24 @@ export default function SecurityPage() {
       {/* --- Footer --- */}
       <footer
         style={{
-          padding: "28px clamp(20px, 5vw, 60px)",
-          borderTop: `1px solid ${C.sandstone}40`,
-          background: C.charcoal,
+          padding: isMobile ? "1.75rem 1.25rem" : "1.75rem 3.75rem",
+          borderTop: `1px solid ${C.inkDeep}`,
+          background: C.inkDeep,
           textAlign: "center",
         }}
       >
-        <div style={{ marginBottom: 12, display: "flex", justifyContent: "center", gap: 24 }}>
-          <Link href="/privacy" style={{ fontSize: 13, color: C.muted, textDecoration: "none" }}>
+        <div style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "center", gap: "1.5rem" }}>
+          <Link href="/privacy" style={{ fontSize: "0.8125rem", color: T.land.inkMutedDark, textDecoration: "none" }}>
             {t("privacyPolicy")}
           </Link>
-          <Link href="/terms" style={{ fontSize: 13, color: C.muted, textDecoration: "none" }}>
+          <Link href="/terms" style={{ fontSize: "0.8125rem", color: T.land.inkMutedDark, textDecoration: "none" }}>
             {t("termsOfService")}
           </Link>
+          <Link href="/data-deletion" style={{ fontSize: "0.8125rem", color: T.land.inkMutedDark, textDecoration: "none" }}>
+            {t("dataDeletion")}
+          </Link>
         </div>
-        <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+        <p style={{ fontSize: "0.75rem", color: T.land.inkMutedDark, margin: 0 }}>
           &copy; {new Date().getFullYear()} {t("footerCopyright")}
         </p>
       </footer>

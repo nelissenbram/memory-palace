@@ -47,6 +47,15 @@ export async function addComment(input: {
   const body = input.body.trim().slice(0, 2000);
   if (!body) return { ok: false, error: "Comment cannot be empty" };
 
+  // Only allow commenting on targets the viewer is permitted to see (owner,
+  // accepted collaborator, or a published target within its visibility scope).
+  {
+    const { canViewTarget } = await import("@/lib/auth/notification-actions");
+    if (!(await canViewTarget(input.targetType, input.targetId, user.id))) {
+      return { ok: false, error: "You do not have access to this content." };
+    }
+  }
+
   // Proactive objectionable-content filter for public UGC (Apple 1.1/1.2).
   const { moderateText } = await import("@/lib/social/moderate-text");
   if (!moderateText(body).ok) {
@@ -173,6 +182,16 @@ export async function getComments(
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Do not leak comment bodies on private/unpublished content. Only return
+  // comments when the viewer may see the target (owner, collaborator, or a
+  // published target within its visibility scope; anonymous → public only).
+  {
+    const { canViewTarget } = await import("@/lib/auth/notification-actions");
+    if (!(await canViewTarget(targetType, targetId, user?.id ?? null))) {
+      return [];
+    }
+  }
+
   const { data: rawRows } = await supabase
     .from("comments")
     .select("id, user_id, body, parent_id, created_at")
@@ -238,14 +257,54 @@ export async function getComments(
   return topLevel;
 }
 
-const VALID_REACTION_EMOJIS = ["candle", "key", "scroll", "heart", "star", "amphora"];
+// Reactions are limited to the single "heart" (love) reaction. Legacy emojis
+// (candle/key/scroll/star/amphora) remain in existing DB rows but can no
+// longer be created.
+const VALID_REACTION_EMOJIS = ["heart"];
+
+/**
+ * Read + group the reactions for a target into per-emoji summaries.
+ * Shared by getReactions and toggleReaction so a toggle can return the
+ * authoritative fresh summary without a second server round-trip (extra
+ * getUser + canViewTarget + full read). Caller must have already resolved
+ * `user` and confirmed view access.
+ */
+async function summarizeReactions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  targetType: string,
+  targetId: string,
+  userId: string | null
+): Promise<ReactionSummary[]> {
+  const { data: rows } = await supabase
+    .from("reactions")
+    .select("emoji, user_id")
+    .eq("target_type", targetType)
+    .eq("target_id", targetId);
+
+  if (!rows || rows.length === 0) return [];
+
+  // Group by emoji
+  const groups = new Map<string, { count: number; reacted: boolean }>();
+  for (const row of rows) {
+    const group = groups.get(row.emoji) || { count: 0, reacted: false };
+    group.count++;
+    if (userId && row.user_id === userId) group.reacted = true;
+    groups.set(row.emoji, group);
+  }
+
+  return Array.from(groups.entries()).map(([emoji, g]) => ({
+    emoji,
+    count: g.count,
+    reacted: g.reacted,
+  }));
+}
 
 /** Toggle a reaction on a target */
 export async function toggleReaction(input: {
   targetType: string;
   targetId: string;
   emoji: string;
-}): Promise<{ reacted: boolean }> {
+}): Promise<{ reacted: boolean; summary?: ReactionSummary[] }> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -255,6 +314,14 @@ export async function toggleReaction(input: {
   // Validate emoji against allowlist
   if (!VALID_REACTION_EMOJIS.includes(input.emoji)) {
     return { reacted: false };
+  }
+
+  // Only allow reacting to targets the viewer is permitted to see.
+  {
+    const { canViewTarget } = await import("@/lib/auth/notification-actions");
+    if (!(await canViewTarget(input.targetType, input.targetId, user.id))) {
+      return { reacted: false };
+    }
   }
 
   // Check existing
@@ -269,7 +336,13 @@ export async function toggleReaction(input: {
 
   if (existing) {
     await supabase.from("reactions").delete().eq("id", existing.id);
-    return { reacted: false };
+    const summary = await summarizeReactions(
+      supabase,
+      input.targetType,
+      input.targetId,
+      user.id
+    );
+    return { reacted: false, summary };
   }
 
   await supabase.from("reactions").insert({
@@ -278,6 +351,15 @@ export async function toggleReaction(input: {
     target_id: input.targetId,
     emoji: input.emoji,
   });
+
+  // Authoritative fresh summary reflecting the new reaction, returned to the
+  // client so it can reconcile without a second getReactions round-trip.
+  const summary = await summarizeReactions(
+    supabase,
+    input.targetType,
+    input.targetId,
+    user.id
+  );
 
   // Record activity
   try {
@@ -329,7 +411,7 @@ export async function toggleReaction(input: {
     // Notifications may not be available
   }
 
-  return { reacted: true };
+  return { reacted: true, summary };
 }
 
 /** Get reaction summaries for a target */
@@ -342,26 +424,13 @@ export async function getReactions(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: rows } = await supabase
-    .from("reactions")
-    .select("emoji, user_id")
-    .eq("target_type", targetType)
-    .eq("target_id", targetId);
-
-  if (!rows || rows.length === 0) return [];
-
-  // Group by emoji
-  const groups = new Map<string, { count: number; reacted: boolean }>();
-  for (const row of rows) {
-    const group = groups.get(row.emoji) || { count: 0, reacted: false };
-    group.count++;
-    if (user && row.user_id === user.id) group.reacted = true;
-    groups.set(row.emoji, group);
+  // Do not leak reactor identities on private/unpublished content.
+  {
+    const { canViewTarget } = await import("@/lib/auth/notification-actions");
+    if (!(await canViewTarget(targetType, targetId, user?.id ?? null))) {
+      return [];
+    }
   }
 
-  return Array.from(groups.entries()).map(([emoji, g]) => ({
-    emoji,
-    count: g.count,
-    reacted: g.reacted,
-  }));
+  return summarizeReactions(supabase, targetType, targetId, user?.id ?? null);
 }

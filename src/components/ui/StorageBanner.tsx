@@ -2,6 +2,7 @@
 
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsSmall } from "@/lib/hooks/useIsMobile";
 import { isIOS, isAndroid } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 
@@ -11,46 +12,74 @@ interface Props {
   onUpgrade: () => void;
 }
 
+/**
+ * Single source of truth for the storage-banner threshold (fraction, 0–1).
+ * The banner self-gates below this; any outer mount guard should import THIS
+ * constant instead of hard-coding 0.5, so the threshold can never drift.
+ */
+export const STORAGE_BANNER_THRESHOLD = 0.5;
+
 export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) {
   const { t } = useTranslation("palace");
+  const isSmall = useIsSmall();
+  // Inline styles can't carry an @media reduced-motion gate (this component is
+  // pure-inline, no <style> block), so read the preference in JS and skip the
+  // transform transition / hover lift when the user asks for reduced motion.
+  const reducedMotion =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pct = limitMb > 0 ? (storageMb / limitMb) * 100 : 0;
   // Android has no in-app purchase path — hide the Upgrade CTA there. iOS shows
   // it only when IAP is live (IAP_ENABLED), leading to the IAP paywall (/pricing).
   // On web it always shows.
   const hideUpgrade = isAndroid() || (isIOS() && !IAP_ENABLED);
 
-  if (pct < 50) return null;
+  if (pct < STORAGE_BANNER_THRESHOLD * 100) return null;
 
   const level =
     pct >= 100 ? "full" : pct >= 95 ? "urgent" : pct >= 80 ? "warning" : "info";
 
+  // Canon hexes (libraryTokens): MUTED #716A5E, EMBER #B85C38, error C05050.
   const styles: Record<string, { bg: string; border: string; color: string }> = {
-    info:    { bg: `${T.color.muted}12`, border: `${T.color.muted}33`, color: T.color.muted },
-    warning: { bg: `${T.color.terracotta}12`, border: `${T.color.terracotta}33`, color: T.color.terracotta },
+    info:    { bg: `${T.color.inkMuted}12`, border: `${T.color.inkMuted}33`, color: T.color.inkMuted },
+    warning: { bg: `${T.color.ember}12`, border: `${T.color.ember}33`, color: T.color.ember },
     urgent:  { bg: `${T.color.error}12`, border: `${T.color.error}33`, color: T.color.error },
     full:    { bg: `${T.color.error}18`, border: `${T.color.error}55`, color: T.color.error },
   };
 
   const s = styles[level];
 
+  // info/warning are polite status; only genuine full/urgent escalation is assertive.
+  const isUrgent = level === "urgent" || level === "full";
+
+  // New placeholder-bearing strings (flat dotted keys under `palace`) so the
+  // {used}/{limit}/{pct} params actually render and the sentence can never
+  // contradict the leading figure. The old storageWarning50/80/95 strings hard-
+  // coded the percentage and silently dropped every interpolation param.
   const messageKey: Record<string, string> = {
-    info: "storageWarning50",
-    warning: "storageWarning80",
-    urgent: "storageWarning95",
-    full: "storageFull",
+    info: "storage.usedFraction",
+    warning: "storage.usedFraction",
+    urgent: "storage.usedFractionUrgent",
+    full: "storage.usedFractionFull",
   };
+
+  // Canon EMBER for the default/warning CTA; escalate to error red only at urgent/full.
+  const ctaBg = isUrgent ? T.color.error : T.color.ember;
 
   return (
     <div
-      role="alert"
+      role={isUrgent ? "alert" : "status"}
+      aria-live={isUrgent ? "assertive" : "polite"}
       style={{
         display: "flex",
-        alignItems: "center",
+        flexDirection: isSmall ? "column" : "row",
+        alignItems: isSmall ? "stretch" : "center",
         gap: "0.75rem",
         padding: "0.75rem 1rem",
-        borderRadius: "0.75rem",
+        borderRadius: "1rem",
         background: s.bg,
-        border: `1px solid ${s.border}`,
+        border: `0.0625rem solid ${s.border}`,
       }}
     >
       <span
@@ -60,8 +89,21 @@ export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) 
           fontSize: "0.8125rem",
           color: s.color,
           lineHeight: 1.4,
+          display: "flex",
+          alignItems: "baseline",
+          gap: "0.5rem",
         }}
       >
+        <span
+          style={{
+            fontFamily: T.font.display,
+            fontSize: "1.125rem",
+            fontWeight: 600,
+            color: s.color,
+          }}
+        >
+          {Math.round(pct)}%
+        </span>
         {t(messageKey[level], {
           used: String(Math.round(storageMb)),
           limit: String(Math.round(limitMb)),
@@ -75,21 +117,23 @@ export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) 
             padding: "0.5rem 1rem",
             borderRadius: "0.5rem",
             border: "none",
-            background: level === "full"
-              ? T.color.error
-              : level === "urgent"
-              ? T.color.error
-              : T.color.terracotta,
-            color: "#FFF",
+            background: ctaBg,
+            color: T.color.cream,
             fontFamily: T.font.body,
             fontSize: "0.75rem",
             fontWeight: 600,
             cursor: "pointer",
             whiteSpace: "nowrap",
-            minHeight: "2.25rem",
+            minWidth: "2.75rem",
+            minHeight: "2.75rem",
+            transition: reducedMotion ? "none" : "transform .2s ease",
           }}
+          onMouseEnter={(e) => { if (!reducedMotion) e.currentTarget.style.transform = "translateY(-0.1875rem)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; }}
+          onFocus={(e) => { e.currentTarget.style.outline = "0.1875rem solid #D4AF37"; e.currentTarget.style.outlineOffset = "0.1875rem"; }}
+          onBlur={(e) => { e.currentTarget.style.outline = "none"; }}
         >
-          {t("upgradeNow") || "Upgrade"}
+          {t("upgradeNow")}
         </button>
       )}
     </div>

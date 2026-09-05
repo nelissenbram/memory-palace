@@ -85,8 +85,8 @@ export default function PalaceLogo({
       <PalaceIcon size={s.icon} color={textColor} />
       <span
         style={{
-          fontFamily: "'Cormorant Garamond', serif",
-          fontWeight: 500,
+          fontFamily: "var(--font-display, Georgia, serif)",
+          fontWeight: 600,
           fontSize: s.fontSize,
           letterSpacing: s.letterSpacing,
           color: textColor,

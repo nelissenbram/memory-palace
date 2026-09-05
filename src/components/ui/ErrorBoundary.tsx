@@ -108,7 +108,7 @@ export default class ErrorBoundary extends React.Component<
             borderRadius: "1rem",
             background: T.color.white,
             border: `1px solid ${T.color.cream}`,
-            boxShadow: "0 0.25rem 1rem rgba(44,44,42,.08)",
+            boxShadow: "0 0.25rem 1rem rgba(64,59,54,.08)",
           }}
         >
           <div

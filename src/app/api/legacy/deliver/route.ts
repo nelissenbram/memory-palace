@@ -163,6 +163,24 @@ export async function POST(request: Request) {
     }
   }
 
+  // ── Scoped delivery guard ──
+  // When specific messages are targeted (immediate/scheduled delivery), only
+  // deliver to the contacts who are recipients of those messages. Otherwise the
+  // "wanted you to have access" fallback below would fire for EVERY active
+  // contact, emailing them a live palace access token they were never meant to
+  // receive — a privacy leak and premature disclosure of the scoped archive.
+  // The palace-access fallback belongs only to the full death-triggered delivery
+  // (no filterMessageIds), where all active contacts are legitimate recipients.
+  if (filterMessageIds) {
+    deliverContacts = deliverContacts.filter((c: { contact_email: string | null }) =>
+      messagesByEmail.has((c.contact_email || "").toLowerCase())
+    );
+
+    if (deliverContacts.length === 0) {
+      return NextResponse.json({ sent: 0, errors: 0, message: "No contacts targeted by these messages" });
+    }
+  }
+
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ACCESS_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
   let sent = 0;

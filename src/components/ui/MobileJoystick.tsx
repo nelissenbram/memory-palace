@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
@@ -17,13 +17,15 @@ interface MobileJoystickProps {
 export default function MobileJoystick({ onMove, visible }: MobileJoystickProps) {
   const { t } = useTranslation("mobileJoystick");
   const outerRef = useRef<HTMLDivElement | null>(null);
-  const [knobPos, setKnobPos] = useState({ x: 0, y: 0 });
+  const knobRef = useRef<HTMLDivElement | null>(null);
   const touchIdRef = useRef<number | null>(null);
   const centerRef = useRef({ x: 0, y: 0 });
+  const outerRadiusRef = useRef(50); // measured outer radius in px, refreshed on touch start
   const activeKeysRef = useRef<Set<string>>(new Set());
-  const OUTER_SIZE_REM = 6.25; // 100px equivalent in rem
-  const OUTER_R = 50; // outer radius in px (for SVG/knob math)
-  const KNOB_R = 20;  // knob radius
+  const OUTER_SIZE_REM = 6.25; // outer diameter in rem
+  const KNOB_SIZE_REM = 2.5;   // knob diameter in rem (was 40px)
+  const OUTER_R = 50; // SVG viewBox reference only (internal coordinate space)
+  const KNOB_R = 20;  // knob radius in the same SVG-nominal space (touch math ratio)
   const DEAD_ZONE = 0.15;
 
   // Dispatch synthetic keyboard events to drive the 3D scene.
@@ -59,9 +61,27 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       window.dispatchEvent(new KeyboardEvent("keyup", { key: k, bubbles: true }));
     });
     activeKeysRef.current = new Set();
-    setKnobPos({ x: 0, y: 0 });
+    // Snap the knob back to center imperatively (with the ease-out transition)
+    // rather than via React state, avoiding a re-render.
+    const knob = knobRef.current;
+    if (knob) {
+      knob.style.transition = "transform 0.15s ease-out";
+      knob.style.transform = "translate(0px, 0px)";
+    }
     onMove({ x: 0, y: 0 });
   }, [onMove]);
+
+  // When the joystick is hidden mid-hold (e.g. a menu/overlay opens while the
+  // user is still pressing the stick), the component returns null without
+  // unmounting — so the unmount cleanup never runs and held keys leak, causing
+  // the avatar to walk forever. Fire keyup for every held key, reset the knob,
+  // and clear touchIdRef so a later re-show is responsive again.
+  useEffect(() => {
+    if (!visible) {
+      touchIdRef.current = null;
+      releaseAll();
+    }
+  }, [visible, releaseAll]);
 
   // Release keys on unmount
   useEffect(() => {
@@ -80,7 +100,11 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
     const rect = outerRef.current?.getBoundingClientRect();
     if (rect) {
       centerRef.current = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      outerRadiusRef.current = rect.width / 2;
     }
+    // Drop the snap-back transition while dragging so the knob tracks the finger
+    // immediately (the imperative transform updates every touchmove).
+    if (knobRef.current) knobRef.current.style.transition = "none";
     e.stopPropagation();
   }, []);
 
@@ -93,12 +117,21 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       const dx = touch.clientX - centerRef.current.x;
       const dy = touch.clientY - centerRef.current.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const maxDist = OUTER_R - KNOB_R;
+      // Track the actual rendered size (root font-size / zoom) rather than the
+      // nominal px constants — scale the knob radius by the measured/nominal ratio.
+      const measuredR = outerRadiusRef.current;
+      const maxDist = measuredR - KNOB_R * (measuredR / OUTER_R);
       const clampedDist = Math.min(dist, maxDist);
       const angle = Math.atan2(dy, dx);
       const cx = clampedDist * Math.cos(angle);
       const cy = clampedDist * Math.sin(angle);
-      setKnobPos({ x: cx, y: cy });
+      // Drive the knob imperatively — this is a pure presentational transform
+      // that fires on every touchmove (60-120Hz). Routing it through React state
+      // would schedule a full re-render each event, competing with the R3F
+      // render loop while the user is navigating the palace.
+      if (knobRef.current) {
+        knobRef.current.style.transform = `translate(${cx}px, ${cy}px)`;
+      }
 
       // Normalize to -1..1
       const nx = cx / maxDist;
@@ -138,9 +171,9 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
         height: `${OUTER_SIZE_REM}rem`,
         borderRadius: "50%",
         background: "rgba(42, 34, 24, 0.25)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-        border: "1.5px solid rgba(212, 197, 178, 0.3)",
+        backdropFilter: "blur(0.375rem)",
+        WebkitBackdropFilter: "blur(0.375rem)",
+        border: "0.09375rem solid rgba(212, 197, 178, 0.3)",
         zIndex: 47,
         touchAction: "none",
         userSelect: "none",
@@ -149,10 +182,11 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
         justifyContent: "center",
       }}
     >
-      {/* Directional indicators */}
+      {/* Directional indicators — SVG scales with the rem-sized container via
+          its viewBox, so it stays correct under a non-16px root font-size. */}
       <svg
-        width={OUTER_R * 2}
-        height={OUTER_R * 2}
+        width="100%"
+        height="100%"
         viewBox={`0 0 ${OUTER_R * 2} ${OUTER_R * 2}`}
         style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
       >
@@ -178,17 +212,19 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
         />
       </svg>
 
-      {/* Inner knob */}
+      {/* Inner knob — position driven imperatively via knobRef during drag to
+          avoid a React re-render on every touchmove event. */}
       <div
+        ref={knobRef}
         style={{
-          width: KNOB_R * 2,
-          height: KNOB_R * 2,
+          width: `${KNOB_SIZE_REM}rem`,
+          height: `${KNOB_SIZE_REM}rem`,
           borderRadius: "50%",
           background: "rgba(250, 250, 247, 0.35)",
-          border: "1.5px solid rgba(250, 250, 247, 0.45)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-          transform: `translate(${knobPos.x}px, ${knobPos.y}px)`,
-          transition: touchIdRef.current !== null ? "none" : "transform 0.15s ease-out",
+          border: "0.09375rem solid rgba(250, 250, 247, 0.45)",
+          boxShadow: "0 0.125rem 0.5rem rgba(64,59,54,0.15)",
+          transform: "translate(0px, 0px)",
+          transition: "transform 0.15s ease-out",
           pointerEvents: "none",
         }}
       />

@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import { isNative } from "@/lib/native/platform";
@@ -12,7 +13,7 @@ import { isNative } from "@/lib/native/platform";
    ═══════════════════════════════════════════════════════ */
 
 const DropZoneIcon = () => (
-  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke="#9A4F2A" /* Atrium token: terracotta glyph */ strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <rect x="4" y="8" width="32" height="24" rx="3" />
     <path d="M20 14v12M14 20l6 6 6-6" />
     <path d="M4 12l16-6 16 6" strokeDasharray="2 2" opacity="0.5" />
@@ -20,7 +21,7 @@ const DropZoneIcon = () => (
 );
 
 const ComputerIcon = () => (
-  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke="#9A4F2A" /* Atrium token: terracotta glyph */ strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <rect x="6" y="6" width="28" height="20" rx="2" />
     <path d="M14 26v4h12v-4" />
     <path d="M10 30h20" />
@@ -29,21 +30,21 @@ const ComputerIcon = () => (
 );
 
 const LinkIcon = () => (
-  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke="#9A4F2A" /* Atrium token: terracotta glyph */ strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 23a6 6 0 008.5.6l4-4a6 6 0 00-8.5-8.5l-2 2" />
     <path d="M23 17a6 6 0 00-8.5-.6l-4 4a6 6 0 008.5 8.5l2-2" />
   </svg>
 );
 
 const CloudIcon = () => (
-  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke="#9A4F2A" /* Atrium token: terracotta glyph */ strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 28h16a6 6 0 000-12 8 8 0 00-15-2 6 6 0 00-1 12" />
     <path d="M20 20v8M17 25l3 3 3-3" />
   </svg>
 );
 
 const ClipboardIcon = () => (
-  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="2.5rem" height="2.5rem" viewBox="0 0 40 40" fill="none" stroke="#9A4F2A" /* Atrium token: terracotta glyph */ strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <rect x="10" y="8" width="20" height="26" rx="2" />
     <path d="M16 8V6a4 4 0 018 0v2" />
     <rect x="15" y="5" width="10" height="4" rx="1" />
@@ -54,12 +55,6 @@ const ClipboardIcon = () => (
 const CloseIcon = () => (
   <svg width="1.25rem" height="1.25rem" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
     <path d="M5 5l10 10M15 5L5 15" />
-  </svg>
-);
-
-const CheckIcon = () => (
-  <svg width="1rem" height="1rem" viewBox="0 0 16 16" fill="none" stroke={T.color.success} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 8l4 4 6-7" />
   </svg>
 );
 
@@ -88,10 +83,18 @@ export interface QueuedFile {
 interface ImportHubProps {
   onClose: () => void;
   onImportFiles: (files: QueuedFile[], roomId?: string) => Promise<void> | void;
-  onOpenCloudProvider: (provider: string) => void;
+  /** roomId = the Destination selector's choice, so cloud imports land where the user aimed */
+  onOpenCloudProvider: (provider: string, roomId?: string | null) => void;
   initialRoomId?: string | null;
   /** When true, hide wing/room selectors — used in onboarding */
   lockRoom?: boolean;
+  /** Onboarding first-memory guidance (ONBOARDING_ELEVATION_PLAN §8): replaces
+      the header title. Its presence also enables the footer skip link. */
+  titleOverride?: string;
+  /** Onboarding first-memory guidance: replaces the header subtitle AND renders
+      on mobile too (the default subtitle is desktop-only) — otherwise the
+      primary guidance would vanish on the primary platform. */
+  subtitleOverride?: string;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -139,11 +142,15 @@ const CLOUD_PROVIDERS = [
    Component
    ═══════════════════════════════════════════════════════ */
 
-export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider, initialRoomId, lockRoom = false }: ImportHubProps) {
+export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider, initialRoomId, lockRoom = false, titleOverride, subtitleOverride }: ImportHubProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
+  // Onboarding-only footer skip label lives in the flat "onboarding" section
+  // (tr-guard pattern: t() returns the bare key when a translation is missing).
+  const { t: tOnb } = useTranslation("onboarding");
   const { t: tWings } = useTranslation("wings");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const roomStore = useRoomStore();
   const allWings = roomStore.getWings();
 
@@ -169,10 +176,13 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
 
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
-  const [dragFileInfo, setDragFileInfo] = useState<{ count: number; size: number } | null>(null);
+  // Only the file count is knowable on dragenter (dataTransfer.files is empty
+  // until drop), so we don't track a bogus size here.
+  const [dragFileInfo, setDragFileInfo] = useState<{ count: number } | null>(null);
   const [clipboardAvailable, setClipboardAvailable] = useState(false);
   const [, setActiveSection] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
@@ -260,13 +270,12 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
     setDragOver(true);
     if (e.dataTransfer.items) {
       let count = 0;
-      let size = 0;
       for (let i = 0; i < e.dataTransfer.items.length; i++) {
         if (e.dataTransfer.items[i].kind === "file") {
           count++;
         }
       }
-      setDragFileInfo({ count, size });
+      setDragFileInfo({ count });
     }
   }, []);
 
@@ -347,15 +356,23 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
     if (queue.length === 0) return;
     if (!targetRoomId) return;
     setImporting(true);
+    setImportError(null);
     try {
       await onImportFiles(queue, targetRoomId);
-    } catch {
-      /* import errors handled upstream */
+      // Only clear the queue and close on success — a failed import must keep
+      // the user's queue intact so they can retry.
+      clearQueue();
+      setImporting(false);
+      onClose();
+    } catch (err: unknown) {
+      // OPS-002: never surface raw internal error codes (e.g. "save-rolled-back",
+      // "save-failed", "no-dataurl") — always show a friendly retry message and
+      // keep the code in the console/telemetry for debugging.
+      console.warn("[ImportHub] import failed:", err);
+      setImportError(t("importFailedRetry"));
+      setImporting(false);
     }
-    clearQueue();
-    setImporting(false);
-    onClose();
-  }, [queue, onImportFiles, clearQueue, onClose, targetRoomId]);
+  }, [queue, onImportFiles, clearQueue, onClose, targetRoomId, t]);
 
   /* ── Total queue stats ─────────────────── */
 
@@ -372,7 +389,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
     gap: isMobile ? "0.25rem" : "0.5rem",
     padding: isMobile ? "0.75rem 0.625rem" : "1.25rem 1rem",
     borderRadius: "0.75rem",
-    border: `0.0625rem solid ${T.color.cream}`,
+    border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
     background: T.color.linen,
     cursor: "pointer",
     transition: "all 0.25s ease",
@@ -385,12 +402,12 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
     const el = e.currentTarget as HTMLElement;
     if (enter) {
       el.style.background = T.color.white;
-      el.style.borderColor = `${T.color.gold}66`;
-      el.style.transform = "translateY(-0.125rem)";
-      el.style.boxShadow = `0 0.375rem 1rem rgba(212,175,55,0.1)`;
+      el.style.borderColor = "#E3D6BC"; /* Atrium token: hairline */
+      el.style.transform = "translateY(-0.1875rem)";
+      el.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)"; /* Atrium S1 */
     } else {
       el.style.background = T.color.linen;
-      el.style.borderColor = T.color.cream;
+      el.style.borderColor = "#E3D6BC";
       el.style.transform = "none";
       el.style.boxShadow = "none";
     }
@@ -405,25 +422,22 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
           to { opacity: 1; }
         }
         @keyframes impHubSlideUp {
-          from { opacity: 0; transform: translateY(1.5rem) scale(0.97); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
+          from { opacity: 0; transform: translateY(1.5rem); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes impHubPulse {
-          0%, 100% { border-color: ${T.color.gold}88; }
-          50% { border-color: ${T.color.gold}; box-shadow: 0 0 1.5rem rgba(212,175,55,0.15); }
+        @media (prefers-reduced-motion: reduce) {
+          .imp-hub-anim { animation: none !important; transition: none !important; }
         }
-        @keyframes impHubSpin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        .imp-hub-focus:focus-visible { outline: 0.1875rem solid #B85C38; /* canon EMBER focus ring (gold fails non-text contrast on cream/linen) */ outline-offset: 0.1875rem; }
       `}</style>
 
       {/* ── Backdrop ───────────────────────── */}
       <div
         onClick={onClose}
+        className="imp-hub-anim"
         style={{
           position: "fixed", inset: 0, zIndex: 8000,
-          background: "rgba(44,44,42,0.55)",
+          background: "rgba(64,59,54,0.55)", /* Atrium token: warm ink scrim */
           backdropFilter: "blur(0.5rem)",
           WebkitBackdropFilter: "blur(0.5rem)",
           animation: "impHubFadeIn 0.2s ease both",
@@ -434,7 +448,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={t("importHubTitle")}
+        aria-label={titleOverride ?? t("importHubTitle")}
         style={{
           position: "fixed", inset: 0, zIndex: 8001,
           display: "flex", alignItems: "center", justifyContent: "center",
@@ -446,18 +460,22 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
         }}
       >
         <div
+          ref={containerRef}
           onClick={(e) => e.stopPropagation()}
-          className="mp-scroll"
+          onKeyDown={handleKeyDown}
+          className="mp-scroll imp-hub-anim"
           style={{
             pointerEvents: "auto",
             width: "100%",
             maxWidth: "40rem",
-            maxHeight: "90vh",
+            // dvh + hard 2rem clearance so the footer skip link stays reachable
+            // with the iOS URL bar expanded (ONBOARDING_ELEVATION_PLAN §8).
+            maxHeight: "min(90dvh, calc(100dvh - 2rem))",
             overflow: "auto",
             background: T.color.linen,
             borderRadius: "1rem",
-            border: `0.0625rem solid ${T.color.cream}`,
-            boxShadow: "0 1.5rem 4rem rgba(44,44,42,0.2), 0 0.5rem 1.5rem rgba(44,44,42,0.1)",
+            border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
+            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium S2 */
             animation: "impHubSlideUp 0.3s ease both",
           }}
         >
@@ -465,33 +483,38 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: isMobile ? "0.75rem 1rem" : "1.25rem 1.75rem",
-            borderBottom: `0.0625rem solid ${T.color.cream}`,
+            borderBottom: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
           }}>
             <div>
               <h2 style={{
-                fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.375rem", fontWeight: 600,
-                color: T.color.charcoal, margin: 0, letterSpacing: "0.01em",
+                fontFamily: T.font.display, fontSize: isMobile ? "1.1875rem" : "1.375rem", fontWeight: 600,
+                color: "#403B36", /* Atrium ink */ margin: 0, letterSpacing: "0.01em",
               }}>
-                {t("importHubTitle")}
+                {titleOverride ?? t("importHubTitle")}
               </h2>
-              {!isMobile && <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              {/* The default subtitle is desktop-only; an onboarding override
+                  renders on mobile too — it carries the primary first-memory
+                  guidance (ONBOARDING_ELEVATION_PLAN §8 / R15). */}
+              {(subtitleOverride || !isMobile) && <p style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", /* Atrium muted */
                 margin: "0.25rem 0 0", lineHeight: 1.4,
               }}>
-                {t("importHubSubtitle")}
+                {subtitleOverride ?? t("importHubSubtitle")}
               </p>}
             </div>
             <button
               onClick={onClose}
               aria-label={tc("close")}
+              className="imp-hub-anim imp-hub-focus"
               style={{
                 background: "none", border: "none", cursor: "pointer",
-                color: T.color.muted, padding: "0.25rem",
+                color: "#716A5E", /* Atrium muted */ padding: "0.25rem",
                 borderRadius: "0.375rem", transition: "color 0.2s",
                 display: "flex", alignItems: "center", justifyContent: "center",
+                minWidth: "2.75rem", minHeight: "2.75rem",
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = T.color.charcoal; }}
-              onMouseLeave={e => { e.currentTarget.style.color = T.color.muted; }}
+              onMouseEnter={e => { e.currentTarget.style.color = "#403B36"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "#716A5E"; }}
             >
               <CloseIcon />
             </button>
@@ -507,30 +530,31 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               padding: isMobile ? "0.875rem 1rem" : "1rem 1.25rem",
               background: T.color.cream,
               borderRadius: "0.75rem",
-              border: `0.0625rem solid ${T.color.sandstone}`,
+              border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
             }}>
               <div style={{ flex: 1 }}>
                 <label style={{
                   display: "block", fontFamily: T.font.display,
-                  fontSize: isMobile ? "0.8125rem" : "0.875rem",
-                  fontWeight: 600, color: T.color.walnut,
+                  fontSize: "0.8125rem",
+                  fontWeight: 600, color: "#403B36", /* Atrium ink */
                   marginBottom: "0.375rem",
                 }}>{t("importTargetWing")}</label>
                 <select
                   value={targetWingId}
                   onChange={(e) => setTargetWingId(e.target.value)}
+                  className="imp-hub-focus"
                   style={{
                     width: "100%",
                     padding: isMobile ? "0.75rem 0.875rem" : "0.625rem 0.875rem",
-                    borderRadius: "0.5rem",
-                    border: `0.0625rem solid ${T.color.sandstone}`,
+                    borderRadius: "0.75rem",
+                    border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
                     background: T.color.white,
                     fontFamily: T.font.body,
                     fontSize: isMobile ? "1rem" : "0.9375rem",
-                    color: T.color.charcoal,
+                    color: "#403B36", /* Atrium ink */
                     cursor: "pointer",
                     appearance: "none",
-                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23${T.color.walnut.replace("#", "")}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l5 5 5-5'/></svg>")`,
+                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23716A5E' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l5 5 5-5'/></svg>")`,
                     backgroundRepeat: "no-repeat",
                     backgroundPosition: "right 0.875rem center",
                     paddingRight: "2rem",
@@ -544,25 +568,26 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               <div style={{ flex: 1 }}>
                 <label style={{
                   display: "block", fontFamily: T.font.display,
-                  fontSize: isMobile ? "0.8125rem" : "0.875rem",
-                  fontWeight: 600, color: T.color.walnut,
+                  fontSize: "0.8125rem",
+                  fontWeight: 600, color: "#403B36", /* Atrium ink */
                   marginBottom: "0.375rem",
                 }}>{t("importTargetRoom")}</label>
                 <select
                   value={targetRoomId}
                   onChange={(e) => setTargetRoomId(e.target.value)}
+                  className="imp-hub-focus"
                   style={{
                     width: "100%",
                     padding: isMobile ? "0.75rem 0.875rem" : "0.625rem 0.875rem",
-                    borderRadius: "0.5rem",
-                    border: `0.0625rem solid ${T.color.sandstone}`,
+                    borderRadius: "0.75rem",
+                    border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
                     background: T.color.white,
                     fontFamily: T.font.body,
                     fontSize: isMobile ? "1rem" : "0.9375rem",
-                    color: T.color.charcoal,
+                    color: "#403B36", /* Atrium ink */
                     cursor: "pointer",
                     appearance: "none",
-                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23${T.color.walnut.replace("#", "")}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l5 5 5-5'/></svg>")`,
+                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23716A5E' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l5 5 5-5'/></svg>")`,
                     backgroundRepeat: "no-repeat",
                     backgroundPosition: "right 0.875rem center",
                     paddingRight: "2rem",
@@ -583,36 +608,37 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              className="imp-hub-anim"
               style={{
                 padding: "1.75rem 1rem",
                 borderRadius: "0.75rem",
-                border: `0.125rem dashed ${dragOver ? T.color.gold : T.color.sandstone}`,
-                background: dragOver ? `${T.color.gold}08` : "transparent",
+                border: `0.125rem dashed ${dragOver ? "#B85C38" : "#E3D6BC"}`, /* Atrium ember / hairline */
+                background: dragOver ? "rgba(184,92,56,0.05)" : "transparent",
                 textAlign: "center",
                 cursor: "default",
                 transition: "border-color 0.25s, background 0.25s",
-                animation: dragOver ? "impHubPulse 1.2s ease infinite" : "none",
+                animation: "none",
                 marginBottom: "1.25rem",
               }}
             >
               <DropZoneIcon />
-              <p style={{
-                fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-                color: dragOver ? T.color.gold : T.color.charcoal,
+              <p className="imp-hub-anim" style={{
+                fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                color: dragOver ? "#B85C38" : "#403B36", /* Atrium ember / ink */
                 margin: "0.625rem 0 0.25rem",
                 transition: "color 0.25s",
               }}>
                 {t("importDropTitle")}
               </p>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, margin: 0,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", /* Atrium muted */ margin: 0,
               }}>
                 {t("importDropHint")}
               </p>
               {dragOver && dragFileInfo && dragFileInfo.count > 0 && (
                 <p style={{
                   fontFamily: T.font.body, fontSize: "0.8125rem",
-                  color: T.color.gold, fontWeight: 600,
+                  color: "#B85C38", /* Atrium ember */ fontWeight: 600,
                   margin: "0.5rem 0 0",
                 }}>
                   {t("importDropCount", { count: String(dragFileInfo.count) })}
@@ -630,6 +656,11 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
             }}>
               {/* B. Choose from Device */}
               <div
+                role="button"
+                tabIndex={0}
+                aria-label={t("importFromComputer")}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
+                className="imp-hub-anim imp-hub-focus"
                 style={cardStyle}
                 onClick={() => fileInputRef.current?.click()}
                 onMouseEnter={e => cardHover(e, true)}
@@ -637,13 +668,13 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               >
                 <div style={{ transform: isMobile ? "scale(0.7)" : "none", lineHeight: 0 }}><ComputerIcon /></div>
                 <span style={{
-                  fontFamily: T.font.display, fontSize: isMobile ? "0.6875rem" : "0.875rem", fontWeight: 600,
-                  color: T.color.charcoal, lineHeight: 1.3,
+                  fontFamily: T.font.display, fontSize: isMobile ? "0.8125rem" : "0.9375rem", fontWeight: 600, /* Atrium meta/body */
+                  color: "#403B36", /* Atrium ink */ lineHeight: 1.3,
                 }}>
                   {t("importFromComputer")}
                 </span>
                 {!isMobile && <span style={{
-                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.3,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", /* Atrium meta */ color: "#716A5E", /* Atrium muted */ lineHeight: 1.3,
                 }}>
                   {t("importFromComputerDesc")}
                 </span>}
@@ -652,6 +683,11 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               {/* E. From Clipboard */}
               {clipboardAvailable && (
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t("importClipboard")}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClipboardPaste(); } }}
+                  className="imp-hub-anim imp-hub-focus"
                   style={cardStyle}
                   onClick={handleClipboardPaste}
                   onMouseEnter={e => cardHover(e, true)}
@@ -659,13 +695,13 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                 >
                   <div style={{ transform: isMobile ? "scale(0.7)" : "none", lineHeight: 0 }}><ClipboardIcon /></div>
                   <span style={{
-                    fontFamily: T.font.display, fontSize: isMobile ? "0.6875rem" : "0.875rem", fontWeight: 600,
-                    color: T.color.charcoal, lineHeight: 1.3,
+                    fontFamily: T.font.display, fontSize: isMobile ? "0.8125rem" : "0.9375rem", fontWeight: 600, /* Atrium meta/body */
+                    color: "#403B36", /* Atrium ink */ lineHeight: 1.3,
                   }}>
                     {t("importClipboard")}
                   </span>
                   {!isMobile && <span style={{
-                    fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.3,
+                    fontFamily: T.font.body, fontSize: "0.8125rem", /* Atrium meta */ color: "#716A5E", /* Atrium muted */ lineHeight: 1.3,
                   }}>
                     {t("importClipboardDesc")}
                   </span>}
@@ -682,51 +718,73 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
             <div style={{ marginBottom: isMobile ? "0.75rem" : "1.25rem" }}>
               <p style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "0.8125rem" : "0.9375rem", fontWeight: 600,
-                color: T.color.charcoal, margin: isMobile ? "0 0 0.375rem" : "0 0 0.625rem",
+                color: "#403B36", /* Atrium ink */ margin: isMobile ? "0 0 0.375rem" : "0 0 0.625rem",
               }}>
                 {t("importCloudTitle")}
               </p>
               <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
+                // On small phones the three brand chips can overflow their
+                // grid tracks and truncate their labels; let the row scroll
+                // horizontally instead (matching CloudImportPanel's provider
+                // tabs). On wider viewports keep the tidy equal 3-up grid.
+                display: isMobile ? "flex" : "grid",
+                gridTemplateColumns: isMobile ? undefined : "1fr 1fr 1fr",
                 gap: isMobile ? "0.375rem" : "0.5rem",
+                overflowX: isMobile ? "auto" : undefined,
+                WebkitOverflowScrolling: isMobile ? "touch" : undefined,
+                paddingBottom: isMobile ? "0.125rem" : undefined,
               }}>
                 {CLOUD_PROVIDERS.map(({ key, labelKey, icon }) => {
                   const disabled = DISABLED_PROVIDERS.has(key);
                   return (
                   <button
                     key={key}
-                    onClick={() => { if (!disabled) onOpenCloudProvider(key); }}
+                    onClick={() => { if (!disabled) onOpenCloudProvider(key, targetRoomId || null); }}
                     disabled={disabled}
+                    className="imp-hub-anim imp-hub-focus"
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
                       padding: isMobile ? "0.5rem 0.625rem" : "0.625rem 0.875rem",
-                      borderRadius: "0.625rem",
+                      borderRadius: "0.75rem",
                       background: T.color.white,
-                      border: `0.0625rem solid ${T.color.cream}`,
+                      border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
                       cursor: disabled ? "default" : "pointer",
                       fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.8125rem",
-                      fontWeight: 500, color: T.color.walnut,
+                      fontWeight: 500, color: "#403B36", /* Atrium ink */
                       transition: "all 0.2s ease",
                       textAlign: "left",
+                      whiteSpace: "nowrap",
+                      flex: isMobile ? "0 0 auto" : undefined,
                       opacity: disabled ? 0.35 : 1,
                       pointerEvents: disabled ? "none" : "auto",
                     }}
                     onMouseEnter={e => {
                       if (disabled) return;
-                      e.currentTarget.style.borderColor = `${T.color.walnut}44`;
-                      e.currentTarget.style.transform = "translateY(-0.0625rem)";
-                      e.currentTarget.style.boxShadow = "0 0.25rem 0.75rem rgba(44,44,42,0.06)";
+                      e.currentTarget.style.borderColor = "#E3D6BC"; /* Atrium token: hairline */
+                      e.currentTarget.style.transform = "translateY(-0.1875rem)";
+                      e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)"; /* Atrium S1 */
                     }}
                     onMouseLeave={e => {
                       if (disabled) return;
-                      e.currentTarget.style.borderColor = T.color.cream;
+                      e.currentTarget.style.borderColor = "#E3D6BC";
                       e.currentTarget.style.transform = "none";
                       e.currentTarget.style.boxShadow = "none";
                     }}
                   >
-                    {icon}
-                    <span>{t(labelKey)}{disabled && <span style={{ fontSize: "0.5625rem", color: T.color.muted, marginLeft: "0.25rem" }}>{t("comingSoon")}</span>}</span>
+                    {/* Brand marks are framed in a hairline pill so their loud
+                        brand colors read as intentional badges against the muted
+                        Tuscan palette rather than as stray accents. */}
+                    <span aria-hidden="true" style={{
+                      flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: "1.75rem", height: "1.75rem",
+                      borderRadius: "50%",
+                      background: T.color.cream,
+                      border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
+                    }}>
+                      {icon}
+                    </span>
+                    <span>{t(labelKey)}{disabled && <span style={{ fontSize: "0.8125rem", /* Atrium meta */ color: "#716A5E", marginLeft: "0.25rem" }}>{t("comingSoon")}</span>}</span>
                   </button>
                   );
                 })}
@@ -739,8 +797,8 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               <div style={{
                 padding: "1rem",
                 borderRadius: "0.75rem",
-                background: "rgba(255,255,255,0.8)",
-                border: `0.0625rem solid ${T.color.cream}`,
+                background: "#FCFAF5", /* Atrium cream, opaque */
+                border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
                 marginBottom: "1rem",
               }}>
                 <div style={{
@@ -749,23 +807,24 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                 }}>
                   <span style={{
                     fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
-                    color: T.color.charcoal,
+                    color: "#403B36", /* Atrium ink */
                   }}>
                     {t("importQueueTitle", { count: String(queue.length) })}
                   </span>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                     {totalSize > 0 && (
                       <span style={{
-                        fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", /* Atrium muted */
                       }}>
                         {formatBytes(totalSize)}
                       </span>
                     )}
                     <button
                       onClick={clearQueue}
+                      className="imp-hub-focus"
                       style={{
                         background: "none", border: "none", cursor: "pointer",
-                        fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.error,
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.error,
                         textDecoration: "underline",
                       }}
                     >
@@ -789,7 +848,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                       borderRadius: "0.5rem",
                       overflow: "hidden",
                       background: T.color.warmStone,
-                      border: `0.0625rem solid ${T.color.cream}`,
+                      border: "0.0625rem solid #E3D6BC", /* Atrium token: hairline */
                     }}>
                       {item.previewUrl ? (
                         <img
@@ -808,8 +867,8 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                           padding: "0.25rem",
                         }}>
                           <span style={{
-                            fontFamily: T.font.body, fontSize: "0.5625rem",
-                            color: T.color.muted, textAlign: "center",
+                            fontFamily: T.font.body, fontSize: "0.8125rem", /* Atrium meta */
+                            color: "#716A5E", /* Atrium muted */ textAlign: "center",
                             overflow: "hidden", textOverflow: "ellipsis",
                             display: "-webkit-box", WebkitLineClamp: 2,
                             WebkitBoxOrient: "vertical",
@@ -818,56 +877,56 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                           </span>
                         </div>
                       )}
-                      {/* Remove button */}
+                      {/* Remove button — on mobile the hit area is expanded to the
+                          2.75rem touch minimum via padding while the visible chip
+                          stays compact (the trash glyph sits in a small circle). */}
                       <button
                         onClick={() => removeFromQueue(item.id)}
+                        className="imp-hub-anim imp-hub-focus"
                         style={{
-                          position: "absolute", top: "0.125rem", right: "0.125rem",
-                          width: "1.25rem", height: "1.25rem",
-                          borderRadius: "50%",
-                          background: "rgba(44,44,42,0.65)",
+                          position: "absolute", top: 0, right: 0,
+                          width: isMobile ? "2.75rem" : "1.5rem",
+                          height: isMobile ? "2.75rem" : "1.5rem",
+                          padding: 0,
+                          background: "transparent",
                           border: "none",
                           cursor: "pointer",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          color: T.color.white,
-                          fontSize: "0.625rem",
-                          transition: "background 0.2s",
+                          display: "flex", alignItems: "flex-start", justifyContent: "flex-end",
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = T.color.error; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(44,44,42,0.65)"; }}
                         aria-label={tc("remove")}
                       >
-                        <TrashIcon />
-                      </button>
-                      {/* Status indicator */}
-                      {item.status === "done" && (
-                        <div style={{
-                          position: "absolute", bottom: "0.125rem", right: "0.125rem",
-                          background: "rgba(255,255,255,0.9)", borderRadius: "50%",
-                          width: "1rem", height: "1rem",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <CheckIcon />
-                        </div>
-                      )}
-                      {item.status === "uploading" && (
-                        <div style={{
-                          position: "absolute", inset: 0,
-                          background: "rgba(44,44,42,0.3)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                        }}>
-                          <div style={{
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            margin: "0.125rem",
                             width: "1.25rem", height: "1.25rem",
-                            border: `0.125rem solid ${T.color.white}`,
-                            borderTopColor: "transparent",
                             borderRadius: "50%",
-                            animation: "impHubSpin 0.8s linear infinite",
-                          }} />
-                        </div>
-                      )}
+                            background: "rgba(64,59,54,0.65)", /* Atrium warm ink */
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            color: T.color.white,
+                            transition: "background 0.2s",
+                          }}
+                        >
+                          <TrashIcon />
+                        </span>
+                      </button>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ═══ IMPORT ERROR ═══ */}
+            {importError && (
+              <div role="alert" style={{
+                display: "flex", alignItems: "center", gap: "0.625rem",
+                padding: "0.75rem 1rem", borderRadius: "0.75rem",
+                background: "#F7EEEA", border: "0.0625rem solid #EBD4D0", /* Atrium: opaque warning tint */
+                marginBottom: "0.75rem",
+              }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A63D3D", lineHeight: 1.5 }}>
+                  {importError}
+                </span>
               </div>
             )}
 
@@ -876,22 +935,23 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               <button
                 onClick={handleImportAll}
                 disabled={importing}
+                className="imp-hub-anim imp-hub-focus"
                 style={{
                   width: "100%",
                   padding: "0.875rem",
-                  borderRadius: "0.625rem",
+                  borderRadius: "0.75rem",
                   border: "none",
                   background: importing
                     ? T.color.sandstone
-                    : `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                    : "linear-gradient(135deg, #B85C38, #9A4F2A)", /* Atrium ember → terracotta */
                   color: T.color.white,
                   fontFamily: T.font.display,
-                  fontSize: "1rem",
+                  fontSize: "1.0625rem",
                   fontWeight: 600,
                   cursor: importing ? "default" : "pointer",
                   transition: "all 0.25s",
                   letterSpacing: "0.02em",
-                  boxShadow: importing ? "none" : `0 0.25rem 1rem rgba(212,175,55,0.25)`,
+                  boxShadow: importing ? "none" : "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium S1 */
                 }}
               >
                 {importing
@@ -901,6 +961,33 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               </button>
             )}
           </div>
+
+          {/* ═══ ONBOARDING FOOTER SKIP (§8) — only during onboarding (titleOverride
+              present): an explicit, destination-honest skip under the content.
+              Persistent underline (never hover-only on touch), distinct accessible
+              name from the close-X, safe-area padded. onClick = the same onClose
+              path the X uses. ═══ */}
+          {titleOverride && (
+            <div style={{ width: "100%", textAlign: "center" }}>
+              <button
+                onClick={onClose}
+                className="imp-hub-focus"
+                style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.8125rem",
+                  color: "#716A5E", /* Atrium muted */
+                  textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+                  minHeight: "2.75rem",
+                  padding: "0.75rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px))",
+                  transition: "color 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = "#403B36"; /* Atrium ink */ }}
+                onMouseLeave={e => { e.currentTarget.style.color = "#716A5E"; }}
+              >
+                {tOnb("firstMemSkip") !== "firstMemSkip" ? tOnb("firstMemSkip") : "Continue without a photo"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
+import { EMBER, INK, SHADOW, HOVER_SHADOW, HOVER_LIFT, GOLD } from "@/lib/libraryTokens";
 import { ANIM } from "@/components/ui/TuscanStyles";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
@@ -46,6 +47,20 @@ interface PalaceOverviewClientProps {
   currentUserId?: string;
   isAuthenticated?: boolean;
   isFollowing?: boolean;
+}
+
+/** Respect prefers-reduced-motion so entrance animations become static. */
+function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener?.("change", handler);
+    return () => mq.removeEventListener?.("change", handler);
+  }, []);
+  return reduced;
 }
 
 /* ── SVG Illustrations ─────────────────────────────── */
@@ -197,6 +212,8 @@ export default function PalaceOverviewClient({
   const router = useRouter();
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
+  const reduce = useReducedMotion();
+  const anim = (value: string) => (reduce ? "none" : value);
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
   const [isFollowPending, startFollowTransition] = useTransition();
 
@@ -262,7 +279,7 @@ export default function PalaceOverviewClient({
             textDecoration: "none",
             marginBottom: "1rem",
             transition: "color 0.15s ease",
-            animation: `${ANIM.tuscanFadeSlideUp} 0.3s ease-out both`,
+            animation: anim(`${ANIM.tuscanFadeSlideUp} 0.3s ease-out both`),
           }}
           onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = T.color.muted; }}
@@ -279,7 +296,7 @@ export default function PalaceOverviewClient({
           padding="0"
           style={{
             overflow: "hidden",
-            animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out both`,
+            animation: anim(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out both`),
           }}
         >
           <div style={{
@@ -314,7 +331,7 @@ export default function PalaceOverviewClient({
                       : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
                     border: `2px solid ${T.color.goldLight}`,
                     flexShrink: 0,
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                    boxShadow: SHADOW[1],
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -332,12 +349,12 @@ export default function PalaceOverviewClient({
                       fontFamily: T.font.display,
                       fontSize: isMobile ? "1.5rem" : "1.875rem",
                       fontWeight: 600,
-                      color: T.color.charcoal,
+                      color: INK,
                       margin: 0,
                       letterSpacing: "-0.01em",
                     }}
                   >
-                    {owner.name ? `${owner.name}'s Palace` : t("anonymous")}
+                    {owner.name ? t("palaceOf", { name: owner.name }) : t("anonymous")}
                   </h1>
                   {owner.username && (
                     <a
@@ -369,7 +386,7 @@ export default function PalaceOverviewClient({
                         : "none",
                       background: isFollowing
                         ? "transparent"
-                        : `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                        : `linear-gradient(135deg, ${EMBER}, ${T.color.rustDeep})`,
                       color: isFollowing ? T.color.walnut : T.color.cream,
                       cursor: isFollowPending ? "wait" : "pointer",
                       opacity: isFollowPending ? 0.6 : 1,
@@ -417,11 +434,11 @@ export default function PalaceOverviewClient({
               color: T.color.muted,
               marginBottom: "1.25rem",
             }}>
-              <span><strong style={{ color: T.color.charcoal, fontWeight: 600 }}>{wings.length}</strong> {wings.length === 1 ? "wing" : "wings"}</span>
-              <span><strong style={{ color: T.color.charcoal, fontWeight: 600 }}>{totalRooms}</strong> {t("rooms").toLowerCase()}</span>
-              <span><strong style={{ color: T.color.charcoal, fontWeight: 600 }}>{totalMemories}</strong> {t("memories").toLowerCase()}</span>
+              <span><strong style={{ color: INK, fontWeight: 600 }}>{wings.length}</strong> {wings.length === 1 ? t("wingLabelSingular") : t("wingsLabel")}</span>
+              <span><strong style={{ color: INK, fontWeight: 600 }}>{totalRooms}</strong> {t("rooms").toLowerCase()}</span>
+              <span><strong style={{ color: INK, fontWeight: 600 }}>{totalMemories}</strong> {t("memories").toLowerCase()}</span>
               {totalVisits > 0 && (
-                <span><strong style={{ color: T.color.charcoal, fontWeight: 600 }}>{totalVisits}</strong> {t("visits").toLowerCase()}</span>
+                <span><strong style={{ color: INK, fontWeight: 600 }}>{totalVisits}</strong> {t("visits").toLowerCase()}</span>
               )}
             </div>
 
@@ -434,40 +451,42 @@ export default function PalaceOverviewClient({
               borderTop: `1px solid ${T.color.lineFaint}`,
               flexWrap: "wrap",
             }}>
-              <a
-                href={`/visit/${owner?.id}/walk`}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.625rem",
-                  padding: isMobile ? "0.75rem 1.5rem" : "0.875rem 2rem",
-                  borderRadius: "2rem",
-                  background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
-                  color: "#fff",
-                  fontFamily: T.font.display,
-                  fontSize: isMobile ? "0.9375rem" : "1.0625rem",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  boxShadow: "0 3px 12px rgba(0,0,0,0.18)",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                  letterSpacing: "0.01em",
-                  flexShrink: 0,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.22)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 3px 12px rgba(0,0,0,0.18)";
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-                {t("walkThrough3D")}
-              </a>
+              {owner && (
+                <a
+                  href={`/visit/${owner.id}/walk`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.625rem",
+                    padding: isMobile ? "0.75rem 1.5rem" : "0.875rem 2rem",
+                    borderRadius: "2rem",
+                    background: `linear-gradient(135deg, ${EMBER}, ${T.color.rustDeep})`,
+                    color: T.color.cream,
+                    fontFamily: T.font.display,
+                    fontSize: isMobile ? "0.9375rem" : "1.0625rem",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    boxShadow: SHADOW[2],
+                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    letterSpacing: "0.01em",
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = HOVER_LIFT;
+                    e.currentTarget.style.boxShadow = HOVER_SHADOW;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = SHADOW[2];
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                  {t("walkThrough3D")}
+                </a>
+              )}
               <ReactionBar
                 targetType="palace"
                 targetId={owner?.id || ""}
@@ -480,9 +499,9 @@ export default function PalaceOverviewClient({
         {/* ── Wing Subcards ──────────────────────────────── */}
         <section style={{
           marginTop: "2rem",
-          animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.1s both`,
+          animation: anim(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.1s both`),
         }}>
-          <TuscanSectionHeader>{wings.length === 1 ? "Wing" : "Wings"}</TuscanSectionHeader>
+          <TuscanSectionHeader>{wings.length === 1 ? t("wingLabelSingularCap") : t("wingsLabelCap")}</TuscanSectionHeader>
 
           <div style={{
             display: "grid",
@@ -494,21 +513,29 @@ export default function PalaceOverviewClient({
                 key={wing.id}
                 role="button"
                 tabIndex={0}
+                aria-label={wing.name}
                 style={{
                   cursor: "pointer",
                   borderRadius: "0.75rem",
                   transition: "transform 0.2s ease, box-shadow 0.2s ease",
-                  animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out ${0.2 + wi * 0.08}s both`,
+                  animation: anim(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out ${0.2 + wi * 0.08}s both`),
                 }}
-                onClick={() => router.push(`/visit/${owner?.id}/${wing.slug}/walk`)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(`/visit/${owner?.id}/${wing.slug}/walk`); } }}
+                onClick={() => { if (owner) router.push(`/visit/${owner.id}/${wing.slug}/walk`); }}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (owner) router.push(`/visit/${owner.id}/${wing.slug}/walk`); } }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-3px)";
-                  e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.1)";
+                  e.currentTarget.style.transform = HOVER_LIFT;
+                  e.currentTarget.style.boxShadow = HOVER_SHADOW;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.boxShadow = "";
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.outline = `0.1875rem solid ${GOLD}`;
+                  e.currentTarget.style.outlineOffset = "0.1875rem";
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.outline = "none";
                 }}
               >
                 <TuscanCard variant="elevated" padding="0" style={{ overflow: "hidden" }}>
@@ -534,7 +561,7 @@ export default function PalaceOverviewClient({
                           fontFamily: T.font.display,
                           fontSize: "1.1875rem",
                           fontWeight: 600,
-                          color: T.color.charcoal,
+                          color: INK,
                           margin: 0,
                         }}>
                           {wing.name}
@@ -555,7 +582,7 @@ export default function PalaceOverviewClient({
                         fontFamily: T.font.body,
                         fontSize: "0.75rem",
                         fontWeight: 500,
-                        color: T.color.goldDark,
+                        color: EMBER,
                         whiteSpace: "nowrap",
                         flexShrink: 0,
                         marginTop: "0.125rem",
@@ -626,7 +653,7 @@ export default function PalaceOverviewClient({
         {/* ── Guestbook Subcard ────────────────────────────── */}
         <section style={{
           marginTop: "2rem",
-          animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.3s both`,
+          animation: anim(`${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.3s both`),
         }}>
           <TuscanSectionHeader>{t("palaceGuestbook")}</TuscanSectionHeader>
           <TuscanCard variant="glass" padding="0" style={{ overflow: "hidden" }}>
@@ -677,6 +704,7 @@ export default function PalaceOverviewClient({
 
 function PasscodeEntryInline() {
   const { t } = useTranslation("social");
+  const reduce = useReducedMotion();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -689,7 +717,15 @@ function PasscodeEntryInline() {
       const { validatePasscode } = await import("@/lib/social/passcode-actions");
       const result = await validatePasscode(code);
       if (!result.ok) {
-        setError(result.error || t("passcodeInvalid"));
+        // validatePasscode returns a stable error CODE; map it to localized copy
+        // so nl/de/es/fr users don't see raw English.
+        const errorKey: Record<string, string> = {
+          required: "passcodeRequired",
+          invalid: "passcodeInvalid",
+          expired: "passcodeExpired",
+          rateLimited: "passcodeRateLimited",
+        };
+        setError(t(errorKey[result.error ?? "invalid"] ?? "passcodeInvalid"));
         return;
       }
       // Redirect to the share page
@@ -700,7 +736,7 @@ function PasscodeEntryInline() {
   return (
     <section style={{
       marginTop: "2rem",
-      animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.25s both`,
+      animation: reduce ? "none" : `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.25s both`,
     }}>
       <TuscanCard variant="glass" padding="1.25rem">
         <div style={{
@@ -713,7 +749,7 @@ function PasscodeEntryInline() {
           </svg>
           <span style={{
             fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
-            color: T.color.charcoal, flexShrink: 0,
+            color: INK, flexShrink: 0,
           }}>
             {t("passcodeEntryTitle")}
           </span>
@@ -730,12 +766,22 @@ function PasscodeEntryInline() {
               autoComplete="off"
               autoCapitalize="characters"
               style={{
-                flex: 1, fontFamily: "monospace", fontSize: "0.875rem",
-                fontWeight: 600, letterSpacing: "0.1em",
+                flex: 1, fontFamily: T.font.body, fontSize: "1rem",
+                fontWeight: 600, letterSpacing: "0.18em",
+                minHeight: "2.75rem",
                 padding: "0.5rem 0.75rem", borderRadius: "0.5rem",
                 border: `1.5px solid ${error ? T.color.error : T.color.sandstone}`,
-                background: T.color.cream, color: T.color.charcoal,
+                background: T.color.cream, color: INK,
                 outline: "none", minWidth: 0,
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.outline = `0.1875rem solid ${GOLD}`;
+                e.currentTarget.style.outlineOffset = "0.1875rem";
+                e.currentTarget.style.borderColor = GOLD;
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.outline = "none";
+                e.currentTarget.style.borderColor = error ? T.color.error : T.color.sandstone;
               }}
             />
             <button
@@ -743,8 +789,9 @@ function PasscodeEntryInline() {
               disabled={isPending || !code.trim()}
               style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                minHeight: "2.75rem",
                 padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none",
-                background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                background: `linear-gradient(135deg, ${EMBER}, ${T.color.rustDeep})`,
                 color: T.color.cream, cursor: isPending ? "wait" : "pointer",
                 opacity: isPending || !code.trim() ? 0.5 : 1,
                 whiteSpace: "nowrap", flexShrink: 0,

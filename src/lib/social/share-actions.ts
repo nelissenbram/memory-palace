@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { captureServer } from "@/lib/analytics-server";
 
 /** Ensure the current user's profile is public (called on any publish action) */
 async function ensureProfilePublic(
@@ -35,20 +36,47 @@ export async function publishWing(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated" };
 
-  const { error } = await supabase
-    .from("wings")
-    .update({
-      published_at: new Date().toISOString(),
-      publish_description: input.description?.slice(0, 500) || null,
-      publish_visibility: input.visibility || "public",
-    })
-    .eq("id", input.wingId)
-    .eq("user_id", user.id);
+  // A never-published wing has NO DB row yet, and getMyPublishableContent hands the
+  // local slug (dbWing?.id || w.id) as the id. A plain .update().eq("id", slug) would
+  // then match 0 rows and silently "succeed" without publishing. So resolve the row by
+  // uuid-or-slug, and CREATE it (seeded like a first-time wing) when it doesn't exist.
+  const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+  const publishFields = {
+    published_at: new Date().toISOString(),
+    publish_description: input.description?.slice(0, 500) || null,
+    publish_visibility: input.visibility || "public",
+  };
 
-  if (error) return { ok: false, error: error.message };
+  let wingRowId: string | null = null;
+  if (isUuid(input.wingId)) {
+    const r = await supabase.from("wings").select("id").eq("id", input.wingId).eq("user_id", user.id).maybeSingle();
+    wingRowId = r.data?.id ?? null;
+  }
+  if (!wingRowId) {
+    const bySlug = await supabase.from("wings").select("id").eq("slug", input.wingId).eq("user_id", user.id).maybeSingle();
+    wingRowId = bySlug.data?.id ?? null;
+  }
+
+  if (wingRowId) {
+    const { error } = await supabase.from("wings").update(publishFields).eq("id", wingRowId).eq("user_id", user.id);
+    if (error) return { ok: false, error: error.message };
+  } else {
+    const { WINGS } = await import("@/lib/constants/wings");
+    const def = WINGS.find((w) => w.id === input.wingId);
+    const { data: created, error } = await supabase
+      .from("wings")
+      .insert({ user_id: user.id, slug: input.wingId, accent_color: def?.accent || "#B85C38", sort_order: 99, ...publishFields })
+      .select("id")
+      .single();
+    if (error || !created) return { ok: false, error: error?.message || "Could not publish wing" };
+    wingRowId = created.id;
+  }
 
   // Make profile visible in the directory
   await ensureProfilePublic(supabase, user.id);
+
+  // Milestone: sharing/virality signal (server-side; covers native).
+  void captureServer(user.id, "wing_published", { wing: input.wingId, visibility: input.visibility || "public" });
 
   // Record activity
   try {
@@ -137,10 +165,19 @@ export async function publishRoom(input: {
     if (existing) {
       dbRoomId = existing.id;
     } else {
+      // Resolve the wing's local slug -> DB uuid for the FK (rooms.wing_id is a uuid);
+      // otherwise inserting the local slug fails and the room silently never attaches.
+      const isUuidW = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.wingId);
+      let wingUuid: string | null = isUuidW ? input.wingId : null;
+      if (!wingUuid) {
+        const w = await supabase.from("wings").select("id").eq("slug", input.wingId).eq("user_id", user.id).maybeSingle();
+        wingUuid = w.data?.id ?? null;
+      }
+      if (!wingUuid) return { ok: false, error: "Wing not found for room" };
       // Create the room in DB
       const { data: newRoom, error: createErr } = await supabase
         .from("rooms")
-        .insert({ wing_id: input.wingId, user_id: user.id, name: input.roomId })
+        .insert({ wing_id: wingUuid, user_id: user.id, name: input.roomId })
         .select("id")
         .single();
       if (createErr || !newRoom) return { ok: false, error: createErr?.message || "Could not create room" };

@@ -348,7 +348,7 @@ function CompletionRing({ person, x, y, size = 16 }: {
   }
   if (photoSkipped) maxScore -= 20;
 
-  const color = (score / maxScore * 100) >= 80 ? T.color.sage : (score / maxScore * 100) >= 40 ? "#D4A840" : T.color.error;
+  const color = (score / maxScore * 100) >= 80 ? T.color.sage : (score / maxScore * 100) >= 40 ? T.color.goldDark : T.color.error;
   const r = size / 2 - 1.5;
   const cx = x + size / 2;
   const cy = y + size / 2;
@@ -438,9 +438,9 @@ export const PersonCard = memo(function PersonCard({
 
   const genderColor =
     person.gender === "female"
-      ? "#D4A0A0"
+      ? "#D6A28C" /* warm rose from the ember family */
       : person.gender === "male"
-        ? "#A0B8D4"
+        ? "#9DAE86" /* muted warm sage */
         : T.color.sandstone;
 
   const isDead = !!person.death_date;
@@ -500,31 +500,22 @@ export const PersonCard = memo(function PersonCard({
           rx={borderR + 4}
           ry={borderR + 4}
           fill="none"
-          stroke={T.color.terracotta}
+          stroke="#B85C38"
           strokeWidth={2.5}
           strokeDasharray="6 3"
           opacity={0.85}
         />
       )}
 
-      {/* Card shadow — deeper, warmer */}
+      {/* Card shadow — single warm-ink drop, matching the SHADOW ramp */}
       <rect
-        x={1}
-        y={2.5}
+        x={0.75}
+        y={2}
         width={nodeWPx}
         height={nodeHPx}
         rx={borderR}
         ry={borderR}
-        fill="rgba(139,115,85,.10)"
-      />
-      <rect
-        x={0.5}
-        y={1.5}
-        width={nodeWPx}
-        height={nodeHPx}
-        rx={borderR}
-        ry={borderR}
-        fill="rgba(44,44,42,.06)"
+        fill="rgba(64,59,54,.10)"
       />
 
       {/* Warm gradient background */}
@@ -668,7 +659,7 @@ export const PersonCard = memo(function PersonCard({
         fontFamily={T.font.display}
         fontSize={nodeHPx * 0.145}
         fontWeight={600}
-        fill={isDead ? T.color.muted : T.color.charcoal}
+        fill={isDead ? "#716A5E" : "#403B36"}
       >
         {firstName}
       </text>
@@ -681,7 +672,7 @@ export const PersonCard = memo(function PersonCard({
           fontFamily={T.font.display}
           fontSize={nodeHPx * 0.12}
           fontWeight={500}
-          fill={T.color.muted}
+          fill="#716A5E"
         >
           {lastName}
         </text>
@@ -694,7 +685,7 @@ export const PersonCard = memo(function PersonCard({
           y={lifespanY}
           fontFamily={T.font.body}
           fontSize={nodeHPx * 0.11}
-          fill={T.color.muted}
+          fill="#716A5E"
         >
           {lifespan}
         </text>
@@ -756,8 +747,8 @@ export const PersonCard = memo(function PersonCard({
       {/* Death indicator — SVG cross */}
       {person.death_date && (
         <g opacity={0.5}>
-          <line x1={nodeWPx - 16} y1={8} x2={nodeWPx - 16} y2={18} stroke={T.color.muted} strokeWidth={1.2} strokeLinecap="round" />
-          <line x1={nodeWPx - 20} y1={11} x2={nodeWPx - 12} y2={11} stroke={T.color.muted} strokeWidth={1.2} strokeLinecap="round" />
+          <line x1={nodeWPx - 16} y1={8} x2={nodeWPx - 16} y2={18} stroke="#716A5E" strokeWidth={1.2} strokeLinecap="round" />
+          <line x1={nodeWPx - 20} y1={11} x2={nodeWPx - 12} y2={11} stroke="#716A5E" strokeWidth={1.2} strokeLinecap="round" />
         </g>
       )}
 
@@ -765,6 +756,9 @@ export const PersonCard = memo(function PersonCard({
       {onQuickAdd && (
         <g
           style={{ cursor: "pointer" }}
+          role="button"
+          tabIndex={0}
+          aria-label={t("quickAddFor", { name: person.first_name || "" })}
           onClick={(e) => {
             e.stopPropagation();
             const svg = (e.target as SVGElement).closest("svg");
@@ -775,7 +769,27 @@ export const PersonCard = memo(function PersonCard({
               onQuickAdd(person, 0, 0);
             }
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              const g = e.currentTarget as SVGGElement;
+              const r = g.getBoundingClientRect();
+              if (r) {
+                onQuickAdd(person, r.left + r.width / 2, r.top + r.height / 2);
+              } else {
+                onQuickAdd(person, 0, 0);
+              }
+            }
+          }}
         >
+          {/* Transparent 44px (2.75rem) touch target overlay */}
+          <circle
+            cx={nodeWPx - 12}
+            cy={nodeHPx - 12}
+            r={22}
+            fill="transparent"
+          />
           <circle
             cx={nodeWPx - 12}
             cy={nodeHPx - 12}
@@ -801,7 +815,7 @@ export const PersonCard = memo(function PersonCard({
                 cx={nodeWPx - 2}
                 cy={nodeHPx - 22}
                 r={7}
-                fill={T.color.terracotta}
+                fill="#B85C38"
               />
               <text
                 x={nodeWPx - 2}
@@ -878,7 +892,7 @@ export const CoupleNode = memo(function CoupleNode({
             return (
               <path
                 d={`M ${cx} ${cy + s * 0.6} C ${cx - s * 0.1} ${cy + s * 0.3} ${cx - s} ${cy + s * 0.1} ${cx - s} ${cy - s * 0.3} C ${cx - s} ${cy - s * 0.8} ${cx - s * 0.4} ${cy - s} ${cx} ${cy - s * 0.45} C ${cx + s * 0.4} ${cy - s} ${cx + s} ${cy - s * 0.8} ${cx + s} ${cy - s * 0.3} C ${cx + s} ${cy + s * 0.1} ${cx + s * 0.1} ${cy + s * 0.3} ${cx} ${cy + s * 0.6} Z`}
-                fill={T.color.terracotta}
+                fill="#B85C38"
                 opacity={0.6}
               />
             );

@@ -8,6 +8,7 @@ import type { Job } from "@/lib/queue/types";
 import { suggestRouting } from "./ai-route";
 import { transcribeFromUrl } from "./transcribe";
 import { checkAiConsent } from "@/lib/ai/check-consent";
+import { captureServer } from "@/lib/analytics-server";
 
 const CONFIDENCE_THRESHOLD = 0.8;
 
@@ -40,6 +41,29 @@ export async function handleKepCaptureJob(
     // Already processed, skip
     return;
   }
+
+  // Atomically claim this capture so a duplicate/re-queued job cannot process the
+  // same captureId twice (idempotency). The conditional UPDATE ... where status='pending'
+  // succeeds for exactly one racing job; the loser gets 0 rows and bails out. This
+  // prevents duplicate memory inserts + double increment_kep_captures.
+  const { data: claimed, error: claimError } = await supabase
+    .from("kep_captures")
+    .update({ status: "processing" })
+    .eq("id", captureId)
+    .eq("status", "pending")
+    .select("id");
+
+  if (claimError) {
+    throw new Error(`Failed to claim capture ${captureId}: ${claimError.message}`);
+  }
+
+  if (!claimed || claimed.length === 0) {
+    // Another worker already claimed/processed this capture. Skip.
+    return;
+  }
+
+  // We now own this capture (status='processing'). Keep the local copy consistent.
+  capture.status = "processing";
 
   // No AI egress (OpenAI Whisper transcription / Anthropic routing) without the
   // capture owner's AI consent (Apple 5.1.1 / 5.1.2, GDPR). If not consented, leave
@@ -145,7 +169,14 @@ export async function handleKepCaptureJob(
     const targetRoomId = suggestion.room_id || kep.default_room_id;
     const targetWingId = suggestion.wing_id || kep.default_wing_id;
 
-    if (targetRoomId) {
+    // IDOR guard: only write into a room we have already confirmed belongs to this
+    // user (rooms is filtered by .eq("user_id", userId) above). suggestion.room_id is
+    // bounded to that set, but the kep.default_room_id fallback is untrusted — it may be
+    // stale or reference another user's room. Never insert a memory into an unowned room.
+    const ownsTargetRoom =
+      !!targetRoomId && rooms.some((r: any) => r.id === targetRoomId);
+
+    if (targetRoomId && ownsTargetRoom) {
       // Create memory in the suggested room
       const { data: memory, error: memError } = await supabase
         .from("memories")
@@ -166,6 +197,9 @@ export async function handleKepCaptureJob(
       if (memError) {
         throw new Error(`Failed to create memory: ${memError.message}`);
       }
+
+      // Milestone: activation signal (server-side; the WhatsApp path has no client). Fire-and-forget.
+      void captureServer(userId, "memory_created", { source: "kep" });
 
       // Update capture as routed
       await supabase

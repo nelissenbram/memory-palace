@@ -85,7 +85,7 @@ export default function CancelFlow({ onClose, onProceedToPortal, planName }: Can
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(44,44,42,.5)",
+        background: "rgba(64,59,54,.5)",
         backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
         display: "flex", alignItems: "center", justifyContent: "center",
         padding: "1rem",

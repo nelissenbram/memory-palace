@@ -1,21 +1,56 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type CSSProperties } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
-import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
+import { PLANS, PLAN_ORDER, TRIAL_DAYS, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 import { isAndroid, isIOS } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, waitForProducts, manageSubscriptions, IAP_ENABLED } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
-import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
+import { track } from "@/lib/analytics";
+import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, CREAM, TRAY, SAGE, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
+// EMBER_GLYPH (#9A4F2A) = rgb(154,79,42). The subscription surface tints this
+// at-rest terracotta for its "current plan" / soft-accent chrome, so route
+// those rgba() literals through named locals rather than re-typing the channel.
+const EMBER_GLYPH_RGB = "154,79,42";
+const EMBER_GLYPH_TINT = `rgba(${EMBER_GLYPH_RGB},0.07)`;   // soft fill (current-plan wash, near-limit prompt)
+const EMBER_GLYPH_TINT_12 = `rgba(${EMBER_GLYPH_RGB},0.12)`; // chip fill
+const EMBER_GLYPH_EDGE = `rgba(${EMBER_GLYPH_RGB},0.35)`;    // current-plan border
+// Shared warm-ink card elevation (SHADOW[1] + top highlight) — the recurring
+// two-part card boxShadow, named once so the strings never drift.
+const CARD_SHADOW = `${SHADOW[1]}, ${TOP_HIGHLIGHT}`;
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import CancelFlow from "@/components/ui/CancelFlow";
-import InviteFlow from "@/components/social/InviteFlow";
+import ReferralSection from "@/components/ui/ReferralSection";
+import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
 
 const F = T.font;
-const C = T.color;
+
+/* Shared ember CTA gradient (canon interactive). */
+const EMBER_GRADIENT = `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`;
+const EMBER_DISABLED_BG = "#EEE9DF";
+
+/* Idle ember CTA base — reused for every primary button so the gradient +
+ * disabled ladder never drifts. A className drives the hover/active affordance. */
+function emberCta(disabled: boolean): CSSProperties {
+  return {
+    minHeight: "2.75rem",
+    padding: "0.75rem 1.5rem",
+    borderRadius: "0.75rem",
+    border: "none",
+    background: disabled ? EMBER_DISABLED_BG : EMBER_GRADIENT,
+    fontFamily: F.body,
+    fontSize: "0.875rem",
+    fontWeight: 600,
+    color: disabled ? MUTED : CREAM,
+    cursor: disabled ? "wait" : "pointer",
+    transition: "all .15s",
+  };
+}
 
 interface SubscriptionData {
   plan: PlanId;
@@ -35,7 +70,7 @@ export default function SubscriptionPage() {
   const isApple = isIOS();
   const nativeApp = isAndroid() || isApple;
   const isMobile = useIsMobile();
-  const isCompact = useIsCompact();
+  const isPortrait = useIsPortrait();
   const [iapReady, setIapReady] = useState(false);
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
@@ -46,32 +81,53 @@ export default function SubscriptionPage() {
   const [toast, setToast] = useState<ToastData | null>(null);
   const [showFullComparison, setShowFullComparison] = useState(false);
   const [showCancelFlow, setShowCancelFlow] = useState(false);
-  const [interval, setInterval] = useState<BillingInterval>("annual");
-  const [currency, setCurrency] = useState<SupportedCurrency>("EUR");
-  const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [referralCount, setReferralCount] = useState(0);
-  const [referralRewards, setReferralRewards] = useState<{ promo_code: string; created_at: string; redeemed: boolean }[]>([]);
-  const [showInviteFlow, setShowInviteFlow] = useState(false);
+  // Interval is hard-locked to "annual": the monthly option was removed from
+  // all purchase surfaces (owner decision 2026-08-25, annual-only "Day One"
+  // model). The BillingInterval state shape stays so checkout/IAP call-sites
+  // keep passing an explicit interval, but there is no setter and no toggle UI
+  // — on iOS this guarantees getIAPProductId(plan, "annual") is the only
+  // reachable product.
+  const [interval] = useState<BillingInterval>("annual");
+  // Initialize lazily so the first paint already shows the detected currency —
+  // avoids a visible EUR→local price flip on mount.
+  const [currency, setCurrency] = useState<SupportedCurrency>(() => detectCurrency());
+  const [loadError, setLoadError] = useState(false);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
   }, []);
 
+  // i18n fallback helper — new keys work before the locale files land.
+  const tf = (key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  };
+  // Same, for the shared pricing namespace.
+  const tpf = (key: string, fallback: string) => {
+    const v = tPricing(key);
+    return v === key ? fallback : v;
+  };
+
   const load = useCallback(async () => {
       try {
+        setLoadError(false);
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          // No authenticated user (expired session / hydration race). Send to
+          // login rather than stranding the user on the loading spinner.
+          window.location.href = "/login";
+          return;
+        }
 
-        // Parallelize queries — subscription and storage
-        const [subRes, storageRes] = await Promise.all([
-          supabase
-            .from("subscriptions")
-            .select("plan, status, current_period_end, stripe_customer_id")
-            .eq("user_id", user.id)
-            .single(),
-          supabase.from("memories").select("file_size").eq("user_id", user.id),
-        ]);
+        // Fetch the subscription record. Storage usage is derived server-side
+        // from /api/storage/limit below (SQL aggregate) — we deliberately do NOT
+        // pull every memory row's file_size to the client just to sum one column.
+        const subRes = await supabase
+          .from("subscriptions")
+          .select("plan, status, current_period_end, stripe_customer_id")
+          .eq("user_id", user.id)
+          .single();
 
         let subData = subRes.data as SubscriptionData | null;
 
@@ -110,39 +166,42 @@ export default function SubscriptionPage() {
           setSub({ plan: "free", status: "active", current_period_end: null, stripe_customer_id: null });
         }
 
-        const storageData = storageRes.data;
-        const totalStorageMb = storageData
-          ? Math.round(storageData.reduce((sum: number, m: { file_size: number }) => sum + (m.file_size || 0), 0) / (1024 * 1024))
-          : 0;
-
-        setUsage({
-          storageMb: totalStorageMb,
-        });
-        // Fetch effective storage limit (applies grandfathering for legacy free users)
+        // Fetch effective storage limit AND used storage from one endpoint. The
+        // route computes storageMb via a SQL aggregate (exact even past the
+        // PostgREST row cap), so we no longer transfer every memory row to the
+        // browser just to sum file_size. limitMb applies grandfathering for
+        // legacy free users.
         try {
           const storageLimitRes = await fetch("/api/storage/limit");
           if (storageLimitRes.ok) {
             const slData = await storageLimitRes.json();
             setEffectiveStorageLimitMb(slData.limitMb ?? null);
-          }
-        } catch { /* non-critical */ }
-        // Fetch referral info
-        try {
-          const refRes = await fetch("/api/referral");
-          if (refRes.ok) {
-            const refData = await refRes.json();
-            setReferralCode(refData.referralCode);
-            setReferralCount(refData.referralCount ?? 0);
-            setReferralRewards(refData.rewards ?? []);
+            setUsage({ storageMb: slData.storageMb ?? 0 });
+          } else {
+            setUsage({ storageMb: 0 });
           }
         } catch {
-          // non-critical
+          // non-critical — still show the usage card (at 0) rather than hiding it
+          setUsage({ storageMb: 0 });
         }
+        // Referral info is fetched by the shared <ReferralSection /> itself.
       } catch {
-        // ignore
+        setLoadError(true);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
   }, []);
+
+  // Shared post-purchase reconciliation for BOTH Stripe (webhook) and Apple IAP
+  // (StoreKit → entitlement). Both settle asynchronously server-side, so poll a
+  // few times with backoff instead of a single guessed delay.
+  const reconcilePurchase = useCallback(async () => {
+    const delays = [1500, 2500, 4000];
+    for (const d of delays) {
+      await new Promise((r) => setTimeout(r, d));
+      await load();
+    }
+  }, [load]);
 
   // Check for success param — refetch data to pick up webhook-updated plan
   useEffect(() => {
@@ -150,16 +209,11 @@ export default function SubscriptionPage() {
     if (params.get("success") === "true") {
       showToast(t("activated"), "success");
       window.history.replaceState({}, "", "/settings/subscription");
-      // Refetch after short delay to allow webhook to process
-      const timer = setTimeout(() => load(), 2000);
-      return () => clearTimeout(timer);
+      reconcilePurchase();
     }
-  }, [showToast, load]);
+  }, [showToast, reconcilePurchase]);
 
-  // Auto-detect currency from timezone/locale
-  useEffect(() => {
-    setCurrency(detectCurrency());
-  }, []);
+  // Currency is auto-detected lazily in useState initializer (avoids price flip).
 
   useEffect(() => {
     load();
@@ -195,7 +249,7 @@ export default function SubscriptionPage() {
       const success = await purchase(productId);
       if (success) {
         showToast(t("activated"), "success");
-        setTimeout(() => load(), 1500);
+        reconcilePurchase();
       } else {
         showToast(t("checkoutError"), "error");
       }
@@ -211,15 +265,24 @@ export default function SubscriptionPage() {
     try {
       const success = await restorePurchases();
       if (success) {
-        showToast(t("restoreSuccess") || "Purchases restored", "success");
-        setTimeout(() => load(), 1500);
+        showToast(tf("restoreSuccess", "Purchases restored"), "success");
+        reconcilePurchase();
       } else {
-        showToast(t("restoreFailed") || "No purchases to restore", "error");
+        showToast(tf("restoreFailed", "No purchases to restore"), "error");
       }
     } catch {
-      showToast(t("restoreFailed") || "Restore failed", "error");
+      showToast(tf("restoreFailed", "Restore failed"), "error");
     }
     setPortalLoading(false);
+  };
+
+  /** Open the iOS-managed subscription sheet; surface a hint if it can't open. */
+  const handleManageSubscriptions = async () => {
+    try {
+      await manageSubscriptions();
+    } catch {
+      showToast(t("manageInSettings"), "error");
+    }
   };
 
   const handleManageBilling = async () => {
@@ -259,6 +322,7 @@ export default function SubscriptionPage() {
     }
     if (upgradeLoading) return;
     setUpgradeLoading(planId);
+    track("checkout_started", { plan: planId, interval, store: "stripe", source: "settings" });
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
@@ -292,9 +356,38 @@ export default function SubscriptionPage() {
   };
 
   if (loading) {
+    const skeletonCard: CSSProperties = {
+      background: CREAM,
+      borderRadius: "1rem",
+      border: `0.0625rem solid ${HAIRLINE}`,
+      padding: "1.75rem 2rem",
+      boxShadow: CARD_SHADOW,
+      marginBottom: "1.5rem",
+    };
+    const bar = (w: string, h: string): CSSProperties => ({
+      width: w,
+      height: h,
+      borderRadius: "0.375rem",
+      background: `linear-gradient(90deg, ${TRAY} 25%, ${HAIRLINE} 50%, ${TRAY} 75%)`,
+      backgroundSize: "200% 100%",
+      animation: "mpSubShimmer 1.4s ease-in-out infinite",
+    });
     return (
-      <div style={{ padding: "3rem", textAlign: "center", fontFamily: F.body, fontSize: "1rem", color: C.muted }}>
-        {t("loading")}
+      <div className="mp-sub-page" aria-busy="true" aria-label={t("loading")}>
+        <div style={skeletonCard}>
+          <div style={{ ...bar("40%", "1.5rem"), marginBottom: "0.75rem" }} />
+          <div style={{ ...bar("60%", "0.875rem"), marginBottom: "1.25rem" }} />
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <div style={bar("8rem", "2.75rem")} />
+            <div style={bar("8rem", "2.75rem")} />
+          </div>
+        </div>
+        <div style={skeletonCard}>
+          <div style={{ ...bar("30%", "1.25rem"), marginBottom: "1.25rem" }} />
+          <div style={{ ...bar("100%", "0.375rem") }} />
+        </div>
+        <style>{`@keyframes mpSubShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+          @media (prefers-reduced-motion: reduce) { .mp-sub-page [style*="mpSubShimmer"] { animation: none !important; } }`}</style>
       </div>
     );
   }
@@ -310,16 +403,23 @@ export default function SubscriptionPage() {
   const hasStripeAccount = !!sub?.stripe_customer_id;
 
   const statusLabel: Record<string, { text: string; color: string }> = {
-    active: { text: t("statusActive"), color: C.sage },
-    trialing: { text: t("statusTrialing"), color: C.terracotta },
-    past_due: { text: t("statusPastDue"), color: C.error },
-    canceled: { text: t("statusCanceled"), color: C.muted },
+    active: { text: t("statusActive"), color: SAGE },
+    trialing: { text: t("statusTrialing"), color: EMBER },
+    past_due: { text: t("statusPastDue"), color: T.color.error },
+    canceled: { text: t("statusCanceled"), color: MUTED },
   };
 
   const currentStatus = statusLabel[sub?.status || "active"] || statusLabel.active;
 
+  // The 3-up plan-comparison grid needs real width to breathe. Collapse it to a
+  // single column not only on phones (isMobile) but also in any portrait
+  // viewport — this covers the iPad split-view / narrow-landscape edge where
+  // isMobile is false yet three columns still crush (canon: prefer portrait
+  // over a raw width breakpoint, no @media).
+  const stackComparison = isMobile || isPortrait;
+
   return (
-    <div>
+    <div className="mp-sub-page">
       {/* Toast */}
       {toast && (
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
@@ -337,38 +437,77 @@ export default function SubscriptionPage() {
       )}
 
       {/* Header — desktop only */}
-      {!isMobile && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2 style={{
-            fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
-            color: C.charcoal, margin: "0 0 0.5rem",
-          }}>
-            {t("title")}
-          </h2>
-          <p style={{
-            fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
-            margin: 0, lineHeight: 1.5,
-          }}>
-            {t("description")}
-          </p>
+      <SettingsPageHeader
+        hidden={isMobile}
+        icon="subscription"
+        title={t("title")}
+        subtitle={t("description")}
+      />
+
+      {/* Persistent inline notice when core data failed to load (toasts are
+          transient — this stays until a retry succeeds). */}
+      {loadError && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.75rem",
+          flexWrap: "wrap",
+          background: CREAM,
+          border: `0.0625rem solid ${HAIRLINE}`,
+          borderRadius: "0.75rem",
+          padding: "1rem 1.25rem",
+          marginBottom: "1.5rem",
+        }}>
+          <span style={{ fontFamily: F.body, fontSize: "0.875rem", color: MUTED }}>
+            {tf("loadError", "We couldn't load your subscription. Please try again.")}
+          </span>
+          <button
+            onClick={() => load()}
+            className="mp-sub-secondary"
+            style={{
+              minHeight: "2.75rem",
+              padding: "0.5rem 1rem",
+              borderRadius: "0.5rem",
+              border: `0.0625rem solid ${HAIRLINE}`,
+              background: "transparent",
+              fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 600,
+              color: EMBER,
+              cursor: "pointer",
+            }}
+          >
+            {tf("retry", "Retry")}
+          </button>
         </div>
       )}
 
+      {/* Section overline — Your plan */}
+      <SectionOverline label={tf("sectionYourPlan", "Your plan")} />
+
       {/* Current Plan Card */}
       <div style={{
-        background: C.white,
+        background: CREAM,
         borderRadius: "1rem",
-        border: `1px solid ${C.cream}`,
+        border: `0.0625rem solid ${HAIRLINE}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: CARD_SHADOW,
         marginBottom: "1.5rem",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
+        <div style={{
+          display: "flex",
+          // In narrow/portrait the plan title + price wrap instead of squeezing.
+          alignItems: isPortrait ? "flex-start" : "center",
+          flexDirection: isPortrait ? "column" : "row",
+          justifyContent: "space-between",
+          gap: "0.75rem",
+          flexWrap: "wrap",
+          marginBottom: "1.25rem",
+        }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.375rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.375rem" }}>
               <h3 style={{
                 fontFamily: F.display, fontSize: "1.5rem", fontWeight: 500,
-                color: C.charcoal, margin: 0,
+                color: INK, margin: 0,
               }}>
                 {t("plan", { name: tp(currentPlan.nameKey) })}
               </h3>
@@ -380,25 +519,36 @@ export default function SubscriptionPage() {
                 fontFamily: F.body,
                 fontSize: "0.75rem",
                 fontWeight: 600,
-                letterSpacing: "0.3px",
+                letterSpacing: "0.02em",
               }}>
                 {currentStatus.text}
               </span>
             </div>
-            <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
+            <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: MUTED, margin: 0 }}>
               {sub?.plan === "free" ? t("taglineFree") : sub?.plan === "keeper" ? t("taglineKeeper") : t("taglineGuardian")}
             </p>
           </div>
-          <div style={{ textAlign: "right" }}>
+          <div style={{ textAlign: isPortrait ? "left" : "right" }}>
             {currentPlan.price > 0 ? (
               <>
-                <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: C.charcoal }}>
-                  {formatPrice(convertPrice(interval === "monthly" ? currentPlan.monthlyPrice : currentPlan.price, currency), currency)}
+                {/* Annual-only (owner decision 2026-08-25): the yearly total
+                    (€49/year) is the primary figure; the per-month equivalent
+                    renders small below. */}
+                <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: INK }}>
+                  {formatPrice(convertPrice(currentPlan.annualTotal, currency), currency)}
                 </div>
-                <div style={{ fontSize: "0.8125rem", color: C.muted }}>{t("perMonth")}</div>
+                <div style={{ fontSize: "0.8125rem", color: MUTED }}>
+                  {tpf("perYear", "/year")}
+                </div>
+                <div style={{ fontSize: "0.75rem", color: MUTED, marginTop: "0.125rem" }}>
+                  {(() => {
+                    const eq = formatPrice(convertPrice(currentPlan.price, currency), currency);
+                    return tpf("perMonthEquiv", `That's ${eq} a month, billed yearly`).replace("{price}", eq);
+                  })()}
+                </div>
               </>
             ) : (
-              <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: C.charcoal }}>
+              <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: INK }}>
                 {t("free")}
               </div>
             )}
@@ -407,9 +557,9 @@ export default function SubscriptionPage() {
 
         {/* Period end */}
         {sub?.current_period_end && (
-          <p style={{ fontFamily: F.body, fontSize: "0.8125rem", color: C.muted, marginBottom: "1rem" }}>
+          <p style={{ fontFamily: F.body, fontSize: "0.8125rem", color: MUTED, marginBottom: "1rem" }}>
             {sub.status === "trialing" ? t("trialEnds") : t("nextBilling")}:{" "}
-            <strong style={{ color: C.charcoal }}>
+            <strong style={{ color: INK }}>
               {new Date(sub.current_period_end).toLocaleDateString(localeDateCodes[locale as Locale], {
                 day: "numeric",
                 month: "long",
@@ -423,18 +573,24 @@ export default function SubscriptionPage() {
         {/* On iOS: show IAP buttons. On web: show Stripe buttons. */}
         {!isAndroid() && (
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            {/* The iOS monthly/annual toggle that lived here is gone: pricing is
+                annual-only (owner decision 2026-08-25), so the IAP flow is
+                deliberately locked to the annual product — no monthly IAP
+                product is reachable from the UI. */}
             {isPaid && !isApple && (
               <>
                 <button
                   onClick={handleManageBilling}
                   disabled={portalLoading}
+                  className="mp-sub-secondary"
                   style={{
+                    minHeight: "2.75rem",
                     padding: "0.75rem 1.5rem",
                     borderRadius: "0.75rem",
-                    border: `1px solid ${C.cream}`,
-                    background: C.white,
+                    border: `0.0625rem solid ${HAIRLINE}`,
+                    background: "transparent",
                     fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                    color: C.charcoal,
+                    color: MUTED,
                     cursor: portalLoading ? "wait" : "pointer",
                     transition: "all .15s",
                   }}
@@ -443,13 +599,15 @@ export default function SubscriptionPage() {
                 </button>
                 <button
                   onClick={() => setShowCancelFlow(true)}
+                  className="mp-sub-secondary"
                   style={{
+                    minHeight: "2.75rem",
                     padding: "0.75rem 1.5rem",
                     borderRadius: "0.75rem",
-                    border: `1px solid ${C.cream}`,
+                    border: `0.0625rem solid ${HAIRLINE}`,
                     background: "none",
                     fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
-                    color: C.muted,
+                    color: MUTED,
                     cursor: "pointer",
                     transition: "all .15s",
                   }}
@@ -460,39 +618,33 @@ export default function SubscriptionPage() {
             )}
             {isPaid && isApple && (
               <>
-                <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
-                  {t("manageInSettings") || "Manage or cancel your subscription through the App Store."}
+                <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: MUTED, margin: 0 }}>
+                  {t("manageInSettings")}
                 </p>
                 <button
-                  onClick={() => { manageSubscriptions(); }}
-                  style={{
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "0.75rem",
-                    border: "none",
-                    background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                    fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                    color: C.white,
-                    cursor: "pointer",
-                    transition: "all .15s",
-                  }}
+                  onClick={handleManageSubscriptions}
+                  className="mp-sub-primary"
+                  style={emberCta(false)}
                 >
-                  {t("manageOrCancel") !== "manageOrCancel" ? t("manageOrCancel") : "Manage or Cancel Subscription"}
+                  {t("manageOrCancel")}
                 </button>
                 <button
                   onClick={handleRestore}
                   disabled={portalLoading}
+                  className="mp-sub-secondary"
                   style={{
+                    minHeight: "2.75rem",
                     padding: "0.75rem 1.5rem",
                     borderRadius: "0.75rem",
-                    border: `1px solid ${C.cream}`,
-                    background: C.white,
+                    border: `0.0625rem solid ${HAIRLINE}`,
+                    background: "transparent",
                     fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
-                    color: C.muted,
+                    color: MUTED,
                     cursor: portalLoading ? "wait" : "pointer",
                     transition: "all .15s",
                   }}
                 >
-                  {portalLoading ? t("opening") : (t("restorePurchases") || "Restore Purchases")}
+                  {portalLoading ? t("opening") : tf("restorePurchases", "Restore Purchases")}
                 </button>
               </>
             )}
@@ -504,16 +656,8 @@ export default function SubscriptionPage() {
                 <button
                   onClick={() => handleUpgrade("keeper")}
                   disabled={!!upgradeLoading}
-                  style={{
-                    padding: "0.75rem 1.5rem",
-                    borderRadius: "0.75rem",
-                    border: "none",
-                    background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                    fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                    color: upgradeLoading ? C.muted : C.white,
-                    cursor: upgradeLoading ? "wait" : "pointer",
-                    transition: "all .15s",
-                  }}
+                  className="mp-sub-primary"
+                  style={emberCta(!!upgradeLoading)}
                 >
                   {upgradeLoading === "keeper" ? t("upgrading") : t("upgradePlan")}
                   {isApple && iapReady && (() => {
@@ -526,13 +670,15 @@ export default function SubscriptionPage() {
                   <button
                     onClick={handleManageBilling}
                     disabled={portalLoading}
+                    className="mp-sub-secondary"
                     style={{
+                      minHeight: "2.75rem",
                       padding: "0.75rem 1.5rem",
                       borderRadius: "0.75rem",
-                      border: `1px solid ${C.cream}`,
-                      background: C.white,
+                      border: `0.0625rem solid ${HAIRLINE}`,
+                      background: "transparent",
                       fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
-                      color: C.muted,
+                      color: MUTED,
                       cursor: portalLoading ? "wait" : "pointer",
                       transition: "all .15s",
                     }}
@@ -544,18 +690,20 @@ export default function SubscriptionPage() {
                   <button
                     onClick={handleRestore}
                     disabled={portalLoading}
+                    className="mp-sub-secondary"
                     style={{
+                      minHeight: "2.75rem",
                       padding: "0.75rem 1.5rem",
                       borderRadius: "0.75rem",
-                      border: `1px solid ${C.cream}`,
-                      background: C.white,
+                      border: `0.0625rem solid ${HAIRLINE}`,
+                      background: "transparent",
                       fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
-                      color: C.muted,
+                      color: MUTED,
                       cursor: portalLoading ? "wait" : "pointer",
                       transition: "all .15s",
                     }}
                   >
-                    {portalLoading ? t("opening") : (t("restorePurchases") || "Restore Purchases")}
+                    {portalLoading ? t("opening") : tf("restorePurchases", "Restore Purchases")}
                   </button>
                 )}
               </>
@@ -566,16 +714,8 @@ export default function SubscriptionPage() {
               <button
                 onClick={() => handleUpgrade("guardian")}
                 disabled={!!upgradeLoading}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.75rem",
-                  border: "none",
-                  background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: upgradeLoading ? C.muted : C.white,
-                  cursor: upgradeLoading ? "wait" : "pointer",
-                  transition: "all .15s",
-                }}
+                className="mp-sub-primary"
+                style={emberCta(!!upgradeLoading)}
               >
                 {upgradeLoading === "guardian" ? t("upgrading") : t("upgradeToGuardian")}
                 {isApple && iapReady && (() => {
@@ -590,8 +730,8 @@ export default function SubscriptionPage() {
         {/* On iOS the app is free-tier only — state it plainly so the free
             state reads as intentional (Apple Guideline 3.1.1). */}
         {isApple && (
-          <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.875rem" : "0.8125rem", color: C.muted, lineHeight: 1.6, margin: "0.5rem 0 0" }}>
-            {t("iosFreeNote") !== "iosFreeNote" ? t("iosFreeNote") : "The Memory Palace is free to use on iPhone and iPad, with all core features included."}
+          <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.875rem" : "0.8125rem", color: MUTED, lineHeight: 1.6, margin: "0.5rem 0 0" }}>
+            {tf("iosFreeNote", "The Memory Palace is free to use on iPhone and iPad, with all core features included.")}
           </p>
         )}
 
@@ -599,33 +739,36 @@ export default function SubscriptionPage() {
             the auto-renew notice (an IAP-only requirement) is omitted; the
             terms/privacy links stay. */}
         {(isFree || sub?.plan === "keeper") && (
-          <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: `1px solid ${C.cream}` }}>
+          <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: `0.0625rem solid ${HAIRLINE}` }}>
             {isApple && IAP_ENABLED && (
-              <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: C.muted, lineHeight: 1.6, margin: "0 0 0.5rem" }}>
+              <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: MUTED, lineHeight: 1.6, margin: "0 0 0.5rem" }}>
                 {t("autoRenewNotice")}
               </p>
             )}
-            <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: C.muted, margin: 0 }}>
-              <a href="/terms" style={{ color: C.terracotta, textDecoration: "none" }}>{t("disclosureTerms")}</a>
+            <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: MUTED, margin: 0 }}>
+              <a href="/terms" style={{ color: EMBER, textDecoration: "none" }}>{t("disclosureTerms")}</a>
               {"  ·  "}
-              <a href="/privacy" style={{ color: C.terracotta, textDecoration: "none" }}>{t("disclosurePrivacy")}</a>
+              <a href="/privacy" style={{ color: EMBER, textDecoration: "none" }}>{t("disclosurePrivacy")}</a>
             </p>
           </div>
         )}
       </div>
 
+      {/* Section overline — Usage */}
+      <SectionOverline label={tf("sectionUsage", "Usage")} />
+
       {/* Usage Stats */}
       <div style={{
-        background: C.white,
+        background: CREAM,
         borderRadius: "1rem",
-        border: `1px solid ${C.cream}`,
+        border: `0.0625rem solid ${HAIRLINE}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: CARD_SHADOW,
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
           fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-          color: C.charcoal, margin: "0 0 1.25rem",
+          color: INK, margin: "0 0 1.25rem",
         }}>
           {t("yourUsage")}
         </h3>
@@ -638,12 +781,12 @@ export default function SubscriptionPage() {
                 display: "flex", justifyContent: "space-between",
                 marginBottom: "0.375rem",
               }}>
-                <span style={{ fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500, color: C.charcoal }}>
+                <span style={{ fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500, color: INK }}>
                   {t("storageUsed")}
                 </span>
                 <span style={{
                   fontFamily: F.body, fontSize: "0.8125rem",
-                  color: !limits.storageMb || limits.storageMb === -1 ? C.muted : (usage.storageMb / limits.storageMb > 0.8 ? C.terracotta : C.muted),
+                  color: !limits.storageMb || limits.storageMb === -1 ? MUTED : (usage.storageMb / limits.storageMb > 0.8 ? EMBER : MUTED),
                   fontWeight: !limits.storageMb || limits.storageMb === -1 ? 500 : (usage.storageMb / limits.storageMb > 0.8 ? 600 : 500),
                 }}>
                   {usage.storageMb >= 1024
@@ -657,32 +800,39 @@ export default function SubscriptionPage() {
                       : `${limits.storageMb} ${t("storageMb")}`}
                 </span>
               </div>
+              {(() => {
+                const unlimited = limits.storageMb === -1;
+                const currentText = usage.storageMb >= 1024 ? `${(usage.storageMb / 1024).toFixed(1)} ${t("storageGb")}` : `${usage.storageMb} ${t("storageMb")}`;
+                const maxText = unlimited ? "\u221E" : limits.storageMb >= 1024 ? `${(limits.storageMb / 1024).toFixed(0)} ${t("storageGb")}` : `${limits.storageMb} ${t("storageMb")}`;
+                return (
               <div
                 role="progressbar"
-                aria-valuenow={usage.storageMb}
-                aria-valuemin={0}
-                aria-valuemax={limits.storageMb === -1 ? undefined : limits.storageMb}
-                aria-label={t("storageProgress", {
-                  current: usage.storageMb >= 1024 ? `${(usage.storageMb / 1024).toFixed(1)} ${t("storageGb")}` : `${usage.storageMb} ${t("storageMb")}`,
-                  max: limits.storageMb === -1 ? "\u221E" : limits.storageMb >= 1024 ? `${(limits.storageMb / 1024).toFixed(0)} ${t("storageGb")}` : `${limits.storageMb} ${t("storageMb")}`,
-                })}
+                // When unlimited, there is no measurable maximum \u2014 omit
+                // valuenow/valuemax and describe it via aria-valuetext instead.
+                aria-valuenow={unlimited ? undefined : usage.storageMb}
+                aria-valuemin={unlimited ? undefined : 0}
+                aria-valuemax={unlimited ? undefined : limits.storageMb}
+                aria-valuetext={unlimited ? `${currentText} ${t("storageOf")} ${maxText}` : undefined}
+                aria-label={t("storageProgress", { current: currentText, max: maxText })}
                 style={{
                   height: "0.375rem",
-                  borderRadius: 3,
-                  background: `${C.sandstone}30`,
+                  borderRadius: "0.1875rem",
+                  background: TRAY,
                   overflow: "hidden",
                 }}
               >
-                <div style={{
+                <div className="mp-sub-progress" style={{
                   height: "100%",
-                  borderRadius: 3,
-                  width: limits.storageMb === -1 ? "0%" : `${Math.min(100, limits.storageMb > 0 ? (usage.storageMb / limits.storageMb) * 100 : 0)}%`,
-                  background: limits.storageMb !== -1 && usage.storageMb / limits.storageMb > 0.8
-                    ? `linear-gradient(90deg, ${C.terracotta}, ${C.error})`
-                    : `linear-gradient(90deg, ${C.sage}, ${C.sage}cc)`,
+                  borderRadius: "0.1875rem",
+                  width: unlimited ? "0%" : `${Math.min(100, limits.storageMb > 0 ? (usage.storageMb / limits.storageMb) * 100 : 0)}%`,
+                  background: !unlimited && usage.storageMb / limits.storageMb > 0.8
+                    ? `linear-gradient(90deg, ${EMBER}, ${T.color.error})`
+                    : `linear-gradient(90deg, ${SAGE}, rgba(86,104,60,0.8))`,
                   transition: "width 0.5s ease",
                 }} />
               </div>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -694,17 +844,17 @@ export default function SubscriptionPage() {
             marginTop: "1.25rem",
             padding: "1rem 1.25rem",
             borderRadius: "0.75rem",
-            background: `${C.terracotta}08`,
-            border: `1px solid ${C.terracotta}20`,
+            background: EMBER_GLYPH_TINT,
+            border: `0.0625rem solid ${EMBER_GLYPH_TINT_12}`,
           }}>
             <p style={{
-              fontFamily: F.body, fontSize: "0.875rem", color: C.charcoal,
+              fontFamily: F.body, fontSize: "0.875rem", color: INK,
               margin: 0, lineHeight: 1.5,
             }}>
               {t("nearLimitWarning")}{" "}
               <button onClick={() => handleUpgrade("keeper")} disabled={!!upgradeLoading} style={{
                 background: "none", border: "none", padding: 0,
-                color: upgradeLoading ? C.muted : C.terracotta, fontWeight: 600, textDecoration: "underline",
+                color: upgradeLoading ? MUTED : EMBER, fontWeight: 600, textDecoration: "underline",
                 fontFamily: F.body, fontSize: "0.875rem", cursor: upgradeLoading ? "wait" : "pointer",
               }}>
                 {upgradeLoading === "keeper" ? t("upgrading") : t("upgradeToKeeper")}
@@ -721,27 +871,33 @@ export default function SubscriptionPage() {
           tap action is dead UI that Apple flags under Guideline 2.1(a). When
           iOS IAP is re-enabled, revisit to show plans with working IAP buttons. */}
       {!nativeApp && (
+      <>
+      <SectionOverline label={tf("sectionAllPlans", "All plans")} />
       <div style={{
-        background: C.white,
+        background: CREAM,
         borderRadius: "1rem",
-        border: `1px solid ${C.cream}`,
+        border: `0.0625rem solid ${HAIRLINE}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: CARD_SHADOW,
+        marginBottom: "1.5rem",
       }}>
         <h3 style={{
           fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-          color: C.charcoal, margin: "0 0 0.375rem",
+          color: INK, margin: "0 0 0.375rem",
         }}>
           {t("allPlans")}
         </h3>
         <p style={{
-          fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
+          fontFamily: F.body, fontSize: "0.875rem", color: MUTED,
           margin: "0 0 1.25rem", lineHeight: 1.5,
         }}>
           {t("comparePlans")}
         </p>
 
-        {/* Billing interval toggle + Currency selector */}
+        {/* Trial line + Currency selector — the interval toggle is gone:
+            pricing is annual-only (owner decision 2026-08-25), so where the
+            toggle (and its "save %" badge) used to sit we surface the 14-day
+            trial instead. */}
         <div style={{
           display: "flex",
           alignItems: "center",
@@ -750,92 +906,37 @@ export default function SubscriptionPage() {
           marginBottom: "1.25rem",
           flexWrap: "wrap",
         }}>
-          <div
-            style={{
-              display: "inline-flex",
-              borderRadius: 12,
-              background: `${C.warmStone}`,
-              padding: 4,
-              gap: 0,
-            }}
-          >
-            <button
-              onClick={() => setInterval("monthly")}
-              style={{
-                padding: "10px 24px",
-                borderRadius: 10,
-                border: "none",
-                background: interval === "monthly"
-                  ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
-                  : "transparent",
-                color: interval === "monthly" ? C.white : C.walnut,
-                fontFamily: F.body,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              {tPricing("monthly") !== "monthly" ? tPricing("monthly") : "Monthly"}
-            </button>
-            <button
-              onClick={() => setInterval("annual")}
-              style={{
-                padding: "10px 24px",
-                borderRadius: 10,
-                border: "none",
-                background: interval === "annual"
-                  ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
-                  : "transparent",
-                color: interval === "annual" ? C.white : C.walnut,
-                fontFamily: F.body,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              {tPricing("annual") !== "annual" ? tPricing("annual") : "Annual"}
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  padding: "2px 8px",
-                  borderRadius: 8,
-                  background: interval === "annual"
-                    ? "rgba(255,255,255,0.25)"
-                    : `${C.terracotta}18`,
-                  color: interval === "annual" ? C.white : C.terracotta,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {tPricing("saveUpToPercent") !== "saveUpToPercent" ? tPricing("saveUpToPercent") : "Save up to 23%"}
-              </span>
-            </button>
-          </div>
+          <p style={{
+            margin: 0,
+            fontFamily: F.body,
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            color: EMBER,
+          }}>
+            {tpf("trialNote", `${TRIAL_DAYS}-day free trial, cancel anytime`)}
+          </p>
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
             aria-label={tPricing("currency")}
             style={{
               background: "none",
-              border: `1px solid ${C.sandstone}60`,
+              border: `0.0625rem solid ${HAIRLINE}`,
               borderRadius: "0.5rem",
+              minHeight: "2.75rem",
+              // 1rem prevents iOS Safari zoom-on-focus (canon input rule).
               padding: "0.5rem 1.75rem 0.5rem 0.625rem",
-              fontSize: "0.8125rem",
+              fontSize: "1rem",
               fontFamily: F.body,
               fontWeight: 600,
-              color: C.walnut,
+              color: MUTED,
               cursor: "pointer",
-              letterSpacing: "0.5px",
+              letterSpacing: "0.03em",
               transition: "border-color 0.2s, color 0.2s",
               appearance: "none",
               WebkitAppearance: "none" as const,
               backgroundImage:
-                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23716A5E'/%3E%3C/svg%3E\")",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "right 0.5rem center",
             }}
@@ -861,49 +962,49 @@ export default function SubscriptionPage() {
                   justifyContent: "space-between",
                   padding: "1rem 1.25rem",
                   borderRadius: "0.75rem",
-                  background: isCurrent ? `${C.terracotta}08` : C.linen,
-                  border: isCurrent ? `1.5px solid ${C.terracotta}30` : `1px solid ${C.cream}`,
+                  background: isCurrent ? EMBER_GLYPH_TINT : CREAM,
+                  border: isCurrent ? `0.09375rem solid ${EMBER_GLYPH_EDGE}` : `0.0625rem solid ${HAIRLINE}`,
                 }}
               >
                 <div>
                   <div style={{
                     fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 600,
-                    color: C.charcoal, display: "flex", alignItems: "center", gap: "0.5rem",
+                    color: INK, display: "flex", alignItems: "center", gap: "0.5rem",
                   }}>
                     {tp(plan.nameKey)}
                     {isCurrent && (
                       <span style={{
                         fontSize: "0.6875rem", fontWeight: 600,
                         padding: "2px 0.5rem", borderRadius: "0.375rem",
-                        background: `${C.terracotta}18`, color: C.terracotta,
+                        background: EMBER_GLYPH_TINT_12, color: EMBER,
                       }}>
                         {t("current")}
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: "0.8125rem", color: C.muted, marginTop: "0.25rem" }}>
+                  <div style={{ fontSize: "0.8125rem", color: MUTED, marginTop: "0.25rem" }}>
                     {plan.featureKeys.slice(0, 3).map(translateFeatureKey).join(" \u2022 ")}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0, marginLeft: "1rem" }}>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal }}>
-                      {plan.price === 0 ? t("free") : `${formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}/${t("perMonthShort")}`}
+                    <div style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: INK }}>
+                      {plan.price === 0
+                        ? t("free")
+                        : `${formatPrice(convertPrice(plan.annualTotal, currency), currency)}/${tpf("perYearShort", "yr")}`}
                     </div>
                   </div>
                   {!nativeApp && isUpgrade && (
                     <button
                       onClick={() => handleUpgrade(planId)}
                       disabled={!!upgradeLoading}
+                      className="mp-sub-primary"
                       style={{
+                        ...emberCta(!!upgradeLoading),
+                        // Compact-row variant: tighter tap area than the base CTA.
                         padding: "0.5rem 1rem",
                         borderRadius: "0.5rem",
-                        border: "none",
-                        background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                        fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 600,
-                        color: upgradeLoading ? C.muted : C.white,
-                        cursor: upgradeLoading ? "wait" : "pointer",
-                        transition: "all .15s",
+                        fontSize: "0.8125rem",
                         whiteSpace: "nowrap",
                       }}
                     >
@@ -923,8 +1024,9 @@ export default function SubscriptionPage() {
                 onClick={() => setShowFullComparison(prev => !prev)}
                 style={{
                   background: "none", border: "none", padding: 0,
+                  minHeight: "2.75rem",
                   fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                  color: C.terracotta, cursor: "pointer",
+                  color: EMBER, cursor: "pointer",
                 }}
               >
                 {showFullComparison ? t("hideFullComparison") : t("viewFullComparison")} {showFullComparison ? "\u2191" : "\u2192"}
@@ -935,8 +1037,11 @@ export default function SubscriptionPage() {
               <div style={{
                 marginTop: "1.25rem",
                 display: "grid",
-                gridTemplateColumns: (isMobile || isCompact) ? "1fr" : "repeat(3, 1fr)",
-                gap: (isMobile || isCompact) ? "1rem" : "1.25rem",
+                /* Single column on phones AND any portrait viewport (iPad
+                   split-view / narrow landscape); 3-up only when there is real
+                   landscape width to spread across. */
+                gridTemplateColumns: stackComparison ? "1fr" : "repeat(3, 1fr)",
+                gap: stackComparison ? "1rem" : "1.25rem",
                 alignItems: "start",
               }}>
                 {PLAN_ORDER.map((planId) => {
@@ -951,19 +1056,19 @@ export default function SubscriptionPage() {
                     <div
                       key={planId}
                       style={{
-                        background: C.white,
+                        background: CREAM,
                         borderRadius: "1rem",
                         border: isHighlighted
-                          ? `2px solid ${C.terracotta}`
+                          ? `0.125rem solid ${EMBER}`
                           : isCurrent
-                            ? `1.5px solid ${C.terracotta}30`
-                            : `1px solid ${C.sandstone}50`,
-                        padding: (isMobile || isCompact) ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
+                            ? `0.09375rem solid ${EMBER_GLYPH_EDGE}`
+                            : `0.0625rem solid ${HAIRLINE}`,
+                        padding: stackComparison ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
                         position: "relative",
-                        boxShadow: isHighlighted
-                          ? "0 0.5rem 2rem rgba(198,107,61,0.15)"
-                          : "0 0.125rem 0.75rem rgba(0,0,0,0.04)",
-                        transform: isHighlighted && !isMobile && !isCompact ? "scale(1.03)" : undefined,
+                        boxShadow: isHighlighted ? SHADOW[2] : CARD_SHADOW,
+                        // Only lift the highlighted card when it sits in the 3-up
+                        // row — a scaled card in a single stacked column overflows.
+                        transform: isHighlighted && !stackComparison ? "scale(1.03)" : undefined,
                       }}
                     >
                       {/* Most Popular badge */}
@@ -973,14 +1078,14 @@ export default function SubscriptionPage() {
                           top: "-0.8125rem",
                           left: "50%",
                           transform: "translateX(-50%)",
-                          background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                          color: C.white,
+                          background: EMBER_GRADIENT,
+                          color: CREAM,
                           fontFamily: F.body,
                           fontSize: "0.6875rem",
                           fontWeight: 600,
                           padding: "0.3125rem 0.875rem",
                           borderRadius: "1rem",
-                          letterSpacing: "0.5px",
+                          letterSpacing: "0.03em",
                           whiteSpace: "nowrap",
                         }}>
                           {t("mostPopular")}
@@ -992,7 +1097,7 @@ export default function SubscriptionPage() {
                         fontFamily: F.display,
                         fontSize: "1.25rem",
                         fontWeight: 500,
-                        color: C.charcoal,
+                        color: INK,
                         margin: 0,
                         marginTop: isHighlighted ? "0.375rem" : 0,
                         marginBottom: "0.1875rem",
@@ -1001,7 +1106,7 @@ export default function SubscriptionPage() {
                       </h4>
                       <p style={{
                         fontSize: "0.8125rem",
-                        color: C.muted,
+                        color: MUTED,
                         margin: "0 0 1rem",
                         lineHeight: 1.5,
                       }}>
@@ -1020,7 +1125,7 @@ export default function SubscriptionPage() {
                             fontFamily: F.display,
                             fontSize: "2rem",
                             fontWeight: 500,
-                            color: C.charcoal,
+                            color: INK,
                           }}>
                             {t("free")}
                           </span>
@@ -1030,19 +1135,28 @@ export default function SubscriptionPage() {
                               fontFamily: F.display,
                               fontSize: "2rem",
                               fontWeight: 500,
-                              color: C.charcoal,
+                              color: INK,
                             }}>
-                              {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}
+                              {formatPrice(convertPrice(plan.annualTotal, currency), currency)}
                             </span>
                             <span style={{
                               fontSize: "0.8125rem",
-                              color: C.muted,
+                              color: MUTED,
                             }}>
-                              /{t("perMonthShort")}
+                              /{tpf("perYearShort", "yr")}
                             </span>
                           </>
                         )}
                       </div>
+                      {/* Per-month equivalent subline (annual-only presentation). */}
+                      {!isFreeCard && (
+                        <p style={{ fontSize: "0.75rem", color: MUTED, margin: "-1rem 0 1.25rem" }}>
+                          {(() => {
+                            const eq = formatPrice(convertPrice(plan.price, currency), currency);
+                            return tpf("perMonthEquiv", `That's ${eq} a month, billed yearly`).replace("{price}", eq);
+                          })()}
+                        </p>
+                      )}
 
                       {/* CTA / Current badge */}
                       {isCurrent ? (
@@ -1050,13 +1164,13 @@ export default function SubscriptionPage() {
                           width: "100%",
                           padding: "0.6875rem 1rem",
                           borderRadius: "0.75rem",
-                          border: `1.5px solid ${C.terracotta}30`,
-                          background: `${C.terracotta}08`,
+                          border: `0.09375rem solid ${EMBER_GLYPH_EDGE}`,
+                          background: EMBER_GLYPH_TINT,
                           textAlign: "center",
                           fontFamily: F.body,
                           fontSize: "0.875rem",
                           fontWeight: 600,
-                          color: C.terracotta,
+                          color: EMBER,
                           marginBottom: "1.25rem",
                         }}>
                           {t("currentPlanBadge")}
@@ -1065,18 +1179,12 @@ export default function SubscriptionPage() {
                         <button
                           onClick={() => handleUpgrade(planId)}
                           disabled={!!upgradeLoading}
+                          className="mp-sub-primary"
                           style={{
+                            ...emberCta(!!upgradeLoading),
+                            // Full-comparison card variant: full-width block CTA.
                             width: "100%",
                             padding: "0.6875rem 1rem",
-                            borderRadius: "0.75rem",
-                            border: "none",
-                            background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                            color: upgradeLoading ? C.muted : C.white,
-                            fontFamily: F.body,
-                            fontSize: "0.875rem",
-                            fontWeight: 600,
-                            cursor: upgradeLoading ? "wait" : "pointer",
-                            transition: "all 0.2s",
                             marginBottom: "1.25rem",
                           }}
                         >
@@ -1100,7 +1208,7 @@ export default function SubscriptionPage() {
                               alignItems: "center",
                               gap: "0.5rem",
                               fontSize: "0.8125rem",
-                              color: C.charcoal,
+                              color: INK,
                               lineHeight: 1.4,
                             }}
                           >
@@ -1109,13 +1217,13 @@ export default function SubscriptionPage() {
                               height: "1.125rem",
                               borderRadius: "50%",
                               background: isHighlighted
-                                ? `${C.terracotta}18`
-                                : `${C.sage}15`,
+                                ? EMBER_GLYPH_TINT_12
+                                : "rgba(86,104,60,0.1)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               fontSize: "0.625rem",
-                              color: isHighlighted ? C.terracotta : C.sage,
+                              color: isHighlighted ? EMBER : SAGE,
                               flexShrink: 0,
                             }}>
                               {"\u2713"}
@@ -1132,256 +1240,31 @@ export default function SubscriptionPage() {
           </div>
         )}
       </div>
+      </>
       )}
 
-      {/* Refer a Friend — hidden on iOS: rewards are web/Stripe promo codes that
-          can't apply to Apple IAP, so surfacing them on iOS steers off-platform (3.1.1) */}
-      {referralCode && !isApple && (
-        <div style={{
-          background: C.white,
-          borderRadius: "1rem",
-          border: `1px solid ${C.cream}`,
-          padding: "1.75rem 2rem",
-          boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-          marginTop: "1.5rem",
-        }}>
-          <h3 style={{
-            fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-            color: C.charcoal, margin: "0 0 0.375rem",
-          }}>
-            {t("referralTitle")}
-          </h3>
-          <p style={{
-            fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
-            margin: "0 0 1.25rem", lineHeight: 1.5,
-          }}>
-            {t("referralDesc")}
-          </p>
+      {/* Refer a Friend — shared card (also rendered on settings/sharing).
+          Carries its own overline, data fetch and iOS 3.1.1 gate. */}
+      <ReferralSection />
 
-          {/* Referral code display */}
-          <div style={{
-            display: "flex", alignItems: "center", gap: "0.75rem",
-            flexWrap: "wrap", marginBottom: "1rem",
-          }}>
-            <div>
-              <div style={{
-                fontFamily: F.body, fontSize: "0.6875rem", fontWeight: 600,
-                color: C.muted, textTransform: "uppercase", letterSpacing: "0.5px",
-                marginBottom: "0.25rem",
-              }}>
-                {t("referralCode")}
-              </div>
-              <div style={{
-                fontFamily: "monospace", fontSize: "1.25rem", fontWeight: 700,
-                color: C.charcoal, letterSpacing: "2px",
-                padding: "0.5rem 1rem",
-                background: C.linen,
-                borderRadius: "0.5rem",
-                border: `1px solid ${C.cream}`,
-                userSelect: "all",
-              }}>
-                {referralCode}
-              </div>
-            </div>
-
-            <div style={{
-              fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
-              padding: "0.5rem 0.75rem",
-              background: `${C.sage}12`,
-              borderRadius: "0.5rem",
-            }}>
-              {t("referralCount", { count: String(referralCount) })}
-            </div>
-          </div>
-
-          {/* Share actions */}
-          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-            <button
-              onClick={() => {
-                const link = `https://thememorypalace.ai/register?ref=${referralCode}`;
-                navigator.clipboard.writeText(link).then(() => {
-                  showToast(t("referralCopied"), "success");
-                });
-              }}
-              style={{
-                padding: "0.75rem 1.5rem",
-                borderRadius: "0.75rem",
-                border: `1px solid ${C.cream}`,
-                background: C.white,
-                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                color: C.charcoal,
-                cursor: "pointer",
-                transition: "all .15s",
-                display: "flex", alignItems: "center", gap: "0.5rem",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="9" y="9" width="13" height="13" rx="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-              {t("referralCopied").replace("!", "")}
-            </button>
-
-            {typeof navigator !== "undefined" && "share" in navigator && (
-              <button
-                onClick={() => {
-                  const link = `https://thememorypalace.ai/register?ref=${referralCode}`;
-                  navigator.share({
-                    title: "The Memory Palace",
-                    text: t("referralDesc"),
-                    url: link,
-                  }).catch(() => {});
-                }}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.75rem",
-                  border: "none",
-                  background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: C.white,
-                  cursor: "pointer",
-                  transition: "all .15s",
-                  display: "flex", alignItems: "center", gap: "0.5rem",
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="18" cy="5" r="3"/>
-                  <circle cx="6" cy="12" r="3"/>
-                  <circle cx="18" cy="19" r="3"/>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-                </svg>
-                {t("referralShare")}
-              </button>
-            )}
-
-            <button
-              onClick={() => setShowInviteFlow(true)}
-              style={{
-                padding: "0.75rem 1.5rem",
-                borderRadius: "0.75rem",
-                border: `1px solid ${C.cream}`,
-                background: C.white,
-                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                color: C.charcoal,
-                cursor: "pointer",
-                transition: "all .15s",
-                display: "flex", alignItems: "center", gap: "0.5rem",
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <line x1="19" y1="8" x2="19" y2="14"/>
-                <line x1="22" y1="11" x2="16" y2="11"/>
-              </svg>
-              {t("inviteFriends") || "Invite Friends"}
-            </button>
-          </div>
-
-          {showInviteFlow && referralCode && (
-            <InviteFlow
-              referralCode={referralCode}
-              targetUrl="https://thememorypalace.ai/register"
-              onClose={() => setShowInviteFlow(false)}
-            />
-          )}
-
-          {/* Earned Rewards */}
-          {referralRewards.length > 0 && (
-            <div style={{ marginTop: "1.5rem" }}>
-              <h4 style={{
-                fontFamily: F.display, fontSize: "1rem", fontWeight: 500,
-                color: C.charcoal, margin: "0 0 0.75rem",
-              }}>
-                {t("referralRewardsTitle")}
-              </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {referralRewards.map((reward) => (
-                  <div
-                    key={reward.promo_code}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "0.75rem 1rem",
-                      borderRadius: "0.625rem",
-                      background: reward.redeemed ? `${C.sandstone}15` : `${C.sage}10`,
-                      border: `1px solid ${reward.redeemed ? C.sandstone : C.sage}30`,
-                      flexWrap: "wrap",
-                      gap: "0.5rem",
-                    }}
-                  >
-                    <div>
-                      <div style={{
-                        fontFamily: "monospace",
-                        fontSize: "0.9375rem",
-                        fontWeight: 700,
-                        color: reward.redeemed ? C.muted : C.charcoal,
-                        letterSpacing: "1px",
-                        textDecoration: reward.redeemed ? "line-through" : "none",
-                      }}>
-                        {reward.promo_code}
-                      </div>
-                      <div style={{
-                        fontFamily: F.body,
-                        fontSize: isMobile ? "0.8125rem" : "0.75rem",
-                        color: C.muted,
-                        marginTop: "0.125rem",
-                      }}>
-                        {t("referralRewardHint")}
-                      </div>
-                    </div>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                    }}>
-                      <span style={{
-                        fontFamily: F.body,
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        padding: "0.25rem 0.5rem",
-                        borderRadius: "0.375rem",
-                        background: reward.redeemed ? `${C.muted}18` : `${C.sage}18`,
-                        color: reward.redeemed ? C.muted : C.sage,
-                      }}>
-                        {reward.redeemed ? t("referralRewardRedeemed") : t("referralRewardStatus")}
-                      </span>
-                      {!reward.redeemed && (
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(reward.promo_code).then(() => {
-                              showToast(t("referralCopied"), "success");
-                            });
-                          }}
-                          style={{
-                            padding: "0.375rem 0.75rem",
-                            borderRadius: "0.375rem",
-                            border: `1px solid ${C.cream}`,
-                            background: C.white,
-                            fontFamily: F.body,
-                            fontSize: "0.75rem",
-                            fontWeight: 500,
-                            color: C.charcoal,
-                            cursor: "pointer",
-                          }}
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "0.25rem" }}>
-                            <rect x="9" y="9" width="13" height="13" rx="2"/>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                          </svg>
-                          Copy
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Canon hover / focus / reduced-motion states (style-only) */}
+      <style>{`
+        @media (hover: hover) {
+          .mp-sub-secondary:hover { background: ${EMBER_GLYPH_TINT} !important; }
+          .mp-sub-primary:not(:disabled):hover { filter: brightness(1.06); }
+        }
+        .mp-sub-secondary:active { background: ${EMBER_GLYPH_TINT_12} !important; }
+        .mp-sub-primary:not(:disabled):active { filter: brightness(0.96); }
+        .mp-sub-page a:focus-visible,
+        .mp-sub-page button:focus-visible,
+        .mp-sub-page select:focus-visible {
+          outline: 0.1875rem solid #D4AF37;
+          outline-offset: 0.125rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .mp-sub-page *, .mp-sub-progress { transition: none !important; animation: none !important; }
+        }
+      `}</style>
     </div>
   );
 }

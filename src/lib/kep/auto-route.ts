@@ -4,6 +4,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { captureServer } from "@/lib/analytics-server";
 
 interface CaptureData {
   media_url: string | null;
@@ -63,6 +64,9 @@ export async function autoRouteToRoom(
       title: buildTitle(capture),
       type: mapMediaTypeToMemoryType(capture.media_type),
       file_url: capture.media_url,
+      // Record the media byte size so WhatsApp-routed captures count toward the
+      // user's storage quota (previously omitted -> silent storage undercount).
+      file_size: capture.media_size || 0,
       description: capture.transcription || (capture.payload_preview?.text as string) || null,
       source_kep_id: kepId,
       source_type: "whatsapp",
@@ -75,6 +79,9 @@ export async function autoRouteToRoom(
     console.error(`[Kep AutoRoute] Failed to create memory: ${memError.message}`);
     return null;
   }
+
+  // Milestone: activation signal (server-side; the WhatsApp path has no client). Fire-and-forget.
+  void captureServer(userId, "memory_created", { source: "kep" });
 
   // Update capture as routed
   await supabase

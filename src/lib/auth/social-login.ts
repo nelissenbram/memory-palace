@@ -27,8 +27,20 @@ import { isNative } from "@/lib/native/platform";
 //   ⚠️ This scheme MUST be allowlisted in Supabase → Authentication → URL
 //   Configuration → Redirect URLs, or Supabase rejects the redirect.
 const NATIVE_OAUTH_REDIRECT = "ai.thememorypalace.app://auth/callback";
-function callbackRedirect(): string {
-  return isNative() ? NATIVE_OAUTH_REDIRECT : window.location.origin + "/auth/callback";
+
+// Only deep-link destinations the password path also honors (actions.ts
+// allowlist) may be threaded through OAuth — never an arbitrary open redirect.
+function safeDeepLink(redirect?: string | null): string | null {
+  if (redirect && (redirect.startsWith("/invite/") || redirect.startsWith("/kep/"))) {
+    return redirect;
+  }
+  return null;
+}
+
+function callbackRedirect(redirect?: string | null): string {
+  const base = isNative() ? NATIVE_OAUTH_REDIRECT : window.location.origin + "/auth/callback";
+  const dest = safeDeepLink(redirect);
+  return dest ? `${base}?redirect=${encodeURIComponent(dest)}` : base;
 }
 
 let browserListenerAdded = false;
@@ -58,11 +70,11 @@ async function openOAuthInApp(url: string) {
   await Browser.open({ url });
 }
 
-type OAuthOpts = { onDismiss?: () => void };
+type OAuthOpts = { onDismiss?: () => void; redirect?: string | null };
 
 export async function signInWithGoogle(opts?: OAuthOpts): Promise<{ error?: string }> {
   const supabase = createClient();
-  const redirectTo = callbackRedirect();
+  const redirectTo = callbackRedirect(opts?.redirect);
 
   if (isNative()) {
     await ensureBrowserDismissReset();
@@ -102,7 +114,7 @@ export async function signInWithGoogle(opts?: OAuthOpts): Promise<{ error?: stri
 
 export async function signInWithApple(opts?: OAuthOpts): Promise<{ error?: string }> {
   const supabase = createClient();
-  const redirectTo = callbackRedirect();
+  const redirectTo = callbackRedirect(opts?.redirect);
 
   if (isNative()) {
     await ensureBrowserDismissReset();

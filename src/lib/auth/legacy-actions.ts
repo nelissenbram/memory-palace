@@ -222,13 +222,31 @@ export async function updateLegacyContact(
 
   if (Object.keys(payload).length === 0) { const t = await serverError(); return { error: t("noFieldsToUpdate") }; }
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("legacy_contacts")
     .update(payload)
     .eq("id", contactId)
     .eq("user_id", user.id)
     .select()
     .single();
+
+  // Fallback: if the production DB is missing wing_access/room_access columns
+  // (migration 012 not yet applied), retry without them so the update still
+  // succeeds — mirrors createLegacyContact's resilience.
+  if (error && /wing_access|room_access/i.test(error.message)) {
+    const basePayload = { ...payload };
+    delete basePayload.wing_access;
+    delete basePayload.room_access;
+    const retry = await supabase
+      .from("legacy_contacts")
+      .update(basePayload)
+      .eq("id", contactId)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) return { error: error.message };
   return { contact: data as LegacyContact };

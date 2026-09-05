@@ -15,6 +15,15 @@ export interface SocialProfile {
   following_count: number;
   is_following: boolean;
   is_own: boolean;
+  /**
+   * True when this is the reduced payload returned for a private profile viewed
+   * by someone else: bio is null and follower/following/is_following are
+   * known-zeroed placeholders (not real counts). Cards should read this to
+   * suppress the Follow affordance and the zeroed stat row rather than showing
+   * a misleading "0 followers / Follow" on a profile that can't be followed
+   * here. Absent/false on full payloads.
+   */
+  is_limited?: boolean;
 }
 
 /** Get a user's social profile by user ID or username */
@@ -55,6 +64,7 @@ export async function getProfile(
       following_count: 0,
       is_following: false,
       is_own: false,
+      is_limited: true,
     };
   }
 
@@ -92,6 +102,7 @@ export async function getProfile(
     following_count: followingRes.count || 0,
     is_following: isFollowing,
     is_own: isOwn,
+    is_limited: false,
   };
 }
 
@@ -137,15 +148,18 @@ export async function updateProfile(input: {
   return { ok: true };
 }
 
-/** Toggle follow/unfollow a user */
+/** Toggle follow/unfollow a user.
+ *  `changed` is false when nothing was mutated (unauthenticated, self-follow, or
+ *  a redundant call), so callers can skip optimistic follower-count updates. */
 export async function toggleFollow(
   targetUserId: string
-): Promise<{ following: boolean }> {
+): Promise<{ following: boolean; changed: boolean }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user || user.id === targetUserId) return { following: false };
+  if (!user || user.id === targetUserId)
+    return { following: false, changed: false };
 
   // Check existing
   const { data: existing } = await supabase
@@ -158,7 +172,7 @@ export async function toggleFollow(
   if (existing) {
     await supabase.from("follows").delete().eq("id", existing.id);
     revalidatePath("/explore");
-    return { following: false };
+    return { following: false, changed: true };
   }
 
   await supabase.from("follows").insert({
@@ -205,7 +219,7 @@ export async function toggleFollow(
   // Bust Explore page cache so Following tab updates
   revalidatePath("/explore");
 
-  return { following: true };
+  return { following: true, changed: true };
 }
 
 /** Get a user's followers (paginated) */

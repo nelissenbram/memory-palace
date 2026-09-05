@@ -59,12 +59,12 @@ export const WING_ROOMS: Record<string, WingRoom[]> = {
   nest:[
     {id:"ne1",name:"Baby's First Year",nameKey:"roomBabysFirstYear",subtitle:"First laugh, first tooth, the tired and wonderful months",subtitleKey:"roomBabysFirstYearSub",icon:"👶",shared:false,sharedWith:[],coverHue:18},
     {id:"ne2",name:"Birthdays at Home",nameKey:"roomBirthdaysAtHome",subtitle:"Candles, chaos, cake on someone's face",subtitleKey:"roomBirthdaysAtHomeSub",icon:"🎂",shared:false,sharedWith:[],coverHue:32},
-    {id:"ne3",name:"The House on Elm Street",nameKey:"roomHouseOnElmStreet",subtitle:"The walls we painted, the garden we planted, the years inside",subtitleKey:"roomHouseOnElmStreetSub",icon:"🏡",shared:false,sharedWith:[],coverHue:42},
+    {id:"ne3",name:"The House on Elm Street",nameKey:"roomTheHouseOnElmStreet",subtitle:"The walls we painted, the garden we planted, the years inside",subtitleKey:"roomHouseOnElmStreetSub",icon:"🏡",shared:false,sharedWith:[],coverHue:42},
     {id:"ne4",name:"Our Wedding",nameKey:"roomOurWedding",subtitle:"Borrowed dresses, the toast that made everyone cry",subtitleKey:"roomOurWeddingSub",icon:"💍",shared:false,sharedWith:[],coverHue:350},
   ],
   craft:[
     {id:"cf1",name:"My First Job",nameKey:"roomMyFirstJob",subtitle:"The nervous start, the boss who believed in me, the lessons I still use",subtitleKey:"roomMyFirstJobSub",icon:"📓",shared:false,sharedWith:[],coverHue:210},
-    {id:"cf2",name:"The Big Project of 2019",nameKey:"roomBigProject2019",subtitle:"Long days, late nights, the one I'm most proud of",subtitleKey:"roomBigProject2019Sub",icon:"🏆",shared:false,sharedWith:[],coverHue:240},
+    {id:"cf2",name:"The Big Project of 2019",nameKey:"roomTheBigProject",subtitle:"Long days, late nights, the one I'm most proud of",subtitleKey:"roomBigProject2019Sub",icon:"🏆",shared:false,sharedWith:[],coverHue:240},
     {id:"cf3",name:"Diploma Day",nameKey:"roomDiplomaDay",subtitle:"The gown, my parents in the crowd, what came after",subtitleKey:"roomDiplomaDaySub",icon:"🎓",shared:false,sharedWith:[],coverHue:48},
   ],
   travel:[

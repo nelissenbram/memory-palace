@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
@@ -18,7 +18,77 @@ import NotificationBell from "@/components/ui/NotificationBell";
 import type { Crumb } from "@/lib/hooks/useNavigation";
 import { locales, type Locale } from "@/i18n/config";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
-import { translateWingName, translateRoomName } from "@/lib/constants/wings";
+import { translateWingName, translateRoomName, WINGS } from "@/lib/constants/wings";
+import { WingIcon, RoomIcon } from "@/components/ui/WingRoomIcons";
+
+/* ─── Local stroke-SVG glyphs for the mobile menu ───
+ * Matches the crafted 24×24 stroke language of WingRoomIcons / MobileBottomBar
+ * (stroke=currentColor, 1.6 width) so the menu's action buttons stop relying on
+ * platform emoji fonts. Tinted MUTED/accent by the caller via `color`.
+ */
+type TopBarIconName =
+  | "directory" | "familyTree" | "settings" | "shared"
+  | "palace" | "back" | "profile" | "family" | "star"
+  | "link" | "bell" | "shield" | "signout";
+function TopBarIcon({ name, size = 18, color = "currentColor" }: { name: TopBarIconName; size?: number; color?: string }) {
+  const p = {
+    width: size, height: size, viewBox: "0 0 24 24", fill: "none",
+    stroke: color, strokeWidth: 1.6, strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const, "aria-hidden": true,
+    style: { display: "block" } as React.CSSProperties,
+  };
+  switch (name) {
+    case "directory": // open folder
+      return (<svg {...p}><path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h3.6l1.7 2H19a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 19 18H5a1.5 1.5 0 0 1-1.5-1.5z" /></svg>);
+    case "familyTree": // tree of nodes
+      return (<svg {...p}><circle cx="12" cy="5" r="2.2" /><circle cx="6" cy="18.5" r="2.2" /><circle cx="18" cy="18.5" r="2.2" /><path d="M12 7.2v3.3M12 10.5H6v5.8M12 10.5h6v5.8" /></svg>);
+    case "settings": // gear
+      return (<svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2.1 2.1M16.9 16.9 19 19M19 5l-2.1 2.1M7.1 16.9 5 19" /></svg>);
+    case "shared": // handshake / two people
+      return (<svg {...p}><circle cx="8" cy="9" r="2.6" /><path d="M3.5 19c0-2.7 2-4.6 4.5-4.6S12.5 16.3 12.5 19" /><circle cx="16.5" cy="7.5" r="2.1" /><path d="M14 13.4c2.3-.7 6 .2 6 4.6" /></svg>);
+    case "palace": // classical building with columns
+      return (<svg {...p}><path d="M3.5 9 12 4l8.5 5" /><path d="M5 9v8M9 9v8M15 9v8M19 9v8" /><path d="M3.5 20.5h17M4.5 17h15" /></svg>);
+    case "back": // arrow left
+      return (<svg {...p}><path d="M14.5 5.5 8 12l6.5 6.5" /><path d="M8 12h11" /></svg>);
+    case "profile": // single person
+      return (<svg {...p}><circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" /></svg>);
+    case "family": // two people
+      return (<svg {...p}><circle cx="8" cy="9" r="2.6" /><circle cx="16" cy="9" r="2.6" /><path d="M3.5 19c0-2.7 2-4.6 4.5-4.6S12.5 16.3 12.5 19" /><path d="M11.5 19c0-2.7 2-4.6 4.5-4.6S20.5 16.3 20.5 19" /></svg>);
+    case "star": // five-point star
+      return (<svg {...p}><path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.1 1 5.85L12 17.9l-5.25 2.75 1-5.85L3.5 9.7l5.9-.9z" /></svg>);
+    case "link": // chain link
+      return (<svg {...p}><path d="M9.5 14.5 14.5 9.5" /><path d="M10.5 7.5l1.7-1.7a3.5 3.5 0 0 1 5 5l-1.7 1.7" /><path d="M13.5 16.5l-1.7 1.7a3.5 3.5 0 0 1-5-5l1.7-1.7" /></svg>);
+    case "bell": // notification bell
+      return (<svg {...p}><path d="M6 9a6 6 0 0 1 12 0c0 4 1.2 5.5 2 6.5H4c.8-1 2-2.5 2-6.5z" /><path d="M10 19a2 2 0 0 0 4 0" /></svg>);
+    case "shield": // shield
+      return (<svg {...p}><path d="M12 3.5 5 6v5.5c0 4.3 3 7.2 7 9 4-1.8 7-4.7 7-9V6z" /></svg>);
+    case "signout": // door with arrow out
+      return (<svg {...p}><path d="M14 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H14" /><path d="M17 8.5 20.5 12 17 15.5" /><path d="M10 12h10.5" /></svg>);
+    default:
+      return null;
+  }
+}
+
+/**
+ * Resolve a shared wing's display name. Shares carry only a wingId slug; when
+ * that slug matches a canonical wing (roots / nest / craft / …) we render its
+ * localized name via translateWingName so shared wings read the same as your
+ * own — never a raw lowercase slug. Custom-named wings (no canonical match)
+ * fall back to a title-cased slug only when neither a real custom `name` nor a
+ * canonical match is available. Once the shares fetch layer threads the wing's
+ * real display name into SharedWingItem.name, it is used verbatim.
+ */
+function resolveSharedWingName(
+  wingId: string,
+  tWings: (k: string) => string,
+  name?: string,
+): string {
+  // A real, user-custom display name from the share always wins.
+  if (name && name.trim()) return name;
+  const canon = WINGS.find((w) => w.id === wingId);
+  if (canon) return translateWingName(canon, tWings);
+  return wingId.charAt(0).toUpperCase() + wingId.slice(1);
+}
 
 function formatDaylightHour(h: number): string {
   const hr = Math.floor(h) % 24;
@@ -39,6 +109,9 @@ interface SharedWingItem {
   ownerName: string;
   ownerId: string;
   permission: string;
+  /** Real custom display name of the shared wing, when the fetch layer
+   *  provides it. Falls back to canonical/slug resolution when absent. */
+  name?: string;
 }
 
 interface TopBarProps {
@@ -148,9 +221,9 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
             <button onClick={()=>{if(view!=="exterior")exitToPalace();}} aria-label={t("backToPalace")} style={{
               width: "2.75rem", height: "2.75rem", borderRadius: "0.375rem", flexShrink: 0,
               background: `linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,
-              display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem",
+              display: "flex", alignItems: "center", justifyContent: "center",
               border: `1px solid ${T.color.sandstone}`, cursor: view!=="exterior"?"pointer":"default", padding: 0,
-            }}><span aria-hidden="true">{"\u{1F3DB}\uFE0F"}</span></button>
+            }}><TopBarIcon name="palace" size={19} color={T.color.walnut} /></button>
             {/* Current location breadcrumb */}
             <nav aria-label={t("breadcrumb")} style={{ display: "flex", alignItems: "center", gap: "0.375rem", overflow: "hidden", minWidth: 0 }}>
               {crumbs.map((c, i) => (
@@ -196,7 +269,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               maxHeight: "calc(100vh - 4rem)", overflowY: "auto",
               background: `${T.color.linen}f5`, backdropFilter: "blur(1rem)",
               borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
-              boxShadow: "0 0.5rem 2.5rem rgba(44,44,42,.15)", padding: "0.75rem",
+              boxShadow: "0 0.5rem 2.5rem rgba(64,59,54,.15)", padding: "0.75rem",
               animation: "fadeUp .2s ease",
             }}>
               {userName && (
@@ -224,19 +297,21 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                     cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
                     textAlign: "left", minHeight: "2.75rem",
                   }}>
-                    <span style={{ fontSize: "1rem" }}>{w.icon}</span>{translateWingName(w, tWings)}
+                    <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                      <WingIcon wingId={w.id} size={18} color={activeWing === w.id ? w.accent : T.color.muted} />
+                    </span>{translateWingName(w, tWings)}
                   </button>
                 ))}
                 {/* Shared wings in mobile menu */}
                 {sharedWings && sharedWings.length > 0 && (
                   <>
                     <div style={{ padding: "0.375rem 0.25rem 0.25rem", marginTop: "0.25rem", borderTop: `1px solid ${T.color.cream}` }}>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.03125rem" }}>
+                      <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>
                         {t("sharedWithYou")}
                       </span>
                     </div>
                     {sharedWings.map(sw => {
-                      const wingName = sw.wingId.charAt(0).toUpperCase() + sw.wingId.slice(1);
+                      const wingName = resolveSharedWingName(sw.wingId, tWings, sw.name);
                       return (
                         <button key={sw.shareId} onClick={() => { onNavigateSharedWing?.(sw.shareId, sw.wingId); setMenuOpen(false); }} style={{
                           padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
@@ -245,7 +320,9 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                           color: T.color.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
                           textAlign: "left", minHeight: "2.75rem",
                         }}>
-                          <span style={{ fontSize: "1rem" }}>{"\u{1F91D}"}</span>
+                          <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                            <TopBarIcon name="shared" size={18} color={T.color.muted} />
+                          </span>
                           <span style={{ flex: 1 }}>{wingName}</span>
                           <span style={{ fontSize: "0.5625rem", color: T.color.sandstone }}>{sw.ownerName}</span>
                         </button>
@@ -265,7 +342,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                   fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                 }}>
-                  {"\u{1F4C2}"} {t("directory")}
+                  <TopBarIcon name="directory" size={16} color={T.color.walnut} /> {t("directory")}
                 </button>
                 <button onClick={() => { setMenuOpen(false); setShowFamilyTree(true); }} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
@@ -273,7 +350,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                   fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                 }}>
-                  {"\u{1F333}"} {t("familyTree")}
+                  <TopBarIcon name="familyTree" size={16} color={T.color.walnut} /> {t("familyTree")}
                 </button>
                 <a href="/settings" onClick={() => setMenuOpen(false)} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
@@ -282,7 +359,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                   textDecoration: "none",
                 }}>
-                  {"\u2699\uFE0F"} {t("settings")}
+                  <TopBarIcon name="settings" size={16} color={T.color.walnut} /> {t("settings")}
                 </a>
                 <button onClick={() => { handleSignOut(); setMenuOpen(false); }} disabled={signingOut} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
@@ -303,7 +380,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                 <span style={{
                   fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
                   color: T.color.muted, textTransform: "uppercase",
-                  letterSpacing: "0.03125rem",
+                  letterSpacing: "0.06em",
                 }}>
                   {t("preferences")}
                 </span>
@@ -438,8 +515,8 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
     <div data-topbar style={{position:"absolute",top:0,left:0,right:0,height:"3.375rem",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1.375rem",zIndex:40,background:"linear-gradient(180deg,rgba(221,213,200,.92),rgba(221,213,200,0))"}}>
       <div style={{display:"flex",alignItems:"center",gap:"0.625rem"}}>
         <div style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-          <button onClick={()=>{if(view!=="exterior")exitToPalace();}} title={t("backToPalace")} aria-label={t("backToPalace")} style={{width:"2.25rem",height:"2.25rem",borderRadius:"0.4375rem",background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.875rem",border:`1px solid ${T.color.sandstone}`,cursor:view!=="exterior"?"pointer":"default",padding:0}}><span aria-hidden="true">{"\u{1F3DB}\uFE0F"}</span></button>
-          <button onClick={()=>setShowDirectory(!showDirectory)} title={t("directory")} aria-label={t("directory")} style={{width:"2.25rem",height:"2.25rem",borderRadius:"0.4375rem",border:`1px solid ${showDirectory?T.color.sandstone:T.color.cream}`,background:showDirectory?`${T.color.sandstone}30`:`${T.color.white}bb`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.8125rem",cursor:"pointer",color:T.color.muted}}>{"\u{1F4C2}"}</button>
+          <button onClick={()=>{if(view!=="exterior")exitToPalace();}} title={t("backToPalace")} aria-label={t("backToPalace")} style={{width:"2.25rem",height:"2.25rem",borderRadius:"0.4375rem",background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid ${T.color.sandstone}`,cursor:view!=="exterior"?"pointer":"default",padding:0}}><TopBarIcon name="palace" size={18} color={T.color.walnut} /></button>
+          <button onClick={()=>setShowDirectory(!showDirectory)} title={t("directory")} aria-label={t("directory")} aria-pressed={showDirectory} style={{width:"2.25rem",height:"2.25rem",borderRadius:"0.4375rem",border:`1px solid ${showDirectory?T.color.sandstone:T.color.cream}`,background:showDirectory?`${T.color.sandstone}30`:`${T.color.white}bb`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:T.color.muted}}><TopBarIcon name="directory" size={17} color={T.color.muted} /></button>
           {userName&&<span style={{fontFamily:T.font.display,fontSize:"0.875rem",fontWeight:600,fontStyle:"italic",color:T.color.charcoal,background:`${T.color.linen}cc`,padding:"0.125rem 0.5rem",borderRadius:"0.375rem",textShadow:"0 1px 2px rgba(255,255,255,.9)"}}>{t("palace", { name: userName })}</span>}
           <nav aria-label={t("breadcrumb")} style={{display:"flex",alignItems:"center",gap:"0.25rem",background:`${T.color.linen}cc`,padding:"0.125rem 0.5rem",borderRadius:"0.375rem"}}>
             {crumbs.map((c,i)=><span key={i} style={{display:"flex",alignItems:"center",gap:"0.25rem"}}>
@@ -469,10 +546,10 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               display: "flex", alignItems: "center", justifyContent: "center",
               fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 700,
               color: T.color.white, letterSpacing: "0.03125rem",
-              boxShadow: userMenuOpen ? `0 0 0 3px ${T.color.terracotta}30` : "0 0.0625rem 0.25rem rgba(44,44,42,.15)",
+              boxShadow: userMenuOpen ? `0 0 0 3px ${T.color.terracotta}30` : "0 0.0625rem 0.25rem rgba(64,59,54,.15)",
             }}
           >
-            {initials || "\u{1F464}"}
+            {initials || <TopBarIcon name="profile" size={18} color={T.color.white} />}
           </button>
 
           {/* Dropdown */}
@@ -504,15 +581,15 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
 /** ─── Desktop User Dropdown Menu ─── */
 
 const USER_MENU_ITEMS = [
-  { href: "/settings/profile", labelKey: "profile", icon: "\u{1F464}" },
-  { href: "/family-tree", labelKey: "familyTree", icon: "\u{1F333}" },
-  { href: "/settings/family", labelKey: "family", icon: "\u{1F46A}" },
-  { href: "/settings/subscription", labelKey: "subscription", icon: "\u2B50" },
-  { href: "/settings/connections", labelKey: "connections", icon: "\u{1F517}" },
-  { href: "/settings/notifications", labelKey: "notifications", icon: "\u{1F514}" },
-  { href: "/settings/legacy", labelKey: "legacy", icon: "\u{1F3DB}\uFE0F" },
-  { href: "/security", labelKey: "security", icon: "\u{1F6E1}\uFE0F" },
-] as const;
+  { href: "/settings/profile", labelKey: "profile", icon: "profile" },
+  { href: "/family-tree", labelKey: "familyTree", icon: "familyTree" },
+  { href: "/settings/family", labelKey: "family", icon: "family" },
+  { href: "/settings/subscription", labelKey: "subscription", icon: "star" },
+  { href: "/settings/connections", labelKey: "connections", icon: "link" },
+  { href: "/settings/notifications", labelKey: "notifications", icon: "bell" },
+  { href: "/settings/legacy", labelKey: "legacy", icon: "palace" },
+  { href: "/security", labelKey: "security", icon: "shield" },
+] as const satisfies ReadonlyArray<{ href: string; labelKey: string; icon: TopBarIconName }>;
 
 function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLevel, daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour, t, onClose, handleSignOut }: {
   userName: string;
@@ -594,7 +671,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
         background: `${T.color.linen}f8`,
         backdropFilter: "blur(1.25rem)", WebkitBackdropFilter: "blur(1.25rem)",
         borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
-        boxShadow: "0 0.75rem 3rem rgba(44,44,42,.18), 0 0.125rem 0.5rem rgba(44,44,42,.08)",
+        boxShadow: "0 0.75rem 3rem rgba(64,59,54,.18), 0 0.125rem 0.5rem rgba(64,59,54,.08)",
         padding: 0, zIndex: 100,
       }}
     >
@@ -610,7 +687,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
           fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 700,
           color: T.color.white, letterSpacing: "0.03125rem",
         }}>
-          {userName ? userName.split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 2) : "\u{1F464}"}
+          {userName ? userName.split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 2) : <TopBarIcon name="profile" size={20} color={T.color.white} />}
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{
@@ -675,7 +752,9 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
               }}
               {...extra as any}
             >
-              <span style={{ fontSize: "1rem", width: "1.375rem", textAlign: "center", flexShrink: 0 }}>{item.icon}</span>
+              <span style={{ width: "1.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <TopBarIcon name={item.icon} size={18} color={focusIdx === i ? T.color.terracotta : T.color.charcoal} />
+              </span>
               {t(item.labelKey)}
             </Tag>
           );
@@ -690,7 +769,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
         <span style={{
           fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
           color: T.color.muted, textTransform: "uppercase",
-          letterSpacing: "0.03125rem",
+          letterSpacing: "0.06em",
         }}>
           {t("preferences")}
         </span>
@@ -868,7 +947,9 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
             } : {}),
           }}
         >
-          <span style={{ fontSize: "0.9375rem", width: "1.375rem", textAlign: "center", flexShrink: 0 }}>{"\u{1F6AA}"}</span>
+          <span style={{ width: "1.375rem", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <TopBarIcon name="signout" size={18} color={focusIdx === totalItems - 1 ? T.color.error : T.color.muted} />
+          </span>
           {t("signOut")}
         </button>
       </div>
@@ -878,7 +959,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
 
 /** Wings dropdown — shows wings with expandable room lists for direct navigation */
 function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateSharedWing, onSharingSettings }: {
-  wings: { id: string; name: string; icon: string; accent: string }[];
+  wings: { id: string; name: string; nameKey?: string; icon: string; accent: string }[];
   activeWing: string | null;
   switchWing: (id: string) => void;
   sharedWings?: SharedWingItem[];
@@ -929,8 +1010,12 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
           cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3125rem",
         }}
       >
-        <span style={{ fontSize: "0.75rem" }} aria-hidden="true">{activeWingData ? activeWingData.icon : "\u{1F3DB}\uFE0F"}</span>
-        {activeWingData ? activeWingData.name : tc("palaceMap")}
+        <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+          {activeWingData
+            ? <WingIcon wingId={activeWingData.id} size={15} color={activeWingData.accent} />
+            : <TopBarIcon name="palace" size={15} color={T.color.walnut} />}
+        </span>
+        {activeWingData ? translateWingName(activeWingData, tWings) : tc("palaceMap")}
         <span style={{ fontSize: "0.625rem", marginLeft: "0.125rem", transition: "transform .2s", transform: wingsOpen ? "rotate(180deg)" : "none" }} aria-hidden="true">{"\u25BE"}</span>
       </button>
 
@@ -941,7 +1026,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
           background: `${T.color.linen}f8`,
           backdropFilter: "blur(1.25rem)", WebkitBackdropFilter: "blur(1.25rem)",
           borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
-          boxShadow: "0 0.5rem 2rem rgba(44,44,42,.14)",
+          boxShadow: "0 0.5rem 2rem rgba(64,59,54,.14)",
           padding: "0.375rem", zIndex: 100,
           display: "flex", flexDirection: "column", gap: "0.125rem",
         }}>
@@ -968,7 +1053,9 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                     onMouseEnter={e => { if (activeWing !== w.id) e.currentTarget.style.background = `${T.color.sandstone}20`; }}
                     onMouseLeave={e => { if (activeWing !== w.id) e.currentTarget.style.background = "transparent"; }}
                   >
-                    <span style={{ fontSize: "0.9375rem" }}>{w.icon}</span>
+                    <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                      <WingIcon wingId={w.id} size={18} color={activeWing === w.id ? w.accent : T.color.muted} />
+                    </span>
                     {translateWingName(w, tWings)}
                   </button>
                   {rooms.length > 0 && (
@@ -1013,7 +1100,9 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                         onMouseEnter={e => { e.currentTarget.style.background = `${w.accent}12`; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                       >
-                        <span style={{ fontSize: "0.8125rem" }}>{r.icon}</span>
+                        <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                          <RoomIcon roomId={r.id} wingId={w.id} size={15} color={T.color.muted} />
+                        </span>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{translateRoomName(r, tWings)}</span>
                       </button>
                     ))}
@@ -1032,7 +1121,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
               }}>
                 <span style={{
                   fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
-                  color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.03125rem",
+                  color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.06em",
                 }}>{tc("sharedWithYou")}</span>
               </div>
               {sharedWings.map(sw => {
@@ -1062,9 +1151,11 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = `${T.color.sandstone}20`; }}
                         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
                       >
-                        <span style={{ fontSize: "0.9375rem" }}>{"\u{1F91D}"}</span>
+                        <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                          <TopBarIcon name="shared" size={17} color={isActive ? T.color.terracotta : T.color.muted} />
+                        </span>
                         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {sw.wingId.charAt(0).toUpperCase() + sw.wingId.slice(1)}
+                          {resolveSharedWingName(sw.wingId, tWings, sw.name)}
                         </span>
                         <span style={{ fontSize: "0.5625rem", color: T.color.sandstone, fontWeight: 500 }}>
                           {sw.ownerName}
@@ -1130,7 +1221,9 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                             onMouseEnter={e => { e.currentTarget.style.background = `${T.color.terracotta}12`; }}
                             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                           >
-                            <span style={{ fontSize: "0.8125rem" }}>{r.icon || "\u{1F4C1}"}</span>
+                            <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                              <RoomIcon roomId={r.id} wingId={sw.wingId} size={15} color={T.color.muted} />
+                            </span>
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{translateRoomName(r, tWings)}</span>
                           </button>
                         )) : (
@@ -1162,7 +1255,9 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
               onMouseEnter={e => { e.currentTarget.style.background = `${T.color.sandstone}15`; }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
             >
-              <span style={{ fontSize: "0.8125rem" }}>{"\u2699\uFE0F"}</span>
+              <span style={{ display: "inline-flex", flexShrink: 0 }} aria-hidden="true">
+                <TopBarIcon name="settings" size={16} color={T.color.walnut} />
+              </span>
               {tc("manageShares")}
             </button>
           )}

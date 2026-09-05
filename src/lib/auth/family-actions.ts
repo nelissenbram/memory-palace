@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { sendFamilyInviteEmail } from "@/lib/email/send-invite";
 import { serverT, getServerLocale } from "@/lib/i18n/server";
@@ -458,68 +459,110 @@ export async function getAllFamilyGroups() {
     .select("*")
     .eq("created_by", user.id);
 
-  const membershipGroupIds = new Set((memberships || []).map((m) => m.group_id));
+  // Mutable working copy so synthesized owner memberships (auto-repair) flow through the
+  // rest of this read without mutating the const destructured `memberships`.
+  const activeMemberships: { group_id: string; role: string }[] = (memberships || []).map(
+    (m) => ({ group_id: m.group_id as string, role: m.role as string })
+  );
+  const membershipGroupIds = new Set(activeMemberships.map((m) => m.group_id));
   const inviteGroupIds = new Set((invites || []).map((i) => i.group_id));
+  // Owner member rows synthesized in-memory for orphaned groups whose DB insert is deferred.
+  const syntheticMembers: Record<string, unknown>[] = [];
 
-  // Auto-repair orphaned owned groups
-  for (const ownedGroup of (ownedGroups || [])) {
-    if (!membershipGroupIds.has(ownedGroup.id) && !inviteGroupIds.has(ownedGroup.id)) {
-      await supabase
-        .from("family_members")
-        .insert({
-          group_id: ownedGroup.id,
-          user_id: user.id,
-          email: userEmail,
-          role: "owner",
-          status: "active",
-          joined_at: new Date().toISOString(),
-        });
-      membershipGroupIds.add(ownedGroup.id);
-      if (!memberships) {
-        // This shouldn't happen, but just in case
-      } else {
-        memberships.push({ group_id: ownedGroup.id, role: "owner" });
-      }
+  // Auto-repair orphaned owned groups (rare corrective path): the owner is missing an
+  // explicit membership row. We synthesize the owner membership IN-MEMORY so this read
+  // returns the correct shape immediately, and move the actual DB insert OFF the hot read
+  // path via after() so the response is never blocked by the corrective write. after()
+  // runs the batched single insert once the response has been flushed.
+  const orphanedOwned = (ownedGroups || []).filter(
+    (g) => !membershipGroupIds.has(g.id) && !inviteGroupIds.has(g.id)
+  );
+  if (orphanedOwned.length > 0) {
+    const nowIso = new Date().toISOString();
+    const repairRows = orphanedOwned.map((g) => ({
+      group_id: g.id,
+      user_id: user.id,
+      email: userEmail,
+      role: "owner",
+      status: "active",
+      joined_at: nowIso,
+    }));
+
+    // Reflect the owner membership in this response without awaiting the write.
+    for (const g of orphanedOwned) {
+      membershipGroupIds.add(g.id);
+      activeMemberships.push({ group_id: g.id, role: "owner" });
+      syntheticMembers.push({
+        id: `synthetic-owner-${g.id}`,
+        group_id: g.id,
+        user_id: user.id,
+        email: userEmail,
+        role: "owner",
+        status: "active",
+        joined_at: nowIso,
+      });
     }
+
+    // Persist the repair after the response is sent (off the hot read path).
+    after(async () => {
+      try {
+        const bg = await createClient();
+        await bg.from("family_members").insert(repairRows);
+      } catch (e) {
+        console.error("[getAllFamilyGroups] auto-repair insert failed:", e);
+      }
+    });
   }
 
-  // Fetch full group + members data for all active memberships
+  // Collect every group id we need to hydrate (active memberships + pending invites)
+  const activeGroupIds = activeMemberships.map((m) => m.group_id);
+  const pendingInviteList = (invites || []).filter((i) => !membershipGroupIds.has(i.group_id));
+  const allGroupIds = Array.from(new Set([...activeGroupIds, ...pendingInviteList.map((i) => i.group_id)]));
+
+  // Batch-fetch all groups and all members for those groups in two queries (no N+1).
+  // Skip the round-trips entirely when there is nothing to hydrate.
+  const [groupRes, memberRes] = await Promise.all([
+    allGroupIds.length
+      ? supabase.from("family_groups").select("*").in("id", allGroupIds)
+      : null,
+    activeGroupIds.length
+      ? supabase
+          .from("family_members")
+          .select("*")
+          .in("group_id", activeGroupIds)
+          .order("joined_at", { ascending: true })
+      : null,
+  ]);
+  const groupRows = (groupRes?.data || []) as Record<string, unknown>[];
+  const memberRows = (memberRes?.data || []) as Record<string, unknown>[];
+
+  const groupById = new Map<string, Record<string, unknown>>(
+    groupRows.map((g) => [g.id as string, g])
+  );
+  const membersByGroup = new Map<string, Record<string, unknown>[]>();
+  for (const m of [...memberRows, ...syntheticMembers]) {
+    const gid = m.group_id as string;
+    const list = membersByGroup.get(gid);
+    if (list) list.push(m);
+    else membersByGroup.set(gid, [m]);
+  }
+
+  // Assemble active groups
   const groups: { group: Record<string, unknown>; members: Record<string, unknown>[]; userRole: string }[] = [];
-
-  for (const membership of (memberships || [])) {
-    const { data: group } = await supabase
-      .from("family_groups")
-      .select("*")
-      .eq("id", membership.group_id)
-      .single();
-
+  for (const membership of activeMemberships) {
+    const group = groupById.get(membership.group_id);
     if (!group) continue;
-
-    const { data: members } = await supabase
-      .from("family_members")
-      .select("*")
-      .eq("group_id", group.id)
-      .order("joined_at", { ascending: true });
-
     groups.push({
       group,
-      members: members || [],
+      members: membersByGroup.get(membership.group_id) || [],
       userRole: membership.role,
     });
   }
 
-  // Fetch pending invite groups
+  // Assemble pending invite groups
   const pendingInvites: { group: Record<string, unknown>; userRole: string }[] = [];
-  for (const invite of (invites || [])) {
-    // Skip invites for groups where the user is already an active member
-    if (membershipGroupIds.has(invite.group_id)) continue;
-
-    const { data: group } = await supabase
-      .from("family_groups")
-      .select("*")
-      .eq("id", invite.group_id)
-      .single();
-
+  for (const invite of pendingInviteList) {
+    const group = groupById.get(invite.group_id);
     if (group) {
       pendingInvites.push({ group, userRole: invite.role });
     }
@@ -578,6 +621,85 @@ export async function cancelFamilyInvite(groupId: string, memberId: string) {
     .eq("group_id", groupId);
 
   if (error) return { error: error.message };
+  return { success: true };
+}
+
+/**
+ * Idempotently re-send the invitation email for an EXISTING pending invite row.
+ * Unlike the old client-side cancel-then-recreate, this never deletes the row, so
+ * a failure (or a crash) can never drop the invite — the row is always preserved and
+ * the caller can simply retry. The invite is identified by its family_members id.
+ */
+export async function resendFamilyInvite(groupId: string, memberId: string) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
+  }
+  const supabase = await createClient();
+  const t = await serverError();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: t("notAuthenticated") };
+
+  // Permission check: owner/admin membership, or group creator fallback.
+  const { data: callerMember } = await supabase
+    .from("family_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .single();
+
+  let isCreator = false;
+  if (!callerMember || !["owner", "admin"].includes(callerMember.role)) {
+    const { data: group } = await supabase
+      .from("family_groups")
+      .select("id")
+      .eq("id", groupId)
+      .eq("created_by", user.id)
+      .single();
+    isCreator = !!group;
+  }
+  if (!callerMember || (!["owner", "admin"].includes(callerMember.role) && !isCreator)) {
+    return { error: t("noPermissionInvite") };
+  }
+
+  // Load the existing invite row — it is never mutated or deleted here.
+  const { data: target } = await supabase
+    .from("family_members")
+    .select("id, email, role, status")
+    .eq("id", memberId)
+    .eq("group_id", groupId)
+    .single();
+  if (!target) return { error: t("invitationNotFound") };
+  if (target.status !== "invited") return { error: t("memberAlreadyActive") };
+
+  const recipientEmail = (target.email as string) || "";
+  const inviteRole = ["admin", "member"].includes(target.role) ? (target.role as "admin" | "member") : "member";
+
+  // Re-send the invitation email for the existing row.
+  try {
+    const [{ data: group }, { data: inviterProfile }, famLocale] = await Promise.all([
+      supabase.from("family_groups").select("name").eq("id", groupId).single(),
+      supabase.from("profiles").select("display_name").eq("id", user.id).single(),
+      getServerLocale(),
+    ]);
+    const inviterName =
+      (inviterProfile?.display_name as string | undefined) ||
+      user.email?.split("@")[0] ||
+      serverT("aFriend", famLocale);
+    const result = await sendFamilyInviteEmail({
+      inviterName,
+      recipientEmail,
+      groupName: (group?.name as string | undefined) || serverT("family", famLocale),
+      role: inviteRole,
+    });
+    if (!result.success) {
+      console.error("[resendFamilyInvite] Email send failed:", result.error);
+      return { error: t("somethingWentWrong") };
+    }
+  } catch (e) {
+    console.error("[resendFamilyInvite] Email send exception:", e);
+    return { error: t("emailSendFailed") };
+  }
+
   return { success: true };
 }
 
@@ -710,6 +832,33 @@ export async function updateRoomPublicVisibility(localRoomId: string, showPublic
 
   if (error) return { error: error.message };
   return { success: true };
+}
+
+// Read a room's current privacy state so the sharing UI can SEED its toggles from
+// the server (allow-download + show-in-public-palace) instead of hardcoded defaults,
+// which otherwise mislead the owner and can flip the wrong baseline on toggle.
+export async function fetchRoomPrivacy(localRoomId: string): Promise<{ showPublic: boolean; allowDownload: boolean }> {
+  const fallback = { showPublic: false, allowDownload: true };
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return fallback;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return fallback;
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("id, show_public")
+    .eq("user_id", user.id)
+    .eq("name", localRoomId)
+    .single();
+  if (!room) return fallback;
+  const { data: roomShares } = await supabase
+    .from("room_shares")
+    .select("allow_download")
+    .eq("room_id", room.id)
+    .eq("owner_id", user.id);
+  const shares = roomShares || [];
+  // Download is allowed by default; a share explicitly set to false turns it off.
+  const allowDownload = shares.length === 0 ? true : shares.every((s) => (s as { allow_download?: boolean }).allow_download !== false);
+  return { showPublic: (room as { show_public?: boolean }).show_public === true, allowDownload };
 }
 
 // Privacy control: update a share's permission level

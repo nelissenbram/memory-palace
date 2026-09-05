@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "crypto";
 import { sendWelcomeEmail } from "@/lib/email/send-welcome";
 import { sendDigestEmail } from "@/lib/email/send-digest";
 import { sendInviteEmail } from "@/lib/email/send-invite";
@@ -37,8 +38,16 @@ export async function GET(request: NextRequest) {
   // --- Auth: try CRON_SECRET first, then fall back to session-based admin ---
   let authorized = false;
 
-  if (secret && secret === process.env.CRON_SECRET) {
-    authorized = true;
+  // Constant-time compare, fail-closed if CRON_SECRET is unset (never authorize
+  // on an empty/undefined env secret) and length-guarded so timingSafeEqual
+  // doesn't throw on mismatched buffer lengths.
+  const cronSecret = process.env.CRON_SECRET;
+  if (secret && cronSecret) {
+    const a = Buffer.from(secret);
+    const b = Buffer.from(cronSecret);
+    if (a.length === b.length && timingSafeEqual(a, b)) {
+      authorized = true;
+    }
   }
 
   if (!authorized) {
@@ -76,8 +85,8 @@ export async function GET(request: NextRequest) {
       userId: "00000000-0000-0000-0000-000000000000",
       displayName: "Bram",
       onThisDayMemories: [
-        { title: "Trip to Rome", yearsAgo: 1 },
-        { title: "Christmas at the lake house", yearsAgo: 3 },
+        { id: "preview-otd-1", title: "Trip to Rome", yearsAgo: 1 },
+        { id: "preview-otd-2", title: "Christmas at the lake house", yearsAgo: 3 },
       ],
       upcomingCapsules: [
         { title: "Letter to my future self", revealDate: "2027-04-12" },
@@ -94,6 +103,7 @@ export async function GET(request: NextRequest) {
       },
       weeklyStats: { totalMemories: 184, memoriesThisWeek: 7, totalRooms: 12 },
       memoryOfTheWeek: {
+        id: "preview-motw",
         title: "Sunday lunch in Lucca",
         thumbnailUrl: null,
         roomName: "Travel · Italy 2024",

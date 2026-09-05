@@ -1,0 +1,394 @@
+"use client";
+
+/**
+ * The Guided Walk — the "See it in action" tour player (round-6 army decision).
+ *
+ * Idle: a dark umber band with the poster behind a vignette and one breathing
+ * gold doorway. No autoplay, ever (preload="none"). On click the walkthrough
+ * plays FULL-BLEED, muted, at 0.55x (~45s), with five one-at-a-time captions
+ * (LEFT / RIGHT / LEFT / RIGHT / CENTER) anchored to currentTime fractions of
+ * the film — captions are the narration (the file is silent). Custom pill
+ * controls, keyboard, a thin gold progress hairline, an end-card CTA.
+ *
+ * Reduced-motion / constrained connections never download the video: the
+ * poster stays and all five caption lines render as a static storyboard, with
+ * one explicit "Play the tour" opt-in.
+ */
+
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+
+const CREAM = "#FCFAF5";
+const UMBER = "#241C15";
+const GOLD = "#D4AF37";
+const MUTED_DARK = "#B5ADA3";
+const FONT_DISPLAY = "var(--font-display, Georgia, serif)";
+const FONT_BODY = "var(--font-body, sans-serif)";
+// Warm "margin note" accent — Fraunces italic now that Caveat is retired.
+const FONT_NOTE = "var(--font-display, Georgia, serif)";
+const NOTE_ITALIC = "italic" as const;
+const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+/* Scene boundaries as fractions of the trimmed tour (walkthrough-tour.mp4,
+   ~24.9s, onboarding removed). Stored as fractions so a re-encode to a
+   different length cannot desync the captions. */
+type Side = "left" | "right" | "center";
+type Scene = { key: string; side: Side; start: number; end: number; eyebrow?: string; line: string };
+
+export default function TourPlayer({
+  videoSrc,
+  posterSrc,
+  scenes,
+  ctaLabel,
+  ctaHref,
+  doorwayLabel,
+  watchAgain,
+  labels,
+}: {
+  videoSrc: string;
+  posterSrc: string;
+  scenes: Scene[];
+  ctaLabel: string;
+  ctaHref: string;
+  doorwayLabel: string;
+  watchAgain: string;
+  labels: { pause: string; play: string; close: string; dialog: string; playTour: string };
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hideTimer = useRef<number | null>(null);
+  // The idle doorway trigger — focus is restored here when the player closes.
+  const doorwayRef = useRef<HTMLButtonElement>(null);
+  // The full-bleed player overlay (a de-facto dialog): focus is moved in on open
+  // and Tab is trapped inside it while playing.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const pauseBtnRef = useRef<HTMLButtonElement>(null);
+  const [mode, setMode] = useState<"idle" | "playing">("idle");
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [ended, setEnded] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  // ITEM 4 (owner 2026-08-23): the film opens with a fade FROM BLACK. This is
+  // false the instant we enter "playing" (black cover opaque) and flips true on
+  // the video's first painted frame ("playing" event) → the cover fades out.
+  const [revealed, setRevealed] = useState(false);
+
+  const start = useCallback(() => {
+    // ITEM 3 (owner 2026-08-23): one press = play. No intermediate storyboard/
+    // text screen — clicking always opens the film directly (the tour is muted,
+    // decorative, and user-initiated, so it's shown even under reduced-motion;
+    // the scale-settle animation is still RM-gated in CSS).
+    setEnded(false);
+    setPaused(false);
+    setMode("playing");
+  }, []);
+
+  // ITEM 1 (owner 2026-08-23): ONE click starts the tour. The hero's
+  // "See it in motion" anchor scrolls to #tour AND dispatches this event so
+  // the player opens + autoplays (muted, off a real user gesture) without a
+  // second doorway click. Reduced-motion / save-data users still get the
+  // static storyboard with its explicit click-to-play via start()'s guard.
+  useEffect(() => {
+    const onOpen = () => { start(); };
+    window.addEventListener("lv2:tour-start", onOpen);
+    return () => window.removeEventListener("lv2:tour-start", onOpen);
+  }, [start]);
+
+  // Configure + play only AFTER the <video> has mounted (mode → playing).
+  // Doing this in a click-time rAF races React's commit and leaves the element
+  // unmuted → autoplay is blocked.
+  useEffect(() => {
+    if (mode !== "playing") return;
+    const v = videoRef.current;
+    if (!v) return;
+    setRevealed(false);            // black cover opaque until the first frame paints
+    v.muted = true;
+    v.playbackRate = 0.75;         // owner: 25% slower — contemplative but not the laggy 0.55x
+    v.currentTime = 0;
+    const onPlaying = () => setRevealed(true); // ITEM 4: fade the black cover out
+    v.addEventListener("playing", onPlaying);
+    v.play().catch(() => {});
+    // Move focus into the dialog (the pause control) so screen-reader / keyboard
+    // users land inside the player rather than on document.body.
+    requestAnimationFrame(() => pauseBtnRef.current?.focus());
+    return () => v.removeEventListener("playing", onPlaying);
+  }, [mode]);
+
+  const close = useCallback(() => {
+    const v = videoRef.current;
+    if (v) { v.pause(); v.currentTime = 0; }
+    setMode("idle");
+    setEnded(false);
+    setActive(0);
+    setProgress(0);
+    // Restore focus to the doorway trigger that opened the player. rAF waits for
+    // the idle doorway button to remount before focusing it.
+    requestAnimationFrame(() => doorwayRef.current?.focus());
+  }, []);
+
+  const togglePause = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) { v.play().catch(() => {}); setPaused(false); }
+    else { v.pause(); setPaused(true); }
+  }, []);
+
+  const bumpControls = useCallback(() => {
+    setControlsVisible(true);
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => setControlsVisible(false), 3000);
+  }, []);
+
+  // currentTime → active scene (integer compare only), progress hairline.
+  useEffect(() => {
+    if (mode !== "playing") return;
+    const v = videoRef.current;
+    if (!v) return;
+    const onTime = () => {
+      const dur = v.duration || 1;
+      const p = v.currentTime / dur;
+      setProgress(p);
+      let idx = 0;
+      for (let i = 0; i < scenes.length; i++) { if (p >= scenes[i].start) idx = i; }
+      setActive((prev) => (prev === idx ? prev : idx));
+    };
+    const onEnd = () => { setEnded(true); setActive(scenes.length - 1); setControlsVisible(true); };
+    v.addEventListener("timeupdate", onTime);
+    v.addEventListener("ended", onEnd);
+    return () => { v.removeEventListener("timeupdate", onTime); v.removeEventListener("ended", onEnd); };
+  }, [mode, scenes]);
+
+  // Keyboard while playing.
+  useEffect(() => {
+    if (mode !== "playing") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); close(); return; }
+      if (e.key === " " || e.code === "Space") { e.preventDefault(); togglePause(); return; }
+      if (e.key === "Tab") {
+        // Trap Tab/Shift+Tab within the dialog so focus can't fall into the
+        // (still-rendered) page behind the full-bleed video.
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        const items = Array.from(
+          dialog.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ),
+        );
+        if (items.length === 0) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        const activeEl = document.activeElement;
+        if (e.shiftKey && (activeEl === first || !dialog.contains(activeEl))) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (activeEl === last || !dialog.contains(activeEl))) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    bumpControls();
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mode, close, togglePause, bumpControls]);
+
+  const current = scenes[active] ?? scenes[0];
+
+  return (
+    <div
+      style={{ position: "relative", width: "100%", minHeight: "min(clamp(24rem, 56vw, 44rem), 88svh)", borderRadius: mode === "playing" ? "1.25rem" : 0, overflow: "hidden" }}
+      onPointerMove={mode === "playing" ? bumpControls : undefined}
+    >
+      <style>{`
+        .lv2tp-cap { animation: lv2tp-cap-in 700ms ${EASE}; }
+        @keyframes lv2tp-cap-in { from { opacity: 0; } to { opacity: 1; } }
+        .lv2tp-cap-left { animation-name: lv2tp-cap-left; }
+        .lv2tp-cap-right { animation-name: lv2tp-cap-right; }
+        @keyframes lv2tp-cap-left { from { opacity: 0; transform: translateX(-0.75rem); } to { opacity: 1; transform: none; } }
+        @keyframes lv2tp-cap-right { from { opacity: 0; transform: translateX(0.75rem); } to { opacity: 1; transform: none; } }
+        .lv2tp-video { animation: lv2tp-settle 1.6s ease-out; }
+        @keyframes lv2tp-settle { from { transform: scale(1.04); } to { transform: scale(1); } }
+        /* Idle emblem: the play triangle (with the real palace logo inside)
+           flips around its axis once every ~2s (owner 2026-08-23). */
+        .lv2tp-spin { transform-origin: 50% 50%; animation: lv2tp-spin 2s cubic-bezier(0.62,0,0.38,1) infinite; }
+        @keyframes lv2tp-spin { 0% { transform: rotateY(0deg); } 58% { transform: rotateY(360deg); } 100% { transform: rotateY(360deg); } }
+        @media (prefers-reduced-motion: reduce) {
+          .lv2tp-cap, .lv2tp-cap-left, .lv2tp-cap-right, .lv2tp-video, .lv2tp-spin { animation: none !important; }
+        }
+      `}</style>
+
+      {/* Idle emblem — the play triangle with the REAL Memory Palace temple
+          logo inside, flipping around its axis every ~2s. Transparent bg so the
+          section's umber (L.dark) shows through seamlessly — no separate box.
+          The whole area is the click target (button below). */}
+      {mode === "idle" ? (
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "clamp(1.25rem, 3vw, 2rem)" }}>
+          <div className="lv2tp-emblem" style={{ position: "relative", width: "clamp(11rem, 26vw, 17rem)", aspectRatio: "1", perspective: "1000px" }}>
+            {/* static play ring */}
+            <svg viewBox="0 0 300 300" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+              <defs><linearGradient id="lv2gR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E8C766" /><stop offset="1" stopColor="#B8912F" /></linearGradient></defs>
+              <circle cx="150" cy="150" r="132" fill="none" stroke="url(#lv2gR)" strokeWidth="4" opacity="0.9" />
+              <circle cx="150" cy="150" r="122" fill="none" stroke="url(#lv2gR)" strokeWidth="1" opacity="0.4" />
+            </svg>
+            {/* flipping triangle + real temple logo */}
+            <svg className="lv2tp-spin" viewBox="0 0 300 300" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
+              <defs><linearGradient id="lv2gT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#E8C766" /><stop offset="1" stopColor="#B8912F" /></linearGradient></defs>
+              <g transform="translate(150,150)">
+                <path d="M -58 -74 L -58 74 L 92 0 Z" fill="rgba(212,175,55,0.08)" stroke="url(#lv2gT)" strokeWidth="3" strokeLinejoin="round" />
+                <g transform="translate(-50,-38) scale(0.8)" fill="url(#lv2gT)">
+                  <path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z" />
+                  <rect x="18" y="40" width="8" height="32" />
+                  <rect x="32" y="40" width="8" height="32" />
+                  <rect x="46" y="40" width="8" height="32" />
+                  <rect x="60" y="40" width="8" height="32" />
+                  <ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7" />
+                  <rect x="10" y="72" width="80" height="4" />
+                  <rect x="6" y="78" width="88" height="4" />
+                  <rect x="2" y="84" width="96" height="4" />
+                </g>
+              </g>
+            </svg>
+          </div>
+          <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: "clamp(1.25rem, 2.4vw, 1.75rem)", letterSpacing: "0.22em", textTransform: "uppercase", color: "#EBDCBB" }}>The Memory Palace</span>
+        </div>
+      ) : null}
+
+      {/* ── PLAYING: full-bleed video + reading-lane + captions + controls ── */}
+      {mode === "playing" ? (
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={labels.dialog}
+          style={{ position: "absolute", inset: 0 }}
+        >
+          <video
+            key="tour"
+            ref={videoRef}
+            className="lv2tp-video"
+            playsInline
+            preload="auto"
+            poster={posterSrc}
+            aria-label={labels.dialog}
+            onClick={togglePause}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", cursor: "pointer", background: "#000" }}
+          >
+            <source src={videoSrc} type="video/mp4" />
+          </video>
+
+          {/* ITEM 4: fade FROM BLACK — opaque until the first frame paints */}
+          <span aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 6, background: "#000", opacity: revealed ? 0 : 1, transition: "opacity 0.9s ease", pointerEvents: "none" }} />
+
+          {/* reading-lane vignette + directional scrim for the active side */}
+          <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 68% 82% at 50% 50%, rgba(36,28,21,0) 45%, rgba(36,28,21,0.38) 100%), linear-gradient(90deg, rgba(36,28,21,0.6) 0%, rgba(36,28,21,0) 24%, rgba(36,28,21,0) 76%, rgba(36,28,21,0.6) 100%)" }} />
+          <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: current.side === "left" ? "linear-gradient(90deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.30) 55%, transparent 100%)" : current.side === "right" ? "linear-gradient(270deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.30) 55%, transparent 100%)" : "radial-gradient(ellipse 62% 42% at 50% 60%, rgba(36,28,21,0.55) 0%, rgba(36,28,21,0.2) 55%, transparent 78%)" }} />
+          {/* center scene gets a soft radial scrim so the CREAM caption clears
+              contrast even over a bright/pale video frame (no side lane there) */}
+
+          {/* active caption (desktop side lane) */}
+          <div
+            key={`cap-${active}`}
+            className={`lv2tp-cap lv2tp-cap-${current.side}`}
+            style={{
+              position: "absolute",
+              zIndex: 4,
+              top: current.side === "center" ? "58%" : "38%",
+              left: current.side === "right" ? "auto" : current.side === "center" ? "50%" : "clamp(1.5rem, 6vw, 5rem)",
+              right: current.side === "right" ? "clamp(1.5rem, 6vw, 5rem)" : "auto",
+              transform: current.side === "center" ? "translateX(-50%)" : "none",
+              maxWidth: "min(20rem, calc(100% - clamp(3rem, 12vw, 10rem)))",
+              textAlign: current.side === "right" ? "right" : current.side === "center" ? "center" : "left",
+            }}
+          >
+            {current.eyebrow ? (
+              <span style={{ display: "block", fontFamily: FONT_NOTE, fontStyle: NOTE_ITALIC, fontWeight: 500, fontSize: "1.15rem", letterSpacing: "0.02em", color: GOLD, marginBottom: "0.375rem" }}>
+                {current.eyebrow}
+              </span>
+            ) : null}
+            <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: "clamp(1.5rem, 3.2vw, 2.5rem)", lineHeight: 1.15, letterSpacing: "0.01em", color: CREAM, textWrap: "balance", textShadow: "0 1px 12px rgba(36,28,21,0.85)" }}>
+              {current.line}
+            </span>
+            {ended && active === scenes.length - 1 ? (
+              <span style={{ display: "inline-flex", flexDirection: "column", gap: "0.75rem", marginTop: "1.25rem", alignItems: current.side === "center" ? "center" : "flex-start" }}>
+                <Link href={ctaHref} className="lv2-cta" style={{ display: "inline-flex", alignItems: "center", minHeight: "3rem", padding: "0 2rem", borderRadius: "0.75rem", background: "linear-gradient(135deg, #9A4F2A, #6B3318)", color: "#FFF", fontFamily: FONT_BODY, fontWeight: 600, textDecoration: "none" }}>
+                  {ctaLabel} →
+                </Link>
+                <button type="button" onClick={() => { const v = videoRef.current; if (v) { v.currentTime = 0; v.play().catch(() => {}); } setEnded(false); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem", padding: "0 0.5rem", background: "none", border: "none", cursor: "pointer", color: CREAM, opacity: 0.85, fontFamily: FONT_BODY, fontSize: "1rem", textShadow: "0 1px 12px rgba(36,28,21,0.85)" }}>
+                  ↺ {watchAgain}
+                </button>
+              </span>
+            ) : null}
+          </div>
+
+          {/* aria-live caption for screen readers */}
+          <p aria-live="polite" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+            {current.eyebrow ? current.eyebrow + ". " : ""}{current.line}
+          </p>
+
+          {/* controls pill */}
+          <div
+            style={{
+              position: "absolute",
+              zIndex: 5,
+              bottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              padding: "0.5rem 1rem",
+              borderRadius: "999px",
+              background: "rgba(36,28,21,0.55)",
+              WebkitBackdropFilter: "blur(8px)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(212,175,55,0.4)",
+              opacity: controlsVisible ? 1 : 0,
+              transition: "opacity 250ms ease",
+              pointerEvents: controlsVisible ? "auto" : "none",
+            }}
+          >
+            <button ref={pauseBtnRef} type="button" onClick={togglePause} aria-label={paused ? labels.play : labels.pause} style={ctlBtn}>
+              {paused ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6V2z" fill="currentColor" /></svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h3.5v12H3zM9.5 2H13v12H9.5z" fill="currentColor" /></svg>
+              )}
+            </button>
+            <span aria-hidden="true" style={{ width: "6rem", height: "0.1875rem", borderRadius: "999px", background: "rgba(252,250,245,0.25)", overflow: "hidden" }}>
+              <span style={{ display: "block", height: "100%", width: `${Math.round(progress * 100)}%`, background: GOLD }} />
+            </span>
+            <button type="button" onClick={close} aria-label={labels.close} style={ctlBtn}>
+              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── IDLE: the poster IS the button — click anywhere to play ── */}
+      {mode === "idle" ? (
+        <button
+          ref={doorwayRef}
+          type="button"
+          onClick={start}
+          className="lv2-tour-door"
+          aria-label={doorwayLabel}
+          style={{ position: "absolute", inset: 0, zIndex: 2, background: "none", border: "none", cursor: "pointer", padding: 0, width: "100%", height: "100%" }}
+        />
+      ) : null}
+
+    </div>
+  );
+}
+
+const ctlBtn: React.CSSProperties = {
+  width: "2.75rem",
+  height: "2.75rem",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "none",
+  border: "none",
+  borderRadius: "50%",
+  color: CREAM,
+  cursor: "pointer",
+};

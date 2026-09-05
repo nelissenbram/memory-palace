@@ -56,7 +56,7 @@ export default function ActivityFeed({
       setItems((prev) => [...prev, ...more]);
       setCursor(nextCursor);
     });
-  }, [cursor, isPending]);
+  }, [cursor, isPending, userId]);
 
   function getActionText(item: FeedItem): string {
     const name = item.actor_name || t("someone");

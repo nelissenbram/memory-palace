@@ -224,8 +224,8 @@ function IconWhatsApp() {
       {/* Camera icon inside */}
       <rect x="9" y="7" width="6" height="4.5" rx="0.5" />
       <circle cx="12" cy="9.25" r="1.2" />
-      {/* Green dot accent */}
-      <circle cx="19" cy="5" r="2" fill="#25D366" stroke="none" />
+      {/* Dot accent (Atrium token: inherits card accent, was brand green) */}
+      <circle cx="19" cy="5" r="2" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -250,14 +250,6 @@ function IconHelp() {
       <circle cx="12" cy="12" r="10" />
       <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
       <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function IconContribute() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
     </svg>
   );
 }
@@ -293,49 +285,49 @@ export default function EnhanceMemories({
       icon: <IconUpload />,
       titleKey: "uploadTitle",
       descKey: "uploadDesc",
-      accent: T.color.terracotta,
+      accent: "#9A4F2A", // Atrium token: terracotta glyph
       onClick: onUploadPhotos,
     },
     {
       icon: <IconAIEnhance />,
       titleKey: "aiTitle",
       descKey: "aiDesc",
-      accent: T.color.gold,
+      accent: "#8A6410", // Atrium token: ochre glyph (gold reserved for the palace itself)
       onClick: onAIEnhance,
     },
     {
       icon: <IconWrite />,
       titleKey: "writeTitle",
       descKey: "writeDesc",
-      accent: T.color.walnut,
+      accent: "#716A5E", // Atrium token: muted ink
       onClick: onAddDescription,
     },
     {
       icon: <IconOrganize />,
       titleKey: "organizeTitle",
       descKey: "organizeDesc",
-      accent: T.color.sage,
+      accent: "#56683C", // Atrium token: sage glyph
       onClick: onOrganize,
     },
     {
       icon: <IconGallery />,
       titleKey: "galleryTitle",
       descKey: "galleryDesc",
-      accent: T.color.terracotta,
+      accent: "#9A4F2A", // Atrium token: terracotta glyph
       onClick: onSetupGallery,
     },
     {
       icon: <IconFamilyGroup />,
       titleKey: "familyGroupTitle",
       descKey: "familyGroupDesc",
-      accent: T.color.walnut,
+      accent: "#716A5E", // Atrium token: muted ink
       onClick: onCreateFamilyGroup,
     },
     {
       icon: <IconTimeCapsule />,
       titleKey: "timeCapsuleTitle",
       descKey: "timeCapsuleDesc",
-      accent: T.color.gold,
+      accent: "#8A6410", // Atrium token: ochre glyph (gold reserved for the palace itself)
       onClick: onCreateTimeCapsule,
     },
     {
@@ -349,34 +341,44 @@ export default function EnhanceMemories({
       icon: <IconWhatsApp />,
       titleKey: "whatsappTitle",
       descKey: "whatsappDesc",
-      accent: "#25D366",
+      accent: "#56683C", // Atrium token: sage glyph (was WhatsApp brand green)
       onClick: onSendViaWhatsApp,
     },
     {
       icon: <IconPublishExplore />,
       titleKey: "publishTitle",
       descKey: "publishDesc",
-      accent: "#7B6B8E",
+      accent: "#B85C38", // Atrium token: terracotta ember (was off-palette violet)
       onClick: onPublishExplore,
     },
     {
       icon: <IconHelp />,
       titleKey: "helpTitle",
       descKey: "helpDesc",
-      accent: T.color.sandstone,
+      accent: "#716A5E", // Atrium token: muted ink (sandstone too faint on cream)
       onClick: () => navigateInApp("/help"),
-    },
-    {
-      icon: <IconContribute />,
-      titleKey: "contributeTitle",
-      descKey: "contributeDesc",
-      accent: "#FF4500",
-      onClick: () => window.open("https://www.reddit.com/r/TheMemoryPalace/", "_blank"),
     },
   ];
 
   return (
     <section style={{ width: "100%" }}>
+      {/* Atrium tokens: warm-ink hover step, gold focus ring, reduced-motion gate */}
+      <style>{`
+        .enhance-card.tuscan-card-liftable:hover {
+          transform: translateY(-0.1875rem);
+          box-shadow: 0 0.75rem 1.75rem rgba(64,59,54,0.16) !important;
+        }
+        .enhance-card [role="button"]:focus-visible {
+          outline: 0.1875rem solid #D4AF37;
+          outline-offset: 0.1875rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .enhance-card, .enhance-card * {
+            animation: none !important;
+            transition: none !important;
+          }
+        }
+      `}</style>
       <TuscanSectionHeader>{t("sectionTitle")}</TuscanSectionHeader>
 
       <div
@@ -428,9 +430,9 @@ function EnhanceCard({
   const handleMouseEnter = useCallback(() => {
     const el = cardRef.current;
     if (!el) return;
-    el.style.transform = "translateY(-0.25rem)";
+    el.style.transform = "translateY(-0.1875rem)";
     el.style.boxShadow =
-      "0 0.75rem 2rem rgba(0,0,0,0.1), 0 0.125rem 0.5rem rgba(0,0,0,0.04)";
+      "0 0.75rem 1.75rem rgba(64,59,54,0.16)"; /* Atrium token: warm-ink hover step */
     /* Accent line glow */
     const line = el.querySelector<HTMLElement>("[data-accent-line]");
     if (line) {
@@ -455,10 +457,15 @@ function EnhanceCard({
     <TuscanCard
       variant="elevated"
       padding="0"
+      className="enhance-card"
       style={{
         cursor: "pointer",
         animationDelay: `${delay}s`,
         transition: `transform 0.3s ${EASE}, box-shadow 0.3s ${EASE}`,
+        /* Atrium tokens: opaque hairline + S1 warm-ink shadow (override cool base) */
+        border: "0.0625rem solid #E3D6BC",
+        boxShadow:
+          "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -524,9 +531,10 @@ function EnhanceCard({
         <h4
           style={{
             fontFamily: T.font.display,
-            fontSize: "1rem",
+            fontSize: "1.0625rem", // Atrium token: titleS
             fontWeight: 600,
-            color: T.color.charcoal,
+            lineHeight: 1.15,
+            color: "#403B36", // Atrium token: ink
             margin: 0,
             marginBottom: "0.375rem",
             textAlign: "center",
@@ -541,7 +549,7 @@ function EnhanceCard({
           style={{
             fontFamily: T.font.body,
             fontSize: "0.8125rem",
-            color: T.color.muted,
+            color: "#716A5E", // Atrium token: muted, full opacity
             margin: 0,
             textAlign: "center",
             lineHeight: 1.4,

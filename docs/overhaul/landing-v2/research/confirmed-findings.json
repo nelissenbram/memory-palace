@@ -1,0 +1,686 @@
+[
+  {
+    "title": "Screenshot carousel's mandatory scroll-snap traps vertical scroll, making the bottom ~40% of the page unreachable",
+    "detail": "LandingClient.tsx:1673 sets scrollSnapType:'x mandatory' on a viewport-wide overflow-x:auto flex row (1646-1718) inside the nested #landing-scroll container. In Chromium, vertical wheel/trackpad gestures over a mandatory-snap horizontal scroller are re-targeted to the snap axis; because the strip spans full viewport width, the pointer is almost always over it and vertical scrolling stalls — live testing (2026-07-16) confirmed even End/PageUp cannot escape. globals.css:69-72 (.mp-scroll overscroll-behavior:contain) removes the scroll-chaining fallback on touch; horizontal overscroll also chains into Android back/forward gestures (no overscrollBehaviorX:contain). Net effect: comparison table, audience, testimonials, 12-question FAQ (also emitted as JSON-LD), app-store badges, final CTA, and footer are unreachable. The carousel has zero keyboard/AT affordances (no tabIndex, no prev/next, no dots, no aria-roledescription) — hard WCAG 2.1.1/2.4.3 failure — and its only affordance is a rgba(198,107,61,0.4) scrollbar thumb at ~1.9:1 contrast (styles 824-837). Staging code shows a plain overflow div, suggesting deployed bundle drift — the exact prod-drift root cause documented 2026-07-12.",
+    "severity": "blocker",
+    "section": "Section 7 carousel (LandingClient.tsx:1646-1718, 824-837) + globals.css:69-72",
+    "recommendation": "Priority zero: first verify prod runs current code (deploy drift has bitten this page before). Then remove 'x mandatory' (use 'x proximity' or none) — never convert vertical wheel/key input into horizontal movement. Best: static grid on desktop, swipe strip only on touch. If any carousel survives: visible 44px prev/next buttons calling scrollBy(), dots, tabIndex=0 with arrow keys, aria-roledescription='carousel', overscroll-behavior-x:contain, full-opacity thumb. Re-test hero-to-footer as one uninterrupted scroll via wheel, keyboard (End/PageDown/Space), and touch — this single fix unlocks four already-built sections of proof and objection handling.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Entire page scrolls inside a custom 100dvh div, structurally breaking keyboard scrolling, scroll restoration, and iOS viewport behavior",
+    "detail": "The page root is <div id='landing-scroll'> with height:100dvh, overflowY:auto (LandingClient.tsx:610-621), so the document never scrolls. Keyboard scroll keys target the focused element's nearest scrollable ancestor, falling back to document.scrollingElement — which has no overflow — so End/PageUp/Space are no-ops until the user clicks inside the div, and once focus lands in the carousel, End/Home scroll it horizontally (keyboard scrolling does not chain to ancestors). It also breaks browser scroll restoration on back-navigation, iOS tap-status-bar scroll-to-top, and — because the body never scrolls — iOS Safari's URL bar never collapses, so the hero's minHeight:100vh (1079) permanently exceeds the visible viewport, clipping the scroll hint and pushing CTAs to the bottom edge on 667-812px phones.",
+    "severity": "blocker",
+    "section": "Root scroll container (LandingClient.tsx:609-621, 1077-1091) + globals.css:69-72",
+    "recommendation": "Let the document scroll: drop the fixed-height inner scroller, use normal body flow (nav is already position:fixed; the scroll listener at 575-581 can read window.scrollY). Native document scroll gives keyboard keys, scrollbar, scroll restoration, find-in-page, and fragment links for free — Linear/Stripe/Apple never use custom scrollers on marketing pages. Use minHeight:100svh for the hero. If the scroller must stay, add tabIndex + programmatic focus on mount and audit that no nested scrollable steals End/Home.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "\"End-to-End Encrypted\" claim is factually false — hero chip, /security SEO metadata, blog, all 5 locales",
+    "detail": "Provably untrue: the only crypto in the repo is HMAC webhook verification (api/webhooks/whatsapp/route.ts:111-119) — no libsodium/tweetnacl/WebCrypto content encryption anywhere; all uploads send plaintext to Supabase Storage; the server demonstrably reads content (ai-label/route.ts:90-108 sends user photos to a third-party AI provider — definitionally incompatible with E2EE; AI interviews, WhatsApp ingestion, sharing, OG images all require server plaintext); busts/profile-photos are served via getPublicUrl. The product's own /security page correctly claims only TLS 1.2+ in transit and AES-256 at rest (en.json:3592-3598), so the contradiction is one click away. The false chip ships in all 5 locales (landing.trustBadges.encrypted, line 1330 each, rendered LandingClient.tsx:1256); worse, src/app/security/layout.tsx lines 5/8/25 (description, openGraph, twitter) also promise \"end-to-end encryption\" — the SERP snippet promises E2EE and the landed page disproves it. The site's own blog (src/lib/blog/posts/en.ts:1369) even coaches readers to ask vendors about E2EE. For a GDPR-positioned EU heritage app targeting 60+ users this is UCPD misleading-practice exposure and a one-tweet reputation risk, trivially falsifiable by a journalist, Apple reviewer, or the security-literate gift-giving adult child.",
+    "severity": "blocker",
+    "section": "Hero trust chips (LandingClient.tsx:1256; all 5 locale files line 1330) + src/app/security/layout.tsx:5,8,25 + blog",
+    "recommendation": "Replace trustBadges.encrypted in all 5 locales — EN \"Encrypted at Rest & in Transit\", NL \"Versleuteld bij opslag & verzending\", DE \"Verschlüsselt bei Speicherung & Übertragung\", ES \"Cifrado en reposo y en tránsito\", FR \"Chiffré au repos et en transit\". Do not soften to \"Fully Encrypted\" (re-implies E2EE). Fix all three security/layout.tsx descriptions to \"AES-256 encryption at rest, TLS in transit, and GDPR compliance\". Sweep every file containing the string (messages/*.json, blog en.ts/nl.ts, security/layout.tsx). Add a pre-deploy grep gate for \"end-to-end|E2EE|bank-grade\" across src/messages and src/app. Make every security chip link to /security — the honest page is the strongest proof.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Testimonials appear fabricated (per-se banned under EU law post-Omnibus) and \"Join thousands\" is unverifiable — on landing, /pricing, and in-app",
+    "detail": "en.json:1273-1289 contains four invented-looking quotes with full names and ages (\"Margaret van den Berg, 72\", \"Robert Hendriks, 65\", \"Elisabeth Janssen, 44\" with a quasi-therapeutic dementia claim, \"Karel de Vries, 58\" claiming \"15,000 images sorted in under an hour\"), rendered with hardcoded 5-star SVGs and CSS-gradient initial avatars (LandingClient.tsx:463-467, ~2030) — each mapping 1:1 to a marketing pillar, with no photos, city, or verifiability. /pricing already ships \"Maria S.\" and \"Thomas K.\" (en.json:1899-1904); in-app interview.socialProof (en.json:4436) says \"Join thousands preserving life stories\" while the product is beta-stage. Since the Omnibus Directive (2019/2161), fake consumer reviews are a per-se banned commercial practice in every EU member state (fines up to 4% of turnover in the launch locales). Quote2 also claims recording a video message — a capability that does not exist. Currently unreachable only because of the scroll trap; fixing the carousel will surface them. One discovered fake grief quote is fatal for a brand whose entire promise is truthful preservation of real lives.",
+    "severity": "blocker",
+    "section": "Testimonials (LandingClient.tsx:463-467, ~2030; en.json:1273-1289) + /pricing quotes (en.json:1899-1904) + en.json:4436",
+    "recommendation": "Verify each quote maps to a real, consenting user or remove all of them (landing + /pricing + all 5 locales) before the redesign ships; reword socialProof to a number-free claim. Replace with real consented quotes — MP has real users to ask (Android v1.0.1 testers, Guillaume, featured_palaces owners): first name + last initial minimum, real age, written consent, no invented performance numbers, no price mentions (iOS seal). If none are ready, cut the section — an absent section is invisible; a fake one is fatal. Keep the dementia/adult-child story ANGLE as an explicitly labeled scenario, not a fake person. Copy rule: no user counts, star ratings, or review counts until queried from the DB and above a vanity floor.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Apple 3.1.1 seal has live holes on the landing page: exit-intent modal, un-gated \"Free / Forever Plan\" stat, credit-card body copy, VoiceOver labels, and a fragile dash-stripping mechanism",
+    "detail": "After six rejections on builds 46-53, each hole is a live re-rejection vector: (1) exit-intent CTA renders \"Create Your Palace — Free\" without iosCta() (LandingClient.tsx:2713) and the guard at 592-605 only skips isMobile (≤767px) — an iPad in the iOS app with trackpad/Pencil hover can fire mouseleave and show the exact qualifier Apple flagged. (2) The trust bar renders TRUST_STATS unconditionally (1332-1356), so iOS still shows \"Free / Forever Plan\" — \"Plan\" implies other paid plans, the wording pattern Apple cited 2026-07-09. (3) midCta \"Your palace is free. No credit card, no catch.\" (en.json:1191 → line 1556) and cta.description \"Free forever. No credit card...\" (en.json:1291 → 2269) render un-gated; mentioning credit cards implies purchasable content. (4) aria-labels \"Create your palace for free\" (en.json:1316-1318, applied 1182/2274) are never stripped — VoiceOver announces \"free\" on sealed buttons, also a WCAG 2.5.3 divergence. (5) iosCta() (545-548) is runtime string surgery splitting on em/en dashes — any copy edit with a hyphen or qualifier-first ordering silently re-leaks with no build signal; nl.json:1369 (\"Maak je Palace — Gratis\", untranslated) proves keys drift independently.",
+    "severity": "blocker",
+    "section": "Exit-intent (LandingClient.tsx:592-605, 2624-2717), trust bar (1332-1356), mid/final CTA (1556, 2269), a11y keys (en.json:1313-1319), iosCta (545-548)",
+    "recommendation": "(1) Add `if (isIosApp) return;` to the exit-intent effect AND wrap its label in iosCta() for defense in depth. (2) Gate stat2 on isIosApp to a neutral pair (\"Unlimited / Wings & Rooms\"). (3) Add explicit *_ios message keys mirroring the existing faq a4_ios pattern: midCta.text_ios \"Your palace is ready in minutes. No tech skills needed.\"; cta.description_ios equivalent — web keeps the credit-card reassurance. (4) Drop custom aria-labels or set them equal to visible labels with pricing words removed. (5) Retire dash-stripping in favor of price-free primary labels plus a CI grep failing on /free|gratis|kostenlos|gratuit|credit card/i in any key rendered on the iOS path. Sweep all 5 locales.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "iOS Apple-3.1.1 seal is two-layered and depends on dynamic SSR — the redesign must preserve both layers verbatim",
+    "detail": "Seal = (1) page.tsx server-seeds initialIosApp into LandingClient so SSR HTML has zero paid surfaces on iOS, and (2) middleware.ts:36 redirects native-iOS /pricing to /atrium. The first-paint seal works only because page.tsx calls cookies()/headers(), keeping the route dynamic. A redesign that adds force-static/ISR, moves the landing to static export, or does iOS detection client-only reintroduces sealed-HTML flashes — the exact failure mode behind prior 3.1.1 rejections (stale/static prod, 2026-07-12 audit).",
+    "severity": "blocker",
+    "section": "src/app/page.tsx, src/middleware.ts:30-40, LandingClient.tsx iosApp conditionals",
+    "recommendation": "Carry the initialIosApp prop plumbing and conditional rendering of paid CTAs/pricing links through the new component tree verbatim; never make the landing route static or client-detect-only. Post-deploy, verify with curl -A MemoryPalace-iOS (and mp_platform=ios cookie) that SSR HTML contains no pricing/\"— Free\" strings. Any new pricing block, gift flow, or plan badge added during the redesign must sit behind the same gate.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Below-hero content is SSR'd as empty placeholders (LazySection), producing hero-only indexed HTML, JSON-LD content mismatch, blank beige voids, and scroll-time layout shift",
+    "detail": "All 8 sections after the hero are wrapped in LazySection (LandingClient.tsx:78-85), which SSRs an empty placeholder div (12-30rem minHeight vs real 1500-2500px sections) and mounts children only on IntersectionObserver: (1) none of the features/how-it-works/comparison/testimonials/FAQ text exists in served HTML — Google (whose tall-viewport render never scrolls the nested container), Bing, and AI-search crawlers index an essentially hero-only page, and the FAQPage JSON-LD (line 646) describes Q&A text absent from the DOM, a structured-data mismatch under Google's guidelines; (2) document height inflates repeatedly while scrolling — scrollbar jumps, End lands at a bottom that then moves, scrollIntoView('#how-it-works') (1201) lands at the wrong offset (no scroll-margin-top anywhere, fixed nav overlaps anchors); (3) ScrollFadeIn (88-102) holds content at opacity:0 until 10% in-viewport then staggers per-card (delay 0.05+i*0.07, line 1412), so whole viewports show nothing but background — the observed 'huge dead whitespace' is largely this choreography, and if JS fails the walkthrough video and carousel are permanently invisible. The 'lazy' machinery saves nothing: the content is text and inline SVG.",
+    "severity": "blocker",
+    "section": "All sections below hero (LandingClient.tsx:78-102, 1363-2141)",
+    "recommendation": "Remove LazySection: always render section children on the server (the text IS the SEO asset) and use CSS content-visibility:auto + contain-intrinsic-size for paint savings with zero layout shift. Put ids on real <section> elements with scroll-margin-top:5rem. Make ScrollFadeIn start visible by default or use a generous positive rootMargin (~200-300px lead) so elements are opaque before entering view; cap at ~300ms, no per-item stagger, honor prefers-reduced-motion, hidden-state as a post-hydration class so no-JS users see content. Rule: no pixel blank longer than 150ms after entering the viewport; CLS during scroll = 0.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "All 5 full locale JSONs (~1.5 MB raw, ~348 KB gzip) are statically bundled into the landing client chunk",
+    "detail": "LandingClient.tsx:11-19 statically imports en/nl/de/es/fr.json (265-322 KB each — the ENTIRE app's ~11k keys per locale, not just `landing`) into a landingMessages map. Verified in the build: four chunks of 84-89 KB gzip each are literally the locale files (confirmed by grepping 'souvenirs'/'recuerdos'/'Erinnerungen'/'herinneringen' in .next/static/chunks). An English visitor downloads and parses four languages they will never see — ~7 s extra on 3G plus a large main-thread JSON parse on an older iPad. Ironically src/lib/hooks/useTranslation.ts already lazy-loads these exact files via dynamic import(); the static imports defeat that system.",
+    "severity": "blocker",
+    "section": "src/app/LandingClient.tsx:11-19 + src/lib/hooks/useTranslation.ts",
+    "recommendation": "Delete the static message imports and rely on useTranslation's existing dynamic loading (en.json is already the sync fallback). Better: extract a landing-only namespace per locale (~5-10 KB) and have the server wrapper (page.tsx) read the locale and pass only that slice as props, so zero translation JSON ships in the client bundle.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "~580 KB gzip of client JS for a static marketing page — and the primary CTA is dead until hydration",
+    "detail": "The whole 2,719-line page is one 'use client' component; its client-module chunks sum to 579,737 bytes gzipped (measured via page_client-reference-manifest.js), before main files, PostHog, and the service worker. Everything below the hero is static text/SVG needing no JS, yet it all hydrates. Worse, the hero \"Create Your Palace — Free\" CTA is a <button onClick> (~line 1179), not a link — on a 3G/older-iPad first visit the most important element silently does nothing for the seconds until React hydrates; a 65-year-old taps once, nothing happens, and concludes the site is broken. (Verified positive: three.js is NOT in the bundle.)",
+    "severity": "blocker",
+    "section": "Global bundle / hero CTA (LandingClient.tsx ~1179)",
+    "recommendation": "Make both hero CTAs real <a href> anchors that work pre-hydration (keep analytics as non-blocking click handlers). Split the page: server components for stats, features, how-it-works, comparison, FAQ; small client islands only for the carousel, FAQ accordion, and language switcher. Target <100 KB gzip client JS — Linear, Stripe, and Arc landing pages work with JS disabled.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Hero first paint is a brown void: video triple-dimmed to ~10-15% luminance, no poster, low-bitrate single MP4, and LCP text animating from opacity 0",
+    "detail": "The Tuscan-villa footage is stacked under three darkening layers: <video> at opacity:0.3 with filter saturate(0.6) brightness(0.85) (HeroVideo, LandingClient.tsx:149-150), solid charcoal section background (1088), and a rgba(42,34,24, 0.65→0.45→0.7) gradient scrim (1101) — users literally cannot see the villa, and the per-frame CSS filter is continuous GPU compositing cost on the largest element. No poster and preload='metadata' overridden by autoplay means first paint is a blank dark-brown box while 2.06 MB downloads (all viewports incl. cellular); the source is only 1280x732 @ ~915 kbps H.264 upscaled to full viewport (banding in dark gradients), with no WebM/AV1 and no mobile encode — while better masters (hero-bg-original.mp4/hero-ob.mp4, 1792x1024) sit unused in public/video/. The scrim dips to 0.45 exactly behind the text so contrast fluctuates frame-by-frame (hence the double text-shadow crutch at 1137), and the scrim base rgba(42,34,24) mismatches the #1F1B1A section, producing a two-tone seam pre-load. Compounding it, the h1 animates 'fadeUp 0.7s ease 0.1s both' from opacity:0 with staggers to +0.5s (1115-1249) — Chrome cannot record LCP for unpainted text, ~0.8 s of LCP penalty by design, and on slow devices the first seconds are a dark empty screen. Emotionally, the gloom reads funereal for a persona whose parent may be dying.",
+    "severity": "blocker",
+    "section": "Section 1 — HeroVideo (LandingClient.tsx:105-157), scrim (1096-1104), text animation (1115-1249), public/video/",
+    "recommendation": "Re-encode from hero-bg-original.mp4: 1080p H.264 ~1.5-3 Mbps + AV1/WebM source with the warm golden-hour grade baked in (delete the CSS filter); run at ~0.6-0.7 opacity with ONE bottom/behind-text scrim (~0.65 uniform behind the headline block, derived from C.charcoal). Add poster='/video/hero-poster.jpg' (~40-80 KB graded frame) with <link rel='preload' as='image' fetchpriority='high'>. On mobile and saveData/2g-3g connections skip video and ship the still. Never animate the LCP candidate from opacity 0 — render the headline visible immediately, reserve entrances for secondary elements. Test: paused at second zero, the frame must answer 'what is this?' and make you feel something.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Zero product visual in the first viewport, and the 3D product is never shown passively anywhere — a walkable 3D palace sold with text alone",
+    "detail": "The hero is 100vh of centered typography; the product's entire differentiation — a walkable 3D palace — first appears at section 6 as 'Guillaume's Palace': a 900px-max, click-to-play <video controls preload=metadata> (LandingClient.tsx:1607-1636) most visitors will only ever see as a poster. The eye travels dimmed abstract video → text stats → 12 text cards → 3 text steps → text micro-CTA before any real product visual, and the single genuine interior demonstration requires an active click after ~5 sections of scrolling. In the first 5 seconds a visitor cannot answer 'what does this look like?'. Category-defining visual products (Linear, Arc, Figma, Framer) always put the product in frame one and autoplay short muted loops inline, reserving long video for a modal. An animated LandingPalacePreview component exists unused, and a real walkable demo palace sits behind the unexposed /explore guest-visit flow.",
+    "severity": "blocker",
+    "section": "Hero (LandingClient.tsx:1079+) + section 6 showcase (1607-1636) + page ordering",
+    "recommendation": "Put a bright, legible 3D palace interior in the first viewport: split hero (headline + high-quality render) or a 10-15 s muted autoplaying interior flyover loop (dolly through the entrance hall past hung photos) as the hero background or directly under it — no click required. Keep the full narrated walkthrough as click-to-play in a lightbox. Then feature cards can reference what the visitor just saw. The 5-second test: 'oh — my photos live inside a beautiful 3D house I can walk through.'",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Systemic WCAG AA contrast and type-size failures: walnut body text, terracotta labels/stat numbers, CTA gradient, and 62 sub-1rem sizes — for a 60+ audience",
+    "detail": "C.walnut #8B7355 is the de-facto muted ink and fails 4.5:1 everywhere: 12 feature descriptions at 15px (featureDesc 2815-2819, ~3.9-4.3:1), FAQ answers (217), group subtitles (1392, 3.8:1), how-it-works steps on warmStone (1522, 3.3:1), stats labels at 13px (1349), nav links (2730), exit-modal body (2689). sectionLabel terracotta #C66B3D at 13px is ~3.2:1 on linen / 2.8:1 on warmStone and can never pass on either. The stats bar — the strip making GDPR/encryption claims — fails on BOTH layers (terracotta numbers 2.8:1, below even the 3:1 large-text threshold). Every primary CTA is white 1rem/600 text on a terracotta→walnut gradient: 3.6:1 at the start, 4.3:1 at the end — the most important button fails AA for its own label. Grep shows 62 fontSize declarations under 1rem, including 11px scroll hints, 12px trust chips (the key senior reassurance is the least readable text), and 14px comparison cells. The file already defines an audited token — MUTED_ON_LIGHT #716A5E, line 264, commented '~4.6:1' — used in exactly one section. NIA/NN-g senior guidance: 16px floor, prefer 18px; contrast sensitivity declines ~1%/year after 40. This is the primary persona failing to read the value proposition.",
+    "severity": "blocker",
+    "section": "Systemic — feature cards, stats bar (1316-1356), eyebrows, CTAs (2747-2776), nav, chips (LandingClient.tsx throughout)",
+    "recommendation": "One sweep: replace every text use of C.walnut with MUTED_ON_LIGHT or darker (verify per background; ~#5E574C on warmStone), mark walnut as non-text ink in theme.ts. Eyebrows: C.rustDeep #9A4F2A on light (5.1:1), C.gold on dark (8.1:1, already correct once at 1657); floor uppercase labels at 0.75rem, tokenize tracking in em not px. CTAs: darken to rustDeep→rustDarker (#9A4F2A→#6B3318 — 5.7:1/8.9:1, and reads more 'Tuscan fresco' than orange-tan), keep terracotta as hover glow. Stats: rustDeep or charcoal numbers, ≥4.5:1 labels. Raise the floor to 1rem for all functional text, 1.125rem for body/feature copy; audit all 62 sub-1rem declarations. Verify at 200% zoom (WCAG 1.4.4).",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Twelve identical text-only cards flatten the differentiators into a beige wall: forced 4/4/4 symmetry, ~25-30 CPL copy, dead-end divs, and meaningless icon tiles on mobile",
+    "detail": "'Twelve ways your memories stay vivid' (en.json:1139) delivers a 3x4 grid of visually identical white cards (featureCard 2799-2805: 1.12:1 vs linen, 48px thin-line icons, ~450 words of sub-AA 15px copy at ~25-30 characters per line in ~200-210px card interiors). The category-defining 3D palace is card #5, weighted identically to commodity 'Upload Photos & Videos — drag, drop, done' (literally Google Photos' core feature); the emotionally devastating features (Time Capsules, AI Interviews' 'the questions your grandchildren would ask') are flattened to the same rank. The Capture/Enrich/Share taxonomy demanded 4/4/4 parallelism, so weak cards pad slots — clearest case 'Explore & Connect' (en.json:1174), whose public-publishing/follower framing is off-brief for privacy-motivated Keepers and plants 'wait, is my palace public?' one viewport below the GDPR chips. Every card is a static div (1413-1423) — nothing clickable, no next action. On <480px, descriptions are dropped entirely ({!isSmall && <p>}, line 1422), leaving twelve non-tappable icon+title tiles ('Legacy Planning') that carry no meaning — precisely on the device where gift-giving adult children first encounter the product. Zero product imagery for inherently visual features. Per persona, four features carry ~80% of persuasion.",
+    "severity": "blocker",
+    "section": "Section 3 — features grid (LandingClient.tsx:1360-1430, FEATURE_GROUPS 424-455, styles 2799-2819; en.json:1139-1174)",
+    "recommendation": "Two-tier restructure: Tier 1 — 4 flagship features (3D Palace, AI Interviews, WhatsApp Capture, Co-Creation/Time Capsules) as large alternating image+text bands with real product assets (flyover loop, transcript animation, phone frame with a voice note landing in a room), each with one bold 6-10-word benefit headline + one sentence at ≥1.0625rem and an inline action ('Watch the flyover', 'See a shared palace'). Tier 2 — the rest collapse to one compact icon-chip strip linking to /features. Cut 'Explore & Connect' from the landing. Kill the count from the headline; lead with the outcome. On mobile, 4-6 full-width curated cards with a one-line desc + screenshot and a 'See all features' disclosure. Total section copy down ~65%. Move the block to after the product demonstration; keep the iOS seal (no pricing-adjacent CTAs).",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "A desktop 3D product is showcased almost entirely via 15rem-wide phone-frame App Store screenshots with baked-in captions — under the page's boldest claim",
+    "detail": "The section declaring 'THIS IS NOT A PHOTO ALBUM / This is a palace' (first line demoted to a small gold eyebrow, LandingClient.tsx:1657-1662) pays it off with 8 portrait store screenshots at ~240px wide on desktop (1681-1714): repurposed App Store assets with marketing captions baked into the bitmaps (unlocalizable, invisible to screen readers), alt text 'The Memory Palace app — screen N' (1702 — WCAG 1.1.1 failure even though the filenames prove descriptive text exists), raw <img> with no width/height (CLS risk), wrong aspect and device frame, inside the darkest section, inside the broken carousel. There are zero large desktop-viewport renders anywhere on the page — visually saying 'small mobile app', contradicting 'cinematic'. Supporting-asset audit: all existing 3D captures include UI chrome, the largest desktop shots are 1200x750 webp or orphaned PNGs, interiors read low-poly, the best emotional clip (hero-ob.mp4 — a person touching framed photos in a sunlit arcade) is used only in OnboardingWizard, and no imagery shows memories INSIDE the palace (photos hung on a 3D wall).",
+    "severity": "blocker",
+    "section": "Section 7 showcase (LandingClient.tsx:1657-1714) + asset inventory (public/screenshots, public/video)",
+    "recommendation": "Shoot dedicated landing renders: fresh 2x-retina UI-free captures of the best scenes (exterior dusk, entrance hall, a filled memory room with demo photos in frames) at 1100-1400px desktop aspect, presented frameless as alternating image/text bands with HTML captions (i18n) and real alt text. Stage a lived-in demo palace with licensed period family photos and shoot everything from it; add one 'from shoebox to palace' juxtaposition band — the signature shot no competitor can match. Set both headline lines at full scale and pay off with one full-bleed interior. Keep phone frames for a single explicit 'also on your phone' moment; feature hero-ob.mp4 in the hero or the 'not a photo album' section.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "The only product film is completely silent — no audio stream, no captions, a single 12.4 MB rendition — while the hero sells 'voices'",
+    "detail": "ffprobe confirms public/video/walkthrough.mp4 ('Guillaume's Palace', LandingClient.tsx:1622-1635) contains exactly one h264 stream: no audio at all, yet the player renders controls, so users get a volume button that does nothing. No <track> caption files exist despite 5 locales (WCAG 1.2.2 — acute for a 60+ audience where ~a third has hearing loss). The file is 12,455,086 bytes MP4-only with no resolution ladder — a 4G mobile user who taps play commits to 12 MB for a ~350px-wide video. The hero literally sells 'photos, voices, and stories' and the only product film is mute. (The poster-first, preload='metadata', tap-to-play pattern is already correct — keep it.)",
+    "severity": "blocker",
+    "section": "Section 6 walkthrough (LandingClient.tsx:1607-1637; public/video/walkthrough.mp4)",
+    "recommendation": "Produce one narrated 45-60 s cut: warm human voice-over ('This is Guillaume's palace…'), light ambient score, ending on the free CTA. Ship WebVTT captions for EN/NL/DE/ES/FR via <track kind='captions'> plus a short transcript. Encode a 720p ~3-4 MB rendition or move to Mux/Cloudflare Stream for adaptive bitrate. If narration can't ship immediately: score + captions and remove the misleading volume control. Present it as attributed proof: 'Guillaume's palace — a real member's home for three generations of memories.'",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "French landing copy is broken: ~28+ strings missing diacritics plus calques and faux-amis — reads as spam to any French visitor, including in FAQ JSON-LD",
+    "detail": "src/messages/fr.json ships accent-stripped French in the most visible strings: hero 'Vos souvenirs meritent un palais' (méritent), CTA 'Creez votre palais — Gratuit', 'Decouvrez comment ca marche', trust chips 'Chiffre SSL', 'Heberge dans l'UE', 'Protege par le RGPD', plus FAQ answers a1/a2/a7 that are emitted as FAQPage JSON-LD — Google shows broken French in rich results. Other keys in the same file are correctly accented ('Fonctionnalités'), proving a machine-mangled batch, not encoding. Beyond accents: 'un palais 3D qui ressemble a un foyer' (calque reading as 'looks like a hearth'), 'Pas du stockage.' (ungrammatical), 'Huit parcours curates' (faux-ami). Accent-less calqued marketing copy is fatal for a trust-first heritage product aimed at 60+ users.",
+    "severity": "blocker",
+    "section": "All FR sections — src/messages/fr.json (hero, trust bar, features, how-it-works, FAQ/JSON-LD)",
+    "recommendation": "One native-French rewrite pass of the whole landing namespace: restore all diacritics and fix idiom ('un palais 3D où l'on se sent chez soi'; 'Ce n'est pas du stockage. C'est une expérience vivante.'; 'Huit parcours thématiques'). Add a CI lint failing if fr.json's accent density drops below a threshold (e.g. <1 accented char per 100 chars in any string >40 chars) so this regression class can never ship again.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Landing claims the family tree is \"all integrated in your palace\" — code shows zero tree-to-palace integration",
+    "detail": "en.json:1161 (landing.features.familyTreeDesc): \"...Then walk through the memories of each generation — all integrated in your palace.\" Verified: the entire family-tree module (src/app/(app)/family-tree/, 23 files) contains no reference to rooms, palace, or memory linking; the only 'memories' hit is PersonPanelPhoto.tsx:102-112 using the storage bucket for profile photos. No person→memory or person→room association exists anywhere. This is exactly the differentiator the comparison strategy leans on vs Ancestry/MyHeritage — an early adopter who tests it will feel misled.",
+    "severity": "blocker",
+    "section": "Section 3, Enrich group — Family Tree card (en.json:1161, mirrored in nl/de/es/fr)",
+    "recommendation": "Either (a) soften now: \"Map your lineage with fan charts and GEDCOM import — your tree lives in the same home as your memories.\" Or (b) build the minimal integration (person→memory tagging, 'view their rooms' link from PersonPanel) before the redesign ships — already P1 in the family-tree competitive-gaps backlog. Do not ship \"walk through the memories of each generation\" unless (b) lands.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Legacy Planning card promises \"Record video messages\" — the feature does not exist (legacy messages are text-only)",
+    "detail": "Verified real: legacy contacts with access levels, dead-man-switch cron, delivery of messages + 90-day access links (api/legacy/deliver/route.ts). BUT the message schema is recipient_email, subject, message_body, deliver_on, deliver_date (legacy-actions.ts:300) — zero video/record capability in the entire legacy flow (grep for video|record in LegacyPanel.tsx and settings/legacy: no matches). For a legacy/bereavement feature aimed at 60+ users, an untrue promise is a trust and consumer-protection problem; testimonial quote2 ('I recorded a message for each of my children, sealed until their wedding day') echoes the same false capability.",
+    "severity": "blocker",
+    "section": "Feature card 12: Legacy Planning (Share group) + testimonial quote2",
+    "recommendation": "Fix the copy now: \"Choose who gets the keys. Write the letters you keep meaning to write, and decide exactly when they arrive.\" Remove or fix testimonial quote2. Longer term, video legacy messages would be a genuinely differentiating build.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Comparison row 3 (Sharing): 'A shared album link that expires' is factually false",
+    "detail": "Google Photos shared-album links do NOT expire — they stay active unless the owner manually resets sharing (support.google.com/photos/thread/130723488); Apple shared albums likewise persist. Both products also offer what the right column claims as a differentiator: collaborative shared albums (Google contributors/comments/likes; Apple Shared Albums + iCloud Shared Photo Library). A savvy visitor discounts the whole table instantly. Source: landing.comparison.row3Left in en.json, mirrored in 4 locales.",
+    "severity": "blocker",
+    "section": "Comparison table, row 3 (Sharing)",
+    "recommendation": "Replace with a true contrast of depth, not existence. Left: \"Shared albums: a grid of photos with likes and comments\". Right: \"A shared palace your family builds together — rooms, voice recordings, and stories, with guest visits and co-creation\". Update all 5 locales.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Comparison row 4 (Legacy) is broken in both columns: the left claim is false and the right lists features that don't exist",
+    "detail": "Left: 'Tied to one person's account — lost when they're gone' is false — Apple Legacy Contact (iOS 15.2+) and Google Inactive Account Manager both exist and are well-publicized; the gift-giving adult child is exactly the demographic that knows. False statements about named competitors raise comparative-advertising risk under Directive 2006/114/EC (comparisons must be objectively verifiable), and one false row poisons trust in all eight. Right: 'shared keys' and 'sealed letters' exist nowhere in src as features (grep: only CSS keyframe comments and time-capsule reminder copy) — the row reads as four features when two exist (time capsules and legacy contacts ARE real). The honest angle is stronger anyway: Google deletes content after 2 years of inactivity, and both legacy programs hand heirs a raw unstructured dump.",
+    "severity": "blocker",
+    "section": "Comparison table, row 4 (Legacy), both columns (en.json landing.comparison.row4*)",
+    "recommendation": "Left: \"Legacy access exists, but heirs inherit a raw archive of 40,000 unlabeled files\". Right: \"Time capsules that unseal on a date you choose, plus designated legacy contacts who receive your palace intact\" (both verified in code). Audit all 8 left-column claims across all 5 locales for factual accuracy — a world-class table concedes what competitors do well and wins on the dimension only you own.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Supabase Frankfurt region is documented intent only — the entire EU-hosting claim chain is unverified for the live project",
+    "detail": "The public claims (\"EU-Hosted\", \"Data stored in Frankfurt, Germany\" at en.json:3589/3703, footer, FAQ) rest on the Supabase project region, but the repo only contains intent (.env.local.example line 1; ARCHITECTURE.md:15-16). The live project (cpmcbodklvpvvgimzbfj.supabase.co) resolves to Cloudflare edge IPs and exposes no region header. If it was created in default us-east-1, every Frankfurt/EU-storage claim on the landing, footer, FAQ, and /security page is false.",
+    "severity": "blocker",
+    "section": "Stats bar chip 1, footer, FAQ, /security page",
+    "recommendation": "Before the redesign ships, confirm the region in the Supabase dashboard (Project Settings > General > Region) or via `supabase projects list` — one minute. If eu-central-1, keep the claim and record proof. If not, migrate to eu-central-1 or remove every Frankfurt/EU-storage claim immediately.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "\"256-bit Bank-Grade Encryption\" and \"SSL Encrypted\" — oversold provider-default AES-256 with three conflicting security vocabularies; unify into one verifiable set",
+    "detail": "The stats bar claims '256-bit / Bank-Grade Encryption' (en.json:1134-1135, LandingClient.tsx:488), repeated in the footer (en.json:1306, ~2479), landing FAQ a2 (1337 — also injected into FAQPage JSON-LD at 646-658, so it lives in Google rich results, alongside 'highest security standards' with no SOC 2/ISO 27001 in the repo), and app FAQ faq5a (5135). Reality: Supabase/AWS-managed AES-256 at rest — standard infrastructure every Supabase app gets; transit is TLS 1.2+ whose negotiated cipher can be AES-128-GCM, so '256-bit' is not defensible for transit. 'Bank-grade' is undefined puffery that pattern-matches to scam copy for exactly the security-literate adult child, and 'SSL' (chip at 1254, en.json:1328) has been deprecated terminology since 2015 — two of three hero chips saying 'encrypted' waste slots that could carry real differentiators. The page currently runs three security vocabularies (SSL / End-to-End / Bank-Grade 256-bit) — copy nobody audited. Acronyms mean nothing to a 65-year-old, while the one reader who understands them loses all trust.",
+    "severity": "major",
+    "section": "Stats bar + hero chips (LandingClient.tsx:1254-1279, 488) + footer + FAQ a2/faq5a + JSON-LD — all 5 locales",
+    "recommendation": "One consistent, verifiable vocabulary everywhere, each item linking to /security: \"AES-256 encryption at rest · TLS in transit · EU-hosted · GDPR compliant · Export anytime\". Stats stat4 → \"AES-256 / Encrypted at Rest\" (or swap the slot for an ownership claim no competitor makes: \"100% / Yours — export anytime\"). FAQ a2 rewrite: \"Encrypted in transit (TLS) and at rest (AES-256) on EU servers — and you can export everything at any time.\" Rework the hero chip trio into three distinct true claims (GDPR / EU-Hosted once verified / Encrypted at Rest & in Transit). Never claim '256-bit' for the connection. Mirror in faq5a and all 5 locales. Fix native calques while at it: DE 'Bankverschlüsselung' and NL 'Bankwaardige encryptie' are invented non-words in the exact strip whose job is reassurance.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "\"EU-Hosted\" is overbroad and memory content is processed by US sub-processors — scope the claim to storage and disclose AI processors",
+    "detail": "Verifiably EU: vercel.json:2 pins Serverless Functions to [\"fra1\"]; database/storage intended Frankfurt. NOT EU: Vercel is a US company (DPF/SCCs), its CDN serves globally, src/middleware.ts runs on the global edge (session cookies processed at non-EU PoPs), api/og/route.tsx is edge with no preferredRegion, Supabase Storage media rides Cloudflare's global CDN. Content processors: voice notes → OpenAI Whisper US (src/lib/kep/transcribe.ts:5), AI interviews + Kep → Anthropic US (api/ai-interview/route.ts:138, src/lib/kep/ai-route.ts:70), emails → Resend US (src/lib/email/shared.ts:298), plus Stripe and Meta. FAQ copy makes the overreach explicit (en.json:1337, 5135: 'EU-hosted infrastructure... fully GDPR compliant') — a reader reasonably concludes voice recordings never leave the EU, false the moment Kep or AI Interviews are used. The paired label 'Protected by GDPR' (en.json:1129) is legally muddled (GDPR applies because of users/controller, not server location), and the /security page is already more honest — an easy inconsistency for a DPO to spot. PostHog is the one third party done right (pinned to eu.i.posthog.com).",
+    "severity": "major",
+    "section": "Stats bar chip 1 + footer (LandingClient.tsx:485, 2466) + FAQ (en.json:1337, 5135) + privacy policy",
+    "recommendation": "Say \"stored in the EU\", never \"hosted in the EU\" unqualified: stat1 \"EU\" / label \"Your memories stored in Frankfurt, Germany — GDPR compliant\". FAQ rewrite: \"Stored on EU servers in Frankfurt, encrypted at rest. For optional AI features we use vetted processors under GDPR data-processing agreements — and you can skip these features entirely.\" Ensure the privacy policy lists OpenAI, Anthropic, Resend, Stripe, Meta as sub-processors with transfer mechanisms. Drop 'Protected by GDPR' phrasing. Optional: preferredRegion='fra1' on the OG route; stronger play — EU-region Whisper + zero-retention Anthropic terms make \"AI processing under EU data agreements\" a sellable trust point.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Free-claim honesty cluster: \"Forever\" is unbacked by the ToS, \"no catch\" hides real limits, and the only disclosure sits below the scroll trap",
+    "detail": "Trust bar 'Free / Forever Plan' (en.json:1130-1131) and 'Free forever. No credit card.' (1291) are marketing-only — ToS section 5 (en.json:3832) reserves the right to discontinue features, making 'forever' an unverifiable absolute the UCPD treats as potentially misleading, and a literal-reading trust liability with 60+ Keepers. 'Your palace is free. No credit card, no catch.' (1191, line 1556) — but verified free limits are: 1 GB storage (~300-500 photos), 2 AI interviews + 1/month cap 14 (plan-limits.ts:201), auto-tagging 5/day (:248), family tree 25 people (:126), collaboration fully blocked (collab-actions.ts:45-51), Dropbox/OneDrive/Box import blocked — while the feature grid advertises Co-Creation, Cloud Import, and AI Interviews with no tier markers, so users hit upsell walls in their first session. The audience card 'You have 50,000 photos... Let AI organize a lifetime' collides with the same caps. The only on-page limit disclosure is FAQ a4 (1341) — below the trap. Related code smell: plan-limits.ts:138 comments 'apply grandfathering for legacy free users' but getEffectiveStorageLimit (98-101) contains no grandfathering — dead comment or a silently shrunk legacy promise, the worst combination next to a 'forever' claim.",
+    "severity": "major",
+    "section": "Trust bar + mid-CTA (1556) + final CTA + audience archivistsDesc + plan-limits.ts:98-138",
+    "recommendation": "Drop 'Forever': trust stat \"€0\" / \"Free plan — no time limit, no card\"; final CTA \"Start free. No credit card, full export anytime — your memories are never held hostage\" (fully backed by ToS section 5). Replace 'no catch' with specific honesty that converts: \"Your palace starts free — 1 GB of memories, unlimited rooms, no credit card. Upgrade only if you outgrow it\" — unlimited wings/rooms/memories (plan-limits.ts:120-122) is a generous, TRUE differentiator; lead with it. Move a one-line free-plan summary above the fold. Qualify the 50,000-photos promise. Delete the stale grandfathering comment or reinstate the behavior.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Collaboration — the exact job the page sells (\"together with family & friends\") — is paid-only in code, hitting the buyer at the emotional moment",
+    "detail": "Hero promises walking through memories 'TOGETHER with family & friends'; the grid sells 'Family & Friends Co-Creation'; midCta says 'no catch'. But src/lib/social/collab-actions.ts:~50 returns 'Upgrade to add collaborators' for free users; plans.ts grants collaboration only to Keeper (5/room) and Guardian. The adult child's entire JTBD is two-person co-creation (they build, mom adds voice) — on the current funnel they sign up free, try to invite their parent, and hit a paywall at exactly that moment. Co-creation is also a genuine edge vs StoryWorth (collaborative books need the $199 plan) and Remento (single-storyteller). The true mechanic is unmarketed: only the room owner's plan is checked — invited collaborators need no paid plan.",
+    "severity": "major",
+    "section": "Hero promise + Co-Creation card (Share group) vs plans.ts / collab-actions.ts",
+    "recommendation": "Preferred: (a) grant 1 free collaborator ('Invite one person free — build it with mom') — converts far better than blocking, honestly beats StoryWorth's gate, and seeds upgrades. Otherwise (b) badge the card 'Keeper plan' (web only — absent on iOS) and scope 'no catch' to capture/3D. Either way state the real model: \"You subscribe once — mom, dad and the kids join free.\"",
+    "votes": "2/3",
+    "confirmed": true
+  },
+  {
+    "title": "AI-Guided Interviews card misdescribes mechanics — \"AI transcribes, tags, and places them\" is 2/3 false",
+    "detail": "The feature is real and substantial (InterviewPanel.tsx + api/ai-interview/route.ts uses claude-haiku-4-5 for acknowledgments, follow-ups, suggested titles in 5 locales). But: (1) transcription is NOT AI — api/ai-interview/transcribe/route.ts is a stub; it's browser Web Speech API, unreliable in some browsers; (2) no tagging occurs anywhere in the interview flow; (3) placement is not AI — stories save to the template's hard-coded wing (onCreateMemory(mem, currentTemplate.wingId), line 373). Free tier is also quota-limited (2 + 1/month, cap 14) without disclosure.",
+    "severity": "major",
+    "section": "Feature card 4: AI-Guided Interviews (Capture group)",
+    "recommendation": "Rewrite: \"A gentle interviewer asks the questions your grandchildren would ask, and follows up on what you actually said. Speak your stories aloud — they're captured, titled, and saved to the right wing of your palace.\" Drop \"transcribes, tags\" unless server-side transcription is built.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "\"Pedigree views\" names a Family Tree view mode that does not exist — claimed verbatim in 4 places, and comparison row 6 overstates genealogy capability",
+    "detail": "Actual view modes are exactly \"portrait\" | \"fan\" | \"list\" (family-tree/page.tsx:50) — no pedigree (ancestor-chart) view. \"Pedigree views\" appears in en.json at landing.features.familyTreeDesc, landing.showcase.highlight3Desc, landing.comparison.row6Right, and landing.faq.a7; genealogy hobbyists (a stated secondary audience) know exactly what a pedigree chart is. Row6Right's \"Full genealogy with fan charts...\" additionally overstates (no sources/citations, no record matching). Meanwhile GEDCOM import AND export both genuinely work (gedcom.ts, wired at family-tree/page.tsx:1739) — export is currently unclaimed and a trust win.",
+    "severity": "major",
+    "section": "Family Tree card + comparison row 6 + FAQ a7 + showcase highlight3 (4 keys x 5 locales)",
+    "recommendation": "Fix all 4 keys: \"fan charts, portrait and list views, relationship links, and GEDCOM import/export\" — a 10-minute i18n edit — or build a true pedigree view. Soften row6Right to \"A built-in family tree with fan charts and GEDCOM import — bring your Ancestry or MyHeritage tree with you.\"",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "WhatsApp Capture (Kep) code is real and complete, but Meta go-live status must be confirmed before keeping the card",
+    "detail": "Full pipeline verified: api/webhooks/whatsapp/route.ts (Meta challenge + HMAC), src/lib/kep/ (processor, media, Whisper transcription, AI routing), wa.me deep link, all WHATSAPP_* env vars set. What code cannot prove: whether the WABA number passed Meta business verification/display-name review and is out of sandbox (display name resubmitted 2026-05-13 per notes). If sandbox-restricted, only whitelisted test numbers work and the card is vaporware for new users.",
+    "severity": "major",
+    "section": "Feature card 1: WhatsApp Capture (Capture group)",
+    "recommendation": "Send a photo from a phone number NOT registered as a Meta test number to the production Kep number and confirm it lands in the palace. If it works, keep the card (genuine differentiator — consider a hero-adjacent spotlight). If restricted, relabel \"rolling out\" or pull the card until Meta approval.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "\"30-day money-back guarantee\" advertised on /pricing has no backing clause in the Terms of Service",
+    "detail": "en.json:1898 (pricing.trustGuarantee) displays a 30-day money-back guarantee, but the entire terms i18n section contains no refund, money-back, or cancellation-refund clause — the only '30 days' reference concerns ToS-change notice. An advertised guarantee the contract doesn't grant is consumer-law exposure, and a refused refund request would be a trust catastrophe with exactly this demographic.",
+    "severity": "major",
+    "section": "/pricing trust badges (en.json:1898) + Terms of Service",
+    "recommendation": "Either (a) add an explicit refund clause to the ToS (\"Paid plans may be cancelled within 30 days of first payment for a full refund — email support@thememorypalace.ai\") and keep the badge, or (b) remove the badge and rely on the stronger, already-true claim: \"Free forever plan — no credit card required\" (EU consumers also have a 14-day withdrawal right you could cite). Option (b) is the honest quick fix.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Free-tier claims contradict each other across the site: Help Center says \"5 rooms / 50 memories\", landing says unlimited, code says unlimited + 1 GB",
+    "detail": "Help Center faq2a (en.json:5128): \"The free Heritage Keeper plan lets you create up to 5 rooms with 50 memories.\" Landing FAQ a4 (1341): \"unlimited wings and rooms\". Code truth (plans.ts:34-38): unlimited wings/rooms/memories, 1 GB cap. The stale Help Center copy materially understates the free offer, and anyone cross-checking sees the company contradicting itself on its core 'no catch' promise. Likely replicated in nl/de/es/fr.json.",
+    "severity": "major",
+    "section": "Help Center faq2a (en.json:5128 + 4 locales) vs landing a4 vs plans.ts",
+    "recommendation": "Update faq2a in all 5 locales to match plans.ts. Add a lint/test so free-tier marketing strings reference a single source of truth.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Zero social proof anywhere on the reachable page while four deployable, truthful proof assets sit unused — the single biggest positioning gap vs heavily-validated incumbents",
+    "detail": "StoryWorth shows 50,000+ Trustpilot reviews, 1M+ books, NYT Gift Guide; Remento shows 4.9/5, Shark Tank, CNN/Forbes logos. The live MP page (2026-07-16 capture) has zero testimonials, numbers, press, faces, or founder above the scroll trap — for the most proof-hungry demographic (60+ Keepers and gifting adult children who read Trustpilot before buying), absence reads as \"nobody uses this; is it safe to put my life into it?\". Deployable-today inventory: (1) REAL PUBLISHED PALACES — a live /explore directory (src/app/explore/page.tsx, featured_palaces/palace_visits via src/lib/social/directory-actions.ts), walkable without an account — interactive proof no competitor can offer; (2) Guillaume's walkthrough video, currently presented anonymously; (3) founder story — FAQ a10 (en.json:1356) truthfully says \"built by a small, independent European team... not backed by big tech\"; (4) honest trust facts (EU-hosted, free forever, 5 languages, /security). NOT deployable: press (none), app-store ratings (iOS unapproved), user counts (beta numbers read as anti-proof).",
+    "severity": "major",
+    "section": "Whole page — no proof section exists (natural slot between sections 4 and 5; also hero credibility line)",
+    "recommendation": "Ship three modules in priority order: (A) \"See a real palace\" under the hero or replacing the trapped carousel — 2-3 featured palace cards from getFeatured() with \"Don't take our word for it. Step inside a real palace — no account needed.\" → /explore; (B) founder module near the final CTA — real photo + \"I'm Bram... small, independent European team. No big-tech backing, no ads, no selling your data.\"; (C) attribute the walkthrough (\"Guillaume's palace — a real member's home\") plus one consented quote, and add a press-play audio moment (photo card + waveform: \"This is what a memory sounds like here\" — 15-20 s of a consented real user; the deliberate press is part of the emotion). Start collecting Trustpilot reviews now. Do NOT add \"Trusted by X families\", star ratings, or press logos until real.",
+    "votes": "2/3",
+    "confirmed": true
+  },
+  {
+    "title": "The page never answers StoryWorth/Remento or Ancestry/MyHeritage — half the buyer's comparison set is unaddressed, though MP wins most verified rows",
+    "detail": "The comparison frame is entirely Google/Apple Photos, but the gift-giving adult child comparison-shops memoir-book services, and anyone seeing fan charts frames MP against genealogy sites. Verified matrix vs StoryWorth ($59-199/yr) and Remento ($99/yr): MP WINS on free tier (both have none), 3D walkable space (both output a static book), WhatsApp capture (live webhook vs email prompts/link recording), EU/GDPR hosting (vs US), 5 languages incl. NL/DE/FR (vs English-only — decisive in the home market), and living archive vs frozen book (SW/RM end after the subscription year). Competitors win on voice-behind-QR merchandising, physical keepsake, and gift mechanic. Vs genealogy: Ancestry ~$100-400/yr, MyHeritage free tree caps at 250, FamilySearch is public/collaborative — but MP must never claim records, DNA, or research.",
+    "severity": "major",
+    "section": "Comparison table (section 8) + FAQ + hero positioning",
+    "recommendation": "Add a \"Memoir book services\" comparison frame, header \"A book ends. A palace grows.\" — rows: Starts free, Walk through it in 3D, Capture via WhatsApp, Keeps growing after year one, EU + GDPR, In your language (in NL/DE/FR locales lead with the language advantage — it is unanswerable). Add FAQ: \"How is this different from StoryWorth or Remento?\" And a second frame converting genealogy incumbents into feeders: \"They research your past; we preserve your present. Bring your Ancestry or MyHeritage tree with you (GEDCOM import).\"",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Reframe the Google/Apple Photos comparison from replacement to elevation — the current table straw-mans daily-use products, pads rows, and insults the reader's own archive",
+    "detail": "Leading with \"You already have Google Photos & Apple Photos. So why this?\" anchors MP in the photo-storage category (where it loses on GB/backup/search) and contradicts the product's own Cloud Import, which connects Google Photos as a SOURCE (plans.ts:43 featGoogleImport on free). Specific problems: row 1 'Folders and albums you rarely revisit' is mechanically wrong (Google's Memories feature exists to make you revisit); row 2 'Photos without context — just files' straw-mans Memories/auto-movies/Gemini; row 7 'Only from your own camera roll' is inaccurate (partner sharing, shared-album saves, iCloud Shared Photo Library) — while hiding MP's best proof point: it literally imports FROM Google Photos, Dropbox, OneDrive, Box (api/integrations/google/photos/route.ts, CloudImportPanel.tsx) plus WhatsApp; rows 6 and 8 ('Not available') aren't comparisons, and rows 1/2/5 substantially overlap; the tone ('passive drive', 'endless scrolling') tells a 60+ visitor their decades of Google Photos effort is a dead drive. Subtitle 'Because your life is more than a passive drive' fails to parse for a 65-year-old. Rows 5/6/8 content is verified accurate. 'Complement' framing also de-risks EU comparative-advertising exposure.",
+    "severity": "major",
+    "section": "Comparison table title/subtitle + rows 1, 2, 7, 6/8 padding (en.json landing.comparison, 5 locales; COMPARISONS LandingClient.tsx:491-532)",
+    "recommendation": "Reframe: title \"Keep Google Photos. It's the drive. This is the home.\" Subtitle \"A folder stores your photos. A palace remembers your life.\" Cut to 4-5 genuine rows (merge 1/2/5), cells under ~8 words. Row 7 becomes the strongest row: left \"Mostly your own uploads; relatives' memories stay on their phones\" / right \"Forward a WhatsApp voice note, import straight from Google Photos or Dropbox, or let AI interview your parents\". Add under the table: \"Connect Google Photos, Dropbox or OneDrive and your existing photos move in — nothing to re-upload. Your originals stay untouched.\" Consider one row where the LEFT side wins ('Backup & camera sync: excellent — keep using it') — the cheapest credibility purchase. Rename the right column header to \"Your Memory Palace\".",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Comparison table placement and presentation defeat it: below the trap, five sections after the objection forms, winner column invisible, mobile illegible, ARIA broken",
+    "detail": "The table answers the #1 objection ('I already have Google Photos') but sits at position 8, below the scroll-trap — the objection forms at the feature grid (section 3). Visually the 'winner' column doesn't win: cell backgrounds at 2-4% alpha tints, border-left at 20 alpha, 14-16px check icons in 0.10-0.15-opacity circles (LandingClient.tsx:298-314, 1791-1793) — on beige-on-beige it collapses into an undifferentiated grid, and the header renders 'Memory Palace' as 0.6875rem micro-text. On <480px each cell packs an icon + duplicated 0.625rem category label + 0.75rem body into ~150px columns (1859-1911: 16 redundant labels), with each of 8 rows fading in on its own stagger (1811). A11y: data rows are wrapped in unrole'd ScrollFadeIn divs, so role='row' elements aren't owned by role='table' — screen readers drop the structure entirely.",
+    "severity": "major",
+    "section": "Comparison table placement + visuals + mobile + ARIA (LandingClient.tsx:1723-1923)",
+    "recommendation": "Move the table to directly after the walkthrough video / 'Three steps' so it answers the objection while the demo is fresh; additionally promote the 2-3 strongest contrasts into one split-screen claim moment high on the page (grey folder grid left, lit 3D room right). Make the brand column a visibly elevated card: full-opacity background, 2-4px terracotta top border or shadow, PalaceLogo wordmark header, 20-24px solid checks (Stripe/Notion pricing pattern). Mobile: stacked cards — one category heading, muted one-line 'them' row, dominant 'us' row at ≥0.875rem. Use a real <table>/<th scope='row'>/<td> (semantics for free), animate the whole table once or not at all.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Category-defining USP is buried: MP is the only product anywhere with a walkable 3D home combining tree, photos, and voices — and the page names the enemy but never the category",
+    "detail": "Verified against all incumbents: Ancestry's storytelling is Storymaker Studio (slideshows), MyHeritage offers LiveMemory/MyStories, FamilySearch Memories is a flat archive, StoryWorth/Remento output static books — none offers any spatial/3D experience or combines a tree with an immersive memory space. MP demonstrably has both, yet 'Cinematic 3D Palace' is one of 12 equal beige cards. Category-creation pages (Drift, Gong; Play Bigger playbook) name the enemy, coin a 2-3-word noun, define it, and repeat it — MP does step 1 well ('not a folder', 'not a photo album') but has no noun for what it IS; the strongest candidate sits unused in layout.tsx:38 ('Your memories, given a home.'). The hero kicker 'MORE THAN MEMORIES' (en.json:1117) wastes the first-scanned slot, '3D palace' appears only in the smallest hero text, and the kicker fallback (LandingClient.tsx:1119) would dump the full 90-char headline into the uppercase eyebrow for any locale missing hero.label.",
+    "severity": "major",
+    "section": "Hero eyebrow + features intro + section 8 + layout.tsx metadata",
+    "recommendation": "Elevate the combo to the category claim: \"The only place your family history is somewhere you can walk.\" Coin and repeat 'a memory home' / 'the family memory palace': (a) kicker → 'A 3D HOME FOR YOUR FAMILY'S MEMORIES'; (b) 'Your memories, given a home.' as the features-section kicker; (c) an SEO definition block (\"What is a family memory palace? A walkable 3D home where your family's photos, voices and stories live in rooms — built together and passed on.\"); (d) repeat the couplet \"Feeds scroll past. Folders bury. A palace keeps.\" Roll the phrase into JSON-LD/og:description. Fix the kicker fallback to a short string.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "WhatsApp capture is the killer answer to \"too complicated for me / will mom actually use it?\" — the one capture mechanism no incumbent has — buried as card 1 of 12 behind an unexplained character name",
+    "detail": "The page leads with a dark 3D villa and an abstract concept — signaling 'tech product, not for me' to a 70-year-old — while the adult child's #1 question is parent-capability. The category-best answer exists in production: Kep WhatsApp capture (live webhook), zero new apps or logins, plus voice-first AI interviews. No incumbent has messaging-native capture (StoryWorth = weekly emails, Remento = link recording); Remento wins this persona on exactly this promise. On the current page WhatsApp Capture is visually identical to 'Upload Photos & Videos', reassurance copy is scattered 3-4 screens down, and the very first product detail requires insider knowledge: 'Forward any photo... to Kep — your personal memory porter' (LandingClient.tsx:429) — a 65-year-old has no idea who Kep is, and 'memory porter' stacks a second metaphor on the first. Yet Kep is also the brand's most ownable personality asset (an unused hero treatment already exists: landing.features.kepHeroTitle 'Meet Kep, Your Memory Porter').",
+    "severity": "major",
+    "section": "Hero sub-line + Capture group card 1 (LandingClient.tsx:429; en.json kepCapture*/kepHero*) + missing objection block",
+    "recommendation": "Put the simplicity answer in the hero: \"If you can send a WhatsApp message, you can build a palace. No downloads, no tech skills — your first room is ready in five minutes.\" Pair with a 5-second clip of a photo being WhatsApped and appearing in a room. Add a buyer objection block: \"No new app for mom. She already knows WhatsApp.\" Cast roles explicitly: adult child = architect, parent = storyteller, grandkids = visitors. Rewrite the card outcome-first: \"Send a photo or voice message on WhatsApp — it appears in your palace, sorted and ready\", introducing Kep as 'our WhatsApp assistant, Kep' on second mention. Longer term, give Kep an illustrated body and a 'Meet Kep' band using the existing kepHeroTitle copy — a character with a face gives the 60+ audience someone to trust (Duolingo owl / Freddie pattern).",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Hero headline sells the artifact, not the job, and never acknowledges the human stake — rewrite around the reader's outcome and run a 4-arm PostHog test",
+    "detail": "Current: 'Your memories deserve a palace, not a folder' (en.json:1119-1121). Weaknesses for the 60+ Keeper: 'folder' is a computer-person's enemy (their pain object is the shoebox/attic, which the page itself uses correctly at en.json:1265); the subject is 'your memories', not the reader; and the hiring language from StoryWorth review corpora and senior-memoir communities is 'before it's too late', 'in her own words', 'I want my grandchildren to know' — never storage. Nothing in the first viewport acknowledges why a 70-year-old is here: they will not be around forever. The best message-market-fit line already exists buried in card body text ('the questions your grandchildren would ask', en.json:1155). Best candidates from a 25-headline lab (target Clarity ≥9, Cleverness ≤5): O1 outcome 'Turn a lifetime of photos into a place your family can visit.'; E2 enemy 'The cloud stores your photos. It doesn't tell your story.'; I1 identity 'Become the keeper of your family's story.' Do NOT lead the main hero with mortality — reserve urgency for gift/adult-children surfaces.",
+    "severity": "major",
+    "section": "Hero headline + subheadline (LandingClient.tsx:1140-1160; en.json landing.hero) + PostHog experiment",
+    "recommendation": "Run a 4-arm PostHog experiment (already integrated): control vs O1 vs E2 vs I1, each with a rewritten sub of the shape [what it literally is] + [with whom] + [risk reversal]: \"A beautiful 3D palace for your photos, voice recordings, and life stories — explore it together with your family. Free to start, no credit card needed.\" Primary metric = signup start; guardrail = tour-video clicks. Promote 'the questions your grandchildren would ask' to hero/sub-hero level. Also write one positioning sentence the visitor can repeat to a sibling: \"The only place your family can walk through its memories together — and pass them on.\" Ship in all 5 locales; verify the iOS variant renders no paid copy.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "The adult-child buyer and their urgency triggers are absent from all copy — every line addresses someone preserving their OWN story",
+    "detail": "Every audience card, feature description, and CTA is first-person Keeper. The real triggers for the 38-45-year-old — a parent's diagnosis, the death of the first parent ('we never recorded dad'), dementia onset, milestone birthdays — appear nowhere; regret is the dominant emotion in the wild (viral Reddit/ScaryMommy threads are adult children listing what they wish they'd recorded). Remento's whole homepage is 'The most meaningful gift for parents'; StoryWorth's hero names the giver relationship in five words. 'Gift' appears exactly once in the entire landing namespace (an in-app string). The only urgency line ('Memories don't wait. Neither should you.') is generic and at the very bottom. Audience self-selection ('Who it's for') sits at position 9, behind the scroll trap.",
+    "severity": "major",
+    "section": "Whole-page narrative (landing.hero, landing.audience, landing.cta) + audience section placement",
+    "recommendation": "Add a second narrative track for the buyer-for-parent, in trigger order: (1) regret-prevention \"One day you'll want to hear her voice again. Make sure you can.\"; (2) dignified urgency \"Some stories can't wait for someday. Start with one question tonight.\"; (3) doer relief \"You set it up in an evening. Dad just talks.\"; (4) gift \"Better than flowers. Longer than a book.\" Move audience identification into the top third: a hero sub-device ('For your story — or as a gift for theirs') or a two-card split ('Build your own palace' / 'Give one to a parent'). Replace one audience card with one aimed at adult children.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "No gift purchase flow — conceding the entire buying motion StoryWorth and Remento are built on, and the deadline-driven buyer has no way to pay",
+    "detail": "Both competitors are gift-first (StoryWorth 'The gift of a lifetime', NYT Gift Guide; Remento's $99/yr gift with scheduled gift email and printable card) and their buyer is MP's exact secondary persona: the adult child purchasing at calendar moments (Mother's/Father's Day, Christmas, 70th/80th birthdays) or crisis moments (diagnosis). The repo has no gift capability: pricing/page.tsx handleSubscribe only supports self-serve checkout for the logged-in user; registration creates MY palace, not dad's. Every CTA says free, there's no pricing link in the visible flow, and 'free forever' even triggers 'what's the catch? how do they survive?' skepticism. Every seasonal search that converts on SW/RM is structurally unavailable.",
+    "severity": "major",
+    "section": "Pricing/checkout (src/app/pricing/page.tsx, api/stripe/checkout) + missing /gift landing page",
+    "recommendation": "Ship a gift SKU (web only, sealed from iOS via mp_platform): Stripe checkout with recipient email + delivery date + personal message + printable gift-card PDF, priced as a year of Keeper (€99/yr — deliberately on the SW/RM anchor), redeemable via WhatsApp (which doubles as the zero-tech onboarding story). Build a /gift page anchored on \"Give your parents a palace for their memories. A gift you build together\" with \"Record the stories while the storytellers can still tell them\" and seasonal ad variants. Landing block: \"The gift that doesn't end when the book ships.\"",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Voice is the category-winning emotional asset — MP records, transcribes, and replays it in-room, but the page treats voice as a file type",
+    "detail": "Remento's entire headline is 'A keepsake book that lets you hear their voice forever'; its top quote is about crying at a QR code of dad's voice. StoryWorth's most-cited weakness is being text-only. Grief and memory forums consistently rank voice as the most treasured artifact (people keep voicemails for years). MP genuinely has AI-guided voice interviews, WhatsApp voice notes, and in-room voice playback — arguably MORE powerful than voice-behind-a-QR — but on the page voice appears only inside 'AI-Guided Interviews' body text (en.json:1154-1155) and step-2 copy. Nothing at hero or section-header level says 'voice', and the page contains zero audio.",
+    "severity": "major",
+    "section": "Feature grid (Capture group) + section 6 walkthrough + section headers",
+    "recommendation": "Promote voice to its own headed moment: \"Photos show what happened. Your voice tells why it mattered.\" / \"Not a book they'll read once. A voice they can visit.\" In the walkthrough section: \"Stand in her kitchen. Hear her tell the story in her own voice\" — pair Guillaume's video with an audible voice-memory moment rather than silent screenshots.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Permanence and inheritance — the #1 trust answers for a legacy product — are buried in the unreachable FAQ and the ToS",
+    "detail": "Two distinct fears, both answered in the repo but invisible: (1) 'What happens to the palace when I/he dies?' — forum/search research shows a large anxiety cluster (Google won't grant family access even with a death certificate; inactive accounts get deleted); MP's answer (Legacy Planning 'Choose who gets the keys', time capsules, comparison row4) sits in sections 8-9 below the trap, treated as feature card 12 of 12. (2) 'What if this company disappears?' — the repo contains a best-in-class answer: full ZIP export on the FREE tier (plans.ts:47), a contractual 90-day shutdown notice + export guarantee (ToS, en.json:3832), and FAQ q12 written exactly for this (en.json:1359-1360) — all invisible on a Terms page and a trapped FAQ. StoryWorth's structural advantage is a physical book that survives the company; MP's endgame is a 3D world behind a login with these questions unanswered. For the primary persona this is the reason to buy; for gift-givers, the reason to gift.",
+    "severity": "major",
+    "section": "Legacy card + FAQ q6/q12 (LandingClient.tsx:2139; en.json:1346-1361) + missing trust section",
+    "recommendation": "Two visible moments: (1) elevate legacy to the top third as named fear + resolution — \"When a Google account goes quiet, the photos vanish with it. A palace has heirs.\" — with a second beat near the final CTA reusing 'Choose who gets the keys'; only promise mechanics that verifiably exist. (2) A named 'Forever Promise' block near the final CTA: \"Export everything as a ZIP anytime, on every plan — and if we ever shut down, you get 90 days and your complete archive.\" Link the words to the ToS clause for credibility. Consider roadmapping a printed 'Palace Book' export (photo-book + QR to walk the room) — it neutralizes the only rows where book services win (physical keepsake, gift object).",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "\"Is AI reading my family's private photos?\" — the page advertises AI prominently, creating the objection without answering it",
+    "detail": "FAQ a9 (en.json:1354) already says the right things — AI is opt-in, uses Anthropic's Claude which does not train on user data, EU storage — but it renders below the scroll trap, while 'AI-Guided Interviews' and 'AI sorts thousands of photos' are advertised above the fold with no reassurance. The site's own blog even coaches readers to ask vendors the AI-training question. AI copy also uses engineering verbs ('transcribes, tags, and places', 'opt-in', vendor names) that read as alien and mildly threatening to an AI-anxious demographic.",
+    "severity": "major",
+    "section": "Feature cards (Capture group) + FAQ a9",
+    "recommendation": "Add a one-line footnote to every AI feature card: \"AI is opt-in and never trains on your memories.\" In the FAQ lead with \"Nothing happens without your permission, and your memories are never used to train anything\" before naming the vendor; frame AI as 'a gentle interviewer — it asks, you talk'. Verify the 'does not train' claim against current Anthropic commercial terms before shipping.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "The effort objection ('I don't have time to organize 40 years of photos') has the perfect rebuttal already written — hidden at body-copy size in one of 12 uniform cards",
+    "detail": "The classic killer objection for memory/legacy products. The rebuttal exists at en.json:1151: \"AI sorts thousands of photos into the right rooms in minutes. What would take you months happens while you have coffee.\" — currently one of 12 identical beige cards. AI interviews (2 free) also answer 'I can't write my life story'.",
+    "severity": "major",
+    "section": "Section 3 feature grid",
+    "recommendation": "Promote to a full-width band with a before/after visual (camera-roll chaos → organized rooms). Headline: \"You bring the photos. AI does the sorting.\" Sub: \"What would take you months happens while you have coffee — and if writing isn't your thing, the AI interviewer asks, you just talk.\"",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "\"My family won't actually use this / I'll be alone in my palace\" — real rebuttals exist but are never framed as the answer",
+    "detail": "The silent-network objection: the Keeper fears building for nobody; the adult child fears mom won't keep it up. Existing rebuttals are scattered: co-creation (en.json:1344), WhatsApp contribution (anyone can forward a photo — near-zero friction), Receive Shared Memories, visitor Explore mode. None is framed as an answer to 'will my family join?'.",
+    "severity": "major",
+    "section": "Share feature group (section 3) + section 6 walkthrough video",
+    "recommendation": "Reframe the Share group intro: \"You don't have to do this alone — and your family doesn't need to learn anything. They tap your link to walk through, and add their own photos just by sending a WhatsApp message.\" Show a two-generation moment in the walkthrough video, not a solo tour.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Five different labels for the same /register action destroy message consistency and fragment analytics",
+    "detail": "The identical action carries five labels: nav 'Get Started' (LandingClient.tsx:941), hero + sticky 'Create Your Palace — Free' (1197, 2618), mid-page 'Store Your Memories Now' (1571), final 'Start Your Palace — Free' (2283), footer 'Get Started Free' (2429). NN/g senior-UX guidance: the same action must always carry the same literal label — each new label forces re-evaluation of whether this is a new commitment. 'Store Your Memories Now' is worst: it reframes the product as storage, the exact 'folder/passive drive' framing the hero and comparison table attack, and duplicates the how-it-works step-1 title. nl.json:1369 ('Maak je Palace — Gratis', untranslated vs hero 'Maak je Paleis') proves 5 labels x 5 locales = 25 independently drifting strings.",
+    "severity": "major",
+    "section": "All CTAs (nav, hero, mid, final, footer, sticky, exit-intent) x 5 locales",
+    "recommendation": "One primary label everywhere: \"Create Your Palace\" — brand-owned, outcome-explicit, and already what iOS shows after dash-stripping, so web and iOS become one string and the Apple seal is satisfied by construction. Web-only microcopy under the button: \"Free forever · No credit card needed\" (hidden when isIosApp); iOS microcopy: \"Ready in minutes · No tech skills needed\". Nav/footer: \"Get Started\". Never use \"Store\" in a CTA; rename step 1 to \"Add Your Memories\". Reference ONE message key (landing.cta.primary) from every render site. Locales: NL \"Maak je Paleis\", DE \"Erstelle deinen Palast\", ES \"Crea tu palacio\", FR \"Créez votre palais\".",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "CTA cadence and hierarchy broken: risk-reversal missing at the hero, secondary button equals the primary, no CTA across the longest stretch, mobile sticky is a ghost button, and the mini-CTA closes before any proof",
+    "detail": "'No tech skills needed' — arguably the #1 objection for 60+ — appears only in the unreachable final section; hero risk-reversal is crammed into the button label while chips answer security, not cost/difficulty. heroCta and heroSecondary (LandingClient.tsx:2751-2776) share identical padding/size/radius — only fill vs 1.5px 50%-alpha outline differs (a border that nearly vanishes on the dark video, failing 3:1 non-text contrast); on mobile both stack full-width, splitting the thumb's choice. Between hero and mid-CTA sit several viewports with zero conversion opportunity; no sticky exists on desktop, and the mobile-only sticky bar (2601-2619) renders its button transparent with a 60%-opacity border — the lowest-affordance treatment in the system, on the highest-persistence element. The mid-CTA itself ('no catch') fires before the visitor has seen video, screenshot, or testimonial — the close before the proof.",
+    "severity": "major",
+    "section": "Hero CTA row (1165-1218, 2751-2776) + mid-CTA (1538-1556) + mobile sticky (2577-2621)",
+    "recommendation": "Microcopy line under the hero primary: 'Free forever · No credit card · No tech skills needed' (AA contrast, i18n'd, iOS-gated). Demote the hero secondary to a text link with play icon ('▶ Watch the 90-second tour') at ~60% visual mass; make the primary the single unmissable element at first paint. Invert the sticky bar: near-solid bar, button in full darkened-gradient fill + shadow; keep footerInView hide logic and safe-area padding. Add one quiet inline CTA after the feature wall; downgrade the mid-CTA to a low-commitment ask ('Watch the tour') until proof has been presented; reserve 'no catch'-class reassurance for the final close.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "\"Watch How It Works\" doesn't play anything — it scrolls to a text section while the demo video sits two sections lower (and below the trap)",
+    "detail": "The hero secondary button (en.json:1123) promises video but its onClick (LandingClient.tsx:1199-1202) scrolls to #how-it-works — the three-step TEXT section (1435) — while the walkthrough lives in #showcase (1578), which nothing on the page links to. For older users a label→action mismatch is a direct trust hit at the most fragile moment (first interaction), and it squanders the page's best conversion asset: for a 3D product, the demo video IS the argument, and no CTA reliably reaches it. scrollIntoView({behavior:'smooth'}) (1201) also ignores reduced motion. It's currently unmeasurable as a video CTA.",
+    "severity": "major",
+    "section": "Hero secondary CTA (LandingClient.tsx:1199-1217) vs #how-it-works (1435) / #showcase (1578)",
+    "recommendation": "Relabel to \"Watch the 90-Second Tour\" (specific duration lowers commitment anxiety) and open the walkthrough in a lightbox directly from the hero — no scroll dependency, immune to the carousel, identical on iOS (a video CTA carries no pricing; the click gesture grants autoplay-with-sound). Keep a small 'How it works' nav link for the text steps. Instrument play-rate and completion in PostHog.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Exit-intent modal: dark-pattern-adjacent for this audience, and a11y-broken (no dialog semantics, no Escape, no focus management, tiny close target)",
+    "detail": "The overlay fires on mouseleave after 5 s (LandingClient.tsx:593-605, 2624-2717) with no role='dialog', no aria-modal, no aria-labelledby, no Escape handler, no focus trap; focus never moves in — screen-reader and keyboard users may not perceive it while it visually blocks the page (WCAG 4.1.2/2.4.3). The ✕ is a ~1.25rem glyph at 0.6 opacity with minimal padding — under the 24px WCAG 2.5.8 minimum, let alone the 44px seniors need. Combined with the scroll trap, the realistic journey is: scroll gets stuck, user moves to leave, modal pops up — for 60+ Heritage Keepers being asked to entrust their life's memories, an ambush at the exit contradicts the page's own 'no catch' promise. StoryWorth, Ancestry, and AARP don't use exit-intent modals. It also bypasses the iOS seal (covered separately).",
+    "severity": "major",
+    "section": "Exit-intent modal (LandingClient.tsx:593-605, 2624-2717)",
+    "recommendation": "Preferred: remove the pattern entirely — once the trap is fixed, the final CTA and FAQ do the retention work; the ceiling is a small non-modal inline banner. If kept: role='dialog' aria-modal aria-labelledby, focus moved in and trapped, Escape closes, focus restored on close, 44x44px full-opacity close target, and the isIosApp gate.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "prefers-reduced-motion and Save-Data are ignored page-wide — and HeroVideo actively fights the browser to force playback",
+    "detail": "Grep finds no prefers-reduced-motion, saveData, or effectiveType checks in LandingClient.tsx. The hero video autoplays, loops indefinitely with no pause control (WCAG 2.2.2 failure), and if autoplay is blocked attaches document-wide click/touchstart listeners to force .play() on the user's first interaction anywhere (107-131) — actively defeating the user agent's data/battery protections. globals.css:361 zeroes CSS animations under reduced-motion but does nothing for <video>, ScrollFadeIn's JS-driven states, the sticky-CTA slide, or JS smooth scroll. Vestibular sensitivity rises sharply with age — an unstoppable full-viewport motion loop behind the headline hits exactly the 60+ target, on older iPads paying continuous GPU cost.",
+    "severity": "major",
+    "section": "HeroVideo (LandingClient.tsx:105-157) + page-wide JS motion + globals.css:361",
+    "recommendation": "Gate on matchMedia('(prefers-reduced-motion: reduce)'): show the poster and never call play() (delete the forced-play listeners in that branch), render ScrollFadeIn final state immediately, suppress sticky/exit transitions, use scrollIntoView behavior:'auto'. Skip video download on navigator.connection.saveData or 2g/3g. Add a visible pause button. Table stakes for a seniors-focused product — and the static branch also fixes the brown-void first paint.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Structured data: fabricated aggregateRating (4.8 from 12), duplicate conflicting Organization graphs, 404 logo, empty sameAs, dead Play badge feeding JSON-LD",
+    "detail": "layout.tsx:216-246 hard-codes aggregateRating 4.8 / ratingCount 12 on WebApplication with no reviews visible anywhere (testimonials are lazy-gated below the trap) — self-serving review markup unsupported by visible content, a documented trigger for structured-data manual actions that would strip ALL rich results. Two competing ld+json graphs: layout.tsx (logo /brand/alt-social-512.png, exists) vs LandingClient.tsx:624-679 (second Organization pointing at https://thememorypalace.ai/logo.png — public/logo.* does not exist, 404s; sameAs is literally []). The FAQPage block (646) ships a2's 'bank-grade/highest security standards' puffery into Google answer boxes, and FAQ a8 claims 'Download it from the App Store or Google Play' while the rendered Play badge URL is literally '#' (en.json:1364, used at 2194) — a dead store badge is exactly the detail a cautious gift-giver clicks to vet legitimacy. FAQ rich results have also been restricted to gov/health sites since 2023.",
+    "severity": "major",
+    "section": "JSON-LD (layout.tsx:216-246; LandingClient.tsx:624-679, 646) + FAQ badges (2194; en.json:1364)",
+    "recommendation": "Merge into ONE server-rendered @graph: Organization (one existing logo URL, populated sameAs), WebSite, WebApplication + free Offer, VideoObject. Delete aggregateRating until real, visible, verifiable on-page reviews exist — then generate it from the same data the testimonials render. Point playStoreUrl at the real Play listing (one exists per memory notes) or remove the badge and soften a8. Audit every FAQ answer feeding the schema for claims you'd accept quoted verbatim in a Google snippet.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Head metadata is keyword-empty and technically broken: bare title, 5-word description, no canonical/metadataBase, 512x512 OG logo, no sitemap/robots for 28+ blog posts",
+    "detail": "src/app/layout.tsx:30-67: default title is just 'The Memory Palace' and the site-wide description 'Your memories, given a home.' is duplicated into OG/Twitter — no category term (digital memory book, family legacy app, 3D photo album), no benefit, no CTA in the SERP snippet. No metadataBase (relative OG URLs may resolve to the Vercel deployment domain) and zero 'canonical' anywhere in src/app, so every ?lang=/tracking variant is a potential duplicate. og:image is a 512x512 logo while twitter card is summary_large_image (expects ~1200x630) — shares look like an icon, not a product — though an ImageResponse route already exists (api/og/route.tsx). Audits conflict on whether app/sitemap.ts exists (one found none plus no robots; another found lastModified stamped new Date() at build) — verify on the current branch; either way the ~28-slug x 5-locale blog is unadvertised and unlinked from the landing.",
+    "severity": "major",
+    "section": "src/app/layout.tsx:30-80 + src/app/page.tsx + sitemap/robots",
+    "recommendation": "Rewrite keyword-led: title 'The Memory Palace — Your Family's Memories in a 3D Home You Can Walk Through' (also mitigates the podcast name collision); description 'The ancient memory-palace technique, rebuilt in 3D — preserve photos, voices and life stories in rooms you can walk through. Free, EU-hosted, GDPR.' Add metadataBase: new URL('https://thememorypalace.ai') + alternates.canonical '/'. Build a 1200x630 branded OG image showing the actual 3D villa interior. Verify/add app/sitemap.ts (homepage, /pricing, /security, /help, all blog slugs per locale) with real content dates and app/robots.ts; add a footer block linking 3-5 cornerstone blog posts.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "hreflang points 5 locales at ?lang= URLs that all serve identical English HTML — 11,250 translated keys earning zero EU rankings",
+    "detail": "layout.tsx:68-76 declares alternates.languages as https://thememorypalace.ai?lang=nl|de|es|fr, but locale comes from a client-side cookie (mp_locale via useTranslation), so the server renders English regardless of the query param. Google validates hreflang by fetching each URL; finding identical content it discards the cluster. Full NL/DE/ES/FR landing copy earns nothing in exactly the EU markets (NL/BE, DACH) where a GDPR/EU-hosted family product should dominate. No x-default; the sitemap omits the variants.",
+    "severity": "major",
+    "section": "i18n / hreflang (src/app/layout.tsx:68-76)",
+    "recommendation": "Move locales to SSR path segments (/nl, /de, /es, /fr) that render translated HTML server-side, emit reciprocal hreflang + x-default on every variant, and translate title/description per locale. Dutch queries like 'digitaal herinneringsboek' and 'familiegeschiedenis app' are low-competition wins. If path-based locales are out of scope for this release, drop the hreflang block entirely rather than ship an invalid cluster.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "H1 and every H2 are poetic but carry zero query language — the page can only rank for its brand name",
+    "detail": "The H1 'Your memories deserve a palace, not a folder' and H2s ('Twelve ways your memories stay vivid.', 'Three steps. Five minutes.', 'Your palace, from the inside', 'THIS IS NOT A PHOTO ALBUM.') contain not one searched term (digital memory book, family legacy app, online memory palace, preserve family memories, 3D photo album). The page's only keyword-bearing sentence is buried in FAQ answer a1. Emotional headlines are right for conversion, but with no keyword-bearing support structure the page competes for nothing — compounded by the podcast name collision on the bare brand term.",
+    "severity": "major",
+    "section": "Heading hierarchy (LandingClient.tsx:1123, 1374, 1446, 1591, 1660, 1739, 2151)",
+    "recommendation": "Keep the emotional H1; make the support do SEO work: a keyword-rich subhead under the hero ('The 3D digital memory book for family stories, photos and voices') and H2s pairing emotion with category terms ('A family legacy app in three steps', 'Your online memory palace, from the inside'). Give the hero eyebrow descriptive text since it visually precedes the H1.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "One monolithic page traps 14+ distinct search intents — feature cards and the comparison table are unexploited ranking pages",
+    "detail": "All intent — WhatsApp capture, family tree, time capsules, legacy planning, memory map, AI interviews — is trapped as small non-linking cards inside one client component. Each maps to a distinct query ('family tree app with photos', 'digital time capsule for family', 'AI life story interview') a single page can never rank for simultaneously. The comparison table is exactly the bottom-funnel content that ranks as '[competitor] alternative' pages — currently below the scroll trap and invisible to crawlers via LazySection. The landing also never links to /explore (the only social-proof surface) or any /kep marketing page (the public one built 2026-05-13 no longer exists — /kep now redirects to the authed app).",
+    "severity": "major",
+    "section": "Information architecture / content strategy + footer/nav links",
+    "recommendation": "Build /features/[slug] pages (hero shot, 3 benefits, screenshot, FAQ, CTA — the mega-menu pattern already planned for STEMMA is the right model) and link each landing card to its page. Add /compare/google-photos and /compare/apple-photos reusing existing table copy. Add /explore to nav or footer; decide whether a public /kep marketing page should exist again. This de-bloats the landing and creates 14+ indexable, conversion-ready URLs.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "The page has three competing personalities — heritage hotel, fintech vault, growth-hacker SaaS — plus fear-based closers; commit to one voice charter",
+    "detail": "en.json's landing copy oscillates between (a) heritage-hotel brochure ('Cinematic 3D Palace', 'marble footsteps echo'), (b) fintech vault ('256-bit Bank-Grade Encryption'), and (c) growth-hacker SaaS ('Like Duolingo — but for the stories that matter most', 'drag, drop, done', 'No credit card, no catch'). A 68-year-old meets a concierge, a bank teller, and an app marketer on one page — nothing is memorable. The closers use the wrong levers: 'Memories don't wait. Neither should you.' is mortality pressure aimed at a 72-year-old (fear, not love), and 'THIS IS NOT A PHOTO ALBUM.' all-caps shouts and defines the brand by what it isn't.",
+    "severity": "major",
+    "section": "Whole page copy (en.json landing.*) + final CTA + carousel header",
+    "recommendation": "Commit to ONE personality — the Loving Archivist: second person, concrete family nouns (kitchen table, wedding day, your mother's voice), unhurried verbs (keep, place, seal, hand over), zero urgency, zero app-jargon. Write a 5-line voice charter (say/never-say: no all-caps, no deadlines, no competitor names, no 'don't') and rewrite every landing.* key against it. Closers become invitations: 'Begin with one memory. The rest will follow.' Carousel header: 'Step inside. This is what a memory looks like when it has a home.' Test: cover the logo — if the copy could belong to Dropbox or a bank, rewrite.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Insider jargon throughout: 'wings' undefined, 'GEDCOM', 'pedigree' x3, 'streaks/badges/Like Duolingo', AI engineering verbs — hostile to the 60+ reader and tonally wrong beside grief content",
+    "detail": "(1) 'wings' first appears undefined in card 2 and is load-bearing in the free-plan FAQ; (2) 'GEDCOM import' (comparison row 6, FAQ a7) is a 1984 file-format acronym only hobbyists know; (3) 'fan charts, pedigree views, relationship links' repeats verbatim in three places — 'pedigree' reads as dog-breeding to lay readers; (4) memoryTracksDesc sells via gamification culture ('Earn badges, build streaks… Like Duolingo', en.json:1163, echoed at 1218/1223 and comparison row8) — naming another app breaks the spell, gamification vocabulary trivializes sacred life-story work adjacent to testimonials about a dead husband and dementia, and it simultaneously signals recall-training to memory-technique enthusiasts when it's actually autobiography prompts (a bait-and-switch for that persona); (5) AI copy uses engineering verbs ('transcribes, tags, and places', 'opt-in', vendor names).",
+    "severity": "major",
+    "section": "Sections 3, 6, 8 + FAQ (en.json landing.features, landing.comparison, faq) — 5 locales",
+    "recommendation": "Translate every term into outcomes: 'share a room or a whole chapter of your palace (like Childhood or Travels)'; 'Bring in the family tree you already built on Ancestry or MyHeritage — no retyping' (GEDCOM in parentheses in one FAQ line only); 'See five generations at a glance' with the fan chart SHOWN, not named; Journeys card → 'One gentle question at a time, your life story takes shape. Start with your childhood street; end with the wisdom you want to pass on' — never 'streaks', never a competitor's name (keep achievements inside the app); 'You talk; your words are written down for you.' Adopt the researched vocabulary map as the copy style guide: USE 'life story', 'in your own words', 'keepsake', 'pass down', 'grandchildren', 'shoebox/attic', 'no tech skills needed', 'yours forever'; DROP 'folder', 'gamified', 'cinematic flyover', coined persona titles.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "The page never pays off its own name — the 2,500-year method-of-loci story is the uncopyable differentiator, already written in 5 locales, and completely absent",
+    "detail": "Grep confirms zero mentions of loci/mnemonic/Simonides/spatial memory in LandingClient.tsx or landing.* copy, yet a full 5-locale blog post exists (slug what-is-memory-palace-technique, src/lib/blog/posts/en.ts:8), linked from nowhere. The story is uniquely defensible (book services and photo-storage products cannot claim it), backed by citable science (Krokos, Plaisant & Varshney 2018: immersive virtual memory palaces improved recall 8.8% vs desktop), and matches the Tuscan aesthetic. It is also the missing argument behind 'THIS IS NOT A PHOTO ALBUM' — currently assertion without argument — and the answer to 'is 3D a gimmick?'. FAQ a1 (emitted as JSON-LD) defines 'memory palace' purely as a 3D keepsake space, guaranteeing SERP intent mismatch for the site's most rankable query; technique enthusiasts landing via 'memory palace app' find no hook and read the name as term-squatting. Guardrail: copy must describe spatial memory as why the PRODUCT's organization works, never as user-cognition benefit — 'improves your memory' / dementia framing would be an unsubstantiated therapeutic claim under EU consumer-protection rules.",
+    "severity": "major",
+    "section": "New 'Why a palace?' band between hero and features + FAQ a1/q0 + JSON-LD (LandingClient.tsx:646) + blog link",
+    "recommendation": "Add a short supporting band — \"Why a palace? Because your brain thinks in places.\" Body: \"For 2,500 years — from Simonides to Cicero's Rome — people remembered what mattered by placing it in imagined rooms. Scientists call it the method of loci: we recall places far better than files. (Prefer a simple list? The Library shows everything as a classic gallery too.)\" CTA: \"Read the 2,500-year story →\" to the existing blog post. Add FAQ q0 'What is a memory palace?' (technique-first answer, mirrored in JSON-LD, all 5 locales). Approved phrases: 'your brain remembers places better than files', 'the same principle used by memory champions'. Banned: 'improves memory', 'trains your brain', anything touching aging/dementia. Clarifier for enthusiasts: 'We use the palace to keep memories, not to train them.'",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Name collision: 'The Memory Palace' is culturally owned by a Peabody-finalist podcast, a 2024 Random House book, and the generic technique — qualify everywhere, don't rename",
+    "detail": "Nate DiMeo's podcast (since 2008, Radiotopia/PRX) holds thememorypalace.us AND .org; Random House published a companion book Nov 2024. The bare term is dominated in search by technique explainers, Sherlock, and 'Moonwalking with Einstein'. layout.tsx metadata titles are just 'The Memory Palace' with a 5-word tagline — indistinguishable from the podcast in a SERP snippet. A discoverability tax and weak positioning, not a rename-level problem (different class: entertainment vs software).",
+    "severity": "major",
+    "section": "src/app/layout.tsx titles + JSON-LD (LandingClient.tsx:632-671)",
+    "recommendation": "Qualify everywhere: title tag → 'The Memory Palace — Your Family's Memories in a 3D Home You Can Walk Through' (+ locale equivalents). Add alternateName [\"Memory Palace app\", \"family memory palace\"] and applicationCategory to the SoftwareApplication JSON-LD. Target long-tail the podcast can't hold ('memory palace app for family memories') via the definition block + existing blog post. Optional hygiene: EUIPO/USPTO clearance check for software/SaaS classes before further brand investment.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "German addresses 60+ buyers as 'du' with literal calques no native copywriter would write",
+    "detail": "de.json uses informal 'du' throughout ('Erstelle deinen Palast'). German Heritage Keepers 60+ overwhelmingly expect 'Sie' from a product simultaneously selling DSGVO compliance and legacy planning — 'du' from a stranger reads presumptuous to this cohort (unlike NL 'je'). The final CTA compounds it with a word-for-word calque: 'Erinnerungen warten nicht. Du solltest es auch nicht.' — grammatically odd German. Ancestry.de and MyHeritage.de use Sie.",
+    "severity": "major",
+    "section": "All DE sections, esp. final CTA (src/messages/de.json landing.cta.title, landing.hero)",
+    "recommendation": "Make a deliberate, documented register decision per market; for the DE 60+ heritage segment Siezen is the safe default. Rewrite calqued lines natively ('Erinnerungen warten nicht. Warten Sie auch nicht.'). Run a native DE review pass of the full landing namespace either way.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Locales are stale vintages of old English copy with no source-of-truth process — the same key tells a different product story per language",
+    "detail": "features.sharingDesc: EN says 'Your best friend adds that holiday video from 1998'; NL/DE/FR all say your brother and append sentences EN doesn't have; ES reorders and invents content. hero.description: all four locales dropped 'friends', contradicting the co-creation positioning. hero.headline: EN was rewritten but NL/DE/ES/FR still translate the previous version. Remaining polish: NL keeps gamer anglicisms ('bouw streaks op', 'Verdien badges') and English Title Case ('Maak je Paleis — Gratis'); ES cta.title dangles ('Tú tampoco deberías.'); DE/FR strings run 30-50% longer than EN while navLink uses whiteSpace:'nowrap' + flexShrink:0 (LandingClient.tsx:2735-2736) — the nav will collide at tablet widths in FR/DE — and the hero's hard line-break is tuned for the 31-char EN first line vs DE's 42.",
+    "severity": "major",
+    "section": "src/messages/{nl,de,fr,es}.json landing.* + nav/hero layout (LandingClient.tsx:2735-2736)",
+    "recommendation": "Treat EN as master and re-translate every landing key from current EN in one sweep (native register per market: NL 'in je eigen woorden', sentence case; ES 'No esperes tú tampoco'). Then enforce sync: a script that diffs key sets and flags keys whose EN value changed after the locale file's last edit (key-versioning or a lightweight TMS). QA the landing at 768-1200px in DE/FR; shorten nav labels per locale (DE 'Ablauf', FR 'Fonctions') and give translators explicit length budgets. Document the tú/vous/Sie/je register decision per market.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Hero headline widow is engineered in: hard <br/> plus a max-width the clamped size can't honor — guaranteed broken in DE/NL",
+    "detail": "LandingClient.tsx:1123-1145 renders the H1 as {storyDeserves}<br/>{moreThanFolder} at clamp(2.5rem, 6.5vw, 4.75rem) with maxWidth 53.125rem. At 1440px the size resolves to 76px; the 31-char first line can't fit 850px at 76px Cormorant, so it wraps naturally BEFORE the manual break — producing the observed orphan 'palace,' alone on its own line, comma dangling. In DE ('Deine Erinnerungen verdienen einen Palast,' — 42 chars) the widow is guaranteed. A hard <br/> inside a fluid-width, fluid-size, 5-locale headline assumes a line length the layout never guarantees — it breaks the rhythm of the page's single most important sentence and reads like a typo to a careful older reader.",
+    "severity": "major",
+    "section": "Hero H1 (LandingClient.tsx:1123-1145)",
+    "recommendation": "Remove the <br/>; add textWrap:'balance' (evergreen support, harmless fallback) and keep the semantic break by binding 'a palace,' with whiteSpace:'nowrap' or restructuring so the gold italic phrase is the natural second line — enemy and promise on the same visual line. Widen maxWidth to ~60rem or cap the clamp at ~4.25rem so the first line fits at 1440px in every locale. Treat headline wrap points as locale-tested, never hard-coded; verify at 1280/1440/1920.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Display typography too frail and font loading too heavy: Cormorant 300 hero over video, Cormorant below its optical floor at card size, 14 WOFF2 files with display:swap FOUT in the LCP element",
+    "detail": "The H1 (LandingClient.tsx:1128) and every sectionTitle (2792) use Cormorant Garamond at weight 300 — a high-contrast, low-x-height face whose hairlines shimmer against the dark video, which is why the hero needs two stacked text-shadows (1137) as a crutch; the gold italic accent line (1142) is the lowest-legibility combination available (italic + light + serif over motion). featureTitle runs Cormorant at 21px (2807-2813) — below the ~24px floor where the face stays crisp. Meanwhile layout.tsx:15-28 loads Cormorant in 5 weights x 2 styles + Manrope in 4 weights (14 WOFF2, ~150-200 KB largely unused) with display:'swap' — Cormorant is metrically very different from Georgia, so the swap visibly re-shapes the LCP headline; a redundant fonts.googleapis preconnect (line 250) remains though next/font self-hosts. No element uses text-wrap balance/pretty, so every heading in 5 locales is one resize from a widow.",
+    "severity": "major",
+    "section": "Hero + section titles + card titles + src/app/layout.tsx:15-28, 250",
+    "recommendation": "Move display type to weight 500 (already loaded), 600 for the gold italic; remove the second text-shadow once weight carries contrast. Reserve Cormorant for ≥1.75rem; set card titles in Manrope 600 at 1.0625-1.125rem. Trim the load to ~4-5 files (Cormorant 400/500 + one italic, Manrope 400/600); remove the preconnect; verify adjustFontFallback produces shift-free swaps. Add textWrap:'balance' to h1/h2/h3 and 'pretty' to paragraphs page-wide — directly hardens the DE/FR/NL locales where strings run 15-30% longer.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "T.font family strings don't match next/font-loaded fonts — inline styles likely render Georgia/system instead of the brand faces",
+    "detail": "next/font/google with `variable` registers fonts under hashed internal family names exposed only through --font-display/--font-body (set on <html>, layout.tsx:104). But T.font.display is the literal \"'Cormorant Garamond', Georgia, serif\", there is no Google Fonts stylesheet <link> (only preconnects) and no @font-face CSS — so inline styles using F.display/F.body likely render Georgia/system fonts. The overhaul branch already fixes this pattern (\"var(--font-display), ...\").",
+    "severity": "major",
+    "section": "Fonts / theme tokens (theme.ts, layout.tsx:104)",
+    "recommendation": "Change T.font.* to reference var(--font-display)/var(--font-body) with fallbacks (mirror the overhaul branch), and verify in-browser which family actually renders before any typography decisions are made on top of it.",
+    "votes": "2/3",
+    "confirmed": true
+  },
+  {
+    "title": "Warm-dark design system (HUD/motion/gradient tokens) is stranded on the overhaul/design-perf branch — the redesign has no tokens to build on",
+    "detail": "The intended candlelight HUD tokens (T.hud, T.motion, T.gradient, T.archive), the muted-color WCAG fix, and the Playfair/Inter/JetBrains font system exist only on overhaul/design-perf; staging has none of them. Meanwhile LandingClient.tsx uses only T.color/T.font and hand-rolls everything else — ~15 raw hex literals (e.g. #1a1a18, #3D3D3A dark-section gradients) bypass the palette, which explains the beige-on-beige inconsistency and makes any re-theme require touching every inline style.",
+    "severity": "major",
+    "section": "Theme tokens (src/lib/theme.ts) vs LandingClient.tsx styling",
+    "recommendation": "Cherry-pick or port the theme.ts token additions (ADD-only per the file's own comment) to staging before redesigning, and decide whether the redesign uses the hud (candlelight amber) or archive (oxblood/museum) accent language — they are two different systems. Route dark-section backgrounds and muted text through tokens; adopt T.space/fontSize/radius during the redesign.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "SSR HTML is desktop layout on phones (hydration flash), and the sticky CTA reads window.innerHeight during render",
+    "detail": "All three responsive JS hooks return false during SSR, so every inline-style ternary renders the desktop value in server HTML. Only the nav is guarded (mounted state, LandingClient.tsx:402-403) and only hero title/subtitle have CSS !important overrides — stats grid, feature grids, comparison table, and footer paint desktop-sized on a phone until hydration. Two overlapping breakpoint systems coexist (JS hooks at 479/767/1024 vs CSS queries at 480/640/768). Related: showStickyBottomCta (line 590) computes visibility from window.innerHeight inline during render — non-reactive to resize/orientation and a render-time browser-global read.",
+    "severity": "major",
+    "section": "Whole page responsive architecture + sticky CTA (LandingClient.tsx:402-403, 590)",
+    "recommendation": "Prefer CSS-first responsiveness in the redesign (media queries / clamp / auto-fit grids) with one consolidated breakpoint set shared between any remaining hooks and CSS. Derive the sticky-CTA threshold in the scroll effect or a resize-aware hook.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Whole 2,719-line page re-renders on every scroll frame via setScrollY",
+    "detail": "LandingClient.tsx:575-581 attach a scroll listener calling setScrollY(el.scrollTop) unthrottled, and scrollY is state on the component rendering the entire page — on mobile CPUs the full tree (12 cards, 8 comparison rows, footer, all inline-style objects re-allocated) reconciles up to 60-120x/second during scroll. The state feeds only three threshold booleans: headerOpaque (>60), scroll-hint fade (>50), sticky CTA (>innerHeight). A primary cause of scroll jank on mid-range Android — exactly the devices Heritage Keepers' families own.",
+    "severity": "major",
+    "section": "Scroll listener (LandingClient.tsx:575-590, 1293)",
+    "recommendation": "Replace numeric scrollY state with threshold booleans that only setState when they flip, or isolate nav/hint/sticky-CTA into tiny components fed by IntersectionObserver sentinels. Zero re-renders of the page body during scroll is the baseline; the redesign's component split should make this structural.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "No shared marketing header/footer — nav duplicated with divergent links across 4+ pages, and the header omits the strongest scent anchors",
+    "detail": "LandingClient, /pricing (L164-225), /blog (L66-134), /security (L322-397) each hand-roll their own header and footer with divergent link sets (blog header lacks /pricing; security footer only has /privacy + /terms) — a landing redesign that restyles nav will leave subpages inconsistent unless each is edited separately. The landing header itself (871-941) offers Features/How It Works/Pricing/Blog/Sign In/Get Started but omits the three things 60+ buyers and their gift-giving children scan for: FAQ (only discoverable by scrolling past the trap), the demo video (#showcase has an id but zero inbound links), and /security (footer + one small hero link only).",
+    "severity": "major",
+    "section": "LandingClient.tsx:871-941 + pricing/blog/security pages",
+    "recommendation": "Extract shared MarketingHeader/MarketingFooter into src/components/landing/ during the redesign and adopt them on all four pages. Add 'FAQ' (anchor) and 'See it in action' (#showcase/lightbox) to the header; keep Pricing but let the landing preview the free tier.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "The page never shows what happens after clicking Get Started — no screenshots in how-it-works, no desktop view of the 3D product",
+    "detail": "The 3-step section renders only a number, title, and one-line description per step (LandingClient.tsx:1472-1529) — zero screenshots of registration, onboarding, or the first-palace flow. The only product visuals on the page are one 16:9 video and eight portrait phone screenshots inside the trapped carousel; the desktop 3D experience — the product's core — is never shown as a desktop screenshot. For anxious 60+ Heritage Keepers, 'what will it ask me to do?' has no visual answer.",
+    "severity": "major",
+    "section": "Section 4 — 'Three steps. Five minutes.' (LandingClient.tsx:1436-1533)",
+    "recommendation": "Pair each step with a real annotated screenshot or 5-second clip of that exact moment (sign-up form, first room, first memory placed), Airbnb/Duolingo style. Add at least one large desktop screenshot of the 3D palace above the fold or in features. Reuse existing FAQ answers ('free forever', 'no credit card' — web only) as microcopy under the step imagery.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "No human being or legal entity stands behind the product anywhere — anonymous footer is disqualifying for an heirloom product and an Impressum problem in DE",
+    "detail": "Footer copyright is just 'The Memory Palace' (en.json:1309) — no legal entity, no address, no About page, no founder name or face, no contact email (only /help), no social links (Organization JSON-LD ships sameAs: []). FAQ a10's honest 'small, independent European team' answer is buried below the scroll trap. For a product asking families to deposit irreplaceable memories, anonymity is disqualifying — and for DE-market visitors an Impressum is legally required despite the DE locale being offered. App-store badges are buried in the FAQ section instead of the footer.",
+    "severity": "major",
+    "section": "Footer (LandingClient.tsx:2292-2575, 643) + missing /about + /imprint",
+    "recommendation": "Add a founder block — name, photo, two sentences on why you built this (ideally your own family's palace) — linked from the landing and footer ('Built by [name] in [city]'). Add legal entity + registered address + contact email to the footer, an /about or /imprint page, social profiles + populated sameAs, and app-store badges in the footer. StoryWorth, Remento, and Permanent.org all lead with founders because heirloom products are bought on the credibility of the humans promising to keep the lights on.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Landing shows zero pricing — subscription-fatigued visitors read absent pricing as hidden pricing, and the paper math vs book-included competitors goes unanswered",
+    "detail": "The current web landing has no pricing section (only 'Free Forever Plan' and 'no catch'). Verified facts worth showing: free = unlimited wings/rooms/memories + 1 GB (plans.ts:34-38); Keeper €9.99/mo annual or €12.99 monthly with 7-day trial (plans.ts:54-55, 75); Guardian €19.99/€24.99. The gift-giver runs the math: Keeper ≈ €120/yr with no physical artifact vs StoryWorth $59 INCLUDING a hardcover — the page must anchor free-first to win that comparison, and MP's free-forever tier is unique in the category. Any pricing block must never render for mp_platform=ios (the FAQ a4/a4_ios pattern is the template).",
+    "severity": "major",
+    "section": "Section 5 micro-CTA area (web only, iOS-sealed) + pricing framing",
+    "recommendation": "Add a compact 3-tier pricing strip on web only, anchored free-first: \"Free forever — unlimited rooms, 1 GB of memories, full export. Upgrade from €9.99/month only when you outgrow the space. Cancel anytime.\" Reuse the a4_ios gating pattern so iOS shows nothing. Surface \"trial auto-cancels, never auto-charges\" (verified: payment_method_collection 'if_required' + missing_payment_method 'cancel', api/stripe/checkout/route.ts:115-125) — almost no competitor can say it.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "No section rhythm: identical centered templates on two near-identical beiges with flat 6.25rem pauses, then ~14:1 dark cliffs — the 'dead whitespace' feel is systemic",
+    "detail": "All light sections reuse the same sectionLabel + centered sectionTitle pattern (LandingClient.tsx:2778, 2789); backgrounds alternate only between linen #F2EDE4 and warmStone #E5DDD0 (1.15:1 apart) separated by 1px 20-30%-alpha hairlines; white cards sit at 1.12:1 on linen with 3-4%-alpha decorative tints that are literally imperceptible; comparison and final CTA are both linen back-to-back, merging into one long beige field. Desktop paddings are a flat 6.25rem for nearly every section while internal spacing uses 15+ ad-hoc values on no scale; connective bands (stats 3rem, micro-CTA 3.5rem) read as accidental compression. Then three charcoal sections arrive as abrupt ~14:1 cliffs (two adjacent, wasting one). Containers use seven different max-widths (68.75/68/62.5/56.25/53.125/43.75/37.5rem), so the text column wanders and no grid is established; heading proximity is inverted — the eyebrow+H2 lockup floats 3.5-4rem from its own content.",
+    "severity": "major",
+    "section": "Whole-page palette, spacing, containers (LandingClient.tsx:1085-2244, 2778-2796)",
+    "recommendation": "Build a 4-step tonal scale (cream #FCFAF5 → linen → a true mid like sandstone → charcoal), sequence it so every boundary is ≥1.3:1 and dark blocks are approached via a mid step, used as intentional contrast anchors. Define a spacing scale in theme.ts and use nothing else: 8px-base ladder + three tokens (sectionY = clamp(5rem, 8vw, 7.5rem), bandY ~3rem, headingGap 3rem); bands share the background of the section above. Two container tokens only: containerWide 72rem and containerProse 42rem. Heading cluster: label → 0.75rem → H2 → 1rem → one-line intro → 3rem → content.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "No enforced type scale: ~16 ad-hoc font sizes and 6+ line-heights while theme.ts tokens go unused",
+    "detail": "theme.ts:52 defines a 7-step fontSize token scale, yet LandingClient.tsx hardcodes at least sixteen distinct sizes (0.625-2.25rem plus four different clamp() recipes at 686, 1127, 2250, 2791) and six-plus line-heights. Adjacent text levels differ by 1-2px steps the eye reads as sameness — feeding the weak-hierarchy feel — while the jump from 21px card title to 44px section title has no intermediate rhythm. letterSpacing is specified in px at five values on rem-sized text.",
+    "severity": "major",
+    "section": "Whole page — typography system",
+    "recommendation": "Collapse to one modular scale (ratio ~1.2, base 1.125rem for this audience): micro 0.75 / body-s 1 / body 1.125 / lead 1.3125 / h4 1.5 / h3 1.875 / h2 clamp(2-3rem) / h1 clamp(2.75-4.5rem), each with a paired line-height token, sourced from theme.ts so landing and app stop drifting. Tokenize tracking in em (trackWide 0.18em eyebrows, trackMicro 0.08em). World-class marketing sites ship 7-9 text styles total.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Two weak video moments instead of one hero-grade cinematic film — the strongest asset the product owns is never seen clearly",
+    "detail": "The video budget is split between an invisible 18 s ambience loop (hero, triple-dimmed) and a 12 MB silent screen-capture buried behind the scroll trap. Neither shows the emotional core — a family's real memories inside walkable 3D rooms — at hero-grade quality, despite the product having a genuinely cinematic 3D villa and an existing 5-waypoint exterior flyover (2026-04-18 session). public/video also ships ~16 MB of dead variants (hero-bg-original.mp4 12.5 MB, hero-bg-slow 2.4 MB, hero-bg-fast 1.7 MB — zero references in src/) publicly fetchable with every deploy.",
+    "severity": "major",
+    "section": "Video strategy (sections 1 + 6) + public/video/",
+    "recommendation": "Script a single 60 s cinematic product film: golden-hour exterior flyover → doors open → glide through 2-3 rooms with real photos/voice memories playing → grandchild and grandparent reaction → 'Your memories deserve a palace' end card. Use its best 10-15 s as the fully-visible hero loop and the full narrated cut in the click-to-play lightbox from both hero CTAs. Keep 'Guillaume's Palace' authenticity as social proof. Encode AV1/WebM + H.264, hero loop <1.5 MB, with posters. Move the unused masters out of public/ (keep hero-bg-original locally as the re-encode source).",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Re-sequence the page as promise → show → proof → close, structured around three JTBD lanes — the current order argues category superiority before showing or proving anything",
+    "detail": "The current arc is promise → 12-card feature catalog → text steps → close-before-proof, with everything emotional (testimonials, comparison, FAQ, final CTA) at positions 8-13 behind the trap. The 65-year-old's actual jobs: JOB 1 (emotional, dominant) 'Be known by my grandchildren, in my own voice, before it's too late'; JOB 2 (functional) 'Finally deal with the pile: shoeboxes, 4 devices, 50,000 unsorted photos'; JOB 3 (relational) 'Give or receive a meaningful gift that becomes a family project'. The page argues a fourth thing — superiority over Google Photos — which is the adult child's rational justification, not anyone's trigger. Each job has a different entry emotion (longing / relief / love).",
+    "severity": "major",
+    "section": "Page information architecture (LandingClient.tsx section order)",
+    "recommendation": "After the hero: three job lanes — (1) 'Be remembered' (voice + interviews + time capsules; keep 'Some words mean more when they arrive at the right moment'); (2) 'Bring order to a lifetime of photos' (cloud import + AI sorting); (3) 'Do it together' (co-creation + gift entry). Then product demonstration → proof (one full-bleed pull-quote from a REAL user directly after the hero once verified; testimonials after 'Three steps') → comparison as rational close → FAQ immediately before the final CTA. At least one trust element within the first two viewport-heights.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Final CTA is the visually weakest moment at the point of highest intent",
+    "detail": "The closing section is plain linen with a palace illustration at opacity 0.04 (LandingClient.tsx:2222-2244) — effectively invisible — immediately after another linen section, so the page ends in an undifferentiated beige whisper before the dark footer. A visitor who made it through the whole narrative gets no visual climax; the last impression is the flattest screen on the page.",
+    "severity": "minor",
+    "section": "Section 9 — final CTA (LandingClient.tsx:2222-2286)",
+    "recommendation": "End on a peak: reuse the hero villa imagery properly bright, or a warm golden-hour palace render as full-bleed background; scale the headline to hero size and make the (darkened rustDeep) CTA the single highest-contrast element on the screen.",
+    "votes": "3/3",
+    "confirmed": true
+  },
+  {
+    "title": "Gold brand accent is unusable on 70% of the page, splitting the site into two disconnected palettes",
+    "detail": "Gold #D4AF37 appears three times and performs beautifully on charcoal (8.1:1) — but measures 1.8:1 on linen (goldDark only 2.5:1), so the signature accent that defines the brand in the hero vanishes for every light section, where the accent role silently switches to (failing) terracotta. Gold-on-dark luxury up top; orange-on-beige utility below.",
+    "severity": "minor",
+    "section": "Brand accent system (theme.ts + light sections)",
+    "recommendation": "Codify a two-mode accent in theme.ts: gold = dark-background text accent + light-background graphic-only accent (rules, icon strokes, 2px card top-borders — non-text needs only 3:1); rustDeep #9A4F2A = light-background text accent. Thread gold as a graphic element through light sections (e.g. make the divider rules at 1721/1933 gold) so the hero's luxury cue persists down-page.",
+    "votes": "3/3",
+    "confirmed": true
+  }
+]

@@ -118,40 +118,43 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
     onNavigateToRoom(a.wingId, a.roomId);
   };
 
+  // Atrium token: reduced-motion gate for entrance/hover transitions
+  const reduceMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
   return (
     <div
       style={{
         position: "absolute",
         bottom: "calc(3.75rem + env(safe-area-inset-bottom, 0px))",
-        left: 24,
+        left: "1.5rem",
         zIndex: 40,
-        width: 320,
-        maxWidth: "calc(100vw - 48px)",
+        width: "20rem",
+        maxWidth: "calc(100vw - 3rem)",
         background: `linear-gradient(135deg, ${T.color.linen}f5, ${T.color.warmStone}f5)`,
         backdropFilter: "blur(16px)",
-        borderRadius: 16,
-        border: "1px solid #D4A84480",
-        boxShadow: "0 8px 40px rgba(180,140,60,.18), 0 0 24px rgba(212,168,68,.10), inset 0 1px 0 rgba(255,255,255,.6)",
+        borderRadius: "1rem", // Atrium token: card radius
+        border: "0.0625rem solid rgba(212,175,55,0.5)", // Atrium token: this-day gold frame (keystone register)
+        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S2 warm ink + top highlight
         padding: 0,
         overflow: "hidden",
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(20px)",
-        transition: "opacity .4s cubic-bezier(.23,1,.32,1), transform .4s cubic-bezier(.23,1,.32,1)",
+        transform: visible || reduceMotion ? "translateY(0)" : "translateY(1.25rem)",
+        transition: reduceMotion ? "none" : "opacity .3s ease, transform .3s ease",
         pointerEvents: visible ? "auto" : "none",
       }}
     >
       {/* Golden top accent */}
       <div
         style={{
-          height: 3,
-          background: "linear-gradient(90deg, #C8A868, #E8C888, #C8A868)",
+          height: "0.1875rem",
+          background: "linear-gradient(90deg, #C99A2E, #D4AF37, #C99A2E)", // Atrium token: canonical gold, this-day frame
         }}
       />
 
       {/* Header */}
       <div
         style={{
-          padding: "16px 18px 10px",
+          padding: "1rem 1.125rem 0.625rem",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
@@ -161,11 +164,11 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
           <h4
             style={{
               fontFamily: T.font.display,
-              fontSize: 20,
-              fontWeight: 500,
-              color: T.color.goldDark,
+              fontSize: "1.1875rem", // Atrium token: titleM
+              fontWeight: 600,
+              color: "#403B36", // Atrium token: ink — titles are ink, gold stays on the frame
               margin: 0,
-              letterSpacing: ".3px",
+              lineHeight: 1.15,
             }}
           >
             {t("title")}
@@ -173,9 +176,9 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
           <p
             style={{
               fontFamily: T.font.body,
-              fontSize: 11,
-              color: T.color.muted,
-              margin: "3px 0 0",
+              fontSize: "0.8125rem", // Atrium token: meta
+              color: "#716A5E", // Atrium token: muted, full opacity
+              margin: "0.1875rem 0 0",
             }}
           >
             {anniversaries.length === 1 ? t("memoryFromPast", { count: String(anniversaries.length) }) : t("memoriesFromPast", { count: String(anniversaries.length) })}
@@ -188,11 +191,11 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
             height: "2.75rem",
             minWidth: "2.75rem",
             minHeight: "2.75rem",
-            borderRadius: 13,
-            border: "1px solid #D4A84440",
-            background: "rgba(212,168,68,.08)",
-            color: T.color.muted,
-            fontSize: 12,
+            borderRadius: "0.8125rem", // Atrium token: small-control radius
+            border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
+            background: "transparent",
+            color: "#716A5E", // Atrium token: muted
+            fontSize: "0.8125rem",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -205,7 +208,7 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
       </div>
 
       {/* Memory list */}
-      <div style={{ padding: "0 14px 14px" }}>
+      <div style={{ padding: "0 0.875rem 0.875rem" }}>
         {shown.map((a, i) => (
           <button
             key={a.mem.id}
@@ -214,18 +217,18 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
               width: "100%",
               display: "flex",
               alignItems: "center",
-              gap: 12,
-              padding: "10px 8px",
-              borderRadius: 10,
+              gap: "0.75rem",
+              padding: "0.625rem 0.5rem",
+              borderRadius: "0.75rem", // Atrium token: small-control radius
               border: "none",
               background: "transparent",
               cursor: "pointer",
               textAlign: "left",
-              transition: "background .15s",
-              borderTop: i > 0 ? `1px solid ${T.color.cream}` : "none",
+              transition: reduceMotion ? "none" : "background .2s ease",
+              borderTop: i > 0 ? "0.0625rem solid #E3D6BC" : "none", // Atrium token: opaque hairline (was cream-on-cream)
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.background = "rgba(212,168,68,.06)";
+              (e.currentTarget as HTMLElement).style.background = "rgba(154,79,42,0.08)"; // Atrium token: terracotta wash — gold never carries hover state
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.background = "transparent";
@@ -234,15 +237,15 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
             {/* Thumbnail circle */}
             <div
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
+                width: "2.5rem",
+                height: "2.5rem",
+                borderRadius: "0.75rem", // Atrium token: small-control radius
                 background: `linear-gradient(135deg, hsl(${a.mem.hue},${a.mem.s}%,${a.mem.l}%), hsl(${a.mem.hue},${Math.max(0, a.mem.s - 10)}%,${Math.max(0, a.mem.l - 10)}%))`,
                 flexShrink: 0,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: `0 2px 8px hsl(${a.mem.hue},${a.mem.s}%,${a.mem.l}%,0.3)`,
+                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm ink (was hue glow)
               }}
             >
               {a.mem.dataUrl ? (
@@ -251,12 +254,12 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
                   alt=""
                   width={40} height={40}
                   style={{
-                    borderRadius: 10,
+                    borderRadius: "0.75rem",
                     objectFit: "cover",
                   }}
                 />
               ) : (
-                <span style={{ fontSize: 16, opacity: 0.8 }}>
+                <span style={{ fontSize: "1rem", opacity: 0.8 }}>
                   {a.mem.type === "photo" ? "\uD83D\uDDBC\uFE0F" : a.mem.type === "video" ? "\uD83C\uDFAC" : "\uD83D\uDD2E"}
                 </span>
               )}
@@ -267,9 +270,9 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
               <div
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 13,
+                  fontSize: "0.8125rem", // Atrium token: meta
                   fontWeight: 600,
-                  color: T.color.charcoal,
+                  color: "#403B36", // Atrium token: ink
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -280,9 +283,9 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
               <div
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 11,
-                  color: T.color.muted,
-                  marginTop: 1,
+                  fontSize: "0.8125rem", // Atrium token: meta
+                  color: "#716A5E", // Atrium token: muted, full opacity
+                  marginTop: "0.0625rem",
                 }}
               >
                 {a.roomName}
@@ -292,13 +295,15 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
             {/* Years ago badge */}
             <div
               style={{
-                background: "linear-gradient(135deg, #D4A844, #C8A868)",
-                color: "#FFF",
+                background: "#9A4F2A", // Atrium token: terracotta — gold never carries generic badges
+                color: "#FCFAF5", // Atrium token: cream
                 fontFamily: T.font.body,
-                fontSize: 10,
+                fontSize: "0.6875rem",
                 fontWeight: 700,
-                padding: "4px 8px",
-                borderRadius: 8,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                padding: "0.25rem 0.5rem",
+                borderRadius: "2rem", // Atrium token: pill
                 whiteSpace: "nowrap",
                 flexShrink: 0,
               }}
@@ -313,10 +318,10 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
       {anniversaries.length > 3 && (
         <div
           style={{
-            padding: "0 18px 12px",
+            padding: "0 1.125rem 0.75rem",
             fontFamily: T.font.body,
-            fontSize: 10,
-            color: "#C8A868",
+            fontSize: "0.8125rem", // Atrium token: meta (no 10px voice in the ramp)
+            color: "#716A5E", // Atrium token: muted — gold never carries generic text
             textAlign: "center",
             display: "flex",
             alignItems: "center",

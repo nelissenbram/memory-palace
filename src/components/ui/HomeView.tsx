@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useCallback, useEffect, useState, useRef } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
@@ -12,6 +13,9 @@ import { useAchievementStore, ACHIEVEMENTS } from "@/lib/stores/achievementStore
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useNotificationStore } from "@/lib/stores/notificationStore";
+import { computeWarmthLevel, computeWarmWeeks, computeWeekHistory, getTimeOfDay, TIME_WASH } from "@/lib/warmth";
+import { Overline } from "@/components/ui/AtriumRelay";
 import { getDemoMems } from "@/lib/constants/defaults";
 import { TRACKS } from "@/lib/constants/tracks";
 import type { Mem } from "@/lib/constants/defaults";
@@ -19,6 +23,9 @@ import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 
 import AtriumHero from "@/components/ui/AtriumHero";
+import AtriumRelay from "@/components/ui/AtriumRelay";
+import AtriumVilla from "@/components/ui/AtriumVilla";
+import { PalaceIllustration, LibraryIllustration } from "@/components/ui/AnchorArt";
 import {
   TrackProgress,
   AchievementShowcase,
@@ -32,10 +39,12 @@ import {
 import ModeTransition, {
   useModeTransition,
 } from "@/components/ui/ModeTransition";
-import PersonalProfile from "./PersonalProfile";
 import EnhanceMemories from "./EnhanceMemories";
 import FeatureDiscovery from "./FeatureDiscovery";
 import PersonaSelector from "./PersonaSelector";
+import LifeStoryPanel from "./LifeStoryPanel";
+import RestorePhotoPicker from "./RestorePhotoPicker";
+import type { RestorablePhoto } from "./RestorePhotoPicker";
 
 import TuscanCard from "./TuscanCard";
 import TuscanStyles from "./TuscanStyles";
@@ -183,15 +192,34 @@ export interface EnrichedMemory {
 export default function HomeView() {
   const router = useRouter();
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const { t } = useTranslation("atrium");
   const { t: tTracks } = useTranslation("tracksPanel");
   const { t: tAch } = useTranslation("achievementsPanel");
   const { t: tPersona } = useTranslation("persona" as "common");
   const { t: tWings } = useTranslation("wings");
-  const { userName } = useUserStore();
-  const { navMode, setNavMode, enterEntrance } = usePalaceStore();
-  const { getWings, getWingRooms } = useRoomStore();
-  const { userMems, fetchRoomMemories } = useMemoryStore();
+  const userName = useUserStore((s) => s.userName);
+  // Atomic selectors — actions/getters are stable in Zustand, so selecting each
+  // individually avoids the whole-store subscription that re-rendered this tree
+  // on every unrelated set() (palaceStore hover/opacity/portalAnim ticks,
+  // memoryStore per-memory optimistic writes + the poll). navMode was
+  // destructured but never read in render, so it is dropped entirely.
+  const setNavMode = usePalaceStore((s) => s.setNavMode);
+  const enterEntrance = usePalaceStore((s) => s.enterEntrance);
+  const getWings = useRoomStore((s) => s.getWings);
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
+  // Subscribe to the raw slices getWings() derives from so `wings` recomputes
+  // ONLY when wing state actually changes identity (customWings/extraWings), not
+  // on every render. Without this, calling getWings() bare in render made `wings`
+  // an unstable dep of allMemories/totalRooms/sharedRooms/wingsData and the whole
+  // derived-data pyramid re-ran on every unrelated tick (persona toggle, confetti,
+  // 10-min timeOfDay, notification load, locale change, any store update).
+  const customWings = useRoomStore((s) => s.customWings);
+  const extraWings = useRoomStore((s) => s.extraWings);
+  const userMems = useMemoryStore((s) => s.userMems);
+  const fetchAllRoomMemories = useMemoryStore((s) => s.fetchAllRoomMemories);
+  // useShallow grouped reads — subscribe only to these named slices/actions and
+  // re-render on shallow-equality change, not on any set() to the whole store.
   const {
     tracks: trackProgressMap,
     totalPoints,
@@ -203,20 +231,42 @@ export default function HomeView() {
     legacyReviewed,
     getLevel,
     getLevelProgressInfo,
-  } = useTrackStore();
+  } = useTrackStore(useShallow((s) => ({
+    tracks: s.tracks,
+    totalPoints: s.totalPoints,
+    getTrackProgress: s.getTrackProgress,
+    getNextStep: s.getNextStep,
+    setShowTracksPanel: s.setShowTracksPanel,
+    setSelectedTrackId: s.setSelectedTrackId,
+    setShowLegacyPanel: s.setShowLegacyPanel,
+    legacyReviewed: s.legacyReviewed,
+    getLevel: s.getLevel,
+    getLevelProgressInfo: s.getLevelProgressInfo,
+  })));
   const {
     setShowPanel: setShowAchievementPanel,
     openWithHighlight: openAchievementWithHighlight,
     getProgress: getAchievementProgress,
     earnedIds,
     earnedDates,
-  } = useAchievementStore();
+  } = useAchievementStore(useShallow((s) => ({
+    setShowPanel: s.setShowPanel,
+    openWithHighlight: s.openWithHighlight,
+    getProgress: s.getProgress,
+    earnedIds: s.earnedIds,
+    earnedDates: s.earnedDates,
+  })));
   const {
     sessions: interviewSessions,
     setShowLibrary: setShowInterviewLibrary,
     setShowInterview: setShowInterview,
     startSession: startInterviewSession,
-  } = useInterviewStore();
+  } = useInterviewStore(useShallow((s) => ({
+    sessions: s.sessions,
+    setShowLibrary: s.setShowLibrary,
+    setShowInterview: s.setShowInterview,
+    startSession: s.startSession,
+  })));
   const setShowMemoryMap = useUIPanelStore((s) => s.setShowMemoryMap);
   const setShowTimeline = useUIPanelStore((s) => s.setShowTimeline);
   const setShowStatistics = useUIPanelStore((s) => s.setShowStatistics);
@@ -227,16 +277,25 @@ export default function HomeView() {
 
   const { startTransition, transitionProps } = useModeTransition();
 
-  const wings = getWings();
+  // Referentially stable across renders — recomputes only when customWings or
+  // extraWings change. (getWings() itself is cached in roomStore on the same
+  // slice identities, so this returns the same array reference; the memo makes
+  // the dependency explicit and shields the pyramid from getWings identity.)
+  const wings = useMemo(() => getWings(), [getWings, customWings, extraWings]);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
   const [personaType, setPersonaType] = useState<string | null>(null);
   const [personaExpanded, setPersonaExpanded] = useState(false);
+  const personaSectionRef = useRef<HTMLDivElement>(null);
   const [legacyExpanded, setLegacyExpanded] = useState(false);
 
   /* P2-3: Last visited room */
   const [lastVisitedRoom, setLastVisitedRoom] = useState<{ id: string; name: string } | null>(null);
+
+  /* Life Story panel (change 11): opened from the lifestory relay tile */
+  const [showLifeStory, setShowLifeStory] = useState(false);
+  const [showRestorePicker, setShowRestorePicker] = useState(false);
 
   /* P2-6: Confetti on achievement unlock */
   const [showConfetti, setShowConfetti] = useState(false);
@@ -254,21 +313,33 @@ export default function HomeView() {
       const stored = localStorage.getItem("mp_last_visited_room");
       if (stored) setLastVisitedRoom(JSON.parse(stored));
     } catch { /* ignore parse errors */ }
+
+    // Deep-link from the Settings "Retake / Take quiz" CTA (/atrium?persona=1):
+    // expand the persona selector and scroll it into view, then strip the param
+    // so a refresh doesn't re-trigger it.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("persona") === "1") {
+        setPersonaExpanded(true);
+        setTimeout(() => {
+          personaSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 350);
+        params.delete("persona");
+        const q = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (q ? `?${q}` : ""));
+      }
+    } catch { /* SSR / malformed URL — ignore */ }
   }, []);
 
-  // Prefetch memories on mount — only if total rooms <= 50 to avoid
-  // hammering the API for large palaces. Beyond that threshold rooms
-  // are fetched lazily when the user navigates to them.
+  // Prefetch every room's memories on mount with ONE batched query
+  // (fetchAllMemories → single .in('room_id', …) round-trip), the same pattern
+  // LibraryView adopted. This replaces the old per-room loop that fired up to
+  // ~50 concurrent Supabase requests + IndexedDB writes (and, combined with the
+  // now-stable getWings/getWingRooms, re-ran the allMemories memo 50x on cold
+  // load). The room-count threshold is gone: the batch is one query regardless
+  // of palace size.
   useEffect(() => {
-    let roomCount = 0;
-    for (const w of wings) roomCount += getWingRooms(w.id).length;
-    if (roomCount > 50) return; // defer to lazy loading for large palaces
-
-    for (const w of wings) {
-      for (const r of getWingRooms(w.id)) {
-        fetchRoomMemories(r.id);
-      }
-    }
+    fetchAllRoomMemories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -287,6 +358,37 @@ export default function HomeView() {
   }, [achievementToast]);
 
   /* ─── DATA GATHERING ─── */
+
+  // Grief-mute (change 15): memory ids the user asked to see less of. Consulted
+  // by every resurfacing path (on-this-day, evening return, memories strip);
+  // the "show less" affordance lands in MemoryDetail next.
+  const [griefMuted] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem("mp_grief_mute") || "[]") as string[]); } catch { return new Set(); }
+  });
+
+  // "This day" glow is earned once per day, then rests (change 15).
+  const [otdSeen, setOtdSeen] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = JSON.parse(localStorage.getItem("mp_otd_seen") || "{}") as Record<string, string[]>;
+      return new Set(stored[new Date().toDateString()] || []);
+    } catch { return new Set(); }
+  });
+  const markOtdSeen = useCallback((id: string) => {
+    setOtdSeen((prev) => {
+      const next = new Set(prev); next.add(id);
+      try { localStorage.setItem("mp_otd_seen", JSON.stringify({ [new Date().toDateString()]: Array.from(next) })); } catch { /* full */ }
+      return next;
+    });
+  }, []);
+
+  // Sources that pass the validity guard can still 404/expire — track actual
+  // load failures so broken thumbs drop out instead of showing blank squares.
+  const [brokenImgIds, setBrokenImgIds] = useState<Set<string>>(() => new Set());
+  const markImgBroken = useCallback((id: string) => {
+    setBrokenImgIds((prev) => { const next = new Set(prev); next.add(id); return next; });
+  }, []);
 
   // All memories across all wings with wing/room context
   const allMemories = useMemo<EnrichedMemory[]>(() => {
@@ -345,11 +447,11 @@ export default function HomeView() {
     const day = now.getDate();
     const year = now.getFullYear();
     return allMemories.filter(({ mem }) => {
-      if (!mem.createdAt) return false;
+      if (!mem.createdAt || griefMuted.has(mem.id)) return false;
       const d = new Date(mem.createdAt);
       return d.getMonth() === month && d.getDate() === day && d.getFullYear() !== year;
     });
-  }, [allMemories]);
+  }, [allMemories, griefMuted]);
 
   // Track data for TrackProgress widget — mapped to expected {id, name, icon, progress, total, description, color}
   const trackData = useMemo(() => {
@@ -387,6 +489,62 @@ export default function HomeView() {
       .filter((d): d is string => !!d);
     return computeStreak(dates);
   }, [allMemories]);
+
+  /* ── Palace warmth (ONE shared model: hero windows, Keeper's Ledger, time wash) ── */
+  const creationDates = useMemo(
+    () => allMemories.map(({ mem }) => mem.createdAt).filter((d): d is string => !!d),
+    [allMemories]
+  );
+  const warmthLevel = useMemo(() => computeWarmthLevel(creationDates), [creationDates]);
+  const warmWeeks = useMemo(() => computeWarmWeeks(creationDates), [creationDates]);
+  const [timeOfDay, setTimeOfDay] = useState(() => getTimeOfDay());
+  useEffect(() => {
+    // Re-evaluate the ambient bucket every 10 minutes so a long-open tab
+    // drifts naturally from golden hour into night.
+    const id = setInterval(() => setTimeOfDay(getTimeOfDay()), 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  /* ── Family Embers: loved-one presence from existing notifications ── */
+  const notifications = useNotificationStore((s) => s.notifications);
+  const setNotificationsOpen = useNotificationStore((s) => s.setOpen);
+  const loadNotifications = useNotificationStore((s) => s.load);
+  useEffect(() => { loadNotifications().catch(() => {}); }, [loadNotifications]);
+  /* ── Steward brain inputs: daily question, evening return ── */
+  // Evening Return (change 10): remember whether MP was already opened earlier
+  // today, so the dusk visit becomes "collect what the steward found".
+  const [openedEarlierToday, setOpenedEarlierToday] = useState(false);
+  useEffect(() => {
+    try {
+      const today = new Date().toDateString();
+      const raw = localStorage.getItem("mp_last_open");
+      if (raw) {
+        const prev = JSON.parse(raw) as { date: string; hour: number };
+        if (prev.date === today && prev.hour < 17) setOpenedEarlierToday(true);
+      }
+      localStorage.setItem("mp_last_open", JSON.stringify({ date: today, hour: new Date().getHours() }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
+  const emberPeople = useMemo(() => {
+    const byName = new Map<string, { name: string; unseen: number; latest?: string; latestAt: number }>();
+    for (const n of notifications) {
+      const name = n.from_user_name?.trim();
+      if (!name) continue;
+      const at = new Date(n.created_at).getTime() || 0;
+      const cur = byName.get(name.toLowerCase());
+      if (cur) {
+        if (!n.read) cur.unseen++;
+        if (at > cur.latestAt) { cur.latestAt = at; cur.latest = n.message; }
+      } else {
+        byName.set(name.toLowerCase(), { name, unseen: n.read ? 0 : 1, latest: n.message, latestAt: at });
+      }
+    }
+    return Array.from(byName.values())
+      .sort((a, b) => (b.unseen - a.unseen) || (b.latestAt - a.latestAt))
+      .slice(0, 8)
+      .map((p) => ({ key: p.name.toLowerCase(), name: p.name, unseen: p.unseen, latest: p.latest }));
+  }, [notifications]);
 
   // Shared wings — wings shared WITH the user by others
   const [sharedWithMe, setSharedWithMe] = useState<{ id: string; name: string; wingName: string; memoryCount: number; icon: string; wingId?: string }[]>([]);
@@ -463,6 +621,336 @@ export default function HomeView() {
   });
 
   /* ─── RENDER ─── */
+  // Legacy 12-widget stack is kept (disabled) beneath the new relay for now;
+  // typed boolean so TS keeps normal control-flow narrowing inside it.
+  const SHOW_LEGACY_WIDGETS: boolean = false;
+  // "Het paleis doet de deur open" — the drastic villa hub (AtriumVilla)
+  // replaces the relay board; flip to false for instant rollback during review.
+  const USE_VILLA_HUB: boolean = false;
+
+  // ── Atrium Relay config ("The Maggiordomo" concierge board) ──
+  // Phase 1: full board wired to the existing handlers. Copy is English for
+  // this model-approval pass; i18n + steward-brain buckets land next.
+  const _hr = new Date().getHours();
+  const _greetKey = _hr < 12 ? "goodMorning" : _hr < 18 ? "goodAfternoon" : "goodEvening";
+  const relayGreeting = t(_greetKey);
+  const relayDatum = totalMemories > 0
+    ? `${totalWings === 1 ? t("relay.wingsCountOne", { count: String(totalWings) }) : t("relay.wingsCount", { count: String(totalWings) })} · ${totalRooms === 1 ? t("relay.roomsCountOne", { count: String(totalRooms) }) : t("relay.roomsCount", { count: String(totalRooms) })} · ${totalMemories === 1 ? t("relay.memoriesCountOne", { count: String(totalMemories) }) : t("relay.memoriesCount", { count: String(totalMemories) })}`
+    : t("firstMemoryPrompt");
+  const goUpload = useCallback(() => { localStorage.setItem("mp_spotlight_target", "import-upload"); handleNavigateLibrary(); }, [handleNavigateLibrary]);
+  const yearRange = useMemo(() => {
+    const yrs = allMemories.map((m) => (m.mem.createdAt ? new Date(m.mem.createdAt).getFullYear() : 0)).filter(Boolean);
+    return yrs.length ? `${Math.min(...yrs)}–${Math.max(...yrs)}` : undefined;
+  }, [allMemories]);
+  // Same source logic as MediaThumb (the component the Library itself uses):
+  // photos/paintings/albums paint their dataUrl DIRECTLY; video/audio only a
+  // stored thumbnailUrl. Preferring thumbnailUrl for photos was the source of
+  // the dead fan thumbs (stale/expired poster references).
+  // Pure source-resolvers, stabilised with useCallback so the memoized strip /
+  // thumb lists below can list them as deps without breaking on every render.
+  const validImg = useCallback((s: string | null | undefined): string | null =>
+    s && (s.startsWith("data:image") || s.startsWith("http") || s.startsWith("blob:") || s.startsWith("/")) ? s : null, []);
+  const memSrc = useCallback((m: Mem): string | null => {
+    const isImage = m.type === "photo" || m.type === "painting" || m.type === "album";
+    if (isImage) return validImg(m.dataUrl) || validImg(m.thumbnailUrl);
+    const isVideo = m.type === "video" || !!m.videoBlob;
+    const isAudio = m.type === "audio" || m.type === "voice" || m.type === "interview" || !!m.voiceBlob;
+    if (isVideo || isAudio) return validImg(m.thumbnailUrl);
+    return validImg(m.dataUrl) || validImg(m.thumbnailUrl);
+  }, [validImg]);
+  const libThumbs = useMemo(() => Array.from(new Set(
+    recentMemories.map((r) => memSrc(r.mem)).filter((x): x is string => !!x)
+  )).slice(0, 3), [recentMemories, memSrc]);
+  // Photos eligible for AI restore: the user's OWN photos, straight from
+  // userMems (NO demo fallback — demo mems 404 at the backend). Deliberately no
+  // https check on dataUrl: a just-uploaded photo can still carry its local
+  // data: preview client-side while the DB row (which is what /api/ai-enhance
+  // reads) already holds the https URL — filtering on the client URL made
+  // fresh uploads invisible here. Newest first.
+  const restorablePhotos = useMemo<RestorablePhoto[]>(() => {
+    const out: RestorablePhoto[] = [];
+    for (const w of wings) {
+      for (const r of getWingRooms(w.id)) {
+        for (const m of userMems[r.id] || []) {
+          if (m.type === "photo" && !m._offline && (m.dataUrl || m.thumbnailUrl)) out.push({ mem: m, roomId: r.id });
+        }
+      }
+    }
+    return out.sort((a, b) => new Date(b.mem.createdAt || 0).getTime() - new Date(a.mem.createdAt || 0).getTime());
+  }, [wings, getWingRooms, userMems]);
+  // Where an upload-from-the-picker lands: the newest photo's room, else the first room.
+  const restoreUploadRoomId = useMemo<string | undefined>(() => {
+    if (restorablePhotos.length > 0) return restorablePhotos[0].roomId;
+    for (const w of wings) { const rs = getWingRooms(w.id); if (rs.length > 0) return rs[0].id; }
+    return undefined;
+  }, [restorablePhotos, wings, getWingRooms]);
+  // Steward brain — one smart, non-duplicative suggestion (never re-offers the
+  // Palace/Library anchors that already sit right below).
+  // Memory tracks brought forward: an in-progress (persona-informed) journey
+  // becomes the steward suggestion, with a real progress bar.
+  const activeTrack = useMemo(() =>
+    trackData.find((tk) => tk.progress > 0 && tk.progress < tk.total)
+    || (personaType ? trackData.find((tk) => (PERSONA_TRACKS[personaType] || []).includes(tk.id) && tk.progress < tk.total) : undefined)
+    || trackData.find((tk) => tk.progress < tk.total),
+  [trackData, personaType]);
+  // Evening Return (change 10): at dusk, if MP was already opened this morning,
+  // the steward comes back from the archives with a find. Grief-mute respected.
+  const eveningFind = useMemo(() => (timeOfDay === "golden" || timeOfDay === "night") && openedEarlierToday
+    ? (() => {
+        const pool = allMemories.filter(({ mem }) => mem.createdAt && !griefMuted.has(mem.id));
+        if (pool.length === 0) return null;
+        const now = new Date();
+        const anniversary = pool.find(({ mem }) => { const d = new Date(mem.createdAt!); return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() !== now.getFullYear(); });
+        const audio = pool.find(({ mem }) => mem.dataUrl?.startsWith("data:audio"));
+        const oldest = [...pool].sort((a, b) => new Date(a.mem.createdAt!).getTime() - new Date(b.mem.createdAt!).getTime())[0];
+        return anniversary || audio || oldest;
+      })()
+    : null,
+  [timeOfDay, openedEarlierToday, allMemories, griefMuted]);
+  // Daily Question (change 9): exactly one sealed prompt per day; answered
+  // (memory added today) falls through to the next branch.
+  const dailyQuestion = useMemo(() => {
+    const now = new Date();
+    const dayOfYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86400000);
+    const answeredToday = allMemories.some(({ mem }) => mem.createdAt && new Date(mem.createdAt).toDateString() === now.toDateString());
+    return totalMemories > 0 && !answeredToday ? t(`relay.q${(dayOfYear % 30) + 1}`) : null;
+  }, [allMemories, totalMemories, t]);
+
+  const relaySuggestion = useMemo(() => eveningFind
+    ? { key: "lantern", title: t("relay.eveningFind"), reason: `${eveningFind.mem.title || t("relay.aMemory")} · ${translateWingName(eveningFind.wing, tWings)}${eveningFind.mem.createdAt ? `, ${new Date(eveningFind.mem.createdAt).getFullYear()}` : ""}`, onClick: () => handleMemoryClick(eveningFind.mem) }
+    : (!sharedLoading && sharedWithMe.length > 0)
+    ? { key: "shared", title: t("relay.sgFamilySharedTitle"), reason: t("relay.sgFamilySharedReason"), onClick: () => setShowSharedWithMe(true) }
+    : dailyQuestion
+    ? { key: "letter", title: dailyQuestion, reason: t("relay.sixtySeconds"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); } }
+    : onThisDayMemories.length > 0
+      ? { key: "timeline", title: t("relay.sgOnThisDayTitle"), reason: onThisDayMemories[0].mem.title || t("relay.sgOnThisDayReason"), onClick: () => handleMemoryClick(onThisDayMemories[0].mem) }
+      : totalMemories === 0
+        ? { key: "photos", title: t("relay.sgFirstPhotosTitle"), reason: t("relay.sgFirstPhotosReason"), onClick: goUpload }
+        : activeTrack
+          ? { key: "journeys", title: t("relay.sgContinueTrack", { name: activeTrack.name }), reason: t("relay.sgStepsOf", { done: String(activeTrack.progress), total: String(activeTrack.total) }), onClick: () => { setSelectedTrackId(activeTrack.id); setShowTracksPanel(true); }, progress: { done: activeTrack.progress, total: activeTrack.total } }
+          : lastVisitedRoom
+            ? { key: "continue", title: t("continueWhereLeft"), reason: lastVisitedRoom.name, onClick: handleContinueLastRoom }
+            : { key: "record", title: t("relay.sgRecordTitle"), reason: t("relay.sgRecordReason"), onClick: () => setShowInterviewLibrary(true) },
+  [eveningFind, sharedWithMe, sharedLoading, dailyQuestion, onThisDayMemories, totalMemories, activeTrack, lastVisitedRoom, t, tWings, handleMemoryClick, setShowSharedWithMe, handleNavigateLibrary, goUpload, setSelectedTrackId, setShowTracksPanel, handleContinueLastRoom, setShowInterviewLibrary]);
+  // Personalization returns: compact "tuned for you" summary, or the full
+  // selector when no persona is set yet.
+  // Style quiz: label (subtle chip) when taken; the full selector otherwise.
+  const personaLabel = (personaType && !personaExpanded) ? tPersona(`${personaType}Label`) : null;
+  const personaQuiz = (
+    // personaSectionRef rides on the quiz wherever it renders (the relay's
+    // steward slot), so "change style" can scroll it into view (change 9).
+    <div ref={personaSectionRef}>
+      <PersonaSelector onPersonaSelected={(p) => { localStorage.setItem("mp_persona_type", p); setPersonaType(p); setPersonaExpanded(false); }} currentPersona={personaType} isMobile={isMobile} />
+    </div>
+  );
+
+  // "Your memories" strip — brings back Recent Memories + On This Day + a
+  // compact portrait, the emotional content that the plain relay had dropped.
+  const memImg = memSrc;
+  // No blank squares: on-this-day items always show (imageless ones get the
+  // story-card treatment), the recent long-tail only when it has an image.
+  const stripItems = useMemo(() => {
+    const otdIds = new Set(onThisDayMemories.map((x) => x.mem.id));
+    return [
+      ...onThisDayMemories.filter((x) => memImg(x.mem) || x.mem.title).map((x) => ({ mem: x.mem, otd: true })),
+      ...recentMemories.filter((x) => !otdIds.has(x.mem.id) && !!memImg(x.mem)).map((x) => ({ mem: x.mem, otd: false })),
+    ].filter((it) => it.otd || !brokenImgIds.has(it.mem.id)).slice(0, 10);
+  }, [onThisDayMemories, recentMemories, brokenImgIds, memImg]);
+  const mtc = useMemo(() => {
+    const c = { photo: 0, video: 0, story: 0 };
+    for (const { mem } of allMemories) {
+      if (mem.type === "photo" || mem.type === "album") c.photo++;
+      else if (mem.type === "video") c.video++;
+      else c.story++;
+    }
+    return c;
+  }, [allMemories]);
+  const memoriesStrip = useMemo(() => stripItems.length > 0 ? (
+    <section aria-label={t("relay.yourMemories")} style={{ borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", background: T.color.cream, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.06)", padding: "1rem 1.1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
+        <Overline color="#8A6410">{t("relay.yourMemories")}</Overline>
+        <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, rgba(169,116,27,0.35), transparent)" }} />
+        <button type="button" onClick={() => { localStorage.setItem("mp_library_sort", "recent"); handleNavigateLibrary(); }} style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.muted, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>{t("relay.seeAll")} →</button>
+      </div>
+      <div style={{ display: "flex", gap: "0.6rem", overflowX: "auto", paddingBottom: "0.35rem" }}>
+        {stripItems.map((it, i) => {
+          const src = brokenImgIds.has(it.mem.id) ? null : memImg(it.mem);
+          // Anniversary = frame, never a badge (change 15): a double gilt frame
+          // that breathes gold until opened today, then rests.
+          const unseen = it.otd && !otdSeen.has(it.mem.id);
+          const size = unseen ? "7rem" : "6rem";
+          return (
+            <button key={it.mem.id + "_" + i} type="button" onClick={() => { if (it.otd) markOtdSeen(it.mem.id); handleMemoryClick(it.mem); }} style={{ position: "relative", flex: "0 0 auto", width: size, height: size, borderRadius: "0.6rem", overflow: "hidden", border: it.otd ? "0.125rem solid #D4AF37" : "0.0625rem solid #E3D6BC", boxShadow: it.otd ? "inset 0 0 0 0.0625rem #FCFAF5" : "none", cursor: "pointer", padding: 0, background: "#F2E4D5", transition: "width 0.25s ease, height 0.25s ease" }}>
+              {src ? (
+                // real <img> so load failures surface via onError and the
+                // broken thumb drops out of the strip on the next render
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={src} alt="" onError={() => markImgBroken(it.mem.id)} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", filter: "saturate(0.92)" }} />
+              ) : (
+                // Story card: parchment leaf with an opening quote — a written
+                // memory presented as a keepsake, never a blank square.
+                <span style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", justifyContent: "flex-start", background: "linear-gradient(165deg, #FCF6E5 0%, #F6ECD2 100%)", padding: "0.4rem 0.45rem", textAlign: "left" }}>
+                  <span aria-hidden="true" style={{ fontFamily: T.font.display, fontSize: "1.5rem", lineHeight: 0.9, color: "#C99A2E", fontStyle: "italic" }}>&ldquo;</span>
+                  <span style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.6875rem", color: "#5A4A38", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{it.mem.title}</span>
+                </span>
+              )}
+              {unseen ? <span aria-hidden="true" className="relay-ember-breathe" style={{ position: "absolute", inset: 0, background: "radial-gradient(closest-side, rgba(212,175,55,0.4), transparent 75%)", pointerEvents: "none" }} /> : null}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.6rem", fontVariantNumeric: "tabular-nums" }}>
+        {t("relay.stripSummary", { photos: String(mtc.photo), videos: String(mtc.video), stories: String(mtc.story), wings: String(totalWings) })}
+      </div>
+    </section>
+  ) : null, [stripItems, t, handleNavigateLibrary, brokenImgIds, memImg, otdSeen, markOtdSeen, handleMemoryClick, markImgBroken, mtc, totalWings]);
+  // Keeper's Ledger — forgiving weekly "kept warm" line; always invitational,
+  // never "streak lost" (grief-adjacent product, see ACTIVATING_MENU_RESEARCH).
+  const relayLedger = useMemo(() => totalMemories === 0
+    ? null
+    : warmWeeks > 1
+      ? { text: t("relay.keptWarm", { count: String(warmWeeks) }), warm: true }
+      : warmWeeks === 1
+        ? { text: t("relay.keptWarmOne"), warm: true }
+        : { text: t("relay.quietHearth"), warm: false }, [totalMemories, warmWeeks, t]);
+  const relayEmbers = useMemo(() => emberPeople.length > 0
+    ? { title: t("relay.familyEmbers"), people: emberPeople, onOpen: () => setNotificationsOpen(true), scrollHint: t("relay.embersScrollHint") }
+    : null, [emberPeople, t, setNotificationsOpen]);
+  // Stable identities for the board's remaining scalar props so the React.memo
+  // wrapper on AtriumRelay can actually skip reconciliation on unrelated ticks.
+  const relayWeekHistory = useMemo(() => computeWeekHistory(creationDates), [creationDates]);
+  const relayLabels = useMemo(() => ({ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), weeksWarm: t("relay.weeksWarm"), quietKept: t("relay.quietKept"), laneJourneysPill: t("relay.laneJourneysPill") }), [t]);
+  // Per-lane journey pills (change 4, scoring rework): every track mapped to
+  // one of the three verb lanes by its nature — collect/record new material →
+  // capture; making existing content vivid → bring to life; social/legacy →
+  // share. Owner feedback ("5/20 is confusing"): done/total are now JOURNEY
+  // COUNTS (completed tracks over mapped tracks), xp is the earned XP for the
+  // lane (sum of completed steps' pointValue + completionBonus per finished
+  // track), and percent is the step-weighted progress that drives the bar.
+  const laneJourneys = useMemo(() => {
+    const LANE_TRACKS: Record<"capture" | "bring" | "share", string[]> = {
+      capture: ["preserve", "capture", "resolutions"],
+      bring: ["visualize", "enhance"],
+      share: ["cocreate", "connect", "legacy"],
+    };
+    const openJourneys = () => setShowTracksPanel(true);
+    const mk = (ids: string[]) => {
+      let done = 0, total = 0, xp = 0, stepsDone = 0, stepsTotal = 0;
+      for (const track of TRACKS) {
+        if (!ids.includes(track.id)) continue;
+        total++;
+        const prog = getTrackProgress(track.id);
+        const isComplete = !!prog.completedAt || prog.percentage >= 100;
+        if (isComplete) done++;
+        // Only count steps that are actually defined on the track (guards
+        // against stale ids lingering in stepsCompleted).
+        const doneSteps = track.steps.filter((s) => prog.stepsCompleted.includes(s.id));
+        xp += doneSteps.reduce((sum, s) => sum + s.pointValue, 0);
+        if (isComplete) xp += track.completionBonus;
+        stepsDone += doneSteps.length;
+        stepsTotal += track.steps.length;
+      }
+      const percent = stepsTotal > 0 ? Math.round((100 * stepsDone) / stepsTotal) : 0;
+      return {
+        done, total, xp, percent, onClick: openJourneys,
+        ofLabel: t("relay.laneJourneysOf", { done: String(done), total: String(total) }),
+        xpLabel: t("relay.laneJourneysXp", { xp: String(xp) }),
+      };
+    };
+    return { capture: mk(LANE_TRACKS.capture), bring: mk(LANE_TRACKS.bring), share: mk(LANE_TRACKS.share) };
+  }, [trackProgressMap, getTrackProgress, setShowTracksPanel, t]);
+  // Palace + Library stay ON TOP as anchors. The Palace card's counterpart to
+  // the Library's photo fan: wing seals — the lived-in wings with their counts.
+  // The complete set: every wing gets its seal (canonical order); untouched
+  // wings rest as quiet empty frames — the fan doubles as a coverage map.
+  const wingChips = useMemo(() => wingsData.slice(0, 6).map((w) => ({ id: w.id, label: String(w.memoryCount), empty: w.memoryCount === 0 })), [wingsData]);
+  // The two 300×180 anchor SVG subtrees are the single heaviest render cost on
+  // the board and depend ONLY on warmth + time-of-day. Memoize the ELEMENTS so
+  // unrelated re-renders (10-min timeOfDay tick, notifications load, shared-with-me
+  // fetch, persona/panel/store ticks) reuse the identical element reference —
+  // React then bails out of reconciling the SVG subtree entirely.
+  const palaceArt = useMemo(() => <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, [warmthLevel, timeOfDay]);
+  const libraryArt = useMemo(() => <LibraryIllustration hover={false} warmth={warmthLevel} />, [warmthLevel]);
+  const relayAnchors = useMemo(() => [
+    { key: "palace", title: t("relay.enterPalaceTitle"), desc: t("relay.enterPalaceDesc"), onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings === 1 ? t("relay.wingsCountOne", { count: String(totalWings) }) : t("relay.wingsCount", { count: String(totalWings) })} · ${totalRooms === 1 ? t("relay.roomsCountOne", { count: String(totalRooms) }) : t("relay.roomsCount", { count: String(totalRooms) })}` : undefined, art: palaceArt, chips: wingChips },
+    { key: "library", title: t("relay.enterLibraryTitle"), desc: t("relay.enterLibraryDesc"), onClick: handleNavigateLibrary, datum: totalMemories > 0 ? (totalMemories === 1 ? t("relay.memoriesCountOne", { count: String(totalMemories) }) : t("relay.memoriesCount", { count: String(totalMemories) })) : undefined, thumbs: libThumbs, art: libraryArt },
+  ], [t, handleNavigatePalace, handleNavigateLibrary, totalMemories, totalWings, totalRooms, palaceArt, libraryArt, wingChips, libThumbs]);
+  // score & badge total, for those who like keeping count.
+  const relayScore = useMemo(() => ({ points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) }), [totalPoints, achievementProgress.earned, achievementProgress.total, setShowAchievementPanel]);
+  // Grouped by the LANDING triptych, each verb-zone its own key colour.
+  // Hero-per-lane (elevation change 5): the steward leads each verb with ONE
+  // full tile. The suggestion key is NEVER the lane hero (item 5): the top
+  // steward card already carries that action with richer copy/progress, so
+  // promoting it again would show the same action twice. Each lane instead
+  // leads with a sensible default, skipping the suggested key if it collides.
+  const relayLanes = useMemo(() => {
+  const heroFor = (laneId: string, tileKeys: string[]): string => {
+    const sug = relaySuggestion.key;
+    const pick = (...prefs: string[]): string => {
+      // first preference present in the lane that isn't the suggested key
+      const nonDup = prefs.find((k) => tileKeys.includes(k) && k !== sug);
+      if (nonDup) return nonDup;
+      // else the first present-but-suggested preference (avoids empty lead),
+      // finally any non-suggested tile so a hero still leads the lane
+      return prefs.find((k) => tileKeys.includes(k))
+        ?? tileKeys.find((k) => k !== sug)
+        ?? tileKeys[0];
+    };
+    if (laneId === "capture") return pick(totalMemories > 0 ? "record" : "photos", "photos", "record", "write");
+    if (laneId === "bringtolife") return pick("timeline", "map", "family", "insights");
+    // Only lead the share lane with "shared" when the tile is genuinely
+    // present (loaded AND non-empty) — tileKeys already excludes hidden tiles.
+    const shareLead = sharedWithMe.length > 0 && tileKeys.includes("shared") ? "shared" : "familyGroup";
+    return pick(shareLead, "familyGroup", "publish");
+  };
+  const markHero = <Tl extends { key: string; hidden?: boolean; soon?: boolean }>(laneId: string, tiles: Tl[]): (Tl & { hero?: boolean })[] => {
+    const hk = heroFor(laneId, tiles.filter((tl) => !tl.hidden && !tl.soon).map((tl) => tl.key));
+    return tiles.map((tl) => (tl.key === hk && !tl.soon && !tl.hidden ? { ...tl, hero: true } : tl));
+  };
+  return [
+    {
+      id: "capture", overline: t("relay.laneCapture"), accent: "terracotta" as const,
+      tiles: [
+        { key: "photos", title: t("relay.tilePhotos"), desc: t("relay.tilePhotosDesc"), onClick: goUpload, datum: mtc.photo > 0 ? (mtc.photo === 1 ? t("relay.photosCountNOne", { count: String(mtc.photo) }) : t("relay.photosCountN", { count: String(mtc.photo) })) : undefined },
+        { key: "cloud", title: t("relay.tileCloud"), desc: t("relay.tileCloudDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
+        { key: "restore", title: t("relay.tileRestore"), desc: t("relay.tileRestoreDesc"), onClick: () => setShowRestorePicker(true) },
+        { key: "write", title: t("relay.tileWrite"), desc: t("relay.tileWriteDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? (mtc.story === 1 ? t("relay.storiesCountNOne", { count: String(mtc.story) }) : t("relay.storiesCountN", { count: String(mtc.story) })) : undefined },
+        { key: "record", title: t("relay.tileInterviews"), desc: t("relay.tileInterviewsDesc"), onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? (interviewSessions.length === 1 ? t("relay.recordedCountOne", { count: String(interviewSessions.length) }) : t("relay.recordedCount", { count: String(interviewSessions.length) })) : undefined },
+        { key: "whatsapp", title: t("relay.tileWhatsapp"), desc: t("relay.tileWhatsappDesc"), onClick: () => setShowKepCapture(true) },
+        { key: "capsule", title: t("relay.tileCapsule"), desc: t("relay.tileCapsuleDesc"), dest: t("relay.destLibrary"), onClick: () => { localStorage.setItem("mp_spotlight_target", "time-capsule"); localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
+      ],
+    },
+    {
+      id: "bringtolife", overline: t("relay.laneBringToLife"), accent: "gold" as const,
+      tiles: [
+        { key: "map", title: t("relay.tileMap"), desc: t("relay.tileMapDesc"), onClick: () => setShowMemoryMap(true) },
+        { key: "timeline", title: t("relay.tileTimeline"), desc: t("relay.tileTimelineDesc"), onClick: () => setShowTimeline(true), datum: yearRange },
+        { key: "insights", title: t("relay.tileHighlights"), desc: t("relay.tileHighlightsDesc"), onClick: () => setShowStatistics(true) },
+        { key: "family", title: t("relay.tileFamilyTree"), desc: t("relay.tileFamilyTreeDesc"), onClick: () => setShowFamilyTree(true) },
+        { key: "organize", title: t("relay.tileOrganize"), desc: t("relay.tileOrganizeDesc"), dest: t("relay.destPalace"), onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
+        { key: "explore", title: t("relay.tileExplore"), desc: t("relay.tileExploreDesc"), dest: t("relay.destExplore"), onClick: () => router.push("/explore") },
+        { key: "lifestory", title: t("relay.tileLifeStory"), desc: t("relay.tileLifeStoryDesc"), onClick: () => setShowLifeStory(true) },
+      ],
+    },
+    {
+      id: "share", overline: t("relay.laneShare"), accent: "sage" as const,
+      tiles: [
+        { key: "familyGroup", title: t("relay.tileFamilyGroup"), desc: t("relay.tileFamilyGroupDesc"), dest: t("relay.destMe"), onClick: () => router.push("/settings/family") },
+        { key: "invite", title: t("relay.tileInvite"), desc: t("relay.tileInviteDesc"), dest: t("relay.destMe"), onClick: () => router.push("/settings/sharing") },
+        { key: "publish", title: t("relay.tilePublish"), desc: t("relay.tilePublishDesc"), dest: t("relay.destExplore"), onClick: () => router.push("/explore") },
+        { key: "shared", title: t("relay.tileShared"), desc: t("relay.tileSharedDesc"), onClick: () => setShowSharedWithMe(true), datum: sharedWithMe.length > 0 ? (sharedWithMe.length === 1 ? t("relay.sharedCountOne", { count: String(sharedWithMe.length) }) : t("relay.sharedCount", { count: String(sharedWithMe.length) })) : undefined, hidden: !(sharedLoading || sharedWithMe.length > 0) },
+        { key: "legacy", title: t("relay.tileLegacy"), desc: t("relay.tileLegacyDesc"), dest: t("relay.destMe"), onClick: () => router.push("/settings/legacy") },
+      ],
+    },
+  ].map((lane) => ({ ...lane, tiles: markHero(lane.id, lane.tiles) }));
+  }, [t, goUpload, mtc, handleNavigateLibrary, setShowInterviewLibrary, interviewSessions, setShowKepCapture, setShowMemoryMap, setShowTimeline, yearRange, setShowStatistics, setShowFamilyTree, startTransition, setNavMode, enterEntrance, router, setShowSharedWithMe, sharedWithMe, sharedLoading, relaySuggestion.key, totalMemories, setShowLifeStory, setShowRestorePicker]);
+  const relayYou = useMemo(() => [
+    { key: "journeys", label: t("relay.youJourneys"), onClick: () => setShowTracksPanel(true) },
+    { key: "milestones", label: t("relay.youMilestones"), onClick: () => setShowAchievementPanel(true) },
+    { key: "profile", label: t("relay.youProfile"), onClick: () => router.push("/settings/profile") },
+    { key: "help", label: t("relay.youHelp"), onClick: () => router.push("/help") },
+  ], [t, setShowTracksPanel, setShowAchievementPanel, router]);
+
   return (
     <div
       style={{
@@ -470,7 +958,7 @@ export default function HomeView() {
         height: "100dvh",
         display: "flex",
         flexDirection: "column",
-        background: `linear-gradient(175deg, ${T.color.linen} 0%, ${T.color.warmStone} 55%, ${T.color.cream} 100%)`,
+        background: "#FCFAF5",
         fontFamily: T.font.body,
         overflow: "hidden",
       }}
@@ -496,9 +984,12 @@ export default function HomeView() {
           style={{
             maxWidth: "72rem",
             margin: "0 auto",
-            padding: isMobile
-              ? "1.5rem 1rem calc(4.5rem + env(safe-area-inset-bottom, 0px))"
-              : "2.5rem 2.5rem 6rem",
+            // top padding clears the floating NavigationBar pill (top ~4.4rem) on
+            // desktop; on iPad portrait (compact) the nav is the BOTTOM bar like
+            // mobile, so the 5.5rem top band is dead space — use the mobile clearance.
+            padding: (isMobile || isCompact)
+              ? "3rem 1.25rem calc(4.5rem + env(safe-area-inset-bottom, 0px))"
+              : "5.5rem 2.5rem 6rem",
           }}
         >
           {/* ── P2-1: SKELETON LOADING STATE ── */}
@@ -513,6 +1004,67 @@ export default function HomeView() {
 
           {dataReady && (
           <>
+          {USE_VILLA_HUB ? (
+          <AtriumVilla
+            greeting={relayGreeting}
+            userName={userName}
+            datumLine={relayDatum}
+            ledger={relayLedger}
+            embers={relayEmbers}
+            timeOfDay={timeOfDay}
+            warmth={warmthLevel}
+            warmWeeks={warmWeeks}
+            suggestion={relaySuggestion}
+            onEnterPalace={handleNavigatePalace}
+            onEnterLibrary={handleNavigateLibrary}
+            enterPalaceLabel={t("relay.enterPalace")}
+            libraryLabel={t("relay.libraryPlate")}
+            suggestedOverline={t("relay.stewardSuggests")}
+            palaceDatum={totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined}
+            libraryDatum={totalMemories > 0 ? `${totalMemories}` : undefined}
+            lanes={relayLanes}
+            you={relayYou}
+            score={relayScore}
+            memoriesStrip={memoriesStrip}
+            personaLabel={personaLabel}
+            personaQuiz={personaQuiz}
+            onAddName={() => router.push("/settings/profile")}
+            isMobile={isMobile}
+          />
+          ) : (
+          <AtriumRelay
+            greeting={relayGreeting}
+            userName={userName}
+            datumLine={relayDatum}
+            ledger={relayLedger}
+            embers={relayEmbers}
+            topWash={TIME_WASH[timeOfDay]}
+            warmth={warmthLevel}
+            weekHistory={relayWeekHistory}
+            labels={relayLabels}
+            laneJourneys={laneJourneys}
+            score={relayScore}
+            suggestion={relaySuggestion}
+            personaLabel={personaLabel}
+            personaQuiz={personaQuiz}
+            onChangeStyle={() => {
+              // The quiz replaces the steward card at the TOP of the board;
+              // the persona chip lives at the bottom — scroll the quiz into
+              // view so the tap visibly does something (change 9).
+              setPersonaExpanded(true);
+              setTimeout(() => {
+                personaSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }, 350);
+            }}
+            onAddName={() => router.push("/settings/profile")}
+            memoriesStrip={memoriesStrip}
+            anchors={relayAnchors}
+            lanes={relayLanes}
+            you={relayYou}
+            isMobile={isMobile}
+          />
+          )}
+          {SHOW_LEGACY_WIDGETS && (<>
           {/* ── 1. ATRIUM HERO ── */}
           <div style={sectionStyle(0)}>
             <AtriumHero
@@ -525,8 +1077,9 @@ export default function HomeView() {
               isMobile={isMobile}
             />
 
-            {/* P2-4: Memory streak badge — inside hero area */}
-            {memoryStreak >= 2 && (
+            {/* Streak flame badge removed (round-10 Calm Sanctuary): gamified
+                streak pressure is the wrong note for grieving 60+ Keepers. */}
+            {false && (
               <div
                 style={{
                   display: "inline-flex",
@@ -661,7 +1214,7 @@ export default function HomeView() {
           </div>
 
           {/* ── 2b. PERSONA SELECTOR (collapsible after taken) ── */}
-          <div style={{ marginTop: "2.5rem", ...sectionStyle(2) }}>
+          <div ref={personaSectionRef} style={{ marginTop: "2.5rem", ...sectionStyle(2) }}>
             {personaType && !personaExpanded ? (
               /* Compact summary when persona already selected */
               <div
@@ -803,39 +1356,6 @@ export default function HomeView() {
               }}
               onSendViaWhatsApp={() => setShowKepCapture(true)}
               onPublishExplore={() => router.push("/explore")}
-              isMobile={isMobile}
-            />
-          </div>
-
-          {/* ── 6. PERSONAL PROFILE ── */}
-          <div
-            style={{
-              marginTop: "2.5rem",
-              ...sectionStyle(5),
-            }}
-          >
-            <PersonalProfile
-              totalMemories={totalMemories}
-              totalWings={totalWings}
-              wingsData={wingsData}
-              userName={userName}
-              onStartInterview={() => setShowInterviewLibrary(true)}
-              onStartBaselineInterview={() => startInterviewSession("baseline")}
-              onNavigateLibrary={handleNavigateLibrary}
-              onNavigateToWing={handleNavigateToWing}
-              interviewSummaries={interviewSessions
-                .filter((s) => s.status === "completed" && s.narrativeSummary)
-                .map((s) => s.narrativeSummary!)}
-              memoryTypeCounts={(() => {
-                const counts = { photo: 0, video: 0, audio: 0, text: 0 };
-                for (const { mem } of allMemories) {
-                  if (mem.type === "photo" || mem.type === "album") counts.photo++;
-                  else if (mem.type === "video") counts.video++;
-                  else if (mem.type === "audio" || (mem.type === "voice" && !mem.desc)) counts.audio++;
-                  else counts.text++; // includes interview, voice-with-desc, orb, case, etc.
-                }
-                return counts;
-              })()}
               isMobile={isMobile}
             />
           </div>
@@ -1282,10 +1802,23 @@ export default function HomeView() {
               )}
             </TuscanCard>
           </div>
+          </>)}
           </>
           )}
         </div>
       </div>
+
+      {/* ── LIFE STORY PANEL (change 11) ── */}
+      {showLifeStory && <LifeStoryPanel onClose={() => setShowLifeStory(false)} />}
+
+      {/* ── RESTORE-PHOTO PICKER (Atrium tile → pick a photo in place, no Library detour) ── */}
+      {showRestorePicker && (
+        <RestorePhotoPicker
+          photos={restorablePhotos}
+          uploadRoomId={restoreUploadRoomId}
+          onClose={() => setShowRestorePicker(false)}
+        />
+      )}
 
       {/* ── MODE TRANSITION OVERLAY ── */}
       <ModeTransition {...transitionProps} />

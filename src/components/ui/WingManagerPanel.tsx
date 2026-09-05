@@ -2,11 +2,48 @@
 import { useState } from "react";
 import { T } from "@/lib/theme";
 import { confirmDialog } from "@/lib/ui/confirm";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsTablet } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { WINGS } from "@/lib/constants/wings";
 import { WingIcon, WING_ICON_MAP } from "./WingRoomIcons";
+
+// Canonical emoji for each standard SVG-icon key (roots/nest/craft/...). Wing
+// icons are stored across the whole app as the raw emoji string ({wing.icon}),
+// so the "Standard" icon buttons must persist the matching emoji — never the
+// SVG-map key — or every other surface would render the literal text "roots".
+const WING_KEY_TO_EMOJI: Record<string, string> = Object.fromEntries(
+  Object.keys(WING_ICON_MAP)
+    .map(key => [key, WINGS.find(w => w.id === key)?.icon])
+    .filter((e): e is [string, string] => Boolean(e[1])),
+);
+
+// Reverse lookup: canonical emoji -> SVG-map key, so the standard glyph renders
+// even though wing.icon is stored as the emoji.
+const EMOJI_TO_WING_KEY: Record<string, string> = Object.fromEntries(
+  Object.entries(WING_KEY_TO_EMOJI).map(([key, emoji]) => [emoji, key]),
+);
+
+/**
+ * Renders a wing icon. If the stored value is a standard SVG-map key (or the
+ * emoji that maps back to one) it draws the crafted glyph; otherwise it renders
+ * the raw emoji character, so a user's custom emoji is shown faithfully.
+ */
+function WingGlyph({ icon, size, color }: { icon: string; size: number; color: string }) {
+  if (WING_ICON_MAP[icon]) {
+    return <WingIcon wingId={icon} size={size} color={color} />;
+  }
+  const svgKey = EMOJI_TO_WING_KEY[icon];
+  if (svgKey) {
+    return <WingIcon wingId={svgKey} size={size} color={color} />;
+  }
+  return (
+    <span aria-hidden style={{ fontSize: `${size / 16}rem`, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {icon}
+    </span>
+  );
+}
 
 const EMOJI_PRESETS = [
   // Home & Family
@@ -52,10 +89,21 @@ interface WingManagerPanelProps {
 
 export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   const isMobile = useIsMobile();
+  // Treat tablet-touch (iPad portrait 768–1024, coarse pointer) as mobile for
+  // SIZING so controls meet the 2.75rem touch floor and the panel goes wide.
+  const isTablet = useIsTablet();
+  const touch = isMobile || isTablet;
   const { t } = useTranslation("wingManager");
   const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const { getWings, renameWing, changeWingIcon, changeWingAccent, changeWingDesc, addWing, deleteWing, extraWings } = useRoomStore();
+  // Actions are stable method references that never change, so read them once
+  // from getState() instead of subscribing to the whole store. Subscribe only
+  // to the two reactive slices that drive the rendered list (customWings +
+  // extraWings), so unrelated mutations (room edits, cross-device syncs) no
+  // longer re-render the entire panel and its full wing list.
+  const { getWings, renameWing, changeWingIcon, changeWingAccent, changeWingDesc, addWing, deleteWing } = useRoomStore.getState();
+  useRoomStore(s => s.customWings);
+  const extraWings = useRoomStore(s => s.extraWings);
   const wings = getWings();
   const extraWingIds = new Set(extraWings.map(w => w.id));
 
@@ -80,6 +128,9 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   };
 
   const saveEdit = (id: string) => {
+    // Guard against double-commit (input onBlur can fire alongside form submit
+    // or the icon/color-swatch click that also commits).
+    if (editingId !== id) return;
     if (editName.trim()) renameWing(id, editName);
     changeWingDesc(id, editDesc);
     setEditingId(null);
@@ -88,30 +139,38 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   const [showEmoji, setShowEmoji] = useState(false);
 
   const iconPicker = (currentIcon: string, onPick: (icon: string) => void) => (
-    <div style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, padding: isMobile ? "0.5rem" : "0.625rem", marginTop: "0.375rem" }}>
+    <div role="radiogroup" aria-label={t("changeIcon")} style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.hairline}`, padding: touch ? "0.5rem" : "0.625rem", marginTop: "0.375rem" }}>
       {/* Standard SVG wing icons — prominent */}
       <div style={{ marginBottom: "0.625rem" }}>
-        <span style={{ fontSize: "0.75rem", color: T.color.charcoal, fontWeight: 600, letterSpacing: "0.03em" }}>{t("standardIcons")}</span>
+        <span style={{ fontSize: "0.75rem", color: T.color.ink, fontWeight: 600, letterSpacing: "0.03em" }}>{t("standardIcons")}</span>
         <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.375rem", flexWrap: "wrap" }}>
-          {STANDARD_WING_IDS.map(id => (
-            <button key={id} onClick={() => onPick(id)}
-              style={{ width: isMobile ? "3rem" : "2.5rem", height: isMobile ? "3rem" : "2.5rem", borderRadius: "0.5rem", border: currentIcon === id ? `2px solid ${T.color.terracotta}` : `1px solid ${T.color.cream}`, background: currentIcon === id ? `${T.color.terracotta}15` : T.color.warmStone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>
-              <WingIcon wingId={id} size={isMobile ? 22 : 20} color={currentIcon === id ? T.color.terracotta : T.color.walnut} />
-            </button>
-          ))}
+          {STANDARD_WING_IDS.map(id => {
+            // Persist the canonical emoji (fall back to the key only if no emoji
+            // is mapped) so every other surface — which renders wing.icon as a
+            // raw string — shows the icon correctly. Selection matches either
+            // representation.
+            const emoji = WING_KEY_TO_EMOJI[id];
+            const selected = currentIcon === id || (emoji != null && currentIcon === emoji);
+            return (
+              <button key={id} onClick={() => onPick(emoji ?? id)} role="radio" aria-checked={selected}
+                style={{ width: touch ? "3rem" : "2.5rem", height: touch ? "3rem" : "2.5rem", borderRadius: "0.5rem", border: selected ? `2px solid ${T.color.ember}` : `1px solid ${T.color.hairline}`, background: selected ? `${T.color.ember}15` : T.color.warmStone, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>
+                <WingIcon wingId={id} size={touch ? 22 : 20} color={selected ? T.color.ember : T.color.walnut} />
+              </button>
+            );
+          })}
         </div>
       </div>
       {/* Custom emoji icons — collapsed by default */}
       <div>
-        <button onClick={() => setShowEmoji(!showEmoji)} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          <span style={{ fontSize: "0.625rem", color: T.color.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("customEmoji")}</span>
-          <span style={{ fontSize: "0.5rem", color: T.color.muted, transform: showEmoji ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .15s", display: "inline-block" }}>{"\u25BC"}</span>
+        <button onClick={() => setShowEmoji(!showEmoji)} aria-expanded={showEmoji} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+          <span style={{ fontSize: "0.625rem", color: T.color.inkMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("customEmoji")}</span>
+          <span style={{ fontSize: "0.5rem", color: T.color.inkMuted, transform: showEmoji ? "rotate(180deg)" : "rotate(0deg)", transition: "transform .15s", display: "inline-block" }}>{"\u25BC"}</span>
         </button>
         {showEmoji && (
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? "0.375rem" : "0.25rem", maxHeight: isMobile ? "7rem" : "5rem", overflowY: "auto", marginTop: "0.25rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: touch ? "repeat(5,1fr)" : "repeat(8,1fr)", gap: touch ? "0.375rem" : "0.25rem", maxHeight: touch ? "9rem" : "5rem", overflowY: "auto", marginTop: "0.25rem" }}>
             {EMOJI_PRESETS.map((e, i) => (
-              <button key={i} onClick={() => onPick(e)}
-                style={{ width: isMobile ? "2.25rem" : "1.75rem", height: isMobile ? "2.25rem" : "1.75rem", borderRadius: "0.375rem", border: e === currentIcon ? `2px solid ${T.color.terracotta}` : "1px solid transparent", background: e === currentIcon ? `${T.color.terracotta}15` : "transparent", fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button key={i} onClick={() => onPick(e)} role="radio" aria-checked={e === currentIcon}
+                style={{ width: touch ? "2.75rem" : "1.75rem", height: touch ? "2.75rem" : "1.75rem", borderRadius: "0.375rem", border: e === currentIcon ? `2px solid ${T.color.ember}` : "1px solid transparent", background: e === currentIcon ? `${T.color.ember}15` : "transparent", fontSize: touch ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {e}
               </button>
             ))}
@@ -122,12 +181,12 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   );
 
   const colorPicker = (currentColor: string, onPick: (color: string) => void) => (
-    <div style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, padding: isMobile ? "0.5rem" : "0.625rem", display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? "0.5rem" : "0.375rem", marginTop: "0.375rem" }}>
+    <div role="radiogroup" aria-label={t("changeAccent")} style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.hairline}`, padding: touch ? "0.5rem" : "0.625rem", display: "grid", gridTemplateColumns: touch ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: touch ? "0.5rem" : "0.375rem", marginTop: "0.375rem" }}>
       {ACCENT_PALETTE.map((p, i) => (
-        <button key={i} onClick={() => onPick(p.color)} title={t(p.nameKey)}
+        <button key={i} onClick={() => onPick(p.color)} title={t(p.nameKey)} role="radio" aria-checked={p.color === currentColor} aria-label={t(p.nameKey)}
           style={{
-            width: isMobile ? "2.375rem" : "2rem", height: isMobile ? "2.375rem" : "2rem", borderRadius: isMobile ? "1.1875rem" : "1rem", border: p.color === currentColor ? `3px solid ${T.color.charcoal}` : "2px solid transparent",
-            background: p.color, cursor: "pointer", boxShadow: p.color === currentColor ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${p.color}60` : "0 1px 4px rgba(0,0,0,.12)",
+            width: touch ? "2.75rem" : "2rem", height: touch ? "2.75rem" : "2rem", borderRadius: touch ? "1.375rem" : "1rem", border: p.color === currentColor ? `3px solid ${T.color.ink}` : "2px solid transparent",
+            background: p.color, cursor: "pointer", boxShadow: p.color === currentColor ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${p.color}60` : "0 1px 4px rgba(64,59,54,.12)",
             transition: "all .15s",
           }}
         />
@@ -137,33 +196,33 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(8px)", zIndex: 55, animation: "fadeIn .2s ease" }}>
-      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isMobile ? "100%" : "26.25rem", background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`, paddingTop: `max(${isMobile ? "1.25rem" : "1.75rem"}, env(safe-area-inset-top, 0px))`, paddingBottom: `max(${isMobile ? "1.25rem" : "1.75rem"}, env(safe-area-inset-bottom, 0px))`, paddingLeft: `max(${isMobile ? "1rem" : "1.5rem"}, env(safe-area-inset-left, 0px))`, paddingRight: `max(${isMobile ? "1rem" : "1.5rem"}, env(safe-area-inset-right, 0px))`, overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
-        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: touch ? "100%" : "26.25rem", background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: touch ? "none" : `1px solid ${T.color.hairline}`, paddingTop: `max(${touch ? "1.25rem" : "1.75rem"}, env(safe-area-inset-top, 0px))`, paddingBottom: `max(${touch ? "1.25rem" : "1.75rem"}, env(safe-area-inset-bottom, 0px))`, paddingLeft: `max(${touch ? "1rem" : "1.5rem"}, env(safe-area-inset-left, 0px))`, paddingRight: `max(${touch ? "1rem" : "1.5rem"}, env(safe-area-inset-right, 0px))`, overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
+        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}@media (prefers-reduced-motion: reduce){[role=dialog]{animation:none !important}}`}</style>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div>
-            <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("description")}</p>
+            <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.ink, margin: 0 }}>{t("title")}</h3>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.inkMuted, margin: "0.25rem 0 0" }}>{t("description")}</p>
           </div>
-          <button onClick={onClose} aria-label={tc("close")} style={{ width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
+          <button onClick={onClose} aria-label={tc("close")} style={{ width: touch ? "2.75rem" : "2rem", height: touch ? "2.75rem" : "2rem", borderRadius: touch ? "1.375rem" : "1rem", border: `1px solid ${T.color.hairline}`, background: T.color.warmStone, color: T.color.inkMuted, fontSize: touch ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
         </div>
 
         {/* Wing list */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
           {wings.filter(w => w.id !== "attic").map(wing => (
-            <div key={wing.id} style={{ background: T.color.white, borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`, padding: "0.875rem 1rem", transition: "all .15s" }}>
+            <div key={wing.id} style={{ background: T.color.white, borderRadius: "0.875rem", border: `1px solid ${T.color.hairline}`, padding: "0.875rem 1rem", transition: "all .15s" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                 {/* Icon button */}
-                <button onClick={() => { setPickingIconId(pickingIconId === wing.id ? null : wing.id); setEditingId(null); setPickingColorId(null); }}
+                <button onClick={() => { if (editingId === wing.id) saveEdit(wing.id); setPickingIconId(pickingIconId === wing.id ? null : wing.id); setEditingId(null); setPickingColorId(null); }}
                   aria-label={t("changeIcon")}
                   style={{
-                    width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", border: `1.5px solid ${pickingIconId === wing.id ? wing.accent : T.color.cream}`,
+                    width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", border: `1.5px solid ${pickingIconId === wing.id ? wing.accent : T.color.hairline}`,
                     background: pickingIconId === wing.id ? `${wing.accent}12` : T.color.warmStone,
                     fontSize: "1.375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s",
                   }}
                   title={t("changeIcon")}>
-                  <WingIcon wingId={wing.icon} size={24} color={wing.accent} />
+                  <WingGlyph icon={wing.icon} size={24} color={wing.accent} />
                 </button>
 
                 {/* Name */}
@@ -171,38 +230,46 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                   {editingId === wing.id ? (
                     <form onSubmit={e => { e.preventDefault(); saveEdit(wing.id); }} style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
                       <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
-                        style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1.5px solid ${wing.accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: T.color.charcoal, outline: "none" }} />
+                        onBlur={() => { if (editingId === wing.id) saveEdit(wing.id); }}
+                        style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1.5px solid ${wing.accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: T.color.ink, outline: "none" }} />
                       <div>
-                        <label htmlFor={`wing-subtitle-${wing.id}`} style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("editSubtitle")}</label>
+                        <label htmlFor={`wing-subtitle-${wing.id}`} style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.inkMuted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("editSubtitle")}</label>
                         <textarea id={`wing-subtitle-${wing.id}`} value={editDesc} onChange={e => setEditDesc(e.target.value)}
                           onBlur={() => saveEdit(wing.id)}
                           placeholder={t("subtitlePlaceholder")}
                           rows={2}
-                          style={{ width: "100%", padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: T.color.charcoal, outline: "none", resize: "none", marginTop: "0.125rem" }} />
+                          style={{ width: "100%", padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.hairline}`, background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: T.color.ink, outline: "none", resize: "none", marginTop: "0.125rem" }} />
                       </div>
                     </form>
                   ) : (
                     <div role="button" tabIndex={0} onClick={() => startEdit(wing.id, wing.name, wing.desc)}
                       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startEdit(wing.id, wing.name, wing.desc); } }}
-                      style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 500, color: T.color.charcoal, cursor: "text", padding: "0.125rem 0" }}
+                      style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 500, color: T.color.ink, cursor: "text", padding: "0.125rem 0" }}
                       title={t("clickToRename")}>
                       {wing.name} {t("wing")}
                     </div>
                   )}
-                  <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, marginTop: "0.125rem" }}>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.inkMuted, marginTop: "0.125rem" }}>
                     {wing.desc} {"\u00B7"} {wing.id}
                   </div>
                 </div>
 
-                {/* Accent color swatch */}
-                <button onClick={() => { setPickingColorId(pickingColorId === wing.id ? null : wing.id); setPickingIconId(null); setEditingId(null); }}
+                {/* Accent color swatch — 2.75rem tap area with a smaller colored dot inside */}
+                <button onClick={() => { if (editingId === wing.id) saveEdit(wing.id); setPickingColorId(pickingColorId === wing.id ? null : wing.id); setPickingIconId(null); setEditingId(null); }}
                   aria-label={t("changeAccent")}
                   style={{
-                    width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", border: pickingColorId === wing.id ? `2px solid ${T.color.charcoal}` : `2px solid ${T.color.cream}`,
-                    background: wing.accent, cursor: "pointer", flexShrink: 0, transition: "all .15s",
-                    boxShadow: pickingColorId === wing.id ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${wing.accent}60` : `0 1px 4px ${wing.accent}30`,
+                    minWidth: "2.75rem", minHeight: "2.75rem", width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem", border: "none", padding: 0,
+                    background: "transparent", cursor: "pointer", flexShrink: 0, transition: "all .15s",
+                    display: "flex", alignItems: "center", justifyContent: "center",
                   }}
-                  title={t("changeAccent")} />
+                  title={t("changeAccent")}>
+                  <span style={{
+                    width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", display: "block",
+                    border: pickingColorId === wing.id ? `2px solid ${T.color.ink}` : `2px solid ${T.color.hairline}`,
+                    background: wing.accent,
+                    boxShadow: pickingColorId === wing.id ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${wing.accent}60` : `0 1px 4px ${wing.accent}30`,
+                  }} />
+                </button>
               </div>
 
               {/* Icon picker (expanded) */}
@@ -238,15 +305,15 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
         </div>
 
         {/* Add Wing section */}
-        {canAddWing && (
+        {canAddWing ? (
           <div style={{
             marginTop: "1rem", padding: "1rem",
             background: T.color.white, borderRadius: "0.875rem",
-            border: `1.5px dashed ${T.color.gold}44`,
+            border: `1.5px dashed ${T.color.ember}55`,
           }}>
             <div style={{
               fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-              color: T.color.charcoal, marginBottom: "0.5rem",
+              color: T.color.ink, marginBottom: "0.5rem",
             }}>
               {t("addWingTitle")}
             </div>
@@ -262,15 +329,15 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                 placeholder={t("newWingPlaceholder")}
                 style={{
                   flex: 1, padding: "0.5rem 0.75rem",
-                  borderRadius: "0.5rem", border: `1.5px solid ${T.color.cream}`,
+                  borderRadius: "0.5rem", border: `1.5px solid ${T.color.hairline}`,
                   background: T.color.linen, fontFamily: T.font.body,
-                  fontSize: "16px", color: T.color.charcoal, outline: "none",
+                  fontSize: "1rem", color: T.color.ink, outline: "none",
                 }}
               />
               <button type="submit" disabled={!newWingName.trim()} style={{
-                padding: "0.5rem 1rem", borderRadius: "0.5rem",
-                border: "none", background: newWingName.trim() ? T.color.terracotta : T.color.cream,
-                color: newWingName.trim() ? T.color.cream : T.color.muted,
+                padding: "0.5rem 1rem", borderRadius: "0.5rem", minHeight: "2.75rem",
+                border: "none", background: newWingName.trim() ? T.color.ember : T.color.cream,
+                color: newWingName.trim() ? T.color.cream : T.color.inkMuted,
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                 cursor: newWingName.trim() ? "pointer" : "default",
                 transition: "all .15s",
@@ -279,16 +346,25 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
               </button>
             </form>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.inkMuted,
               marginTop: "0.375rem",
             }}>
               {t("wingLimit", { current: String(wingCount), max: "7" })}
             </div>
           </div>
+        ) : (
+          <div style={{
+            marginTop: "1rem", padding: "0.75rem 1rem",
+            background: `${T.color.warmStone}80`, borderRadius: "0.875rem",
+            fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.inkMuted,
+            textAlign: "center",
+          }}>
+            {t("maxWingsReached", { max: "7" })}
+          </div>
         )}
 
         {/* Footer hint */}
-        <div style={{ marginTop: "1.25rem", padding: "0.75rem 1rem", background: `${T.color.warmStone}80`, borderRadius: "0.625rem", fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.5 }}>
+        <div style={{ marginTop: "1.25rem", padding: "0.75rem 1rem", background: `${T.color.warmStone}80`, borderRadius: "0.625rem", fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.inkMuted, lineHeight: 1.5 }}>
           {t("hint")}
         </div>
       </div>

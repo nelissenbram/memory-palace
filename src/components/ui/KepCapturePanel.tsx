@@ -5,22 +5,38 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard from "@/components/ui/TuscanCard";
+import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { ANIM, EASE } from "@/components/ui/TuscanStyles";
 
 const C = T.color;
 const F = T.font;
+
+/* ───── Canon neutral tokens ─────
+   Source the Kep surface's neutrals from the canon library palette (mirrors
+   src/lib/libraryTokens.ts CREAM/TRAY/HAIRLINE/SAGE) rather than theme.ts's
+   legacy linen/warmStone/sandstone, so this surface shares one source of truth
+   with its Library/Atrium siblings. Kept as well-named locals to avoid touching
+   the shared token files. */
+const TRAY = "#F6EBE3";    // canon lifted-tray neutral (libraryTokens TRAY)
+const HAIRLINE = "#E3D6BC"; // canon card border (libraryTokens HAIRLINE)
+const SAGE = "#56683C";    // canon sage (libraryTokens SAGE)
+const NEUTRAL_SOFT = "#EDE6D8"; // canon warm neutral for header gradient / secondary fills
 
 /* ───── Helpers ───── */
 
 function formatPhone(phone: string): string {
   if (!phone) return "";
   const clean = phone.replace(/\D/g, "");
-  if (clean.length >= 10) {
-    const cc = clean.slice(0, clean.length - 9);
-    const rest = clean.slice(clean.length - 9);
-    return `+${cc} ${rest.slice(0, 1)} ${rest.slice(1, 5)} ${rest.slice(5)}`;
-  }
-  return `+${clean}`;
+  if (!clean) return "";
+  // We can't reliably split country code from national number without a full
+  // phone library, so format loosely: assume a 1–3 digit country code, then
+  // group the remaining national digits in readable blocks of 3.
+  const ccLen = clean.length > 11 ? 3 : clean.length > 10 ? 2 : 1;
+  const cc = clean.slice(0, Math.min(ccLen, clean.length));
+  const rest = clean.slice(cc.length);
+  const grouped = rest.replace(/(\d{3})(?=\d)/g, "$1 ").trim();
+  return grouped ? `+${cc} ${grouped}` : `+${cc}`;
 }
 
 function downloadVCard(phone: string) {
@@ -74,17 +90,17 @@ function KepPorterIllustration({ size = 140 }: { size?: number }) {
   );
 }
 
-function KepFlowIllustration() {
+function KepFlowIllustration({ t }: { t: (key: string) => string }) {
   return (
     <svg width="100%" height="100" viewBox="5 0 280 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxWidth: "22rem", margin: "0 auto", display: "block", overflow: "visible" }}>
-      <rect x="10" y="20" width="60" height="60" rx="14" fill="#25D366" opacity="0.15" stroke="#25D366" strokeWidth="1.5" />
+      <rect x="10" y="20" width="60" height="60" rx="14" fill={C.warmStone} opacity="0.5" stroke="#E3D6BC" strokeWidth="1.5" />
       <rect x="22" y="36" width="36" height="4" rx="2" fill="#25D366" opacity="0.6" />
-      <rect x="22" y="44" width="28" height="4" rx="2" fill="#25D366" opacity="0.4" />
-      <rect x="22" y="52" width="20" height="4" rx="2" fill="#25D366" opacity="0.3" />
+      <rect x="22" y="44" width="28" height="4" rx="2" fill="#716A5E" opacity="0.4" />
+      <rect x="22" y="52" width="20" height="4" rx="2" fill="#716A5E" opacity="0.3" />
       <rect x="28" y="60" width="12" height="9" rx="1.5" stroke="#25D366" strokeWidth="1" fill="none" />
       <circle cx="32" cy="64" r="1.5" fill="#25D366" opacity="0.5" />
-      <line x1="80" y1="50" x2="118" y2="50" stroke={C.gold} strokeWidth="1.5" strokeDasharray="4 3" />
-      <polygon points="120,50 114,46 114,54" fill={C.gold} />
+      <line x1="80" y1="50" x2="118" y2="50" stroke="#9A4F2A" strokeWidth="1.5" strokeDasharray="4 3" />
+      <polygon points="120,50 114,46 114,54" fill="#9A4F2A" />
       <ellipse cx="150" cy="38" rx="12" ry="5" fill={C.walnut} opacity="0.8" />
       <rect x="142" y="28" width="16" height="10" rx="8" fill={C.walnut} />
       <circle cx="150" cy="45" r="8" fill={C.sandstone} />
@@ -94,16 +110,16 @@ function KepFlowIllustration() {
       <rect x="134" y="70" width="32" height="2" rx="1" fill={C.gold} />
       <rect x="140" y="64" width="8" height="6" rx="1" fill={C.terracotta} opacity="0.7" />
       <rect x="150" y="62" width="8" height="8" rx="1" fill={C.sage} opacity="0.7" />
-      <line x1="172" y1="50" x2="210" y2="50" stroke={C.gold} strokeWidth="1.5" strokeDasharray="4 3" />
-      <polygon points="212,50 206,46 206,54" fill={C.gold} />
+      <line x1="172" y1="50" x2="210" y2="50" stroke="#9A4F2A" strokeWidth="1.5" strokeDasharray="4 3" />
+      <polygon points="212,50 206,46 206,54" fill="#9A4F2A" />
       <rect x="220" y="18" width="56" height="64" rx="4" fill={C.warmStone} stroke={C.walnut} strokeWidth="1.5" />
       <rect x="234" y="30" width="28" height="42" rx="2" fill={C.cream} stroke={C.walnut} strokeWidth="1" />
       <circle cx="256" cy="52" r="2" fill={C.gold} />
       <rect x="230" y="76" width="36" height="5" rx="2" fill={C.gold} opacity="0.3" />
       <rect x="226" y="24" width="6" height="8" rx="1" fill={C.sage} opacity="0.3" stroke={C.walnut} strokeWidth="0.5" />
-      <text x="40" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill={C.muted} fontWeight="500">WhatsApp</text>
-      <text x="150" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill={C.muted} fontWeight="500">Kep</text>
-      <text x="248" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill={C.muted} fontWeight="500">Your Room</text>
+      <text x="40" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">{t("flowWhatsapp")}</text>
+      <text x="150" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">{t("flowKep")}</text>
+      <text x="248" y="96" textAnchor="middle" fontFamily={F.body} fontSize="9" fill="#716A5E" fontWeight="500">{t("flowRoom")}</text>
     </svg>
   );
 }
@@ -124,7 +140,6 @@ interface KepCapturePanelProps {
 
 export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
   const { t } = useTranslation("kepLanding");
-  const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
   const [copied, setCopied] = useState(false);
 
@@ -141,77 +156,18 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
   };
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 60,
-      display: "flex",
-      alignItems: isMobile ? "stretch" : "center",
-      justifyContent: "center",
-    }}>
-      {/* Backdrop */}
-      <div onClick={onClose} style={{
-        position: "absolute", inset: 0,
-        background: "rgba(42,34,24,.45)", backdropFilter: "blur(6px)",
-      }} />
-
-      {/* Dialog */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("navTitle")}
-        onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
-        style={{
-          position: "relative", zIndex: 1,
-          width: isMobile ? "100%" : "95%",
-          maxWidth: isMobile ? undefined : "52rem",
-          height: isMobile ? "100%" : undefined,
-          maxHeight: isMobile ? undefined : "90vh",
-          background: C.linen,
-          borderRadius: isMobile ? 0 : "1.25rem",
-          boxShadow: isMobile ? "none" : "0 1.5rem 5rem rgba(44,44,42,.3)",
-          border: isMobile ? "none" : `1px solid ${C.cream}`,
-          display: "flex", flexDirection: "column",
-          overflow: "hidden",
-          animation: "fadeUp .35s ease",
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: isMobile ? "1rem 1.25rem" : "1.25rem 1.5rem",
-          paddingTop: isMobile ? "max(1rem, env(safe-area-inset-top, 0px))" : undefined,
-          paddingLeft: isMobile ? "max(1.25rem, env(safe-area-inset-left, 0px))" : undefined,
-          paddingRight: isMobile ? "max(1.25rem, env(safe-area-inset-right, 0px))" : undefined,
-          borderBottom: `1px solid ${C.cream}`,
-          background: `linear-gradient(180deg, ${C.warmStone} 0%, ${C.linen} 100%)`,
-          flexShrink: 0,
-        }}>
-          <h2 style={{
-            fontFamily: F.display, fontSize: isMobile ? "1.125rem" : "1.375rem",
-            fontWeight: 500, color: C.charcoal, margin: 0,
-          }}>
-            {t("navTitle")}
-          </h2>
-          <button
-            onClick={onClose}
-            aria-label={tc("close")}
-            style={{
-              width: "2.75rem", height: "2.75rem", minWidth: "2.75rem", minHeight: "2.75rem",
-              borderRadius: "1rem", border: `1px solid ${C.cream}`,
-              background: C.white, cursor: "pointer", fontSize: "1rem", color: C.muted,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "opacity .15s", flexShrink: 0, padding: 0,
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-          >{"\u2715"}</button>
-        </div>
-
-        {/* Scrollable content */}
-        <div className="mp-scroll" style={{
-          flex: 1, overflowY: "auto", overflowX: "hidden",
-          padding: isMobile ? "1.25rem" : "1.5rem",
-          paddingBottom: isMobile ? "max(1.25rem, env(safe-area-inset-bottom, 0px))" : undefined,
-        }}>
+    <Sheet
+      open
+      onClose={onClose}
+      title={t("navTitle")}
+      icon={<RelayIcons.whatsapp />}
+      iconTint="terracotta"
+      side="right"
+      maxWidth="30rem"
+      background={TRAY}
+    >
+      {/* Content \u2014 Sheet owns the outer overlay, scrim, header title, close button, scroll region, focus-trap and body-lock */}
+      <div>
           {/* Hero: Porter + Title */}
           <div style={{
             textAlign: "center",
@@ -221,9 +177,9 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
             <KepPorterIllustration size={isMobile ? 100 : 130} />
             <h1 style={{
               fontFamily: F.display,
-              fontSize: isMobile ? "1.5rem" : "2rem",
+              fontSize: isMobile ? "1.375rem" : "1.75rem", // Atrium token: titleL/h1m
               fontWeight: 600,
-              color: C.charcoal,
+              color: C.ink,
               margin: "0.75rem 0 0.25rem",
               lineHeight: 1.15,
             }}>
@@ -232,11 +188,11 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
             <p style={{
               fontFamily: F.display,
               fontSize: "0.9375rem",
-              color: C.walnut,
+              color: C.inkMuted, // Atrium token: muted, full opacity
               fontStyle: "italic",
               maxWidth: "28rem",
               margin: "0 auto",
-              lineHeight: 1.5,
+              lineHeight: 1.4,
             }}>
               {t("subtitle")}
             </p>
@@ -248,7 +204,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
             animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} 0.1s both`,
             display: "flex", justifyContent: "center",
           }}>
-            <KepFlowIllustration />
+            <KepFlowIllustration t={t} />
           </div>
 
           {/* Steps */}
@@ -268,13 +224,13 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                   <p style={stepDesc}>{t("quickStep1Text")}</p>
                   <div style={{
                     display: "inline-flex", alignItems: "center",
-                    background: `${C.gold}0D`, border: `1.5px solid ${C.gold}35`,
-                    borderRadius: "0.625rem", padding: "0.5rem 1rem",
+                    background: "rgba(154,79,42,0.11)", border: `0.0625rem solid ${HAIRLINE}`, // canon terracotta medallion tint + hairline (gold reserved for the palace itself)
+                    borderRadius: "0.75rem", padding: "0.5rem 1rem",
                     marginBottom: "0.75rem",
                   }}>
                     <span style={{
                       fontFamily: "monospace", fontSize: isMobile ? "1rem" : "1.125rem",
-                      fontWeight: 700, color: C.gold, letterSpacing: "0.03em",
+                      fontWeight: 700, color: C.rustDeep, letterSpacing: "0.03em", // Atrium token: terracotta glyph
                     }}>
                       {displayPhone}
                     </span>
@@ -290,9 +246,9 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                     </button>
                     <button onClick={handleCopy} style={{
                       ...btnSecondary,
-                      background: copied ? C.sage : C.warmStone,
-                      color: copied ? C.cream : C.walnut,
-                      borderColor: copied ? C.sage : (C.lineFaint || "#e5e2dc"),
+                      background: copied ? SAGE : NEUTRAL_SOFT, // canon sage on-copy, warm neutral at rest
+                      color: copied ? C.cream : C.ink,
+                      borderColor: copied ? SAGE : HAIRLINE, // canon sage / hairline
                     }}>
                       {copied ? t("quickStep1Copied") : t("quickStep1Copy")}
                     </button>
@@ -346,12 +302,12 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                     display: "flex", flexWrap: "wrap", gap: "0.375rem",
                     marginTop: "0.5rem",
                   }}>
-                    {["ROOM Kitchen", "NEW Holidays", "ROOMS"].map((cmd) => (
+                    {[`ROOM ${t("cmdExampleKitchen")}`, `NEW ${t("cmdExampleHolidays")}`, "ROOMS"].map((cmd) => (
                       <code key={cmd} style={{
-                        fontFamily: "monospace", fontSize: "0.75rem", fontWeight: 600,
-                        color: C.walnut, background: C.linen,
+                        fontFamily: "monospace", fontSize: "0.8125rem", fontWeight: 600, // Atrium token: meta
+                        color: C.ink, background: TRAY, // canon lifted-tray neutral (was C.linen)
                         padding: "0.25rem 0.5rem", borderRadius: "0.25rem",
-                        border: `1px solid ${C.lineFaint || "#e5e2dc"}`,
+                        border: `0.0625rem solid ${HAIRLINE}`, // canon hairline
                       }}>
                         {cmd}
                       </code>
@@ -374,10 +330,10 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
             <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
               <div style={{
                 width: "2.25rem", height: "2.25rem", borderRadius: "50%",
-                background: `${C.sage}18`, display: "flex",
+                background: "rgba(86,104,60,0.16)", display: "flex", // Atrium token: sage medallion tint
                 alignItems: "center", justifyContent: "center", flexShrink: 0,
               }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.sage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#56683C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                   <polyline points="9 12 11 14 15 10" />
                 </svg>
@@ -390,7 +346,7 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                   href="/settings/connections"
                   style={{
                     fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 600,
-                    color: C.terracotta, textDecoration: "underline",
+                    color: C.rustDeep, textDecoration: "underline", // Atrium token: terracotta glyph (text-safe on light)
                     textUnderlineOffset: "0.1875rem",
                   }}
                 >
@@ -402,65 +358,68 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
 
           {/* Commands tip */}
           <p style={{
-            fontFamily: F.body, fontSize: "0.75rem", color: C.muted,
+            fontFamily: F.body, fontSize: "0.8125rem", color: C.inkMuted, // Atrium token: meta + muted
             textAlign: "center", fontStyle: "italic",
             animation: `${ANIM.tuscanFadeSlideUp} 0.5s ${EASE} 0.3s both`,
           }}>
             {t("commandsHint")}
           </p>
-        </div>
       </div>
-    </div>
+    </Sheet>
   );
 }
 
 /* ───── Shared styles ───── */
 
 const stepTitle: React.CSSProperties = {
-  fontFamily: F.display, fontSize: "1rem", fontWeight: 600,
-  color: C.charcoal, margin: "0 0 0.25rem",
+  fontFamily: F.display, fontSize: "1.0625rem", fontWeight: 600, // Atrium token: titleS
+  color: C.ink, margin: "0 0 0.25rem",
 };
 
 const stepDesc: React.CSSProperties = {
-  fontFamily: F.body, fontSize: "0.875rem", color: C.inkSoft,
-  lineHeight: 1.6, margin: "0 0 0.625rem",
+  fontFamily: F.body, fontSize: "0.9375rem", color: C.inkMuted, // Atrium token: body + muted
+  lineHeight: 1.4, margin: "0 0 0.625rem",
 };
 
 const btnPrimary: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: "0.375rem",
-  background: C.terracotta, color: C.cream,
-  border: "none", borderRadius: "0.5rem",
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
+  background: C.ember, color: C.cream, // Atrium token: ember (active/button register)
+  border: "none", borderRadius: "0.75rem", // Atrium token: small-control radius
   padding: "0.4375rem 0.875rem", fontSize: "0.8125rem",
   fontWeight: 600, cursor: "pointer", fontFamily: F.body,
+  minHeight: "2.75rem", // canon touch target
 };
 
 const btnSecondary: React.CSSProperties = {
-  border: "1px solid",
-  borderRadius: "0.5rem", padding: "0.4375rem 0.75rem",
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  border: "0.0625rem solid",
+  borderRadius: "0.75rem", padding: "0.4375rem 0.75rem", // Atrium token: small-control radius
   fontSize: "0.8125rem", cursor: "pointer",
   fontWeight: 500, fontFamily: F.body,
-  background: C.warmStone, color: C.walnut,
+  background: NEUTRAL_SOFT, color: C.ink, // canon warm neutral (was C.warmStone)
   transition: `all 0.2s ${EASE}`,
+  minHeight: "2.75rem", // canon touch target
 };
 
 const btnWhatsApp: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: "0.5rem",
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
   background: "#25D366", color: "#fff",
-  padding: "0.4375rem 1rem", borderRadius: "0.5rem",
+  padding: "0.4375rem 1rem", borderRadius: "0.75rem", // Atrium token: small-control radius
   fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none",
   fontFamily: F.body,
+  minHeight: "2.75rem", // canon touch target
 };
 
 function StepBadge({ n }: { n: number }) {
   return (
     <div style={{
       width: "2rem", height: "2rem", borderRadius: "50%",
-      background: `linear-gradient(135deg, ${C.terracotta}, ${C.terracotta}D0)`,
+      background: `linear-gradient(135deg, ${C.ember}, ${C.rustDeep})`, // Atrium token: opaque ember→terracotta, no alpha band
       color: C.cream,
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: F.display, fontSize: "0.875rem", fontWeight: 700,
+      fontFamily: F.display, fontSize: "0.8125rem", fontWeight: 700,
       flexShrink: 0, marginTop: "0.125rem",
-      boxShadow: `0 0.125rem 0.5rem ${C.terracotta}30`,
+      boxShadow: T.shadow[1], // Atrium token: S1 warm-ink shadow
     }}>
       {n}
     </div>

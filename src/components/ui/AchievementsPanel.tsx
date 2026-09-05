@@ -1,38 +1,47 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { memo, useEffect, useRef, useState, useCallback, useId } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+
+/** True when the OS/browser requests reduced motion — read once at call time. */
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    : false;
+}
+import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { useAchievementStore, ACHIEVEMENTS, type Achievement } from "@/lib/stores/achievementStore";
 import { AchievementIcon } from "./AtriumWidgets";
 import { shareAchievement } from "@/lib/native/share";
 
-/** Roman laurel wreath trophy icon for the panel header */
-function TrophyIcon({ size = 28 }: { size?: number }) {
-  const gold = T.color.gold;
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Cup body */}
-      <path d="M8 5h12v8c0 3.5-2.5 6-6 6s-6-2.5-6-6V5z" stroke={gold} strokeWidth="1.5" fill={`${gold}20`} />
-      {/* Left handle */}
-      <path d="M8 7c-2 0-4 1-4 4s2 4 4 4" stroke={gold} strokeWidth="1.3" strokeLinecap="round" fill="none" />
-      {/* Right handle */}
-      <path d="M20 7c2 0 4 1 4 4s-2 4-4 4" stroke={gold} strokeWidth="1.3" strokeLinecap="round" fill="none" />
-      {/* Stem */}
-      <line x1="14" y1="19" x2="14" y2="22" stroke={gold} strokeWidth="1.3" />
-      {/* Base */}
-      <path d="M10 22h8" stroke={gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M9 24h10" stroke={gold} strokeWidth="1.3" strokeLinecap="round" />
-      {/* Star accent */}
-      <path d="M14 9l1 2.5 2.5.2-2 1.7.6 2.4L14 14.5l-2.1 1.3.6-2.4-2-1.7 2.5-.2L14 9z" fill={gold} stroke="none" opacity="0.6" />
-    </svg>
-  );
+/**
+ * Discriminated share result. shareAchievement() only returns a boolean, so we
+ * derive which path it took here — in ONE place — instead of re-deriving the
+ * branch inline at every call site. `method` distinguishes a system share sheet
+ * (native Capacitor / Web Share) from the clipboard fallback, which is the only
+ * path that owes the user a "copied" toast (a shown-then-cancelled sheet must
+ * NOT claim "copied").
+ */
+type ShareResult =
+  | { ok: true; method: "sheet" | "clipboard" }
+  | { ok: false; method: null };
+
+async function shareAchievementWithMethod(name: string, text: string): Promise<ShareResult> {
+  const hasNativeShare = (await import("@capacitor/core")).Capacitor.isNativePlatform();
+  const hasWebShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  // Clipboard is the *only* path when no system sheet exists; otherwise the sheet
+  // is attempted first and clipboard is unreachable unless the sheet throws.
+  const clipboardIsOnlyPath = !hasNativeShare && !hasWebShare;
+  const ok = await shareAchievement(name, text);
+  if (!ok) return { ok: false, method: null };
+  return { ok: true, method: clipboardIsOnlyPath ? "clipboard" : "sheet" };
 }
 
 /** Roman padlock icon for locked achievements */
 function LockedBadgeIcon({ size = 20 }: { size?: number }) {
-  const grey = T.color.muted;
+  const grey = "#716A5E"; // Atrium token: muted ink, full opacity
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="4" y="9" width="12" height="8" rx="1.5" stroke={grey} strokeWidth="1.3" fill={`${grey}15`} />
@@ -68,12 +77,22 @@ interface Props {
 
 export default function AchievementsPanel({ onClose, highlightId }: Props) {
   const isMobile = useIsMobile();
-  const { t } = useTranslation("achievementsPanel");
-  const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const { earnedIds, earnedDates, getProgress } = useAchievementStore();
+  const isCompact = useIsCompact();
+  const isTouch = useTouchControls();
+  const { t, locale } = useTranslation("achievementsPanel");
+  // Fine-grained selectors: the panel only displays earnedIds/earnedDates and
+  // reads getProgress (a stable store method). Selecting each slice isolates the
+  // panel from stats/lastCheck/visitedWings/visitedRooms writes that occur while
+  // it is mounted (checkAchievements/trackWingVisit/trackRoomVisit), which a
+  // selector-less whole-store subscription would otherwise re-render on.
+  const earnedIds = useAchievementStore((s) => s.earnedIds);
+  const earnedDates = useAchievementStore((s) => s.earnedDates);
+  const getProgress = useAchievementStore((s) => s.getProgress);
   const { earned, total, percentage } = getProgress();
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reduceMotion = prefersReducedMotion();
+  const headingBaseId = useId();
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -82,70 +101,25 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
   }, []);
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(44,44,42,.55)", backdropFilter: "blur(12px)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        animation: "fadeIn .3s ease",
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="mp-scroll"
-        ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: isMobile ? "100%" : "min(40rem, 92vw)",
-          maxHeight: isMobile ? "100%" : "88vh",
-          height: isMobile ? "100%" : undefined,
-          overflow: "auto",
-          background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 100%)`,
-          borderRadius: isMobile ? 0 : "1.25rem",
-          border: isMobile ? "none" : `1px solid ${T.color.sandstone}44`,
-          boxShadow: isMobile ? "none" : `0 1.5rem 5rem rgba(44,44,42,.35)`,
-          padding: isMobile ? "1.25rem 1rem 1rem" : "2rem 1.75rem 1.75rem",
-          paddingTop: isMobile ? "max(1.25rem, env(safe-area-inset-top, 0px))" : undefined,
-          paddingBottom: isMobile ? "max(1rem, env(safe-area-inset-bottom, 0px))" : undefined,
-          paddingLeft: isMobile ? "max(1rem, env(safe-area-inset-left, 0px))" : undefined,
-          paddingRight: isMobile ? "max(1rem, env(safe-area-inset-right, 0px))" : undefined,
-          animation: isMobile ? "fadeIn .2s ease" : "fadeUp .35s ease",
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-            <div style={{
-              width: "3rem", height: "3rem", borderRadius: "0.875rem",
-              background: `linear-gradient(135deg, ${T.color.goldLight}, ${T.color.goldDark})`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 0.25rem 1rem rgba(169,124,46,.3)",
-            }}><TrophyIcon size={28} /></div>
-
-            <div>
-              <div style={{ fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 600, color: T.color.charcoal }}>
-                {t("title")}
-              </div>
-              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>
-                {t("unlocked", { earned: String(earned), total: String(total) })}
-              </div>
-            </div>
+    <Sheet
+      open
+      onClose={onClose}
+      side="right"
+      maxWidth="40rem"
+      background="linear-gradient(160deg, #F2EDE4 0%, #FCFAF5 78%)"
+      icon={<RelayIcons.milestones />}
+      title={
+        <div>
+          {/* Canonical Sheet title tokens (matches Sheet.tsx built-in title) */}
+          <div style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, fontWeight: 400, color: T.color.charcoal }}>
+            {t("title")}
           </div>
-          <button
-            onClick={onClose}
-            aria-label={t("close")}
-            style={{
-              width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem", border: `1px solid ${T.color.cream}`,
-              background: `${T.color.white}cc`, cursor: "pointer", fontSize: "1rem",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: T.color.muted, fontFamily: T.font.body,
-              transition: "opacity .15s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-          >{"\u2715"}</button>
+          <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.125rem" }}>
+            {t("unlocked", { earned: String(earned), total: String(total) })}
+          </div>
         </div>
-
+      }
+    >
         {/* Progress bar */}
         <div
           role="progressbar"
@@ -155,32 +129,39 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           aria-label={t("unlocked", { earned: String(earned), total: String(total) })}
           style={{
             width: "100%", height: "0.5rem", borderRadius: "0.25rem",
-            background: `${T.color.sandstone}33`, marginBottom: "1.75rem", overflow: "hidden",
+            background: "#E3D6BC", marginBottom: "1.75rem", overflow: "hidden", // Atrium token: opaque hairline band, no alpha track
           }}
         >
           <div style={{
             width: "100%", height: "100%", borderRadius: "0.25rem",
-            background: `linear-gradient(90deg, ${T.color.goldLight}, ${T.color.gold})`,
+            background: "linear-gradient(90deg, #A9741B, #8A6410)", // Atrium: browned gold-lane, true gilt reserved
             transform: `scaleX(${percentage / 100})`,
             transformOrigin: "left center",
-            transition: "transform .6s ease",
+            transition: "transform 0.3s ease",
           }} />
         </div>
 
         {/* Category sections */}
         {CATEGORIES.map((cat) => {
           const items = ACHIEVEMENTS.filter((a) => a.category === cat.key);
+          const headingId = `${headingBaseId}-${cat.key}`;
           return (
             <div key={cat.key} style={{ marginBottom: "1.5rem" }}>
-              <div style={{
-                fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-                color: T.color.walnut, marginBottom: "0.75rem",
-                display: "flex", alignItems: "center", gap: "0.5rem",
-              }}>
+              <div
+                id={headingId}
+                role="heading"
+                aria-level={2}
+                style={{
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, // Atrium: one small-caps overline voice
+                  letterSpacing: "0.12em", textTransform: "uppercase",
+                  color: "#8A6410", marginBottom: "0.75rem",
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                }}
+              >
                 <AchievementIcon id={cat.iconId} size={18} /> {t(cat.labelKey)}
               </div>
-              <div role="list" style={{
-                display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))",
+              <div role="list" aria-labelledby={headingId} style={{
+                display: "grid", gridTemplateColumns: (isMobile || isCompact) ? "1fr" : "repeat(auto-fill, minmax(16.25rem, 1fr))",
                 gap: "0.625rem",
               }}>
                 {items.map((ach) => (
@@ -191,6 +172,9 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
                     earnedDate={earnedDates[ach.id]}
                     highlighted={ach.id === highlightId}
                     onShareToast={showToast}
+                    locale={locale}
+                    isTouch={isTouch}
+                    reduceMotion={reduceMotion}
                   />
                 ))}
               </div>
@@ -198,27 +182,40 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           );
         })}
 
-        {/* Toast */}
+        {/* Toast — role=status/aria-live so screen readers announce clipboard/share feedback */}
+        <div role="status" aria-live="polite" style={{ position: "fixed", left: 0, top: 0, width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+          {toast || ""}
+        </div>
         {toast && (
-          <div style={{
-            position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)",
-            padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.charcoal, color: T.color.white,
-            fontFamily: T.font.body, fontSize: "0.8125rem",
-            boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,.25)",
-            zIndex: 110, animation: "fadeIn .2s ease",
-          }}>
+          <div
+            aria-hidden="true"
+            style={{
+              position: "fixed",
+              bottom: "max(2rem, env(safe-area-inset-bottom, 0px))", // clear the home indicator in landscape
+              left: "50%", transform: "translateX(-50%)",
+              padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+              background: "#403B36", color: T.color.white, // Atrium token: ink
+              fontFamily: T.font.body, fontSize: "0.8125rem",
+              boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
+              zIndex: 110, animation: reduceMotion ? undefined : "fadeIn .2s ease",
+            }}
+          >
             {toast}
           </div>
         )}
-      </div>
-    </div>
+    </Sheet>
   );
 }
 
-function AchievementCard({ achievement, earned, earnedDate, highlighted, onShareToast }: {
+// Memoized: all props are primitives or stable refs (ACHIEVEMENTS object
+// identity is module-constant, onShareToast is useCallback-stable, locale/
+// isTouch/reduceMotion are primitives), so React.memo cleanly blocks the
+// parent's toast-state re-renders (setToast on share + its 2.5s auto-clear)
+// from cascading through all 24 cards.
+const AchievementCard = memo(function AchievementCard({ achievement, earned, earnedDate, highlighted, onShareToast, locale, isTouch, reduceMotion }: {
   achievement: Achievement; earned: boolean; earnedDate?: string; highlighted?: boolean;
   onShareToast: (msg: string) => void;
+  locale: string; isTouch: boolean; reduceMotion: boolean;
 }) {
   const { t } = useTranslation("achievementsPanel");
   const cardRef = useRef<HTMLDivElement>(null);
@@ -226,27 +223,62 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
   const handleShare = useCallback(async () => {
     const name = t(achievement.titleKey);
     const text = t("shareText", { name });
-    const usedClipboard = !(
-      (typeof navigator !== "undefined" && navigator.share) ||
-      (await import("@capacitor/core")).Capacitor.isNativePlatform()
-    );
-    const ok = await shareAchievement(name, text);
-    if (ok && usedClipboard) {
+    // Branch decision lives in shareAchievementWithMethod(); the caller just
+    // reads the discriminated result. Only the clipboard path (no system sheet)
+    // owes a "copied" toast — a shown-then-cancelled sheet must stay silent.
+    const result = await shareAchievementWithMethod(name, text);
+    if (!result.ok) {
+      onShareToast(t("shareFailed"));
+    } else if (result.method === "clipboard") {
       onShareToast(t("copiedToClipboard"));
     }
   }, [achievement.titleKey, onShareToast, t]);
 
+  // Localized unlocked-date label (guards invalid ISO strings).
+  const formattedDate = (() => {
+    if (!earnedDate) return "";
+    const d = new Date(earnedDate);
+    if (isNaN(d.getTime())) return earnedDate;
+    try {
+      return d.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric" });
+    } catch {
+      return earnedDate;
+    }
+  })();
+
   useEffect(() => {
     if (highlighted && cardRef.current) {
-      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      const el = cardRef.current;
+      const scroll = () => {
+        el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+        // Move keyboard/SR focus onto the freshly-unlocked card so it is announced
+        // (its aria-label carries the "Newly unlocked" prefix). The card is normally
+        // not focusable; tabIndex={-1} makes it programmatically focusable only.
+        el.focus({ preventScroll: true });
+      };
+      // Defer so lazy content/layout is settled before scrolling.
+      const raf = requestAnimationFrame(scroll);
+      return () => cancelAnimationFrame(raf);
     }
-  }, [highlighted]);
+  }, [highlighted, reduceMotion]);
+
+  // Compose a full accessible label: aria-label overrides descendant text, so it
+  // must carry the title, the how-to-earn description, and (earned) the unlock
+  // date — otherwise SR users hear only a bare title. Highlighted cards are
+  // prefixed with the "Newly unlocked" cue (a non-visual counterpart to the gold
+  // frame) so keyboard/SR/colour-blind users know which achievement was earned.
+  const title = t(achievement.titleKey);
+  const namePart = earned ? title : t("lockedAchievement", { name: title });
+  const datePart = earned && earnedDate ? `. ${t("unlockedDate", { date: formattedDate })}` : "";
+  const highlightPart = highlighted ? `${t("newlyUnlocked")}. ` : "";
+  const cardLabel = `${highlightPart}${namePart}. ${t(achievement.descKey)}${datePart}`;
 
   return (
     <div
       ref={cardRef}
       role="listitem"
-      aria-label={earned ? t(achievement.titleKey) : t("lockedAchievement", { name: t(achievement.titleKey) })}
+      tabIndex={highlighted ? -1 : undefined}
+      aria-label={cardLabel}
       style={{
         display: "flex",
         flexDirection: "row",
@@ -254,11 +286,11 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         justifyContent: "flex-start",
         gap: "0.75rem",
         padding: "0.75rem 0.875rem",
-        borderRadius: "0.875rem",
-        background: highlighted ? `${T.color.gold}18` : earned ? `${T.color.white}ee` : `${T.color.warmStone}88`,
-        border: highlighted ? `2px solid ${T.color.gold}88` : earned ? `1px solid ${T.color.gold}44` : `1px solid ${T.color.cream}`,
-        opacity: earned ? 1 : 0.6,
-        transition: "all .2s ease",
+        borderRadius: "1rem",
+        background: highlighted ? `${T.color.gold}18` : earned ? T.color.white : "#ECE5D8", // Atrium: pre-mixed opaque surfaces
+        border: highlighted ? "0.125rem solid #D4AF37" : earned ? "0.0625rem solid #E9DCBE" : "0.0625rem solid #E3D6BC", // gold = highlight frame only
+        opacity: 1, // Atrium: no colour+opacity double-dimming; muted ink carries the locked state
+        transition: reduceMotion ? undefined : "all .2s ease",
         position: "relative",
         overflow: "hidden",
         minHeight: "3.5rem",
@@ -273,8 +305,8 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         flexShrink: 0,
         alignSelf: "center",
         background: earned
-          ? `linear-gradient(135deg, ${T.color.goldLight}22, ${T.color.gold}22)`
-          : `${T.color.sandstone}22`,
+          ? "rgba(169,116,27,0.14)" // Atrium token: gold-lane medallion tint
+          : "#EBE3D4", // Atrium: pre-mixed opaque locked well (T.color.lineFaint), no alpha
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -291,18 +323,42 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         gap: "0.0625rem",
       }}>
         <div style={{
+          display: "flex", alignItems: "center", gap: "0.375rem", flexWrap: "wrap",
           fontFamily: T.font.display,
-          fontSize: "0.875rem",
+          fontSize: "0.9375rem",
           fontWeight: 600,
-          color: earned ? T.color.charcoal : T.color.muted,
-          lineHeight: 1.3,
+          color: earned ? "#403B36" : "#716A5E", // Atrium tokens: ink / muted
+          lineHeight: 1.15,
         }}>
-          {t(achievement.titleKey)}
+          <span>{title}</span>
+          {/* Non-colour cue for the newly-unlocked card: a labelled "New" pill so
+              the celebration does not rely on the gold frame alone (colour-blind /
+              SR users). aria-hidden — the state is already in the card's aria-label. */}
+          {highlighted && (
+            <span
+              aria-hidden="true"
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.625rem",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                color: "#8A6410", // Atrium token: gold-lane datum
+                background: "rgba(169,116,27,0.16)",
+                border: "0.0625rem solid #E9DCBE",
+                borderRadius: "0.5rem",
+                padding: "0.0625rem 0.375rem",
+                lineHeight: 1.4,
+              }}
+            >
+              {t("newlyUnlocked")}
+            </span>
+          )}
         </div>
         <div style={{
           fontFamily: T.font.body,
-          fontSize: "0.6875rem",
-          color: earned ? T.color.walnut : T.color.muted,
+          fontSize: "0.8125rem",
+          color: "#716A5E", // Atrium token: muted, full opacity
           lineHeight: 1.4,
         }}>
           {t(achievement.descKey)}
@@ -310,12 +366,14 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         {earned && earnedDate && (
           <div style={{
             fontFamily: T.font.body,
-            fontSize: "0.625rem",
-            color: T.color.goldLight,
-            marginTop: "0.125rem",
+            fontSize: "0.6875rem", // quiet metadata — smaller than the description
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+            color: "#8A6410", // Atrium token: gold-lane datum
+            marginTop: "0.1875rem",
             lineHeight: 1.3,
           }}>
-            {t("unlockedDate", { date: earnedDate || "" })}
+            {t("unlockedDate", { date: formattedDate })}
           </div>
         )}
       </div>
@@ -326,17 +384,27 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
           aria-label={t("shareButton")}
           title={t("shareButton")}
           style={{
-            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem",
-            border: `1px solid ${T.color.gold}44`,
-            background: `${T.color.goldLight}15`,
+            // >=2.75rem hit area (touch floor); the visual chip stays 1.75rem via inner box.
+            width: "2.75rem", height: "2.75rem",
+            border: "none", background: "transparent", padding: 0,
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, transition: "background .15s, opacity .15s",
+            flexShrink: 0, margin: "-0.5rem -0.25rem -0.5rem 0",
+            transition: reduceMotion ? undefined : "opacity 0.2s ease",
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.goldLight}33`; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.goldLight}15`; }}
         >
-          <ShareIcon size={14} color={T.color.gold} />
+          <span style={{
+            width: isTouch ? "2.375rem" : "1.75rem", height: isTouch ? "2.375rem" : "1.75rem", borderRadius: "0.7rem",
+            border: "0.0625rem solid #E9DCBE", // Atrium token: gold-lane border
+            background: "rgba(169,116,27,0.10)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: reduceMotion ? undefined : "background 0.2s ease",
+          }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.18)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.10)"; }}
+          >
+            <ShareIcon size={isTouch ? 16 : 14} color="#8A6410" />
+          </span>
         </button>
       )}
       {/* Earned shimmer */}
@@ -344,10 +412,10 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         <div style={{
           position: "absolute", top: 0, right: 0,
           width: 0, height: 0,
-          borderLeft: "20px solid transparent",
-          borderTop: `20px solid ${T.color.gold}33`,
+          borderLeft: "1.25rem solid transparent",
+          borderTop: "1.25rem solid rgba(169,116,27,0.25)", // Atrium: browned gold-lane, true gilt reserved
         }} />
       )}
     </div>
   );
-}
+});

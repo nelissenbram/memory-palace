@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
+import { INK, MUTED, HAIRLINE, SHADOW } from "@/lib/libraryTokens";
 import { useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
@@ -78,20 +79,23 @@ export default function CinematicWalkthrough() {
     <>
       <style>{`
         @keyframes wtNarrationIn { from { opacity:0; transform:translateY(0.75rem); } to { opacity:1; transform:translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { .wt-narration-anim { animation: none !important; } }
       `}</style>
 
-      {/* Narration bubble */}
-      <div key={phase} style={{
+      {/* Narration bubble — canon translucent cream + blur (floats over the 3D flyover) */}
+      <div key={phase} className="wt-narration-anim" style={{
         position: "absolute",
         bottom: isMobile ? "calc(11rem + env(safe-area-inset-bottom, 0px))" : "5rem",
         left: "50%",
         transform: "translateX(-50%)",
         maxWidth: isMobile ? "calc(100vw - 2.5rem)" : "35rem",
         zIndex: 80,
-        background: `${T.color.charcoal}CC`,
+        background: "rgba(252,250,245,0.96)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
-        borderRadius: "1.5rem",
+        borderRadius: "0.875rem",
+        border: `1px solid ${HAIRLINE}`,
+        boxShadow: SHADOW[2],
         padding: "1.125rem 1.75rem 0.875rem",
         textAlign: "center",
         animation: "wtNarrationIn 0.8s ease both",
@@ -99,8 +103,8 @@ export default function CinematicWalkthrough() {
         <div style={{
           fontFamily: T.font.display,
           fontSize: isMobile ? "1.0625rem" : "1.1875rem",
-          fontWeight: 500,
-          color: T.color.linen,
+          fontWeight: 600,
+          color: INK,
           lineHeight: 1.5,
           letterSpacing: "0.01em",
         }}>
@@ -112,7 +116,7 @@ export default function CinematicWalkthrough() {
           border: "none",
           fontFamily: T.font.body,
           fontSize: "0.75rem",
-          color: `${T.color.linen}80`,
+          color: MUTED,
           cursor: "pointer",
           textDecoration: "underline",
           textUnderlineOffset: "0.1875rem",

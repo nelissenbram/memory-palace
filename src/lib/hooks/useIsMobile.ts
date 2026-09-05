@@ -73,6 +73,26 @@ function subscribeTablet(callback: () => void) {
   return () => mq.removeEventListener("change", callback);
 }
 
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+/** True when the user has requested reduced motion at the OS level. Read this in
+ *  JS to gate animations that a CSS `@media (prefers-reduced-motion)` rule cannot
+ *  stop — e.g. JS-driven inline heights / setInterval-tick animations. SSR-safe
+ *  (returns false before hydration). */
+export function useReducedMotion(): boolean {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
+    () => false,
+  );
+}
+
+function subscribeReducedMotion(callback: () => void) {
+  const mq = window.matchMedia(REDUCED_MOTION_QUERY);
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
+}
+
 const COARSE_QUERY = "(any-pointer: coarse)";
 const FINE_QUERY = "(any-pointer: fine)";
 

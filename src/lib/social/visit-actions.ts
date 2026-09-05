@@ -84,23 +84,36 @@ export async function getPublishedRooms(
 ): Promise<PublishedRoom[]> {
   const supabase = createAdminClient();
 
-  // Get ALL rooms in the wing (if the wing is published, all its rooms are visible)
+  // Publish authority is WING-LEVEL: if the wing is published, all of its rooms
+  // are visible to guests (this mirrors the 3D visitor paths getVisitorWingData /
+  // getVisitorPalaceData, which never filter rooms by rooms.published_at). We do
+  // NOT select rooms.published_at here — surfacing it would imply a per-room
+  // publish gate that does not exist, so the room's effective publish time is the
+  // wing's published_at instead.
   const [{ data: rooms }, { data: wing }] = await Promise.all([
     supabase
       .from("rooms")
-      .select("id, name, icon, cover_hue, publish_description, published_at, wing_id, user_id")
+      .select("id, name, icon, cover_hue, publish_description, wing_id, user_id")
       .eq("wing_id", wingId)
       .order("sort_order", { ascending: true }),
-    supabase.from("wings").select("slug, user_id").eq("id", wingId).single(),
+    supabase.from("wings").select("slug, user_id, published_at").eq("id", wingId).single(),
   ]);
+
+  // AUTHORIZATION GATE: this action is independently POST-invokable ("use server").
+  // Only surface rooms when the parent wing is actually published — otherwise an
+  // attacker with a guessed/known wing UUID could read private rooms via the
+  // RLS-bypassing admin client.
+  if (!wing || !wing.published_at) return [];
 
   if (!rooms || rooms.length === 0) return [];
 
   const roomIds = rooms.map((r) => r.id);
 
-  // Batch: memory counts + visit counts in parallel
+  // Batch: memory counts + visit counts in parallel. Count only VISIBLE memories
+  // (displayed !== false) so memory_count matches what getPublishedMemories
+  // actually serves into the guest gallery — hidden memories don't inflate it.
   const [{ data: memoryRows }, { data: visitRows }] = await Promise.all([
-    supabase.from("memories").select("room_id").in("room_id", roomIds),
+    supabase.from("memories").select("room_id").in("room_id", roomIds).not("displayed", "is", false),
     supabase.from("palace_visits").select("room_id").in("room_id", roomIds),
   ]);
 
@@ -139,13 +152,16 @@ export async function getPublishedRooms(
     if (v.room_id) visitCounts.set(v.room_id, (visitCounts.get(v.room_id) || 0) + 1);
   }
 
+  // Room's effective publish time is the wing's published_at (wing-level authority).
+  const effectivePublishedAt = wing?.published_at || "";
+
   return rooms.map((r) => ({
     id: r.id,
     name: roomNameMap.get(r.name)?.name || r.name,
     icon: roomNameMap.get(r.name)?.icon || r.icon,
     cover_hue: r.cover_hue,
     publish_description: r.publish_description,
-    published_at: r.published_at!,
+    published_at: effectivePublishedAt,
     wing_id: r.wing_id,
     owner_id: r.user_id,
     memory_count: memoryCounts.get(r.id) || 0,
@@ -171,11 +187,41 @@ export async function getPublishedMemories(
 ): Promise<PublishedMemory[]> {
   const supabase = createAdminClient();
 
+  // AUTHORIZATION GATE: this action is independently POST-invokable ("use server")
+  // and reads with the RLS-bypassing admin client. Resolve the room's parent wing
+  // and require it to be published; otherwise anyone with a room UUID could read
+  // titles/descriptions/file_urls of private (unpublished) memories.
+  const { data: room } = await supabase
+    .from("rooms")
+    .select("wing_id")
+    .eq("id", roomId)
+    .single();
+  if (!room?.wing_id) return [];
+
+  const { data: parentWing } = await supabase
+    .from("wings")
+    .select("published_at")
+    .eq("id", room.wing_id)
+    .single();
+  if (!parentWing || !parentWing.published_at) return [];
+
   const { data: memories } = await supabase
     .from("memories")
     .select("id, title, description, type, file_url, thumbnail_url, hue, saturation, lightness")
     .eq("room_id", roomId)
-    .order("sort_order", { ascending: true });
+    // Honor the owner's "displayed" visibility flag, mirroring the 3D visitor
+    // paths (getVisitorWingData / getVisitorPalaceData), which treat null/true
+    // as visible and only hide explicit false. `.not(...is,false)` keeps NULL
+    // and TRUE while excluding only explicitly-hidden memories, so hidden
+    // memories don't leak into the 2D deep-view gallery.
+    .not("displayed", "is", false)
+    .order("sort_order", { ascending: true })
+    // Bound the initial gallery payload so a power room with hundreds of
+    // memories doesn't mount hundreds of card subtrees (each a TuscanCard +
+    // media element) in one synchronous render. 500 is a generous cap well
+    // above any real room's memory count, so no live data is truncated; if a
+    // room ever exceeds this a paginated "load more" tail should be added.
+    .limit(500);
 
   if (!memories || memories.length === 0) return [];
 
@@ -192,6 +238,54 @@ export async function getPublishedMemories(
   }));
 }
 
+/**
+ * W2 (WS7-15, owner decision 7): image memories a PUBLIC visitor may see on the
+ * hall's Ancestral Wall — only memories inside PUBLISHED wings, honoring the
+ * owner's `displayed` flag. Server-side gate: the client marks the result
+ * visibility:"public" because this action already enforced it. Oldest-first
+ * (decision 4's fallback order; favorites don't exist as a column yet).
+ */
+export async function getVisitorAncestralMemories(
+  userId: string
+): Promise<{ id: string; title: string; type: string; hue: number; s: number; l: number; dataUrl: string | null; thumbnailUrl: string | null; createdAt: string | null; visibility: "public" }[]> {
+  const supabase = createAdminClient();
+
+  const { data: wings } = await supabase
+    .from("wings")
+    .select("id")
+    .eq("user_id", userId)
+    .not("published_at", "is", null);
+  if (!wings || wings.length === 0) return [];
+
+  const { data: rooms } = await supabase
+    .from("rooms")
+    .select("id")
+    .in("wing_id", wings.map((w) => w.id));
+  if (!rooms || rooms.length === 0) return [];
+
+  const { data: memories } = await supabase
+    .from("memories")
+    .select("id, title, type, hue, saturation, lightness, file_url, thumbnail_url, created_at")
+    .in("room_id", rooms.map((r) => r.id))
+    .not("displayed", "is", false)
+    .not("file_url", "is", null)
+    .order("created_at", { ascending: true })
+    .limit(12);
+
+  return (memories || []).map((m) => ({
+    id: m.id,
+    title: m.title,
+    type: m.type,
+    hue: m.hue ?? 30,
+    s: m.saturation ?? 50,
+    l: m.lightness ?? 60,
+    dataUrl: m.file_url,
+    thumbnailUrl: m.thumbnail_url,
+    createdAt: m.created_at ?? null,
+    visibility: "public" as const,
+  }));
+}
+
 /** Record a visit to a published wing/room */
 export async function recordVisit(input: {
   ownerId: string;
@@ -205,6 +299,55 @@ export async function recordVisit(input: {
   if (!user || user.id === input.ownerId) return;
 
   try {
+    // OWNERSHIP + PUBLISH VERIFICATION: never trust caller-supplied ownerId/
+    // wingId/roomId. Verify the target exists, is owned by ownerId, and belongs
+    // to a published wing. Otherwise an attacker could inject palace_visits rows
+    // attributing visits to arbitrary owners and deliver spam notifications.
+    const admin = createAdminClient();
+
+    if (input.roomId) {
+      const { data: room } = await admin
+        .from("rooms")
+        .select("id, user_id, wing_id")
+        .eq("id", input.roomId)
+        .eq("user_id", input.ownerId)
+        .single();
+      if (!room) return;
+      // If a wingId was supplied it must match the room's real wing.
+      if (input.wingId && room.wing_id !== input.wingId) return;
+      const { data: roomWing } = await admin
+        .from("wings")
+        .select("published_at")
+        .eq("id", room.wing_id)
+        .eq("user_id", input.ownerId)
+        .single();
+      if (!roomWing?.published_at) return;
+    } else if (input.wingId) {
+      const { data: wing } = await admin
+        .from("wings")
+        .select("published_at")
+        .eq("id", input.wingId)
+        .eq("user_id", input.ownerId)
+        .not("published_at", "is", null)
+        .single();
+      if (!wing) return;
+    } else {
+      // Palace-level visit: require the owner to have at least one published wing.
+      const { count: publishedCount } = await admin
+        .from("wings")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", input.ownerId)
+        .not("published_at", "is", null);
+      if (!publishedCount || publishedCount < 1) return;
+    }
+
+    // GLOBAL per-visitor rate limit on visit records/notifications (in addition
+    // to the per-target 5-minute dedup below) so an attacker cannot flood a
+    // target with notifications by cycling different targets/spacing.
+    const { rateLimit } = await import("@/lib/rate-limit");
+    const { success } = await rateLimit(`visit:${user.id}`, 30, 60 * 60_000);
+    if (!success) return;
+
     // Dedup: skip if same visitor visited same target in last 5 minutes
     const fiveMinAgo = new Date(Date.now() - 5 * 60_000).toISOString();
     let dedupQuery = supabase
@@ -264,6 +407,52 @@ export async function recordVisit(input: {
   } catch {
     // Silently fail
   }
+}
+
+/** Lightweight visitor info for the palace_visit notification "peek" modal */
+export interface VisitorPeek {
+  displayName: string;
+  username: string | null;
+  isPublic: boolean;
+  hasPublishedPalace: boolean;
+}
+
+/**
+ * Who visited my palace? Auth-required, owner-agnostic read used by the
+ * notification click "visitor peek" (replaces navigating to /visit/{id}/walk,
+ * which 404'd when the visitor had nothing published). Reads the cross-user-safe
+ * public_profiles view (display_name/username/is_public) and checks for any
+ * published wing. Exposes only data that is already public-directory-grade.
+ */
+export async function getVisitorPeek(userId: string): Promise<VisitorPeek | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const admin = createAdminClient();
+  const [{ data: profile }, { count: publishedCount }] = await Promise.all([
+    supabase
+      .from("public_profiles")
+      .select("display_name, username, is_public")
+      .eq("id", userId)
+      .single(),
+    admin
+      .from("wings")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .not("published_at", "is", null),
+  ]);
+
+  if (!profile) return null;
+
+  return {
+    displayName: profile.display_name || "Someone",
+    username: profile.username || null,
+    isPublic: !!profile.is_public,
+    hasPublishedPalace: (publishedCount || 0) > 0,
+  };
 }
 
 /** Get full 3D-ready data for a published wing (rooms + memories) */
@@ -343,11 +532,20 @@ export async function getVisitorWingData(
 
   // Get all memories for all rooms in parallel
   const roomIds = safeRooms.map((r) => r.id);
-  const { data: allMemories } = await supabase
-    .from("memories")
-    .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, room_id, displayed, sort_order, display_unit")
-    .in("room_id", roomIds)
-    .order("sort_order", { ascending: true });
+  // Bound the visitor 3D payload: this walks every room of the wing and inlines
+  // each memory (file_url is treated as dataUrl downstream and may be a base64
+  // data: URI for pre-migration owners), so an unbounded select can serialize a
+  // multi-megabyte tree into SSR/RSC props and block TTFB/hydration. 1000 is a
+  // generous cap far above any real single-wing corpus, so no live data is
+  // truncated; if a wing ever exceeds this, a paginated tail should be added.
+  const { data: allMemories } = roomIds.length > 0
+    ? await supabase
+        .from("memories")
+        .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, room_id, displayed, sort_order, display_unit")
+        .in("room_id", roomIds)
+        .order("sort_order", { ascending: true })
+        .limit(1000)
+    : { data: [] };
 
   // Group memories by room
   const memsByRoom = new Map<string, typeof allMemories>();
@@ -487,13 +685,21 @@ export async function getVisitorPalaceData(
   const safeRooms = allRooms || [];
   const roomIds = safeRooms.map((r) => r.id);
 
-  // Get all memories for all rooms
+  // Get all memories for all rooms.
+  // Bound the palace-wide visitor 3D payload: this walks EVERY published wing x
+  // EVERY room x EVERY memory and inlines each (file_url is treated as dataUrl
+  // downstream and may be a base64 data: URI for pre-migration owners), so an
+  // unbounded select is the worst-case unbounded SSR/RSC document — it blocks
+  // TTFB and hydration on the visitor walk path. 2000 is a generous cap far
+  // above any real whole-palace corpus, so no live data is truncated; if a
+  // palace ever exceeds this, a paginated / per-wing lazy tail should be added.
   const { data: allMemories } = roomIds.length > 0
     ? await supabase
         .from("memories")
         .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, room_id, displayed, sort_order, display_unit")
         .in("room_id", roomIds)
         .order("sort_order", { ascending: true })
+        .limit(2000)
     : { data: [] };
 
   // Group rooms by wing

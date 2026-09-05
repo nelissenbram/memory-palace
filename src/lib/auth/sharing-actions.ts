@@ -1,9 +1,14 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import { serverError } from "@/lib/i18n/server-errors";
 import { serverT, getServerLocale } from "@/lib/i18n/server";
+import {
+  loadOwnerNameMaps,
+  loadOwnerNameMapsBulk,
+  resolveRoomDisplay,
+  resolveWingDisplayName,
+} from "@/lib/auth/share-display-names";
 
 // Map local room ID prefix to wing slug
 function wingSlugFromRoomId(localRoomId: string): string {
@@ -327,10 +332,19 @@ export async function getWingsSharedWithMe() {
 
   if (!shares || shares.length === 0) return { shares: [] };
 
-  // Resolve owner display names from profiles
+  // Resolve owner display names from profiles + each owner's tailored wing
+  // names (mp_custom_wings in the OWNER's local_settings — recipient context,
+  // so this goes through the admin client; see share-display-names.ts).
   const loc2 = await getServerLocale();
   const ownerIds = [...new Set(shares.map((s) => s.owner_id))];
   const nameMap: Record<string, string> = {};
+  const [ownerMaps, { data: wingRows }] = await Promise.all([
+    loadOwnerNameMapsBulk(admin, ownerIds),
+    admin
+      .from("wings")
+      .select("user_id, slug, custom_name")
+      .in("user_id", ownerIds),
+  ]);
   if (ownerIds.length > 0) {
     const { data: profiles } = await admin
       .from("profiles")
@@ -340,11 +354,23 @@ export async function getWingsSharedWithMe() {
       nameMap[p.id] = p.display_name || serverT("someone", loc2);
     });
   }
+  const dbCustomName: Record<string, string | null> = {};
+  (wingRows || []).forEach((w: { user_id: string; slug: string; custom_name: string | null }) => {
+    dbCustomName[`${w.user_id}:${w.slug}`] = w.custom_name;
+  });
 
-  const enrichedShares = shares.map((s) => ({
-    ...s,
-    owner_name: nameMap[s.owner_id] || serverT("someone", loc2),
-  }));
+  const enrichedShares = shares.map((s) => {
+    const wd = resolveWingDisplayName(
+      ownerMaps[s.owner_id] || { customRooms: {}, customWings: {}, extraWings: [] },
+      s.wing_id,
+      dbCustomName[`${s.owner_id}:${s.wing_id}`]
+    );
+    return {
+      ...s,
+      owner_name: nameMap[s.owner_id] || serverT("someone", loc2),
+      wing_name: wd.name,
+    };
+  });
 
   return { shares: enrichedShares };
 }
@@ -479,21 +505,41 @@ export async function getSharedWingData(shareId: string) {
 
   if (!wing) { const t = await serverError(); return { error: t("wingNotFound") }; }
 
-  // Fetch rooms for this wing
-  const { data: rooms } = await admin
-    .from("rooms")
-    .select("id, name, icon, sort_order, is_shared, created_at")
-    .eq("wing_id", wing.id)
-    .eq("user_id", share.owner_id)
-    .order("sort_order", { ascending: true });
+  // Fetch rooms for this wing + the OWNER's tailored names (recipient context:
+  // rooms.name holds the local room id like "ro1"; renames live in the owner's
+  // profiles.local_settings — admin client, see share-display-names.ts).
+  const [{ data: rooms }, ownerMaps] = await Promise.all([
+    admin
+      .from("rooms")
+      .select("id, name, icon, sort_order, is_shared, created_at")
+      .eq("wing_id", wing.id)
+      .eq("user_id", share.owner_id)
+      .order("sort_order", { ascending: true }),
+    loadOwnerNameMaps(admin, share.owner_id),
+  ]);
+
+  const loc = await getServerLocale();
+  const wingDisplay = resolveWingDisplayName(ownerMaps, wing.slug, wing.custom_name);
 
   return {
     wing: {
       slug: wing.slug,
-      customName: wing.custom_name,
+      name: wingDisplay.name,
+      // customName is display-only downstream — surface the resolved tailored
+      // name so consumers that render customName||slug never show a raw slug.
+      customName: wing.custom_name || wingDisplay.name,
       accentColor: wing.accent_color,
     },
-    rooms: rooms || [],
+    rooms: (rooms || []).map((r) => {
+      const rd = resolveRoomDisplay(ownerMaps, r.name, wing.slug);
+      return {
+        ...r,
+        // Raw local id preserved for icon resolution (resolveRoomIconId).
+        localId: r.name,
+        name: rd.name || serverT("aRoom", loc),
+        icon: rd.icon || r.icon || "",
+      };
+    }),
     permission: share.permission,
     canAdd: share.can_add,
     canEdit: share.can_edit,
@@ -559,12 +605,16 @@ export async function getSharedRoomMemories(
     if (share.room_id !== roomId) { const t = await serverError(); return { error: t("roomDoesNotMatchShare") }; }
   }
 
-  // Fetch memories for the room
+  // Fetch memories for the room. Select "*" so the mapped Mem carries the same
+  // rendering fields (hue/saturation/lightness/type/file_url/thumbnail_url) the
+  // owner's own room fetch uses — otherwise shared memories render as blank
+  // colourless objects.
   const { data: memories } = await admin
     .from("memories")
-    .select("id, title, content, image_url, position_index, tags, created_at, updated_at")
+    .select("*")
     .eq("room_id", roomId)
-    .order("position_index", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
   return { memories: memories || [] };
 }
@@ -580,12 +630,22 @@ export async function getAllMyShares() {
   const admin = createAdminClient();
   const userEmail = user.email?.toLowerCase();
 
+  // Received room shares are matched by shared_with_id OR shared_with_email.
+  // Run two parameterized .eq() queries and merge in JS instead of building a
+  // .or() filter with the raw email — interpolating an email into a PostgREST
+  // filter under the RLS-bypassing admin client allows injection (quotes,
+  // commas and parens are valid in an address local part and are PostgREST
+  // syntax). This call site was previously UNQUOTED, so any comma in the
+  // address corrupted the filter entirely.
+  const receivedRoomSelect = "id, room_id, permission, owner_id, status, can_add, can_edit, can_delete, placed_in_wing_id, created_at";
+
   // Fetch all shares in parallel
   const [
     { data: sentWings },
     { data: sentRooms },
     { data: receivedWings },
-    { data: receivedRooms },
+    { data: receivedRoomsById },
+    { data: receivedRoomsByEmail },
   ] = await Promise.all([
     admin
       .from("wing_shares")
@@ -604,10 +664,28 @@ export async function getAllMyShares() {
       .order("created_at", { ascending: false }),
     admin
       .from("room_shares")
-      .select("id, room_id, permission, owner_id, status, can_add, can_edit, can_delete, placed_in_wing_id, created_at")
-      .or(`shared_with_id.eq.${user.id}${userEmail ? `,shared_with_email.eq.${userEmail}` : ""}`)
-      .order("created_at", { ascending: false }),
+      .select(receivedRoomSelect)
+      .eq("shared_with_id", user.id),
+    userEmail
+      ? admin
+          .from("room_shares")
+          .select(receivedRoomSelect)
+          .eq("shared_with_email", userEmail)
+      : Promise.resolve({ data: [] as { id: string }[] }),
   ]);
+
+  // Merge received room shares by id (dedupe) and sort newest-first.
+  type ReceivedRoom = { id: string; owner_id: string; room_id: string; permission: string; status: string; can_add: boolean; can_edit: boolean; can_delete: boolean; placed_in_wing_id: string | null; created_at: string | null };
+  const receivedRoomsMap = new Map<string, ReceivedRoom>();
+  for (const row of (receivedRoomsById || []) as ReceivedRoom[]) receivedRoomsMap.set(row.id, row);
+  for (const row of (receivedRoomsByEmail || []) as ReceivedRoom[]) {
+    if (!receivedRoomsMap.has(row.id)) receivedRoomsMap.set(row.id, row);
+  }
+  const receivedRooms = Array.from(receivedRoomsMap.values()).sort((x, y) => {
+    const xk = x.created_at || "";
+    const yk = y.created_at || "";
+    return xk < yk ? 1 : xk > yk ? -1 : 0;
+  });
 
   // Collect all user IDs for profile resolution
   const allUserIds = new Set<string>();
@@ -628,6 +706,16 @@ export async function getAllMyShares() {
     });
   }
 
+  // Tailored-name maps: the caller's own (for "sent" rows) plus every share
+  // owner's (for "received" rows). rooms.name in the DB holds the local room id
+  // ("ro1"); renames live in each owner's profiles.local_settings.
+  const nameMapOwnerIds = new Set<string>([user.id]);
+  (receivedWings || []).forEach((s) => nameMapOwnerIds.add(s.owner_id));
+  (receivedRooms || []).forEach((s) => nameMapOwnerIds.add(s.owner_id));
+  const ownerNameMaps = await loadOwnerNameMapsBulk(admin, Array.from(nameMapOwnerIds));
+  const emptyMaps = { customRooms: {}, customWings: {}, extraWings: [] };
+  const mapsFor = (ownerId: string) => ownerNameMaps[ownerId] || emptyMaps;
+
   // Collect room IDs for room name/icon resolution
   const allRoomIds = new Set<string>();
   (sentRooms || []).forEach((s) => allRoomIds.add(s.room_id));
@@ -644,31 +732,25 @@ export async function getAllMyShares() {
     });
   }
 
-  // Resolve room display name: check WING_ROOMS constants first, fall back to DB name
-  function roomDisplayName(dbName: string): string {
-    for (const rooms of Object.values(WING_ROOMS)) {
-      const match = rooms.find((r: { id: string; name: string }) => r.id === dbName);
-      if (match) return match.name;
-    }
-    return dbName;
+  // Resolve room display name/icon through the relevant user's tailored maps
+  // (NEVER surface the raw local id like "ro1").
+  function roomDisplayName(ownerId: string, dbName: string, wingSlug?: string): string {
+    const rd = resolveRoomDisplay(mapsFor(ownerId), dbName, wingSlug);
+    return rd.name || serverT("unknownRoom", loc3);
   }
-  function roomDisplayIcon(dbName: string, dbIcon: string): string {
-    if (dbIcon) return dbIcon;
-    for (const rooms of Object.values(WING_ROOMS)) {
-      const match = rooms.find((r: { id: string; icon: string }) => r.id === dbName);
-      if (match) return match.icon;
-    }
-    return "";
+  function roomDisplayIcon(ownerId: string, dbName: string, dbIcon: string, wingSlug?: string): string {
+    const rd = resolveRoomDisplay(mapsFor(ownerId), dbName, wingSlug);
+    return rd.icon || dbIcon || "";
   }
 
-  // Resolve wing display (slug → name + icon)
-  function wingDisplay(slug: string): { name: string; icon: string } {
-    const def = WINGS.find(w => w.id === slug);
-    return def ? { name: def.name, icon: def.icon } : { name: slug.charAt(0).toUpperCase() + slug.slice(1), icon: "" };
+  // Resolve wing display (slug → tailored name + icon)
+  function wingDisplay(ownerId: string, slug: string, dbCustomName?: string | null): { name: string; icon: string } {
+    return resolveWingDisplayName(mapsFor(ownerId), slug, dbCustomName);
   }
 
-  // Resolve wing name for a room's wing_id (UUID → slug lookup)
+  // Resolve wing slug/custom_name for a room's wing_id (UUID → slug lookup)
   const wingIdToSlug: Record<string, string> = {};
+  const wingIdToCustomName: Record<string, string | null> = {};
   const wingUuids = new Set<string>();
   Object.values(roomInfoMap).forEach((r) => wingUuids.add(r.wing_id));
   if (wingUuids.size > 0) {
@@ -678,13 +760,14 @@ export async function getAllMyShares() {
       .in("id", Array.from(wingUuids));
     (wingRows || []).forEach((w: { id: string; slug: string; custom_name: string | null }) => {
       wingIdToSlug[w.id] = w.slug;
+      wingIdToCustomName[w.id] = w.custom_name;
     });
   }
 
   return {
     sent: {
       wings: (sentWings || []).map((s) => {
-        const wd = wingDisplay(s.wing_id);
+        const wd = wingDisplay(user.id, s.wing_id);
         return {
           ...s,
           type: "wing" as const,
@@ -696,20 +779,20 @@ export async function getAllMyShares() {
       rooms: (sentRooms || []).map((s) => {
         const ri = roomInfoMap[s.room_id];
         const wingSlug = ri ? wingIdToSlug[ri.wing_id] || "" : "";
-        const wd = wingSlug ? wingDisplay(wingSlug) : { name: "", icon: "" };
+        const wd = wingSlug ? wingDisplay(user.id, wingSlug, wingIdToCustomName[ri!.wing_id]) : { name: "", icon: "" };
         return {
           ...s,
           type: "room" as const,
           recipientName: s.shared_with_id ? (nameMap[s.shared_with_id] || s.shared_with_email || serverT("unknown", loc3)) : (s.shared_with_email || serverT("unknown", loc3)),
-          roomName: ri ? roomDisplayName(ri.name) : serverT("unknownRoom", loc3),
-          roomIcon: ri ? roomDisplayIcon(ri.name, ri.icon) : "",
+          roomName: ri ? roomDisplayName(user.id, ri.name, wingSlug) : serverT("unknownRoom", loc3),
+          roomIcon: ri ? roomDisplayIcon(user.id, ri.name, ri.icon, wingSlug) : "",
           wingName: wd.name,
         };
       }),
     },
     received: {
       wings: (receivedWings || []).map((s) => {
-        const wd = wingDisplay(s.wing_id);
+        const wd = wingDisplay(s.owner_id, s.wing_id);
         return {
           ...s,
           type: "wing" as const,
@@ -721,18 +804,231 @@ export async function getAllMyShares() {
       rooms: (receivedRooms || []).map((s) => {
         const ri = roomInfoMap[s.room_id];
         const wingSlug = ri ? wingIdToSlug[ri.wing_id] || "" : "";
-        const wd = wingSlug ? wingDisplay(wingSlug) : { name: "", icon: "" };
+        const wd = wingSlug ? wingDisplay(s.owner_id, wingSlug, wingIdToCustomName[ri!.wing_id]) : { name: "", icon: "" };
         return {
           ...s,
           type: "room" as const,
           ownerName: nameMap[s.owner_id] || serverT("someone", loc3),
-          roomName: ri ? roomDisplayName(ri.name) : serverT("unknownRoom", loc3),
-          roomIcon: ri ? roomDisplayIcon(ri.name, ri.icon) : "",
+          roomName: ri ? roomDisplayName(s.owner_id, ri.name, wingSlug) : serverT("unknownRoom", loc3),
+          roomIcon: ri ? roomDisplayIcon(s.owner_id, ri.name, ri.icon, wingSlug) : "",
           placedInWingName: wd.name,
         };
       }),
     },
   };
+}
+
+// ═══ COMBINED WINGS+ROOMS → EMAIL GRANT (Sharing settings "Family access") ═══
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Grant access to a selection of wings and rooms to an email address in one go,
+ * using the two mechanisms the reading paths actually enforce:
+ *  - whole standard wings → a `wing_shares` row (getSharedWingData /
+ *    getAcceptedShares / getPendingInvites all key off wing_shares);
+ *  - individual rooms (and whole custom/extra wings, which wing_shares'
+ *    slug-keyed schema can't represent) → `room_shares` rows, the same rows
+ *    getSharedRoomMemories / getAcceptedShares / the /invite landing enforce.
+ *
+ * De-dupes against existing shares for that email (skipped, not errored).
+ * Sends ONE invite email (for the first newly created room share) so a
+ * multi-room grant doesn't fan out into a mailbox flood — after signup,
+ * autoMatchInvites links every other pending share to the account and they
+ * surface in the in-app invites panel, which is also how wing shares (which
+ * have no email template today) have always been delivered.
+ */
+export async function grantAccessByEmail(
+  input: {
+    email: string;
+    /** Fully selected wings; roomIds is the per-room fallback for non-standard wings. */
+    wholeWings: { slug: string; roomIds: string[] }[];
+    /** Individually selected rooms (DB uuid, or local room id for never-persisted rooms). */
+    roomIds: string[];
+    /** Tailored display names keyed by the same wing slugs / room ids passed above. */
+    names?: { wings?: Record<string, string>; rooms?: Record<string, string> };
+  },
+  /** Same contract as input.names — accepted positionally too for caller convenience. */
+  namesArg?: { wings?: Record<string, string>; rooms?: Record<string, string> }
+): Promise<{ error?: string; granted?: number; skipped?: number; failed?: number }> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
+  }
+  const supabase = await createClient();
+  const t = await serverError();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: t("notAuthenticated") };
+
+  const email = input.email.trim().toLowerCase();
+  if (!email || !email.includes("@")) return { error: t("validEmailRequired") };
+  if (email === user.email?.toLowerCase()) return { error: t("cannotShareWithYourself") };
+
+  const admin = createAdminClient();
+  const { data: inviteeProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .single();
+
+  let granted = 0;
+  let skipped = 0;
+  let failed = 0;
+  const roomTargets: string[] = [...input.roomIds];
+
+  // ── Wing-level shares for standard wings (the real wing mechanism) ──
+  const { data: existingWingRows } = await admin
+    .from("wing_shares")
+    .select("wing_id")
+    .eq("owner_id", user.id)
+    .eq("shared_with_email", email);
+  const alreadyWingShared = new Set((existingWingRows || []).map((r) => r.wing_id));
+
+  for (const w of input.wholeWings) {
+    if (!VALID_WINGS.includes(w.slug)) {
+      // wing_shares.wing_id is a slug constrained to the 6 standard wings —
+      // custom/extra wings fall back to per-room shares for all their rooms.
+      roomTargets.push(...w.roomIds);
+      continue;
+    }
+    if (alreadyWingShared.has(w.slug)) { skipped++; continue; }
+    const { data: ownedWing } = await supabase
+      .from("wings")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("slug", w.slug)
+      .single();
+    if (!ownedWing) {
+      // Wing row not persisted yet — the slug-join reading path couldn't
+      // resolve it; grant its rooms individually instead (rooms are created
+      // on demand by resolveRoomId below).
+      roomTargets.push(...w.roomIds);
+      continue;
+    }
+    const { error } = await admin
+      .from("wing_shares")
+      .insert({
+        owner_id: user.id,
+        shared_with_id: inviteeProfile?.id || null,
+        shared_with_email: email,
+        wing_id: w.slug,
+        permission: "view",
+        status: "pending",
+        invite_message: null,
+        can_add: false,
+        can_edit: false,
+        can_delete: false,
+      });
+    if (error) failed++; else granted++;
+  }
+
+  // ── Room-level shares ──
+  // Resolve each target to a DB room uuid (creating never-persisted rooms,
+  // mirroring shareRoomWithEmail's resolveRoomId flow).
+  const resolvedRoomIds: string[] = [];
+  for (const rid of [...new Set(roomTargets)]) {
+    if (UUID_RE.test(rid)) {
+      const { data: room } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("id", rid)
+        .eq("user_id", user.id)
+        .single();
+      if (room) resolvedRoomIds.push(room.id); else failed++;
+    } else {
+      const dbId = await resolveRoomId(supabase, user.id, rid);
+      if (dbId) resolvedRoomIds.push(dbId); else failed++;
+    }
+  }
+
+  let firstCreatedShare: { id: string; room_id: string } | null = null;
+  if (resolvedRoomIds.length > 0) {
+    const { data: existingRoomRows } = await admin
+      .from("room_shares")
+      .select("room_id")
+      .eq("owner_id", user.id)
+      .eq("shared_with_email", email)
+      .in("room_id", resolvedRoomIds);
+    const alreadyRoomShared = new Set((existingRoomRows || []).map((r) => r.room_id));
+
+    for (const roomId of resolvedRoomIds) {
+      if (alreadyRoomShared.has(roomId)) { skipped++; continue; }
+      const { data: share, error } = await supabase
+        .from("room_shares")
+        .insert({
+          room_id: roomId,
+          owner_id: user.id,
+          shared_with_email: email,
+          shared_with_id: inviteeProfile?.id || null,
+          permission: "view",
+          status: "pending",
+          invite_message: null,
+        })
+        .select("id, room_id")
+        .single();
+      if (error || !share) { failed++; continue; }
+      granted++;
+      if (!firstCreatedShare) firstCreatedShare = share;
+      await supabase.from("rooms").update({ is_shared: true }).eq("id", roomId);
+    }
+  }
+
+  // ── One invite email, best-effort (never fails the grant) ──
+  if (firstCreatedShare) {
+    try {
+      const names = namesArg || input.names;
+      const { sendInviteEmail } = await import("@/lib/email/send-invite");
+      const [{ data: profile }, { data: room }, ownerMaps] = await Promise.all([
+        supabase.from("profiles").select("display_name").eq("id", user.id).single(),
+        supabase.from("rooms").select("name, wing_id").eq("id", firstCreatedShare.room_id).single(),
+        // Fallback source for tailored names when the caller didn't pass them:
+        // the OWNER's (= current user's) synced local_settings.
+        loadOwnerNameMaps(admin, user.id),
+      ]);
+      let wingSlug = "";
+      let wingCustomName: string | null = null;
+      if (room?.wing_id) {
+        const { data: wing } = await supabase
+          .from("wings")
+          .select("slug, custom_name")
+          .eq("id", room.wing_id)
+          .single();
+        wingSlug = wing?.slug || "";
+        wingCustomName = wing?.custom_name || null;
+      }
+      // Tailored wing name: caller-provided map first (keyed by slug), then
+      // the owner's mp_custom_wings/mp_extra_wings, then WINGS defaults.
+      const wingName = (wingSlug && names?.wings?.[wingSlug])
+        || (wingSlug ? resolveWingDisplayName(ownerMaps, wingSlug, wingCustomName).name : "");
+      // Tailored room name: rooms.name stores the LOCAL room id ("ro1") —
+      // caller map is keyed by the ids passed to this action (DB uuid or local
+      // id), then the owner's mp_custom_rooms, then WING_ROOMS defaults.
+      // NEVER put the raw local id in the email.
+      const roomName =
+        names?.rooms?.[firstCreatedShare.room_id]
+        || (room?.name ? names?.rooms?.[room.name] : undefined)
+        || (room?.name ? resolveRoomDisplay(ownerMaps, room.name, wingSlug).name : null)
+        || "";
+      const result = await sendInviteEmail({
+        inviterName: profile?.display_name || user.email?.split("@")[0] || "Someone",
+        recipientEmail: email,
+        roomName: roomName || "A Memory Room",
+        wingName,
+        shareId: firstCreatedShare.id,
+        permission: "view",
+        personalMessage: null,
+      });
+      if (result.success) {
+        await supabase
+          .from("room_shares")
+          .update({ email_sent: true, email_sent_at: new Date().toISOString() })
+          .eq("id", firstCreatedShare.id);
+      }
+    } catch {
+      /* email is a courtesy — pending shares still surface in-app */
+    }
+  }
+
+  return { granted, skipped, failed };
 }
 
 export async function toggleRoomSharing(localRoomId: string, enabled: boolean) {

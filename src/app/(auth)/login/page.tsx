@@ -8,8 +8,20 @@ import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { createMFAChallenge, verifyMFAChallenge } from "@/lib/auth/mfa-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
+import { EMBER, HAIRLINE, MUTED, INK, GOLD } from "@/lib/libraryTokens";
 import { isIOS, isNative, nativeHardNav } from "@/lib/native/platform";
 import PalaceLogo from "@/components/landing/PalaceLogo";
+
+// Canon-consistent focus handlers for inline-styled inputs: EMBER border +
+// ceremonial GOLD ring on focus (inline styles cannot express :focus).
+function applyFocus(el: HTMLInputElement) {
+  el.style.borderColor = EMBER;
+  el.style.boxShadow = `0 0 0 0.1875rem ${GOLD}66`;
+}
+function clearFocus(el: HTMLInputElement, restColor: string) {
+  el.style.borderColor = restColor;
+  el.style.boxShadow = "none";
+}
 
 export default function LoginPage() {
   return <Suspense><LoginContent /></Suspense>;
@@ -43,7 +55,9 @@ function LoginContent() {
     try {
       // onDismiss resets the spinner if the in-app auth sheet is closed without
       // completing — so a cancelled/failed sign-in never leaves a dead screen.
-      const { error: oauthErr } = await fn({ onDismiss: clear });
+      // Thread the deep-link redirect so social login honors invite/kep links
+      // like the password path does.
+      const { error: oauthErr } = await fn({ onDismiss: clear, redirect });
       if (oauthErr) {
         clear();
         setError(oauthErr);
@@ -187,11 +201,20 @@ function LoginContent() {
     }
 
     // MFA verified — redirect (dismiss keyboard first so taps survive on the
-    // next screen — Apple 2.1a fix)
-    if (mfaRedirect && mfaRedirect.startsWith("/invite/")) {
-      await nativeHardNav(mfaRedirect);
-    } else {
-      await nativeHardNav("/atrium");
+    // next screen — Apple 2.1a fix). Honor the stored redirect the same way the
+    // password path does (actions.ts allowlist: /invite/ OR /kep/) so a 2FA user
+    // who followed a deep link is not silently dumped to /atrium.
+    // Safety: if the post-verify navigation is slow or the WKWebView wedges,
+    // re-enable the button so the user can retry rather than stranding the screen.
+    const safety = setTimeout(() => setMfaLoading(false), 8000);
+    try {
+      if (mfaRedirect && (mfaRedirect.startsWith("/invite/") || mfaRedirect.startsWith("/kep/"))) {
+        await nativeHardNav(mfaRedirect);
+      } else {
+        await nativeHardNav("/atrium");
+      }
+    } finally {
+      clearTimeout(safety);
     }
   }
 
@@ -202,7 +225,7 @@ function LoginContent() {
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <div style={{
             width: "4rem", height: "4rem", borderRadius: "2rem",
-            background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+            background: `linear-gradient(135deg, ${EMBER}20, ${T.color.walnut}20)`,
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 1rem", fontSize: "2rem",
           }}>
@@ -223,7 +246,7 @@ function LoginContent() {
           <p
             style={{
               fontSize: "1rem",
-              color: T.color.muted,
+              color: MUTED,
               marginTop: "0.625rem",
               lineHeight: 1.6,
               fontFamily: T.font.body,
@@ -273,6 +296,8 @@ function LoginContent() {
               value={digit}
               onChange={(e) => handleMfaCodeChange(i, e.target.value)}
               onKeyDown={(e) => handleMfaKeyDown(i, e)}
+              onFocus={(e) => applyFocus(e.currentTarget)}
+              onBlur={(e) => clearFocus(e.currentTarget, digit ? EMBER : HAIRLINE)}
               autoFocus={i === 0}
               aria-label={tc("mfaDigit", { n: String(i + 1), total: "6" })}
               style={{
@@ -284,13 +309,13 @@ function LoginContent() {
                 fontSize: "1.5rem",
                 fontFamily: T.font.body,
                 fontWeight: 600,
-                color: T.color.charcoal,
+                color: INK,
                 borderRadius: "0.75rem",
-                border: `2px solid ${digit ? T.color.terracotta : T.color.sandstone}`,
+                border: `2px solid ${digit ? EMBER : HAIRLINE}`,
                 background: T.color.white,
                 outline: "none",
-                transition: "border-color 0.2s",
-                caretColor: T.color.terracotta,
+                transition: "border-color 0.2s, box-shadow 0.2s",
+                caretColor: EMBER,
               }}
             />
           ))}
@@ -314,12 +339,13 @@ function LoginContent() {
           style={{
             display: "block",
             width: "100%",
+            minHeight: "2.75rem",
             margin: "0.875rem auto 0",
             padding: "0.75rem",
             background: "none",
-            border: `1px solid ${T.color.cream}`,
+            border: `1px solid ${HAIRLINE}`,
             borderRadius: "0.75rem",
-            color: T.color.muted,
+            color: MUTED,
             fontFamily: T.font.body,
             fontSize: "0.875rem",
             cursor: "pointer",
@@ -352,7 +378,7 @@ function LoginContent() {
         <p
           style={{
             fontSize: "0.875rem",
-            color: T.color.muted,
+            color: MUTED,
             marginTop: "0.375rem",
           }}
         >
@@ -387,6 +413,8 @@ function LoginContent() {
         required
         aria-describedby={error ? "login-error" : undefined}
         placeholder={t("emailPlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget, HAIRLINE)}
         style={inputStyle}
       />
 
@@ -399,11 +427,13 @@ function LoginContent() {
         required
         aria-describedby={error ? "login-error" : undefined}
         placeholder={t("passwordPlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget, HAIRLINE)}
         style={inputStyle}
       />
 
       <div style={{ textAlign: "right", marginTop: "0.375rem" }}>
-        <Link href="/forgot-password" style={linkStyle}>
+        <Link href="/forgot-password" style={{ ...linkStyle, display: "inline-block", padding: "0.5rem 0.25rem" }}>
           {t("forgotPassword")}
         </Link>
       </div>
@@ -451,13 +481,13 @@ function LoginContent() {
         style={{
           textAlign: "center",
           fontSize: "0.8125rem",
-          color: T.color.muted,
+          color: MUTED,
           marginTop: "1.25rem",
           marginBottom: 0,
         }}
       >
         {t("noAccount")}{" "}
-        <Link href="/register" style={{ ...linkStyle, fontWeight: 600 }}>
+        <Link href="/register" style={{ ...linkStyle, fontWeight: 600, display: "inline-block", padding: "0.5rem 0.25rem" }}>
           {t("createOne")}
         </Link>
       </p>
@@ -466,16 +496,16 @@ function LoginContent() {
         style={{
           textAlign: "center",
           fontSize: "0.6875rem",
-          color: T.color.muted,
+          color: MUTED,
           marginTop: "1rem",
           marginBottom: 0,
         }}
       >
-        <Link href="/privacy" style={{ color: T.color.muted, textDecoration: "none" }}>
+        <Link href="/privacy" style={{ color: MUTED, textDecoration: "none", display: "inline-block", padding: "0.5rem 0.5rem" }}>
           {tc("privacyPolicy")}
         </Link>
         {" \u00B7 "}
-        <Link href="/terms" style={{ color: T.color.muted, textDecoration: "none" }}>
+        <Link href="/terms" style={{ color: MUTED, textDecoration: "none", display: "inline-block", padding: "0.5rem 0.5rem" }}>
           {tc("termsOfService")}
         </Link>
       </p>
@@ -485,7 +515,7 @@ function LoginContent() {
 
 function ShieldIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={EMBER} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
       <path d="M9 12l2 2 4-4"/>
     </svg>
@@ -495,7 +525,7 @@ function ShieldIcon() {
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "0.6875rem",
-  color: T.color.muted,
+  color: MUTED,
   letterSpacing: ".5px",
   textTransform: "uppercase",
   display: "block",
@@ -506,18 +536,18 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.8125rem 1rem",
   borderRadius: "0.625rem",
-  border: `1.5px solid ${T.color.sandstone}`,
+  border: `1.5px solid ${HAIRLINE}`,
   background: T.color.white,
   fontFamily: T.font.body,
   fontSize: "1rem",
-  color: T.color.charcoal,
+  color: INK,
   outline: "none",
   boxSizing: "border-box",
-  transition: "border-color 0.2s",
+  transition: "border-color 0.2s, box-shadow 0.2s",
 };
 
 const linkStyle: React.CSSProperties = {
-  color: T.color.terracotta,
+  color: EMBER,
   textDecoration: "none",
   fontSize: "0.8125rem",
 };
@@ -529,8 +559,8 @@ const buttonStyle = (disabled: boolean): React.CSSProperties => ({
   border: "none",
   background: disabled
     ? `${T.color.sandstone}40`
-    : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-  color: disabled ? T.color.muted : T.color.white,
+    : `linear-gradient(135deg, ${EMBER}, ${T.color.walnut})`,
+  color: disabled ? MUTED : T.color.white,
   fontFamily: T.font.body,
   fontSize: "0.9375rem",
   fontWeight: 600,
@@ -549,13 +579,13 @@ const dividerStyle: React.CSSProperties = {
 const dividerLineStyle: React.CSSProperties = {
   flex: 1,
   height: 1,
-  background: T.color.sandstone,
+  background: HAIRLINE,
 };
 
 const dividerTextStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "0.75rem",
-  color: T.color.muted,
+  color: MUTED,
   whiteSpace: "nowrap",
 };
 
@@ -579,7 +609,7 @@ const googleButtonStyle: React.CSSProperties = {
   ...socialButtonBase,
   background: T.color.white,
   color: "#3C4043",
-  border: `1.5px solid ${T.color.sandstone}`,
+  border: `1.5px solid ${HAIRLINE}`,
   marginBottom: "0.625rem",
 };
 

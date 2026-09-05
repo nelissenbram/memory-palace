@@ -159,7 +159,7 @@ export function TreeSearch({ persons, onSelect, isMobile }: TreeSearchProps) {
             background: "transparent",
             outline: "none",
             fontFamily: T.font.body,
-            fontSize: "0.875rem",
+            fontSize: isMobile ? "1rem" : "0.875rem",
             color: T.color.charcoal,
             flex: 1,
             minWidth: 0,

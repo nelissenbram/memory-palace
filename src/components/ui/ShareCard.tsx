@@ -33,6 +33,12 @@ function hexToHSL(hex: string): { h: number; s: number; l: number } {
   return { h: h * 360, s: s * 100, l: l * 100 };
 }
 
+// Serif family for the OG canvas. Georgia leads for the Latin-script brand feel,
+// but the broad system fallbacks (Times New Roman, plus the platform default
+// serif) let non-Latin locale titles — DE/FR accents, and any CJK/Cyrillic
+// characters — resolve to a font that actually has the glyphs instead of tofu.
+const OG_SERIF = "Georgia, 'Times New Roman', 'Noto Serif', 'Songti SC', serif";
+
 function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines: number): number {
   const words = text.split(" ");
   let line = "";
@@ -65,6 +71,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  const [cardReady, setCardReady] = useState(false);
 
   const getShareUrl = useCallback(() => {
     const base = typeof window !== "undefined" ? window.location.origin + window.location.pathname : "";
@@ -83,6 +90,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   }, []);
 
   useEffect(() => {
+    setCardReady(false);
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -146,7 +154,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
       const renderText = () => {
         // Title
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = "bold 46px Georgia, serif";
+        ctx.font = `bold 46px ${OG_SERIF}`;
         ctx.textBaseline = "top";
         const titleX = imgRendered ? 520 : 100;
         const titleMaxW = imgRendered ? 580 : cardW - 80;
@@ -156,14 +164,14 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
         // Description
         if (mem.desc) {
           ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-          ctx.font = "20px Georgia, serif";
+          ctx.font = `20px ${OG_SERIF}`;
           const descY = imgRendered ? 230 : 300;
           wrapText(ctx, mem.desc, titleX, descY, titleMaxW, 28, 3);
         }
 
         // Room + wing info at bottom
         ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
-        ctx.font = "18px Georgia, serif";
+        ctx.font = `18px ${OG_SERIF}`;
         const parts: string[] = [];
         if (roomName) parts.push((roomIcon || "") + " " + roomName);
         if (wingName) parts.push((wingIcon || "") + " " + wingName);
@@ -171,7 +179,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
 
         // Branding
         ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-        ctx.font = "italic 16px Georgia, serif";
+        ctx.font = `italic 16px ${OG_SERIF}`;
         ctx.textAlign = "right";
         ctx.fillText(t("brandName"), W - 100, H - 90);
         ctx.textAlign = "left";
@@ -181,10 +189,16 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
         ctx.globalAlpha = 0.5;
         ctx.fillRect(100, H - 110, W - 200, 1);
         ctx.globalAlpha = 1;
+
+        setCardReady(true);
       };
 
       if (mem.dataUrl) {
         const img = new Image();
+        // Set crossOrigin BEFORE src so the fetch is CORS-enabled and the drawn
+        // image does not taint the canvas — otherwise toDataURL()/toBlob() throw
+        // and Download/native Share silently fail. Matches InteriorScene's loader.
+        img.crossOrigin = "anonymous";
         img.onload = () => {
           // Draw image in left portion with rounded corners
           ctx.save();
@@ -214,28 +228,28 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
     } else if (isRoom) {
       // Room card
       // Big room icon
-      ctx.font = "80px serif";
+      ctx.font = `80px ${OG_SERIF}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(roomIcon || "", W / 2, 200);
 
       // Room name
       ctx.fillStyle = "#FFFFFF";
-      ctx.font = "bold 52px Georgia, serif";
+      ctx.font = `bold 52px ${OG_SERIF}`;
       ctx.textBaseline = "top";
       ctx.textAlign = "center";
       wrapText(ctx, roomName || "", W / 2 - 300, 270, 600, 62, 2);
 
       // Memory count
       ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
-      ctx.font = "24px Georgia, serif";
+      ctx.font = `24px ${OG_SERIF}`;
       ctx.textAlign = "center";
       ctx.fillText(t("memories", { count: String(memCount ?? 0) }), W / 2, 370);
 
       // Wing info
       if (wingName) {
         ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-        ctx.font = "20px Georgia, serif";
+        ctx.font = `20px ${OG_SERIF}`;
         ctx.fillText(`${wingIcon || ""} ${t("wing", { name: wingName || "" })}`, W / 2, 420);
       }
 
@@ -243,7 +257,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
 
       // Branding
       ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-      ctx.font = "italic 16px Georgia, serif";
+      ctx.font = `italic 16px ${OG_SERIF}`;
       ctx.textAlign = "right";
       ctx.fillText(t("brandWatermark"), W - 100, H - 90);
       ctx.textAlign = "left";
@@ -253,6 +267,10 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
       ctx.globalAlpha = 0.5;
       ctx.fillRect(100, H - 110, W - 200, 1);
       ctx.globalAlpha = 1;
+      setCardReady(true);
+    } else {
+      // Default share card (no mem, no room): background + panel already drawn.
+      setCardReady(true);
     }
   }, [mem, roomName, roomIcon, wingName, wingIcon, memCount, accent, t]);
 
@@ -296,38 +314,86 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   const encodedText = encodeURIComponent(shareText);
   const title = mem ? mem.title : roomName || t("brandName");
 
+  // Simple monochrome line glyphs for the share platforms (same stroke style
+  // as the native-share SVG button below).
+  const platformGlyph: React.SVGProps<SVGSVGElement> = {
+    xmlns: "http://www.w3.org/2000/svg", width: 16, height: 16, viewBox: "0 0 24 24",
+    fill: "none", stroke: "currentColor", strokeWidth: 1.5,
+    strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true,
+  };
   const socialLinks = [
-    { name: "WhatsApp", icon: "\uD83D\uDCAC", url: `https://wa.me/?text=${encodedText}%20${encodedUrl}` },
-    { name: "X / Twitter", icon: "\uD83D\uDC26", url: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}` },
-    { name: "Email", icon: "\u2709\uFE0F", url: `mailto:?subject=${encodeURIComponent(title)}&body=${encodedText}%0A%0A${encodedUrl}` },
-    { name: "Facebook", icon: "\uD83D\uDC4D", url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}` },
+    {
+      name: "WhatsApp",
+      // Speech bubble with a phone hint inside
+      icon: (
+        <svg {...platformGlyph}>
+          <path d="M12 4 a8 8 0 1 1 -4.4 14.7 L4 20 l1.3 -3.6 A8 8 0 0 1 12 4 Z" />
+          <path d="M9.2 9.3 l1.1 1.9 -0.7 1 a5.6 5.6 0 0 0 2.2 2.2 l1 -0.7 1.9 1.1" />
+        </svg>
+      ),
+      url: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+    },
+    {
+      name: "X / Twitter",
+      // Stylized X
+      icon: (
+        <svg {...platformGlyph}>
+          <path d="M4.5 4.5 L19.5 19.5" />
+          <path d="M19.5 4.5 L4.5 19.5" />
+        </svg>
+      ),
+      url: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+    },
+    {
+      name: t("email"),
+      // Envelope
+      icon: (
+        <svg {...platformGlyph}>
+          <rect x="3" y="5.5" width="18" height="13" rx="2" />
+          <polyline points="4,7.5 12,13.5 20,7.5" />
+        </svg>
+      ),
+      url: `mailto:?subject=${encodeURIComponent(title)}&body=${encodedText}%0A%0A${encodedUrl}`,
+    },
+    {
+      name: "Facebook",
+      // Lowercase-f square outline
+      icon: (
+        <svg {...platformGlyph}>
+          <rect x="4" y="4" width="16" height="16" rx="3" />
+          <path d="M14.8 8.2 h-1.6 a2 2 0 0 0 -2 2 V20" />
+          <line x1="9.5" y1="12.5" x2="14.5" y2="12.5" />
+        </svg>
+      ),
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
+    },
   ];
 
   const btnBase: React.CSSProperties = {
     padding: "0.625rem 1rem", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-    borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, cursor: "pointer",
+    borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, cursor: "pointer",
     display: "flex", alignItems: "center", gap: "0.375rem", transition: "all .15s", minHeight: "2.75rem",
   };
 
   return (
-    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, animation: "fadeIn .2s ease" }}>
-      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("share")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: "1.25rem", border: `1px solid ${T.color.cream}`, boxShadow: "0 16px 70px rgba(44,44,42,.2)", maxWidth: "35rem", width: "92%", overflow: "hidden", animation: "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: "90vh", overflowY: "auto" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(0.25rem)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, animation: "fadeIn .2s ease" }}>
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("share")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: "1.25rem", border: `0.0625rem solid ${T.color.cream}`, boxShadow: "0 1rem 4.375rem rgba(64,59,54,.2)", maxWidth: "35rem", width: "92%", overflow: "hidden", animation: "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: "90vh", overflowY: "auto" }}>
         {/* Canvas preview */}
         <div style={{ padding: "1.25rem 1.25rem 0" }}>
-          <canvas ref={canvasRef} role="img" aria-label={mem ? t("shareTextMemory", { title: mem.title }) : roomName ? t("shareTextRoom", { icon: roomIcon || "", name: roomName, count: String(memCount ?? 0) }) : t("shareTextDefault")} style={{ width: "100%", height: "auto", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}` }} />
+          <canvas ref={canvasRef} role="img" aria-label={mem ? t("shareTextMemory", { title: mem.title }) : roomName ? t("shareTextRoom", { icon: roomIcon || "", name: roomName, count: String(memCount ?? 0) }) : t("shareTextDefault")} style={{ width: "100%", height: "auto", borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.cream}` }} />
         </div>
 
         <div style={{ padding: "1rem 1.25rem 1.25rem" }}>
           {/* Action buttons */}
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-            <button onClick={handleCopyLink} style={{ ...btnBase, flex: 1, background: copied ? `${accent}15` : T.color.white, color: copied ? accent : T.color.charcoal }}>
-              {copied ? `\u2713 ${t("copied")}` : `\uD83D\uDD17 ${t("copyLink")}`}
+            <button onClick={handleCopyLink} style={{ ...btnBase, flex: 1, background: copied ? `${accent}15` : T.color.white, color: copied ? accent : T.color.inkSoft }}>
+              {copied ? `\u2713 ${t("copied")}` : (<><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:"0.25rem"}} aria-hidden><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>{t("copyLink")}</>)}
             </button>
-            <button onClick={handleDownload} style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.charcoal }}>
-              {`\u2B07\uFE0F ${t("download")}`}
+            <button onClick={handleDownload} disabled={!cardReady} style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.inkSoft, cursor: cardReady ? "pointer" : "not-allowed", opacity: cardReady ? 1 : 0.5 }}>
+              {<><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:"0.25rem"}} aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>{t("download")}</>}
             </button>
             {canShare && (
-              <button onClick={handleShare} style={{ ...btnBase, flex: 1, background: accent, color: T.color.white, border: "none" }}>
+              <button onClick={handleShare} disabled={!cardReady} style={{ ...btnBase, flex: 1, background: accent, color: T.color.white, border: "none", cursor: cardReady ? "pointer" : "not-allowed", opacity: cardReady ? 1 : 0.5 }}>
                 <><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:"0.25rem"}}><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>{t("share")}</>
               </button>
             )}
@@ -338,15 +404,16 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
             {socialLinks.map(s => (
               <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer"
-                style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.charcoal, textDecoration: "none", justifyContent: "center", fontSize: "0.75rem", padding: "0.625rem 0.5rem" }}>
-                <span style={{ fontSize: "1rem" }}>{s.icon}</span>
+                aria-label={t("shareVia", { platform: s.name })}
+                style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.inkSoft, textDecoration: "none", justifyContent: "center", fontSize: "0.75rem", padding: "0.625rem 0.5rem" }}>
+                <span aria-hidden style={{ display: "flex", alignItems: "center" }}>{s.icon}</span>
                 <span>{s.name}</span>
               </a>
             ))}
           </div>
 
           {/* Close */}
-          <button onClick={onClose} style={{ width: "100%", padding: "0.75rem", minHeight: "2.75rem", fontFamily: T.font.body, fontSize: "0.8125rem", background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: "0.625rem", cursor: "pointer", color: T.color.muted }}>
+          <button onClick={onClose} style={{ width: "100%", padding: "0.75rem", minHeight: "2.75rem", fontFamily: T.font.body, fontSize: "0.8125rem", background: "transparent", border: `0.0625rem solid ${T.color.cream}`, borderRadius: "0.625rem", cursor: "pointer", color: T.color.muted }}>
             {t("close")}
           </button>
         </div>

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { sendDripEmail, getDripEmailConfig } from "@/lib/email/send-drip";
 import { sendReminderEmail } from "@/lib/email/send-reminder";
+import { lifecycleEmailsEnabled } from "@/lib/email/lifecycle-flag";
+import { fetchRecentSendsOfType, logLifecycleSend } from "@/lib/email/send-ledger";
 import { sendPush, type PushSubscriptionJSON, type NotificationPayload } from "@/lib/push";
 import { serverT, serverTf } from "@/lib/i18n/server";
 import type { Locale } from "@/i18n/config";
@@ -18,9 +20,10 @@ import type { Locale } from "@/i18n/config";
  * - Day 14: "Your palace is waiting" (only if <5 memories)
  *
  * **Re-engagement** (inactive users):
- * - 7 days inactive:  push notification
- * - 14 days inactive: re-engagement email (via send-reminder.ts)
- * - 30 days inactive: second re-engagement email
+ * - 7 days inactive:  push notification (always on — push is not paused)
+ * - 30 days inactive: the single win-back email (SPEC §D), gated on
+ *                     winback_sent_at IS NULL + LIFECYCLE_EMAILS_ENABLED, then stops.
+ *   (The former 14-day re-engagement email was removed per the redesign.)
  *
  * Secured via CRON_SECRET header.
  * Vercel cron: daily at 9:30 AM — "30 9 * * *"
@@ -130,6 +133,20 @@ export async function GET(request: Request) {
     }
   }
 
+  // ── Drip double-send guard (SUCCESS_PLAYBOOK 1.4) ──
+  // A redeploy or overlapping cron run within the same day would re-match the
+  // same users to the same drip day. Check the email_send_log ledger per drip
+  // day (type "drip-day-N") and bar anyone already stamped within the rolling
+  // window; fetchRecentSendsOfType fails CLOSED on read errors.
+  const dripBarred = new Map<DripDay, Set<string>>();
+  for (const { day, dateStart, dateEnd } of dripTargets) {
+    const idsForDay = (dripProfiles || [])
+      .filter((p: { created_at: string }) => p.created_at >= dateStart && p.created_at <= dateEnd)
+      .map((p: { id: string }) => p.id);
+    const { barred } = await fetchRecentSendsOfType(supabase, idsForDay, `drip-day-${day}`, now);
+    dripBarred.set(day, barred);
+  }
+
   // Send drip emails
   const dripPromises: Promise<void>[] = [];
   let dripCount = 0;
@@ -160,6 +177,13 @@ export async function GET(request: Request) {
       continue;
     }
 
+    // Ledger says this drip day already went out (or the ledger was unreadable
+    // — fail closed): never double-send.
+    if (dripBarred.get(matchingDrip.day)?.has(profile.id)) {
+      stats.drip.skipped++;
+      continue;
+    }
+
     dripCount++;
     dripPromises.push(
       sendDripEmail({
@@ -168,9 +192,14 @@ export async function GET(request: Request) {
         locale: profile.preferred_locale || "en",
         dripDay: matchingDrip.day,
         userId: profile.id,
-      }).then((result) => {
-        if (result.success) stats.drip.sent++;
-        else stats.drip.errors++;
+      }).then(async (result) => {
+        if (result.success) {
+          stats.drip.sent++;
+          // Stamp the ledger so an overlapping run cannot re-send this drip day.
+          await logLifecycleSend(supabase, profile.id, `drip-day-${matchingDrip.day}`);
+        } else {
+          stats.drip.errors++;
+        }
       })
     );
   }
@@ -179,7 +208,9 @@ export async function GET(request: Request) {
   // PART B: Re-engagement for inactive users
   // ══════════════════════════════════════════════════════
 
-  const reengageDays = [7, 14, 30] as const;
+  // 7 = push only; 30 = the single win-back email. (Was [7, 14, 30]; the 14d
+  // email is removed per SPEC §E.)
+  const reengageDays = [7, 30] as const;
   const reengageTargets: { days: number; dateStart: string; dateEnd: string }[] = [];
 
   for (const days of reengageDays) {
@@ -195,7 +226,7 @@ export async function GET(request: Request) {
 
   const { data: inactiveProfiles } = await supabase
     .from("profiles")
-    .select("id, display_name, preferred_locale, last_seen_at, email_digest")
+    .select("id, display_name, preferred_locale, last_seen_at, email_digest, winback_sent_at")
     .not("last_seen_at", "is", null)
     .gte("last_seen_at", reOldest)
     .lte("last_seen_at", reNewest)
@@ -285,9 +316,11 @@ export async function GET(request: Request) {
     }
   }
 
-  // ── 14-day & 30-day inactive: re-engagement emails ──
-  for (const days of [14, 30] as const) {
-    const target = reengageTargets.find((t) => t.days === days)!;
+  // ── 30-day inactive: the single win-back email (SPEC §D), then stop ──
+  // Gated on the master flag (push above is never gated). The winback_sent_at
+  // marker enforces "then stop"; the heartbeat clears it on the user's return.
+  if (lifecycleEmailsEnabled()) {
+    const target = reengageTargets.find((t) => t.days === 30)!;
     const users = (inactiveProfiles || []).filter(
       (p: { last_seen_at: string }) =>
         p.last_seen_at >= target.dateStart && p.last_seen_at <= target.dateEnd
@@ -296,8 +329,8 @@ export async function GET(request: Request) {
     for (const profile of users) {
       if (dripCount + stats.reengage.emailSent >= MAX_EMAILS_PER_RUN) break;
 
-      // Skip unsubscribed users
-      if (profile.email_digest === false) continue;
+      if (profile.email_digest === false) continue;   // strict opt-out
+      if (profile.winback_sent_at) continue;           // already knocked → stop
 
       const email = reengageEmailMap.get(profile.id);
       if (!email) continue;
@@ -310,11 +343,20 @@ export async function GET(request: Request) {
           recipientEmail: email,
           displayName: profile.display_name || email.split("@")[0],
           locale: profile.preferred_locale || "en",
-          daysSinceLogin: days,
+          daysSinceLogin: 30,
           memoryCount: memCount,
-        }).then((result) => {
-          if (result.success) stats.reengage.emailSent++;
-          else stats.reengage.errors++;
+          userId: profile.id,
+        }).then(async (result) => {
+          if (result.success) {
+            stats.reengage.emailSent++;
+            // Stamp the idempotency marker + ledger (mirrors welcome_email_sent_at).
+            await supabase.from("profiles")
+              .update({ winback_sent_at: new Date().toISOString() })
+              .eq("id", profile.id);
+            await logLifecycleSend(supabase, profile.id, "winback");
+          } else {
+            stats.reengage.errors++;
+          }
         })
       );
     }

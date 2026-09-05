@@ -9,6 +9,20 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
+import { EXPOSURE, CLEAR_COLOR, INK, GOLD, EMBER, PLASTER } from "@/lib/3d/canon";
+import { flag3d } from "@/lib/3d/flags3d";
+import { mountAmbientMusic, playFootstep } from "@/lib/3d/ambientAudio";
+import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
+import { EYE_HEIGHT, MAX_YAW_DEG_S, MAX_WALK_SPEED, SPRINT_SPEED, easeInOutCubic } from "@/lib/3d/cameraComfort";
+import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
+import { loadModel } from "@/lib/3d/modelLoader";
+// MUSEO VIVO Wave 2 — w2_hall (WS4-6..9, WS7-7/10/15): Ancestral Wall salon
+// hang, dolly-to-frame focus mode, living water/oculus light, bust plaque.
+import { computeSalonHang, mountSalonHang, type SalonHangMount, type SalonMemoryRef } from "@/lib/3d/salonHang";
+import { createFocusMode, FOCUS_DIM, type FocusMode, type FocusTarget } from "@/lib/3d/focusMode";
+import { selectAncestralMemories, makeWaterNormalTexture, makeCausticsTexture, makeOculusPoolTexture } from "@/lib/3d/ancestralWall";
+import { paintTex } from "@/lib/3d/textureHelpers";
+import type { Mem } from "@/lib/constants/defaults";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
 import { loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, acquireEnvMap, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
@@ -18,7 +32,8 @@ import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
 import { measure, autoFit } from "@/lib/3d/fitRenderer";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
-import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useOverridableTranslation } from "@/lib/hooks/useTranslation";
+import type { Locale } from "@/i18n/config";
 import { T } from "@/lib/theme";
 
 /** Shared wing data from wing_shares table */
@@ -141,6 +156,7 @@ function EntranceHallScene({
   styleEra = "roman",
   onInlayClick,
   onBustClick,
+  lunettePhotos,
   bustPedestals,
   bustTextureUrl,
   bustModelUrl,
@@ -151,6 +167,11 @@ function EntranceHallScene({
   autoWalkTo,
   onboardingMode,
   onReady,
+  ancestralMemories,
+  ancestralPublicOnly,
+  onAncestralMemoryClick,
+  localeOverride,
+  envHDRI,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
@@ -161,6 +182,8 @@ function EntranceHallScene({
   onReady?: () => void;
   onInlayClick?: () => void;
   onBustClick?: (pedestalIndex: number) => void;
+  /** W3H: newest photo memory per wing — hung in the door lunettes. */
+  lunettePhotos?: Record<string, Mem>;
   bustPedestals?: Record<number, BustPedestalData>;
   bustTextureUrl?: string | null;
   bustModelUrl?: string | null;
@@ -168,10 +191,39 @@ function EntranceHallScene({
   bustName?: string | null;
   bustGender?: string | null;
   sharedWings?: SharedWingDoor[];
+  /** MUSEO VIVO W2 w2_hall (WS4-6): candidate photo memories for the Ancestral
+   *  Wall. The hall applies owner decision 4 itself (favorites → oldest, cap
+   *  3 mobile / 5 desktop) via selectAncestralMemories, so callers may pass the
+   *  full photo corpus. Default [] → warm cream easel empty state. */
+  ancestralMemories?: Mem[];
+  /** WS7-15 (owner decision 7): visitor routes set true — ONLY memories with
+   *  visibility === "public" hang; fewer than 3 public photos → empty state. */
+  ancestralPublicOnly?: boolean;
+  /** Second tap on a focused Ancestral Wall piece opens the existing memory
+   *  interaction (WS7-10) — wire to MemoryPalace's memory viewer. */
+  onAncestralMemoryClick?: (mem: Mem) => void;
+  /** Demo hosts (the /flythrough onboarding preview): pin canvas-baked texts
+   *  (wing door labels via wings.*, plaques) to the demo-local language
+   *  instead of the global stored locale. In-app (undefined) = unchanged. */
+  localeOverride?: Locale;
+  /** Set false to keep the warm procedural interior env map and skip the async
+   *  ballroom-HDRI environment swap (desktop tier only; the swap washes the
+   *  golden grade out to near-white on some GPU/driver paths — the /flythrough
+   *  viewer+recorder pin this false so footage matches the owner-approved warm
+   *  hall). Default (undefined/true) = unchanged in-app behavior. */
+  envHDRI?: boolean;
 }) {
-  const { t } = useTranslation("entranceHall");
-  const { t: tw } = useTranslation("wings");
+  const { t } = useOverridableTranslation("entranceHall", localeOverride);
+  const { t: tw } = useOverridableTranslation("wings", localeOverride);
   const WINGS = wingsProp || DEFAULT_WINGS;
+  // ── MUSEO VIVO Wave-2 hall flag (WS4-6..10, WS7-7/10/15): Ancestral Wall,
+  // bust plaque, living water/oculus pool, focus mode. Read once at mount
+  // (declared before the fingerprint below, which folds the Wave-2 inputs in);
+  // flag off = current Wave-1 behavior fully intact.
+  const [w2] = useState<boolean>(() => { try { return flag3d("w2_hall"); } catch { return false; } });
+  // W3 hall wave (La Sala degli Sguardi) — staging-ON / prod-OFF. Declared
+  // before the fingerprint below, which folds the lunette photos in under it.
+  const [w3h] = useState<boolean>(() => { try { return flag3d("w3_hall"); } catch { return false; } });
   // ── FINGERPRINT: rebuild the hall only when construction INPUT actually
   // changes (wing id/label/icon/accent, unlocked state, shared-wing doors,
   // translated plaque labels, era) — NOT on parent re-renders, where wingsProp
@@ -180,7 +232,20 @@ function EntranceHallScene({
   const wingsFingerprint =
     WINGS.map(w => `${w.id}:${w.nameKey ? tw(w.nameKey) : ""}:${w.name}:${w.icon}:${w.accent}:${w.unlocked === false ? "L" : "U"}`).join("|") +
     "||" + (sharedWings || []).map(s => `${s.shareId}:${s.wingId}`).join("|") +
-    `||${styleEra}||${t("sharedBadge")}`;
+    `||${styleEra}||${t("sharedBadge")}` +
+    // MUSEO VIVO W2 (WS4-6/7): the Ancestral Wall + name plaque rebuild when
+    // their construction input changes — memories/name arrive async after the
+    // first mount. Folded in ONLY under the w2 flag so flag-off keeps today's
+    // rebuild cadence exactly.
+    (w2
+      ? "||AW:" + (ancestralMemories || []).map(m => `${m.id}:${m.title}:${m.visibility || ""}:${m.createdAt || ""}`).join(",") +
+        `|${ancestralPublicOnly ? "P" : ""}|${bustName || ""}`
+      : "") +
+    // W3H: the door lunettes hang the newest photo per wing — rebuild when
+    // that selection changes (memories arrive async after first mount).
+    (w3h
+      ? "||LUN:" + Object.entries(lunettePhotos || {}).map(([k, m]) => `${k}:${m.id}`).join(",")
+      : "");
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const onDoorClickRef = useRef(onDoorClick);
@@ -194,13 +259,49 @@ function EntranceHallScene({
   const onReadyRef = useRef(onReady);
   useEffect(() => { onReadyRef.current = onReady; }, [onReady]);
   const readyFiredRef = useRef(false); // onReady fires EXACTLY once per mount (survives effect re-runs)
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const camDebugRef = useRef<HTMLPreElement | null>(null);
   const camDebug = false; // set true to show camera debug overlay
   const [blinkOpacity, setBlinkOpacity] = useState(0);
   const blinkRef = useRef(0); // updated every frame, React state synced periodically
+  // Last value actually PUSHED to setBlinkOpacity. Component-level ref (NOT an
+  // animate()-closure local) so it can never desync from the real React state
+  // across effect rebuilds or skipCinematic — a desynced shadow made the
+  // guarded zero-writes no-op and left a permanent semi-opaque BLACK curtain
+  // over the hall (owner: "the entrance hall became very dark", 2026-08-23).
+  // Every blinkOpacity write MUST go through pushBlink.
+  const blinkPushedRef = useRef(0);
+  const pushBlink = (v: number) => { blinkPushedRef.current = v; setBlinkOpacity(v); };
   const entranceCinematicRef = useRef(!!onboardingMode); // only play cinematic in onboarding
   const [cinematicActive, setCinematicActive] = useState(!!onboardingMode);
+  // ── ONBOARDING ELEVATION §10 — overlay-UI reads at RENDER scope. The sealed
+  // scene-construction effect keeps its own local `reduceMotion` read; this
+  // one exists solely because the JSX overlay can't see that closure variable.
+  const [reduceMotionUi] = useState(() => prefersReducedMotion());
+  // Mobile stack (<48rem width) + short-viewport variant (<26rem height,
+  // landscape phones — gated by HEIGHT, not width). Listeners only armed in
+  // onboarding mode; the overlay never renders outside it.
+  const [narrowCinematicUi, setNarrowCinematicUi] = useState<boolean>(() =>
+    typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(max-width: 48rem)").matches);
+  const [shortCinematicUi, setShortCinematicUi] = useState<boolean>(() =>
+    typeof window !== "undefined" && !!window.matchMedia && window.matchMedia("(max-height: 26rem)").matches);
+  useEffect(() => {
+    if (!onboardingMode || typeof window === "undefined" || !window.matchMedia) return;
+    const mqW = window.matchMedia("(max-width: 48rem)");
+    const mqH = window.matchMedia("(max-height: 26rem)");
+    const onW = () => setNarrowCinematicUi(mqW.matches);
+    const onH = () => setShortCinematicUi(mqH.matches);
+    onW(); onH();
+    mqW.addEventListener("change", onW);
+    mqH.addEventListener("change", onH);
+    return () => { mqW.removeEventListener("change", onW); mqH.removeEventListener("change", onH); };
+  }, [onboardingMode]);
+  // ── MUSEO VIVO Wave-1 hall flag (WS4 steps 2-5, WS8, WS12-2/3) — read once at
+  // mount per flags3d read-at-mount semantics; all visible Wave-1 changes gate on it.
+  const [w1] = useState<boolean>(() => { try { return flag3d("w1_hall"); } catch { return false; } });
+  const onAncestralClickRef = useRef(onAncestralMemoryClick);
+  useEffect(() => { onAncestralClickRef.current = onAncestralMemoryClick; }, [onAncestralMemoryClick]);
+  // Cream crossfade overlay (reduced-motion cinematic; NEVER black — WS12-2)
+  const [creamFade, setCreamFade] = useState(0);
 
   // First-person camera refs (matching InteriorScene pattern)
   const lookA = useRef({ yaw: 0, pitch: 0 });
@@ -231,20 +332,32 @@ function EntranceHallScene({
     const _persistent = !!_pausedHost;
     const _isHidden = () => _persistent && _pausedHost!.dataset.paused === "1";
     let _wasHidden = false;
-    // Ambient-audio pause/resume — assigned once the audio element exists below;
-    // driven from the hidden-edge in animate() (persistence means unmount no
-    // longer stops the loop on every transition).
-    let ambientPause: () => void = () => {};
-    let ambientResume: () => void = () => {};
+    // WS10-2: the shared ambient score never stops across scene transitions, so
+    // the hidden-edge hooks in animate() are no-ops now — resume just re-arms
+    // the idempotent singleton in case autoplay was still blocked at mount.
+    const ambientPause: () => void = () => {};
+    const ambientResume: () => void = () => { mountAmbientMusic(); };
 
     const dlPreset = getLightingPreset();
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(dlPreset.fogColor);
-    scene.fog = new THREE.FogExp2(dlPreset.fogColor, 0.006 * dlPreset.fogDensity);
+    // Owner feedback r2 (2026-08-06): thinner golden haze — depth back, no "gouden melk".
+    scene.fog = new THREE.FogExp2(dlPreset.fogColor, (w1 ? 0.0042 : 0.006) * dlPreset.fogDensity);
 
     const Q = getQuality();
     let alive = true;
+    // Wave-1 hall flag captured for this mount + the shared reduced-motion
+    // singleton (WS12-1) — the w1 cinematic swaps its push-in for the cream
+    // crossfade to the same end framing (shot B) when this reports true.
+    const W1 = w1;
+    // Wave-2 hall flag captured for this mount (WS4-6..10, WS7-7/10/15).
+    const W2 = w2;
+    // Wave-3 hall flag (La Sala degli Sguardi Wave A) — flag-off byte-identical.
+    const W3H = w3h;
+    const reduceMotion = prefersReducedMotion();
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
+    // Owner feedback r2: env fill moderated under W1 (key-vs-ambient ratio up).
+    const ENV_INT = W1 ? 0.28 : 0.35;
     // Persistent hall owns its renderer (mirrors ExteriorScene); transient
     // corridor/interior keep borrowing the shared pool untouched.
     let _ownRenderer = false;
@@ -268,8 +381,11 @@ function EntranceHallScene({
       ren.shadowMap.autoUpdate = false;
       ren.shadowMap.needsUpdate = true;
     }
-    ren.toneMapping = THREE.ACESFilmicToneMapping;
-    ren.toneMappingExposure = 0.7 * dlPreset.exposure; // eerie filmic: noticeably underexposed for atmosphere
+    // Golden grade (MUSEO VIVO WS4-1): the 0.7 "eerie" underexposure is dead.
+    // Tone mapping lives in the shared EffectPass (NeutralToneMapping @ canon EXPOSURE).
+    ren.toneMapping = THREE.NoToneMapping;
+    ren.toneMappingExposure = EXPOSURE;
+    ren.setClearColor(CLEAR_COLOR, 1);
     ren.outputColorSpace = THREE.SRGBColorSpace;
     ren.localClippingEnabled = true;
     el.appendChild(ren.domElement);
@@ -277,35 +393,97 @@ function EntranceHallScene({
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
     const envMapProc = createInteriorEnvMap(ren, { warmth: dlPreset.envWarmth, brightness: dlPreset.envBrightness });
     scene.environment = envMapProc;
-    scene.environmentIntensity = 0.35;
+    scene.environmentIntensity = ENV_INT;
     let envMapHDRI: THREE.Texture | null = null;
-    if (Q.loadEnvHDRI) {
+    if (Q.loadEnvHDRI && envHDRI !== false) {
       loadHDRIProgressive(ren, HDRI_INTERIOR, {
-        onProcedural: (p) => { if (!alive) return; scene.environment = p; scene.environmentIntensity = 0.35; },
-        onFull: (hdr) => { if (!alive) { releaseEnvMap(hdr); return; } envMapHDRI = hdr; scene.environment = hdr; scene.environmentIntensity = 0.35; },
+        onProcedural: (p) => { if (!alive) return; scene.environment = p; scene.environmentIntensity = ENV_INT; },
+        onFull: (hdr) => { if (!alive) { releaseEnvMap(hdr); return; } envMapHDRI = hdr; scene.environment = hdr; scene.environmentIntensity = ENV_INT; },
       }).catch(() => {}); // keep procedural fallback
     }
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
+    // Bloom/vignette inherit the canon SCENE_PRESETS (bloom threshold 0.85,
+    // vignette 0.35) — the old 0.25-threshold/0.7-vignette overrides are dead.
+    // W3H WAVE C (Sguardi move 3): SELECTIVE HDR BLOOM — threshold 1.0 means
+    // LDR-lit plaster/marble physically cannot bloom; only surfaces lifted
+    // past 1.0 (the HDR sun disc through the oculus, hot env speculars) glow.
+    // SSAO returns on desktop: the coffers/flutes/lunettes earn real contact
+    // shading now the geometry exists.
     const composer = createPostProcessing(ren, scene, camera, "entrance", {
-      ssao: false, // disabled for performance even on desktop
-      bloom: { luminanceThreshold: 0.25, luminanceSmoothing: 0.5, intensity: 0.9 },
-      vignette: { darkness: 0.7, offset: 0.15 },
+      ssao: (W3H && !isMobileGPU()) ? { intensity: 1.7, radius: 0.05, bias: 0.015, samples: 12 } : false,
+      ...(W3H ? { bloom: { luminanceThreshold: 1.0, luminanceSmoothing: 0.25, intensity: 0.75 } } : {}),
     });
     const disposeFit = autoFit(el, { camera, renderer: ren, composer });
 
+    // ══ ASSEMBLE-BEFORE-REVEAL (owner 2026-08-23, ExteriorScene parity) ══
+    // The hall streams the dome/column hero GLBs, the eager PBR sets and the
+    // lunette photo canvases asynchronously, so the rotunda visibly assembled
+    // piece by piece after the overlay lifted. Every async attach with visible
+    // pop-in registers its promise here; onReady (the overlay/veil-lift
+    // contract MemoryPalace/the viewer use) now fires only when the FIRST
+    // FRAME has rendered AND this barrier has settled (Promise.allSettled —
+    // a single failed load must never strand the reveal) OR the 8s cap has
+    // elapsed (slow networks reveal what's there). All loads stay exactly as
+    // parallel as before — only the reveal moment moves. Deliberately NOT
+    // gated: loadHDRIProgressive above (the procedural env shows from frame 0;
+    // the full-HDR swap is a subtle lighting shift, not a pop-in).
+    const revealGates: Promise<unknown>[] = [];
+    let revealBarrierDone = false;
+    // Painting canvases (paintTex) fill in async per image — a canvas gains
+    // userData.naturalWidth on its first photo draw. Register each canvas that
+    // WILL draw a photo (unlocked + paintable src, mirroring paintTex's own
+    // source pick); the bounded poll registered before animate() caps at ~9s
+    // so one dead image can never stall past the 8s barrier cap.
+    const paintGateTexes: THREE.Texture[] = [];
+    const gatePaintTex = <T extends THREE.Texture>(m: { dataUrl?: string | null; thumbnailUrl?: string | null; revealDate?: string } | undefined | null, tx: T): T => {
+      if (m && !(m.revealDate && m.revealDate > new Date().toISOString().split("T")[0])) {
+        const thumb = m.thumbnailUrl;
+        const src = (typeof thumb === "string" && thumb && !thumb.startsWith("data:video")) ? thumb : m.dataUrl;
+        if (src) paintGateTexes.push(tx);
+      }
+      return tx;
+    };
     // ── REAL PBR TEXTURES (from Poly Haven) ──
     const marbleTex = loadMarbleTextures([6, 6]);
     const floorTileTex = loadFloorTileTextures([4, 4]);
     const woodDoorTex = loadDarkWoodTextures([2, 3]);
     const wallTex = loadPlasterWallTextures([4, 4]);
     const allTexSets: PBRTextureSet[] = [marbleTex, floorTileTex, woodDoorTex, wallTex];
+    // Reveal gate: the eager PBR sets visibly RETEXTURE the biggest surfaces
+    // (floor/walls/doors flip from flat colour to full maps). The sets are
+    // sync clone-sharing textures (assetLoader loadPBRSet) with no promise
+    // API, but a clone's `version` stays 0 until its base image lands
+    // (cloneTex/finishBaseLoad) — poll that marker. Bounded: ~9s of attempts,
+    // then resolve regardless (the 8s barrier cap fires first anyway).
+    {
+      const _gateTexes = allTexSets.flatMap((s) => [s.map, s.normalMap, s.roughnessMap, s.aoMap]);
+      revealGates.push(new Promise<void>((resolve) => {
+        let _tries = 0;
+        const check = () => {
+          if (_tries++ > 60 || _gateTexes.every((tx) => tx.version > 0)) resolve();
+          else setTimeout(check, 150);
+        };
+        check();
+      }));
+    }
+    // W3H (audit F03): the hall was the ONLY major scene with zero anisotropic
+    // filtering — floor/wall maps smeared at grazing angles.
+    if (W3H) {
+      const maxAniso = ren.capabilities.getMaxAnisotropy();
+      const aniso = Math.min(isMobileGPU() ? 4 : 8, maxAniso);
+      for (const set of allTexSets) {
+        for (const t of [set.map, set.normalMap, set.roughnessMap, set.aoMap]) {
+          if (t) { t.anisotropy = aniso; t.needsUpdate = true; }
+        }
+      }
+    }
 
     // ── MATERIALS (PBR-upgraded with real textures + env map) ──
     // Archetype materials — module-cached so compiled shader programs survive scene
     // transitions. Parameter-keyed on the daylight-preset values used below (lightBeam);
     // the rest are constant. Per-door materials stay per-mount and are disposed normally.
-    const msKey = `entrance|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    const msKey = `entrance|zf1|${dlPreset.sunColor}|${dlPreset.sunIntensity}`; // zf1: floorAccent polygonOffset (cache-bust)
     const MS = acquireMaterialSet(msKey, () => ({
       marble: mkPhys(THREE,{ color: "#F5F0E8", roughness: 0.12, metalness: 0.0, envMapIntensity: 1.0, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.4, .4), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.3, clearcoatRoughness: 0.15, reflectivity: 0.7 }),
       marbleWarm: mkPhys(THREE,{ color: "#EDE5D8", roughness: 0.18, metalness: 0.0, envMapIntensity: 0.9, map: floorTileTex.map, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: floorTileTex.roughnessMap, aoMap: floorTileTex.aoMap, aoMapIntensity: 0.7, clearcoat: 0.2, clearcoatRoughness: 0.2 }),
@@ -320,7 +498,7 @@ function EntranceHallScene({
       domeGold: mkPhys(THREE,{ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
       floor: mkPhys(THREE,{ color: "#E8DDD0", roughness: 0.35, metalness: 0.02, envMapIntensity: 0.2, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.15, clearcoatRoughness: 0.4, reflectivity: 0.25 }),
       floorDark: mkPhys(THREE,{ color: "#C4B8A0", roughness: 0.4, metalness: 0.02, envMapIntensity: 0.18, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.2, .2), clearcoat: 0.1, clearcoatRoughness: 0.45, reflectivity: 0.2 }),
-      floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.9 }),
+      floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.9, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
       bust: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.7, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
       bronze: mkPhys(THREE,{ color: "#8A7050", roughness: 0.25, metalness: 0.8, envMapIntensity: 1.1, clearcoat: 0.2, clearcoatRoughness: 0.3 }),
       wall: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.2, .2), roughnessMap: wallTex.roughnessMap }),
@@ -350,6 +528,24 @@ function EntranceHallScene({
       return a;
     });
 
+    // ── MUSEO VIVO W2 (WS4-6): Ancestral Wall bay geometry — the family wall
+    // claims the first inter-door bay (between doors 0 and 1, inside the
+    // entrance-spawn sightline). Columns/panels inside this arc are skipped so
+    // the salon hang reads as one dedicated wall segment.
+    const AW_ANGLE = (Math.PI * 1.5 + Math.PI / NUM_DOORS) % (Math.PI * 2);
+    const AW_HALF = Math.max(0.15, Math.PI / NUM_DOORS - 0.17); // arc kept clear of door casings
+    // Owner feedback 2026-08-06: the Ancestral Wall leaves the entrance hall
+    // until it earns a proper redesign (concept approved, execution not).
+    // Bust, living water, oculus pool and the focus rig stay live.
+    // Ancestral Wall: briefly revived under W3H (privacy path verified:
+    // getVisitorAncestralMemories server action + ancestralPublicOnly filter),
+    // then ROLLED BACK by owner decision 2026-08-13. The verified privacy
+    // notes stand for whenever it returns.
+    const AW_ENABLED = false;
+    const angDiff = (a: number, b: number) => { let d = Math.abs(a - b); if (d > Math.PI) d = Math.PI * 2 - d; return d; };
+    // WS4-7 bust-moment anchor (left-front of the impluvium, facing the spawn).
+    const W2_BUST = { x: -4.9, z: 1.7 };
+
     // ── DOOR DIMENSIONS (MASSIVE) ──
     const DOOR_H = 7.0;
     const DOOR_W = 3.5;
@@ -357,87 +553,150 @@ function EntranceHallScene({
 
     // ── LIGHTING (dramatic PBR upgrade) ──
     // Hemisphere: warm sky / cool dark ground for contrast
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, "#1A0F05", 0.15 * dlPreset.ambientIntensity / 0.5));
-    // Main oculus directional light — filmic: dramatic but not blown out
-    const sunLight = new THREE.DirectionalLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity);
-    sunLight.position.set(0, TOTAL_H + 10, 0);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
-    sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 60;
-    sunLight.shadow.camera.left = -12;
-    sunLight.shadow.camera.right = 12;
-    sunLight.shadow.camera.top = 12;
-    sunLight.shadow.camera.bottom = -12;
-    sunLight.shadow.bias = -0.001;
-    scene.add(sunLight);
-    // Warm fill light (subtle, for depth)
-    const fillLight = new THREE.DirectionalLight(dlPreset.fillColor, 0.2 * dlPreset.fillIntensity / 0.35);
-    fillLight.position.set(-10, 8, 5);
-    scene.add(fillLight);
-    // Main oculus spotlight — filmic beam
-    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
+    // Warm sky + terracotta ground bounce (WS1-6): the near-black #1A0F05
+    // ground and 0.15 intensity were a main cause of the "eerie" hall.
+    // (W2/WS7-10: `hemi` is captured so focus mode can dim it 15% — same rig.)
+    // Owner feedback r2: hemi 0.55→0.34 — ambient down so the oculus key carves depth
+    // (same ratio shift the exterior just took: hemi 0.6→0.36).
+    const hemi = new THREE.HemisphereLight(dlPreset.ambientColor, dlPreset.groundBounceColor, (W1 ? 0.34 : 0.4) * dlPreset.ambientIntensity / 0.5);
+    scene.add(hemi);
+    const hemiBase = hemi.intensity;
+    if (!W1) {
+      // (pre-Wave-1 rig) Main oculus directional light — deleted under w1_hall:
+      // the oculus key spot below is THE one shadow caster (WS4-3 light budget).
+      const sunLight = new THREE.DirectionalLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity);
+      sunLight.position.set(0, TOTAL_H + 10, 0);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
+      sunLight.shadow.camera.near = 1;
+      sunLight.shadow.camera.far = 60;
+      sunLight.shadow.camera.left = -12;
+      sunLight.shadow.camera.right = 12;
+      sunLight.shadow.camera.top = 12;
+      sunLight.shadow.camera.bottom = -12;
+      sunLight.shadow.bias = -0.001;
+      scene.add(sunLight);
+      // Warm fill light (subtle, for depth)
+      const fillLight = new THREE.DirectionalLight(dlPreset.fillColor, 0.2 * dlPreset.fillIntensity / 0.35);
+      fillLight.position.set(-10, 8, 5);
+      scene.add(fillLight);
+    }
+    // Oculus key spot — under w1_hall this is THE one shadow in the hall:
+    // static 1024 map, normalBias 0.03, radius 6 (budget law; autoUpdate=false above).
+    // Owner feedback r2: key 2.8→3.9 (~exterior's zon 3.2→4.4) — the shaft reads again.
+    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, (W1 ? 3.9 : 2.4) * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
     oculusSpot.position.set(0, TOTAL_H - 1, 0);
-    oculusSpot.target.position.set(0, 0, 0);
+    // W3H (Wave A graft "the one real sun"): tilt the shaft ~22° toward canon
+    // SW so the light pool lands off-centre like a real sun — a straight-down
+    // shaft reads as a stage light, not daylight.
+    oculusSpot.target.position.set(W3H ? -4 : 0, 0, W3H ? 4 : 0);
     oculusSpot.castShadow = true;
-    oculusSpot.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
+    if (W1) {
+      oculusSpot.shadow.mapSize.set(1024, 1024);
+      oculusSpot.shadow.normalBias = 0.03;
+      oculusSpot.shadow.radius = 4; // r2: crisper shadow edge now the key is stronger
+    } else {
+      oculusSpot.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
+    }
     scene.add(oculusSpot);
     scene.add(oculusSpot.target);
-    // Secondary warm fill from oculus
-    const oculusFill = new THREE.PointLight(dlPreset.fillColor, 0.7 * dlPreset.sunIntensity, 40);
+    // Secondary warm fill from oculus (warm point 1 of max 2 under w1_hall)
+    // Owner feedback r2: fill 0.9→0.55 — the flat gold wash came from here.
+    const oculusFill = new THREE.PointLight(dlPreset.fillColor, (W1 ? 0.55 : 0.7) * dlPreset.sunIntensity, 40);
     oculusFill.position.set(0, TOTAL_H - 2, 0);
     scene.add(oculusFill);
+    const oculusFillBase = oculusFill.intensity;
 
     // ── FLOOR — radial marble mosaic ──
-    const floorGeo = new THREE.CircleGeometry(RADIUS + 1, 64);
+    // W3H ROOT CAUSE (owner: "water komt niet door"): the floor was a SOLID
+    // disc — the sunken impluvium and its water have always been UNDERNEATH
+    // it, completely invisible. Cut a real 7×5 opening over the pool.
+    let floorGeo: THREE.BufferGeometry;
+    if (W3H) {
+      const fShape = new THREE.Shape();
+      fShape.absarc(0, 0, RADIUS + 1, 0, Math.PI * 2, false);
+      const hole = new THREE.Path();
+      // (shape is built in XY then rotated -90° about X: shape Y maps to -Z,
+      // so the 7×5 pool rect keeps its aspect after rotation)
+      hole.moveTo(-3.5, -2.5); hole.lineTo(3.5, -2.5);
+      hole.lineTo(3.5, 2.5); hole.lineTo(-3.5, 2.5);
+      hole.closePath();
+      fShape.holes.push(hole);
+      floorGeo = new THREE.ShapeGeometry(fShape, 64);
+      // ShapeGeometry emits raw-coordinate UVs — normalise to the same 0..1
+      // disc mapping CircleGeometry used, so the floor texture scale is
+      // unchanged from the pre-W3H look.
+      const uv = floorGeo.getAttribute("uv") as THREE.BufferAttribute;
+      const span = 2 * (RADIUS + 1);
+      for (let i = 0; i < uv.count; i++) {
+        uv.setXY(i, uv.getX(i) / span + 0.5, uv.getY(i) / span + 0.5);
+      }
+      uv.needsUpdate = true;
+    } else {
+      floorGeo = new THREE.CircleGeometry(RADIUS + 1, 64);
+    }
     const floorMesh = new THREE.Mesh(floorGeo, MS.floor);
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.receiveShadow = true;
     scene.add(floorMesh);
 
-    // Radial floor rings
-    for (let r = 2; r < RADIUS; r += 3) {
+    // Radial floor rings — z-fight sweep r2: lifted (0.003→0.005) and the shared
+    // floorAccent material carries polygonOffset against the grazing-angle floor.
+    // W3H: rings start OUTSIDE the pool opening (r=2 ran straight across it)
+    for (let r = W3H ? 5 : 2; r < RADIUS; r += 3) {
       const ring = new THREE.Mesh(
         new THREE.RingGeometry(r, r + 0.15, 64),
         MS.floorAccent
       );
       ring.rotation.x = -Math.PI / 2;
-      ring.position.y = 0.003;
+      ring.position.y = 0.005;
       ring.receiveShadow = true;
       scene.add(ring);
     }
-    // Radial spokes
+    // Radial spokes — r2: lifted above the ring plane (top 0.011 vs ring 0.005)
+    // W3H: shortened so they start beyond the pool opening instead of
+    // crossing the water.
+    const spokeLen = W3H ? RADIUS - 6 : RADIUS - 2;
+    const spokeMid = W3H ? (RADIUS + 3.5) / 2 : RADIUS / 2 - 1;
     for (let i = 0; i < 12; i++) {
       const angle = (i / 12) * Math.PI * 2;
-      const spoke = mk(new THREE.BoxGeometry(0.1, 0.004, RADIUS - 2), MS.floorAccent,
-        Math.sin(angle) * (RADIUS / 2 - 1), 0.004, Math.cos(angle) * (RADIUS / 2 - 1));
+      const spoke = mk(new THREE.BoxGeometry(0.1, 0.004, spokeLen), MS.floorAccent,
+        Math.sin(angle) * spokeMid, 0.009, Math.cos(angle) * spokeMid);
       spoke.rotation.y = -angle;
       scene.add(spoke);
     }
-    // Center medallion
-    const centerMedallion = new THREE.Mesh(new THREE.CircleGeometry(3.0, 32), MS.floorDark);
-    centerMedallion.rotation.x = -Math.PI / 2;
-    centerMedallion.position.y = 0.005;
-    centerMedallion.receiveShadow = true;
-    scene.add(centerMedallion);
-    const innerMedallion = new THREE.Mesh(new THREE.CircleGeometry(2.2, 32), MS.gold);
-    innerMedallion.rotation.x = -Math.PI / 2;
-    innerMedallion.position.y = 0.007;
-    scene.add(innerMedallion);
-    const starGeo = new THREE.CircleGeometry(1.5, 5);
-    const starMesh = new THREE.Mesh(starGeo, MS.marbleDark);
-    starMesh.rotation.x = -Math.PI / 2;
-    starMesh.position.y = 0.009;
-    scene.add(starMesh);
+    // Center medallion — W3H: gone; the centre of the hall is the WATER now
+    // (the gold disc + star drew on top of the covered pool — the "olive
+    // disc" the owner kept seeing).
+    if (!W3H) {
+      const centerMedallion = new THREE.Mesh(new THREE.CircleGeometry(3.0, 32), MS.floorDark);
+      centerMedallion.rotation.x = -Math.PI / 2;
+      centerMedallion.position.y = 0.005;
+      centerMedallion.receiveShadow = true;
+      scene.add(centerMedallion);
+      const innerMedallion = new THREE.Mesh(new THREE.CircleGeometry(2.2, 32), MS.gold);
+      innerMedallion.rotation.x = -Math.PI / 2;
+      innerMedallion.position.y = 0.007;
+      scene.add(innerMedallion);
+      const starGeo = new THREE.CircleGeometry(1.5, 5);
+      const starMesh = new THREE.Mesh(starGeo, MS.marbleDark);
+      starMesh.rotation.x = -Math.PI / 2;
+      starMesh.position.y = 0.009;
+      scene.add(starMesh);
+    }
     // Alternating floor tiles in rings — merged into single geometry
     {
       const tileShapes: THREE.Shape[] = [];
+      // W3H: the pool rect corners reach r=4.30 — inner-ring tiles starting at
+      // r=4 overhung the opening as pale triangles "biting" the water corners.
+      const overPool = (x: number, z: number) => W3H && Math.abs(x) < 3.9 && Math.abs(z) < 2.9;
       for (let r = 4; r < RADIUS - 1; r += 3) {
         const segments = Math.floor(r * 2);
         for (let s = 0; s < segments; s++) {
           if (s % 2 === 0) continue;
           const a1 = (s / segments) * Math.PI * 2;
           const a2 = ((s + 1) / segments) * Math.PI * 2;
+          if (overPool(Math.cos(a1) * r, Math.sin(a1) * r) || overPool(Math.cos(a2) * r, Math.sin(a2) * r)) continue;
           const shape = new THREE.Shape();
           shape.moveTo(Math.cos(a1) * r, Math.sin(a1) * r);
           shape.lineTo(Math.cos(a1) * (r + 2.5), Math.sin(a1) * (r + 2.5));
@@ -521,7 +780,8 @@ function EntranceHallScene({
       scene.add(rib);
     }
     // Concentric dome rings (more rings)
-    for (let ring = 1; ring <= 4; ring++) {
+    // W3H: the GLB dome carries its own coffer articulation — no gold hoops
+    if (!W3H) for (let ring = 1; ring <= 4; ring++) {
       const phi = (ring / 8) * Math.PI / 2;
       const ringR = RADIUS * Math.sin(phi);
       const ringY = WALL_H + RADIUS * Math.cos(phi);
@@ -534,7 +794,9 @@ function EntranceHallScene({
       scene.add(domeRing);
     }
     // Coffer recesses (rosettes at intersections)
-    for (let ri = 1; ri <= 3; ri++) {
+    // W3H (audit): these 36 discs face OUTWARD from the dome interior — they
+    // are backface-culled and never render, they only burn 36 draw calls.
+    if (!W3H) for (let ri = 1; ri <= 3; ri++) {
       const phi = (ri / 6) * Math.PI / 2;
       const ringR = RADIUS * Math.sin(phi);
       const ringY = WALL_H + RADIUS * Math.cos(phi);
@@ -566,6 +828,49 @@ function EntranceHallScene({
     oculusMesh.rotation.x = Math.PI / 2;
     oculusMesh.position.y = TOTAL_H - 0.3;
     scene.add(oculusMesh);
+
+    // ═══ W3H WAVE B — THE DOME HERO (La Sala degli Sguardi move 4) ═══
+    // Blender-authored spherical-cap dome GLB: a TRUE oculus opening at the
+    // apex (the old dome was a solid r=20 hemisphere with a flat cream disc
+    // floating 6m BELOW its apex), 4 rings × 24 real recessed coffers with
+    // proud frames, CPU-baked AO folded into the albedo. DRACO, 271KB, ~8k
+    // tris. Canary pattern: procedural dome stays as the load-failure path.
+    if (W3H) {
+      revealGates.push(loadModel("/models/hall/dome_hall_w3.glb?v=1").then((g) => {
+        g.traverse((c) => {
+          const m = c as THREE.Mesh;
+          if (!m.isMesh) return;
+          const mat = (m.material as THREE.MeshStandardMaterial).clone();
+          mat.side = THREE.DoubleSide;   // inward-facing shell, no winding risk
+          mat.envMapIntensity = 0.45;
+          m.material = mat;
+          m.castShadow = false; m.receiveShadow = false;
+        });
+        g.position.y = WALL_H;
+        scene.add(g);
+        // GLB seated → retire the procedural dome + the floating fake disc
+        domeMesh.visible = false;
+        oculusMesh.visible = false;
+        // warm sky through the REAL hole — the brightest surface in the hall.
+        // Wave C: HDR-lifted past the 1.0 bloom threshold — in any screenshot
+        // the blooming pixels ARE the sun (the enforcement mechanism of the
+        // whole "memories/sun brightest" dogma).
+        const skyDiscMat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+        skyDiscMat.color.setRGB(2.5, 1.95, 1.15);
+        const skyDisc = new THREE.Mesh(
+          new THREE.CircleGeometry(OCULUS_R + 1.8, 32),
+          skyDiscMat
+        );
+        skyDisc.rotation.x = Math.PI / 2;
+        skyDisc.position.y = WALL_H + 15.4;
+        scene.add(skyDisc);
+        // audit F02 generalized: the one-shot shadow bake ran before this
+        // async GLB arrived — rebake so the new geometry participates.
+        ren.shadowMap.needsUpdate = true;
+      }).catch((err) => {
+        console.warn("[W3H] dome GLB load failed, keeping procedural dome", err);
+      }));
+    }
     // Oculus ring (thicker)
     const oculusRing = new THREE.Mesh(
       new THREE.TorusGeometry(OCULUS_R, 0.35, 10, 32),
@@ -575,11 +880,15 @@ function EntranceHallScene({
     oculusRing.position.y = TOTAL_H - 0.3;
     scene.add(oculusRing);
 
-    // ── VOLUMETRIC LIGHT CONE from oculus ──
-    const beamGeo = new THREE.ConeGeometry(6, 22, 16, 1, true);
-    const beamMesh = new THREE.Mesh(beamGeo, MS.lightBeam);
-    beamMesh.position.y = TOTAL_H - 11;
-    scene.add(beamMesh);
+    // ── VOLUMETRIC LIGHT CONE from oculus — deleted under w1_hall (WS4-5/WS10-3:
+    // ONE oculus beam max; the createLightBeam system below is THE beam) ──
+    let beamMesh: THREE.Mesh | null = null;
+    if (!W1) {
+      const beamGeo = new THREE.ConeGeometry(6, 22, 16, 1, true);
+      beamMesh = new THREE.Mesh(beamGeo, MS.lightBeam);
+      beamMesh.position.y = TOTAL_H - 11;
+      scene.add(beamMesh);
+    }
 
     // ── COLUMNS (skip columns that would block doors or exit portal) ──
     const colR = 0.4;
@@ -596,6 +905,9 @@ function EntranceHallScene({
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff < COL_SKIP_THRESHOLD) { skip = true; break; }
       }
+      // W2 (WS4-6): keep the Ancestral Wall bay open — no columns in front of
+      // the family photos (mirrors the door/exit clearings above).
+      if (W2 && AW_ENABLED && angDiff(colAngle, AW_ANGLE) < AW_HALF + 0.06) skip = true;
       if (!skip) validColAngles.push(colAngle);
     }
     const NUM_VALID_COLS = validColAngles.length;
@@ -669,8 +981,55 @@ function EntranceHallScene({
     fluteRingInst.instanceMatrix.needsUpdate = true;
     scene.add(fluteRingInst);
 
+    // ═══ W3H WAVE B — COLUMN HERO KIT ═══
+    // Blender-authored classical column (20-flute tapered shaft, attic base,
+    // gold acanthus bell capital + abacus, CPU-baked AO in the albedo).
+    // Two child meshes → two InstancedMeshes over the same validColAngles.
+    // Canary: the 5 procedural instanced meshes hide only on load success.
+    if (W3H) {
+      revealGates.push(loadModel("/models/hall/column_hall_w3.glb?v=1").then((g) => {
+        const parts: THREE.Mesh[] = [];
+        g.updateMatrixWorld(true);
+        g.traverse((c) => { const m = c as THREE.Mesh; if (m.isMesh) parts.push(m); });
+        if (!parts.length) return;
+        const im4 = new THREE.Matrix4();
+        for (const part of parts) {
+          const mat = (part.material as THREE.MeshStandardMaterial).clone();
+          mat.envMapIntensity = 0.55;
+          // glTF puts the Z-up→Y-up conversion in the NODE transform, not the
+          // vertices — bake it in, or every instanced column lies flat under
+          // the floor.
+          const geo = part.geometry.clone();
+          geo.applyMatrix4(part.matrixWorld);
+          const inst = new THREE.InstancedMesh(geo, mat, NUM_VALID_COLS);
+          validColAngles.forEach((angle, idx) => {
+            const cx = Math.cos(angle) * (RADIUS - 0.8);
+            const cz = Math.sin(angle) * (RADIUS - 0.8);
+            im4.makeTranslation(cx, 0, cz);
+            inst.setMatrixAt(idx, im4);
+          });
+          inst.instanceMatrix.needsUpdate = true;
+          inst.castShadow = true;
+          inst.receiveShadow = true;
+          scene.add(inst);
+        }
+        // GLB seated → retire the procedural column kit
+        colBaseMesh.visible = false;
+        capMesh.visible = false;
+        abacusMesh.visible = false;
+        baseMeshI.visible = false;
+        fluteRingInst.visible = false;
+        // audit F02 generalized: rebake the static shadow map now the real
+        // columns exist — otherwise they cast nothing (bake ran pre-load).
+        ren.shadowMap.needsUpdate = true;
+      }).catch((err) => {
+        console.warn("[W3H] column GLB load failed, keeping procedural columns", err);
+      }));
+    }
+
     // ── 7 GRAND DOORS ──
     const doorMeshes: { mesh: THREE.Mesh; mat: THREE.MeshStandardMaterial; wingId: string; angle: number }[] = [];
+    const lunetteTextures: THREE.Texture[] = []; // scene-owned paintTex canvases (disposed in cleanup)
 
     // ── P2-6: hoisted per-door resources — geometry and constant-material
     // CONTENT is identical for every door (only the mesh transforms differ),
@@ -714,13 +1073,116 @@ function EntranceHallScene({
       // constant materials (never mutated after creation)
       recessUnlockedMat: new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 }),
       recessLockedMat: new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
-      insetMat: new THREE.MeshStandardMaterial({ color: "#5A3A1E", roughness: 0.55, metalness: 0.0 }),
+      insetMat: new THREE.MeshStandardMaterial({
+        color: W3H ? "#6E4826" : "#5A3A1E", roughness: 0.55, metalness: 0.0,
+        // W3H: recessed panels carry the same real wood grain as the leaves
+        ...(W3H ? { map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: woodDoorTex.roughnessMap } : {}),
+      }),
       handlePlateMat: new THREE.MeshStandardMaterial({ color: "#8A7040", roughness: 0.3, metalness: 0.7 }),
       nicheArchOutlineMat: new THREE.MeshStandardMaterial({ color: "#B8A070", roughness: 0.3, metalness: 0.5, emissive: "#B8A070", emissiveIntensity: 0.08 }),
       etchMat: new THREE.MeshStandardMaterial({ color: "#B8A070", roughness: 0.35, metalness: 0.4, emissive: "#B8A070", emissiveIntensity: 0.06 }),
       lockMedallionMat: new THREE.MeshStandardMaterial({ color: "#C8B080", roughness: 0.25, metalness: 0.7, emissive: "#C8B080", emissiveIntensity: 0.05 }),
       keyholeDarkMat: new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0 }),
     };
+
+    // ── WAVE-1 SHARED DOOR RESOURCES (WS4-3/4): the deleted doorFill/doorFaceSpot
+    // rigs are compensated with ONE shared additive glow texture (sprite above each
+    // door + warm pool decal at each threshold — zero dynamic-light cost), ink door
+    // casings, an ember hover outline, and a gold walkthrough ring decal (replaces
+    // the 7 intensity-0 hlDoorLights). All disposed by the scene traversal below.
+    let w1GlowSpriteMat: THREE.SpriteMaterial | null = null;
+    let w1PoolMat: THREE.MeshBasicMaterial | null = null;
+    let w1PoolGeo: THREE.PlaneGeometry | null = null;
+    let w1InkCasingMat: THREE.MeshStandardMaterial | null = null;
+    let w1HoverPlane: THREE.Mesh | null = null;
+    let w1HlRing: THREE.Mesh | null = null;
+    if (W1) {
+      const gc = document.createElement("canvas");
+      gc.width = gc.height = 128;
+      const gctx = gc.getContext("2d")!;
+      const grad = gctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, "rgba(255,216,168,0.85)");
+      grad.addColorStop(0.5, "rgba(255,196,130,0.30)");
+      grad.addColorStop(1, "rgba(255,184,112,0)");
+      gctx.fillStyle = grad;
+      gctx.fillRect(0, 0, 128, 128);
+      const glowTex = new THREE.CanvasTexture(gc);
+      glowTex.colorSpace = THREE.SRGBColorSpace;
+      // r2: baked compensation eases off (0.5→0.42 / 0.35→0.28) now the key is stronger;
+      // polygonOffset keeps the floor pool clear of the mosaic Greek-key tops (z-fight).
+      // W3H: the 0.42 additive glow bleached the middle of every door — any
+      // wood grain was blown to flat orange. The gilded labels + real wood
+      // carry the door read now, so the compensation glow steps way back.
+      w1GlowSpriteMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: W3H ? 0.16 : 0.42, blending: THREE.AdditiveBlending, depthWrite: false });
+      w1PoolMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, opacity: W3H ? 0.2 : 0.28, blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+      w1PoolGeo = new THREE.PlaneGeometry(4.2, 4.2);
+      w1InkCasingMat = new THREE.MeshStandardMaterial({ color: INK, roughness: 0.6, metalness: 0.0, envMapIntensity: 0.4 });
+      // Ember hover outline plane — the ONLY interactive accent (dogma 3); moved to
+      // the hovered door each frame, replaces the emissive hover/proximity glow loop.
+      w1HoverPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(DOOR_W + 0.5, DOOR_H + 0.5),
+        new THREE.MeshBasicMaterial({ color: EMBER, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })
+      );
+      w1HoverPlane.visible = false;
+      scene.add(w1HoverPlane);
+      // Gold walkthrough ring decal (no PointLight)
+      w1HlRing = new THREE.Mesh(
+        new THREE.RingGeometry(1.1, 1.45, 48),
+        // z-fight sweep r2: offset + lifted above the floor decal stack (spokes 0.011)
+        new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })
+      );
+      w1HlRing.rotation.x = -Math.PI / 2;
+      w1HlRing.position.y = 0.04;
+      w1HlRing.renderOrder = 1;
+      scene.add(w1HlRing);
+    }
+
+    // W3H (owner: door texture "komt niet door"): a HIGH-CONTRAST procedural
+    // plank albedo — vertical planks with grain streaks and per-plank tone —
+    // guaranteed to read at hall distance (the subtle 1k PBR diffuse did not).
+    // The dark_wood normal/roughness maps stay for relief.
+    let w3DoorWoodTex: THREE.CanvasTexture | null = null;
+    if (W3H) {
+      const wc = document.createElement("canvas"); wc.width = 256; wc.height = 512;
+      const wctx = wc.getContext("2d");
+      if (wctx) {
+        const PLANKS = 4, pw = 256 / PLANKS;
+        for (let p = 0; p < PLANKS; p++) {
+          const h2 = Math.sin(p * 127.1 + 7.7) * 43758.5453;
+          const v2 = (h2 - Math.floor(h2)) * 52 - 26; // strong plank-to-plank tone
+          wctx.fillStyle = `rgb(${112 + v2 | 0},${76 + v2 * 0.7 | 0},${46 + v2 * 0.5 | 0})`;
+          wctx.fillRect(p * pw, 0, pw, 512);
+          // rail shading top/bottom so the leaf reads constructed, not painted
+          const railG = wctx.createLinearGradient(0, 0, 0, 512);
+          railG.addColorStop(0, "rgba(30,18,8,0.35)");
+          railG.addColorStop(0.12, "rgba(30,18,8,0)");
+          railG.addColorStop(0.88, "rgba(30,18,8,0)");
+          railG.addColorStop(1, "rgba(30,18,8,0.4)");
+          wctx.fillStyle = railG;
+          wctx.fillRect(p * pw, 0, pw, 512);
+          // grain: wavy vertical streaks (owner round 2: "duidelijker")
+          for (let s2 = 0; s2 < 14; s2++) {
+            const h3 = Math.sin((p * 13 + s2) * 91.7) * 4375.5;
+            const gx2 = p * pw + (h3 - Math.floor(h3)) * pw;
+            const dark = s2 % 3 === 0 ? 0.45 : 0.25;
+            wctx.strokeStyle = `rgba(48,28,12,${dark})`;
+            wctx.lineWidth = s2 % 4 === 0 ? 3.2 : 1.6;
+            wctx.beginPath();
+            wctx.moveTo(gx2, 0);
+            for (let yy = 0; yy <= 512; yy += 32) {
+              wctx.lineTo(gx2 + Math.sin(yy * 0.02 + s2 * 2 + p) * 3.5, yy);
+            }
+            wctx.stroke();
+          }
+          // plank seam
+          wctx.fillStyle = "rgba(40,24,10,0.55)";
+          wctx.fillRect(p * pw, 0, 2, 512);
+        }
+      }
+      w3DoorWoodTex = new THREE.CanvasTexture(wc);
+      w3DoorWoodTex.colorSpace = THREE.SRGBColorSpace;
+      w3DoorWoodTex.anisotropy = 8;
+    }
 
     // Map shared wings to locked door slots
     const sharedWingsArr = sharedWings || [];
@@ -755,8 +1217,9 @@ function EntranceHallScene({
       recessMesh.lookAt(0, (DOOR_H + 0.6) / 2, 0);
       scene.add(recessMesh);
 
-      // ── ELEGANT MARBLE FRAME (not gold — classy stone) ──
-      const frameMat = MS.marbleDark;
+      // ── DOOR CASING — ink under w1_hall (WS4-4: ink casings, canon INK),
+      // marble otherwise ──
+      const frameMat = (W1 && w1InkCasingMat) ? w1InkCasingMat : MS.marbleDark;
       // Left frame pillar
       const lp = new THREE.Mesh(DS.lpGeo, frameMat);
       lp.position.set(
@@ -798,6 +1261,44 @@ function EntranceHallScene({
       keystone.lookAt(new THREE.Vector3(0, DOOR_H + 0.45 + archH, 0));
       scene.add(keystone);
 
+      // W3H (Wave B move 7 — v1 empty state): recessed LUNETTE above each
+      // door: a carved-relief half-moon faintly tinted to the wing accent,
+      // ringed by a gilded arc. The wing's memory photo hangs here once the
+      // per-wing data plumbing lands (masterplan lunette workstream).
+      if (W3H) {
+        const lunR = 1.35, lunY = DOOR_H + 2.0;
+        const lx2 = Math.cos(angle) * (RADIUS - 0.22);
+        const lz2 = Math.sin(angle) * (RADIUS - 0.22);
+        // The wing's NEWEST photo memory hangs in the lunette (Sguardi move 7
+        // — every sightline ends in a memory). Unlit MeshBasic + a slight
+        // over-unity lift: photo highlights cross the 1.0 bloom threshold and
+        // read as picture-lit. No photo (or locked/shared slot) → carved
+        // relief empty state.
+        const lunMem = !isPlaceholderLocked && !isSharedDoor ? lunettePhotos?.[doorDef.id] : undefined;
+        let lunMat: THREE.Material;
+        if (lunMem) {
+          const ltex = gatePaintTex(lunMem, paintTex(lunMem)); // reveal gate: lunette photo draw
+          lunetteTextures.push(ltex);
+          const pm = new THREE.MeshBasicMaterial({ map: ltex });
+          pm.color.setRGB(1.12, 1.12, 1.12);
+          lunMat = pm;
+        } else {
+          const lunTint = new THREE.Color("#3A3226").lerp(new THREE.Color((wing?.accent || sharedAccent || "#8B7355")), 0.22);
+          lunMat = new THREE.MeshStandardMaterial({ color: lunTint, roughness: 0.9, metalness: 0 });
+        }
+        const lun = new THREE.Mesh(
+          new THREE.CircleGeometry(lunR, 24, 0, Math.PI),
+          lunMat
+        );
+        lun.position.set(lx2, lunY, lz2);
+        lun.lookAt(new THREE.Vector3(0, lunY, 0));
+        scene.add(lun);
+        const lunRim = new THREE.Mesh(new THREE.TorusGeometry(lunR + 0.06, 0.05, 6, 24, Math.PI), MS.goldDark);
+        lunRim.position.set(Math.cos(angle) * (RADIUS - 0.28), lunY, Math.sin(angle) * (RADIUS - 0.28));
+        lunRim.lookAt(new THREE.Vector3(0, lunY, 0));
+        scene.add(lunRim);
+      }
+
       if (isUnlocked) {
       // ── DOUBLE DOOR PANELS (unlocked wing) ──
       // Shared doors get an ethereal translucent look with wing accent color
@@ -805,12 +1306,29 @@ function EntranceHallScene({
       const doorMat = isSharedDoor
         ? new THREE.MeshStandardMaterial({
             color: sharedAccent, roughness: 0.2, metalness: 0.3,
-            emissive: sharedAccent, emissiveIntensity: 0.15,
+            // w1_hall: colored emissive door glows are dead (WS4-4) — the shared
+            // door keeps its accent ALBEDO identity, not a glow.
+            emissive: sharedAccent, emissiveIntensity: W1 ? 0.05 : 0.15,
             transparent: true, opacity: 0.85,
           })
         : new THREE.MeshStandardMaterial({
-            color: "#7A5030", roughness: 0.45, metalness: 0.0,
-            emissive: "#5A3A20", emissiveIntensity: 0.2,
+            // Neutral warm-wood self-illumination (fixture compensation, not a
+            // wing-accent glow) — static under w1_hall; pre-W1 the animate loop
+            // overwrites it with the accent proximity glow.
+            // W3H (owner: "meer textuur op de deuren"): high-contrast plank
+            // canvas as albedo (white multiplier — the canvas carries the
+            // tone) + dark_wood normal/roughness for relief; emissive wash
+            // halved so the grain isn't flattened.
+            // W3H round 2 (owner): every door leans its OWN wood species —
+            // subtle warm shifts (walnut/oak/mahogany/chestnut...) per slot.
+            color: W3H ? ["#D8CCBC", "#E4D4B4", "#CFB9A9", "#DCC8A4", "#C9B6A6", "#E2CFC4", "#D2C0A4"][i % 7] : "#7A5030",
+            roughness: 0.45, metalness: 0.0,
+            emissive: "#5A3A20", emissiveIntensity: W3H ? 0.06 : 0.2,
+            ...(W3H && w3DoorWoodTex ? {
+              map: w3DoorWoodTex, normalMap: woodDoorTex.normalMap,
+              normalScale: new THREE.Vector2(0.85, 0.85),
+              roughnessMap: woodDoorTex.roughnessMap,
+            } : {}),
           });
 
       const leftPanel = new THREE.Mesh(DS.panelGeo, doorMat);
@@ -964,19 +1482,40 @@ function EntranceHallScene({
       scene.add(keyholeSlot);
       }
 
-      // Warm fill light for door visibility (dimmer for locked niches)
-      const doorFillColor = isSharedDoor ? sharedAccent : dlPreset.sunColor;
-      const doorFill = new THREE.PointLight(doorFillColor, (isUnlocked ? 1.5 : 0.5) * dlPreset.sunIntensity, 10);
-      doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
-      scene.add(doorFill);
+      if (!W1) {
+        // (pre-Wave-1) Warm fill light for door visibility (dimmer for locked niches)
+        const doorFillColor = isSharedDoor ? sharedAccent : dlPreset.sunColor;
+        const doorFill = new THREE.PointLight(doorFillColor, (isUnlocked ? 1.5 : 0.5) * dlPreset.sunIntensity, 10);
+        doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
+        scene.add(doorFill);
 
-      // Spotlight on door face (dimmer for locked niches, skip on mobile)
-      if (!isMobileGPU()) {
-        const doorFaceSpot = new THREE.SpotLight(isSharedDoor ? sharedAccent : dlPreset.sunColor, (isUnlocked ? 2.0 : 0.6) * dlPreset.sunIntensity, 16, Math.PI / 4.5, 0.4, 0.7);
-        doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
-        doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
-        scene.add(doorFaceSpot);
-        scene.add(doorFaceSpot.target);
+        // (pre-Wave-1) Spotlight on door face (dimmer for locked niches, skip on mobile)
+        if (!isMobileGPU()) {
+          const doorFaceSpot = new THREE.SpotLight(isSharedDoor ? sharedAccent : dlPreset.sunColor, (isUnlocked ? 2.0 : 0.6) * dlPreset.sunIntensity, 16, Math.PI / 4.5, 0.4, 0.7);
+          doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
+          doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
+          scene.add(doorFaceSpot);
+          scene.add(doorFaceSpot.target);
+        }
+      } else {
+        // w1_hall: doorFill/doorFaceSpot deleted — baked compensation so no door
+        // reads dark (dogma: walls/floors ≥0.5 relative luminance): one additive
+        // glow sprite above the door face + one warm pool decal at the threshold.
+        if (w1GlowSpriteMat) {
+          const glow = new THREE.Sprite(w1GlowSpriteMat);
+          glow.position.set(dx + inN.x * 1.1, DOOR_H * 0.72, dz + inN.z * 1.1);
+          glow.scale.set(isUnlocked ? 5.5 : 4.0, isUnlocked ? 5.5 : 4.0, 1);
+          scene.add(glow);
+        }
+        if (w1PoolMat && w1PoolGeo) {
+          const pool = new THREE.Mesh(w1PoolGeo, w1PoolMat);
+          pool.rotation.x = -Math.PI / 2;
+          // z-fight sweep r2: 0.012 tied the Greek-key border tops exactly (also 0.012);
+          // 0.024 clears the key (0.012) and stays under the threshold bottom (0.03).
+          pool.position.set(dx + inN.x * 1.7, 0.024, dz + inN.z * 1.7);
+          pool.renderOrder = 1; // deterministic order among stacked floor decals
+          scene.add(pool);
+        }
       }
 
       // ── ELEGANT WING NAME LABEL (upper portion of door/niche) ──
@@ -984,6 +1523,19 @@ function EntranceHallScene({
         ? (sharedWingRef?.name?.toUpperCase() || sharedWingForSlot!.wingId.toUpperCase())
         : (wing ? (() => { if (wing.nameKey) { const tr = tw(wing.nameKey); if (tr && tr !== wing.nameKey) return tr.toUpperCase(); } return wing.name.toUpperCase(); })() : "");
       if (effectiveLabel) {
+        if (W1) {
+        // w1_hall (WS4-4): Fraunces lintel lettering — carved museum capitals.
+        // W3H (owner: "naamkaartjes veel te onduidelijk"): larger + GILDED —
+        // incised letters with a gold-leaf infill (classic Roman inscription)
+        // read clearly from across the hall without becoming a plate.
+        const plaque: THREE.Object3D = W3H
+          ? makeFrauncesLabel(effectiveLabel, { width: 3.6, height: 0.7, gilded: true })
+          : makeFrauncesLabel(effectiveLabel, { width: 2.6, height: 0.5 });
+        const plaqueY = DOOR_H + (W3H ? 0.44 : 0.32);
+        plaque.position.set(dx + inN.x * 0.5, plaqueY, dz + inN.z * 0.5);
+        plaque.lookAt(new THREE.Vector3(0, plaqueY, 0));
+        scene.add(plaque);
+        } else {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
         labelCanvas.height = isSharedDoor ? 256 : 192;
@@ -1068,6 +1620,7 @@ function EntranceHallScene({
         );
         labelMesh.lookAt(new THREE.Vector3(0, labelY, 0));
         scene.add(labelMesh);
+        }
       }
     });
 
@@ -1076,6 +1629,15 @@ function EntranceHallScene({
 
     // ── BUST PEDESTALS — disabled for now, will revisit later ──
     const bustMeshes: THREE.Mesh[] = [];
+
+    // ── MUSEO VIVO W2 living-light handles (WS4-8/9) — assigned by the era
+    // branch / W2 block below; the frame loop drifts them on capable GPUs and
+    // leaves the static variant on mobile (budget: zero dynamic lights).
+    const w2Anim = W2 && !isMobileGPU();
+    let w2WaterNormal: THREE.Texture | null = null;
+    let w2CausticA: THREE.Texture | null = null;
+    let w2CausticB: THREE.Texture | null = null;
+    let w2PoolTex: THREE.Texture | null = null;
 
     // ── ERA-SPECIFIC MODIFICATIONS ──
     if (styleEra === "renaissance") {
@@ -1326,8 +1888,9 @@ function EntranceHallScene({
               cx + perpX, branchY + 0.06, cz + perpZ));
           }
 
-          // PointLight per candelabra (skip on mobile)
-          if (!isMobileGPU()) {
+          // PointLight per candelabra (skip on mobile; deleted under w1_hall —
+          // the emissive candle tips are the fixture)
+          if (!isMobileGPU() && !W1) {
             const candleLight = new THREE.PointLight("#FFF5E0", 0.3, 4);
             candleLight.position.set(cx, baseY + 0.5, cz);
             scene.add(candleLight);
@@ -1340,22 +1903,75 @@ function EntranceHallScene({
 
       // ── Grand Impluvium: recessed pool 7×5 ──
       const implW = 7, implD = 5, implDepth = 0.35;
+      // W2 (WS4-8, joint WS3-7): dead teal → canon-warm living water. A tileable
+      // procedural normal map is scrolled ~0.02/s in the frame loop (desktop;
+      // static on mobile) and envMapIntensity catches the golden PMREM — one
+      // material tweak, zero extra lights.
+      // W3H (owner: "mogelijk om water in midden te doen?" — the basin read
+      // as a solid olive disc, not water): deeper glassy tone, stronger
+      // ripple normals and doubled reflection pickup so it reads WET.
       const waterMat = mkPhys(THREE,{
-        color: "#4A8A7A", roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.65,
-        envMapIntensity: 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
+        color: W3H ? "#3A6B64" : (W2 ? "#7BA48E" : "#4A8A7A"), roughness: 0.02, metalness: 0.1, transparent: true, opacity: W3H ? 0.72 : 0.65,
+        envMapIntensity: W3H ? 1.3 : 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
       });
+      if (W2) {
+        w2WaterNormal = makeWaterNormalTexture();
+        w2WaterNormal.repeat.set(3, 2);
+        (waterMat as THREE.MeshPhysicalMaterial).normalMap = w2WaterNormal;
+        (waterMat as THREE.MeshPhysicalMaterial).normalScale = W3H ? new THREE.Vector2(0.65, 0.65) : new THREE.Vector2(0.35, 0.35);
+      }
 
-      // Pool bottom
-      scene.add(mk(new THREE.BoxGeometry(implW, 0.06, implD), MS.marble, 0, -implDepth, 0));
+      // Pool bottom + walls — W3H: a DEEP dark basin lining. Water over a
+      // near-white marble bottom reads as milky glass; over a dark green
+      // basin it instantly reads as standing water (and the caustics glow).
+      const basinMat = W3H
+        ? new THREE.MeshStandardMaterial({ color: "#22403B", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.5 })
+        : MS.marble;
+      scene.add(mk(new THREE.BoxGeometry(implW, 0.06, implD), basinMat, 0, -implDepth, 0));
       // Pool walls (4 sides)
-      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), MS.marble, 0, -implDepth / 2, implD / 2));
-      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), MS.marble, 0, -implDepth / 2, -implD / 2));
-      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), MS.marble, implW / 2, -implDepth / 2, 0));
-      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), MS.marble, -implW / 2, -implDepth / 2, 0));
+      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), basinMat, 0, -implDepth / 2, implD / 2));
+      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), basinMat, 0, -implDepth / 2, -implD / 2));
+      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), basinMat, implW / 2, -implDepth / 2, 0));
+      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), basinMat, -implW / 2, -implDepth / 2, 0));
 
-      // Water surface
-      const water = mk(new THREE.BoxGeometry(implW - 0.1, 0.03, implD - 0.1), waterMat, 0, -0.05, 0);
+      // Water surface — W3H: raised nearly flush with the rim so the pool
+      // unmistakably reads as standing water from eye level.
+      const water = mk(new THREE.BoxGeometry(implW - 0.1, 0.03, implD - 0.1), waterMat, 0, W3H ? -0.005 : -0.05, 0);
       scene.add(water);
+
+      // W2 (WS4-8/9): living caustic web over the water — two counter-drifting
+      // additive layers of ONE seeded texture (mobile: a single static layer).
+      // Additive decals, depthWrite off, no light — the 4-light budget holds.
+      if (W2) {
+        w2CausticA = makeCausticsTexture(isMobileGPU() ? 128 : 256);
+        const cGeo = new THREE.PlaneGeometry(implW - 0.4, implD - 0.4);
+        // z-fight sweep r2: explicit renderOrder — the two caustic layers always
+        // draw AFTER the alpha-blended water surface (no distance-sort flicker).
+        const mkCaustic = (tex: THREE.Texture, op: number, y: number, order: number) => {
+          const m = new THREE.Mesh(cGeo, new THREE.MeshBasicMaterial({
+            map: tex, transparent: true, opacity: op,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+          }));
+          m.rotation.x = -Math.PI / 2;
+          m.position.y = y;
+          m.renderOrder = order;
+          scene.add(m);
+        };
+        // W3H (audit graft "honest water"): caustics belong on the pool
+        // BOTTOM, seen through the surface — they previously floated ABOVE
+        // the water plane as a glowing film in mid-air.
+        // (renderOrder: under W3H the layers sit BELOW the water plane, so
+        // they must draw BEFORE it — distance sort handles it at order 0;
+        // forcing them after the water would depth-test them away.)
+        const cA = W3H ? -implDepth + 0.035 : -0.028;
+        const cB = W3H ? -implDepth + 0.05 : -0.022;
+        mkCaustic(w2CausticA, W3H ? 0.42 : 0.3, cA, W3H ? 0 : 1);
+        if (w2Anim) {
+          w2CausticB = w2CausticA.clone();
+          w2CausticB.needsUpdate = true;
+          mkCaustic(w2CausticB, W3H ? 0.3 : 0.2, cB, W3H ? 0 : 2);
+        }
+      }
 
       // Marble rim with double molding
       const rimH = 0.12;
@@ -1370,10 +1986,13 @@ function EntranceHallScene({
       scene.add(mk(new THREE.BoxGeometry(0.1, rimH * 0.7, implD + 0.3), MS.marble, implW / 2 + 0.05, rimH * 0.35, 0));
       scene.add(mk(new THREE.BoxGeometry(0.1, rimH * 0.7, implD + 0.3), MS.marble, -(implW / 2 + 0.05), rimH * 0.35, 0));
 
-      // Central fountain pedestal with bust figure
-      scene.add(mk(new THREE.CylinderGeometry(0.25, 0.35, 0.8, 8), MS.marble, 0, -implDepth + 0.4, 0));
-      scene.add(mk(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 8), MS.marble, 0, -implDepth + 0.95, 0));
-      scene.add(mk(new THREE.SphereGeometry(0.12, 8, 6), MS.bust, 0, -implDepth + 1.2, 0));
+      // Central fountain pedestal with bust figure — W3H: gone (owner removed
+      // the bust/statue concept); the pool reads as clean standing water.
+      if (!W3H) {
+        scene.add(mk(new THREE.CylinderGeometry(0.25, 0.35, 0.8, 8), MS.marble, 0, -implDepth + 0.4, 0));
+        scene.add(mk(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 8), MS.marble, 0, -implDepth + 0.95, 0));
+        scene.add(mk(new THREE.SphereGeometry(0.12, 8, 6), MS.bust, 0, -implDepth + 1.2, 0));
+      }
 
       // 4 short columns at impluvium corners
       const implCorners = [
@@ -1481,6 +2100,9 @@ function EntranceHallScene({
           const EXIT_A = Math.PI / 2;
           let diffExit = Math.abs(aMid - EXIT_A); if (diffExit > Math.PI) diffExit = Math.PI * 2 - diffExit;
           if (tooCloseToDoor || diffExit < 0.28) continue;
+          // W2 (WS4-6): the Ancestral Wall bay replaces its Pompeian panels —
+          // real family photos hang there instead of colored boxes.
+          if (W2 && AW_ENABLED && angDiff(aMid, AW_ANGLE) < AW_HALF + 0.1) continue;
           const px = Math.cos(aMid) * wallPanelR;
           const pz = Math.sin(aMid) * wallPanelR;
 
@@ -1567,7 +2189,8 @@ function EntranceHallScene({
       {
         const lampBronzeMat = MS.bronze;
         const lampGlowMat = new THREE.MeshStandardMaterial({
-          color: "#FF9040", emissive: "#FF9040", emissiveIntensity: 0.3, roughness: 0.4,
+          // w1_hall: lamp PointLights die — the emissive dish glow IS the fixture
+          color: "#FF9040", emissive: "#FF9040", emissiveIntensity: W1 ? 0.9 : 0.3, roughness: 0.4,
         });
 
         for (let ci = 0; ci < validColAngles.length && ci < 16; ci += 2) {
@@ -1580,6 +2203,8 @@ function EntranceHallScene({
             return diff < 0.25;
           });
           if (tooCloseToOpening) continue;
+          // W2 (WS4-6): no oil lamp floating in front of the Ancestral Wall.
+          if (W2 && AW_ENABLED && angDiff(lAngle, AW_ANGLE) < AW_HALF + 0.05) continue;
           const lR = RADIUS - 0.35;
           const lx = Math.cos(lAngle) * lR, lz = Math.sin(lAngle) * lR;
           const lY = 3.2;
@@ -1598,8 +2223,8 @@ function EntranceHallScene({
           // Emissive glow on dish
           scene.add(mk(new THREE.SphereGeometry(0.04, 6, 4), lampGlowMat, inwardX, lY + 0.05, inwardZ));
 
-          // PointLight per lamp (skip on mobile)
-          if (!isMobileGPU()) {
+          // PointLight per lamp (skip on mobile; deleted under w1_hall)
+          if (!isMobileGPU() && !W1) {
             const lampLight = new THREE.PointLight("#FF9040", 0.4, 6);
             lampLight.position.set(inwardX, lY + 0.15, inwardZ);
             scene.add(lampLight);
@@ -1669,7 +2294,10 @@ function EntranceHallScene({
       }
 
       // ── Ceiling Coffers around Oculus ──
-      {
+      // W3H (audit): the 12 coffer slabs + frames + rosettes hang in MID-AIR
+      // below the dome shell (floating ring) — dropped; real coffers arrive
+      // with the Wave-B dome GLB.
+      if (!W3H) {
         const OCULUS_R_LOCAL = OCULUS_R || 3.0;
         const cofferRingR = OCULUS_R_LOCAL + 2.5;
         const numCoffers = 12;
@@ -1708,29 +2336,241 @@ function EntranceHallScene({
 
     // Storage room removed — kept virtual (accessible via menu only)
 
-    // ── DUST PARTICLES (upgraded: varied sizes, concentrated in beam, additive glow) ──
-    const dustN = 300;
-    const dustGeo = new THREE.BufferGeometry();
-    const dustPos = new Float32Array(dustN * 3);
-    const dustSizes = new Float32Array(dustN);
-    for (let i = 0; i < dustN; i++) {
-      const a = Math.random() * Math.PI * 2;
-      // 70% of particles concentrated in the light beam area
-      const inBeam = Math.random() < 0.7;
-      const r2 = inBeam ? Math.random() * OCULUS_R * 1.5 : Math.random() * RADIUS * 0.8;
-      dustPos[i * 3] = Math.cos(a) * r2;
-      dustPos[i * 3 + 1] = 1 + Math.random() * (TOTAL_H - 2);
-      dustPos[i * 3 + 2] = Math.sin(a) * r2;
-      dustSizes[i] = 0.02 + Math.random() * 0.13; // varied sizes 0.02 to 0.15
+    // ═══ MUSEO VIVO WAVE 2 — w2_hall (WS4-6/7/9, WS7-7/10/15) ═══
+    // The Ancestral Wall (salon hang of auto-selected family photos), the
+    // owner's bust moment with a Fraunces name plaque, the baked oculus light
+    // pool, and dolly-to-frame focus mode. Everything below is additive and
+    // budget-neutral: zero new dynamic lights, decals additive/depthWrite:false.
+    let awMountHandle: SalonHangMount | null = null;
+    const awTextures: THREE.Texture[] = [];
+    const awHitMeshes: THREE.Mesh[] = [];
+    const awOwnedGeos: THREE.BufferGeometry[] = [];
+    let awHitMat: THREE.MeshBasicMaterial | null = null;
+    let focus: FocusMode | null = null;
+    let focusFadeTimer: number | null = null;
+    if (W2) {
+      // ── WS4-6 THE ANCESTRAL WALL ──
+      // Selection = owner decision 4 (favorites → oldest, cap 3 mobile / 5
+      // desktop) + decision 7 (visitor routes hang PUBLIC only via the
+      // ancestralPublicOnly prop — WS7-15).
+      if (AW_ENABLED) {
+      const awMax = isMobileGPU() ? 3 : 5;
+      const awSelected = selectAncestralMemories(ancestralMemories ?? [], {
+        max: awMax,
+        publicOnly: !!ancestralPublicOnly,
+      });
+      const awCos = Math.cos(AW_ANGLE), awSin = Math.sin(AW_ANGLE);
+      // Flat family-wall segment inside the curved rotunda: chord width from the
+      // cleared arc, distance chosen so the flat panel's edges never poke
+      // through the cylinder wall.
+      const awRun = 2 * (RADIUS - 0.9) * Math.sin(AW_HALF);
+      const awPanelW = awRun + 0.8;
+      const awDist = Math.min(RADIUS - 1.0, Math.sqrt(Math.max(1, (RADIUS - 0.2) ** 2 - (awPanelW / 2) ** 2)));
+      // Warm plaster backing (canon PLASTER — the wall reads ≥0.5 luminance by
+      // albedo, per dogma 1) with an ink base strip grounding the segment.
+      const awBackGeo = new THREE.PlaneGeometry(awPanelW, 8.6);
+      const awBackMat = new THREE.MeshStandardMaterial({ color: PLASTER, roughness: 0.92, metalness: 0 });
+      const awBack = new THREE.Mesh(awBackGeo, awBackMat);
+      awBack.position.set(awCos * (awDist + 0.05), 4.3, awSin * (awDist + 0.05));
+      awBack.lookAt(0, 4.3, 0);
+      awBack.receiveShadow = true;
+      scene.add(awBack);
+      const awTrimGeo = new THREE.BoxGeometry(awPanelW, 0.22, 0.08);
+      const awTrimMat = new THREE.MeshStandardMaterial({ color: INK, roughness: 0.7, metalness: 0 });
+      const awTrim = new THREE.Mesh(awTrimGeo, awTrimMat);
+      awTrim.position.set(awCos * (awDist - 0.02), 0.11, awSin * (awDist - 0.02));
+      awTrim.lookAt(0, 0.11, 0);
+      scene.add(awTrim);
+
+      // Salon hang — deterministic (seeded from memory ids inside salonHang),
+      // photo textures scene-owned via paintTex (disposed in cleanup below,
+      // per the salonHang texture-ownership contract). paintTex composes a
+      // cover-cropped 4:3 canvas, so aspect 4/3 matches the texture exactly.
+      const awById = new Map(awSelected.map((m) => [m.id, m]));
+      const awRefs: SalonMemoryRef[] = awSelected.map((m) => ({
+        id: m.id,
+        aspect: 4 / 3,
+        title: m.title,
+        year: m.createdAt ? m.createdAt.slice(0, 4) : undefined,
+      }));
+      const awLayout = computeSalonHang(
+        awRefs,
+        { width: Math.max(3, awRun - 1.1), height: 6.4, yBase: 0 },
+        { maxPieces: awMax, maxPieceWidth: 2.6 }
+      );
+      awHitMat = new THREE.MeshBasicMaterial({ visible: false }); // raycast-only — zero draw calls
+      awMountHandle = mountSalonHang(awLayout, {
+        getTexture: (ref) => {
+          const tex = gatePaintTex(awById.get(ref.id)!, paintTex(awById.get(ref.id)!)); // reveal gate: AW photo draw
+          awTextures.push(tex);
+          return tex;
+        },
+        quality: isMobileGPU() ? "low" : "high",
+        // 0 family photos → warm cream easel, never colored boxes (i18n ×5, flat key).
+        emptyText: t("ancestralEmpty"),
+        onPiece: (art, p) => {
+          const mem = awById.get(p.memory.id)!;
+          // Raycast contract identical to the interior scenes: userData.memory
+          // on EVERY mesh of the piece, so memory interactions keep working.
+          art.group.traverse((o) => { o.userData.memory = mem; });
+          // Invisible hit plane (~1.4x, bounded so salon neighbours don't overlap).
+          const hitGeo = new THREE.PlaneGeometry(p.width * 1.4, (p.height + 0.5) * 1.2);
+          const hit = new THREE.Mesh(hitGeo, awHitMat!);
+          hit.position.set(0, -0.15, 0.06);
+          hit.userData.memory = mem;
+          awOwnedGeos.push(hitGeo);
+          awHitMeshes.push(hit);
+          art.group.add(hit);
+        },
+      });
+      awMountHandle.group.position.set(awCos * (awDist - 0.09), 0, awSin * (awDist - 0.09));
+      awMountHandle.group.lookAt(0, 0, 0);
+      scene.add(awMountHandle.group);
+      awMountHandle.group.updateMatrixWorld(true);
+      // WS7-10 focus targets: world pose per piece; the wall's outward normal
+      // points at the hall centre. Hit meshes were pushed in placement order.
+      const awNormal = new THREE.Vector3(-awCos, 0, -awSin).normalize();
+      awLayout.placements.forEach((p, i) => {
+        const target: FocusTarget = {
+          position: awMountHandle!.group.localToWorld(new THREE.Vector3(p.x, p.y, 0.02)),
+          normal: awNormal.clone(),
+          planeHeight: p.height,
+          planeWidth: p.width,
+          data: awById.get(p.memory.id),
+        };
+        if (awHitMeshes[i]) awHitMeshes[i].userData.awTarget = target;
+      });
+      } // end AW_ENABLED
+
+      // ── WS4-7 bust + Fraunces name plaque (canon pedestal) ──
+      // W3H: the whole bust/statue concept is REMOVED (owner 2026-08-13).
+      if (!W3H) {
+        const { x: bx, z: bz } = W2_BUST;
+        const pedBase = mk(new THREE.BoxGeometry(1.05, 0.16, 1.05), MS.marbleDark, bx, 0.08, bz);
+        scene.add(pedBase);
+        const pedShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 1.02, 20), MS.marbleWarm);
+        pedShaft.position.set(bx, 0.67, bz);
+        pedShaft.castShadow = true;
+        scene.add(pedShaft);
+        const pedCap = mk(new THREE.BoxGeometry(0.92, 0.1, 0.92), MS.marbleDark, bx, 1.23, bz);
+        scene.add(pedCap);
+        addBustToScene(
+          scene, bx, bz, 0,
+          styleEra === "renaissance" ? "renaissance" : "roman",
+          1.28, bustTextureUrl, marbleTex,
+          (bustGender as BustGender) || "male", ren
+        );
+        const ownerName = (bustName || "").trim();
+        if (ownerName) {
+          const plaque = makeFrauncesLabel(ownerName, { width: 1.0, height: 0.26 });
+          // Face the entrance spawn (0, 7.3) — the name reads on the walk-in.
+          const pd = new THREE.Vector3(0 - bx, 0, 7.3 - bz).normalize();
+          plaque.position.set(bx + pd.x * 0.56, 0.86, bz + pd.z * 0.56);
+          plaque.lookAt(bx + pd.x * 8, 0.86, bz + pd.z * 8);
+          scene.add(plaque);
+        }
+      }
+
+      // ── WS4-9 oculus light pool — baked additive floor decal where the shaft
+      // lands (transparent core over the sunken impluvium, warm glow on the
+      // rim). Slow texture-rotation drift on desktop; static on mobile.
+      w2PoolTex = makeOculusPoolTexture(isMobileGPU() ? 128 : 256);
+      const poolGeo = new THREE.PlaneGeometry(11.5, 9.5);
+      // r2: opacity 0.5→0.42 (stronger key carries it) + polygonOffset/lift off the
+      // mosaic tile tops (z-fight sweep) + explicit renderOrder above the w1 pools.
+      const poolMat = new THREE.MeshBasicMaterial({
+        map: w2PoolTex, transparent: true, opacity: 0.42,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3,
+      });
+      const w2Pool = new THREE.Mesh(poolGeo, poolMat);
+      w2Pool.rotation.x = -Math.PI / 2;
+      // W3H: the baked light pool follows the TILTED sun shaft — it lands
+      // where the oculusSpot target points (−4, 4), not dead centre.
+      w2Pool.position.set(W3H ? -4 : 0, 0.035, W3H ? 4 : 0);
+      w2Pool.renderOrder = 2;
+      scene.add(w2Pool);
+
+      // ── WS7-10 focus mode: dolly-to-frame on the Ancestral Wall. ONE camera
+      // authority: while focus.update(dt) returns true the walk/autoWalk
+      // integrators in animate() are skipped; any manual input cancels.
+      focus = createFocusMode({
+        rig: {
+          getPosition: () => pos.current.clone(),
+          getLookAt: () => {
+            const d = new THREE.Vector3(
+              Math.sin(lookA.current.yaw) * Math.cos(lookA.current.pitch),
+              Math.sin(lookA.current.pitch),
+              -Math.cos(lookA.current.yaw) * Math.cos(lookA.current.pitch)
+            );
+            return pos.current.clone().add(d.multiplyScalar(4));
+          },
+          setPose: (p, look) => {
+            // Write BOTH actual and target refs: the glide provides its own
+            // easing, so the scene's smoothing must not double-filter it.
+            posT.current.copy(p);
+            pos.current.copy(p);
+            const d = new THREE.Vector3().subVectors(look, p);
+            const len = Math.max(d.length(), 1e-6);
+            const yaw = Math.atan2(d.x, -d.z);
+            const pitch = Math.asin(Math.max(-1, Math.min(1, d.y / len)));
+            lookT.current.yaw = yaw; lookT.current.pitch = pitch;
+            lookA.current.yaw = yaw; lookA.current.pitch = pitch;
+          },
+        },
+        setDimmed: (dimmed) => {
+          // 15% dim on hemi + env + oculus fill. Photos are unlit MeshBasic —
+          // they stay the brightest pixels; PLASTER walls stay ≥0.5 luminance.
+          const k = dimmed ? 1 - FOCUS_DIM : 1;
+          hemi.intensity = hemiBase * k;
+          oculusFill.intensity = oculusFillBase * k;
+          scene.environmentIntensity = ENV_INT * k;
+        },
+        openMemory: (tg) => {
+          const mem = tg.data as Mem | undefined;
+          if (mem) onAncestralClickRef.current?.(mem);
+        },
+        // Reduced-motion: cream veil (never black) around the instant cut.
+        fade: (applyCut) => {
+          setCreamFade(1);
+          if (focusFadeTimer !== null) window.clearTimeout(focusFadeTimer);
+          focusFadeTimer = window.setTimeout(() => {
+            focusFadeTimer = null;
+            applyCut();
+            setCreamFade(0);
+          }, 240);
+        },
+        floorY: 0,
+      });
     }
-    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-    dustGeo.setAttribute("size", new THREE.BufferAttribute(dustSizes, 1));
-    const dustMat = new THREE.PointsMaterial({
-      color: dlPreset.sunColor, size: 0.1, transparent: true, opacity: 0.5 * dlPreset.sunIntensity,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-      sizeAttenuation: true,
-    });
-    scene.add(new THREE.Points(dustGeo, dustMat));
+
+    // ── DUST PARTICLES — duplicate 300-pt system deleted under w1_hall
+    // (WS4-5/WS10-3: ONE 150-sprite system per scene — createDustParticles below) ──
+    const dustN = 300;
+    let dustGeo: THREE.BufferGeometry | null = null;
+    if (!W1) {
+      dustGeo = new THREE.BufferGeometry();
+      const dustPos = new Float32Array(dustN * 3);
+      const dustSizes = new Float32Array(dustN);
+      for (let i = 0; i < dustN; i++) {
+        const a = Math.random() * Math.PI * 2;
+        // 70% of particles concentrated in the light beam area
+        const inBeam = Math.random() < 0.7;
+        const r2 = inBeam ? Math.random() * OCULUS_R * 1.5 : Math.random() * RADIUS * 0.8;
+        dustPos[i * 3] = Math.cos(a) * r2;
+        dustPos[i * 3 + 1] = 1 + Math.random() * (TOTAL_H - 2);
+        dustPos[i * 3 + 2] = Math.sin(a) * r2;
+        dustSizes[i] = 0.02 + Math.random() * 0.13; // varied sizes 0.02 to 0.15
+      }
+      dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+      dustGeo.setAttribute("size", new THREE.BufferAttribute(dustSizes, 1));
+      const dustMat = new THREE.PointsMaterial({
+        color: dlPreset.sunColor, size: 0.1, transparent: true, opacity: 0.5 * dlPreset.sunIntensity,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+        sizeAttenuation: true,
+      });
+      scene.add(new THREE.Points(dustGeo, dustMat));
+    }
 
     // ── GRAND EXIT PORTAL (back to exterior) — larger and more imposing than wing doors ──
     const exitAngle = Math.PI / 2;
@@ -1802,15 +2642,25 @@ function EntranceHallScene({
     exitThresh.lookAt(new THREE.Vector3(0, 0.1, 0));
     scene.add(exitThresh);
 
-    // Sky-blue gradient visible through doorway (suggests outdoors)
+    // Gradient visible through doorway (suggests outdoors).
+    // W3H (audit P0): the cool #87CEEB sky was a triple canon violation — the
+    // brightest, coolest pixel in a golden-hour hall. Now the doorway shows
+    // the same golden-hour world the visitor just walked through.
     const skyCanvas = document.createElement("canvas");
     skyCanvas.width = 256; skyCanvas.height = 512;
     const skyCtx = skyCanvas.getContext("2d")!;
     const skyGrad = skyCtx.createLinearGradient(0, 0, 0, 512);
-    skyGrad.addColorStop(0, "#87CEEB");   // sky blue top
-    skyGrad.addColorStop(0.5, "#B8DCF0"); // lighter middle
-    skyGrad.addColorStop(0.85, "#E8DCC8"); // warm horizon
-    skyGrad.addColorStop(1, "#C8B89A");   // ground hint
+    if (W3H) {
+      skyGrad.addColorStop(0, "#BFD4E4");   // pale warm-blue zenith
+      skyGrad.addColorStop(0.45, "#EAD9B8"); // golden haze band
+      skyGrad.addColorStop(0.8, "#E8C87A");  // low sun glow
+      skyGrad.addColorStop(1, "#C9A96A");    // golden wheat ground
+    } else {
+      skyGrad.addColorStop(0, "#87CEEB");   // sky blue top
+      skyGrad.addColorStop(0.5, "#B8DCF0"); // lighter middle
+      skyGrad.addColorStop(0.85, "#E8DCC8"); // warm horizon
+      skyGrad.addColorStop(1, "#C8B89A");   // ground hint
+    }
     skyCtx.fillStyle = skyGrad;
     skyCtx.fillRect(0, 0, 256, 512);
     const skyTex = new THREE.CanvasTexture(skyCanvas);
@@ -1832,16 +2682,23 @@ function EntranceHallScene({
     portalHit.lookAt(0, EXIT_H / 2, 0);
     scene.add(portalHit);
 
-    // Strong outdoor light streaming in
+    // Outdoor light streaming in — under w1_hall this is warm point 2 of 2
+    // (portalSpot deleted; the emissive portalGlow/sky planes carry the read).
     let portalLight: THREE.PointLight | null = null;
-    if(!isMobileGPU()){portalLight = new THREE.PointLight(dlPreset.sunColor, 1.2 * dlPreset.sunIntensity, 12);
-    portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
-    scene.add(portalLight);}
-    if(!isMobileGPU()){const portalSpot = new THREE.SpotLight(dlPreset.sunColor, 1.5 * dlPreset.sunIntensity, 18, Math.PI / 5, 0.5, 0.7);
-    portalSpot.position.set(exitX + exitInN.x * 3, EXIT_H * 0.5, exitZ + exitInN.z * 3);
-    portalSpot.target.position.set(exitX - exitInN.x * 4, 0, exitZ - exitInN.z * 4);
-    scene.add(portalSpot);
-    scene.add(portalSpot.target);}
+    if (W1) {
+      portalLight = new THREE.PointLight(dlPreset.sunColor, 0.8 * dlPreset.sunIntensity, 12); // r2: fill down with the ratio shift
+      portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
+      scene.add(portalLight);
+    } else {
+      if(!isMobileGPU()){portalLight = new THREE.PointLight(dlPreset.sunColor, 1.2 * dlPreset.sunIntensity, 12);
+      portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
+      scene.add(portalLight);}
+      if(!isMobileGPU()){const portalSpot = new THREE.SpotLight(dlPreset.sunColor, 1.5 * dlPreset.sunIntensity, 18, Math.PI / 5, 0.5, 0.7);
+      portalSpot.position.set(exitX + exitInN.x * 3, EXIT_H * 0.5, exitZ + exitInN.z * 3);
+      portalSpot.target.position.set(exitX - exitInN.x * 4, 0, exitZ - exitInN.z * 4);
+      scene.add(portalSpot);
+      scene.add(portalSpot.target);}
+    }
 
     // ── ENVIRONMENT MAP (critical for PBR reflections) ──
     // The fromScene PMREM bake is deterministic given the hall construction inputs
@@ -1881,9 +2738,10 @@ function EntranceHallScene({
     // From angle A on the circle, direction to center is (-cos(A), 0, -sin(A)),
     // so the correct yaw to face inward is A - PI/2.
     const startAngle = exitAngle - Math.PI / 2;
-    // Always start with entrance cinematic position
-    pos.current.set(0, 2.0, 7.3);
-    posT.current.set(0, 2.0, 7.3);
+    // Always start with entrance cinematic position (eye height = the single
+    // shared EYE_HEIGHT constant from cameraComfort — dogma 5)
+    pos.current.set(0, EYE_HEIGHT, 7.3);
+    posT.current.set(0, EYE_HEIGHT, 7.3);
     lookT.current = { yaw: 0.0270, pitch: 0.0360 };
     lookA.current = { yaw: 0.0270, pitch: 0.0360 };
 
@@ -1896,36 +2754,140 @@ function EntranceHallScene({
         r: 0.7,
       });
     }
+    // W2 (WS4-7): the bust pedestal is solid — no ghost-walking through it.
+    // W3H: pedestal removed with the bust concept → no collider either.
+    if (W2 && !W3H) colPositions.push({ x: W2_BUST.x, z: W2_BUST.z, r: 0.95 });
+    // W3H: the impluvium is open water — WADABLE by owner decree (no collider).
 
-    // ── WALKTHROUGH HIGHLIGHT RINGS ──
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door meshes ──
+    // Under w1_hall the 7 intensity-0 PointLights are deleted (WS4-3); the gold
+    // ring decal (w1HlRing) marks the walkthrough target instead.
     const hlDoorLights: Map<string,THREE.PointLight>=new Map();
-    const seenWings=new Set<string>();
-    doorMeshes.forEach(d=>{
-      if(seenWings.has(d.wingId))return;seenWings.add(d.wingId);
-      const dx2=Math.cos(d.angle)*(RADIUS-2);const dz2=Math.sin(d.angle)*(RADIUS-2);
-      const light=new THREE.PointLight("#D4AF37",0,15);light.position.set(dx2,3,dz2);scene.add(light);
-      hlDoorLights.set(d.wingId,light);
-    });
+    if (!W1) {
+      const seenWings=new Set<string>();
+      doorMeshes.forEach(d=>{
+        if(seenWings.has(d.wingId))return;seenWings.add(d.wingId);
+        const dx2=Math.cos(d.angle)*(RADIUS-2);const dz2=Math.sin(d.angle)*(RADIUS-2);
+        const light=new THREE.PointLight("#D4AF37",0,15);light.position.set(dx2,3,dz2);scene.add(light);
+        hlDoorLights.set(d.wingId,light);
+      });
+    }
     const goldColor=new THREE.Color("#D4AF37");
 
     // ── DUST PARTICLES (oculus light beam) ──
-    const dust = createDustParticles({ count: 150, bounds: { x: 8, y: 10, z: 8 }, center: new THREE.Vector3(0, 12, 0), opacity: 0.2 * dlPreset.sunIntensity, size: 0.04, color: dlPreset.sunColor });
+    // W3H: motes live INSIDE the tilted shaft volume (mid-beam centre,
+    // tighter bounds) so they ignite where the light is, not everywhere.
+    const dust = createDustParticles(W3H
+      ? { count: 220, bounds: { x: 4.5, y: 11, z: 4.5 }, center: new THREE.Vector3(-1.8, 11, 1.8), opacity: 0.28 * dlPreset.sunIntensity, size: 0.045, color: dlPreset.sunColor }
+      : { count: 150, bounds: { x: 8, y: 10, z: 8 }, center: new THREE.Vector3(0, 12, 0), opacity: 0.2 * dlPreset.sunIntensity, size: 0.04, color: dlPreset.sunColor });
     scene.add(dust.points);
 
     // ── VOLUMETRIC LIGHT BEAM from oculus ──
-    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: 0.04 * dlPreset.sunIntensity });
+    // W3H: the beam follows the tilted sun vector (same target as oculusSpot),
+    // and gains a brighter INNER CORE cone — the layered falloff reads as a
+    // real shaft of dusty air instead of a single faint ghost cone.
+    const beamDir = W3H ? new THREE.Vector3(-4, -(TOTAL_H - 1), 4).normalize() : new THREE.Vector3(0, -1, 0);
+    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: beamDir, length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: (W3H ? 0.05 : 0.04) * dlPreset.sunIntensity });
     scene.add(oculusBeam.mesh);
+    let oculusBeamCore: ReturnType<typeof createLightBeam> | null = null;
+    if (W3H) {
+      oculusBeamCore = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: beamDir, length: TOTAL_H - 1, radius: 1.7, color: dlPreset.sunColor, opacity: 0.075 * dlPreset.sunIntensity });
+      scene.add(oculusBeamCore.mesh);
+    }
 
-    // Footstep sounds removed
+    // WS10-4 (w1_hall): footsteps return as procedural marble taps — fired from
+    // the walk integrator on real position delta (playFootstep cadence-caps).
+    const w1StepPrev = { x: 0, z: 7.3 };
 
     // ── Optimize: deduplicate materials to reduce GPU state changes ──
     optimizeMaterials(scene);
 
     const clock = new THREE.Clock();
+    // Tap-is-travel click target (WS8-4, w1_hall): any-distance door/portal tap
+    // auto-walks (comfort-capped) then enters — the 15m dead-click gate is gone.
+    const awClick: { id: string | null; x: number; z: number } = { id: null, x: 0, z: 0 };
+    const startAutoWalk = (id: string) => {
+      const ang = id === "__exterior__" ? exitAngle : doorMeshes.find(d => d.wingId === id)?.angle;
+      if (ang === undefined) { onDoorClickRef.current(id); return; }
+      awClick.id = id;
+      awClick.x = Math.cos(ang) * (RADIUS - 4);
+      awClick.z = Math.sin(ang) * (RADIUS - 4);
+    };
+    // ═══ W3H SHELL MERGE (masterplan interim perf step — the "dead
+    // mergeStaticMeshes" audit finding, done SELECTIVELY) ═══
+    // Collapse the hundreds of static opaque decor meshes into one mesh per
+    // shared material. Excluded: raycast targets (userData.wingId/awTarget),
+    // anything transparent/alphaTest or with a renderOrder (blend-order
+    // sensitive), instanced meshes, and the procedural dome/oculus disc whose
+    // .visible is toggled when the GLB hero lands. Async GLBs arrive after
+    // this pass and are untouched.
+    if (W3H) {
+      const KEEP = new Set<THREE.Object3D>([domeMesh, oculusMesh]);
+      const mergeBuckets = new Map<string, { mat: THREE.Material; meshes: THREE.Mesh[] }>();
+      scene.traverse((c) => {
+        const m = c as THREE.Mesh;
+        if (!m.isMesh) return;
+        if ((m as THREE.InstancedMesh).isInstancedMesh) return;
+        if (KEEP.has(m)) return;
+        if (m.userData && (m.userData.wingId || m.userData.awTarget)) return;
+        if (Array.isArray(m.material)) return;
+        const mat = m.material as THREE.MeshStandardMaterial;
+        if (!mat || mat.transparent || (mat.alphaTest ?? 0) > 0) return;
+        if (m.renderOrder !== 0) return;
+        const key = mat.uuid;
+        if (!mergeBuckets.has(key)) mergeBuckets.set(key, { mat, meshes: [] });
+        mergeBuckets.get(key)!.meshes.push(m);
+      });
+      let shellMerged = 0, shellRemoved = 0;
+      mergeBuckets.forEach(({ mat, meshes }) => {
+        if (meshes.length < 4) return; // singles/pairs aren't worth the bake
+        const geos: THREE.BufferGeometry[] = [];
+        for (const src of meshes) {
+          src.updateWorldMatrix(true, false);
+          const g = src.geometry.clone();
+          g.applyMatrix4(src.matrixWorld);
+          geos.push(g);
+        }
+        const merged = mergeGeometries(geos, false);
+        geos.forEach((g) => g.dispose());
+        if (!merged) return; // mixed attribute sets — leave this bucket as-is
+        const mm = new THREE.Mesh(merged, mat);
+        mm.castShadow = meshes.some((x) => x.castShadow);
+        mm.receiveShadow = meshes.some((x) => x.receiveShadow);
+        scene.add(mm);
+        meshes.forEach((x) => { x.parent?.remove(x); x.geometry.dispose(); });
+        shellMerged++;
+        shellRemoved += meshes.length;
+      });
+      console.info(`[W3H] shell merge: ${shellRemoved} static meshes → ${shellMerged} merged draws`);
+      ren.shadowMap.needsUpdate = true;
+    }
+
+    let _lastCream = 0; // cream veil state throttle (reduced-motion crossfade)
+    // Blink hygiene at (re)build: force the curtain fully open and re-sync the
+    // shared shadow (blinkPushedRef) — a rebuild mid-blink otherwise inherited
+    // a stuck nonzero blinkOpacity that no guarded write would ever clear.
+    // (The per-frame throttle itself lives on blinkPushedRef, component-level.)
+    blinkRef.current = 0;
+    pushBlink(0);
+    setCreamFade(0);
+    let w3hCinT = 0;    // W3H: stall-proof cinematic time (accumulated clamped dt)
+    // Touch-move vector — hoisted above animate() so the w1_hall movement block
+    // can read it directly per frame (replaces the 16ms synthetic-WASD poll).
+    const touchMoveDir = { x: 0, z: 0 };
     let hoveredWing: string | null = null;
+    // W2 (WS7-10): the Ancestral Wall focus target under the cursor (fed by the
+    // per-frame hover raycast; consumed by the click/tap handlers).
+    let hovAWTarget: FocusTarget | null = null;
     const _isMobile = window.innerWidth < 768 || window.innerHeight < 500;
     let _frameCount = 0;
+    // First frame of every build always presents, even when document.hidden —
+    // on a hidden/occluded tab rAF is never serviced, so the synchronous
+    // animate() call below is the only render this build gets. The old
+    // unconditional `if (document.hidden) return` before composer.render()
+    // defeated the "first frame still runs so onReady fires" intent stated in
+    // the pause block below (2026-08-20, ExteriorScene _firstFrameDone parity).
+    let _presented = false;
     // ── Hover-raycast hygiene: onMove only records the cursor position; the actual
     // raycast runs at most once per frame inside animate() (same behavior, less work).
     const _hoverPt = { x: 0, y: 0 };
@@ -1952,7 +2914,20 @@ function EntranceHallScene({
         // cut, exactly as a fresh mount would), resume ambient audio, and re-fire
         // onReady so MemoryPalace dismisses its loading overlay on real readiness.
         _wasHidden = false;
-        pos.current.set(0, 2.0, 7.3); posT.current.set(0, 2.0, 7.3);
+        // W2 (WS7-10): a hidden→shown cycle resets to the spawn — never resume
+        // a stale focus hold (undims via cancel's setDimmed(false)).
+        focus?.cancel();
+        // A mid-flight cinematic from an ABORTED onboarding leg must not
+        // resume on a later re-entry (persistent hall: the wizard can advance
+        // past the leg without skipCinematic; a fresh mount only arms the
+        // cinematic from onboardingMode). Active onboarding resumes normally;
+        // anything else cancels — the blink-curtain failsafe below then clears
+        // any leftover black overlay on this same frame.
+        if (entranceCinematicRef.current && !onboardingModeRef.current) {
+          entranceCinematicRef.current = false;
+          setCinematicActive(false);
+        }
+        pos.current.set(0, EYE_HEIGHT, 7.3); posT.current.set(0, EYE_HEIGHT, 7.3);
         lookT.current = { yaw: 0.0270, pitch: 0.0360 };
         lookA.current = { yaw: 0.0270, pitch: 0.0360 };
         ambientResume();
@@ -1961,9 +2936,28 @@ function EntranceHallScene({
       const dt = Math.min(clock.getDelta(), 0.05);
       const t = clock.getElapsedTime();
       _frameCount++;
+      // W3H (audit): the cinematic ran on ABSOLUTE clock time — a 3s shader
+      // compile stall ate 3s of the 6s intro. Accumulate the clamped dt
+      // instead: a stall advances the cinematic by at most 0.05s.
+      if (entranceCinematicRef.current) w3hCinT += dt;
 
-      // Walkthrough highlight — pulse golden emissive on target door
+      // Walkthrough highlight
       const hlTarget=highlightDoorRef.current;
+      if (W1) {
+        // w1_hall (WS4-3/4): gold ring decal marks the target — no PointLight,
+        // no colored emissive pulse on the door material.
+        if (w1HlRing) {
+          const rm = w1HlRing.material as THREE.MeshBasicMaterial;
+          const hlDoor = hlTarget ? doorMeshes.find(d => d.wingId === hlTarget) : undefined;
+          if (hlDoor) {
+            w1HlRing.position.set(Math.cos(hlDoor.angle) * (RADIUS - 3), 0.04, Math.sin(hlDoor.angle) * (RADIUS - 3));
+            rm.opacity = 0.45 + Math.sin(t * 2.5) * 0.2;
+          } else if (rm.opacity > 0.005) {
+            rm.opacity += (0 - rm.opacity) * 0.08;
+          }
+        }
+      } else {
+      // (pre-Wave-1) pulse golden emissive on target door
       doorMeshes.forEach(d=>{
         if(hlTarget===d.wingId){
           const pulse=0.6+Math.sin(t*2.5)*.25;
@@ -1975,10 +2969,57 @@ function EntranceHallScene({
         if(hlTarget===id)light.intensity=3+Math.sin(t*2)*1.5;
         else light.intensity+=(0-light.intensity)*.05;
       });
+      }
 
-      // ── Entrance cinematic (onboarding only): look around → walk to roots door ──
-      if (entranceCinematicRef.current && !autoWalkToRef.current) {
-        const ot = clock.getElapsedTime();
+      // ── Entrance cinematic (onboarding only) ──
+      // Guided-walkthrough restore (2026-08-21): the owner explicitly wants the
+      // BLINK choreography back (settle → look left → blink ×2 → look right →
+      // blink → walk to the roots door), so branch selection is reduced-motion
+      // only — the retired W1 ~6s push-in variant is deleted. Both paths end by
+      // firing onDoorClick("roots"), exactly like skipCinematic().
+      if (entranceCinematicRef.current && !autoWalkToRef.current && !awClick.id) {
+        const ot = w3hCinT; // stall-proof accumulated time (W3H audit) — a compile stall advances ≤0.05s/frame
+        const CIN_DUR = 6.0;
+        const START_Z = 7.3, END_Z = 3.2;
+          if (reduceMotion) {
+            // Reduced motion: crossfade sequence of the same two composed shots
+            // (spawn framing → final push-in framing) via a CREAM veil — no
+            // camera motion, never black.
+            const FADE = 0.4, HOLD_A = 2.6;
+            let cream = 0;
+            if (ot < HOLD_A) {
+              cream = 0; // shot A: hold the spawn framing
+            } else if (ot < HOLD_A + FADE) {
+              cream = (ot - HOLD_A) / FADE; // veil in
+            } else {
+              // shot B: the final composed framing, set under full veil
+              pos.current.set(0, EYE_HEIGHT, END_Z);
+              posT.current.set(0, EYE_HEIGHT, END_Z);
+              lookT.current.yaw = 0; lookT.current.pitch = 0.02;
+              lookA.current.yaw = 0; lookA.current.pitch = 0.02;
+              cream = Math.max(0, 1 - (ot - HOLD_A - FADE) / FADE); // veil out
+            }
+            if (Math.abs(cream - _lastCream) > 0.02 || (cream === 0 && _lastCream !== 0)) {
+              _lastCream = cream; setCreamFade(cream);
+            }
+            if (ot >= CIN_DUR) {
+              if (_lastCream !== 0) { _lastCream = 0; setCreamFade(0); }
+              entranceCinematicRef.current = false;
+              setCinematicActive(false);
+              if (onboardingModeRef.current) {
+                onboardingModeRef.current = false;
+                onDoorClickRef.current("roots");
+              }
+            }
+          } else {
+        // Guided walkthrough: look around with blinks → slow walk to the roots
+        // door. Geometry verified against the CURRENT hall (2026-08-21): spawn
+        // is (0, EYE_HEIGHT, START_Z=7.3); roots door = doorDefs[0] at angle
+        // −π/2 with the approach point at (0, −(RADIUS−4)) — the formulas below
+        // are radius-relative so they track RADIUS/NUM_DOORS; the centre
+        // impluvium is WADABLE by owner decree (no collider), so the straight
+        // walk through the water is intentional; benches (±π/4 diagonals) and
+        // amphorae (skipped near door angles) never sit on the x=0 path.
         // Single blink helper — slow, deliberate (x2 original speed: close 0.4s, hold 0.2s, open 0.4s)
         const singleBlink = (localT: number): number => {
           const bClose = 0.4, bHold = 0.2, bOpen = 0.4, bTotal = bClose + bHold + bOpen;
@@ -1992,9 +3033,12 @@ function EntranceHallScene({
           const gap = 0.5; // gap between blinks
           return Math.min(Math.max(singleBlink(localT), singleBlink(localT - 1.0 - gap)), 1);
         };
-        // Timings: settle(0.8) → look left(1.5) → blink 2x(2.5) → look right(1.5) → blink 1x(1.0) → center(0.4)
-        const T1 = 0.8, T2 = T1 + 1.5, T3 = T2 + 2.5, T4 = T3 + 1.5, T5 = T4 + 1.0, T6 = T5 + 0.4;
-        const LOOK_DUR = T6; // ~7.7s
+        // Timings (ITEM 3, owner: slow the look-around by ~2.5s): settle(0.8) →
+        // look left(2.6) → blink 2x + hold(2.7) → look right(2.6) → blink 1x +
+        // hold(1.2) → center(0.4). Holds at the extremes are slightly longer
+        // than the blink envelopes (2.5s/1.0s) so the doors actually register.
+        const T1 = 0.8, T2 = T1 + 2.6, T3 = T2 + 2.7, T4 = T3 + 2.6, T5 = T4 + 1.2, T6 = T5 + 0.4;
+        const LOOK_DUR = T6; // ~10.3s (was 7.7) → leg total ≈ 22.3s with the 12s walk
         const WALK_DUR = 12.0; // x3 slower walk to door
         // Smoothstep helper
         const ss = (a: number, b: number, p: number) => { const t2 = p * p * (3 - 2 * p); return a + (b - a) * t2; };
@@ -2005,45 +3049,53 @@ function EntranceHallScene({
             lookT.current.yaw = 0.0270;
             lookT.current.pitch = 0.0360;
           }
-          // Step 2 (0.8-2.3s): slowly look left
+          // Step 2 (0.8-3.4s): slowly look left
           else if (ot < T2) {
-            const p = Math.min((ot - T1) / 1.5, 1);
+            const p = Math.min((ot - T1) / 2.6, 1);
             lookT.current.yaw = ss(0.0270, -0.9090, p);
             lookT.current.pitch = ss(0.0360, 0.3240, p);
           }
-          // Step 3 (2.3-4.8s): blink twice while holding left gaze
+          // Step 3 (3.4-6.1s): blink twice while holding left gaze
           else if (ot < T3) {
             lookT.current.yaw = -0.9090;
             lookT.current.pitch = 0.3240;
             blinkRef.current = twoBlinks(ot - T2);
           }
-          // Step 4 (4.8-6.3s): slowly look right
+          // Step 4 (6.1-8.7s): slowly look right
           else if (ot < T4) {
             blinkRef.current = 0;
-            const p = Math.min((ot - T3) / 1.5, 1);
+            const p = Math.min((ot - T3) / 2.6, 1);
             lookT.current.yaw = ss(-0.9090, 1.0380, p);
             lookT.current.pitch = ss(0.3240, 0.3510, p);
           }
-          // Step 5 (6.3-7.3s): blink once while holding right gaze
+          // Step 5 (8.7-9.9s): blink once while holding right gaze
           else if (ot < T5) {
             lookT.current.yaw = 1.0380;
             lookT.current.pitch = 0.3510;
             blinkRef.current = singleBlink(ot - T4);
           }
-          // Step 6 (7.3-7.7s): readjust gaze to center
+          // Step 6 (9.9-10.3s): readjust gaze to center
           else {
             blinkRef.current = 0;
             const p = Math.min((ot - T5) / 0.4, 1);
             lookT.current.yaw = ss(1.0380, 0.0360, p);
             lookT.current.pitch = ss(0.3510, 0.0540, p);
           }
-          // Sync blink opacity to React state
-          setBlinkOpacity(blinkRef.current);
+          // Sync blink opacity to React state — thresholded (ITEM 2): a raw
+          // per-frame setState re-rendered the whole component tree at 60fps
+          // during the look phase, and those main-thread hitches read as
+          // camera shake. _lastCream pattern; endpoints (0/1) always land.
+          const bo = blinkRef.current;
+          if (Math.abs(bo - blinkPushedRef.current) > 0.02 || (bo === 0 && blinkPushedRef.current !== 0) || (bo === 1 && blinkPushedRef.current !== 1)) {
+            pushBlink(bo);
+          }
         }
         // Walk phase: slow walk to roots door (12s)
         else if (ot < LOOK_DUR + WALK_DUR) {
           blinkRef.current = 0;
-          setBlinkOpacity(0);
+          // Phase boundary: the zero endpoint ALWAYS lands (threshold applies
+          // to mid-animation frames only; the shared shadow can't desync).
+          if (blinkPushedRef.current !== 0) pushBlink(0);
           const rootsDoorAngle = (0 / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
           const approachR = RADIUS - 4;
           const targetX = Math.cos(rootsDoorAngle) * approachR;
@@ -2051,13 +3103,17 @@ function EntranceHallScene({
           const wp = Math.min((ot - LOOK_DUR) / WALK_DUR, 1);
           const wEase = wp * wp * (3 - 2 * wp);
           posT.current.x = ss(0, targetX, wEase);
-          posT.current.z = ss(7.3, targetZ, wEase);
+          posT.current.z = ss(START_Z, targetZ, wEase);
           const faceDoorAngle = Math.atan2(targetX - posT.current.x, -(targetZ - posT.current.z));
-          lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * 0.04;
-          lookT.current.pitch += (0 - lookT.current.pitch) * 0.03;
+          // ITEM 2: the raw per-frame factors (.04/.03) were framerate-dependent —
+          // at 120Hz the gaze snapped twice as fast, at fps dips it lagged then
+          // jumped. Framerate-independent 1-exp(-k*dt), same feel at 60fps.
+          lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * (1 - Math.exp(-2.4487 * dt)); // f=.04 @60fps
+          lookT.current.pitch += (0 - lookT.current.pitch) * (1 - Math.exp(-1.8271 * dt)); // f=.03 @60fps
         } else {
           blinkRef.current = 0;
-          setBlinkOpacity(0);
+          // Leg end: the zero endpoint ALWAYS lands before the roots handoff.
+          if (blinkPushedRef.current !== 0) pushBlink(0);
           entranceCinematicRef.current = false;
           setCinematicActive(false);
           if (onboardingModeRef.current) {
@@ -2065,6 +3121,33 @@ function EntranceHallScene({
             onDoorClickRef.current("roots");
           }
         }
+        } // end blink cinematic branch
+      } else if (blinkRef.current !== 0 || blinkPushedRef.current !== 0 || _lastCream !== 0) {
+        // FAILSAFE (owner "hall became very dark", 2026-08-23): the cinematic
+        // is NOT driving this frame — finished, skipped, or interrupted
+        // mid-blink by an autoWalk/door-tap (awClick)/external cancel. The
+        // black blink curtain and the reduced-motion cream veil must never
+        // survive it: an interruption while the eyes were "closed" previously
+        // left a permanent semi-opaque black overlay over the hall. Keyed on
+        // _lastCream (not creamFade) so the focus-mode cream cut is untouched.
+        blinkRef.current = 0;
+        if (blinkPushedRef.current !== 0) pushBlink(0);
+        if (_lastCream !== 0) { _lastCream = 0; setCreamFade(0); }
+      }
+
+      // ── W2 (WS7-10): focus mode owns the camera while active — ONE camera
+      // authority. Manual input (keys/joystick) or a pending autoWalk cancels;
+      // while focusOwns the walk/autoWalk integrators below are skipped.
+      let focusOwns = false;
+      if (focus) {
+        if (focus.state() !== "idle") {
+          const k = keys.current;
+          const manualMove =
+            !!(k["w"] || k["a"] || k["s"] || k["d"] || k["arrowup"] || k["arrowdown"] || k["arrowleft"] || k["arrowright"]) ||
+            Math.abs(touchMoveDir.x) > 0.2 || Math.abs(touchMoveDir.z) > 0.2;
+          if (manualMove || autoWalkToRef.current) focus.cancel();
+        }
+        focusOwns = focus.update(dt);
       }
 
       // ── Smooth look interpolation ──
@@ -2076,7 +3159,7 @@ function EntranceHallScene({
 
       // ── Auto-walk toward target door ──
       const awTarget = autoWalkToRef.current;
-      if (awTarget) {
+      if (awTarget && !focusOwns) {
         const doorIdx = doorDefs.findIndex(d => d.id === awTarget);
         if (doorIdx >= 0) {
           const doorAngle = (doorIdx / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
@@ -2088,12 +3171,16 @@ function EntranceHallScene({
           const dist = Math.sqrt(dx * dx + dz * dz);
 
           if (dist > 0.8) {
-            const speed = 5.0 * dt;
+            // WS12-5 (w1_hall): comfort-capped — legacy ran 5.0 m/s
+            // ITEM 2: easeInOutCubic deceleration into arrival (awClick-integrator
+            // parity) — the constant speed hard-stopped at the 0.8m gate.
+            const speed = (W1 ? Math.max(0.5, MAX_WALK_SPEED * easeInOutCubic(Math.min(1, dist / 2.5))) : 5.0) * dt;
             posT.current.x += (dx / dist) * speed;
             posT.current.z += (dz / dist) * speed;
             // Face the door using atan2 (look toward target position)
             const faceDoorAngle = Math.atan2(targetX - posT.current.x, -(targetZ - posT.current.z));
-            lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * 0.06;
+            // ITEM 2: framerate-independent (was a raw per-frame .06 factor)
+            lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * (1 - Math.exp(-3.7123 * dt)); // f=.06 @60fps
           } else {
             autoWalkToRef.current = null;
             onDoorClickRef.current(awTarget);
@@ -2101,17 +3188,44 @@ function EntranceHallScene({
         }
       }
 
-      // ── Movement (WASD / Arrow keys) ──
-      if (!awTarget) {
-      const spd = (keys.current["shift"] ? 12.0 : 4.0) * dt;
+      // ── Tap-is-travel walk-then-enter (WS8-4, w1_hall): consume awClick ──
+      if (W1 && awClick.id && !awTarget && !focusOwns) {
+        const dxC = awClick.x - posT.current.x;
+        const dzC = awClick.z - posT.current.z;
+        const distC = Math.sqrt(dxC * dxC + dzC * dzC);
+        if (distC > 0.8) {
+          const stepC = Math.min(MAX_WALK_SPEED * dt, distC);
+          posT.current.x += (dxC / distC) * stepC;
+          posT.current.z += (dzC / distC) * stepC;
+          const faceC = Math.atan2(awClick.x - posT.current.x, -(awClick.z - posT.current.z));
+          let dyaw = faceC - lookT.current.yaw;
+          dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+          const maxYaw = (MAX_YAW_DEG_S * Math.PI / 180) * dt;
+          lookT.current.yaw += Math.max(-maxYaw, Math.min(maxYaw, dyaw));
+        } else {
+          const idC = awClick.id;
+          awClick.id = null;
+          onDoorClickRef.current(idC);
+        }
+      }
+
+      // ── Movement (WASD / Arrow keys; w1_hall adds the direct analog touch vector) ──
+      if (!awTarget && !focusOwns) {
+      // Owner 2026-08-06: sprint restored as an explicit Shift modifier
+      // (comfort-capped SPRINT_SPEED, not the legacy 12 m/s)
+      const spd = (W1 ? (keys.current["shift"] ? SPRINT_SPEED : MAX_WALK_SPEED) : (keys.current["shift"] ? 12.0 : 4.0)) * dt;
       _dir.current.set(0, 0, 0);
       const k = keys.current;
       if (k["w"] || k["arrowup"]) _dir.current.z -= 1;
       if (k["s"] || k["arrowdown"]) _dir.current.z += 1;
       if (k["a"] || k["arrowleft"]) _dir.current.x -= 1;
       if (k["d"] || k["arrowright"]) _dir.current.x += 1;
-      if (_dir.current.length() > 0) {
-        _dir.current.normalize().multiplyScalar(spd);
+      // WS8-2 (w1_hall): direct joystick vector — no 16ms synthetic-WASD poll
+      if (W1) { _dir.current.x += touchMoveDir.x; _dir.current.z += touchMoveDir.z; }
+      if (_dir.current.length() > (W1 ? 0.15 : 0)) {
+        if (awClick.id) awClick.id = null; // manual input cancels tap-travel
+        const mag = W1 ? Math.min(1, _dir.current.length()) : 1;
+        _dir.current.normalize().multiplyScalar(spd * mag);
         _dir.current.applyAxisAngle(_yAxis.current, -lookA.current.yaw);
         posT.current.add(_dir.current);
       }
@@ -2136,11 +3250,18 @@ function EntranceHallScene({
           posT.current.z = col.z + Math.sin(pushAng) * col.r;
         }
       }
-      // Keep at eye level
-      posT.current.y = 2.0;
+      // Keep at eye level (shared EYE_HEIGHT constant)
+      posT.current.y = EYE_HEIGHT;
 
       // Smooth position interpolation
       pos.current.lerp(posT.current, kPos);
+      // WS10-4 (w1_hall): marble footsteps while actually moving — per-frame
+      // position delta above ~0.5 m/s equivalent; cadence capped in playFootstep.
+      if (W1) {
+        const sdx = pos.current.x - w1StepPrev.x, sdz = pos.current.z - w1StepPrev.z;
+        if (dt > 0 && sdx * sdx + sdz * sdz > (0.5 * dt) * (0.5 * dt)) playFootstep();
+        w1StepPrev.x = pos.current.x; w1StepPrev.z = pos.current.z;
+      }
       camera.position.copy(pos.current);
 
       // Look direction
@@ -2169,12 +3290,14 @@ function EntranceHallScene({
         let portalHov = false;
         let inlayHov = false;
         let bustHov: number | null = null;
+        // WS8-4 (w1_hall): doors/portal respond at ANY distance — the 15m
+        // dead-click gate only survives on the legacy path.
         doorMeshes.forEach(d => {
           const hits = _rc.current.intersectObject(d.mesh);
-          if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
+          if (hits.length > 0 && (W1 || hits[0].distance < 15)) found = d.wingId;
         });
         const pHits = _rc.current.intersectObject(portalHit);
-        if (pHits.length > 0 && pHits[0].distance < 15) portalHov = true;
+        if (pHits.length > 0 && (W1 || pHits[0].distance < 15)) portalHov = true;
         // Check inlay clicks
         inlayMeshes.forEach(im => {
           const hits = _rc.current.intersectObject(im);
@@ -2185,14 +3308,27 @@ function EntranceHallScene({
           const hits = _rc.current.intersectObject(bm);
           if (hits.length > 0 && hits[0].distance < 15) bustHov = bm.userData.pedestalIndex;
         });
+        // W2 (WS7-10): Ancestral Wall pieces respond at ANY distance (tap-is-
+        // travel dogma — no distance gate on artworks).
+        let awHov: FocusTarget | null = null;
+        if (awHitMeshes.length > 0) {
+          const aHits = _rc.current.intersectObjects(awHitMeshes, false);
+          if (aHits.length > 0) awHov = (aHits[0].object.userData.awTarget as FocusTarget) || null;
+        }
+        hovAWTarget = awHov;
         hoveredWing = found;
         hovMem.current = found || (portalHov ? "__exterior__" : (inlayHov ? "__inlay__" : (bustHov !== null ? `__bust_${bustHov}__` : null)));
-        const newCursor = (found || portalHov || inlayHov || bustHov !== null) ? "pointer" : "grab";
+        const newCursor = (found || portalHov || inlayHov || bustHov !== null || awHov) ? "pointer" : "grab";
         if (newCursor !== _lastCursor) { _lastCursor = newCursor; el.style.cursor = newCursor; }
       }
 
       // ── Distance-based door glow (strong baseline) ──
-      doorMeshes.forEach(d => {
+      // W3H (audit P0, critic §1): this per-frame loop overrode every door's
+      // material with its wing-ACCENT emissive at ≥0.25 — the wood tints
+      // shipped this wave were instantly repainted (the glowing BLUE door).
+      // Under W3H the static warm-wood emissive stands, and hover feedback is
+      // the EMBER outline plane (WS4-4 contract, finally wired below).
+      if (!W3H) doorMeshes.forEach(d => {
         // Skip normal glow for walkthrough-highlighted door
         if(hlTarget===d.wingId)return;
         const wing = WINGS.find(ww => ww.id === d.wingId);
@@ -2210,6 +3346,19 @@ function EntranceHallScene({
         d.mat.emissive.set(accent);
         d.mat.emissiveIntensity = Math.max(baseGlow, proximityGlow, hoverGlow);
       });
+      if (W3H && w1HoverPlane) {
+        const hd = hoveredWing ? doorMeshes.find(dd => dd.wingId === hoveredWing) : null;
+        if (hd) {
+          const hx = Math.cos(hd.angle) * (RADIUS - 0.75);
+          const hz = Math.sin(hd.angle) * (RADIUS - 0.75);
+          w1HoverPlane.position.set(hx, DOOR_H / 2, hz);
+          w1HoverPlane.lookAt(0, DOOR_H / 2, 0);
+          w1HoverPlane.visible = true;
+          (w1HoverPlane.material as THREE.MeshBasicMaterial).opacity = 0.14 + Math.sin(t * 3) * 0.05;
+        } else {
+          w1HoverPlane.visible = false;
+        }
+      }
 
       // Portal pulse
       portalGlow.material.opacity = 0.03 + Math.sin(t * 2) * 0.015;
@@ -2218,31 +3367,80 @@ function EntranceHallScene({
       // Animate particles — throttle to every 2nd frame on mobile for performance
       const _doParticles = !_isMobile || (_frameCount & 1) === 0;
       if (_doParticles) {
-        // Dust float (upward drift, stronger in beam area)
-        const dp = dustGeo.attributes.position.array as Float32Array;
-        for (let i = 0; i < dustN; i++) {
-          const px = dp[i * 3], pz = dp[i * 3 + 2];
-          const distFromCenter = Math.sqrt(px * px + pz * pz);
-          const inBeamArea = distFromCenter < OCULUS_R * 2;
-          const upDrift = inBeamArea ? 0.0025 : 0.0006;
-          dp[i * 3] += Math.sin(t * 0.15 + i * 0.7) * 0.002;
-          dp[i * 3 + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.001 + upDrift;
-          dp[i * 3 + 2] += Math.cos(t * 0.15 + i * 0.3) * 0.002;
-          if (dp[i * 3 + 1] > TOTAL_H - 1) dp[i * 3 + 1] = 1;
+        // Dust float (upward drift, stronger in beam area) — legacy duplicate
+        // system, only mounted when w1_hall is off
+        if (dustGeo) {
+          const dp = dustGeo.attributes.position.array as Float32Array;
+          for (let i = 0; i < dustN; i++) {
+            const px = dp[i * 3], pz = dp[i * 3 + 2];
+            const distFromCenter = Math.sqrt(px * px + pz * pz);
+            const inBeamArea = distFromCenter < OCULUS_R * 2;
+            const upDrift = inBeamArea ? 0.0025 : 0.0006;
+            dp[i * 3] += Math.sin(t * 0.15 + i * 0.7) * 0.002;
+            dp[i * 3 + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.001 + upDrift;
+            dp[i * 3 + 2] += Math.cos(t * 0.15 + i * 0.3) * 0.002;
+            if (dp[i * 3 + 1] > TOTAL_H - 1) dp[i * 3 + 1] = 1;
+          }
+          dustGeo.attributes.position.needsUpdate = true;
         }
-        dustGeo.attributes.position.needsUpdate = true;
         dust.update(t, dt);
       }
 
-      // Light beam breathing
-      (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
+      // Light beam breathing (legacy duplicate cone, only mounted when w1_hall is off)
+      if (beamMesh) (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
       oculusBeam.update(t);
 
-      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
-      if (document.hidden) return;
+      // ── W2 (WS4-8/9): living light — slow UV drift on the water normal map,
+      // counter-drifting caustic layers, and a lazy rotation of the oculus
+      // pool decal. Desktop only (w2Anim); mobile keeps the static variant.
+      if (w2Anim) {
+        if (w2WaterNormal) { w2WaterNormal.offset.set(t * 0.02, t * 0.011); }
+        if (w2CausticA) { w2CausticA.offset.set(t * 0.013, t * 0.009); }
+        if (w2CausticB) { w2CausticB.offset.set(-t * 0.01, -t * 0.007); }
+        if (w2PoolTex) { w2PoolTex.rotation = t * 0.015; }
+      }
+
+      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile) — but
+      // the first frame of every build always presents (see _presented above).
+      if (document.hidden && _presented) return;
       composer.render();
-      if (!readyFiredRef.current) { readyFiredRef.current = true; try { onReadyRef.current?.(); } catch {} }
+      if (!_presented) { _presented = true; console.log("[hall] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
+      if (!readyFiredRef.current) fireRevealWhenAssembled();
     };
+    // ASSEMBLE-BEFORE-REVEAL: onReady (the overlay/veil-lift contract) fires
+    // only when the first frame has rendered AND the reveal barrier is done —
+    // GLBs/lunettes/eager textures settled (see revealGates) or the 8s cap.
+    // The first-frame _presented guarantee above is untouched, and so is the
+    // hidden→shown onReady re-fire (readyFiredRef is already true by then).
+    // Nothing about the loads themselves is serialized or delayed.
+    if (paintGateTexes.length) {
+      revealGates.push(new Promise<void>((resolve) => {
+        let _tries = 0;
+        const check = () => {
+          if (_tries++ > 60 || paintGateTexes.every((tx) => tx.userData.naturalWidth !== undefined)) resolve();
+          else setTimeout(check, 150);
+        };
+        check();
+      }));
+    }
+    const fireRevealWhenAssembled = () => {
+      if (readyFiredRef.current || !_presented || !revealBarrierDone) return;
+      readyFiredRef.current = true;
+      try { onReadyRef.current?.(); } catch {}
+      console.log("[hall] reveal (assembled) at", Math.round(performance.now() - _mountStart), "ms");
+    };
+    if (readyFiredRef.current) {
+      // Effect re-run on an already-revealed mount (persistent hall rebuild):
+      // the barrier is moot — never park a rebuild behind it.
+      revealBarrierDone = true;
+    } else {
+      const REVEAL_CAP_MS = 8000; // slow networks: reveal what's there (MemoryPalace WS9-7 watchdog parity)
+      Promise.race([
+        Promise.allSettled(revealGates),
+        new Promise((res) => setTimeout(res, REVEAL_CAP_MS)),
+      ]).then(() => { if (!alive) return; revealBarrierDone = true; fireRevealWhenAssembled(); });
+    }
+    const _mountStart = performance.now();
     animate();
 
     // ── MOUSE CONTROLS (first-person look + click) ──
@@ -2256,6 +3454,8 @@ function EntranceHallScene({
       if (Math.abs(dx2) > 2 || Math.abs(dy2) > 2) drag.current = true;
       if (e.buttons === 1) {
         // Drag-look: apply the look math and skip hover raycasting (cursor is grabbed)
+        // W2 (WS7-10): manual look input cancels focus mode (input contract).
+        if (drag.current && focus && focus.state() !== "idle") focus.cancel();
         lookT.current.yaw -= dx2 * 0.003;
         lookT.current.pitch = Math.max(-0.6, Math.min(0.6, lookT.current.pitch + dy2 * 0.003));
         prev.current = { x: e.clientX, y: e.clientY };
@@ -2272,16 +3472,32 @@ function EntranceHallScene({
       _hoverDirty = true;
     };
     const onClick = () => {
-      if (!drag.current && hovMem.current) {
-        if (hovMem.current === "__exterior__") onDoorClickRef.current("__exterior__");
-        else if (hovMem.current === "__inlay__") onInlayClick?.();
+      if (drag.current) return;
+      // W2 (WS7-10): Ancestral Wall taps drive the focus state machine — tap →
+      // dolly-to-frame, second tap on the same piece → open the memory, tap on
+      // empty space while focused → exit. Tapping a door while focused releases
+      // the camera first, then travels (one authority, no fighting).
+      if (focus) {
+        if (hovAWTarget) { focus.handleTap(hovAWTarget); return; }
+        if (focus.state() !== "idle") {
+          if (!hovMem.current) { focus.handleTap(null); return; }
+          focus.cancel();
+        }
+      }
+      if (hovMem.current) {
+        if (hovMem.current === "__inlay__") onInlayClick?.();
         else if (hovMem.current.startsWith("__bust_")) onBustClick?.(parseInt(hovMem.current.replace("__bust_","").replace("__","")));
+        // WS8-4 (w1_hall): doors + exit portal walk-then-enter from any distance
+        else if (W1) startAutoWalk(hovMem.current);
+        else if (hovMem.current === "__exterior__") onDoorClickRef.current("__exterior__");
         else onDoorClickRef.current(hovMem.current);
       }
     };
     const onKD = (e: KeyboardEvent) => {
       keys.current[e.key.toLowerCase()] = true;
       if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(e.key.toLowerCase())) e.preventDefault();
+      // W2 (WS7-10): Escape exits focus mode (movement keys cancel in animate()).
+      if (e.key === "Escape" && focus && focus.state() !== "idle") focus.cancel();
     };
     const onKU = (e: KeyboardEvent) => {
       keys.current[e.key.toLowerCase()] = false;
@@ -2296,14 +3512,14 @@ function EntranceHallScene({
     let touchTap = true;
     let touchLookId: number | null = null;
     let touchMoveId: number | null = null;
-    const touchMoveDir = { x: 0, z: 0 };
+    // (touchMoveDir is hoisted above animate() — see the w1_hall movement block)
     const onTS = (e: TouchEvent) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
         const tch = e.changedTouches[i];
         const rect = el.getBoundingClientRect();
         const rx = (tch.clientX - rect.left) / rect.width;
         const ry = (tch.clientY - rect.top) / rect.height;
-        if (rx < 0.25 && ry > 0.75 && touchMoveId === null) {
+        if (rx < 0.25 && ry > 0.75 && touchMoveId === null && !document.querySelector('[data-mp-joystick]')) {
           touchMoveId = tch.identifier;
           touchMoveDir.x = 0;
           touchMoveDir.z = 0;
@@ -2331,6 +3547,8 @@ function EntranceHallScene({
           const dx2 = tch.clientX - prev.current.x;
           const dy2 = tch.clientY - prev.current.y;
           if (Math.abs(dx2) > 2 || Math.abs(dy2) > 2) { drag.current = true; touchTap = false; }
+          // W2 (WS7-10): manual touch-look cancels focus mode (input contract).
+          if (drag.current && focus && focus.state() !== "idle") focus.cancel();
           lookT.current.yaw -= dx2 * 0.003;
           lookT.current.pitch = Math.max(-0.6, Math.min(0.6, lookT.current.pitch + dy2 * 0.003));
           prev.current = { x: tch.clientX, y: tch.clientY };
@@ -2353,15 +3571,37 @@ function EntranceHallScene({
               -((tch.clientY - rect.top) / rect.height) * 2 + 1
             );
             _rc.current.setFromCamera(_mouse.current, camera);
+            // W2 (WS7-10): Ancestral Wall taps route through the focus state
+            // machine, any distance (tap → dolly, second tap → open).
+            let awTapped = false;
+            if (focus && awHitMeshes.length > 0) {
+              const aHits = _rc.current.intersectObjects(awHitMeshes, false);
+              if (aHits.length > 0) {
+                focus.handleTap((aHits[0].object.userData.awTarget as FocusTarget) || null);
+                awTapped = true;
+              }
+            }
             let found: string | null = null;
-            doorMeshes.forEach(d => {
-              const hits = _rc.current.intersectObject(d.mesh);
-              if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
-            });
-            if (found) onDoorClickRef.current(found);
-            else {
+            if (!awTapped) {
+              doorMeshes.forEach(d => {
+                const hits = _rc.current.intersectObject(d.mesh);
+                if (hits.length > 0 && (W1 || hits[0].distance < 15)) found = d.wingId;
+              });
+            }
+            if (found) {
+              // Tapping a door while focused releases the camera, then travels.
+              if (focus && focus.state() !== "idle") focus.cancel();
+              // WS8-4 (w1_hall): walk-then-enter from any distance
+              if (W1) startAutoWalk(found); else onDoorClickRef.current(found);
+            } else if (!awTapped) {
               const pHits = _rc.current.intersectObject(portalHit);
-              if (pHits.length > 0 && pHits[0].distance < 15) onDoorClickRef.current("__exterior__");
+              if (pHits.length > 0 && (W1 || pHits[0].distance < 15)) {
+                if (focus && focus.state() !== "idle") focus.cancel();
+                if (W1) startAutoWalk("__exterior__"); else onDoorClickRef.current("__exterior__");
+              } else if (focus && focus.state() !== "idle") {
+                // Tap on empty space while focused → exit focus (undim).
+                focus.handleTap(null);
+              }
             }
           }
           touchLookId = null;
@@ -2378,54 +3618,17 @@ function EntranceHallScene({
         k.d = touchMoveDir.x > 0.2;
       }
     };
-    const touchTick = setInterval(touchKeys, 16);
+    // WS8-2 (w1_hall): no synthetic-WASD polling — animate() reads touchMoveDir directly
+    const touchTick = W1 ? null : setInterval(touchKeys, 16);
     el.addEventListener("touchstart", onTS, { passive: true });
     el.addEventListener("touchmove", onTM, { passive: false });
     el.addEventListener("touchend", onTE, { passive: true });
 
-    // ── AUDIO with fade-in ──
-    let audioFadeInterval: ReturnType<typeof setInterval> | null = null;
-    // Autoplay-retry listener — hoisted so cleanup can remove it (these document-level
-    // listeners previously leaked and could resurrect the looping ambient after unmount)
-    let tryPlay: (() => void) | null = null;
-    const removeTryPlay = () => {
-      if (!tryPlay) return;
-      document.removeEventListener("click", tryPlay);
-      document.removeEventListener("touchstart", tryPlay);
-      tryPlay = null;
-    };
-    try {
-      const audio = new Audio("/audio/entrance-ambient.mp3");
-      audio.loop = true;
-      audio.volume = 0;
-      const targetVol = 0.3;
-      // Fade in over ~2 seconds
-      const fadeIn = () => {
-        audioFadeInterval = setInterval(() => {
-          if (audio.volume < targetVol - 0.01) {
-            audio.volume = Math.min(targetVol, audio.volume + 0.015);
-          } else {
-            audio.volume = targetVol;
-            if (audioFadeInterval) clearInterval(audioFadeInterval);
-          }
-        }, 50);
-      };
-      audio.play().then(fadeIn).catch(() => {
-        // Autoplay blocked; play on first user interaction
-        tryPlay = () => {
-          removeTryPlay();
-          if (!alive) return; // scene unmounted — do not resurrect the loop
-          audio.play().then(fadeIn).catch(() => {});
-        };
-        document.addEventListener("click", tryPlay, { once: true });
-        document.addEventListener("touchstart", tryPlay, { once: true });
-      });
-      audioRef.current = audio;
-      // Persistent mode: pause the loop while hidden, resume on re-show (unmount
-      // no longer fires on every transition, so cleanup alone can't stop it).
-      ambientPause = () => { try { if (audioFadeInterval) clearInterval(audioFadeInterval); audio.pause(); } catch {} };
-      ambientResume = () => { try { if (alive && audio.paused) audio.play().then(fadeIn).catch(() => {}); } catch {} };
-    } catch (_) {}
+    // ── AUDIO (WS10-1/2) — the ONE ambient singleton replaces the legacy
+    // per-scene /audio/entrance-ambient.mp3 loop (which 404'd anyway).
+    // Idempotent, gesture-armed on autoplay denial, and deliberately NOT
+    // stopped on unmount/hide: the score carries across scene transitions.
+    mountAmbientMusic();
 
     return () => {
       alive = false;
@@ -2439,25 +3642,23 @@ function EntranceHallScene({
       el.removeEventListener("touchstart", onTS);
       el.removeEventListener("touchmove", onTM);
       el.removeEventListener("touchend", onTE);
-      clearInterval(touchTick);
+      if (touchTick !== null) clearInterval(touchTick);
       window.removeEventListener("resize", _refreshRect);
       _rectRO?.disconnect();
-      if (audioFadeInterval) clearInterval(audioFadeInterval);
-      removeTryPlay();
-      // Fade out audio, then fully stop and release the media resource
-      if (audioRef.current) {
-        const a = audioRef.current;
-        const fadeOut = setInterval(() => {
-          if (a.volume > 0.02) {
-            a.volume = Math.max(0, a.volume - 0.03);
-          } else {
-            a.pause();
-            a.src = "";
-            clearInterval(fadeOut);
-          }
-        }, 50);
-        audioRef.current = null;
-      }
+      // WS10-2: no audio teardown — the shared ambient score keeps playing
+      // across scene transitions (singleton owns the element, not this scene).
+      // ── W2 teardown FIRST (WS4-6/WS7-10): dispose() detaches the salon-hang
+      // group, so the module-shared makeArtwork frame/liner/glow materials never
+      // enter the scene-wide dispose traversal below (they live for the app's
+      // lifetime). Photo textures are scene-owned (paintTex) → disposed here,
+      // per the salonHang texture-ownership contract.
+      if (focusFadeTimer !== null) { window.clearTimeout(focusFadeTimer); focusFadeTimer = null; }
+      focus?.dispose();
+      if (awMountHandle) awMountHandle.dispose();
+      awTextures.forEach(tx => tx.dispose());
+      lunetteTextures.forEach(tx => tx.dispose());
+      awOwnedGeos.forEach(g => g.dispose());
+      awHitMat?.dispose();
       if (envRT) { envRT.texture.dispose(); envRT.dispose(); }
       else releaseEnvMap(envFromScene); // cached fromScene bake — stays warm for the next mount
       const _cachedSet=buildCachedTextureSet();
@@ -2497,16 +3698,12 @@ function EntranceHallScene({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wingsFingerprint]);
 
-  // Handle audio ref muting (always unmuted now — mute button removed)
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = false;
-  }, []);
-
   const skipCinematic = () => {
     entranceCinematicRef.current = false;
     setCinematicActive(false);
     blinkRef.current = 0;
-    setBlinkOpacity(0);
+    pushBlink(0); // shared write path — keeps the throttle shadow in sync
+    setCreamFade(0); // reduced-motion path: never leave the cream veil up either
     if (onboardingModeRef.current) {
       onboardingModeRef.current = false;
       onDoorClickRef.current("roots");
@@ -2518,75 +3715,116 @@ function EntranceHallScene({
       <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
       {/* Blink overlay — black curtain for eye-blink effect */}
       {blinkOpacity > 0.01 && <div style={{ position: "absolute", inset: 0, background: "#000", opacity: blinkOpacity, pointerEvents: "none", zIndex: 20, transition: "opacity 0.03s linear" }} />}
-      {/* Cinematic title overlay — matches exterior palace onboarding style */}
+      {/* Cream veil (WS12-2 / WS7-10 reduced motion) — warm crossfade, never black */}
+      {creamFade > 0.01 && <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: PLASTER, opacity: creamFade, pointerEvents: "none", zIndex: 21, transition: "opacity 0.05s linear" }} />}
+      {/* ── ONBOARDING ELEVATION §10 — look-around prompt overlay (UI ONLY;
+          camera choreography untouched). Reachable only under onboardingMode
+          (today: the /flythrough viewer's `hall` phase). ── */}
       {cinematicActive && (
         <>
+          {/* Local keyframes — `onb-*` live only inside OnboardingWizard's
+              <style>; without this scoped copy the declarations silently no-op. */}
+          <style dangerouslySetInnerHTML={{ __html: `
+@keyframes ehc-slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+@keyframes ehc-titleReveal{0%{opacity:0;letter-spacing:0.6em;transform:scale(0.92)}60%{opacity:1;letter-spacing:0.12em}100%{opacity:1;letter-spacing:0.04em;transform:scale(1)}}
+@keyframes ehc-fadeIn{from{opacity:0}to{opacity:1}}
+.ehc-skip:focus-visible{outline:2px solid #F2EDE7;outline-offset:0.125rem}
+` }} />
+          {/* One-shot SR announcement — the visual choreography is silent. */}
+          <div role="status" aria-live="polite" style={{ position: "absolute", width: "1px", height: "1px", margin: "-1px", padding: 0, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap", border: 0 }}>
+            {(() => { const v = t("cinematicIntroA11y"); return v === "cinematicIntroA11y" ? "A short introduction is playing. Use the Skip intro button to go straight to the Roots Wing." : v; })()}
+          </div>
           {/* Bottom shadow gradient for text readability over 3D scene */}
           <div aria-hidden="true" style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 24 }} />
           <div style={{
-            position: "absolute", bottom: "15%", left: 0, right: 0,
+            position: "absolute",
+            // rem + env, never %-of-viewport (R9 — Android URL-bar collapse).
+            bottom: shortCinematicUi
+              ? "calc(0.75rem + env(safe-area-inset-bottom, 0px))"
+              : narrowCinematicUi
+                ? "calc(2rem + env(safe-area-inset-bottom, 0px))"
+                : "calc(3rem + env(safe-area-inset-bottom, 0px))",
+            left: 0, right: 0,
             display: "flex", flexDirection: "column", alignItems: "center",
             pointerEvents: "none", zIndex: 25,
+            // Reduced motion: ONE static fade for the whole stack, one paint.
+            animation: reduceMotionUi ? "ehc-fadeIn 0.2s linear both" : undefined,
           }}>
-            {/* Decorative divider — same as exterior */}
-            <div style={{
-              display: "flex", alignItems: "center", gap: "0.625rem",
-              marginBottom: "0.625rem",
-              animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
-            }}>
-              <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-              <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
-              <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
-            </div>
-            {/* "WELCOME" label — same as exterior */}
-            <p style={{
-              fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
-              color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
-              margin: "0 0 0.625rem",
-              textShadow: "0 2px 8px rgba(0,0,0,0.7)",
-              animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
-            }}>
-              {t("welcomeLabel")}
-            </p>
-            {/* Title — gold gradient shimmer */}
+            {/* Decorative divider — EMBER, not terracotta (canon). Hidden on
+                short viewports (landscape phones) to keep the impluvium sightline. */}
+            {!shortCinematicUi && (
+              <div style={{
+                display: "flex", alignItems: "center", gap: "0.625rem",
+                marginBottom: "0.625rem",
+                animation: reduceMotionUi ? undefined : "ehc-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
+              }}>
+                <span style={{ width: "3rem", height: "0.0625rem", background: `${EMBER}80` }} />
+                <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: EMBER, opacity: 0.6 }} />
+                <span style={{ width: "3rem", height: "0.0625rem", background: `${EMBER}80` }} />
+              </div>
+            )}
+            {/* Kicker — canon Eyebrow grammar (body font 0.6875rem/700/0.14em),
+                matching OnboardingWalkCaption/landing. */}
+            {!shortCinematicUi && (
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+                color: EMBER, letterSpacing: "0.14em", textTransform: "uppercase",
+                margin: "0 0 0.625rem",
+                textShadow: "0 0.125rem 0.5rem rgba(26,25,23,0.7)",
+                animation: reduceMotionUi ? undefined : "ehc-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
+              }}>
+                {t("welcomeLabel")}
+              </p>
+            )}
+            {/* Title — canon walk-caption treatment: Fraunces 500, flat cream
+                #FCFAF5, no gold-sheen (gold stays licensed to the celebration). */}
             <h1 style={{
               fontFamily: T.font.display,
-              fontSize: "clamp(2rem, 5vw, 3.5rem)",
-              fontWeight: 300, color: "#F2EDE7",
-              lineHeight: 1.05, margin: 0,
+              fontSize: shortCinematicUi ? "1.5rem" : "clamp(2rem, 5vw, 3.5rem)",
+              fontWeight: 500, color: "#FCFAF5",
+              lineHeight: 1.08, margin: 0,
+              // 0.04em mirrors WalkCinematicCaption (and the titleReveal
+              // keyframe's resting state) exactly — one hand across all legs.
               letterSpacing: "0.04em",
-              animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
-              backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
-              backgroundSize: "200% 100%",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              backgroundClip: "text",
-              filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
+              filter: "drop-shadow(0 0.125rem 0.5rem rgba(26,25,23,0.6))",
+              ...(reduceMotionUi ? {} : {
+                animation: "ehc-titleReveal 2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both",
+              }),
             }}>
               {t("title")}
             </h1>
-            {/* Subtitle — same font/style as exterior */}
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem",
-              color: "#D4CBC0", margin: "0.75rem 0 0",
-              lineHeight: 1.5,
-              textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
-              animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
-            }}>
-              {t("subtitle")}
-            </p>
+            {/* Subtitle — hidden on short viewports */}
+            {!shortCinematicUi && (
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem",
+                color: "#D4CBC0", margin: "0.75rem 0 0",
+                lineHeight: 1.5, maxWidth: "26rem", textAlign: "center",
+                paddingInline: narrowCinematicUi ? "1.5rem" : 0,
+                // Warm-ink shadow (canon, mirrors WalkCinematicCaption) — never cold black.
+                textShadow: "0 0.125rem 0.75rem rgba(26,25,23,0.9), 0 0.0625rem 0.1875rem rgba(26,25,23,0.7)",
+                animation: reduceMotionUi ? undefined : "ehc-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
+              }}>
+                {t("subtitle")}
+              </p>
+            )}
           </div>
-          {/* Skip intro button — top right */}
+          {/* Skip intro button — top right, safe-area aware, dark linen glass */}
           <button
+            className="ehc-skip"
             onClick={skipCinematic}
             aria-label={t("skipIntro")}
             style={{
-              position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 30,
+              position: "absolute",
+              top: "calc(1.5rem + env(safe-area-inset-top, 0px))",
+              right: "calc(1.5rem + env(safe-area-inset-right, 0px))",
+              zIndex: 30,
               fontFamily: T.font.body, fontSize: "0.8125rem",
-              color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.45)",
-              border: "1px solid rgba(255,255,255,0.2)",
+              color: "rgba(255,255,255,0.9)", background: "rgba(26,25,23,0.45)",
+              border: "1px solid rgba(242,237,231,0.22)",
               borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
-              cursor: "pointer", backdropFilter: "blur(8px)", minHeight: "2.75rem",
+              cursor: "pointer",
+              backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+              minHeight: "2.75rem",
               minWidth: "2.75rem",
               pointerEvents: "auto",
               textShadow: "0 1px 3px rgba(0,0,0,0.5)",

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiConsent } from "@/lib/ai/check-consent";
 import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
-import { checkAutoTagQuota, incrementAutoTagCount } from "@/lib/auth/plan-limits";
+import { reserveAutoTagQuota, refundAutoTagCount } from "@/lib/auth/plan-limits";
 
 // TODO: Add a first-use consent dialog in the client UI to improve UX
 // instead of relying solely on the settings page toggles.
@@ -41,15 +41,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: consent.error }, { status: 403 });
     }
 
-    // Check auto-tag quota (free users: 5/day)
-    const tagQuota = await checkAutoTagQuota(user.id);
-    if (!tagQuota.allowed) {
-      return NextResponse.json({
-        error: "Auto-tag daily limit reached",
-        quota: { used: tagQuota.used, limit: tagQuota.limit },
-      }, { status: 403 });
-    }
-
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "AI tagging is not configured. Add ANTHROPIC_API_KEY to .env.local." }, { status: 503 });
@@ -85,6 +76,26 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Wing description exceeds 5,000 characters" }, { status: 400 });
       }
     }
+
+    // Atomically reserve the daily auto-tag quota (free users: 5/day) BEFORE the
+    // paid Vision call. This prevents the read-then-upsert TOCTOU where
+    // concurrent requests all read used=0 and each pays for a 50-image call.
+    const batchSize = items.length;
+    const reservation = await reserveAutoTagQuota(user.id, batchSize);
+    if (!reservation.allowed) {
+      return NextResponse.json({
+        error: "Auto-tag daily limit reached",
+        quota: { used: reservation.used, limit: reservation.limit },
+      }, { status: 403 });
+    }
+    // From here on, any early return / failure MUST refund the reservation.
+    let reserved = true;
+    const refund = async () => {
+      if (reserved && !reservation.unlimited) {
+        reserved = false;
+        await refundAutoTagCount(user.id, batchSize);
+      }
+    };
 
     // Build the prompt
     const wingList = wings
@@ -165,6 +176,7 @@ Respond ONLY with a JSON array, no other text.`,
       });
     } catch (err: any) {
       clearTimeout(timeout);
+      await refund();
       if (err?.name === "AbortError") {
         return NextResponse.json({ error: "AI request timed out" }, { status: 504 });
       }
@@ -175,6 +187,7 @@ Respond ONLY with a JSON array, no other text.`,
     if (!response.ok) {
       const errText = await response.text();
       console.error(`[ai-tag] API error ${response.status}:`, errText);
+      await refund();
       return NextResponse.json({ error: "AI processing failed" }, { status: 502 });
     }
 
@@ -184,12 +197,18 @@ Respond ONLY with a JSON array, no other text.`,
     // Extract JSON from response
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
+      await refund();
       return NextResponse.json({ error: "Could not parse AI response" }, { status: 500 });
     }
 
-    const suggestions = JSON.parse(jsonMatch[0]);
-    // Increment daily auto-tag counter for free users
-    await incrementAutoTagCount(user.id, items.length);
+    // Success — the reservation already counted the batch; nothing to increment.
+    let suggestions: unknown;
+    try {
+      suggestions = JSON.parse(jsonMatch[0]);
+    } catch {
+      await refund();
+      return NextResponse.json({ error: "Could not parse AI response" }, { status: 500 });
+    }
     return NextResponse.json({ suggestions }, {
       headers: { "Cache-Control": "no-store" },
     });

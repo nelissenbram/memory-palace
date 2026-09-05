@@ -13,6 +13,7 @@ import { RoomIcon } from "./WingRoomIcons";
 /* ── Shared constants ── */
 
 import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
+import { CREAM, HAIRLINE, SHADOW, HOVER_SHADOW, TOP_HIGHLIGHT, HOVER_LIFT } from "@/lib/libraryTokens";
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_OUT = "cubic-bezier(0.0, 0, 0.2, 1)";
@@ -72,6 +73,19 @@ function KeyframesStyle() {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-0.625rem); }
       }
+      /* Card title scrim: hover-capable devices fade it in on hover/focus;
+         touch devices keep it always visible, slightly quieter. */
+      .lc-title-scrim { opacity: 0; transition: opacity 0.25s ease; }
+      @media (hover: hover) {
+        .lc-card:hover .lc-title-scrim,
+        .lc-card:focus-visible .lc-title-scrim { opacity: 1; }
+      }
+      @media (hover: none) {
+        .lc-title-scrim { opacity: 0.82; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .lc-title-scrim { transition: none; }
+      }
     `}</style>
   );
 }
@@ -97,26 +111,14 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
   const [addHovered, setAddHovered] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
 
-  const coverGradient = useMemo(() => {
-    const h = room.coverHue;
-    return `linear-gradient(145deg,
-      hsl(${h}, 35%, 80%) 0%,
-      hsl(${(h + 20) % 360}, 30%, 74%) 40%,
-      hsl(${(h + 45) % 360}, 26%, 68%) 100%)`;
-  }, [room.coverHue]);
+  /* Cover tint derived from the wing accent (Atrium canon — no HSL drift) */
+  const coverGradient = useMemo(
+    () => `linear-gradient(160deg, ${accent}1F 0%, ${accent}14 45%, ${accent}0A 100%)`,
+    [accent],
+  );
 
-  /* Subtle tile pattern for no-image covers */
-  const patternBg = useMemo(() => {
-    const h = room.coverHue;
-    return {
-      background: coverGradient,
-      backgroundImage: `
-        radial-gradient(circle at 25% 25%, hsla(${h}, 20%, 95%, 0.12) 1px, transparent 1px),
-        radial-gradient(circle at 75% 75%, hsla(${h}, 20%, 95%, 0.08) 1px, transparent 1px)
-      `,
-      backgroundSize: "1.5rem 1.5rem",
-    };
-  }, [room.coverHue, coverGradient]);
+  /* Accent-tinted cover for no-image covers */
+  const patternBg = useMemo(() => ({ background: coverGradient }), [coverGradient]);
 
   return (
     <>
@@ -131,23 +133,16 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
         onMouseLeave={() => setHovered(false)}
         style={{
           borderRadius: "1rem",
-          background: "rgba(255, 255, 255, 0.72)",
-          backdropFilter: "blur(1.5rem) saturate(1.4)",
-          WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
+          background: `linear-gradient(160deg, ${accent}14 0%, ${CREAM} 78%)`,
           cursor: "pointer",
           overflow: "hidden",
           position: "relative",
-          border: `0.0625rem solid ${hovered ? accent + "50" : T.color.cream}`,
+          border: `0.0625rem solid ${HAIRLINE}`,
           boxShadow: hovered
-            ? `0 1.25rem 2.5rem rgba(44,44,42,.14),
-               0 0.5rem 1rem rgba(44,44,42,.07),
-               0 0 0 0.0625rem ${accent}18,
-               inset 0 0.0625rem 0 rgba(255,255,255,.7)`
-            : `0 0.0625rem 0.25rem rgba(44,44,42,.05),
-               0 0.25rem 0.75rem rgba(44,44,42,.04),
-               inset 0 0.0625rem 0 rgba(255,255,255,.5)`,
-          transform: hovered ? "translateY(-0.25rem)" : "translateY(0)",
-          transition: `all 0.4s ${EASE}`,
+            ? `${HOVER_SHADOW}, ${TOP_HIGHLIGHT}`
+            : `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
+          transform: hovered ? HOVER_LIFT : "translateY(0)",
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
         }}
       >
         {/* ── Cover area ── */}
@@ -178,8 +173,8 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
                 position: "absolute", inset: 0,
                 background: `linear-gradient(
                   to top,
-                  rgba(44,44,42,.4) 0%,
-                  rgba(44,44,42,.1) 35%,
+                  rgba(64,59,54,.4) 0%,
+                  rgba(64,59,54,.1) 35%,
                   rgba(180,150,100,.06) 65%,
                   transparent 100%
                 )`,
@@ -231,7 +226,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
               boxShadow: addHovered
                 ? `0 0.25rem 0.75rem ${accent}60, 0 0 0 0.1875rem rgba(255,255,255,.3)`
                 : `0 0.125rem 0.375rem ${accent}30`,
-              transform: addHovered ? "scale(1.15)" : "scale(1)",
+              transform: addHovered ? "translateY(-0.1875rem)" : "translateY(0)",
               transition: `all 0.25s ${EASE}`,
               zIndex: 2,
               backdropFilter: "blur(0.25rem)",
@@ -284,7 +279,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.12), 0 0 0 0.0625rem rgba(255,255,255,.6)`,
+          boxShadow: `0 0.125rem 0.5rem rgba(64,59,54,.12), 0 0 0 0.0625rem rgba(255,255,255,.6)`,
           zIndex: 3,
           transition: `transform 0.3s ${EASE}`,
           transform: hovered ? "scale(1.08)" : "scale(1)",
@@ -304,7 +299,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
             fontFamily: T.font.display,
             fontSize: "1rem",
             fontWeight: 700,
-            color: T.color.charcoal,
+            color: "#403B36",
             margin: 0,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -312,13 +307,13 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
             letterSpacing: "0.01em",
             lineHeight: 1.3,
           }}>
-            <span style={{ fontWeight: 500, color: T.color.muted, fontSize: "0.8125rem", marginRight: "0.25rem" }}>{t("room")}</span>
+            <span style={{ fontWeight: 500, color: "#716A5E", fontSize: "0.8125rem", marginRight: "0.25rem" }}>{t("room")}</span>
             {translateRoomName(room, tWings)}
           </p>
           <p style={{
             fontFamily: T.font.body,
             fontSize: "0.75rem",
-            color: T.color.muted,
+            color: "#716A5E",
             margin: 0,
             fontWeight: 500,
             letterSpacing: "0.02em",
@@ -356,7 +351,7 @@ function HighlightText({ text, query }: { text: string; query?: string }) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark style={{ background: `${T.color.gold}55`, color: "inherit", borderRadius: "0.125rem", padding: "0 0.0625rem" }}>{text.slice(idx, idx + query.length)}</mark>
+      <mark style={{ background: "rgba(154,79,42,0.18)", color: "inherit", borderRadius: "0.125rem", padding: "0 0.0625rem" }}>{text.slice(idx, idx + query.length)}</mark>
       {text.slice(idx + query.length)}
     </>
   );
@@ -432,6 +427,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
       <KeyframesStyle />
       <div
         ref={cardRef}
+        className="lc-card"
         role={locked ? undefined : "button"}
         aria-label={mem.title}
         tabIndex={locked ? undefined : 0}
@@ -441,23 +437,16 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
         onMouseLeave={() => setHovered(false)}
         style={{
           borderRadius: "1rem",
-          background: "rgba(255, 255, 255, 0.72)",
-          backdropFilter: "blur(1.5rem) saturate(1.4)",
-          WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
+          background: `linear-gradient(160deg, ${accent}14 0%, ${CREAM} 78%)`,
           cursor: locked ? "default" : "pointer",
           overflow: "visible",
           position: "relative",
-          border: `0.0625rem solid ${hovered && !locked ? accent + "40" : T.color.cream}`,
+          border: `0.0625rem solid ${HAIRLINE}`,
           boxShadow: hovered && !locked
-            ? `0 1.25rem 2.5rem rgba(44,44,42,.12),
-               0 0.5rem 1rem rgba(44,44,42,.06),
-               0 0 1.5rem ${accentStrip}18,
-               inset 0 0.0625rem 0 rgba(255,255,255,.7)`
-            : `0 0.0625rem 0.25rem rgba(44,44,42,.05),
-               0 0.25rem 0.75rem rgba(44,44,42,.04),
-               inset 0 0.0625rem 0 rgba(255,255,255,.5)`,
-          transform: hovered && !locked ? "translateY(-0.25rem)" : "translateY(0)",
-          transition: `all 0.4s ${EASE}`,
+            ? `${HOVER_SHADOW}, ${TOP_HIGHLIGHT}`
+            : `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
+          transform: hovered && !locked ? HOVER_LIFT : "translateY(0)",
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
           opacity: locked ? 0.88 : 1,
           animation: animationIndex !== undefined ? `lc-card-fade-in 0.4s ${EASE} ${staggerDelay} both` : undefined,
         }}
@@ -470,7 +459,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 20,
-            background: "rgba(44,44,42,.92)",
+            background: "rgba(64,59,54,.92)",
             backdropFilter: "blur(0.75rem)",
             WebkitBackdropFilter: "blur(0.75rem)",
             color: T.color.linen,
@@ -530,8 +519,8 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                 position: "absolute", inset: 0,
                 background: `
                   radial-gradient(ellipse at 0% 0%, rgba(180,130,80,.12) 0%, transparent 50%),
-                  radial-gradient(ellipse at 100% 100%, rgba(44,44,42,.2) 0%, transparent 50%),
-                  linear-gradient(to top, rgba(44,44,42,.25) 0%, transparent 40%)
+                  radial-gradient(ellipse at 100% 100%, rgba(64,59,54,.2) 0%, transparent 50%),
+                  linear-gradient(to top, rgba(64,59,54,.25) 0%, transparent 40%)
                 `,
                 pointerEvents: "none",
               }} />
@@ -553,7 +542,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
               />
               <div style={{
                 position: "absolute", inset: 0,
-                background: "linear-gradient(to top, rgba(44,44,42,.35) 0%, transparent 50%)",
+                background: "linear-gradient(to top, rgba(64,59,54,.35) 0%, transparent 50%)",
                 pointerEvents: "none",
               }} />
               <div style={{
@@ -590,7 +579,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                   borderRadius: "0.125rem",
                   flexShrink: 0,
                   animation: hovered
-                    ? `lc-wave 1.2s ease-in-out ${bar.delay}s infinite`
+                    ? "none"
                     : "none",
                   transformOrigin: "center",
                   boxShadow: "0 0 0.375rem rgba(255,255,255,.15)",
@@ -701,27 +690,42 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             </div>
           )}
 
-          {/* Video play overlay (when image present) */}
-          {isVideo && hasImage && (
-            <div style={{
-              position: "absolute", inset: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(0,0,0,.12)",
-              pointerEvents: "none",
-            }}>
-              <div style={{
-                width: "2.75rem", height: "2.75rem", borderRadius: "50%",
-                background: "rgba(255,255,255,.22)",
-                backdropFilter: "blur(0.75rem)",
-                WebkitBackdropFilter: "blur(0.75rem)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                boxShadow: "0 0.25rem 1rem rgba(0,0,0,.2), inset 0 0.0625rem 0 rgba(255,255,255,.25)",
-                border: "0.0625rem solid rgba(255,255,255,.2)",
+          {/* (Removed dead "video play overlay when image present" branch:
+              hasImage requires !isVideo, so it could never render. Play badges
+              live exclusively in the (isVideo || isAudio) branches above.) */}
+
+          {/* Title overlay — bottom scrim on the media itself (hover-in on
+              hover-capable devices, always-on compact for touch via CSS) */}
+          {!locked && mem.title && (
+            <div
+              className="lc-title-scrim"
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                zIndex: 1,
+                padding: "1.375rem 0.625rem 0.4375rem 2.375rem",
+                background: "linear-gradient(to top, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.42) 55%, transparent 100%)",
+                pointerEvents: "none",
+              }}
+            >
+              <p style={{
+                margin: 0,
+                fontFamily: T.font.display,
+                fontWeight: 600,
+                fontSize: "0.8125rem",
+                lineHeight: 1.3,
+                letterSpacing: "0.01em",
+                color: CREAM,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.35)",
               }}>
-                <svg width="13" height="15" viewBox="0 0 12 14" fill="rgba(255,255,255,.95)">
-                  <path d="M1 1.5v11l10-5.5L1 1.5z"/>
-                </svg>
-              </div>
+                {mem.title}
+              </p>
             </div>
           )}
 
@@ -729,7 +733,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
           {mem.createdAt && !locked && (
             <span style={{
               position: "absolute", top: "0.5rem", right: "0.5rem",
-              background: "rgba(44,44,42,.5)",
+              background: "rgba(64,59,54,.5)",
               backdropFilter: "blur(0.5rem)",
               WebkitBackdropFilter: "blur(0.5rem)",
               color: "rgba(255,255,255,.92)",
@@ -789,12 +793,12 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                 transform: hovered ? "scale(1)" : "scale(0.8)",
                 transition: `all 0.25s ${EASE}`,
                 boxShadow: moveHovered
-                  ? `0 0.25rem 0.75rem rgba(44,44,42,.15)`
+                  ? `0 0.25rem 0.75rem rgba(64,59,54,.15)`
                   : `0 0.0625rem 0.25rem rgba(0,0,0,.1)`,
                 padding: 0,
               }}
             >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={moveHovered ? accent : "rgba(44,44,42,.7)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={moveHovered ? accent : "rgba(64,59,54,.7)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 10L1 13l3 3" />
                 <path d="M1 13h10a4 4 0 000-8H4" />
                 <path d="M4 5L1 2l3-3" />
@@ -806,7 +810,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
           {locked && (
             <div style={{
               position: "absolute", inset: 0,
-              background: "rgba(44,44,42,.55)",
+              background: "rgba(64,59,54,.55)",
               backdropFilter: "blur(0.5rem)",
               WebkitBackdropFilter: "blur(0.5rem)",
               display: "flex", flexDirection: "column",
@@ -841,7 +845,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             fontFamily: T.font.display,
             fontSize: "0.9375rem",
             fontWeight: 700,
-            color: T.color.charcoal,
+            color: "#403B36",
             margin: 0,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -857,7 +861,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             <p style={{
               fontFamily: T.font.body,
               fontSize: "0.6875rem",
-              color: T.color.muted,
+              color: "#716A5E",
               margin: "0.1875rem 0 0",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -873,7 +877,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             <p style={{
               fontFamily: T.font.body,
               fontSize: "0.6875rem",
-              color: T.color.muted,
+              color: "#716A5E",
               margin: "0.1875rem 0 0",
               overflow: "hidden",
               display: "-webkit-box",
@@ -890,7 +894,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             <p style={{
               fontFamily: T.font.body,
               fontSize: "0.625rem",
-              color: T.color.walnut,
+              color: "#716A5E",
               margin: "0.25rem 0 0",
               overflow: "hidden",
               textOverflow: "ellipsis",

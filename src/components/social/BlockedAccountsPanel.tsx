@@ -15,6 +15,7 @@ interface BlockedUser {
 export default function BlockedAccountsPanel() {
   const { t } = useTranslation("social");
   const [users, setUsers] = useState<BlockedUser[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -22,23 +23,28 @@ export default function BlockedAccountsPanel() {
   }, []);
 
   const handleUnblock = (id: string) => {
+    setError(null);
     startTransition(async () => {
-      await unblockUser(id);
+      const res = await unblockUser(id);
+      if (!res.ok) {
+        // Delete failed (RLS / session / network) — keep the row and reconcile
+        // with the DB so the UI never claims an unblock that didn't happen.
+        setError(t("unblockError"));
+        getBlockedUsers().then(setUsers).catch(() => {});
+        return;
+      }
       setUsers((prev) => (prev || []).filter((u) => u.id !== id));
     });
   };
 
-  // Still loading — don't flash an empty state.
-  if (users === null) return null;
-
   return (
     <div
       style={{
-        background: "#FFF",
+        background: T.color.cream,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: `1px solid ${T.color.hairline}`,
         padding: "1.5rem 1.75rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: T.shadow[1],
         marginBottom: "1rem",
       }}
     >
@@ -66,7 +72,24 @@ export default function BlockedAccountsPanel() {
       >
         {t("blockedAccountsHint")}
       </p>
-      {users.length === 0 ? (
+      {error && (
+        <p
+          role="alert"
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.8125rem",
+            color: T.color.terracotta,
+            lineHeight: 1.5,
+            margin: "0 0 1rem",
+          }}
+        >
+          {error}
+        </p>
+      )}
+      {/* While the list loads, keep the card (title + hint) mounted — the
+          section disappearing entirely read as "blocked accounts is missing"
+          and violates the page's Apple-1.2 always-mounted contract. */}
+      {users === null ? null : users.length === 0 ? (
         <p
           style={{
             fontFamily: T.font.body,
@@ -90,7 +113,7 @@ export default function BlockedAccountsPanel() {
               padding: "0.625rem 0.875rem",
               borderRadius: "0.625rem",
               background: T.color.linen,
-              border: `1px solid ${T.color.cream}`,
+              border: `1px solid ${T.color.hairline}`,
             }}
           >
             <div

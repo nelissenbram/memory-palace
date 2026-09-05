@@ -34,6 +34,9 @@ async function handleUnsubscribe(request: Request) {
   const unsubscribe = searchParams.get("unsubscribe");
   const email = searchParams.get("email") || "";
   const uid = searchParams.get("uid") || "";
+  // scope=monthly → flip only monthly_highlights (keep weekly). Default/no-scope
+  // → email_digest=false (kill-all, backward compatible).
+  const scope = searchParams.get("scope") === "monthly" ? "monthly" : "all";
 
   if (unsubscribe !== "true" || (!email && !uid)) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
@@ -54,45 +57,59 @@ async function handleUnsubscribe(request: Request) {
   let userId: string | undefined;
 
   if (uid) {
-    // Try to verify as HMAC-signed token first (new emails use signed tokens)
+    // Only accept HMAC-signed tokens. A bare/unsigned uid is NOT trusted:
+    // user UUIDs are not secret (shared profiles, OG images, invite links), so
+    // accepting a raw uid would allow an unauthenticated caller to unsubscribe
+    // any victim by UUID (IDOR mass-unsubscribe). All senders emit signed tokens.
     const verified = verifyUnsubscribeToken(uid);
-    if (verified) {
+    // Only accept a valid UUID (real profile id). A signed-but-non-UUID token
+    // (e.g. sample/preview emails) must NOT hit the DB with an invalid uuid —
+    // that throws a Postgres error and shows the scary "something went wrong"
+    // page. Treat it like any unknown recipient: show the generic success page.
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (verified && UUID.test(verified)) {
       userId = verified;
-    } else {
-      // Legacy fallback: treat uid as a bare user ID for already-sent emails.
-      // TODO: Remove this legacy fallback by July 2026 — after all pre-HMAC emails have expired.
-      userId = uid;
     }
+    // else: invalid/unsigned/non-uuid token — leave userId undefined and fall
+    // through to the generic success page below without mutating anything.
   } else if (email) {
-    // Legacy email-based lookup
-    const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-    const authUser = authUsers?.users?.find((u) => u.email === email);
-    userId = authUser?.id;
+    // Legacy email-based lookup. Paginate through ALL auth pages — a single
+    // {perPage:1000} call silently strands users beyond the first 1000 with a
+    // fake "unsubscribed" page while their digests keep sending (CAN-SPAM risk).
+    let page = 1;
+    while (!userId) {
+      const { data: authUsers, error: listError } = await supabase.auth.admin.listUsers({ perPage: 1000, page });
+      if (listError || !authUsers?.users?.length) break;
+      userId = authUsers.users.find((u) => u.email === email)?.id;
+      if (authUsers.users.length < 1000) break;
+      page++;
+    }
   }
 
   if (!userId) {
     // Don't reveal whether the email/uid exists — just show success
-    return new NextResponse(renderPage("success", ""), {
+    return new NextResponse(renderPage("success", "", scope), {
       status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   }
 
-  // Update the profile to disable email digest
+  // Flip the scoped preference: monthly → only monthly_highlights; else kill-all.
+  const patch = scope === "monthly" ? { monthly_highlights: false } : { email_digest: false };
   const { error } = await supabase
     .from("profiles")
-    .update({ email_digest: false })
+    .update(patch)
     .eq("id", userId);
 
   if (error) {
     console.error("[Unsubscribe] Failed to update profile:", error);
-    return new NextResponse(renderPage("error", "Something went wrong. Please try again or disable digest emails in your settings."), {
+    return new NextResponse(renderPage("error", "Something went wrong. Please try again or update your email preferences in settings."), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   }
 
-  return new NextResponse(renderPage("success", ""), {
+  return new NextResponse(renderPage("success", "", scope), {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
@@ -108,9 +125,12 @@ export async function POST(request: Request) {
   return handleUnsubscribe(request);
 }
 
-function renderPage(type: "success" | "error", errorMessage: string): string {
+function renderPage(type: "success" | "error", errorMessage: string, scope: "monthly" | "all" = "all"): string {
   const palaceUrl = `${SITE_URL}/palace`;
   const settingsUrl = `${SITE_URL}/settings/notifications`;
+  const confirmLine = scope === "monthly"
+    ? "You&rsquo;ll no longer receive Memory Palace monthly highlights."
+    : "You&rsquo;ll no longer receive Memory Palace update emails.";
 
   if (type === "error") {
     return `<!DOCTYPE html>
@@ -151,7 +171,7 @@ function renderPage(type: "success" | "error", errorMessage: string): string {
       You&rsquo;ve Been Unsubscribed
     </h1>
     <p style="font-family:'Georgia',serif;font-size:15px;color:#8B7355;line-height:1.6;margin:0 0 8px;">
-      You won&rsquo;t receive weekly digest emails anymore.
+      ${confirmLine}
     </p>
     <p style="font-family:'Georgia',serif;font-size:14px;color:#9A9183;line-height:1.6;margin:0 0 28px;">
       You can always re-enable this in your

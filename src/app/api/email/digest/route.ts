@@ -11,6 +11,9 @@ import {
 } from "@/lib/email/send-digest";
 import { TRACKS } from "@/lib/constants/tracks";
 import enMessages from "@/messages/en.json";
+import { lifecycleEmailsEnabled } from "@/lib/email/lifecycle-flag";
+import { fetchRecentlyEmailed, logLifecycleSend } from "@/lib/email/send-ledger";
+import { captureServer } from "@/lib/analytics-server";
 
 /**
  * POST /api/email/digest
@@ -129,6 +132,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Master kill-switch: send nothing until the owner sets
+  // LIFECYCLE_EMAILS_ENABLED=true and redeploys.
+  if (!lifecycleEmailsEnabled()) {
+    return NextResponse.json(
+      { paused: true, reason: "LIFECYCLE_EMAILS_ENABLED not set" },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
   }
@@ -185,24 +197,39 @@ export async function POST(request: Request) {
     ])
   );
 
-  // Filter to eligible user IDs (digest not explicitly disabled, not active today, account > 7 days old)
+  // ── Active-in-previous-7-days set (memory-creation signal) ──
+  // The true creation signal; last_seen_at (below) catches palace viewers.
+  const activeByMemory = new Set<string>();
+  {
+    const { data: recentCreators } = await supabase
+      .from("memories")
+      .select("user_id")
+      .gte("created_at", weekAgoISO);
+    for (const mrow of (recentCreators || []) as Array<{ user_id: string }>) {
+      activeByMemory.add(mrow.user_id);
+    }
+  }
+
+  // Eligible iff: digest not opted out, account > 7 days old, AND active in the
+  // previous 7 days (SPEC §E — replaces the old "skip if active today" spray).
   const sevenDaysAgo = new Date(now);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   const eligibleUserIds = allAuthUsers
     .filter((u) => {
       const profile = profileMap.get(u.id);
+      if (!u.email) return false;
       if (profile?.email_digest === false) return false;
-      // Skip users whose account is less than 7 days old
+      // Skip users whose account is less than 7 days old (onboarding-drip cohort)
       if (profile?.created_at) {
         const createdAt = new Date(profile.created_at);
         if (createdAt > sevenDaysAgo) return false;
       }
-      if (profile?.last_seen_at) {
-        const lastSeen = new Date(profile.last_seen_at);
-        if (lastSeen.toISOString().slice(0, 10) === todayISO) return false;
-      }
-      return !!u.email;
+      // Active in the previous 7 days: seen in the palace OR created a memory.
+      const seenActive = profile?.last_seen_at && new Date(profile.last_seen_at) >= weekAgo;
+      const madeActive = activeByMemory.has(u.id);
+      if (!seenActive && !madeActive) return false;
+      return true;
     })
     .map((u) => u.id);
 
@@ -221,16 +248,39 @@ export async function POST(request: Request) {
     idBatches.push(eligibleUserIds.slice(i, i + batchSize));
   }
 
-  // Fetch all memories for eligible users only
-  const allMemories: Array<{ id: string; title: string; user_id: string; room_id: string; thumbnail_url: string | null; created_at: string }> = [];
+  // Fetch all memories for eligible users only.
+  // Week-4 resurface repair: (a) include event_date — the real taken-date — so
+  // anniversaries stop matching on upload date; (b) paginate instead of the old
+  // newest-first .limit(500), which silently dropped exactly the OLD memories
+  // that are anniversary-eligible. event_date is selected defensively: until
+  // the 20260825150000 migration is applied the column doesn't exist, and the
+  // query falls back to the legacy column list (created_at fallback applies).
+  const MEMORY_COLS = "id, title, user_id, room_id, thumbnail_url, created_at";
+  let hasEventDateColumn = true;
+  const allMemories: Array<{ id: string; title: string; user_id: string; room_id: string; thumbnail_url: string | null; created_at: string; event_date?: string | null }> = [];
   for (const batch of idBatches) {
-    const { data } = await supabase
-      .from("memories")
-      .select("id, title, user_id, room_id, thumbnail_url, created_at")
-      .in("user_id", batch)
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (data) allMemories.push(...data);
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from("memories")
+        .select(hasEventDateColumn ? `${MEMORY_COLS}, event_date` : MEMORY_COLS)
+        .in("user_id", batch)
+        .order("created_at", { ascending: false })
+        .range(from, from + 999);
+      if (error) {
+        if (hasEventDateColumn && /event_date/i.test(error.message)) {
+          hasEventDateColumn = false;
+          continue; // retry this page without the column
+        }
+        console.error("[Digest] memories fetch failed:", error.message);
+        break;
+      }
+      if (!data?.length) break;
+      allMemories.push(...(data as unknown as typeof allMemories));
+      if (data.length < 1000) break;
+      from += 1000;
+      if (from >= 20000) break; // hard safety cap per batch
+    }
   }
 
   // Fetch upcoming time capsules (already filtered by date, just scope to eligible users)
@@ -283,27 +333,34 @@ export async function POST(request: Request) {
 
   // ── 4. Build per-user data structures ──
 
-  // On This Day memories
+  // On This Day memories — anniversary matches on the real taken-date
+  // (event_date) with created_at as fallback for rows without one (week-4
+  // resurface repair). Month/day match against the coming 7 days, any past year.
   const otdByUser: Record<string, OnThisDayMemory[]> = {};
   for (const mem of allMemories) {
-    const created = new Date(mem.created_at);
+    const anniversary = new Date(mem.event_date || mem.created_at);
+    if (isNaN(anniversary.getTime())) continue;
     for (let offset = 0; offset < 7; offset++) {
       const checkDate = new Date(now);
       checkDate.setDate(checkDate.getDate() + offset);
       if (
-        created.getMonth() + 1 === checkDate.getMonth() + 1 &&
-        created.getDate() === checkDate.getDate() &&
-        created.getFullYear() < now.getFullYear()
+        anniversary.getMonth() === checkDate.getMonth() &&
+        anniversary.getDate() === checkDate.getDate() &&
+        anniversary.getFullYear() < checkDate.getFullYear()
       ) {
         if (!otdByUser[mem.user_id]) otdByUser[mem.user_id] = [];
         otdByUser[mem.user_id].push({
+          id: mem.id,
           title: mem.title,
-          yearsAgo: now.getFullYear() - created.getFullYear(),
+          yearsAgo: checkDate.getFullYear() - anniversary.getFullYear(),
+          thumbnailUrl: mem.thumbnail_url || null,
         });
         break;
       }
     }
   }
+  // Oldest-first (largest anniversary leads the hero), max 5 rendered downstream.
+  for (const list of Object.values(otdByUser)) list.sort((a, b) => b.yearsAgo - a.yearsAgo);
 
   // Capsules by user
   const capsulesByUser: Record<string, UpcomingCapsule[]> = {};
@@ -395,7 +452,7 @@ export async function POST(request: Request) {
   const memoryCountByUser: Record<string, number> = {};
   const memoriesThisWeekByUser: Record<string, number> = {};
   const roomIdsByUser: Record<string, Set<string>> = {};
-  const recentMemoriesByUser: Record<string, { title: string; thumbnailUrl: string | null; roomId: string }[]> = {};
+  const recentMemoriesByUser: Record<string, { id: string; title: string; thumbnailUrl: string | null; roomId: string }[]> = {};
   const memoryDatesByUser: Record<string, string[]> = {};
 
   for (const mem of allMemories) {
@@ -409,6 +466,7 @@ export async function POST(request: Request) {
       memoriesThisWeekByUser[mem.user_id] = (memoriesThisWeekByUser[mem.user_id] || 0) + 1;
       if (!recentMemoriesByUser[mem.user_id]) recentMemoriesByUser[mem.user_id] = [];
       recentMemoriesByUser[mem.user_id].push({
+        id: mem.id,
         title: mem.title,
         thumbnailUrl: mem.thumbnail_url || null,
         roomId: mem.room_id || "",
@@ -422,6 +480,9 @@ export async function POST(request: Request) {
     roomIdsByUser[room.user_id].add(room.id);
     roomNameMap.set(room.id, room.name);
   }
+
+  // ── Ledger: bar users who got any lifecycle email in the last 6 days (§E) ──
+  const { barred, readFailures: ledgerReadFailures } = await fetchRecentlyEmailed(supabase, eligibleUserIds, now);
 
   // ── 5. Send digest to each eligible user ──
   const authUserMap = new Map(allAuthUsers.map((u) => [u.id, u]));
@@ -440,9 +501,22 @@ export async function POST(request: Request) {
       break;
     }
 
+    // Ledger cap: ≤1 lifecycle email per user per rolling window.
+    if (barred.has(userId)) { skipped++; continue; }
+
     const authUser = authUserMap.get(userId);
     const email = authUser?.email;
     if (!email) continue;
+
+    // Content-gate (§E): a hero (OTD / shared / capsule) must exist, OR the user
+    // added something this week (worth a one-line quiet note). Genuinely-empty
+    // sends are suppressed — no manufactured filler.
+    const hasHero =
+      (otdByUser[userId]?.length ?? 0) > 0 ||
+      (activityByUser[userId]?.length ?? 0) > 0 ||
+      (capsulesByUser[userId]?.length ?? 0) > 0;
+    const addedThisWeek = (memoriesThisWeekByUser[userId] ?? 0) > 0;
+    if (!hasHero && !addedThisWeek) { skipped++; continue; }
 
     const profile = profileMap.get(userId);
     const displayName = profile?.display_name || email.split("@")[0];
@@ -493,6 +567,7 @@ export async function POST(request: Request) {
       const pool = withThumbs.length > 0 ? withThumbs : candidates;
       const pick = pool[Math.floor(Math.random() * pool.length)];
       memoryOfTheWeek = {
+        id: pick.id,
         title: pick.title,
         thumbnailUrl: pick.thumbnailUrl,
         roomName: roomNameMap.get(pick.roomId) || "Your Palace",
@@ -515,6 +590,14 @@ export async function POST(request: Request) {
 
     if (result.success) {
       sent++;
+      await logLifecycleSend(supabase, userId, "weekly");
+      // Week-4 resurface repair: server event so gate-2 (resurface→capture)
+      // is measurable. Opens/clicks are attributable via utm_content=otd on
+      // the OTD deep-links (resurface_opened = pageview carrying that utm).
+      const otdCount = otdByUser[userId]?.length ?? 0;
+      if (otdCount > 0) {
+        void captureServer(userId, "resurface_sent", { kind: "weekly_otd", count: otdCount, channel: "email" });
+      }
     } else {
       const redactedEmail = `***@${email.split("@")[1]}`;
       console.error(`[Digest] Failed for ${redactedEmail}:`, result.error);
@@ -528,6 +611,7 @@ export async function POST(request: Request) {
     errors,
     totalUsers: allAuthUsers.length,
     eligibleUsers: eligibleUserIds.length,
+    ledgerReadFailures,
     timedOut,
     usersSkipped,
   }, {

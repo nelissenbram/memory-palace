@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
-import { updateProfile, requestPasswordReset, deleteAccount, uploadAvatar } from "@/lib/auth/profile-actions";
+import { updateProfile, uploadAvatar } from "@/lib/auth/profile-actions";
 import { updateProfile as updateSocialProfile } from "@/lib/social/profile-actions";
-import MFASetup from "@/components/settings/MFASetup";
-import ExportPanel from "@/components/settings/ExportPanel";
+import Link from "next/link";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales, localeNames } from "@/i18n/config";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
@@ -15,6 +14,9 @@ import { useDaylight } from "@/components/providers/DaylightProvider";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRouter } from "next/navigation";
 import { isIOS } from "@/lib/native/platform";
+import { syncSettingsFromServer } from "@/lib/stores/settingsSync";
+import { SettingsPageHeader, SectionOverline } from "../_SettingsChrome";
+import { INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, TRAY, CREAM, SAGE, GOLD } from "@/lib/libraryTokens";
 
 interface ProfileData {
   display_name: string;
@@ -51,12 +53,12 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
   // Hide the not-yet-shipped Renaissance style on iOS (Apple Guideline 2.3.1).
   const [hideComingSoon, setHideComingSoon] = useState(false);
   useEffect(() => { setHideComingSoon(isIOS()); }, []);
-  const [deleteText, setDeleteText] = useState("");
-  const [deleting, setDeleting] = useState(false);
+  // Hydration-safe host for the public-profile URL row.
+  const [publicHost, setPublicHost] = useState("thememorypalace.ai");
+  useEffect(() => { if (window.location.host) setPublicHost(window.location.host); }, []);
   // Editable fields
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -76,14 +78,29 @@ export default function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
 
-  // Load persona from localStorage
+  // Load persona from localStorage, and re-hydrate when a cross-device settings
+  // sync lands (settingsSync fires "mp-settings-synced" after pulling
+  // profiles.local_settings) so the label doesn't stay stale after retaking the
+  // quiz on another device. We also kick off a sync on mount because this
+  // surface can be opened on a fresh device without ever loading the 3D palace
+  // (the only other place that pulls settings from the server).
   useEffect(() => {
-    setPersonaType(localStorage.getItem("mp_persona_type"));
+    const readPersona = () => setPersonaType(localStorage.getItem("mp_persona_type"));
+    readPersona();
+    window.addEventListener("mp-settings-synced", readPersona);
+    syncSettingsFromServer();
+    return () => window.removeEventListener("mp-settings-synced", readPersona);
   }, []);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
   }, []);
+
+  // i18n fallback helper — new keys work before the locale files land.
+  const tf = useCallback((key: string, fallback: string) => {
+    const v = t(key);
+    return v === key ? fallback : v;
+  }, [t]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -142,6 +159,9 @@ export default function ProfilePage() {
       username !== profile.username ||
       whatsappPhone !== profile.whatsapp_phone);
 
+  // Server rejects usernames under 3 chars — mirror that inline so Save can't fail silently.
+  const usernameTooShort = username.length > 0 && username.length < 3;
+
   const handleSave = async () => {
     setSaving(true);
     const result = await updateProfile({
@@ -175,27 +195,6 @@ export default function ProfilePage() {
     );
     showToast(t("profileSaved"), "success");
     setSaving(false);
-  };
-
-  const handlePasswordReset = async () => {
-    const result = await requestPasswordReset();
-    if (result.error) {
-      showToast(result.error, "error");
-    } else {
-      showToast(t("passwordResetSent"), "success");
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (deleteText !== t("deleteConfirmWord")) return;
-    setDeleting(true);
-    const result = await deleteAccount();
-    if (result.error) {
-      showToast(result.error, "error");
-      setDeleting(false);
-    } else {
-      window.location.href = "/login";
-    }
   };
 
   const handleAvatarUpload = async (file: File) => {
@@ -240,21 +239,57 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div style={{
-        padding: "3rem", textAlign: "center",
-        fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
+        background: T.color.white,
+        borderRadius: "1rem",
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
+        padding: "3rem 2rem",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 */
+        textAlign: "center",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "0.875rem",
       }}>
-        {t("loadingProfile")}
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={EMBER_GLYPH} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }} aria-hidden="true">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED /* Atrium muted */ }}>
+          {t("loadingProfile")}
+        </span>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div style={{
-        padding: "3rem", textAlign: "center",
-        fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
+      <div role="alert" style={{
+        background: T.color.white,
+        borderRadius: "1rem",
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
+        padding: "3rem 2rem",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 */
+        textAlign: "center",
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "0.875rem",
       }}>
-        {loading ? "..." : t("profileLoadError")}
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C05050" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+        </svg>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED /* Atrium muted */ }}>
+          {t("profileLoadError")}
+        </span>
+        <button
+          className="mp-settings-btn"
+          onClick={() => window.location.reload()}
+          style={{
+            minHeight: "2.75rem",
+            padding: "0.625rem 1.5rem",
+            borderRadius: "0.75rem",
+            border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
+            background: "transparent",
+            color: EMBER /* Atrium ember (actionable) */,
+            fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {tf("retry", "Try again")}
+        </button>
       </div>
     );
   }
@@ -266,10 +301,10 @@ export default function ProfilePage() {
         <div role={toast.type === "success" ? "status" : "alert"} aria-live={toast.type === "success" ? "polite" : "assertive"} style={{
           position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? "#4A6741" : "#C05050",
+          background: toast.type === "success" ? SAGE : T.color.error, /* SAGE success / error token */
           color: "#FFF",
-          fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-          boxShadow: "0 8px 24px rgba(0,0,0,.15)",
+          fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+          boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 */
           animation: "fadeIn .2s ease",
           display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
@@ -277,36 +312,29 @@ export default function ProfilePage() {
           {toast.message}
           <button onClick={() => setToast(null)} aria-label={tc("close")} style={{
             background: "none", border: "none", color: "#FFF",
-            fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
+            fontSize: "0.9375rem" /* Atrium body */, cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
         </div>
       )}
 
       {/* Page header — desktop only (mobile uses tab bar as title) */}
-      {!isMobile && (
-        <div style={{ marginBottom: "2rem" }}>
-          <h2 style={{
-            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 0.5rem",
-          }}>
-            {t("yourProfile")}
-          </h2>
-          <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
-            margin: 0, lineHeight: 1.5,
-          }}>
-            {t("profileDescription")}
-          </p>
-        </div>
-      )}
+      <SettingsPageHeader
+        hidden={isMobile}
+        icon="profile"
+        title={t("yourProfile")}
+        subtitle={t("profileDescription")}
+      />
+
+      {/* Section overline — Your details */}
+      <SectionOverline label={tf("sectionYourDetails", "Your details")} />
 
       {/* ── Profile Card ── */}
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
       }}>
         {/* Avatar + Name header */}
@@ -314,16 +342,17 @@ export default function ProfilePage() {
           {/* Clickable avatar with upload overlay */}
           <div style={{ position: "relative", flexShrink: 0 }}>
             <button
+              className="mp-settings-btn"
               onClick={() => avatarInputRef.current?.click()}
               aria-label={t("changeProfilePhoto")}
               disabled={avatarUploading}
               style={{
                 width: "4.5rem", height: "4.5rem", borderRadius: "2.25rem",
-                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})` /* Atrium ember → glyph */,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: "#FFF",
                 fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
-                letterSpacing: "1px",
+                letterSpacing: "0.0625rem",
                 border: "none",
                 cursor: avatarUploading ? "wait" : "pointer",
                 padding: 0,
@@ -344,7 +373,7 @@ export default function ProfilePage() {
               {/* Hover overlay */}
               <span style={{
                 position: "absolute", inset: 0, borderRadius: "2.25rem",
-                background: "rgba(0,0,0,0.35)",
+                background: "rgba(64,59,54,0.45)", /* Atrium warm-ink scrim */
                 display: "flex", alignItems: "center", justifyContent: "center",
                 opacity: avatarUploading ? 1 : 0,
                 transition: "opacity .2s",
@@ -377,25 +406,28 @@ export default function ProfilePage() {
           </div>
           <div>
             <div style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
-              color: T.color.charcoal,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
+              color: INK /* Atrium ink */,
             }}>
               {displayName || t("namePlaceholder")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               marginTop: "0.25rem",
             }}>
               {profile.email}
             </div>
             <button
+              className="mp-settings-btn"
               onClick={() => avatarInputRef.current?.click()}
               disabled={avatarUploading}
               style={{
-                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", fontWeight: 600,
-                color: T.color.terracotta, background: "none",
-                border: "none", padding: "0.25rem 0", cursor: avatarUploading ? "wait" : "pointer",
-                marginTop: "0.25rem", opacity: avatarUploading ? 0.6 : 1,
+                fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                color: EMBER /* Atrium ember (actionable link) */, background: "none",
+                border: "none", padding: "0 0.5rem", minHeight: "2.75rem",
+                display: "inline-flex", alignItems: "center",
+                cursor: avatarUploading ? "wait" : "pointer",
+                marginTop: "0.25rem", marginLeft: "-0.5rem", opacity: avatarUploading ? 0.6 : 1,
               }}
             >
               {avatarUploading ? t("uploadingPhoto") : t("changeProfilePhoto")}
@@ -430,13 +462,13 @@ export default function ProfilePage() {
               readOnly
               style={{
                 ...inputStyle,
-                background: T.color.warmStone,
-                color: T.color.muted,
+                background: TRAY, /* Atrium tray (read-only) */
+                color: MUTED /* Atrium muted */,
                 cursor: "not-allowed",
               }}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("emailReadonlyNote")}
@@ -457,11 +489,53 @@ export default function ProfilePage() {
               style={inputStyle}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("usernameHelp")}
             </p>
+            {usernameTooShort && (
+              <p role="alert" style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.error /* Atrium error */,
+                margin: "0.375rem 0 0", lineHeight: 1.4,
+              }}>
+                {tf("usernameTooShort", "Username must be at least 3 characters.")}
+              </p>
+            )}
+            {/* Public-profile link (change 18 — the shareable URL, first time on mobile) */}
+            {profile.username && (
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: "0.75rem", flexWrap: "wrap",
+                minHeight: "2.75rem",
+                marginTop: "0.625rem",
+                padding: "0.625rem 1rem",
+                borderRadius: "0.75rem",
+                background: TRAY /* Atrium tray — recessed below the white card */,
+                border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
+              }}>
+                <span style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: INK /* Atrium ink */,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                }}>
+                  {`${publicHost}/u/${profile.username}`}
+                </span>
+                <Link
+                  href={`/u/${profile.username}`}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                    minHeight: "2.75rem",
+                    padding: "0.375rem 0.875rem",
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                    color: EMBER /* Atrium ember (interactive) */,
+                    textDecoration: "none",
+                    flexShrink: 0,
+                  }}
+                >
+                  {tf("viewPublicProfile", "View public profile")} {"→"}
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Bio */}
@@ -497,7 +571,7 @@ export default function ProfilePage() {
               style={inputStyle}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("whatsappPhoneHelp")}
@@ -508,28 +582,34 @@ export default function ProfilePage() {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen,
-            border: `1px solid ${T.color.cream}`,
+            background: TRAY /* Atrium tray — recessed below the white card */,
+            border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
               <div style={{
                 fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                color: T.color.charcoal,
+                color: INK /* Atrium ink */,
               }}>
                 {t("profileVisibility")}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
                 marginTop: "0.25rem", lineHeight: 1.4,
               }}>
                 {t("profileVisibilityDesc")}
               </div>
             </div>
             <button
+              className="mp-settings-btn"
               role="switch"
               aria-checked={isPublic}
-              disabled={isPublicSaving}
+              disabled={isPublicSaving || (!isPublic && !profile.username)}
               onClick={async () => {
+                // Can't publish a profile that has no username to share.
+                if (!isPublic && !profile.username) {
+                  showToast(tf("usernameRequiredForPublic", "Choose a username before making your profile public"), "error");
+                  return;
+                }
                 const newVal = !isPublic;
                 setIsPublicSaving(true);
                 setIsPublic(newVal);
@@ -548,12 +628,12 @@ export default function ProfilePage() {
                 height: "1.75rem",
                 borderRadius: "0.875rem",
                 border: "none",
-                background: isPublic ? T.color.sage : T.color.sandstone,
-                cursor: isPublicSaving ? "wait" : "pointer",
+                background: isPublic ? EMBER /* Atrium ember = active */ : HAIRLINE /* Atrium off track */,
+                cursor: isPublicSaving ? "wait" : (!isPublic && !profile.username ? "not-allowed" : "pointer"),
                 position: "relative",
                 transition: "background .2s",
                 flexShrink: 0,
-                opacity: isPublicSaving ? 0.6 : 1,
+                opacity: isPublicSaving || (!isPublic && !profile.username) ? 0.6 : 1,
               }}
             >
               <span style={{
@@ -564,7 +644,7 @@ export default function ProfilePage() {
                 height: "1.375rem",
                 borderRadius: "0.6875rem",
                 background: T.color.white,
-                boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+                boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)", /* Atrium warm ink */
                 transition: "left .2s",
               }} />
             </button>
@@ -574,48 +654,62 @@ export default function ProfilePage() {
           <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
             <legend style={labelStyle}>{t("palaceStyle")}</legend>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               margin: "0 0 0.625rem", lineHeight: 1.4,
             }}>
               {t("palaceStyleDesc")}
             </p>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "0.625rem",
-            }}>
+            <div
+              role="radiogroup"
+              aria-label={t("palaceStyle")}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "0.625rem",
+              }}
+            >
               {(["roman", "renaissance"] as const).filter((era) => !(hideComingSoon && era === "renaissance")).map((era) => {
                 const isComingSoon = era === "renaissance";
+                const isSelected = styleEra === era && !isComingSoon;
                 return (
                 <button
                   key={era}
-                  aria-pressed={styleEra === era && !isComingSoon}
+                  className="mp-settings-btn"
+                  role={isComingSoon ? undefined : "radio"}
+                  aria-checked={isComingSoon ? undefined : isSelected}
+                  aria-disabled={isComingSoon || undefined}
                   onClick={async () => {
                     if (isComingSoon) return;
+                    const prevEra = styleEra;
                     setStyleEra(era);
-                    await updateProfile({ styleEra: era });
-                    showToast(t("palaceStyleUpdated"), "success");
+                    const result = await updateProfile({ styleEra: era });
+                    if (result.error) {
+                      setStyleEra(prevEra);
+                      showToast(result.error, "error");
+                    } else {
+                      showToast(t("palaceStyleUpdated"), "success");
+                    }
                   }}
                   style={{
                     padding: "0.875rem 1rem",
                     borderRadius: "0.75rem",
-                    border: `2px solid ${styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.cream}`,
-                    background: styleEra === era && !isComingSoon ? `${era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent}12` : T.color.linen,
+                    border: `0.125rem solid ${isSelected ? EMBER /* ember (active), matching roman pill grammar */ : HAIRLINE}`,
+                    background: isSelected ? TRAY /* terracotta tray */ : CREAM /* panel */,
                     cursor: isComingSoon ? "default" : "pointer",
                     opacity: isComingSoon ? 0.55 : 1,
                     textAlign: "left",
                     transition: "all .2s",
                     fontFamily: T.font.body,
-                    fontSize: "0.875rem",
-                    fontWeight: styleEra === era && !isComingSoon ? 600 : 500,
-                    color: styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.charcoal,
+                    fontSize: "0.9375rem",
+                    fontWeight: isSelected ? 600 : 500,
+                    color: isSelected ? EMBER /* ember (active) */ : INK,
                   }}
                 >
-                  <div style={{ fontWeight: 600, marginBottom: 2 }}>
+                  <div style={{ fontWeight: 600, marginBottom: "0.125rem" }}>
                     {era === "roman" ? t("romanName") : t("renaissanceName")}
-                    {isComingSoon && <span style={{ fontSize: "0.6875rem", fontWeight: 600, marginLeft: "0.5rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("comingSoon")}</span>}
+                    {isComingSoon && <span style={{ fontSize: "0.6875rem", fontWeight: 700, marginLeft: "0.5rem", color: MUTED, textTransform: "uppercase", letterSpacing: "0.12em" }}>{t("comingSoon")}</span>}
                   </div>
-                  <div style={{ fontSize: isMobile ? "0.8125rem" : "0.75rem", fontWeight: 500, color: T.color.muted }}>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 500, color: MUTED }}>
                     {era === "roman" ? t("romanDesc") : t("renaissanceDesc")}
                   </div>
                 </button>
@@ -624,110 +718,61 @@ export default function ProfilePage() {
             </div>
           </fieldset>
 
-          {/* Memory Style / Persona */}
-          <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-            <legend style={labelStyle}>{t("yourMemoryStyle")}</legend>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-              margin: "0 0 0.625rem", lineHeight: 1.4,
+          {/* Memory Style / Persona — shrunk to one link row (change 18; the quiz lives in the Atrium) */}
+          <div>
+            <span style={labelStyle}>{t("yourMemoryStyle")}</span>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              gap: "0.75rem", minHeight: "2.75rem",
+              padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+              background: TRAY /* Atrium tray — recessed below the white card */,
+              border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
             }}>
-              {t("memoryStyleDesc")}
-            </p>
-            {personaType ? (
-              <div style={{
-                display: "flex", alignItems: "center", gap: "1rem",
-                padding: "1rem 1.25rem", borderRadius: "0.75rem",
-                background: `${T.color.gold}08`,
-                border: `0.0625rem solid ${T.color.gold}30`,
+              <span style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem",
+                color: personaType ? INK /* Atrium ink */ : MUTED /* Atrium muted */,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
               }}>
-                <div style={{
-                  width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-                  background: `${T.color.gold}18`, border: `0.0625rem solid ${T.color.gold}40`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <path d="M12 16v-4M12 8h.01" />
-                  </svg>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-                    color: T.color.charcoal,
-                  }}>
-                    {tPersona("resultTitle").replace("{type}", tPersona(`${personaType}Label`))}
-                  </div>
-                  <div style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-                    marginTop: "0.125rem", lineHeight: 1.45,
-                  }}>
-                    {tPersona(`${personaType}Desc`)}
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    localStorage.removeItem("mp_persona_type");
-                    setPersonaType(null);
-                    showToast(t("personaReset"), "success");
-                  }}
-                  style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                    color: T.color.terracotta, background: "none",
-                    border: `0.0625rem solid ${T.color.terracotta}30`,
-                    borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
-                    cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
-                  }}
-                >
-                  {t("retakeQuiz")}
-                </button>
-              </div>
-            ) : (
-              <div style={{
-                padding: "1rem 1.25rem", borderRadius: "0.75rem",
-                background: T.color.linen, border: `0.0625rem solid ${T.color.cream}`,
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-              }}>
-                <span style={{
-                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-                }}>
-                  {t("noPersonaYet")}
-                </span>
-                <button
-                  onClick={() => { router.push("/atrium"); }}
-                  style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                    color: T.color.terracotta, background: "none",
-                    border: `0.0625rem solid ${T.color.terracotta}30`,
-                    borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
-                    cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
-                  }}
-                >
-                  {t("takeQuiz")}
-                </button>
-              </div>
-            )}
-          </fieldset>
+                {personaType ? tPersona(`${personaType}Label`) : t("noPersonaYet")}
+              </span>
+              <button
+                className="mp-settings-btn"
+                onClick={() => { router.push("/atrium?persona=1"); }}
+                style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                  color: EMBER /* Atrium ember (actionable) */, background: "none",
+                  border: "0.0625rem solid rgba(184,92,56,0.35)",
+                  borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
+                  minHeight: "2.75rem",
+                  cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
+                }}
+              >
+                {personaType ? t("retakeQuiz") : t("takeQuiz")}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Save button */}
         <div style={{ marginTop: "1.75rem", display: "flex", gap: "0.75rem" }}>
           <button
+            className="mp-settings-btn"
             onClick={handleSave}
-            disabled={!hasChanges || saving}
+            disabled={!hasChanges || saving || !!usernameTooShort}
             style={{
               padding: "0.875rem 2rem",
+              minHeight: "2.75rem",
               borderRadius: "0.75rem",
               border: "none",
               background:
-                !hasChanges || saving
-                  ? `${T.color.sandstone}60`
-                  : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-              color: !hasChanges || saving ? T.color.muted : "#FFF",
+                !hasChanges || saving || usernameTooShort
+                  ? "#EEE9DF" /* Atrium pre-mixed: sandstone 37% on cream */
+                  : `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})` /* Atrium ember → glyph */,
+              color: !hasChanges || saving || usernameTooShort ? MUTED /* Atrium muted */ : "#FFF",
               fontFamily: T.font.body,
               fontSize: "0.9375rem",
               fontWeight: 600,
-              cursor: !hasChanges || saving ? "default" : "pointer",
+              cursor: !hasChanges || saving || usernameTooShort ? "default" : "pointer",
               transition: "all .2s",
             }}
           >
@@ -735,17 +780,20 @@ export default function ProfilePage() {
           </button>
           {hasChanges && (
             <button
+              className="mp-settings-btn"
               onClick={() => {
                 setDisplayName(profile.display_name);
                 setBio(profile.bio);
                 setUsername(profile.username);
+                setWhatsappPhone(profile.whatsapp_phone);
               }}
               style={{
                 padding: "0.875rem 1.5rem",
+                minHeight: "2.75rem",
                 borderRadius: "0.75rem",
-                border: `1px solid ${T.color.cream}`,
+                border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
                 background: "transparent",
-                color: T.color.muted,
+                color: MUTED /* Atrium muted */,
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
                 fontWeight: 500,
@@ -759,94 +807,31 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Account Section ── */}
-      <div style={{
-        background: T.color.white,
-        borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
-        padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-        marginBottom: "1.5rem",
-      }}>
-        <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.375rem",
-        }}>
-          {t("account")}
-        </h3>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-          margin: "0 0 1.375rem", lineHeight: 1.5,
-        }}>
-          {t("accountDescription")}
-        </p>
+      {/* Connections + Security link cards removed — both are now first-class
+          doors in the settings nav (layout.tsx NAV_ITEMS), so the in-page
+          duplicates are gone. */}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {/* Change Password */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen,
-            border: `1px solid ${T.color.cream}`,
-          }}>
-            <div>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                color: T.color.charcoal,
-              }}>
-                {t("changePassword")}
-              </div>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-                marginTop: "0.25rem",
-              }}>
-                {t("changePasswordDesc")}
-              </div>
-            </div>
-            <button
-              onClick={handlePasswordReset}
-              style={{
-                padding: "0.75rem 1.5rem",
-                borderRadius: "0.625rem",
-                border: `1px solid ${T.color.cream}`,
-                background: T.color.white,
-                fontFamily: T.font.body,
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                color: T.color.charcoal,
-                cursor: "pointer",
-                transition: "all .15s",
-                flexShrink: 0,
-                minHeight: "2.75rem",
-              }}
-            >
-              {t("sendResetLink")}
-            </button>
-          </div>
-
-          {/* Download My Data */}
-          <ExportPanel showToast={showToast} />
-        </div>
-      </div>
+      {/* Section overline — Preferences */}
+      <SectionOverline label={tf("sectionPreferences", "Preferences")} />
 
       {/* ── AI Features Consent ── */}
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.375rem",
+          fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+          color: INK /* Atrium ink */, margin: "0 0 0.375rem",
         }}>
           {t("aiFeatures")}
         </h3>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-          margin: "0 0 1.375rem", lineHeight: 1.5,
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED /* Atrium muted */,
+          margin: "0 0 1.375rem", lineHeight: 1.4,
         }}>
           {t("aiFeaturesDesc")}
         </p>
@@ -856,24 +841,25 @@ export default function ProfilePage() {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen,
-            border: `1px solid ${T.color.cream}`,
+            background: TRAY /* Atrium tray — recessed below the white card */,
+            border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
               <div style={{
                 fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                color: T.color.charcoal,
+                color: INK /* Atrium ink */,
               }}>
                 {t("aiConsent")}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
                 marginTop: "0.25rem", lineHeight: 1.4,
               }}>
                 {t("aiConsentDesc")}
               </div>
             </div>
             <button
+              className="mp-settings-btn"
               role="switch"
               aria-checked={aiConsent}
               disabled={aiSaving}
@@ -881,8 +867,13 @@ export default function ProfilePage() {
                 const newVal = !aiConsent;
                 setAiSaving(true);
                 setAiConsent(newVal);
-                await updateProfile({ aiConsent: newVal });
-                showToast(newVal ? t("aiConsentOn") : t("aiConsentOff"), "success");
+                const result = await updateProfile({ aiConsent: newVal });
+                if (result.error) {
+                  setAiConsent(!newVal);
+                  showToast(result.error, "error");
+                } else {
+                  showToast(newVal ? t("aiConsentOn") : t("aiConsentOff"), "success");
+                }
                 setAiSaving(false);
               }}
               style={{
@@ -890,7 +881,7 @@ export default function ProfilePage() {
                 height: "1.75rem",
                 borderRadius: "0.875rem",
                 border: "none",
-                background: aiConsent ? T.color.sage : T.color.sandstone,
+                background: aiConsent ? EMBER /* Atrium ember = active */ : HAIRLINE /* Atrium off track */,
                 cursor: aiSaving ? "wait" : "pointer",
                 position: "relative",
                 transition: "background .2s",
@@ -906,7 +897,7 @@ export default function ProfilePage() {
                 height: "1.375rem",
                 borderRadius: "0.6875rem",
                 background: T.color.white,
-                boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+                boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)", /* Atrium warm ink */
                 transition: "left .2s",
               }} />
             </button>
@@ -915,40 +906,47 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Security: Two-Factor Authentication ── */}
-      <MFASetup />
-
       {/* ── Language ── */}
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 1rem",
+          fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+          color: INK /* Atrium ink */, margin: "0 0 1rem",
         }}>
           {tc("language")}
         </h3>
-        <div style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>
+        <div role="radiogroup" aria-label={tc("language")} style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>
           {locales.map((l) => (
             <button
               key={l}
-              onClick={() => setLocale(l)}
-              aria-pressed={locale === l}
+              className="mp-settings-btn"
+              role="radio"
+              aria-checked={locale === l}
+              onClick={() => {
+                if (locale === l) return;
+                // Language switch reloads the page; warn before dropping unsaved profile edits.
+                if (hasChanges && !window.confirm(tf("unsavedEditsWarning", "You have unsaved changes that will be lost. Switch language anyway?"))) {
+                  return;
+                }
+                setLocale(l);
+              }}
               style={{
+                minHeight: "2.75rem",
                 padding: "0.875rem 1.5rem",
                 borderRadius: "0.75rem",
-                border: `2px solid ${locale === l ? T.color.terracotta : T.color.cream}`,
-                background: locale === l ? `${T.color.terracotta}12` : T.color.linen,
+                border: `0.125rem solid ${locale === l ? EMBER : HAIRLINE}`,
+                background: locale === l ? TRAY /* terracotta tray */ : CREAM /* panel */,
                 cursor: "pointer",
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
                 fontWeight: locale === l ? 600 : 500,
-                color: locale === l ? T.color.terracotta : T.color.charcoal,
+                color: locale === l ? EMBER_GLYPH : INK,
                 transition: "all .2s",
               }}
             >
@@ -962,19 +960,19 @@ export default function ProfilePage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.25rem",
+          fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+          color: INK /* Atrium ink */, margin: "0 0 0.25rem",
         }}>
           {tA11y("title")}
         </h3>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
           margin: "0 0 1rem", lineHeight: 1.4,
         }}>
           {tA11y("subtitle")}
@@ -994,6 +992,7 @@ export default function ProfilePage() {
             return (
               <button
                 key={level}
+                className="mp-settings-btn"
                 role="radio"
                 aria-checked={isSelected}
                 onClick={() => {
@@ -1007,8 +1006,8 @@ export default function ProfilePage() {
                   gap: "0.5rem",
                   padding: "1rem 0.75rem",
                   borderRadius: "0.75rem",
-                  border: isSelected ? `2px solid ${T.color.sage}` : `1px solid ${T.color.cream}`,
-                  background: isSelected ? `${T.color.sage}0a` : T.color.linen,
+                  border: isSelected ? `0.125rem solid ${EMBER}` : `0.0625rem solid ${HAIRLINE}`, /* Atrium ember / hairline */
+                  background: isSelected ? TRAY /* Atrium terracotta tray */ : CREAM /* Atrium panel */,
                   cursor: "pointer",
                   transition: "all .2s",
                   position: "relative",
@@ -1018,7 +1017,7 @@ export default function ProfilePage() {
                   <span style={{
                     position: "absolute", top: "0.5rem", right: "0.5rem",
                     width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                    background: T.color.sage, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: EMBER /* Atrium ember */, display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M2.5 6l2.5 2.5 4.5-5" />
@@ -1027,19 +1026,19 @@ export default function ProfilePage() {
                 )}
                 <span style={{
                   fontFamily: T.font.display, fontSize: previewSize, fontWeight: 600,
-                  color: isSelected ? T.color.charcoal : T.color.walnut,
+                  color: isSelected ? INK : MUTED, /* Atrium ink / muted */
                 }}>
                   Aa
                 </span>
                 <span style={{
-                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: isSelected ? T.color.charcoal : T.color.walnut,
+                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                  color: isSelected ? INK : MUTED, /* Atrium ink / muted */
                 }}>
                   {tA11y(level)}
                 </span>
                 <span style={{
-                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
-                  color: T.color.muted, lineHeight: 1.3,
+                  fontFamily: T.font.body, fontSize: "0.8125rem",
+                  color: MUTED /* Atrium muted */, lineHeight: 1.3,
                 }}>
                   {tA11y(`${level}Desc`)}
                 </span>
@@ -1053,39 +1052,40 @@ export default function ProfilePage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 1rem",
+          fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+          color: INK /* Atrium ink */, margin: "0 0 1rem",
         }}>
           {tc("daylightMode")}
         </h3>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-          background: T.color.linen,
-          border: `1px solid ${T.color.cream}`,
+          background: TRAY /* Atrium tray — recessed below the white card */,
+          border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
           marginBottom: daylightEnabled ? "0.75rem" : 0,
         }}>
           <div>
             <div style={{
               fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-              color: T.color.charcoal,
+              color: INK /* Atrium ink */,
             }}>
               {tc("daylightMode")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED /* Atrium muted */,
               marginTop: "0.25rem", lineHeight: 1.4,
             }}>
               {tc("daylightDesc")}
             </div>
           </div>
           <button
+            className="mp-settings-btn"
             role="switch"
             aria-checked={daylightEnabled}
             onClick={toggleDaylight}
@@ -1094,7 +1094,7 @@ export default function ProfilePage() {
               height: "1.75rem",
               borderRadius: "0.875rem",
               border: "none",
-              background: daylightEnabled ? T.color.gold : T.color.sandstone,
+              background: daylightEnabled ? EMBER /* Atrium ember = active — matches other switches */ : HAIRLINE /* Atrium off track */,
               cursor: "pointer",
               position: "relative",
               transition: "background .2s",
@@ -1109,7 +1109,7 @@ export default function ProfilePage() {
               height: "1.375rem",
               borderRadius: "0.6875rem",
               background: T.color.white,
-              boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+              boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)", /* Atrium warm ink */
               transition: "left .2s",
             }} />
           </button>
@@ -1129,23 +1129,24 @@ export default function ProfilePage() {
                 }}>
                   <span style={{
                     fontWeight: 500,
-                    color: isAuto ? T.color.muted : T.color.charcoal,
+                    color: isAuto ? MUTED /* Atrium muted */ : INK /* Atrium ink */,
                   }}>
                     {formatDaylightHour(displayHour)} — {daylightPeriodLabel(displayHour, tc)}
                   </span>
                   <button
+                    className="mp-settings-btn"
                     aria-pressed={isAuto}
                     onClick={() => isAuto ? setCustomHour(displayHour) : setDaylightMode("auto")}
                     style={{
                       padding: "0.25rem 0.75rem",
                       borderRadius: "0.5rem",
-                      border: `1px solid ${isAuto ? T.color.gold : T.color.cream}`,
-                      background: isAuto ? `${T.color.gold}18` : T.color.linen,
+                      border: `0.0625rem solid ${isAuto ? "rgba(154,79,42,0.35)" : HAIRLINE}`, /* Atrium terracotta / hairline */
+                      background: isAuto ? TRAY : CREAM /* Atrium panel */,
                       cursor: "pointer",
                       fontFamily: T.font.body,
-                      fontSize: "0.75rem",
+                      fontSize: "0.8125rem",
                       fontWeight: isAuto ? 600 : 500,
-                      color: isAuto ? T.color.walnut : T.color.muted,
+                      color: isAuto ? EMBER_GLYPH : MUTED, /* Atrium glyph / muted */
                       transition: "all .2s",
                     }}
                   >
@@ -1154,6 +1155,7 @@ export default function ProfilePage() {
                 </div>
                 <input
                   type="range"
+                  className="mp-daylight-range"
                   min={0}
                   max={24}
                   step={0.5}
@@ -1162,14 +1164,14 @@ export default function ProfilePage() {
                   aria-label={tc("daylightSlider")}
                   style={{
                     width: "100%",
-                    accentColor: T.color.gold,
+                    minHeight: "2.75rem", /* touch target >=2.75rem (canon) */
+                    accentColor: EMBER, /* Atrium ember */
                     cursor: "pointer",
                   }}
                 />
                 <div style={{
                   display: "flex", justifyContent: "space-between",
-                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
-                  opacity: 0.6,
+                  fontFamily: T.font.body, fontSize: "0.6875rem", color: MUTED, /* Atrium muted, full opacity */
                 }}>
                   <span>00:00</span>
                   <span>06:00</span>
@@ -1183,145 +1185,39 @@ export default function ProfilePage() {
         })()}
       </div>
 
-      {/* ── Danger Zone ── */}
-      <div style={{
-        background: T.color.white,
-        borderRadius: "1rem",
-        border: `1px solid #C0505020`,
-        padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-      }}>
-        <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-          color: "#C05050", margin: "0 0 0.375rem",
-        }}>
-          {t("dangerZone")}
-        </h3>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-          margin: "0 0 1.125rem", lineHeight: 1.5,
-        }}>
-          {t("dangerDescription")}
-        </p>
-
-        {!deleteConfirm ? (
-          <button
-            onClick={() => setDeleteConfirm(true)}
-            style={{
-              padding: "0.875rem 1.75rem",
-              borderRadius: "0.75rem",
-              border: `1px solid #C0505033`,
-              background: "#C0505008",
-              fontFamily: T.font.body,
-              fontSize: "0.9375rem",
-              fontWeight: 600,
-              color: "#C05050",
-              cursor: "pointer",
-              transition: "all .15s",
-            }}
-          >
-            {t("deleteAccount")}
-          </button>
-        ) : (
-          <div style={{
-            padding: "1.25rem 1.5rem", borderRadius: "0.875rem",
-            background: "#FDF2F2",
-            border: "1px solid #FECACA",
-          }}>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-              color: "#B91C1C", margin: "0 0 0.75rem",
-            }}>
-              {t("deleteConfirmTitle")}
-            </p>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.875rem", color: "#7F1D1D",
-              margin: "0 0 1rem", lineHeight: 1.5,
-            }}>
-              {(() => {
-                const raw = t("deleteConfirmDescription");
-                const parts = raw.split(/\{boldStart\}|\{boldEnd\}/);
-                // parts[0] = before, parts[1] = bold text, parts[2] = after
-                return (
-                  <>
-                    {parts[0]}
-                    {parts[1] && <strong>{parts[1]}</strong>}
-                    {parts[2]}
-                  </>
-                );
-              })()}
-            </p>
-            <input
-              id="profile-delete-confirm"
-              className="mp-settings-input"
-              aria-label={t("deleteConfirmTitle")}
-              type="text"
-              value={deleteText}
-              onChange={(e) => setDeleteText(e.target.value)}
-              placeholder={t("deleteConfirmPlaceholder")}
-              style={{
-                ...inputStyle,
-                borderColor: "#FECACA",
-                marginBottom: "0.875rem",
-              }}
-            />
-            <div style={{ display: "flex", gap: "0.625rem" }}>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={deleteText !== t("deleteConfirmWord") || deleting}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.625rem",
-                  border: "none",
-                  background:
-                    deleteText === t("deleteConfirmWord") && !deleting
-                      ? "#B91C1C"
-                      : `${T.color.sandstone}60`,
-                  color:
-                    deleteText === t("deleteConfirmWord") && !deleting
-                      ? "#FFF"
-                      : T.color.muted,
-                  fontFamily: T.font.body,
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  cursor:
-                    deleteText === t("deleteConfirmWord") && !deleting
-                      ? "pointer"
-                      : "default",
-                  transition: "all .15s",
-                }}
-              >
-                {deleting ? t("deleting") : t("permanentlyDelete")}
-              </button>
-              <button
-                onClick={() => {
-                  setDeleteConfirm(false);
-                  setDeleteText("");
-                }}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.625rem",
-                  border: `1px solid ${T.color.cream}`,
-                  background: T.color.white,
-                  fontFamily: T.font.body,
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  color: T.color.charcoal,
-                  cursor: "pointer",
-                  transition: "all .15s",
-                }}
-              >
-                {tc("cancel")}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { [role="status"], [role="alert"], .mp-avatar-overlay svg { animation: none !important; } }
         button:hover .mp-avatar-overlay { opacity: 1 !important; }
+        /* Daylight range: enlarge the draggable thumb hit-area to canon touch size (2.75rem). */
+        .mp-daylight-range { -webkit-appearance: none; appearance: none; background: transparent; }
+        .mp-daylight-range:focus { outline: none; }
+        .mp-daylight-range::-webkit-slider-runnable-track {
+          height: 0.375rem; border-radius: 0.1875rem; background: ${HAIRLINE};
+        }
+        .mp-daylight-range::-moz-range-track {
+          height: 0.375rem; border-radius: 0.1875rem; background: ${HAIRLINE};
+        }
+        .mp-daylight-range::-webkit-slider-thumb {
+          -webkit-appearance: none; appearance: none;
+          width: 2.75rem; height: 2.75rem; border-radius: 1.375rem;
+          background: ${EMBER}; border: 0.25rem solid ${CREAM};
+          box-shadow: 0 0.0625rem 0.25rem rgba(64,59,54,0.14); /* Atrium warm ink */
+          cursor: pointer; margin-top: -1.1875rem; /* centre 2.75rem thumb on 0.375rem track */
+        }
+        .mp-daylight-range::-moz-range-thumb {
+          width: 2.75rem; height: 2.75rem; border-radius: 1.375rem;
+          background: ${EMBER}; border: 0.25rem solid ${CREAM};
+          box-shadow: 0 0.0625rem 0.25rem rgba(64,59,54,0.14); /* Atrium warm ink */
+          cursor: pointer;
+        }
+        .mp-daylight-range:focus-visible::-webkit-slider-thumb {
+          outline: 0.1875rem solid ${GOLD}; outline-offset: 0.125rem; /* Atrium gold focus ring */
+        }
+        .mp-daylight-range:focus-visible::-moz-range-thumb {
+          outline: 0.1875rem solid ${GOLD}; outline-offset: 0.125rem; /* Atrium gold focus ring */
+        }
         ${settingsFocusStyle}
       `}</style>
     </div>
@@ -1331,10 +1227,10 @@ export default function ProfilePage() {
 // ── Shared styles ──
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: "0.8125rem",
-  fontWeight: 600,
-  color: T.color.walnut,
-  letterSpacing: ".3px",
+  fontSize: "0.6875rem", /* Atrium overline: the one small-caps voice */
+  fontWeight: 700,
+  color: MUTED, /* Atrium muted */
+  letterSpacing: "0.12em",
   textTransform: "uppercase" as const,
   display: "block",
   marginBottom: "0.5rem",
@@ -1344,21 +1240,21 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.875rem 1.125rem",
   borderRadius: "0.75rem",
-  border: `1.5px solid ${T.color.sandstone}`,
+  border: `0.0625rem solid ${HAIRLINE}`, /* Atrium hairline */
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: "0.9375rem",
-  color: T.color.charcoal,
+  fontSize: "1rem", /* >=16px so iOS Safari never zooms-on-focus (canon: inputs >=1rem) */
+  color: INK /* Atrium ink */,
   outline: "none",
   boxSizing: "border-box" as const,
   transition: "border-color .2s, box-shadow .2s",
 };
 
-/* ── Global focus-visible ring for settings inputs ── */
+/* ── Global focus-visible ring for settings inputs + interactive buttons ── */
 const settingsFocusStyle = `
-  .mp-settings-input:focus-visible {
-    outline: 0.125rem solid ${T.color.terracotta};
-    outline-offset: 0.0625rem;
-    border-color: ${T.color.terracotta};
+  .mp-settings-input:focus-visible,
+  .mp-settings-btn:focus-visible {
+    outline: 0.1875rem solid ${GOLD}; /* Atrium gold focus ring */
+    outline-offset: 0.1875rem;
   }
 `;

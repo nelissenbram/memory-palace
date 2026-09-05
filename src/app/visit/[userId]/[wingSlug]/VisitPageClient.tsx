@@ -184,6 +184,8 @@ export default function VisitPageClient({
         minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
         padding: isMobile ? "1rem 0.75rem 4rem" : "2rem 1rem 4rem",
+        // Clear the notch/status bar so the breadcrumb isn't occluded on phones
+        paddingTop: isMobile ? "calc(1rem + env(safe-area-inset-top, 0px))" : "2rem",
       }}
     >
       <div style={{ maxWidth: "52rem", margin: "0 auto" }}>

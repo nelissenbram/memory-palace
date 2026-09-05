@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useReducedMotion } from "@/lib/hooks/useIsMobile";
 import { navigateInApp, isIOS } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useAudioRecorder } from "@/lib/hooks/useAudioRecorder";
@@ -13,39 +13,23 @@ import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import { InterviewIcon } from "@/components/ui/InterviewLibraryPanel";
+import { CREAM, INK, MUTED, HAIRLINE, TRAY, EMBER, EMBER_GLYPH, SAGE, SHADOW } from "@/lib/libraryTokens";
 import enMessages from "@/messages/en.json";
 
-/** Dark interview palette — extracted so scattered hex values are referenced by name */
-const DARK = {
-  bg: "#2E2921",
-  surface: "#3A352D",
-  border: "#4A453D",
-  text: "#F5F0E8",
-  textMuted: "#D4CFC5",
-  textDim: "#9A917F",
-  textFaint: "#7A7368",
-  textSubtle: "#6A6358",
-  highlight: "#B8AE9C",
-  accent: "#D4A07A",
-  success: "#A8BFA0",
-} as const;
-
-/** Dark interview palette — ambient tones for the dark-mode interview UI */
-const DARK_PALETTE = {
-  bg: `linear-gradient(165deg, #2C2A26 0%, ${DARK.surface} 30%, ${DARK.bg} 60%, #1F1D19 100%)`,
-  question: DARK.text,
-  body: DARK.textMuted,
-  label: DARK.textDim,
-  sublabel: DARK.textFaint,
-  dimText: DARK.textSubtle,
-  softAccent: DARK.highlight,
-  border: DARK.border,
-  surface: DARK.surface,
-  deep: DARK.bg,
-  base: "#1F1D19",
-  overlay: "#2C2A26",
-  warmHighlight: DARK.accent,
-  aiSoft: DARK.success,
+/** Interview palette — the cream Atrium canon, shared with the History & Library
+ *  sibling panels so the three interview surfaces read as one continuous experience. */
+const PALETTE = {
+  bg: `linear-gradient(165deg, #FDFBF6 0%, ${CREAM} 40%, #FAF6EE 100%)`,
+  question: INK,
+  body: INK,
+  label: MUTED,
+  sublabel: MUTED,
+  dimText: MUTED,
+  softAccent: EMBER_GLYPH,
+  border: HAIRLINE,
+  surface: CREAM,
+  tray: TRAY,
+  overlay: "#FBF2EC",
 } as const;
 
 /* ── Inline SVG icons replacing emojis ── */
@@ -87,6 +71,49 @@ function fmtTime(sec: number): string {
   const s = sec % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
+/** Self-contained animated waveform. Owns its own ~60ms tick + setState so the
+ *  16 Hz re-render is isolated to these ~20 bars instead of the whole
+ *  InterviewPanel. Mounted only during the recording phase; the parent then
+ *  re-renders solely on the 250ms mm:ss clock. Visual output is identical to
+ *  the previous inline waveform. */
+const RecordingWaveform = memo(function RecordingWaveform({
+  isMobile, isListening, audioLevel,
+}: { isMobile: boolean; isListening: boolean; audioLevel: number }) {
+  const reducedMotion = useReducedMotion();
+  const [waveTick, setWaveTick] = useState(0);
+  useEffect(() => {
+    // Reduced-motion users get static equal-height bars — skip the 60ms tick so
+    // no JS-computed height oscillates (a CSS guard cannot stop an inline height).
+    if (reducedMotion) return;
+    const id = setInterval(() => setWaveTick(Date.now()), 60);
+    return () => clearInterval(id);
+  }, [reducedMotion]);
+
+  return (
+    <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", gap: "0.1875rem", marginBottom: "1.5rem", height: "3.75rem", alignItems: "center" }}>
+      {Array.from({ length: 20 }).map((_, i) => {
+        // On mobile (no MediaRecorder), simulate gentle pulse when listening
+        const level = isMobile
+          ? (isListening ? 0.3 + 0.15 * Math.sin((waveTick / 400 + i) * 0.6) : 0)
+          : audioLevel;
+        // Under reduced motion, render a static mid-height bar (no Math.sin drift).
+        const height = reducedMotion
+          ? 8 + level * 26
+          : 8 + level * 52 * (0.4 + 0.6 * Math.sin((waveTick / 200 + i) * 0.8));
+        return (
+          <div key={i} style={{
+            width: "0.25rem", borderRadius: "0.125rem",
+            height: Math.max(8, height),
+            background: `linear-gradient(180deg, ${EMBER}, ${EMBER_GLYPH})`,
+            transition: reducedMotion ? "none" : "height 0.1s ease",
+            opacity: 0.6 + level * 0.4,
+          }} />
+        );
+      })}
+    </div>
+  );
+});
 
 export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPanelProps) {
   const isMobile = useIsMobile();
@@ -130,6 +157,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const [editingNarrative, setEditingNarrative] = useState(false);
   const [apiError, setApiError] = useState("");
   const [fadeIn, setFadeIn] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const autoSummaryTriggered = useRef(false);
   const handleGenerateSummaryRef = useRef<() => void>(() => {});
@@ -155,10 +183,16 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
     };
   }, [phase]);
 
+  // Waveform driver lives inside <RecordingWaveform>, which owns its own ~60ms
+  // tick + setState so the 16 Hz animation no longer re-renders this whole panel.
+
   const question = getCurrentQuestion();
   const progress = getProgress();
   const isLastQuestion = currentTemplate ? currentQuestionIndex >= currentTemplate.questions.length - 1 : false;
   const isComplete = currentTemplate ? currentQuestionIndex >= currentTemplate.questions.length : false;
+  // At least one real answer captured — skipping every question must NOT save an
+  // empty/placeholder "completed" story.
+  const hasResponses = (currentSession?.responses || []).some((r) => (r.transcript || "").trim().length > 0);
 
   // Fade-in animation
   useEffect(() => { const t = setTimeout(() => setFadeIn(true), 50); return () => clearTimeout(t); }, []);
@@ -173,6 +207,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
   // Start interview flow
   const handleStart = () => {
+    // Allow a fresh auto-summary for each session started within this mount
+    autoSummaryTriggered.current = false;
     setPhase("question");
   };
 
@@ -197,6 +233,25 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
     }
   };
 
+  // Switch input mode mid-interview (question phase). Stops any stray
+  // recording/recognition cleanly and carries already-transcribed words into
+  // the textarea so nothing the user said is lost.
+  const handleModeSwitch = async (mode: "voice" | "text") => {
+    if (mode === inputMode) return;
+    let captured = "";
+    if (speech.isListening) {
+      captured = ((await speech.stopListening()) || speech.transcript || "").trim();
+    } else {
+      captured = (speech.transcript || "").trim();
+    }
+    if (recorder.isRecording) await recorder.stopRecording();
+    if (mode === "text" && captured) {
+      setTextInput((prev) => (prev.trim() ? `${prev.trim()} ${captured}` : captured));
+      speech.resetTranscript();
+    }
+    setInputMode(mode);
+  };
+
   // Stop recording — grab the speech transcript directly (no API call needed)
   const handleStopRecording = async () => {
     const spokenText = await speech.stopListening();
@@ -207,7 +262,9 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
     if (!finalText.trim()) {
       setApiError(t("noWordsDetected"));
-      setInputMode("text");
+      // Only fall back to text when speech genuinely isn't available; when it is,
+      // keep voice mode so a user who wants to speak can simply retry.
+      if (!speech.isSupported) setInputMode("text");
       setPhase("question");
       return;
     }
@@ -257,9 +314,10 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       const data = await res.json();
 
       if (data.error) {
-        // Save without AI but continue
+        // Save without AI but continue. Rely solely on the index comparison
+        // (matching handleContinue) — the closed-over isComplete can be stale.
         await saveCurrentResponse(recorder.audioUrl, responseText);
-        if (isComplete || (currentQuestionIndex >= (currentTemplate?.questions.length || 0) - 1)) {
+        if (currentQuestionIndex >= (currentTemplate?.questions.length || 0) - 1) {
           handleGenerateSummary();
         } else {
           nextQuestion();
@@ -377,30 +435,39 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
   const handleExit = () => {
     if (phase !== "intro" && phase !== "complete") {
-      if (!confirm(t("leaveConfirm"))) return;
+      setShowLeaveConfirm(true);
+      return;
     }
     abandonSession();
     onClose();
   };
 
+  const confirmLeave = () => {
+    setShowLeaveConfirm(false);
+    abandonSession();
+    onClose();
+  };
+
   // ═══ STYLES ═══
-  const accentColor = T.color.terracotta;
-  const aiColor = T.color.sage;
+  const aiColor = SAGE;
 
   return (
-    <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") handleExit(); handleKeyDown(e); }} style={{
+    <div ref={containerRef} className="iv-root" role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") { if (showLeaveConfirm) setShowLeaveConfirm(false); else handleExit(); } handleKeyDown(e); }} style={{
       position: "fixed", inset: 0, zIndex: 60,
-      background: DARK_PALETTE.bg,
+      background: PALETTE.bg,
       opacity: fadeIn ? 1 : 0,
-      transition: "opacity 0.6s ease",
+      transition: "opacity 0.3s ease",
       display: "flex", flexDirection: "column",
       overflow: "hidden",
     }}>
       <style>{`
-        @keyframes gentlePulse { 0%,100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.08); opacity: 1; } }
+        @keyframes gentlePulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.03); opacity: 1; } }
         @keyframes waveBar { 0%,100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
-        @keyframes fadeInSlow { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+        @keyframes fadeInSlow { from { opacity: 0; transform: translateY(0.5rem); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shimmer { 0% { background-position: -12.5rem 0; } 100% { background-position: 12.5rem 0; } }
+        /* Atrium token: gold focus ring */
+        .iv-root :is(button, textarea):focus-visible { outline: 0.1875rem solid #D4AF37 !important; outline-offset: 0.1875rem !important; }
+        @media (prefers-reduced-motion: reduce) { .iv-root, .iv-root * { animation: none !important; transition: none !important; } }
       `}</style>
 
       {/* Top bar */}
@@ -414,21 +481,22 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       }}>
         <div>
           {currentTemplate && phase !== "intro" && (
-            <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: DARK_PALETTE.label, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: PALETTE.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
               {tTpl(currentTemplate.titleKey)}
             </div>
           )}
           {phase !== "intro" && phase !== "summary" && phase !== "complete" && question && (
-            <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.sublabel, marginTop: "0.125rem" }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: PALETTE.sublabel, marginTop: "0.125rem" }}>
               {t("questionProgress", { current: String(progress.current), total: String(progress.total) })}
             </div>
           )}
         </div>
         <button onClick={handleExit} aria-label={tc("close")} style={{
           width: isMobile ? "2.75rem" : "2.25rem", height: isMobile ? "2.75rem" : "2.25rem", borderRadius: isMobile ? "1.375rem" : "1.125rem",
-          border: `1px solid ${DARK_PALETTE.border}`, background: DARK_PALETTE.surface,
-          color: DARK_PALETTE.label, fontSize: isMobile ? "1rem" : "0.875rem",
+          border: `0.0625rem solid ${PALETTE.border}`, background: PALETTE.tray,
+          color: PALETTE.label, fontSize: isMobile ? "1rem" : "0.9375rem",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          minWidth: isMobile ? "2.75rem" : undefined, minHeight: isMobile ? "2.75rem" : undefined,
         }}>
           {"\u2715"}
         </button>
@@ -437,12 +505,12 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       {/* Progress bar */}
       {phase !== "intro" && phase !== "complete" && currentTemplate && (
         <div style={{ padding: isMobile ? "0 1.25rem" : "0 2rem", flexShrink: 0 }}>
-          <div style={{ height: "0.1875rem", borderRadius: "0.125rem", background: DARK_PALETTE.surface, overflow: "hidden" }}>
+          <div style={{ height: "0.1875rem", borderRadius: "0.125rem", background: PALETTE.tray, overflow: "hidden" }}>
             <div style={{
               height: "100%", borderRadius: "0.125rem",
-              background: `linear-gradient(90deg, ${accentColor}, ${T.color.walnut})`,
+              background: `linear-gradient(90deg, ${EMBER}, ${EMBER_GLYPH})`,
               width: `${(progress.current / progress.total) * 100}%`,
-              transition: "width 0.6s ease",
+              transition: "width 0.3s ease",
             }} />
           </div>
         </div>
@@ -466,19 +534,19 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               <InterviewIcon templateId={currentTemplate.id} wingId={currentTemplate.wingId} size={48} />
             </div>
             <h1 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 500,
-              color: DARK_PALETTE.question, lineHeight: 1.3, marginBottom: "1rem",
+              fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 600,
+              color: PALETTE.question, lineHeight: 1.15, marginBottom: "1rem",
             }}>
               {tTpl(currentTemplate.titleKey)}
             </h1>
             <p style={{
-              fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "1.125rem", color: DARK_PALETTE.body,
+              fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "1.0625rem", color: PALETTE.body,
               lineHeight: 1.7, marginBottom: "2rem", maxWidth: "30rem",
             }}>
               {tTpl(currentTemplate.descKey)}
             </p>
             <p style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.125rem", color: DARK_PALETTE.softAccent,
+              fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.0625rem", color: PALETTE.softAccent,
               fontStyle: "italic", lineHeight: 1.6, marginBottom: "2.5rem",
             }}>
               {t("encouragement1")}<br />
@@ -486,15 +554,15 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
               <button onClick={handleStart} disabled={quota !== null && !quota.allowed} style={{
-                padding: isMobile ? "1.125rem 3rem" : "1rem 2.5rem", borderRadius: "1.75rem",
-                border: "none", background: quota && !quota.allowed ? DARK.border : `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
-                color: "#FFF", fontFamily: T.font.body, fontSize: isMobile ? "1.125rem" : "1rem", fontWeight: 600,
-                cursor: quota && !quota.allowed ? "not-allowed" : "pointer", boxShadow: quota && !quota.allowed ? "none" : `0 8px 32px ${accentColor}40`,
-                transition: "transform 0.2s", minHeight: "3.5rem", opacity: quota && !quota.allowed ? 0.5 : 1,
+                padding: isMobile ? "1.125rem 3rem" : "1rem 2.5rem", borderRadius: "2rem",
+                border: "none", background: quota && !quota.allowed ? PALETTE.tray : `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
+                color: quota && !quota.allowed ? MUTED : "#FFF", fontFamily: T.font.body, fontSize: isMobile ? "1.0625rem" : "1rem", fontWeight: 600,
+                cursor: quota && !quota.allowed ? "not-allowed" : "pointer", boxShadow: quota && !quota.allowed ? "none" : SHADOW[2],
+                transition: "transform 0.2s", minHeight: "3.5rem", opacity: quota && !quota.allowed ? 0.7 : 1,
               }}>
-                {quota && !quota.allowed ? (t("interviewQuotaReached") || "Interview quota reached") : t("beginInterview")}
+                {quota && !quota.allowed ? t("interviewQuotaReached") : t("beginInterview")}
               </button>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.sublabel }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: PALETTE.sublabel }}>
                 {t("aboutMinutes", { minutes: String(currentTemplate.estimatedTotalMinutes), count: String(currentTemplate.questions.length) })}
               </p>
             </div>
@@ -503,11 +571,11 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 unavailable (e.g. iOS WKWebView has no Web Speech API) */}
             <div style={{ marginTop: "2rem", display: "flex", gap: "0.5rem", justifyContent: "center" }}>
               {(["voice", "text"] as const).filter((mode) => mode === "text" || speech.isSupported).map((mode) => (
-                <button key={mode} onClick={() => setInputMode(mode)} style={{
-                  padding: "0.625rem 1.25rem", borderRadius: "1.25rem",
-                  border: inputMode === mode ? `1px solid ${accentColor}60` : "1px solid #4A453D",
-                  background: inputMode === mode ? `${accentColor}18` : "transparent",
-                  color: inputMode === mode ? accentColor : "#7A7368",
+                <button key={mode} onClick={() => setInputMode(mode)} aria-pressed={inputMode === mode} style={{
+                  padding: "0.625rem 1.25rem", borderRadius: "2rem", minHeight: "2.75rem",
+                  border: inputMode === mode ? `0.0625rem solid ${EMBER}` : `0.0625rem solid ${HAIRLINE}`,
+                  background: inputMode === mode ? "rgba(184,92,56,0.12)" : "transparent",
+                  color: inputMode === mode ? EMBER : MUTED,
                   fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer",
                   transition: "all 0.2s",
                 }}>
@@ -518,7 +586,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {/* Writing style selector */}
             <div style={{ marginTop: "1.25rem" }}>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: DARK_PALETTE.sublabel, marginBottom: "0.5rem" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: PALETTE.sublabel, marginBottom: "0.5rem" }}>
                 {t("writingStyleTitle")}
               </p>
               <div style={{ display: "flex", gap: "0.375rem", justifyContent: "center" }}>
@@ -527,12 +595,12 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   { id: "balanced" as const, icon: <ScaleIcon />, label: t("styleBalanced"), desc: t("styleBalancedDesc") },
                   { id: "factual" as const, icon: <ClipboardIcon />, label: t("styleFactual"), desc: t("styleFactualDesc") },
                 ]).map((s) => (
-                  <button key={s.id} onClick={() => setWritingStyle(s.id)} title={s.desc} style={{
-                    padding: "0.5rem 1rem", borderRadius: "1rem",
-                    border: writingStyle === s.id ? `1px solid ${aiColor}60` : "1px solid #4A453D",
-                    background: writingStyle === s.id ? `${aiColor}18` : "transparent",
-                    color: writingStyle === s.id ? aiColor : "#7A7368",
-                    fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
+                  <button key={s.id} onClick={() => setWritingStyle(s.id)} title={s.desc} aria-pressed={writingStyle === s.id} style={{
+                    padding: "0.5rem 1rem", borderRadius: "2rem", minHeight: "2.75rem",
+                    border: writingStyle === s.id ? `0.0625rem solid ${SAGE}` : `0.0625rem solid ${HAIRLINE}`,
+                    background: writingStyle === s.id ? "rgba(86,104,60,0.12)" : "transparent",
+                    color: writingStyle === s.id ? SAGE : MUTED,
+                    fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer",
                     transition: "all 0.2s",
                   }}>
                     {s.icon}{s.label}
@@ -543,13 +611,13 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {/* Interview quota for free users */}
             {quota && !quota.unlimited && (
-              <div style={{ marginTop: "1.5rem", padding: "0.75rem 1rem", borderRadius: "0.75rem", background: quota.allowed ? `${DARK.accent}12` : `${T.color.terracotta}20`, border: `1px solid ${quota.allowed ? DARK.border : T.color.terracotta}40` }}>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: quota.allowed ? DARK_PALETTE.body : T.color.terracotta, margin: 0 }}>
-                  {`${quota.limit - quota.used} / ${quota.limit} ${t("interviewsRemaining") || "interviews remaining"}`}
+              <div style={{ marginTop: "1.5rem", padding: "0.75rem 1rem", borderRadius: "1rem", background: quota.allowed ? PALETTE.tray : "rgba(184,92,56,0.10)", border: `0.0625rem solid ${quota.allowed ? HAIRLINE : "rgba(184,92,56,0.35)"}` }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: quota.allowed ? PALETTE.body : EMBER, margin: 0 }}>
+                  {`${quota.limit - quota.used} / ${quota.limit} ${t("interviewsRemaining")}`}
                 </p>
                 {!quota.allowed && quota.nextRespawnDate && (
-                  <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: DARK_PALETTE.sublabel, margin: "0.375rem 0 0" }}>
-                    {t("nextInterviewDate") || "Next interview available"} {new Date(quota.nextRespawnDate).toLocaleDateString(locale as string)}
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: PALETTE.sublabel, margin: "0.375rem 0 0" }}>
+                    {t("nextInterviewDate", { date: new Date(quota.nextRespawnDate).toLocaleDateString(locale as string) })}
                   </p>
                 )}
                 {/* Upsell shows on web always, and on iOS only when IAP is live
@@ -557,11 +625,11 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                     external purchase (Apple 3.1.1). Android has no IAP path here. */}
                 {!quota.allowed && (!isIOS() || IAP_ENABLED) && (
                   <button onClick={() => navigateInApp("/pricing")} style={{
-                    marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "1rem",
-                    border: "none", background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                    marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "2rem", minHeight: "2.75rem",
+                    border: "none", background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
                     color: "#FFF", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                   }}>
-                    {t("upgradeForUnlimited") || "Upgrade for unlimited interviews"}
+                    {t("upgradeForUnlimited")}
                   </button>
                 )}
               </div>
@@ -573,8 +641,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "question" && question && (
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.6s ease both", width: "100%" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.875rem", fontWeight: 500,
-              color: DARK_PALETTE.question, lineHeight: 1.4, marginBottom: "2.5rem",
+              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.75rem", fontWeight: 600,
+              color: PALETTE.question, lineHeight: 1.15, marginBottom: "2.5rem",
               maxWidth: "32.5rem", margin: "0 auto 2.5rem",
             }}>
               {tTpl(question.textKey) === question.textKey ? question.text : tTpl(question.textKey)}
@@ -582,28 +650,46 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {apiError && (
               <div role="alert" style={{
-                fontFamily: T.font.body, fontSize: "0.875rem", color: "#D4A07A",
-                background: "#D4A07A14", padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
+                fontFamily: T.font.body, fontSize: "0.9375rem", color: EMBER_GLYPH,
+                background: "rgba(184,92,56,0.10)", padding: "0.75rem 1.25rem", borderRadius: "1rem",
                 marginBottom: "1.5rem", maxWidth: "25rem", margin: "0 auto 1.5rem",
               }}>
                 {apiError}
               </div>
             )}
 
+            {/* Compact input-mode toggle — mirrors the intro toggle so users can
+                switch to typing (or back to voice) mid-interview, e.g. when
+                speech fails on desktop. Voice hidden when speech is unsupported. */}
+            <div style={{ display: "flex", gap: "0.375rem", justifyContent: "center", marginBottom: "1.5rem" }}>
+              {(["voice", "text"] as const).filter((mode) => mode === "text" || speech.isSupported).map((mode) => (
+                <button key={mode} onClick={() => handleModeSwitch(mode)} aria-pressed={inputMode === mode} style={{
+                  padding: "0.375rem 1rem", borderRadius: "2rem", minHeight: "2.75rem",
+                  border: inputMode === mode ? `0.0625rem solid ${EMBER}` : `0.0625rem solid ${HAIRLINE}`,
+                  background: inputMode === mode ? "rgba(184,92,56,0.12)" : "transparent",
+                  color: inputMode === mode ? EMBER : MUTED,
+                  fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
+                  transition: "all 0.2s",
+                }}>
+                  {mode === "voice" ? <><MicIcon size={14} />{t("speakAnswers")}</> : <><KeyboardIcon size={14} />{t("typeAnswers")}</>}
+                </button>
+              ))}
+            </div>
+
             {inputMode === "voice" ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
                 <button onClick={handleStartRecording} aria-label={t("tapToRecord")} style={{
                   width: isMobile ? "5.5rem" : "5rem", height: isMobile ? "5.5rem" : "5rem", borderRadius: "50%",
-                  border: "none", background: `linear-gradient(135deg, ${accentColor}, #D4926A)`,
+                  border: "none", background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
                   color: "#FFF", fontSize: "1.75rem", cursor: "pointer",
-                  boxShadow: `0 8px 32px ${accentColor}50`,
+                  boxShadow: SHADOW[2],
                   transition: "transform 0.2s, box-shadow 0.2s",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   minWidth: "5rem", minHeight: "5rem",
                 }}>
                   <MicIcon size={28} />
                 </button>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: DARK_PALETTE.label }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: PALETTE.label }}>
                   {t("tapToRecord")}
                 </p>
               </div>
@@ -617,18 +703,18 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   rows={5}
                   style={{
                     width: "100%", padding: "1rem 1.25rem", borderRadius: "1rem",
-                    border: "1px solid #4A453D", background: "#2E2921",
-                    fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.9375rem",
-                    color: DARK_PALETTE.body, lineHeight: 1.7, resize: "vertical",
+                    border: `0.0625rem solid ${HAIRLINE}`, background: CREAM,
+                    fontFamily: T.font.body, fontSize: "1rem",
+                    color: PALETTE.body, lineHeight: 1.7, resize: "vertical",
                     outline: "none", boxSizing: "border-box",
                     minHeight: isMobile ? "10rem" : "7.5rem",
                   }}
                 />
                 <button onClick={handleSubmitText} disabled={!textInput.trim()} style={{
-                  marginTop: "1rem", padding: "0.875rem 2rem", borderRadius: "1.5rem",
+                  marginTop: "1rem", padding: "0.875rem 2rem", borderRadius: "2rem",
                   border: "none",
-                  background: textInput.trim() ? `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})` : "#3A352D",
-                  color: textInput.trim() ? "#FFF" : "#6A6358",
+                  background: textInput.trim() ? `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})` : PALETTE.tray,
+                  color: textInput.trim() ? "#FFF" : MUTED,
                   fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                   cursor: textInput.trim() ? "pointer" : "default",
                   transition: "all 0.2s", minHeight: "3rem",
@@ -640,9 +726,9 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {/* Skip button */}
             <button onClick={() => { skipQuestion(); setPhase("question"); setTranscript(""); setApiError(""); recorder.reset(); }} style={{
-              marginTop: "2rem", padding: "0.5rem 1.25rem", borderRadius: "1rem",
+              marginTop: "2rem", padding: "0.5rem 1.25rem", borderRadius: "2rem", minHeight: "2.75rem",
               border: "none", background: "transparent",
-              color: DARK_PALETTE.dimText, fontFamily: T.font.body, fontSize: "0.8125rem",
+              color: PALETTE.dimText, fontFamily: T.font.body, fontSize: "0.8125rem",
               cursor: "pointer", transition: "color 0.2s",
             }}>
               {t("skipQuestion")}
@@ -654,67 +740,52 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "recording" && (
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.4s ease both", width: "100%" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem", fontWeight: 500,
-              color: DARK_PALETTE.question, lineHeight: 1.4, marginBottom: "2rem",
-              maxWidth: "30rem", margin: "0 auto 2rem", opacity: 0.7,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.75rem", fontWeight: 600,
+              color: PALETTE.body, lineHeight: 1.15, marginBottom: "2rem",
+              maxWidth: "30rem", margin: "0 auto 2rem",
             }}>
               {question ? (tTpl(question.textKey) === question.textKey ? question.text : tTpl(question.textKey)) : ""}
             </h2>
 
-            {/* Waveform visualization */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "0.1875rem", marginBottom: "1.5rem", height: "3.75rem", alignItems: "center" }}>
-              {Array.from({ length: 20 }).map((_, i) => {
-                // On mobile (no MediaRecorder), simulate gentle pulse when listening
-                const level = isMobile
-                  ? (speech.isListening ? 0.3 + 0.15 * Math.sin((Date.now() / 400 + i) * 0.6) : 0)
-                  : recorder.audioLevel;
-                const height = 8 + level * 52 * (0.4 + 0.6 * Math.sin((Date.now() / 200 + i) * 0.8));
-                return (
-                  <div key={i} style={{
-                    width: "0.25rem", borderRadius: "0.125rem",
-                    height: Math.max(8, height),
-                    background: `linear-gradient(180deg, #D4A07A, ${accentColor})`,
-                    transition: "height 0.1s ease",
-                    opacity: 0.6 + level * 0.4,
-                  }} />
-                );
-              })}
-            </div>
+            {/* Waveform visualization — self-contained child owns the 60ms tick */}
+            <RecordingWaveform isMobile={isMobile} isListening={speech.isListening} audioLevel={recorder.audioLevel} />
 
-            {/* Timer */}
-            <div style={{
-              fontFamily: T.font.body, fontSize: "2rem", fontWeight: 300,
-              color: DARK_PALETTE.question, marginBottom: "0.5rem", fontVariantNumeric: "tabular-nums",
-            }}>
-              {fmtTime(recordingSeconds)}
+            {/* Timer + status — announced to assistive tech */}
+            <div role="status" aria-live="polite">
+              <div style={{
+                fontFamily: T.font.body, fontSize: "2rem", fontWeight: 300,
+                color: PALETTE.question, marginBottom: "0.5rem", fontVariantNumeric: "tabular-nums",
+              }}>
+                {fmtTime(recordingSeconds)}
+              </div>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: PALETTE.label, marginBottom: "1rem" }}>
+                {t("recording")}
+              </p>
             </div>
-            <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.label, marginBottom: "1rem" }}>
-              {t("recording")}
-            </p>
 
             {/* Live transcript preview */}
             {(speech.transcript || speech.interimTranscript) && (
-              <div style={{
-                padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
-                background: "#3A352D80", border: "1px solid #4A453D40",
+              <div role="status" aria-live="polite" style={{
+                padding: "0.75rem 1.25rem", borderRadius: "1rem",
+                background: PALETTE.tray, border: `0.0625rem solid ${HAIRLINE}`,
                 marginBottom: "1.5rem", maxWidth: "27.5rem", margin: "0 auto 1.5rem",
                 maxHeight: "7.5rem", overflowY: "auto",
               }}>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: DARK_PALETTE.body, lineHeight: 1.6, margin: 0 }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: PALETTE.body, lineHeight: 1.6, margin: 0 }}>
                   {speech.transcript}{" "}
-                  <span style={{ color: "#7A736880" }}>{speech.interimTranscript}</span>
+                  <span style={{ color: MUTED }}>{speech.interimTranscript}</span>
                 </p>
               </div>
             )}
 
-            {/* Stop button */}
+            {/* Stop button — active pulsing EMBER (recording/stop stays in the warm system) */}
             <button onClick={handleStopRecording} aria-label={t("stopRecording")} style={{
               width: isMobile ? "5.5rem" : "5rem", height: isMobile ? "5.5rem" : "5rem", borderRadius: "50%",
-              border: "3px solid #FFF3",
-              background: `linear-gradient(135deg, #C75040, #A03030)`,
+              border: "0.1875rem solid rgba(255,255,255,0.35)",
+              background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
               color: "#FFF", fontSize: "1.5rem", cursor: "pointer",
-              boxShadow: "0 8px 32px rgba(199, 80, 64, 0.4)",
-              animation: "gentlePulse 2s ease infinite",
+              boxShadow: SHADOW[2],
+              animation: "gentlePulse 4s ease-in-out infinite",
               display: "flex", alignItems: "center", justifyContent: "center",
               minWidth: "5rem", minHeight: "5rem",
             }}>
@@ -744,13 +815,13 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             }}>
               <div style={{
                 width: "2rem", height: "2rem", borderRadius: "1rem",
-                border: "3px solid transparent",
+                border: "0.1875rem solid transparent",
                 borderTopColor: aiColor,
                 animation: "spin 0.8s linear infinite",
               }} />
             </div>
             <p style={{
-              fontFamily: T.font.body, fontSize: "1rem", color: DARK_PALETTE.body,
+              fontFamily: T.font.body, fontSize: "1rem", color: PALETTE.body,
             }}>
               {t("reflecting")}
             </p>
@@ -765,13 +836,13 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {transcript && (
               <div style={{
                 padding: "1rem 1.25rem", borderRadius: "1rem",
-                background: "#3A352D", border: "1px solid #4A453D",
+                background: PALETTE.tray, border: `0.0625rem solid ${HAIRLINE}`,
                 marginBottom: "1.5rem",
               }}>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: DARK_PALETTE.sublabel, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.5rem" }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: PALETTE.sublabel, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "0.5rem" }}>
                   {t("youSaid")}
                 </p>
-                <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.9375rem" : "0.875rem", color: DARK_PALETTE.body, lineHeight: 1.7, margin: 0 }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: PALETTE.body, lineHeight: 1.7, margin: 0 }}>
                   {transcript}
                 </p>
               </div>
@@ -781,12 +852,12 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {aiAck && (
               <div style={{
                 padding: "1.25rem 1.5rem", borderRadius: "1rem",
-                background: `${aiColor}10`, border: `1px solid ${aiColor}30`,
+                background: "rgba(86,104,60,0.08)", border: "0.0625rem solid rgba(86,104,60,0.30)",
                 marginBottom: "1rem",
               }}>
                 <p style={{
-                  fontFamily: T.font.display, fontSize: isMobile ? "1.0625rem" : "1.125rem",
-                  fontStyle: "italic", color: "#A8BFA0",
+                  fontFamily: T.font.display, fontSize: "1.0625rem",
+                  fontStyle: "italic", color: SAGE,
                   lineHeight: 1.6, margin: 0,
                 }}>
                   {aiAck}
@@ -798,15 +869,15 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {aiFollowUp && (
               <div style={{
                 padding: "1rem 1.25rem", borderRadius: "1rem",
-                background: `${aiColor}08`, border: `1px solid ${aiColor}20`,
+                background: "rgba(86,104,60,0.06)", border: "0.0625rem solid rgba(86,104,60,0.20)",
                 marginBottom: "2rem",
               }}>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: aiColor, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.5rem" }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: SAGE, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "0.5rem" }}>
                   {t("thoughtToExplore")}
                 </p>
                 <p style={{
-                  fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.25rem",
-                  color: DARK_PALETTE.question, lineHeight: 1.5, margin: 0, fontWeight: 500,
+                  fontFamily: T.font.display, fontSize: "1.1875rem",
+                  color: PALETTE.question, lineHeight: 1.15, margin: 0, fontWeight: 600,
                 }}>
                   {aiFollowUp}
                 </p>
@@ -816,8 +887,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {/* Action buttons */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
               <button onClick={handleContinue} style={{
-                padding: "0.875rem 2.25rem", borderRadius: "1.5rem", border: "none",
-                background: `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
+                padding: "0.875rem 2.25rem", borderRadius: "2rem", border: "none",
+                background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
                 color: "#FFF", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                 cursor: "pointer", transition: "all 0.2s", minHeight: "3rem",
               }}>
@@ -828,8 +899,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 setAiAck(""); setAiFollowUp("");
                 setPhase("question");
               }} style={{
-                padding: "0.5rem 1.25rem", borderRadius: "1rem", border: "none",
-                background: "transparent", color: DARK_PALETTE.dimText,
+                padding: "0.5rem 1.25rem", borderRadius: "2rem", border: "none", minHeight: "2.75rem",
+                background: "transparent", color: PALETTE.dimText,
                 fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer",
                 transition: "color 0.2s",
               }}>
@@ -843,26 +914,39 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "summary" && (
           <div style={{ animation: "fadeInSlow 0.6s ease both", width: "100%", maxWidth: "33.75rem", margin: "0 auto" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem", fontWeight: 500,
-              color: DARK_PALETTE.question, textAlign: "center", marginBottom: "0.5rem",
+              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.75rem", fontWeight: 600,
+              color: PALETTE.question, textAlign: "center", marginBottom: "0.5rem",
             }}>
               {t("yourStory")}
             </h2>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.sublabel,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: PALETTE.sublabel,
               textAlign: "center", marginBottom: "1.5rem",
             }}>
               {t("storyIntro")}
             </p>
 
-            {!narrative ? (
+            {!hasResponses ? (
+              <div style={{ textAlign: "center", padding: "2rem 1.25rem" }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: PALETTE.body, lineHeight: 1.6, marginBottom: "1.5rem", maxWidth: "26rem", marginLeft: "auto", marginRight: "auto" }}>
+                  {t("noAnswersYet")}
+                </p>
+                <button onClick={() => { abandonSession(); onClose(); }} style={{
+                  padding: "0.875rem 2rem", borderRadius: "2rem", border: "none", minHeight: "3rem",
+                  background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
+                  color: "#FFF", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, cursor: "pointer",
+                }}>
+                  {tc("close")}
+                </button>
+              </div>
+            ) : !narrative ? (
               <div style={{ textAlign: "center", padding: "2.5rem" }}>
                 <div style={{
                   width: "2rem", height: "2rem", borderRadius: "1rem", margin: "0 auto 1rem",
-                  border: `3px solid transparent`, borderTopColor: accentColor,
+                  border: `0.1875rem solid transparent`, borderTopColor: EMBER,
                   animation: "spin 0.8s linear infinite",
                 }} />
-                <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: DARK_PALETTE.body }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: PALETTE.body }}>
                   {t("weavingStories")}
                 </p>
               </div>
@@ -874,22 +958,22 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                     onChange={(e) => setNarrative(e.target.value)}
                     style={{
                       width: "100%", minHeight: "18.75rem", padding: "1.25rem 1.5rem", borderRadius: "1rem",
-                      border: `1px solid ${accentColor}40`, background: "#2E2921",
-                      fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.9375rem",
-                      color: DARK_PALETTE.body, lineHeight: 1.8, resize: "vertical",
+                      border: `0.0625rem solid ${EMBER}`, background: CREAM,
+                      fontFamily: T.font.body, fontSize: "1rem",
+                      color: PALETTE.body, lineHeight: 1.8, resize: "vertical",
                       outline: "none", boxSizing: "border-box",
                     }}
                   />
                 ) : (
                   <div style={{
                     padding: "1.5rem 1.75rem", borderRadius: "1rem",
-                    background: "#2E292180", border: "1px solid #4A453D",
+                    background: CREAM, border: `0.0625rem solid ${HAIRLINE}`,
                     maxHeight: "25rem", overflowY: "auto",
                   }}>
                     {narrative.split("\n\n").map((para, i) => (
                       <p key={i} style={{
                         fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.9375rem",
-                        color: DARK_PALETTE.body, lineHeight: 1.8,
+                        color: PALETTE.body, lineHeight: 1.8,
                         marginBottom: i < narrative.split("\n\n").length - 1 ? "1rem" : 0,
                         margin: i === 0 ? "0 0 1rem" : i < narrative.split("\n\n").length - 1 ? "0 0 1rem" : 0,
                       }}>
@@ -901,16 +985,16 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
                 <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1.5rem" }}>
                   <button onClick={() => setEditingNarrative(!editingNarrative)} style={{
-                    padding: "0.625rem 1.25rem", borderRadius: "1.25rem",
-                    border: "1px solid #4A453D", background: "transparent",
-                    color: DARK_PALETTE.label, fontFamily: T.font.body, fontSize: "0.8125rem",
+                    padding: "0.625rem 1.25rem", borderRadius: "2rem", minHeight: "2.75rem",
+                    border: `0.0625rem solid ${HAIRLINE}`, background: "transparent",
+                    color: PALETTE.label, fontFamily: T.font.body, fontSize: "0.8125rem",
                     cursor: "pointer",
                   }}>
                     {editingNarrative ? t("doneEditing") : t("editStory")}
                   </button>
                   <button onClick={handleComplete} style={{
-                    padding: "0.875rem 2rem", borderRadius: "1.5rem", border: "none",
-                    background: `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
+                    padding: "0.875rem 2rem", borderRadius: "2rem", border: "none",
+                    background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
                     color: "#FFF", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                     cursor: "pointer", minHeight: "3rem",
                   }}>
@@ -927,19 +1011,19 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.8s ease both" }}>
             <div style={{ marginBottom: "1.25rem" }}><SparklesIcon size={56} /></div>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.625rem" : "2rem", fontWeight: 500,
-              color: DARK_PALETTE.question, marginBottom: "0.75rem",
+              fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 600,
+              color: PALETTE.question, marginBottom: "0.75rem",
             }}>
               {t("beautifully")}
             </h2>
             <p style={{
-              fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "1.0625rem", color: DARK_PALETTE.body,
+              fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "1.0625rem", color: PALETTE.body,
               lineHeight: 1.7, marginBottom: "0.5rem", maxWidth: "26.25rem", margin: "0 auto",
             }}>
               {t("storySaved", { title: tTpl(currentTemplate.titleKey) })}
             </p>
             <p style={{
-              fontFamily: T.font.display, fontSize: "0.9375rem", color: DARK_PALETTE.label,
+              fontFamily: T.font.display, fontSize: "0.9375rem", color: PALETTE.label,
               fontStyle: "italic", lineHeight: 1.6, margin: "1rem auto 2.5rem", maxWidth: "23.75rem",
             }}>
               {t("giftMessage")}
@@ -948,19 +1032,19 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
               {onCreateMemory && (
                 <button onClick={handleCreateMemory} style={{
-                  padding: "1rem 2.25rem", borderRadius: "1.75rem", border: "none",
-                  background: `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
+                  padding: "1rem 2.25rem", borderRadius: "2rem", border: "none",
+                  background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
                   color: "#FFF", fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
-                  cursor: "pointer", boxShadow: `0 8px 32px ${accentColor}40`,
+                  cursor: "pointer", boxShadow: SHADOW[2],
                   minHeight: "3.5rem",
                 }}>
                   {t("addToPalace")}
                 </button>
               )}
               <button onClick={onClose} style={{
-                padding: "0.75rem 1.75rem", borderRadius: "1.25rem",
-                border: "1px solid #4A453D", background: "transparent",
-                color: DARK_PALETTE.label, fontFamily: T.font.body, fontSize: "0.875rem",
+                padding: "0.75rem 1.75rem", borderRadius: "2rem", minHeight: "2.75rem",
+                border: `0.0625rem solid ${HAIRLINE}`, background: "transparent",
+                color: PALETTE.label, fontFamily: T.font.body, fontSize: "0.9375rem",
                 cursor: "pointer",
               }}>
                 {t("done")}
@@ -973,11 +1057,11 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
         {/* Recorder error */}
         {recorder.error && (
-          <div style={{
+          <div role="alert" style={{
             position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)",
             padding: "0.75rem 1.5rem", borderRadius: "1rem",
-            background: "#5A303080", border: "1px solid #8A505050",
-            fontFamily: T.font.body, fontSize: "0.875rem", color: "#E0A0A0",
+            background: "rgba(184,92,56,0.10)", border: "0.0625rem solid rgba(184,92,56,0.35)",
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: EMBER_GLYPH,
             maxWidth: "25rem", textAlign: "center",
             animation: "fadeInSlow 0.3s ease",
           }}>
@@ -985,16 +1069,56 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
           </div>
         )}
       </div>
+
+      {/* Leave-confirmation sheet — in-canon replacement for native confirm() */}
+      {showLeaveConfirm && (
+        <div role="presentation" onClick={() => setShowLeaveConfirm(false)} style={{
+          position: "fixed", inset: 0, zIndex: 70,
+          background: "rgba(42,34,24,.5)", backdropFilter: "blur(8px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "1.5rem", animation: "fadeInSlow 0.2s ease both",
+        }}>
+          <div role="alertdialog" aria-modal="true" aria-label={t("leaveTitle")} onClick={(e) => e.stopPropagation()} style={{
+            width: "100%", maxWidth: "24rem", borderRadius: "1.25rem",
+            background: CREAM, border: `0.0625rem solid ${HAIRLINE}`,
+            boxShadow: SHADOW[2], padding: "1.75rem 1.75rem 1.5rem",
+          }}>
+            <h3 style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, color: INK, margin: "0 0 0.5rem" }}>
+              {t("leaveTitle")}
+            </h3>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: MUTED, lineHeight: 1.5, margin: "0 0 1.5rem" }}>
+              {t("leaveConfirm")}
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setShowLeaveConfirm(false)} style={{
+                padding: "0.75rem 1.5rem", borderRadius: "2rem", minHeight: "2.75rem",
+                border: `0.0625rem solid ${HAIRLINE}`, background: "transparent",
+                color: MUTED, fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, cursor: "pointer",
+              }}>
+                {t("leaveCancel")}
+              </button>
+              <button onClick={confirmLeave} style={{
+                padding: "0.75rem 1.5rem", borderRadius: "2rem", minHeight: "2.75rem",
+                border: "none", background: `linear-gradient(135deg, ${EMBER}, ${EMBER_GLYPH})`,
+                color: "#FFF", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, cursor: "pointer",
+              }}>
+                {t("leaveConfirmBtn")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 const smallBtn: React.CSSProperties = {
   padding: "0.5rem 1.25rem",
-  borderRadius: "1rem",
-  border: "1px solid #4A453D",
+  borderRadius: "2rem",
+  minHeight: "2.75rem",
+  border: `0.0625rem solid ${HAIRLINE}`,
   background: "transparent",
-  color: DARK_PALETTE.label,
+  color: MUTED,
   fontFamily: T.font.body,
   fontSize: "0.8125rem",
   cursor: "pointer",

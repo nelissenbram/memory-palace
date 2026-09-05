@@ -3,13 +3,28 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { signUp } from "@/lib/auth/actions";
+import { signUp, signIn } from "@/lib/auth/actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
+import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { T } from "@/lib/theme";
+import { EMBER, HAIRLINE, MUTED, INK, GOLD } from "@/lib/libraryTokens";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { track } from "@/lib/analytics";
-import { isIOS, isNative } from "@/lib/native/platform";
+import { isIOS, isNative, nativeHardNav } from "@/lib/native/platform";
+
+// Canon-consistent focus handlers for inline-styled inputs: EMBER border +
+// ceremonial GOLD ring on focus (inline styles cannot express :focus).
+function applyFocus(el: HTMLInputElement) {
+  el.style.borderColor = EMBER;
+  el.style.boxShadow = `0 0 0 0.1875rem ${GOLD}66`;
+}
+function clearFocus(el: HTMLInputElement) {
+  el.style.borderColor = HAIRLINE;
+  el.style.boxShadow = "none";
+}
 
 export default function RegisterPage() {
   return <Suspense><RegisterContent /></Suspense>;
@@ -18,10 +33,22 @@ export default function RegisterPage() {
 function RegisterContent() {
   const { t } = useTranslation("register");
   const { t: tc } = useTranslation("common");
+  const isMobile = useIsMobile();
+  const isPortrait = useIsPortrait();
+  // A short/landscape phone (mobile but not portrait) has little vertical room;
+  // tighten the header + divider rhythm so the create-account CTA stays reachable
+  // without scrolling.
+  const isShort = isMobile && !isPortrait;
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  // Email is retained after a successful sign-up so the confirmation-screen
+  // resend can re-target it without re-entry.
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  // Resend-confirmation state machine: idle → sending → sent (cooldown) / error.
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [resendCooldown, setResendCooldown] = useState(0);
   // OAuth state. `appleFirst` set after mount to avoid hydration mismatch; on
   // iOS, Apple is shown first for equal prominence (Apple Guideline 4.8).
   const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
@@ -47,15 +74,55 @@ function RegisterContent() {
     }
   }, [refCode]);
 
+  // Tick down the resend cooldown once per second so the button re-enables.
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendCooldown]);
+
+  // Re-send the confirmation email for a user stuck on the check-email screen
+  // (never arrived / expired). Uses the browser Supabase client's resend() —
+  // Supabase returns success even for an already-confirmed or unknown address, so
+  // this never leaks account existence. A 45s cooldown throttles abuse.
+  async function handleResend() {
+    if (resendState === "sending" || resendCooldown > 0 || !registeredEmail) return;
+    setResendState("sending");
+    try {
+      const supabase = createClient();
+      const { error: resendErr } = await supabase.auth.resend({
+        type: "signup",
+        email: registeredEmail,
+      });
+      if (resendErr) {
+        setResendState("error");
+        return;
+      }
+      setResendState("sent");
+      setResendCooldown(45);
+      track("signup_confirmation_resent");
+    } catch {
+      setResendState("error");
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
     const formData = new FormData(e.currentTarget);
 
-    const password = formData.get("password") as string;
-    const confirm = formData.get("confirmPassword") as string;
+    const password = formData.get("password") as string | null;
+    const confirm = formData.get("confirmPassword") as string | null;
+    const email = ((formData.get("email") as string | null) ?? "").trim();
 
+    // Guard against a bypassed `required` attribute (e.g. autofill/scripting)
+    // so a null password can never .length-deref before the try/catch below.
+    if (!password) {
+      setError(t("passwordTooShort"));
+      setLoading(false);
+      return;
+    }
     if (password.length < 8) {
       setError(t("passwordTooShort"));
       setLoading(false);
@@ -67,13 +134,15 @@ function RegisterContent() {
       return;
     }
 
+    // Enforce the age attestation server-side too (see signUp): submit it in the
+    // FormData rather than merely gating the button client-side.
+    formData.set("ageConfirmed", ageConfirmed ? "true" : "false");
     if (redirect) formData.set("redirect", redirect);
     try {
       const result = await signUp(formData);
       if (result?.error) {
         setError(result.error);
       } else {
-        setSuccess(true);
         track("signup_completed");
 
         // Apply referral code if stored
@@ -94,9 +163,27 @@ function RegisterContent() {
         } catch {
           // non-critical — referral application is best-effort
         }
+
+        // Auto-continue (SUCCESS_PLAYBOOK 1.2): with Supabase "Confirm email" OFF
+        // the account is live immediately, so sign straight in with the same
+        // credentials and route into the app exactly like the login page does —
+        // no dead-end "check your email" screen between signup and first memory.
+        // If confirmation is still ON, signIn fails (unconfirmed email) and we
+        // gracefully fall back to the existing check-your-email UI.
+        try {
+          const signInResult = await signIn(formData);
+          if (signInResult && "success" in signInResult && signInResult.success) {
+            await nativeHardNav(("redirect" in signInResult && signInResult.redirect) || "/atrium");
+            return; // navigating away — keep the button in its loading state
+          }
+        } catch {
+          // fall through to the check-your-email screen
+        }
+        setRegisteredEmail(email);
+        setSuccess(true);
       }
     } catch {
-      setError(t("unexpectedError") || "Something went wrong. Please try again.");
+      setError(tc("somethingWentWrong"));
     }
     setLoading(false);
   }
@@ -106,11 +193,11 @@ function RegisterContent() {
       <div style={{ textAlign: "center" }}>
         <div style={{
           width: "4rem", height: "4rem", borderRadius: "2rem",
-          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          background: `linear-gradient(135deg, ${EMBER}20, ${T.color.walnut}20)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 1rem",
         }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={EMBER} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2"/>
             <path d="M22 4L12 13 2 4"/>
           </svg>
@@ -126,20 +213,71 @@ function RegisterContent() {
         >
           {t("checkEmail")}
         </h2>
-        <p style={{ fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6 }}>
+        <p style={{ fontSize: "0.875rem", color: MUTED, lineHeight: 1.6 }}>
           {t("confirmationSent")}
+          {registeredEmail && (
+            <span style={{ display: "block", marginTop: "0.375rem", color: INK, fontWeight: 600 }}>
+              {registeredEmail}
+            </span>
+          )}
           {redirect && (
-            <span style={{ display: "block", marginTop: "0.5rem", color: T.color.terracotta }}>
+            <span style={{ display: "block", marginTop: "0.5rem", color: EMBER }}>
               {t("afterConfirming")}
             </span>
           )}
         </p>
+
+        {/* Stuck-user recovery: resend the confirmation email, or explain the
+            already-registered case. */}
+        {registeredEmail && (
+          <div style={{ marginTop: "1.25rem" }}>
+            <p style={{ fontSize: "0.8125rem", color: MUTED, lineHeight: 1.6, margin: "0 0 0.625rem" }}>
+              {t("didntGetEmail")}
+            </p>
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendState === "sending" || resendCooldown > 0}
+              style={{
+                minHeight: "2.75rem",
+                padding: "0.625rem 1.25rem",
+                borderRadius: "0.75rem",
+                border: `1.5px solid ${HAIRLINE}`,
+                background: T.color.white,
+                color: resendState === "sending" || resendCooldown > 0 ? MUTED : EMBER,
+                fontFamily: T.font.body,
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                cursor: resendState === "sending" || resendCooldown > 0 ? "default" : "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              {resendState === "sending"
+                ? t("resending")
+                : resendCooldown > 0
+                  ? t("resendCooldown", { seconds: String(resendCooldown) })
+                  : t("resendConfirmation")}
+            </button>
+            {resendState === "sent" && (
+              <p role="status" style={{ fontSize: "0.8125rem", color: T.color.walnut, marginTop: "0.625rem", marginBottom: 0 }}>
+                {t("resendSent")}
+              </p>
+            )}
+            {resendState === "error" && (
+              <p role="alert" style={{ fontSize: "0.8125rem", color: T.color.error, marginTop: "0.625rem", marginBottom: 0 }}>
+                {t("resendError")}
+              </p>
+            )}
+          </div>
+        )}
+
         <Link
           href="/login"
           style={{
             display: "inline-block",
             marginTop: "1.25rem",
-            color: T.color.terracotta,
+            padding: "0.5rem 0.75rem",
+            color: EMBER,
             textDecoration: "none",
             fontWeight: 600,
             fontSize: "0.875rem",
@@ -153,12 +291,12 @@ function RegisterContent() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-        <div style={{ marginBottom: "0.5rem" }}><PalaceLogo variant="mark" color="dark" size="lg" /></div>
+      <div style={{ textAlign: "center", marginBottom: isShort ? "0.75rem" : isMobile ? "1.25rem" : "1.75rem" }}>
+        <div style={{ marginBottom: isShort ? "0.25rem" : "0.5rem" }}><PalaceLogo variant="mark" color="dark" size={isMobile ? "md" : "lg"} /></div>
         <h1
           style={{
             fontFamily: T.font.display,
-            fontSize: "1.75rem",
+            fontSize: isMobile ? "1.5rem" : "1.75rem",
             fontWeight: 300,
             color: T.color.charcoal,
             margin: 0,
@@ -167,7 +305,7 @@ function RegisterContent() {
         >
           {t("title")}
         </h1>
-        <p style={{ fontSize: "0.875rem", color: T.color.muted, marginTop: "0.375rem" }}>
+        <p style={{ fontSize: "0.875rem", color: MUTED, marginTop: "0.375rem" }}>
           {t("subtitle")}
         </p>
       </div>
@@ -190,84 +328,8 @@ function RegisterContent() {
         </div>
       )}
 
-      <label htmlFor="register-name" style={labelStyle}>{t("name")}</label>
-      <input
-        id="register-name"
-        name="displayName"
-        type="text"
-        autoComplete="name"
-        placeholder={t("namePlaceholder")}
-        style={inputStyle}
-      />
-
-      <label htmlFor="register-email" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("email")}</label>
-      <input
-        id="register-email"
-        name="email"
-        type="email"
-        autoComplete="email"
-        required
-        aria-describedby={error ? "register-error" : undefined}
-        placeholder={t("emailPlaceholder")}
-        style={inputStyle}
-      />
-
-      <label htmlFor="register-password" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("password")}</label>
-      <input
-        id="register-password"
-        name="password"
-        type="password"
-        autoComplete="new-password"
-        required
-        aria-describedby={error ? "register-error" : undefined}
-        placeholder={t("passwordPlaceholder")}
-        style={inputStyle}
-      />
-
-      <label htmlFor="register-confirm-password" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("confirmPassword")}</label>
-      <input
-        id="register-confirm-password"
-        name="confirmPassword"
-        type="password"
-        autoComplete="new-password"
-        required
-        aria-describedby={error ? "register-error" : undefined}
-        placeholder={t("confirmPasswordPlaceholder")}
-        style={inputStyle}
-      />
-
-      <label
-        htmlFor="register-age"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          marginTop: "1rem",
-          fontSize: "0.8125rem",
-          color: T.color.muted,
-          cursor: "pointer",
-        }}
-      >
-        <input
-          id="register-age"
-          type="checkbox"
-          checked={ageConfirmed}
-          onChange={(e) => setAgeConfirmed(e.target.checked)}
-          style={{ width: "1rem", height: "1rem", accentColor: T.color.terracotta }}
-        />
-        {t("ageConfirm")}
-      </label>
-
-      <button type="submit" disabled={loading || !ageConfirmed} style={buttonStyle(loading || !ageConfirmed)}>
-        {loading ? t("creating") : t("createAccount")}
-      </button>
-
-      <div style={dividerStyle}>
-        <span style={dividerLineStyle} />
-        <span style={dividerTextStyle}>{t("orSignUpWith")}</span>
-        <span style={dividerLineStyle} />
-      </div>
-
+      {/* OAuth first (SUCCESS_PLAYBOOK 1.2): the one-tap Google/Apple path gets
+          top billing; the password form follows below the divider. */}
       {(() => {
         const handleOAuth = async (provider: "google" | "apple") => {
           if (oauthLoading) return;
@@ -285,7 +347,9 @@ function RegisterContent() {
           try {
             // onDismiss resets the spinner if the in-app auth sheet closes without
             // completing, so a cancelled/failed sign-up never looks frozen.
-            const { error: oauthErr } = await fn({ onDismiss: clear });
+            // Thread the deep-link redirect so social sign-up honors invite/kep
+            // links like the password path does.
+            const { error: oauthErr } = await fn({ onDismiss: clear, redirect });
             if (oauthErr) {
               clear();
               setError(oauthErr);
@@ -323,11 +387,99 @@ function RegisterContent() {
         return appleFirst ? [appleBtn, googleBtn] : [googleBtn, appleBtn];
       })()}
 
+      <div style={{ ...dividerStyle, margin: isShort ? "0.875rem 0 0.75rem" : isMobile ? "1.25rem 0 1rem" : "1.5rem 0 1.25rem" }}>
+        <span style={dividerLineStyle} />
+        <span style={dividerTextStyle}>{t("orUseEmail")}</span>
+        <span style={dividerLineStyle} />
+      </div>
+
+      <label htmlFor="register-name" style={labelStyle}>{t("name")}</label>
+      <input
+        id="register-name"
+        name="displayName"
+        type="text"
+        autoComplete="name"
+        placeholder={t("namePlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget)}
+        style={inputStyle}
+      />
+
+      <label htmlFor="register-email" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("email")}</label>
+      <input
+        id="register-email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        required
+        aria-describedby={error ? "register-error" : undefined}
+        placeholder={t("emailPlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget)}
+        style={inputStyle}
+      />
+
+      <label htmlFor="register-password" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("password")}</label>
+      <input
+        id="register-password"
+        name="password"
+        type="password"
+        autoComplete="new-password"
+        required
+        aria-describedby={error ? "register-error" : undefined}
+        placeholder={t("passwordPlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget)}
+        style={inputStyle}
+      />
+
+      <label htmlFor="register-confirm-password" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("confirmPassword")}</label>
+      <input
+        id="register-confirm-password"
+        name="confirmPassword"
+        type="password"
+        autoComplete="new-password"
+        required
+        aria-describedby={error ? "register-error" : undefined}
+        placeholder={t("confirmPasswordPlaceholder")}
+        onFocus={(e) => applyFocus(e.currentTarget)}
+        onBlur={(e) => clearFocus(e.currentTarget)}
+        style={inputStyle}
+      />
+
+      <label
+        htmlFor="register-age"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          marginTop: "1rem",
+          minHeight: "2.75rem",
+          padding: "0.5rem 0",
+          fontSize: "0.8125rem",
+          color: MUTED,
+          cursor: "pointer",
+        }}
+      >
+        <input
+          id="register-age"
+          type="checkbox"
+          checked={ageConfirmed}
+          onChange={(e) => setAgeConfirmed(e.target.checked)}
+          style={{ width: "1.25rem", height: "1.25rem", flexShrink: 0, accentColor: EMBER }}
+        />
+        {t("ageConfirm")}
+      </label>
+
+      <button type="submit" disabled={loading || !ageConfirmed} style={buttonStyle(loading || !ageConfirmed)}>
+        {loading ? t("creating") : t("createAccount")}
+      </button>
+
       <p
         style={{
           textAlign: "center",
           fontSize: "0.8125rem",
-          color: T.color.muted,
+          color: MUTED,
           marginTop: "1.25rem",
           marginBottom: 0,
         }}
@@ -335,7 +487,7 @@ function RegisterContent() {
         {t("alreadyHaveAccount")}{" "}
         <Link
           href="/login"
-          style={{ color: T.color.terracotta, textDecoration: "none", fontWeight: 600 }}
+          style={{ color: EMBER, textDecoration: "none", fontWeight: 600, display: "inline-block", padding: "0.5rem 0.25rem" }}
         >
           {t("signIn")}
         </Link>
@@ -345,18 +497,18 @@ function RegisterContent() {
         style={{
           textAlign: "center",
           fontSize: "0.6875rem",
-          color: T.color.muted,
+          color: MUTED,
           marginTop: "1rem",
           marginBottom: 0,
           lineHeight: 1.6,
         }}
       >
         {t("agreeTerms")}{" "}
-        <Link href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>
+        <Link href="/terms" style={legalLinkStyle}>
           {tc("termsOfService")}
         </Link>{" "}
         {t("and")}{" "}
-        <Link href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>
+        <Link href="/privacy" style={legalLinkStyle}>
           {tc("privacyPolicy")}
         </Link>
         .
@@ -365,10 +517,21 @@ function RegisterContent() {
   );
 }
 
+// Terms/Privacy links live inline in a small centered paragraph. inline-block +
+// vertical padding grows the tap area toward the 2.75rem guideline without
+// breaking the sentence flow; negative vertical margin keeps line spacing tight.
+const legalLinkStyle: React.CSSProperties = {
+  color: EMBER,
+  textDecoration: "none",
+  display: "inline-block",
+  padding: "0.5rem 0.25rem",
+  margin: "-0.5rem 0",
+};
+
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "0.6875rem",
-  color: T.color.muted,
+  color: MUTED,
   letterSpacing: ".5px",
   textTransform: "uppercase",
   display: "block",
@@ -379,14 +542,14 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.8125rem 1rem",
   borderRadius: "0.625rem",
-  border: `1.5px solid ${T.color.sandstone}`,
+  border: `1.5px solid ${HAIRLINE}`,
   background: T.color.white,
   fontFamily: T.font.body,
   fontSize: "1rem",
-  color: T.color.charcoal,
+  color: INK,
   outline: "none",
   boxSizing: "border-box",
-  transition: "border-color 0.2s",
+  transition: "border-color 0.2s, box-shadow 0.2s",
 };
 
 const buttonStyle = (disabled: boolean): React.CSSProperties => ({
@@ -396,8 +559,8 @@ const buttonStyle = (disabled: boolean): React.CSSProperties => ({
   border: "none",
   background: disabled
     ? `${T.color.sandstone}40`
-    : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-  color: disabled ? T.color.muted : T.color.white,
+    : `linear-gradient(135deg, ${EMBER}, ${T.color.walnut})`,
+  color: disabled ? MUTED : T.color.white,
   fontFamily: T.font.body,
   fontSize: "0.9375rem",
   fontWeight: 600,
@@ -416,13 +579,13 @@ const dividerStyle: React.CSSProperties = {
 const dividerLineStyle: React.CSSProperties = {
   flex: 1,
   height: 1,
-  background: T.color.sandstone,
+  background: HAIRLINE,
 };
 
 const dividerTextStyle: React.CSSProperties = {
   fontFamily: T.font.body,
   fontSize: "0.75rem",
-  color: T.color.muted,
+  color: MUTED,
   whiteSpace: "nowrap",
 };
 
@@ -446,7 +609,7 @@ const googleButtonStyle: React.CSSProperties = {
   ...socialButtonBase,
   background: T.color.white,
   color: "#3C4043",
-  border: `1.5px solid ${T.color.sandstone}`,
+  border: `1.5px solid ${HAIRLINE}`,
   marginBottom: "0.625rem",
 };
 

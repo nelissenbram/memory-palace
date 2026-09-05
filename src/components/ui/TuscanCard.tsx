@@ -20,37 +20,32 @@ export interface TuscanCardProps {
 }
 
 const variantStyles: Record<TuscanCardVariant, React.CSSProperties> = {
+  // Canon: opaque CREAM card on a HAIRLINE border with the warm-ink shadow ramp.
+  // No backdrop-blur "glass" and no gold accent — gold is palace-only.
   glass: {
-    backdropFilter: "blur(1rem)",
-    WebkitBackdropFilter: "blur(1rem)",
-    background: "rgba(255,255,255,0.45)",
-    border: `1px solid ${T.color.cream}`,
-    borderTop: `2px solid ${T.color.gold}`,
+    background: T.color.cream,
+    border: `1px solid ${T.color.hairline}`,
     borderRadius: "1rem",
-    boxShadow: "0 0.25rem 1.5rem rgba(0,0,0,0.06)",
+    boxShadow: T.shadow[1],
   },
   solid: {
     background: T.color.warmStone,
-    border: `1px solid ${T.color.cream}`,
+    border: `1px solid ${T.color.hairline}`,
     borderRadius: "1rem",
-    boxShadow: "0 0.125rem 0.5rem rgba(0,0,0,0.04)",
+    boxShadow: T.shadow[1],
   },
   dark: {
     background: T.color.charcoal,
     color: T.color.linen,
     border: `1px solid rgba(255,255,255,0.08)`,
-    borderTop: `2px solid ${T.color.gold}`,
     borderRadius: "1rem",
-    boxShadow: "0 0.25rem 1.5rem rgba(0,0,0,0.12)",
+    boxShadow: "0 0.25rem 1.5rem rgba(64,59,54,0.24)",
   },
   elevated: {
-    backdropFilter: "blur(0.5rem)",
-    WebkitBackdropFilter: "blur(0.5rem)",
-    background: "rgba(255,255,255,0.55)",
-    border: `1px solid ${T.color.cream}`,
+    background: T.color.cream,
+    border: `1px solid ${T.color.hairline}`,
     borderRadius: "1rem",
-    boxShadow:
-      "0 0.5rem 2rem rgba(0,0,0,0.08), 0 0.125rem 0.5rem rgba(0,0,0,0.04)",
+    boxShadow: T.shadow[2],
   },
 };
 
@@ -92,7 +87,7 @@ export default function TuscanCard({
         <style>{`
           .tuscan-card-liftable:hover {
             transform: translateY(-0.125rem);
-            box-shadow: 0 0.75rem 2rem rgba(0,0,0,0.1), 0 0.125rem 0.5rem rgba(0,0,0,0.04) !important;
+            box-shadow: 0 0.75rem 1.75rem rgba(64,59,54,0.16) !important;
           }
         `}</style>
       )}
@@ -101,8 +96,8 @@ export default function TuscanCard({
 }
 
 /* ─────────────────────────────────────────────
-   TuscanSectionHeader — section title with
-   gold underline accent
+   TuscanSectionHeader — section title with a
+   neutral hairline underline seam (canon)
    ───────────────────────────────────────────── */
 
 export interface TuscanSectionHeaderProps {
@@ -145,7 +140,8 @@ export function TuscanSectionHeader({
         style={{
           height: "0.125rem",
           width: "3.5rem",
-          background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight}, transparent)`,
+          // Canon: neutral HAIRLINE seam, not a gold rule (gold is palace-only).
+          background: `linear-gradient(90deg, ${T.color.hairline}, transparent)`,
           borderRadius: "0.125rem",
         }}
       />

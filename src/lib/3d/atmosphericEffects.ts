@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GOLDEN } from "./canon";
 
 /**
  * Atmospheric effects: dust particles, enhanced fog, volumetric light beams.
@@ -175,20 +176,22 @@ export function setupAtmosphericFog(
     far?: number;
   } = {}
 ): void {
+  // Default tints come from the canon GOLDEN family (MUSEO VIVO WS10-5) so
+  // fog never disagrees with the golden sky/grade.
   if (type === "exterior") {
     scene.fog = new THREE.FogExp2(
-      options.color || "#C8B8A0",
+      options.color || GOLDEN.fogExterior,
       options.density || 0.0018
     );
   } else if (type === "corridor") {
     scene.fog = new THREE.FogExp2(
-      options.color || "#E8DDD0",
+      options.color || GOLDEN.fogInterior,
       options.density || 0.015
     );
   } else {
     // Interior — subtle linear fog for depth
     scene.fog = new THREE.Fog(
-      options.color || "#D8CFC0",
+      options.color || GOLDEN.fogInterior,
       options.near || 2,
       options.far || 25
     );

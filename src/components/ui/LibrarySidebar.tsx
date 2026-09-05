@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import type { Wing } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
@@ -9,6 +10,7 @@ import TuscanCard from "./TuscanCard";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
 import { isIOS } from "@/lib/native/platform";
+import { CREAM, HAIRLINE, SHADOW, TOP_HIGHLIGHT, giltRule, EMBER, TRAY, MUTED } from "@/lib/libraryTokens";
 
 interface LibrarySidebarProps {
   wings: Wing[];
@@ -27,6 +29,17 @@ interface LibrarySidebarProps {
   onSelectRoom?: (roomId: string) => void;
   selectedRoom?: string | null;
   sharedWings?: { wingName: string; rooms: { id: string; name: string; icon: string }[] }[];
+  /** Per-wing warmth (0 quiet / 1 ember / 2 candlelit) — the seals glow by recency. */
+  wingWarmth?: Record<string, 0 | 1 | 2>;
+  /** A memory tile is being dragged over the app: the active wing's rooms
+   *  auto-collapse and each wing spring-opens its rooms on drag-hover so the
+   *  memory can be dropped straight into the right room. */
+  dragActive?: boolean;
+  onDropMemory?: (roomId: string, memId: string) => void;
+}
+
+function readDragMemId(e: { dataTransfer: DataTransfer }): string {
+  return e.dataTransfer.getData("application/x-mp-memory") || e.dataTransfer.getData("text/plain");
 }
 
 const PLAN_LIMIT = 500;
@@ -53,11 +66,19 @@ export default function LibrarySidebar({
   onSelectRoom,
   selectedRoom,
   sharedWings,
+  wingWarmth,
+  dragActive,
+  onDropMemory,
 }: LibrarySidebarProps) {
   const { t } = useTranslation("library");
-  const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
-  const { getWingRooms } = useRoomStore();
+  const getWingRooms = useRoomStore(s => s.getWingRooms);
+  // The desktop sidebar also renders on iPad portrait (768–1024px), where
+  // useIsMobile() reports desktop but the device is touch-only. Enlarge the
+  // small mouse-first hit boxes (room rows, colour dot/swatches) to the
+  // 2.75rem touch minimum whenever the user drives by touch, so nothing on
+  // iPad falls below the touch floor.
+  const isTouch = useTouchControls();
 
   const [hoveredWing, setHoveredWing] = useState<string | null>(null);
   const [enterHovered, setEnterHovered] = useState(false);
@@ -65,10 +86,10 @@ export default function LibrarySidebar({
   const [addWingHovered, setAddWingHovered] = useState(false);
   const [addRoomHovered, setAddRoomHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-  const [sidebarQuery, setSidebarQuery] = useState("");
   const [colorPickerWing, setColorPickerWing] = useState<string | null>(null);
   const [sharedExpanded, setSharedExpanded] = useState(false);
+  const [dragWing, setDragWing] = useState<string | null>(null);
+  const [dragOverRoom, setDragOverRoom] = useState<string | null>(null);
   const [wingColors, setWingColors] = useState<Record<string, string>>(() => {
     if (typeof window !== "undefined") {
       try { return JSON.parse(localStorage.getItem("mp_wing_colors") || "{}"); } catch { return {}; }
@@ -76,30 +97,57 @@ export default function LibrarySidebar({
     return {};
   });
 
+  // The wing recolour is authoritative within the sidebar: a user-picked colour
+  // overrides the wing's stored accent EVERYWHERE the accent stands for wing
+  // identity (mobile pill, seal medallion, active border, count badge, room
+  // highlight, dividers) — not just the dot + chevron. Falls back to the wing's
+  // real accent when no override is set.
+  const effectiveAccent = (w: Wing) => wingColors[w.id] || w.accent;
+
+  // Switching wings closes any transient open-state (colour picker)
+  // so it never lingers over a different wing after selection.
+  const handleSelectWing = (wingId: string) => {
+    setColorPickerWing(null);
+    onSelectWing(wingId);
+  };
+
+  // Click-away: tapping/clicking anywhere that is NOT the colour picker (dot +
+  // swatch row) closes that transient overlay. Without this the picker would
+  // linger open after a stray tap that doesn't switch wings. Elements that must
+  // stay open carry data-lsb-popover; any pointerdown outside them dismisses
+  // the open state.
+  const anyOverlayOpen = colorPickerWing !== null;
+  useEffect(() => {
+    if (!anyOverlayOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (target && target.closest("[data-lsb-popover]")) return;
+      setColorPickerWing(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [anyOverlayOpen]);
+
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(raf);
   }, []);
+
+  useEffect(() => {
+    if (!dragActive) { setDragWing(null); setDragOverRoom(null); }
+  }, [dragActive]);
 
   const totalMemories = useMemo(
     () => wings.reduce((sum, w) => sum + wingMemCount(w.id), 0),
     [wings, wingMemCount],
   );
 
-  // Show all wings, but keep attic at the bottom; filter by sidebar search
+  // Show all wings, but keep attic at the bottom
   const visibleWings = useMemo(() => {
     const regular = wings.filter((w) => w.id !== "attic");
     const attic = wings.filter((w) => w.id === "attic");
-    const all = [...regular, ...attic];
-    if (!sidebarQuery) return all;
-    const sq = sidebarQuery.toLowerCase();
-    return all.filter(w => {
-      if (w.name.toLowerCase().includes(sq)) return true;
-      if (translateWingName(w, tWings).toLowerCase().includes(sq)) return true;
-      // Also match room names within the wing
-      return getWingRooms(w.id).some(r => r.name.toLowerCase().includes(sq) || translateRoomName(r, tWings).toLowerCase().includes(sq));
-    });
-  }, [wings, sidebarQuery, getWingRooms, tWings]);
+    return [...regular, ...attic];
+  }, [wings]);
 
   const totalRooms = useMemo(
     () => wings.reduce((sum, w) => sum + getWingRooms(w.id).length, 0),
@@ -131,6 +179,10 @@ export default function LibrarySidebar({
       0%, 100% { opacity: 0.5; }
       50% { opacity: 1; }
     }
+    @keyframes lsb-seal-breath { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.08); } }
+    @media (prefers-reduced-motion: no-preference) {
+      .lsb-seal-breath { animation: lsb-seal-breath 4s ease-in-out infinite; }
+    }
     .lsb-mobile-strip::-webkit-scrollbar { display: none; }
     .lsb-desktop-nav::-webkit-scrollbar { width: 0.25rem; }
     .lsb-desktop-nav::-webkit-scrollbar-track { background: transparent; }
@@ -144,6 +196,13 @@ export default function LibrarySidebar({
   `;
 
   // ── MOBILE: horizontal scrollable pill strip ──
+  // NOTE: on mobile this component is ONLY the wing switcher. Room selection,
+  // search, sort, shared-with-me, add-wing/room, drag-drop and Enter-Palace are
+  // all delegated to LibraryView's own mobile chrome (Wings bar → Rooms bar →
+  // Search/Sort header + bottom actions), NOT rendered here. The room/search/
+  // drag props (onSelectRoom, sharedWings, dragActive, onDropMemory, etc.) are
+  // therefore intentionally unused in this branch — they exist only for the
+  // desktop tree below. Do not assume tapping a pill drills into rooms here.
   if (isMobile) {
     return (
       <nav
@@ -152,10 +211,12 @@ export default function LibrarySidebar({
         style={{
           width: "100%",
           height: "auto",
-          background: "rgba(242,237,231,0.72)",
+          // Frosted sandstone tray, sourced from the TRAY token (was a hardcoded
+          // rgba near-match) so the mobile strip tracks the palette.
+          background: `${TRAY}B8`,
           backdropFilter: "blur(1.5rem)",
           WebkitBackdropFilter: "blur(1.5rem)",
-          borderBottom: `0.0625rem solid ${T.color.cream}`,
+          borderBottom: `0.0625rem solid ${HAIRLINE}`,
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
@@ -174,10 +235,11 @@ export default function LibrarySidebar({
         <style>{keyframes}</style>
         {visibleWings.map((w, i) => {
           const active = w.id === selectedWing;
+          const accent = effectiveAccent(w);
           return (
             <button
               key={w.id}
-              onClick={() => onSelectWing(w.id)}
+              onClick={() => handleSelectWing(w.id)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -186,14 +248,14 @@ export default function LibrarySidebar({
                 minHeight: "2.75rem",
                 borderRadius: "1.5rem",
                 border: active
-                  ? `0.0625rem solid ${w.accent}44`
-                  : "0.0625rem solid rgba(255,255,255,0.4)",
+                  ? `0.0625rem solid ${accent}44`
+                  : `0.0625rem solid ${CREAM}66`,
                 background: active
-                  ? `linear-gradient(135deg, ${w.accent}, ${w.accent}DD)`
-                  : "rgba(255,255,255,0.55)",
+                  ? `linear-gradient(135deg, ${accent}, ${accent}DD)`
+                  : `${CREAM}8C`,
                 backdropFilter: active ? "none" : "blur(0.5rem)",
                 WebkitBackdropFilter: active ? "none" : "blur(0.5rem)",
-                color: active ? T.color.white : T.color.walnut,
+                color: active ? T.color.white : MUTED,
                 cursor: "pointer",
                 fontFamily: T.font.display,
                 fontSize: "0.8125rem",
@@ -203,22 +265,22 @@ export default function LibrarySidebar({
                 flexShrink: 0,
                 transition: `all 0.3s ${EASE_OUT_EXPO}`,
                 boxShadow: active
-                  ? `0 0.25rem 0.75rem ${w.accent}40, inset 0 0.0625rem 0 rgba(255,255,255,0.15)`
-                  : "0 0.0625rem 0.25rem rgba(44,44,42,0.04)",
+                  ? `0 0.25rem 0.75rem ${accent}40, inset 0 0.0625rem 0 rgba(255,255,255,0.15)`
+                  : "0 0.0625rem 0.25rem rgba(64,59,54,0.04)",
                 transform: active ? "scale(1.05)" : "scale(1)",
                 animation: mounted
                   ? `lsb-pill-enter 0.4s ${EASE_OUT_EXPO} ${i * 0.05}s both`
                   : "none",
               }}
             >
-              <WingIcon wingId={w.id} size={18} color={active ? "#FFF" : w.accent} />
+              <WingIcon wingId={w.id} size={18} color={active ? "#FFF" : accent} />
               {w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings)}
               {/* Room count badge (P1 #13) */}
               {getWingRooms(w.id).length > 0 && (
                 <span style={{
                   minWidth: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
-                  background: active ? "rgba(255,255,255,0.25)" : `${w.accent}18`,
-                  color: active ? T.color.white : w.accent,
+                  background: active ? "rgba(255,255,255,0.25)" : `${accent}18`,
+                  color: active ? T.color.white : accent,
                   fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700,
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   padding: "0 0.1875rem",
@@ -243,17 +305,14 @@ export default function LibrarySidebar({
         width: "17rem",
         minWidth: "17rem",
         height: "100%",
-        background:
-          "linear-gradient(180deg, rgba(250,250,247,0.88) 0%, rgba(242,237,231,0.92) 40%, rgba(238,234,227,0.90) 100%)",
-        backdropFilter: "blur(1.5rem)",
-        WebkitBackdropFilter: "blur(1.5rem)",
-        borderRight: `0.0625rem solid rgba(238,234,227,0.7)`,
+        background: "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)",
+        borderRight: `0.0625rem solid ${HAIRLINE}`,
         display: "flex",
         flexDirection: "column",
         overflowX: "hidden",
         overflowY: "auto",
         flexShrink: 0,
-        boxShadow: "0.25rem 0 2rem rgba(44,44,42,0.04)",
+        boxShadow: "0.25rem 0 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
       }}
     >
       <style>{keyframes}</style>
@@ -263,17 +322,11 @@ export default function LibrarySidebar({
         <h1
           style={{
             fontFamily: T.font.display,
-            fontSize: "2rem",
-            fontWeight: 300,
+            fontSize: "1.375rem",
+            fontWeight: 600,
             margin: 0,
-            letterSpacing: "0.08em",
-            lineHeight: 1.1,
-            background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight}, ${T.color.gold})`,
-            backgroundSize: "200% auto",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            animation: "lsb-shimmer 4s linear infinite",
+            lineHeight: 1.15,
+            color: "#403B36",
           }}
         >
           {t("sidebarTitle")}
@@ -282,7 +335,7 @@ export default function LibrarySidebar({
           style={{
             fontFamily: T.font.body,
             fontSize: "0.75rem",
-            color: T.color.muted,
+            color: "#716A5E",
             margin: "0.5rem 0 0",
             letterSpacing: "0.02em",
             fontWeight: 500,
@@ -290,7 +343,7 @@ export default function LibrarySidebar({
         >
           {t("sidebarSubtitle", {
             count: String(totalMemories),
-            wings: String(visibleWings.length),
+            wings: String(wings.length),
           })}
         </p>
 
@@ -305,7 +358,7 @@ export default function LibrarySidebar({
           <div
             style={{
               height: "100%",
-              background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight}88, transparent)`,
+              background: giltRule,
               borderRadius: "0.0625rem",
               animation: mounted
                 ? `lsb-divider-reveal 0.8s ${EASE_OUT_EXPO} 0.15s both`
@@ -315,47 +368,49 @@ export default function LibrarySidebar({
         </div>
       </div>
 
-      {/* P2 #11: Sidebar search */}
+      {/* Enter Palace button \u2014 charcoal gradient with golden shimmer border
+          (item 9: promoted from the sidebar bottom to the top slot) */}
       <div style={{ padding: "0 1rem 0.375rem" }}>
-        <div style={{ position: "relative" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: "0.5rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", opacity: 0.6 }}>
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input
-            type="text"
-            value={sidebarQuery}
-            onChange={e => setSidebarQuery(e.target.value)}
-            placeholder={t("sidebarSearchPlaceholder")}
-            aria-label={t("sidebarSearchPlaceholder")}
-            style={{
-              width: "100%", padding: "0.375rem 0.5rem 0.375rem 1.75rem",
-              borderRadius: "0.5rem",
-              border: `0.0625rem solid ${T.color.cream}`,
-              background: "rgba(255,255,255,0.5)",
-              fontFamily: T.font.body, fontSize: "0.75rem",
-              color: T.color.charcoal, outline: "none",
-              boxSizing: "border-box" as const,
-              transition: `border-color 0.2s ${EASE_OUT_EXPO}`,
-            }}
-            onFocus={e => { e.currentTarget.style.borderColor = T.color.gold; }}
-            onBlur={e => { e.currentTarget.style.borderColor = T.color.cream; }}
-          />
-          {sidebarQuery && (
-            <button
-              onClick={() => setSidebarQuery("")}
-              aria-label={tc("clearSearch")}
-              style={{
-                position: "absolute", right: "0.375rem", top: "50%", transform: "translateY(-50%)",
-                width: "1rem", height: "1rem", borderRadius: "50%",
-                background: T.color.cream, border: "none", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "0.5625rem", color: T.color.walnut, lineHeight: 1,
-              }}
-            >
-              {"\u00D7"}
-            </button>
-          )}
-        </div>
+        <button
+          data-nudge="nav_3d_btn"
+          onClick={onEnter3D}
+          onMouseEnter={() => setEnterHovered(true)}
+          onMouseLeave={() => setEnterHovered(false)}
+          style={{
+            width: "100%",
+            padding: "0.8125rem 1rem",
+            borderRadius: "0.625rem",
+            background: `linear-gradient(135deg, ${"#403B36"}, #3a3a38)`,
+            color: T.color.linen,
+            border: "0.0625rem solid transparent",
+            borderImage: `linear-gradient(135deg, ${T.color.gold}88, ${T.color.goldLight}44, ${T.color.gold}88) 1`,
+            cursor: "pointer",
+            fontFamily: T.font.display,
+            fontSize: "0.9375rem",
+            fontWeight: 500,
+            letterSpacing: "0.05em",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.5rem",
+            transition: `all 0.3s ${EASE_OUT_EXPO}`,
+            transform: enterHovered ? "scale(1.02)" : "scale(1)",
+            boxShadow: enterHovered
+              ? `0 0.375rem 1.25rem rgba(64,59,54,0.22), 0 0 0.75rem ${T.color.gold}18`
+              : "0 0.125rem 0.625rem rgba(64,59,54,0.12)",
+            outline: enterHovered
+              ? `0.0625rem solid rgba(184,92,56,0.27)`
+              : "none",
+            outlineOffset: "0.0625rem",
+          }}
+        >
+          <PalaceLogo variant="mark" color="light" size="sm" style={{ width: "1rem", height: "1rem" }} />
+          {selectedRoomName
+            ? t("enter3DRoom", { room: selectedRoomName })
+            : selectedWingName && selectedWing !== "__all__"
+              ? t("enter3DWing", { wing: selectedWingName })
+              : t("enterPalace")}
+        </button>
       </div>
 
       {/* ── Wings section label ── */}
@@ -364,55 +419,39 @@ export default function LibrarySidebar({
         padding: "0.5rem 1rem 0.125rem",
       }}>
         {/* Wing icon */}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8, flexShrink: 0 }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9A4F2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <path d="M2 17L12 2l10 15" /><path d="M2 17h20" /><path d="M7 17v4" /><path d="M17 17v4" />
         </svg>
         <span style={{
           fontFamily: T.font.body,
           fontSize: "0.625rem",
           fontWeight: 700,
-          color: T.color.gold,
+          color: "#9A4F2A",
           letterSpacing: "0.12em",
           textTransform: "uppercase" as const,
         }}>
           {t("wingsLabel")}
         </span>
-        {/* Info tooltip (?) */}
-        <div style={{ position: "relative", display: "inline-flex" }}>
-          <button
-            onClick={() => setTooltipOpen(!tooltipOpen)}
-            onMouseEnter={() => setTooltipOpen(true)}
-            onMouseLeave={() => setTooltipOpen(false)}
-            aria-label={t("wingsTooltip")}
-            style={{
-              width: "0.875rem", height: "0.875rem", borderRadius: "50%",
-              background: tooltipOpen ? `${T.color.gold}30` : `${T.color.muted}15`,
-              border: `0.0625rem solid ${tooltipOpen ? T.color.gold : T.color.muted}44`,
-              cursor: "pointer", padding: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
-              color: tooltipOpen ? T.color.gold : T.color.muted,
-              transition: `all 0.2s ${EASE_OUT_EXPO}`,
-            }}
-          >
-            ?
-          </button>
-          {tooltipOpen && (
-            <div style={{
-              position: "absolute", left: "1.25rem", top: "-0.25rem", zIndex: 50,
-              width: "12.5rem", padding: "0.625rem 0.75rem",
-              background: T.color.charcoal, color: T.color.linen,
-              borderRadius: "0.5rem",
-              fontFamily: T.font.body, fontSize: "0.75rem", lineHeight: 1.5,
-              fontWeight: 500, letterSpacing: "0.01em",
-              boxShadow: "0 0.25rem 1rem rgba(44,44,42,0.25)",
-              animation: `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both`,
-            }}>
-              {t("wingsTooltip")}
-            </div>
-          )}
-        </div>
       </div>
+
+      {/* Drop hint while a memory is being dragged */}
+      {dragActive && (
+        <div style={{
+          margin: "0.25rem 1rem 0",
+          padding: "0.375rem 0.625rem",
+          borderRadius: "0.5rem",
+          border: "0.0625rem dashed rgba(184,92,56,0.45)",
+          background: "rgba(184,92,56,0.08)",
+          fontFamily: T.font.body,
+          fontSize: "0.6875rem",
+          fontWeight: 600,
+          color: "#9A4F2A",
+          letterSpacing: "0.02em",
+          animation: `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both`,
+        }}>
+          {t("dragDropHint")}
+        </div>
+      )}
 
       {/* ── Wing list ── */}
       <div
@@ -427,39 +466,57 @@ export default function LibrarySidebar({
         {visibleWings.map((w, index) => {
           const active = w.id === selectedWing;
           const hovered = hoveredWing === w.id;
+          const accent = effectiveAccent(w);
           const roomCount = getWingRooms(w.id).length;
           const memCount = wingMemCount(w.id);
           const progressRatio = Math.min(memCount / PROGRESS_BASELINE, 1);
+          // During a drag the room lists auto-collapse; only the drag-hovered
+          // wing spring-opens so the drop lands in the right room.
+          const roomsOpen = dragActive ? dragWing === w.id : active;
 
           return (
             <div key={w.id}>
+            {/* Relative wrapper so the color-dot button can overlay the row's
+                right side as a SIBLING — a button nested inside the row button
+                is invalid HTML (hydration hazard, invisible to AT). */}
+            <div style={{ position: "relative" }}>
             <button
-              onClick={() => onSelectWing(w.id)}
+              onClick={() => handleSelectWing(w.id)}
               onMouseEnter={() => setHoveredWing(w.id)}
               onMouseLeave={() => setHoveredWing(null)}
+              onDragOver={dragActive ? (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (dragWing !== w.id) setDragWing(w.id);
+              } : undefined}
               style={{
+                outline: dragActive && dragWing === w.id ? "0.0625rem dashed rgba(184,92,56,0.55)" : "none",
+                outlineOffset: "-0.0625rem",
                 display: "flex",
                 alignItems: "center",
                 gap: "0.75rem",
-                padding: "0.875rem 1rem",
+                // Extra right padding reserves room for the overlaid color-dot
+                // button (1.5rem hit box at right: 0.625rem) so text/badge/chevron
+                // never underlap it.
+                padding: "0.875rem 2.375rem 0.875rem 1rem",
                 width: "100%",
                 borderRadius: "0.75rem",
                 background: active
-                  ? T.color.white
+                  ? CREAM
                   : hovered
                     ? "rgba(255,255,255,0.55)"
                     : "transparent",
                 border: "none",
                 borderLeft: active
-                  ? `0.1875rem solid ${T.color.gold}`
+                  ? `0.1875rem solid ${accent}`
                   : "0.1875rem solid transparent",
                 cursor: "pointer",
                 textAlign: "left",
                 transition: `all 0.25s ${EASE_OUT_EXPO}`,
                 boxShadow: active
-                  ? `0 0.125rem 0.5rem rgba(44,44,42,0.06), inset 0 0 0 0.0625rem rgba(255,255,255,0.8)`
+                  ? `${SHADOW[1]}, ${TOP_HIGHLIGHT}`
                   : hovered
-                    ? "0 0.0625rem 0.25rem rgba(44,44,42,0.03)"
+                    ? "0 0.0625rem 0.25rem rgba(64,59,54,0.03)"
                     : "none",
                 transform: hovered && !active ? "translateY(-0.0625rem)" : "none",
                 position: "relative",
@@ -468,28 +525,33 @@ export default function LibrarySidebar({
                   : "none",
               }}
             >
-              {/* Icon circle with accent glow */}
-              <div
-                style={{
-                  width: "2.375rem",
-                  height: "2.375rem",
-                  borderRadius: "50%",
-                  background: `linear-gradient(135deg, ${w.accent}18, ${w.accent}28)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  fontSize: "1.125rem",
-                  lineHeight: 1,
-                  transition: `all 0.3s ${EASE_OUT_EXPO}`,
-                  boxShadow:
-                    active || hovered
-                      ? `0 0 0.75rem ${w.accent}22`
-                      : "none",
-                }}
-              >
-                <WingIcon wingId={w.id} size={20} color={w.accent} />
-              </div>
+              {/* Engraved wing seal — warmth-lit medallion (r10): the palace
+                  breathes gilt when a wing is candlelit, embers when warm,
+                  quiet when untended. The one licensed gold in the nav. */}
+              {(() => {
+                const warm = wingWarmth?.[w.id] ?? 0;
+                const warmGlow = warm === 2 ? "0 0 0.9rem rgba(212,175,55,0.34)" : warm === 1 ? "0 0 0.7rem rgba(184,92,56,0.28)" : "none";
+                return (
+                  <div
+                    className={warm === 2 ? "lsb-seal-breath" : undefined}
+                    style={{
+                      width: "2.375rem",
+                      height: "2.375rem",
+                      borderRadius: "50%",
+                      background: `linear-gradient(135deg, ${accent}14, ${accent}22)`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      lineHeight: 1,
+                      transition: `all 0.3s ${EASE_OUT_EXPO}`,
+                      boxShadow: `inset 0 0 0 0.0625rem #E3D6BC, inset 0 0.0625rem 0 rgba(255,255,255,0.5)${warmGlow !== "none" ? ", " + warmGlow : ""}`,
+                    }}
+                  >
+                    <WingIcon wingId={w.id} size={20} color={accent} />
+                  </div>
+                );
+              })()}
 
               {/* Name + subtitle + progress */}
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -498,7 +560,7 @@ export default function LibrarySidebar({
                     fontFamily: T.font.display,
                     fontSize: active ? "1rem" : "0.9375rem",
                     fontWeight: active ? 700 : 500,
-                    color: active ? T.color.charcoal : T.color.walnut,
+                    color: active ? "#403B36" : "#716A5E",
                     display: "block",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -513,7 +575,7 @@ export default function LibrarySidebar({
                   style={{
                     fontFamily: T.font.body,
                     fontSize: "0.75rem",
-                    color: T.color.muted,
+                    color: "#716A5E",
                     display: "block",
                     marginTop: "0.1875rem",
                     letterSpacing: "0.01em",
@@ -540,7 +602,7 @@ export default function LibrarySidebar({
                     style={{
                       height: "100%",
                       width: `${progressRatio * 100}%`,
-                      background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight})`,
+                      background: "#B85C38",
                       borderRadius: "0.0625rem",
                       animation: mounted
                         ? `lsb-progress-fill 0.7s ${EASE_OUT_EXPO} ${index * 0.05 + 0.4}s both`
@@ -558,8 +620,8 @@ export default function LibrarySidebar({
                     minWidth: "1.375rem",
                     height: "1.375rem",
                     borderRadius: "0.6875rem",
-                    background: active ? `${w.accent}20` : `${T.color.muted}15`,
-                    color: active ? w.accent : T.color.muted,
+                    background: active ? `${accent}20` : `${"#716A5E"}15`,
+                    color: active ? accent : "#716A5E",
                     fontFamily: T.font.body,
                     fontSize: "0.625rem",
                     fontWeight: 700,
@@ -575,28 +637,11 @@ export default function LibrarySidebar({
                 </span>
               )}
 
-              {/* P2 #4: Wing color dot */}
-              <button
-                onClick={e => { e.stopPropagation(); setColorPickerWing(colorPickerWing === w.id ? null : w.id); }}
-                aria-label={t("customizeColor")}
-                style={{
-                  width: "0.75rem", height: "0.75rem", borderRadius: "50%",
-                  background: wingColors[w.id] || w.accent,
-                  border: `0.0625rem solid rgba(44,44,42,0.15)`,
-                  cursor: "pointer", flexShrink: 0,
-                  transition: `all 0.2s ${EASE_OUT_EXPO}`,
-                  transform: (hovered || active) ? "scale(1.15)" : "scale(1)",
-                  opacity: (hovered || active) ? 1 : 0.6,
-                  padding: 0, font: "inherit",
-                }}
-                title={t("customizeColor")}
-              />
-
               {/* Chevron — slides right on hover */}
               <span
                 style={{
                   fontSize: "0.875rem",
-                  color: active ? (wingColors[w.id] || w.accent) : T.color.muted,
+                  color: active ? accent : "#716A5E",
                   opacity: hovered || active ? 1 : 0,
                   transform: hovered ? "translateX(0.125rem)" : "translateX(0)",
                   transition: `all 0.25s ${EASE_OUT_EXPO}`,
@@ -608,13 +653,53 @@ export default function LibrarySidebar({
                 {"\u203A"}
               </span>
             </button>
+            {/* P2 #4: Wing color dot \u2014 absolutely positioned SIBLING of the row
+                button (visual dot 0.75rem inside a 1.5rem transparent hit box). */}
+            <button
+              data-lsb-popover
+              onClick={e => { e.stopPropagation(); setColorPickerWing(colorPickerWing === w.id ? null : w.id); }}
+              onMouseEnter={() => setHoveredWing(w.id)}
+              onMouseLeave={() => setHoveredWing(null)}
+              aria-label={t("customizeColor")}
+              title={t("customizeColor")}
+              style={{
+                position: "absolute",
+                // On touch, widen the transparent hit box to the 2.75rem floor
+                // while keeping the visual dot pinned to the right edge.
+                right: isTouch ? "0.25rem" : "0.625rem",
+                top: "50%",
+                marginTop: isTouch ? "-1.375rem" : "-0.75rem",
+                width: isTouch ? "2.75rem" : "1.5rem", height: isTouch ? "2.75rem" : "1.5rem",
+                display: "flex", alignItems: "center", justifyContent: isTouch ? "flex-end" : "center",
+                background: "transparent", border: "none",
+                cursor: "pointer", padding: 0, font: "inherit",
+                // While dragging, let dragover events fall through to the row
+                // button underneath so wing spring-open keeps working.
+                pointerEvents: dragActive ? "none" : "auto",
+              }}
+            >
+              <span
+                style={{
+                  width: "0.75rem", height: "0.75rem", borderRadius: "50%",
+                  background: accent,
+                  border: `0.0625rem solid rgba(64,59,54,0.15)`,
+                  transition: `all 0.2s ${EASE_OUT_EXPO}`,
+                  transform: (hovered || active) ? "scale(1.15)" : "scale(1)",
+                  opacity: (hovered || active) ? 1 : 0.6,
+                  display: "block",
+                }}
+              />
+            </button>
+            </div>
             {/* P2 #4: Color swatches row */}
             {colorPickerWing === w.id && (
-              <div style={{
+              <div data-lsb-popover style={{
                 display: "flex", gap: "0.25rem", padding: "0.25rem 1rem 0.375rem 3.5rem",
                 animation: mounted ? `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both` : "none",
               }}>
-                {WING_COLOR_SWATCHES.map(color => (
+                {WING_COLOR_SWATCHES.map(color => {
+                  const selected = accent === color;
+                  return (
                   <button
                     key={color}
                     onClick={() => {
@@ -624,26 +709,40 @@ export default function LibrarySidebar({
                       setColorPickerWing(null);
                     }}
                     style={{
-                      width: "1.125rem", height: "1.125rem", borderRadius: "50%",
-                      background: color, border: (wingColors[w.id] || w.accent) === color ? `0.125rem solid ${T.color.charcoal}` : `0.0625rem solid rgba(44,44,42,0.15)`,
+                      // Touch: 2.75rem transparent hit box around the small swatch dot.
+                      width: isTouch ? "2.75rem" : "1.125rem", height: isTouch ? "2.75rem" : "1.125rem",
+                      borderRadius: "50%",
+                      background: isTouch ? "transparent" : color,
+                      border: isTouch ? "none" : selected ? `0.125rem solid ${"#403B36"}` : `0.0625rem solid rgba(64,59,54,0.15)`,
                       cursor: "pointer", padding: 0, flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
                       transition: `transform 0.15s ${EASE_OUT_EXPO}`,
                     }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.2)"; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
                     aria-label={t("colorSwatch")}
-                  />
-                ))}
+                  >
+                    {isTouch && (
+                      <span style={{
+                        width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+                        background: color,
+                        border: selected ? `0.125rem solid ${"#403B36"}` : `0.0625rem solid rgba(64,59,54,0.15)`,
+                        display: "block",
+                      }} />
+                    )}
+                  </button>
+                  );
+                })}
               </div>
             )}
 
-            {/* ── Rooms sub-list for active wing ── */}
-            {active && roomCount > 0 && (
+            {/* ── Rooms sub-list for the active (or drag-hovered) wing ── */}
+            {roomsOpen && roomCount > 0 && (
               <>
                 {/* Divider between wing and rooms */}
                 <div style={{
                   height: "0.0625rem", margin: "0.25rem 1rem 0.25rem 2.25rem",
-                  background: `linear-gradient(90deg, ${w.accent}33, ${T.color.cream}22, transparent)`,
+                  background: `linear-gradient(90deg, ${accent}33, ${T.color.cream}22, transparent)`,
                 }} />
                 {/* "Rooms in {wingName}" label */}
                 <div style={{
@@ -651,7 +750,7 @@ export default function LibrarySidebar({
                   fontFamily: T.font.body,
                   fontSize: "0.5625rem",
                   fontWeight: 600,
-                  color: T.color.muted,
+                  color: "#716A5E",
                   letterSpacing: "0.08em",
                   textTransform: "uppercase" as const,
                 }}>
@@ -660,6 +759,7 @@ export default function LibrarySidebar({
                 {/* Room items */}
                 {getWingRooms(w.id).map((room, ri) => {
                   const isRoomActive = selectedRoom === room.id;
+                  const isDropTarget = dragActive && dragOverRoom === room.id;
                   return (
                   <div
                     key={room.id}
@@ -667,29 +767,48 @@ export default function LibrarySidebar({
                     tabIndex={0}
                     onClick={() => onSelectRoom?.(room.id)}
                     onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectRoom?.(room.id); } }}
+                    onDragOver={dragActive ? e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverRoom !== room.id) setDragOverRoom(room.id);
+                    } : undefined}
+                    onDragLeave={dragActive ? () => setDragOverRoom(r => (r === room.id ? null : r)) : undefined}
+                    onDrop={dragActive ? e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const memId = readDragMemId(e);
+                      setDragOverRoom(null);
+                      setDragWing(null);
+                      if (memId) onDropMemory?.(room.id, memId);
+                    } : undefined}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
-                      padding: "0.375rem 0.75rem 0.375rem 2.25rem",
+                      // Touch rows reach the 2.75rem hit floor via vertical padding
+                      // (iPad renders this desktop tree).
+                      padding: isTouch ? "0.75rem 0.75rem 0.75rem 2.25rem" : "0.375rem 0.75rem 0.375rem 2.25rem",
+                      minHeight: isTouch ? "2.75rem" : undefined,
+                      boxSizing: "border-box" as const,
                       borderRadius: "0.5rem",
                       cursor: "pointer",
                       transition: `all 0.2s ${EASE_OUT_EXPO}`,
-                      background: isRoomActive ? "rgba(255,255,255,0.7)" : "transparent",
-                      borderLeft: isRoomActive ? `2px solid ${w.accent}` : "2px solid transparent",
+                      background: isDropTarget ? "rgba(184,92,56,0.14)" : isRoomActive ? "rgba(255,255,255,0.7)" : "transparent",
+                      borderLeft: isDropTarget ? "2px solid #B85C38" : isRoomActive ? `2px solid ${accent}` : "2px solid transparent",
                       animation: mounted ? `lsb-wing-enter 0.3s ${EASE_OUT_EXPO} ${ri * 0.04 + 0.1}s both` : "none",
                     }}
                     onMouseEnter={e => {
                       if (!isRoomActive) e.currentTarget.style.background = "rgba(255,255,255,0.5)";
                     }}
                     onMouseLeave={e => {
-                      if (!isRoomActive) e.currentTarget.style.background = "transparent";
+                      if (!isRoomActive && !isDropTarget) e.currentTarget.style.background = "transparent";
                     }}
                   >
-                    <RoomIcon roomId={room.id} size={14} color={T.color.muted} />
+                    <RoomIcon roomId={room.id} size={14} color={"#716A5E"} />
                     <span style={{
                       fontFamily: T.font.body,
                       fontSize: "0.75rem",
                       fontWeight: 500,
-                      color: T.color.walnut,
+                      color: "#716A5E",
                       letterSpacing: "0.01em",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -718,7 +837,7 @@ export default function LibrarySidebar({
               width: "100%",
               padding: "0.5rem 1rem",
               borderRadius: "0.625rem",
-              border: `0.0625rem solid ${sharedExpanded ? `${T.color.gold}44` : `${T.color.cream}88`}`,
+              border: `0.0625rem solid ${sharedExpanded ? `rgba(184,92,56,0.27)` : `${T.color.cream}88`}`,
               background: sharedExpanded ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.35)",
               backdropFilter: "blur(0.5rem)",
               WebkitBackdropFilter: "blur(0.5rem)",
@@ -726,7 +845,7 @@ export default function LibrarySidebar({
               fontFamily: T.font.body,
               fontSize: "0.75rem",
               fontWeight: 500,
-              color: T.color.muted,
+              color: "#716A5E",
               letterSpacing: "0.02em",
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               display: "flex",
@@ -748,7 +867,7 @@ export default function LibrarySidebar({
                     fontFamily: T.font.body,
                     fontSize: "0.5625rem",
                     fontWeight: 600,
-                    color: T.color.muted,
+                    color: "#716A5E",
                     letterSpacing: "0.08em",
                     textTransform: "uppercase" as const,
                   }}>
@@ -768,7 +887,7 @@ export default function LibrarySidebar({
                         cursor: "pointer",
                         transition: `all 0.2s ${EASE_OUT_EXPO}`,
                         background: selectedRoom === room.id ? "rgba(255,255,255,0.7)" : "transparent",
-                        borderLeft: selectedRoom === room.id ? `2px solid ${T.color.gold}` : "2px solid transparent",
+                        borderLeft: selectedRoom === room.id ? "0.125rem solid #B85C38" : "0.125rem solid transparent",
                       }}
                       onMouseEnter={e => { if (selectedRoom !== room.id) e.currentTarget.style.background = "rgba(255,255,255,0.5)"; }}
                       onMouseLeave={e => { if (selectedRoom !== room.id) e.currentTarget.style.background = "transparent"; }}
@@ -778,7 +897,7 @@ export default function LibrarySidebar({
                         fontFamily: T.font.body,
                         fontSize: "0.75rem",
                         fontWeight: 500,
-                        color: T.color.walnut,
+                        color: "#716A5E",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -807,7 +926,7 @@ export default function LibrarySidebar({
               width: "100%",
               padding: "0.5rem 1rem",
               borderRadius: "0.625rem",
-              border: `0.0625rem solid ${addWingHovered ? `${T.color.gold}66` : `${T.color.cream}88`}`,
+              border: `0.0625rem solid ${addWingHovered ? `rgba(184,92,56,0.4)` : `${T.color.cream}88`}`,
               background: addWingHovered
                 ? "linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6))"
                 : "rgba(255,255,255,0.35)",
@@ -817,7 +936,7 @@ export default function LibrarySidebar({
               fontFamily: T.font.body,
               fontSize: "0.75rem",
               fontWeight: 500,
-              color: addWingHovered ? T.color.charcoal : T.color.muted,
+              color: addWingHovered ? "#403B36" : "#716A5E",
               letterSpacing: "0.02em",
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               display: "flex",
@@ -825,11 +944,11 @@ export default function LibrarySidebar({
               justifyContent: "center",
               gap: "0.375rem",
               boxShadow: addWingHovered
-                ? `0 0.125rem 0.5rem rgba(44,44,42,0.06), 0 0 0.5rem ${T.color.gold}15`
+                ? `0 0.125rem 0.5rem rgba(64,59,54,0.06), 0 0 0.5rem rgba(184,92,56,0.12)`
                 : "none",
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addWingHovered ? T.color.gold : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addWingHovered ? "#9A4F2A" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
             {t("addWingLabel")}
           </button>
         </div>
@@ -846,7 +965,7 @@ export default function LibrarySidebar({
               width: "100%",
               padding: "0.5rem 1rem",
               borderRadius: "0.625rem",
-              border: `0.0625rem solid ${addRoomHovered ? `${T.color.gold}66` : `${T.color.cream}88`}`,
+              border: `0.0625rem solid ${addRoomHovered ? `rgba(184,92,56,0.4)` : `${T.color.cream}88`}`,
               background: addRoomHovered
                 ? "linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6))"
                 : "rgba(255,255,255,0.35)",
@@ -856,7 +975,7 @@ export default function LibrarySidebar({
               fontFamily: T.font.body,
               fontSize: "0.75rem",
               fontWeight: 500,
-              color: addRoomHovered ? T.color.charcoal : T.color.muted,
+              color: addRoomHovered ? "#403B36" : "#716A5E",
               letterSpacing: "0.02em",
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               display: "flex",
@@ -864,11 +983,11 @@ export default function LibrarySidebar({
               justifyContent: "center",
               gap: "0.375rem",
               boxShadow: addRoomHovered
-                ? `0 0.125rem 0.5rem rgba(44,44,42,0.06), 0 0 0.5rem ${T.color.gold}15`
+                ? `0 0.125rem 0.5rem rgba(64,59,54,0.06), 0 0 0.5rem rgba(184,92,56,0.12)`
                 : "none",
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addRoomHovered ? T.color.gold : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addRoomHovered ? "#9A4F2A" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
             {t("addRoomLabel")}
           </button>
         </div>
@@ -887,7 +1006,7 @@ export default function LibrarySidebar({
           style={{
             fontFamily: T.font.body,
             fontSize: "0.75rem",
-            color: T.color.muted,
+            color: "#716A5E",
             letterSpacing: "0.01em",
           }}
         >
@@ -897,12 +1016,12 @@ export default function LibrarySidebar({
           style={{
             fontFamily: T.font.body,
             fontSize: "0.75rem",
-            color: T.color.muted,
+            color: "#716A5E",
             letterSpacing: "0.01em",
           }}
         >
           {t("wingsRooms", {
-            wings: String(visibleWings.length),
+            wings: String(wings.length),
             rooms: String(totalRooms),
           })}
         </span>
@@ -921,7 +1040,7 @@ export default function LibrarySidebar({
             style={{
               height: "100%",
               width: `${Math.min((totalMemories / PLAN_LIMIT) * 100, 100)}%`,
-              background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.terracotta}CC)`,
+              background: `linear-gradient(90deg, ${EMBER}, ${EMBER}CC)`,
               borderRadius: "0.125rem",
               transition: "width 0.4s ease",
             }}
@@ -970,7 +1089,7 @@ export default function LibrarySidebar({
           <div
             style={{
               height: "100%",
-              background: `linear-gradient(90deg, transparent, ${T.color.gold}66, transparent)`,
+              background: `linear-gradient(90deg, transparent, rgba(184,92,56,0.4), transparent)`,
               borderRadius: "0.0625rem",
               animation: mounted
                 ? `lsb-divider-reveal 0.8s ${EASE_OUT_EXPO} 0.6s both`
@@ -992,8 +1111,8 @@ export default function LibrarySidebar({
               background: atriumHovered
                 ? "rgba(255,255,255,0.85)"
                 : "rgba(255,255,255,0.65)",
-              color: T.color.charcoal,
-              border: `0.0625rem solid ${atriumHovered ? T.color.gold : T.color.cream}`,
+              color: "#403B36",
+              border: `0.0625rem solid ${atriumHovered ? "#B85C38" : "#E3D6BC"}`,
               cursor: "pointer",
               fontFamily: T.font.display,
               fontSize: "0.875rem",
@@ -1006,7 +1125,7 @@ export default function LibrarySidebar({
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               transform: atriumHovered ? "scale(1.01)" : "scale(1)",
               boxShadow: atriumHovered
-                ? "0 0.125rem 0.5rem rgba(44,44,42,0.06)"
+                ? "0 0.125rem 0.5rem rgba(64,59,54,0.06)"
                 : "none",
             }}
           >
@@ -1016,48 +1135,6 @@ export default function LibrarySidebar({
             {t("atrium")}
           </button>
         )}
-
-        {/* Enter Palace button — charcoal gradient with golden shimmer border */}
-        <button
-          data-nudge="nav_3d_btn"
-          onClick={onEnter3D}
-          onMouseEnter={() => setEnterHovered(true)}
-          onMouseLeave={() => setEnterHovered(false)}
-          style={{
-            width: "100%",
-            padding: "0.8125rem 1rem",
-            borderRadius: "0.625rem",
-            background: `linear-gradient(135deg, ${T.color.charcoal}, #3a3a38)`,
-            color: T.color.linen,
-            border: "0.0625rem solid transparent",
-            borderImage: `linear-gradient(135deg, ${T.color.gold}88, ${T.color.goldLight}44, ${T.color.gold}88) 1`,
-            cursor: "pointer",
-            fontFamily: T.font.display,
-            fontSize: "0.9375rem",
-            fontWeight: 500,
-            letterSpacing: "0.05em",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "0.5rem",
-            transition: `all 0.3s ${EASE_OUT_EXPO}`,
-            transform: enterHovered ? "scale(1.02)" : "scale(1)",
-            boxShadow: enterHovered
-              ? `0 0.375rem 1.25rem rgba(44,44,42,0.22), 0 0 0.75rem ${T.color.gold}18`
-              : "0 0.125rem 0.625rem rgba(44,44,42,0.12)",
-            outline: enterHovered
-              ? `0.0625rem solid ${T.color.gold}44`
-              : "none",
-            outlineOffset: "0.0625rem",
-          }}
-        >
-          <PalaceLogo variant="mark" color="light" size="sm" style={{ width: "1rem", height: "1rem" }} />
-          {selectedRoomName
-            ? t("enter3DRoom", { room: selectedRoomName })
-            : selectedWingName && selectedWing !== wings[0]?.id
-              ? t("enter3DWing", { wing: selectedWingName })
-              : t("enterPalace")}
-        </button>
       </div>
     </nav>
   );

@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -21,7 +21,16 @@ export async function getBlockedUserIds(
   supabase: SupabaseClient,
   userId: string
 ): Promise<Set<string>> {
-  const { data } = await supabase
+  // RLS on blocked_users only exposes rows where auth.uid() = blocker_id, so a
+  // user-scoped client silently misses the "users who blocked me" direction and
+  // enforcement became one-way. Server-only code: prefer the admin client for
+  // this read (never returned to the client raw — only the merged id set), so
+  // both directions enforce without a policy that would reveal WHO blocked you.
+  let reader: SupabaseClient = supabase;
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try { reader = createAdminClient() as unknown as SupabaseClient; } catch { /* fall back to session client */ }
+  }
+  const { data } = await reader
     .from("blocked_users")
     .select("blocker_id, blocked_id")
     .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
@@ -116,21 +125,23 @@ export async function blockUser(
 /** Unblock a previously blocked user. */
 export async function unblockUser(
   targetUserId: string
-): Promise<{ blocked: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { blocked: true };
+  if (!user) return { ok: false, error: "Not authenticated" };
 
-  await supabase
+  const { error } = await supabase
     .from("blocked_users")
     .delete()
     .eq("blocker_id", user.id)
     .eq("blocked_id", targetUserId);
 
+  if (error) return { ok: false, error: error.message };
+
   revalidatePath("/explore");
-  return { blocked: false };
+  return { ok: true };
 }
 
 /** Whether the current user has blocked the given user. */

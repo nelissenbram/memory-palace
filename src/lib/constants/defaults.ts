@@ -20,7 +20,8 @@ export interface Mem {
   locationName?: string; // e.g. "Rome, Italy"
   displayed?: boolean; // whether this memory is shown as a 3D object in the room (default true for first N items)
   displayUnit?: string; // which display unit this memory is assigned to (e.g. "frame", "screen", "vinyl")
-  displayOrder?: number; // position index within the display unit (used for exhibition/peristylium individual painting slots)
+  sortOrder?: number; // explicit display-spot order within its station (memories.sort_order, 1-based; 0/unset = chronological)
+  hero?: boolean; // ★ Mantelpiece feature (session-only flag; round-trips as sortOrder 1 in the portraits lane)
   historicalContext?: string; // AI-generated historical context for the memory's time period
   resolution?: { goal: string; targetDate?: string; progress?: number; reminders?: boolean; }; // goal/resolution tracking for time capsules
   visibility?: "private" | "shared" | "family" | "public"; // memory visibility level (default: "shared" if room is shared, else "private")
@@ -28,6 +29,7 @@ export interface Mem {
   _cached?: boolean; // loaded from IndexedDB cache
   _filePath?: string | null; // file path from direct upload (bypasses re-upload in addMemory)
   _storageBackend?: string | null; // storage backend from direct upload
+  _eventDate?: string | null; // EXIF taken-date (date-only ISO) from direct upload → memories.event_date
 }
 
 export interface SharingInfo {
@@ -37,15 +39,20 @@ export interface SharingInfo {
 
 export const HERO_IMG = "/palace-hero.jpg";
 
-// Local demo media bundled in /public/demo/
+// Local demo media bundled in /public/demo/ (images) and /public/video/demo/
+// (AV + their thumbs). The split is a middleware constraint: the matcher
+// exempts image extensions and the /video/ prefix, but NOT .mp4/.mp3 under
+// other paths — so /demo/*.mp4 307's to /login on unauthenticated surfaces
+// (public /flythrough onboarding preview) and the cinema screen would get an
+// HTML page → MediaError → dead canvas fallback. ONE canonical copy each.
 const DEMO = {
   graduation: "/demo/graduation.jpg",
   quietMorning: "/demo/quiet-morning.jpg",
   edgeOfWater: "/demo/edge-of-water.jpg",
-  pianoRecital: "/demo/piano-recital.mp4",
-  pianoThumb: "/demo/piano-recital-thumb.jpg",
-  songOfSummer: "/demo/song-of-summer.mp3",
-  songThumb: "/demo/song-of-summer-thumb.jpg",
+  pianoRecital: "/video/demo/piano-recital.mp4",
+  pianoThumb: "/video/demo/piano-recital-thumb.jpg",
+  songOfSummer: "/video/demo/song-of-summer.mp3",
+  songThumb: "/video/demo/song-of-summer-thumb.jpg",
   betweenTwoHands: "/demo/between-two-hands.jpg",
 };
 

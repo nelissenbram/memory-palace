@@ -14,9 +14,11 @@ export async function updateLastSeen(): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
+  // Clearing winback_sent_at on return lets a user who re-lapses later get one
+  // fresh win-back per silence cycle (never two in a row). Harmless when null.
   await supabase
     .from("profiles")
-    .update({ last_seen_at: new Date().toISOString() })
+    .update({ last_seen_at: new Date().toISOString(), winback_sent_at: null })
     .eq("id", user.id);
 
   // Auto-reset "triggered" status when user comes back online.
