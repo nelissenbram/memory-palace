@@ -721,11 +721,10 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
       side="right"
       maxWidth="min(56rem, 96vw)"
       background={`linear-gradient(145deg, ${T.color.linen}, ${T.color.warmStone})`}
+      fullBleed
       contentStyle={{
         display: "flex",
         flexDirection: "column",
-        padding: 0,
-        paddingTop: `max(1rem, ${T.safe.top})`,
       }}
       title={
         <div>

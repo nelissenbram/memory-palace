@@ -542,7 +542,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
       side="right"
       maxWidth="30rem"
       background={`${T.color.linen}f8`}
-      contentStyle={{ display: "flex", flexDirection: "column", padding: 0 }}
+      fullBleed
+      contentStyle={{ display: "flex", flexDirection: "column" }}
     >
       <div
         className="mp-tl-root"

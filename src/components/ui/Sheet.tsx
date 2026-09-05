@@ -24,6 +24,10 @@ interface SheetProps {
   background?: string;
   /** Hide the built-in close button (panel provides its own). */
   hideClose?: boolean;
+  /** Content spans the full sheet width (edge-to-edge toolbars/borders): the sheet
+   *  drops its own left/right/bottom padding while the header row keeps its insets.
+   *  Panels are then responsible for their own horizontal and bottom padding. */
+  fullBleed?: boolean;
   contentStyle?: React.CSSProperties;
 }
 
@@ -36,7 +40,7 @@ interface SheetProps {
  */
 export function Sheet({
   open, onClose, children, title,
-  bottomSheet = true, side = "center", maxWidth, background = T.color.linen, hideClose, contentStyle,
+  bottomSheet = true, side = "center", maxWidth, background = T.color.linen, hideClose, fullBleed, contentStyle,
 }: SheetProps) {
   const { containerRef, handleKeyDown } = useFocusTrap(open);
   const isMobile = useIsMobile();
@@ -78,10 +82,12 @@ export function Sheet({
           overflowY: "auto",
           background,
           borderRadius: asBottomSheet ? `${T.radius.xl} ${T.radius.xl} 0 0` : (asSideSheet || isMobile) ? 0 : T.radius.lg,
-          paddingTop: `max(${T.space.md}, ${T.safe.top})`,
-          paddingBottom: `max(${T.space.lg}, ${T.safe.bottom})`,
-          paddingLeft: `max(${T.space.md}, ${T.safe.left})`,
-          paddingRight: `max(${T.space.md}, ${T.safe.right})`,
+          // Full-height side sheets get a roomier top inset so the title never
+          // sits pressed against the screen edge.
+          paddingTop: `max(${asSideSheet ? T.space.lg : T.space.md}, ${T.safe.top})`,
+          paddingBottom: fullBleed ? 0 : `max(${T.space.lg}, ${T.safe.bottom})`,
+          paddingLeft: fullBleed ? 0 : `max(${T.space.md}, ${T.safe.left})`,
+          paddingRight: fullBleed ? 0 : `max(${T.space.md}, ${T.safe.right})`,
           boxSizing: "border-box",
           animation: asSideSheet ? "mp-sheet-slide-right 0.3s cubic-bezier(0.22,1,0.36,1)" : undefined,
           boxShadow: asSideSheet ? "-1.25rem 0 3rem rgba(20,16,12,0.28)" : undefined,
@@ -96,7 +102,11 @@ export function Sheet({
           }
         `}</style>
         {(title || !hideClose) && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: T.space.sm, marginBottom: T.space.md }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: T.space.sm, marginBottom: T.space.md,
+            paddingLeft: fullBleed ? `max(${T.space.lg}, ${T.safe.left})` : undefined,
+            paddingRight: fullBleed ? `max(${T.space.lg}, ${T.safe.right})` : undefined,
+          }}>
             <div style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, color: T.color.charcoal, minWidth: 0 }}>{title}</div>
             {!hideClose && (
               <IconButton onClick={onClose} aria-label="Close" round style={{ color: T.color.walnut, fontSize: "1.25rem" }}>
