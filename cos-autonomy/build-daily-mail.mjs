@@ -77,10 +77,12 @@ if (!pm) {
         { label: "Actieve makers 7d", value: String(m.activation_users_7d) },
         { label: "Trials / conversies 7d", value: `${m.trials_started_7d} / ${m.trials_converted_7d}` },
         { label: "Opzeggingen 7d", value: String(m.cancels_or_expired_7d) },
-      ], learnings: [] };
+      ], learnings: [], people: raw.people || null };
     }
   } catch { /* geen cijfers beschikbaar — blok blijft weg */ }
 }
+const peopleLine = (label, names) => !names?.length ? "" :
+  `<p style="margin:8px 0 0;font-size:13px;line-height:1.5;color:${SOFT};"><strong style="color:${INK};">${esc(label)}:</strong> ${esc(names.join(", "))}</p>`;
 const productMetricsBlock = !pm ? "" : `
     ${H2("Productcijfers (PostHog)")}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
@@ -89,6 +91,8 @@ const productMetricsBlock = !pm ? "" : `
         <td style="padding:7px 10px;border-bottom:1px solid ${LINE};color:${INK};font-family:${SERIF};text-align:right;white-space:nowrap;">${esc(it.value)}</td>
       </tr>`).join("")}
     </table>
+    ${peopleLine("Recente aanmeldingen (7d)", pm.people?.recent_signups_7d)}
+    ${peopleLine("Actieve makers (7d)", pm.people?.active_makers_7d)}
     ${(pm.learnings || []).length ? `<ul style="margin:8px 0 0 22px;padding:0;">${pm.learnings.map((l) => `<li style="margin:4px 0;font-size:13px;line-height:1.5;color:${SOFT};">${inl(l)}</li>`).join("")}</ul>` : ""}`;
 
 const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>

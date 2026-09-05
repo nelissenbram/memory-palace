@@ -63,6 +63,16 @@ try {
     hogql(`select count() from events where event in ('subscription_cancelled','subscription_expired') and timestamp >= now() - interval 7 day`),
   ]);
 
+  // Namen van recente aanmeldingen en actieve makers (person-property `name`,
+  // gezet bij signup; backfill 2026-09-05). Ontbreekt de naam nog → "(zonder naam)".
+  const nameQ = (event) =>
+    `select any(coalesce(person.properties.name, '(zonder naam)')) as naam, max(timestamp) as laatst` +
+    ` from events where event = '${event}' and timestamp >= now() - interval 7 day` +
+    ` group by person_id order by laatst desc limit 25`;
+  const [recentRows, activeRows] = await Promise.all([nameQ("user_signed_up"), nameQ("memory_created")].map(hogql));
+  const recentNames = recentRows.map(([n]) => n);
+  const activeNames = activeRows.map(([n]) => n);
+
   const delta = signups7d - signupsPrev7d;
   const deltaTxt = `${delta >= 0 ? "+" : ""}${delta} t.o.v. de 7 dagen ervoor (${signupsPrev7d})`;
 
@@ -81,6 +91,7 @@ try {
       checkouts_7d: checkouts7d,
       cancels_or_expired_7d: cancels7d,
     },
+    people: { recent_signups_7d: recentNames, active_makers_7d: activeNames },
   };
   writeFileSync(join(outDir, "product-metrics.json"), JSON.stringify(data, null, 2));
 
@@ -95,6 +106,9 @@ try {
 | Trials gestart / geconverteerd (7d) | ${trials7d} / ${converted7d} |
 | Checkouts (7d) | ${checkouts7d} |
 | Opzeggingen + expiraties (7d) | ${cancels7d} |
+
+**Recente aanmeldingen (7d):** ${recentNames.join(", ") || "geen"}
+**Actieve makers (7d):** ${activeNames.join(", ") || "geen"}
 
 Dashboard: ${data.source}
 `;

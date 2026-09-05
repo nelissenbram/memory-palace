@@ -77,6 +77,9 @@ export async function GET(request: Request) {
           await captureServer(user.id, "user_signed_up", {
             method: "oauth",
             provider,
+            // Person-property zodat de owner in PostHog namen ziet i.p.v. kale
+            // uids (owner-keuze 2026-09-05, LEG-012: display_name, geen e-mail).
+            ...(displayName ? { $set: { name: displayName } } : {}),
           });
         }
 

@@ -18,8 +18,10 @@ Werkmap: C:\Users\nelis\memory-palace\cos-autonomy
    formuleer max. 3 learnings die de cijfers ook echt dragen (trend, opvallende
    stijging/daling, activatie- of conversie-signaal). Geen speculatie; bij
    `"available": false` laat je `productMetrics` weg en meld je één regel in je
-   greeting dat de cijfers vandaag ontbreken. Zet dezelfde cijfers + learnings
-   ook als sectie "Productcijfers (PostHog)" in `DAGMAIL.md`.
+   greeting dat de cijfers vandaag ontbreken. Neem ook het `people`-veld uit de
+   json over als `productMetrics.people` (namen van recente aanmeldingen en
+   actieve makers, 7d) — letterlijk, niet herformuleren. Zet dezelfde cijfers,
+   namen + learnings ook als sectie "Productcijfers (PostHog)" in `DAGMAIL.md`.
 4. Volg je charter: owner-acties extraheren, groeperen (persoonlijk vs. per
    chief), prioriteren, deadlines verzamelen. Weekdag-datums ALTIJD
    computationeel verifiëren voor je ze noemt of inplant.

@@ -70,7 +70,12 @@ export async function signUp(formData: FormData) {
   // disabled). An already-registered email returns an obfuscated user with no
   // identities — skip those so re-registrations aren't counted as signups.
   if (data.user && (data.user.identities?.length ?? 0) > 0) {
-    await captureServer(data.user.id, "user_signed_up", { method: "email" });
+    await captureServer(data.user.id, "user_signed_up", {
+      method: "email",
+      // Person-property zodat de owner in PostHog namen ziet i.p.v. kale uids
+      // (owner-keuze 2026-09-05, LEG-012: alleen display_name, geen e-mail).
+      ...(displayName ? { $set: { name: displayName } } : {}),
+    });
   }
 
   return { success: true };
