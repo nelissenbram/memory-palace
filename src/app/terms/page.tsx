@@ -292,6 +292,16 @@ export default function TermsOfServicePage() {
           </Ul>
         </Section>
 
+        {/* LEG-005b: Subscriptions & Billing — renewal, cancellation, trial
+            (duration referenced, not hardcoded), EU withdrawal, Apple IAP. */}
+        <Section title={t("section12Title")}>
+          <P>{t("section12P1")}</P>
+          <P>{t("section12P2")}</P>
+          <P>{t("section12P3")}</P>
+          <P>{t("section12P4")}</P>
+          <P>{t("section12P5")}</P>
+        </Section>
+
         <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: `1px solid ${C.hairline}` }}>
           <Link
             href="/privacy"
