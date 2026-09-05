@@ -129,7 +129,7 @@ export default function PressPage() {
 
         <h2 style={sectionTitle}>Contact</h2>
         <p style={body}>
-          <a href="mailto:bram@elyphont.com" style={{ color: walnut }}>bram@elyphont.com</a> — direct
+          <a href="mailto:privacy@thememorypalace.com" style={{ color: walnut }}>privacy@thememorypalace.com</a> — direct
           line to the founder. Interviews, demo walkthroughs and review accounts on request.
         </p>
         <p style={{ ...body, fontSize: "0.875rem", color: "#9b9188" }}>

@@ -578,10 +578,10 @@ export default function SecurityPage() {
           >
             {t("commitmentBody")}{" "}
             <a
-              href="mailto:privacy@thememorypalace.ai"
+              href="mailto:privacy@thememorypalace.com"
               style={{ color: T.land.accentDark, textDecoration: "none" }}
             >
-              privacy@thememorypalace.ai
+              privacy@thememorypalace.com
             </a>
             {t("commitmentBodyEnd")}
           </p>

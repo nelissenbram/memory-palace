@@ -668,10 +668,10 @@ export default function SecuritySettingsPage() {
               }}>
                 {t("commitmentBody")}{" "}
                 <a
-                  href="mailto:privacy@thememorypalace.ai"
+                  href="mailto:privacy@thememorypalace.com"
                   style={{ color: EMBER, textDecoration: "none" }}
                 >
-                  privacy@thememorypalace.ai
+                  privacy@thememorypalace.com
                 </a>
                 {t("commitmentBodyEnd")}
               </p>
