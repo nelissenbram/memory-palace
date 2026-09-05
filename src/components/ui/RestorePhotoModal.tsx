@@ -25,6 +25,9 @@ interface RestorePhotoModalProps {
   onClose: () => void;
   /** Called after a restored copy is successfully saved into the library. */
   onSaved?: () => void;
+  /** "right" renders as the Atrium's right-anchored side sheet (used by the
+   *  restore picker); default stays the centered modal (Library detail view). */
+  side?: "center" | "right";
 }
 
 type Phase = "consent" | "processing" | "compare" | "saving" | "done" | "error";
@@ -40,7 +43,7 @@ type Phase = "consent" | "processing" | "compare" | "saving" | "done" | "error";
  * touch targets, reduced-motion guard on the spinner. iOS IAP seal respected:
  * the quota-upgrade hint is hidden when (isIOS && !IAP_ENABLED).
  */
-export default function RestorePhotoModal({ memory, roomId, onClose, onSaved }: RestorePhotoModalProps) {
+export default function RestorePhotoModal({ memory, roomId, onClose, onSaved, side = "center" }: RestorePhotoModalProps) {
   const { t } = useTranslation("memoryDetail");
   const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
@@ -172,7 +175,7 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved }: 
   };
 
   return (
-    <Sheet open onClose={onClose} title={t("restoreModalTitle")} maxWidth="42rem">
+    <Sheet open onClose={onClose} title={t("restoreModalTitle")} side={side} maxWidth={side === "right" ? "30rem" : "42rem"}>
       <style>{`
         @keyframes mp-restore-spin { to { transform: rotate(360deg); } }
         @keyframes mp-restore-pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
@@ -221,8 +224,9 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved }: 
       {/* ── COMPARE (before / after) ── */}
       {(phase === "compare" || phase === "saving") && (
         <div>
-          {isMobile ? (
-            /* Mobile: draggable slider over stacked before/after. */
+          {isMobile || side === "right" ? (
+            /* Mobile + right-rail sheet: draggable slider over stacked before/after
+               (the 30rem rail is too narrow for a side-by-side pair). */
             <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", borderRadius: T.radius.md, overflow: "hidden", background: T.color.warmStone }}>
               <img src={originalUrl} alt={t("restoreBeforeLabel")} style={{ position: "absolute", inset: 0, ...imgStyle }} />
               <div style={{ position: "absolute", inset: 0, width: `${sliderPct}%`, overflow: "hidden" }}>

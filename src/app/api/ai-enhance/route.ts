@@ -19,6 +19,77 @@ import { isR2Configured, r2PresignedUrl } from "@/lib/storage/r2";
 // (/v1/models/{model}/predictions) 404s for those, so we must pin a version and
 // use /v1/predictions instead.
 const MODEL_VERSION = "0fbacf7afc6c144e5be9767cff80f25aff23e52b0708f17e20f9879b2f21516c";
+// piddnad/ddcolor — colorization. A B&W/sepia photo gets GFPGAN's restore and
+// then a DDColor pass, matching what "restore" means to people holding a
+// black-and-white print (and what the RESTORE marketing clips show).
+const DDCOLOR_VERSION = "ca494ba129e44e45f661d6ece83c4c98a9a7c774309beca01429b58fce8aa695";
+
+// Two chained model runs can exceed the default function window.
+export const maxDuration = 120;
+
+type Prediction = { status?: string; output?: unknown; error?: unknown; urls?: { get?: string } };
+
+/** POST a version-pinned prediction, prefer:wait, then poll as a fallback. */
+async function runPrediction(token: string, version: string, input: Record<string, unknown>): Promise<{ ok: boolean; prediction: Prediction }> {
+  const res = await fetch("https://api.replicate.com/v1/predictions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "wait" },
+    body: JSON.stringify({ version, input }),
+  });
+  let prediction: Prediction = await res.json();
+  if (!res.ok) return { ok: false, prediction };
+  let tries = 0;
+  while (prediction.status && ["starting", "processing"].includes(prediction.status) && prediction.urls?.get && tries < 30) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const poll = await fetch(prediction.urls.get, { headers: { Authorization: `Bearer ${token}` } });
+    prediction = await poll.json();
+    tries++;
+  }
+  return { ok: true, prediction };
+}
+
+/** First output URL of a succeeded prediction, or "". */
+function predictionOutputUrl(prediction: Prediction): string {
+  if (prediction.status !== "succeeded" || !prediction.output) return "";
+  return Array.isArray(prediction.output) ? String(prediction.output[0]) : String(prediction.output);
+}
+
+/**
+ * Monochrome detector (grayscale OR a single uniform tint like sepia), so we
+ * only colorize photos that need it. Samples a 64×64 thumbnail: too few
+ * saturated pixels → grayscale; saturated pixels that all share one hue
+ * (high circular concentration) → sepia. Best-effort: any failure means "not
+ * monochrome" and we simply skip the colorize pass.
+ */
+async function detectMonochrome(imageUrl: string): Promise<boolean> {
+  try {
+    const res = await fetch(imageUrl);
+    if (!res.ok) return false;
+    const buf = Buffer.from(await res.arrayBuffer());
+    const sharp = (await import("sharp")).default;
+    const { data, info } = await sharp(buf).resize(64, 64, { fit: "inside" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+    const px = info.width * info.height;
+    if (!px || info.channels < 3) return false;
+    let saturated = 0, sumX = 0, sumY = 0;
+    for (let i = 0; i < data.length; i += info.channels) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      const sat = mx - mn;
+      if (sat > 20) {
+        saturated++;
+        let h: number;
+        if (mx === r) h = (g - b) / sat; else if (mx === g) h = (b - r) / sat + 2; else h = (r - g) / sat + 4;
+        const rad = h * 60 * (Math.PI / 180);
+        sumX += Math.cos(rad); sumY += Math.sin(rad);
+      }
+    }
+    if (saturated / px < 0.04) return true; // true grayscale
+    const concentration = Math.sqrt(sumX * sumX + sumY * sumY) / saturated;
+    return concentration > 0.96; // one uniform tint (sepia)
+  } catch {
+    return false;
+  }
+}
 
 async function getQuota() {
   const supabase = await createClient();
@@ -105,34 +176,32 @@ export async function POST(request: NextRequest) {
   }
 
   // Call Replicate. Prefer:wait returns synchronously (up to ~60s); poll as a fallback.
+  // The monochrome check runs concurrently with the GFPGAN restore — it decides
+  // whether a DDColor colorize pass follows, never whether the restore runs.
   const token = process.env.REPLICATE_API_TOKEN;
-  let prediction: { status?: string; output?: unknown; error?: unknown; urls?: { get?: string } };
+  const monoPromise = detectMonochrome(imageUrl);
+  let restoredUrl = "";
+  let colorized = false;
   try {
-    const res = await fetch("https://api.replicate.com/v1/predictions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "wait" },
-      body: JSON.stringify({ version: MODEL_VERSION, input: { img: imageUrl, version: "v1.4", scale: 2 } }),
-    });
-    prediction = await res.json();
-    if (!res.ok) {
-      return NextResponse.json({ error: "Restore service error", detail: prediction?.error || null }, { status: 502 });
+    const gfpgan = await runPrediction(token, MODEL_VERSION, { img: imageUrl, version: "v1.4", scale: 2 });
+    if (!gfpgan.ok) {
+      return NextResponse.json({ error: "Restore service error", detail: gfpgan.prediction?.error || null }, { status: 502 });
     }
-    // Fallback polling if not finished within the wait window.
-    let tries = 0;
-    while (prediction.status && ["starting", "processing"].includes(prediction.status) && prediction.urls?.get && tries < 30) {
-      await new Promise((r) => setTimeout(r, 2000));
-      const poll = await fetch(prediction.urls.get, { headers: { Authorization: `Bearer ${token}` } });
-      prediction = await poll.json();
-      tries++;
+    restoredUrl = predictionOutputUrl(gfpgan.prediction);
+    if (!restoredUrl) {
+      return NextResponse.json({ error: "Restore failed", detail: gfpgan.prediction?.error || null }, { status: 502 });
+    }
+
+    // B&W or sepia → colorize the restored result. A DDColor failure never
+    // fails the request: the user still gets the uncolorized restore.
+    if (await monoPromise) {
+      const dd = await runPrediction(token, DDCOLOR_VERSION, { image: restoredUrl, model_size: "large" });
+      const colorUrl = dd.ok ? predictionOutputUrl(dd.prediction) : "";
+      if (colorUrl) { restoredUrl = colorUrl; colorized = true; }
     }
   } catch {
     return NextResponse.json({ error: "Restore service unreachable" }, { status: 502 });
   }
-
-  if (prediction.status !== "succeeded" || !prediction.output) {
-    return NextResponse.json({ error: "Restore failed", detail: prediction?.error || null }, { status: 502 });
-  }
-  const restoredUrl = Array.isArray(prediction.output) ? String(prediction.output[0]) : String(prediction.output);
 
   // Count it only on success.
   await incrementPhotoRestore(user.id);
@@ -140,9 +209,9 @@ export async function POST(request: NextRequest) {
 
   // Milestone: a paid-feature usage signal (photo restore drives upgrades). The
   // used/limit let us see quota-pressure → upgrade in one PostHog funnel.
-  void captureServer(user.id, "photo_restore_used", { used: after.used, limit: after.limit, period: after.period });
+  void captureServer(user.id, "photo_restore_used", { used: after.used, limit: after.limit, period: after.period, colorized });
 
   // NOTE: restoredUrl is a Replicate-hosted URL valid for ~1h. The client shows the
   // before/after and, on Save, persists it through the normal upload flow.
-  return NextResponse.json({ ok: true, originalUrl: imageUrl, restoredUrl, quota: after });
+  return NextResponse.json({ ok: true, originalUrl: imageUrl, restoredUrl, colorized, quota: after });
 }

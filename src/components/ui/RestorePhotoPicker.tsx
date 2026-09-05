@@ -142,13 +142,16 @@ export default function RestorePhotoPicker({ photos, uploadRoomId, onClose }: Re
       <RestorePhotoModal
         memory={selected.mem}
         roomId={selected.roomId}
+        side="right"
         onClose={() => setSelected(null)}
       />
     );
   }
 
+  // side="right": the Atrium's unified right-anchored side sheet (phones get
+  // the bottom sheet automatically), matching every other Atrium tile panel.
   return (
-    <Sheet open onClose={onClose} title={t("restorePickerTitle")} maxWidth="42rem">
+    <Sheet open onClose={onClose} title={t("restorePickerTitle")} side="right" maxWidth="30rem">
       <style>{`
         @keyframes mp-restorepick-spin { to { transform: rotate(360deg); } }
         @media (prefers-reduced-motion: reduce) { .mp-restorepick-spin { animation: none !important; } }
