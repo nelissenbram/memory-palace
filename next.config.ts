@@ -159,11 +159,13 @@ const cspDirectives = [
   // assets). 'self' also covers the service worker.
   "worker-src 'self' blob:",
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
-  `img-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com https://lh3.googleusercontent.com https://upload.wikimedia.org`,
+  // replicate.delivery — restored-photo outputs (RestorePhotoModal "After"
+  // pane); connect-src too: Save fetch()es the output to re-upload it.
+  `img-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com https://lh3.googleusercontent.com https://upload.wikimedia.org https://replicate.delivery https://*.replicate.delivery`,
   `font-src 'self' https://fonts.gstatic.com`,
   // blob: — three's ImageBitmapLoader fetch()es embedded glTF textures from blob:
   // URLs; without it, embedded GLB textures fail ("Couldn't load texture blob").
-  `connect-src 'self' blob: ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com https://api.anthropic.com https://nominatim.openstreetmap.org https://upload.wikimedia.org https://*.posthog.com https://*.i.posthog.com https://eu-assets.i.posthog.com`,
+  `connect-src 'self' blob: ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com https://api.anthropic.com https://nominatim.openstreetmap.org https://upload.wikimedia.org https://*.posthog.com https://*.i.posthog.com https://eu-assets.i.posthog.com https://replicate.delivery https://*.replicate.delivery`,
   `media-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com https://lh3.googleusercontent.com https://upload.wikimedia.org`,
   "object-src 'none'",
   "frame-ancestors 'none'",
