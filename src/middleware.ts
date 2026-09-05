@@ -44,6 +44,9 @@ export async function middleware(request: NextRequest) {
     path === "/" ||
     // /go/<slug> marketing redirect rail — pure 302 + analytics, never needs a session
     path.startsWith("/go/") ||
+    // Dev-only staging viewers (e.g. /staging/room) — prod-disabled at the page
+    // level via notFound(), so exempting them from auth here is dev-only too.
+    (process.env.NODE_ENV !== "production" && path.startsWith("/staging/")) ||
     path.startsWith("/.well-known/") ||
     path.startsWith("/video/") ||
     path.startsWith("/api/cron/") ||

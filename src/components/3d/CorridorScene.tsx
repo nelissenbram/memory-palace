@@ -2421,6 +2421,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // each frame for fixed review angles — the portal sits BEHIND spawn and doors
     // are edge-on from the axis, so straight-ahead shots can't show them.
     const camDebug=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("cam"):null;
+    // Dev-only scripted forward dolly (?walk=1|left|right) — a genuine 3D walk-
+    // through for clean corridor-footage capture (login-free /flythrough only,
+    // prod-404). left/right bias gives different perspectives per capture.
+    const walkMode=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("walk"):null;
+    let walkT0=0;
 
     // ── W2 (WS5-8): DOLLY-TO-FRAME — one shared focus controller. While
     // update(dt) returns true it owns the camera (no walk/autoWalk/cinematic
@@ -2799,7 +2804,15 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       _ld.set(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
       _lookTarget.copy(camera.position).add(_ld);camera.lookAt(_lookTarget);
       // Debug review angles — override the walk/cinematic pose (viewer-only param).
-      if(camDebug){
+      if(walkMode){
+        // recorder sets window.__walkReset once the reveal-veil lifts so the walk
+        // starts on-camera, not behind the veil.
+        if(!walkT0||(typeof window!=="undefined"&&(window as unknown as {__walkReset?:boolean}).__walkReset)){walkT0=performance.now();if(typeof window!=="undefined")(window as unknown as {__walkReset?:boolean}).__walkReset=false;}
+        const t=Math.min(1,(performance.now()-walkT0)/13000);const e=easeInOutCubic(t);
+        const z=(cL/2-2)+e*(-(cL)+6); // near-entrance -> near-terminus
+        const lat=walkMode==="left"?-cW*0.22:walkMode==="right"?cW*0.22:0;
+        camera.position.set(lat,2.0,z);camera.lookAt(lat*0.4,1.9,z-6);
+      } else if(camDebug){
         if(camDebug==="portal"){camera.position.set(0,2.0,cL/2-6.5);camera.lookAt(0,cH*0.55,cL/2-1);}
         else if(camDebug==="door"){const dz=cL/2-5.5;camera.position.set(-cW/2+2.7,1.7,dz);camera.lookAt(-cW/2,1.95,dz);}
         else if(camDebug==="terminus"){camera.position.set(0,2.0,cL/2-9);camera.lookAt(0,cH*0.5,-cL/2+1);}

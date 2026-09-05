@@ -5,6 +5,7 @@ import Toast, { type ToastData } from "@/components/ui/Toast";
 import dynamic from "next/dynamic";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
+import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation, useLocaleTranslation } from "@/lib/hooks/useTranslation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
@@ -186,6 +187,18 @@ const DEMO_CORRIDOR_PAINTINGS: Record<string, { url?: string; title?: string; si
   ro3: { url: "/demo/between-two-hands.jpg", title: "The Garage" },
   ro4: { url: "/demo/edge-of-water.jpg", title: "School Days" },
 };
+// ?wing=roots|nest|craft|travel|passions (dev-tool, login-free /flythrough only,
+// prod-404) — render OTHER wings' corridors so captured footage isn't always the
+// Roots hall. Each wing has its own dimensions, accent, rug, terminus name +
+// ornament (CorridorScene cfg). Uses that wing's own rooms -> correct doors.
+function corridorWingFromURL(): { wingId: string; rooms: typeof DEMO_CORRIDOR_ROOMS } {
+  const fallback = { wingId: "roots", rooms: DEMO_CORRIDOR_ROOMS };
+  if (typeof window === "undefined") return fallback;
+  const w = new URLSearchParams(window.location.search).get("wing");
+  if (!w || !WINGS.some((x) => x.id === w)) return fallback;
+  const rooms = (WING_ROOMS[w] || DEMO_CORRIDOR_ROOMS) as unknown as typeof DEMO_CORRIDOR_ROOMS;
+  return { wingId: w, rooms };
+}
 
 // ═══ DEV TOOL — Cinematic flythrough recorder ═══
 // Sequences through 4 palace scenes and records the canvas as .webm
@@ -825,11 +838,12 @@ export default function FlythroughClient() {
             envHDRI={false}
           />
         );
-      case 2:
+      case 2: {
+        const cw = corridorWingFromURL();
         return (
           <CorridorScene
-            wingId="roots"
-            rooms={DEMO_CORRIDOR_ROOMS}
+            wingId={cw.wingId}
+            rooms={cw.rooms}
             corridorPaintings={corridorPaintings}
             onDoorHover={noop}
             onDoorClick={noop}
@@ -840,6 +854,7 @@ export default function FlythroughClient() {
             envHDRI={false}
           />
         );
+      }
       case 3:
         return (
           <InteriorScene
