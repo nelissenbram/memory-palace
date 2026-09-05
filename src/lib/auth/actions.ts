@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { sendResetEmail } from "@/lib/email/send-reset";
 import { serverError } from "@/lib/i18n/server-errors";
+import { captureServer } from "@/lib/analytics-server";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
@@ -52,7 +53,7 @@ export async function signUp(formData: FormData) {
     ? `${baseCallbackUrl}?redirect=${encodeURIComponent(redirectTo)}`
     : baseCallbackUrl;
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -63,6 +64,13 @@ export async function signUp(formData: FormData) {
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Server-side signup count (works for native apps too, where the client SDK is
+  // disabled). An already-registered email returns an obfuscated user with no
+  // identities — skip those so re-registrations aren't counted as signups.
+  if (data.user && (data.user.identities?.length ?? 0) > 0) {
+    await captureServer(data.user.id, "user_signed_up", { method: "email" });
   }
 
   return { success: true };

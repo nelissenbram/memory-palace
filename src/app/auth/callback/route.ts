@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { autoMatchInvites } from "@/lib/auth/invite-actions";
 import { sendWelcomeEmail } from "@/lib/email/send-welcome";
+import { captureServer } from "@/lib/analytics-server";
 
 // The OAuth landing must never be cached at any layer (SW/CDN/browser) — a
 // cached copy is what left users on a stale /atrium after Apple sign-in.
@@ -64,6 +65,20 @@ export async function GET(request: Request) {
           user.email?.split("@")[0] ||
           "";
         await ensureProfile(user.id, displayName);
+
+        // Server-side signup count for OAuth users. Email signups are already
+        // captured in the signUp action (this callback also handles their email
+        // confirmation, so skip provider "email" to avoid double counting). The
+        // created_at window separates a first OAuth sign-in from later logins.
+        const provider = user.app_metadata?.provider;
+        const isNewUser =
+          Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
+        if (provider && provider !== "email" && isNewUser) {
+          await captureServer(user.id, "user_signed_up", {
+            method: "oauth",
+            provider,
+          });
+        }
 
         // Auto-match any pending invites for this user's email
         if (user.email) {
