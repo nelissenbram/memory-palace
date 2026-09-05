@@ -64,11 +64,14 @@ try {
   ]);
 
   // Namen van recente aanmeldingen en actieve makers (person-property `name`,
-  // gezet bij signup; backfill 2026-09-05). Ontbreekt de naam nog → "(zonder naam)".
+  // gezet bij signup; backfill 2026-09-05). LET OP: join op de persons-tabel,
+  // niet event-level person.properties — die zijn bevroren op ingestion-moment
+  // en missen dus namen die ná het (backfill-)event gezet zijn.
   const nameQ = (event) =>
-    `select any(coalesce(person.properties.name, '(zonder naam)')) as naam, max(timestamp) as laatst` +
-    ` from events where event = '${event}' and timestamp >= now() - interval 7 day` +
-    ` group by person_id order by laatst desc limit 25`;
+    `select any(coalesce(p.properties.name, '(zonder naam)')) as naam, max(e.timestamp) as laatst` +
+    ` from events e left join persons p on p.id = e.person_id` +
+    ` where e.event = '${event}' and e.timestamp >= now() - interval 7 day` +
+    ` group by e.person_id order by laatst desc limit 25`;
   const [recentRows, activeRows] = await Promise.all([nameQ("user_signed_up"), nameQ("memory_created")].map(hogql));
   const recentNames = recentRows.map(([n]) => n);
   const activeNames = activeRows.map(([n]) => n);
