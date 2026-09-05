@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { INTERVIEW_TEMPLATES, WING_ID_TO_LABEL_KEY, getTemplatesByWing } from "@/lib/constants/interviews";
 import type { InterviewTemplate } from "@/lib/constants/interviews";
@@ -227,7 +228,7 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
   };
 
   return (
-    <Sheet open onClose={onClose} title={t("title")} side="right" maxWidth="30rem" background="#FCFAF5f8">
+    <Sheet open onClose={onClose} title={t("title")} icon={<RelayIcons.record />} iconTint="terracotta" side="right" maxWidth="30rem" background="#FCFAF5f8">
       <style>{`.ilp-card:hover{transform:translateY(-0.1875rem);box-shadow:0 0.5rem 1.5rem rgba(64,59,54,0.14) !important}
 @media (prefers-reduced-motion: reduce){.ilp-card{transition:none !important}.ilp-card:hover{transform:none}}`}</style>
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -172,7 +173,7 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved }: 
   };
 
   return (
-    <Sheet open onClose={onClose} title={t("restoreModalTitle")} maxWidth="42rem">
+    <Sheet open onClose={onClose} title={t("restoreModalTitle")} icon={<RelayIcons.restore />} iconTint="terracotta" maxWidth="42rem">
       <style>{`
         @keyframes mp-restore-spin { to { transform: rotate(360deg); } }
         @keyframes mp-restore-pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }

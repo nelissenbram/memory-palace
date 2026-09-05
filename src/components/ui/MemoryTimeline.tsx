@@ -13,6 +13,7 @@ import { RoomIcon } from "@/components/ui/WingRoomIcons";
 import { DateInputAssisted } from "@/app/(app)/family-tree/DateInputAssisted";
 import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 
 /** Thumbnail with fallback — uses plain <img> to avoid Next.js Image optimization issues */
 function TimelineThumbnail({ src, roomId, wingId, color }: {
@@ -539,6 +540,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
       open
       onClose={onClose}
       title={headerTitle}
+      icon={<RelayIcons.timeline />}
       side="right"
       maxWidth="30rem"
       background={`${T.color.linen}f8`}

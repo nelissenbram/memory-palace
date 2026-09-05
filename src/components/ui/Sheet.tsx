@@ -28,8 +28,21 @@ interface SheetProps {
    *  drops its own left/right/bottom padding while the header row keeps its insets.
    *  Panels are then responsible for their own horizontal and bottom padding. */
   fullBleed?: boolean;
+  /** Glyph shown in a tinted medallion before the title — pass the SAME RelayIcons
+   *  glyph as the Atrium tile that opens this sheet, so tile and sheet stay aligned. */
+  icon?: React.ReactNode;
+  /** Medallion tint, matching the Atrium lane the opening tile lives in. */
+  iconTint?: "gold" | "sage" | "terracotta";
   contentStyle?: React.CSSProperties;
 }
+
+/* Medallion tints per Atrium lane (bg well / hairline ring / glyph ink) —
+ * gold: Bring to Life + relay chips; sage: Share & Pass on; terracotta: Capture. */
+const ICON_TINTS = {
+  gold: { bg: "rgba(169,116,27,0.16)", ring: "#E9DCBE", fg: "#8A6410" },
+  sage: { bg: "rgba(74,103,65,0.14)", ring: "#D9DFD2", fg: "#4A6741" },
+  terracotta: { bg: "rgba(154,79,42,0.13)", ring: "#E9D2C2", fg: "#9A4F2A" },
+} as const;
 
 /**
  * Shared full-screen / bottom-sheet primitive. Handles the systemic portrait failures in one
@@ -40,7 +53,7 @@ interface SheetProps {
  */
 export function Sheet({
   open, onClose, children, title,
-  bottomSheet = true, side = "center", maxWidth, background = T.color.linen, hideClose, fullBleed, contentStyle,
+  bottomSheet = true, side = "center", maxWidth, background = T.color.linen, hideClose, fullBleed, icon, iconTint = "gold", contentStyle,
 }: SheetProps) {
   const { containerRef, handleKeyDown } = useFocusTrap(open);
   const isMobile = useIsMobile();
@@ -107,7 +120,18 @@ export function Sheet({
             paddingLeft: fullBleed ? `max(${T.space.lg}, ${T.safe.left})` : undefined,
             paddingRight: fullBleed ? `max(${T.space.lg}, ${T.safe.right})` : undefined,
           }}>
-            <div style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, color: T.color.charcoal, minWidth: 0 }}>{title}</div>
+            {icon && (
+              <span aria-hidden="true" style={{
+                width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", flexShrink: 0,
+                background: ICON_TINTS[iconTint].bg,
+                border: `0.0625rem solid ${ICON_TINTS[iconTint].ring}`,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.08)",
+              }}>
+                <span style={{ width: "1.5rem", height: "1.5rem", display: "inline-flex", color: ICON_TINTS[iconTint].fg }}>{icon}</span>
+              </span>
+            )}
+            <div style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, color: T.color.charcoal, minWidth: 0, flex: 1 }}>{title}</div>
             {!hideClose && (
               <IconButton onClick={onClose} aria-label="Close" round style={{ color: T.color.walnut, fontSize: "1.25rem" }}>
                 {"✕"}

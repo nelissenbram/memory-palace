@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, type CSSProperties } from "react";
 import { T } from "@/lib/theme";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useReducedMotion } from "@/lib/hooks/useIsMobile";
@@ -969,7 +970,7 @@ export default function LifeStoryPanel({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    <Sheet open onClose={onClose} title={t("title")} side="right" maxWidth="30rem">
+    <Sheet open onClose={onClose} title={t("title")} icon={<RelayIcons.lifestory />} side="right" maxWidth="30rem">
       <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, margin: "-0.5rem 0 0.75rem" }}>
         {t("subtitle")}
       </p>
