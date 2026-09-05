@@ -5,6 +5,8 @@ import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 import type { Mem, SharingInfo } from "@/lib/constants/defaults";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { enqueueMemory, cacheMemories, getCachedMemories, type CachedMemory } from "@/lib/offline/db";
+import { track } from "@/lib/analytics";
+import { getPlatform } from "@/lib/native/platform";
 
 interface MemoryState {
   userMems: Record<string, Mem[]>;
@@ -293,6 +295,19 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       eventDate,
     });
     if (result.memory) {
+      // OPS-010: first_photo_saved — client-side funnel milestone on the very
+      // first successful memory save. Heuristic: once per browser, guarded by a
+      // localStorage flag (all client save paths — onboarding, ImportHub, upload
+      // panels — funnel through this store method). track() is consent-gated
+      // and a no-op in the native shell, so this only fires for consenting web
+      // sessions; native activation stays covered by the server-side
+      // memory_created event.
+      try {
+        if (!localStorage.getItem("mp_first_photo_saved")) {
+          localStorage.setItem("mp_first_photo_saved", "1");
+          track("first_photo_saved", { platform: getPlatform(), memoryType: mem.type });
+        }
+      } catch { /* storage unavailable — skip the milestone, never the save */ }
       set((s) => {
         const cur = s.userMems[roomId] || [];
         const updated = cur.map((m) => m.id === mem.id ? { ...m, id: result.memory.id, dataUrl: fileUrl, ...(thumbnailUrl ? { thumbnailUrl } : {}) } : m);

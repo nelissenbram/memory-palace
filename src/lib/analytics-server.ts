@@ -10,8 +10,46 @@
 // Fire-and-forget, never throws into the caller: analytics must never break a
 // product action. Disabled when the key is absent or POSTHOG_SERVER_CAPTURE="0".
 
+import { cookies, headers } from "next/headers";
+
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+
+/**
+ * Best-effort platform of the CURRENT request's originating device, for event
+ * properties (OPS-010): "ios" | "android" | "web", or undefined outside a
+ * request scope.
+ *
+ * Detection reuses the app's existing signals:
+ *  - iOS: the `mp_platform=ios` cookie set by NativeInit and/or the
+ *    `MemoryPalace-iOS` UA marker from capacitor.config.ts (same sources as
+ *    isIOSRequest() in plan-limits.ts — the canonical iOS detection).
+ *  - Android: the Capacitor app has no cookie/UA marker of its own, so we fall
+ *    back to the Android System WebView UA fingerprint ("Android" + "; wv)"),
+ *    which the remote-loading Capacitor WebView always carries. Mobile Chrome
+ *    (no "wv") correctly stays "web".
+ *
+ * Only call this for requests that genuinely originate from a user's device —
+ * for cron/webhook-triggered work the UA belongs to the calling server and the
+ * result would be meaningless.
+ */
+export async function detectRequestPlatform(): Promise<"web" | "ios" | "android" | undefined> {
+  let ua = "";
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get("mp_platform")?.value === "ios") return "ios";
+  } catch {
+    /* outside a request scope — fall through to the headers attempt */
+  }
+  try {
+    ua = (await headers()).get("user-agent") || "";
+  } catch {
+    return undefined; // no request scope at all
+  }
+  if (ua.includes("MemoryPalace-iOS")) return "ios";
+  if (ua.includes("Android") && /;\s?wv\)/.test(ua)) return "android";
+  return "web";
+}
 
 /**
  * Capture a server-side product milestone.

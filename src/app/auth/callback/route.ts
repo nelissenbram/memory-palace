@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { autoMatchInvites } from "@/lib/auth/invite-actions";
 import { sendWelcomeEmail } from "@/lib/email/send-welcome";
-import { captureServer } from "@/lib/analytics-server";
+import { captureServer, detectRequestPlatform } from "@/lib/analytics-server";
 
 // The OAuth landing must never be cached at any layer (SW/CDN/browser) — a
 // cached copy is what left users on a stale /atrium after Apple sign-in.
@@ -74,9 +74,13 @@ export async function GET(request: Request) {
         const isNewUser =
           Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
         if (provider && provider !== "email" && isNewUser) {
+          // OPS-010: platform + signup_method props for the signup funnel.
+          const platform = await detectRequestPlatform();
           await captureServer(user.id, "user_signed_up", {
             method: "oauth",
             provider,
+            signup_method: provider,
+            ...(platform ? { platform } : {}),
             // Person-property zodat de owner in PostHog namen ziet i.p.v. kale
             // uids (owner-keuze 2026-09-05, LEG-012: display_name, geen e-mail).
             ...(displayName ? { $set: { name: displayName } } : {}),

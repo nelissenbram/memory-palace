@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
-import { captureServer } from "@/lib/analytics-server";
+import { captureServer, detectRequestPlatform } from "@/lib/analytics-server";
 
 /**
  * GET /api/keps/pending — All pending captures across user's keps
@@ -106,7 +106,9 @@ export async function PATCH(request: Request) {
 
       if (memory) {
         // Milestone: activation signal (server-side). Fire-and-forget.
-        void captureServer(user.id, "memory_created", { source: "kep" });
+        void detectRequestPlatform().then((platform) =>
+          captureServer(user.id, "memory_created", { source: "kep", ...(platform ? { platform } : {}) })
+        );
         await supabase
           .from("kep_captures")
           .update({ status: "routed", memory_id: memory.id })

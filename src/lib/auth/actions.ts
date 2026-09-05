@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { sendResetEmail } from "@/lib/email/send-reset";
 import { serverError } from "@/lib/i18n/server-errors";
-import { captureServer } from "@/lib/analytics-server";
+import { captureServer, detectRequestPlatform } from "@/lib/analytics-server";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
@@ -70,8 +70,13 @@ export async function signUp(formData: FormData) {
   // disabled). An already-registered email returns an obfuscated user with no
   // identities — skip those so re-registrations aren't counted as signups.
   if (data.user && (data.user.identities?.length ?? 0) > 0) {
+    // OPS-010: platform + provider props for the signup funnel.
+    const platform = await detectRequestPlatform();
     await captureServer(data.user.id, "user_signed_up", {
       method: "email",
+      provider: "email",
+      signup_method: "email",
+      ...(platform ? { platform } : {}),
       // Person-property zodat de owner in PostHog namen ziet i.p.v. kale uids
       // (owner-keuze 2026-09-05, LEG-012: alleen display_name, geen e-mail).
       ...(displayName ? { $set: { name: displayName } } : {}),
