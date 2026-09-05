@@ -11,6 +11,7 @@ import { AccessibilityProvider } from "@/components/providers/AccessibilityProvi
 import { DaylightProvider } from "@/components/providers/DaylightProvider";
 import WebVitals from "@/components/WebVitals";
 import PostHogProvider from "@/components/PostHogProvider";
+import CookieConsent from "@/components/CookieConsent";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -338,6 +339,7 @@ export default async function RootLayout({
         </a>
         <WebVitals />
         <PostHogProvider />
+        <CookieConsent />
         <ServiceWorkerRegistration />
         <PWAInstallBanner />
         <OfflineBanner />
