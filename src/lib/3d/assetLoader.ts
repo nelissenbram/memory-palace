@@ -177,16 +177,62 @@ function requestKTX2Manifest(): void {
     .catch(() => { /* manifest absent — JPG pipeline stays authoritative */ });
 }
 
+// ── OPS-003: KTX2→JPG fallback instrumentation ──
+// Every texture that COULD have been served as KTX2 but fell back to the JPG
+// pipeline is warned once and counted, so silent manifest gaps / transcoder
+// problems are visible in the console and (when the InteriorScene debug
+// object exists) on window.__mpDbg.ktx2Fallbacks.
+interface KTX2FallbackStats {
+  total: number;
+  byReason: Record<string, number>;
+  urls: string[];
+}
+const ktx2FallbackStats: KTX2FallbackStats = { total: 0, byReason: {}, urls: [] };
+const ktx2FallbackWarned = new Set<string>();
+
+function noteKTX2Fallback(
+  reason: "manifest-miss" | "no-renderer" | "load-failed",
+  url: string,
+  err?: unknown
+): void {
+  ktx2FallbackStats.total++;
+  ktx2FallbackStats.byReason[reason] = (ktx2FallbackStats.byReason[reason] ?? 0) + 1;
+  if (!ktx2FallbackWarned.has(url)) {
+    ktx2FallbackWarned.add(url);
+    ktx2FallbackStats.urls.push(url);
+    if (err !== undefined) {
+      console.warn(`[AssetLoader] OPS-003: KTX2 fallback (${reason}) — serving JPG for ${url}`, err);
+    } else {
+      console.warn(`[AssetLoader] OPS-003: KTX2 fallback (${reason}) — serving JPG for ${url}`);
+    }
+  }
+  if (typeof window !== "undefined") {
+    const dbg = (window as unknown as { __mpDbg?: Record<string, unknown> }).__mpDbg;
+    if (dbg) dbg.ktx2Fallbacks = ktx2FallbackStats;
+  }
+}
+
 /** WS2-6: pick a manifest-confirmed .ktx2 URL for this map, preferring the
  *  active textureRes and falling back to the 1k variant. Returns null when
  *  routing must stay on JPG (no manifest / no renderer for transcoding). */
 function pickKTX2Url(basePath: string, prefix: string, kind: string, res: QualitySettings["textureRes"]): string | null {
-  if (!ktx2Manifest || !getPooledRenderer()) return null;
+  // Manifest absent (not yet fetched, or no KTX2 assets shipped) — the JPG
+  // pipeline is authoritative by design, so this is NOT counted as a fallback.
+  if (!ktx2Manifest) return null;
+  const requested = `${basePath}/${prefix}_${kind}_${res}.ktx2`;
+  if (!getPooledRenderer()) {
+    // OPS-003: manifest says KTX2 exists but no renderer for transcoding yet
+    noteKTX2Fallback("no-renderer", requested);
+    return null;
+  }
   const resChain = res === "1k" ? ["1k"] : [res, "1k"];
   for (const r of resChain) {
     const url = `${basePath}/${prefix}_${kind}_${r}.ktx2`;
     if (ktx2Manifest.has(url)) return url;
   }
+  // OPS-003: manifest loaded but has no entry at any usable resolution —
+  // a silent gap in the build output (script skipped/failed this file).
+  noteKTX2Fallback("manifest-miss", requested);
   return null;
 }
 
@@ -217,11 +263,12 @@ export async function loadCompressedTexture(
       compressedTextureCache.set(url, texture);
       return texture;
     } catch (err) {
-      console.warn(
-        `[AssetLoader] KTX2 load failed for ${url}, falling back to standard loader`,
-        err
-      );
+      // OPS-003: warn + count instead of silently dropping to JPG
+      noteKTX2Fallback("load-failed", url, err);
     }
+  } else if (isKTX2) {
+    // OPS-003: .ktx2 requested without a renderer — silently served JPG before
+    noteKTX2Fallback("no-renderer", url);
   }
 
   // Fallback: standard TextureLoader (works for .jpg, .png, .webp, and as
@@ -492,6 +539,8 @@ function loadKTX2Base(url: string, jpgFallbackUrl: string): THREE.Texture {
     undefined,
     () => {
       // KTX2 failed (transcode/support/404) — drop this file to the JPG pipeline
+      // OPS-003: counted so __mpDbg.ktx2Fallbacks reflects per-file failures
+      noteKTX2Fallback("load-failed", url);
       console.warn(`[AssetLoader] WS2-6: KTX2 load failed for ${url} — falling back to ${jpgFallbackUrl}`);
       (tex as unknown as { isCompressedTexture: boolean }).isCompressedTexture = false;
       tex.mipmaps = [];
