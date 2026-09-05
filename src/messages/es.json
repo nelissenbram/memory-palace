@@ -2520,7 +2520,7 @@
     "restorePhotoDesc": "Nuestra IA repara con cuidado arañazos, desenfoque y rostros desvaídos, y guarda el resultado como una foto nueva sin tocar tu original.",
     "restorePhotoButton": "Restaurar esta foto",
     "restoreProcessingTitle": "Restaurando tu foto…",
-    "restoreProcessingBody": "Esto puede tardar hasta un minuto. Un momento.",
+    "restoreProcessingBody": "Con fotos antiguas esto puede tardar unos minutos. Un momento.",
     "restoreConsentTitle": "Antes de restaurar esta foto",
     "restoreConsentBody": "Enviaremos esta foto a nuestro proveedor de IA (Replicate) para reparar los daños. Los rostros se reconstruyen mediante IA y pueden diferir ligeramente del original. Restaura solo fotos que tengas derecho a editar, incluso cuando aparezcan otras personas, vivas o fallecidas.",
     "restoreConsentContinue": "Lo entiendo: restaurar",

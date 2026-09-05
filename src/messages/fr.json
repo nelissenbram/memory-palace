@@ -2520,7 +2520,7 @@
     "restorePhotoDesc": "Notre IA répare délicatement les rayures, le flou et les visages passés, puis enregistre le résultat comme une nouvelle photo sans toucher à votre original.",
     "restorePhotoButton": "Restaurer cette photo",
     "restoreProcessingTitle": "Restauration de votre photo…",
-    "restoreProcessingBody": "Cela peut prendre jusqu'à une minute. Un instant.",
+    "restoreProcessingBody": "Pour les photos anciennes, cela peut prendre quelques minutes. Un instant.",
     "restoreConsentTitle": "Avant de restaurer cette photo",
     "restoreConsentBody": "Nous enverrons cette photo à notre fournisseur d'IA (Replicate) pour réparer les dommages. Les visages sont reconstruits par l'IA et peuvent légèrement différer de l'original. Ne restaurez que des photos que vous avez le droit de modifier, y compris lorsqu'elles montrent d'autres personnes, vivantes ou décédées.",
     "restoreConsentContinue": "J'ai compris — restaurer",

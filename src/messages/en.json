@@ -2520,7 +2520,7 @@
     "restorePhotoDesc": "Our AI gently repairs scratches, blur and faded faces — then saves the result as a new photo, leaving your original untouched.",
     "restorePhotoButton": "Restore this photo",
     "restoreProcessingTitle": "Restoring your photo…",
-    "restoreProcessingBody": "This can take up to a minute. Hang tight.",
+    "restoreProcessingBody": "This can take a few minutes for old photos. Hang tight.",
     "restoreConsentTitle": "Before we restore this photo",
     "restoreConsentBody": "We'll send this photo to our AI provider (Replicate) to repair damage. Faces are reconstructed by AI and may differ slightly from the original. Please only restore photos you have the right to edit — including when they show other people, living or deceased.",
     "restoreConsentContinue": "I understand — restore",

@@ -19,13 +19,16 @@ import { isR2Configured, r2PresignedUrl } from "@/lib/storage/r2";
 // (/v1/models/{model}/predictions) 404s for those, so we must pin a version and
 // use /v1/predictions instead.
 const MODEL_VERSION = "0fbacf7afc6c144e5be9767cff80f25aff23e52b0708f17e20f9879b2f21516c";
-// piddnad/ddcolor — colorization. A B&W/sepia photo gets GFPGAN's restore and
-// then a DDColor pass, matching what "restore" means to people holding a
-// black-and-white print (and what the RESTORE marketing clips show).
+// flux-kontext-apps/restore-image — restoration + scratch repair + COLORIZATION
+// in one pass; the primary path for B&W/sepia photos ("restore" to someone
+// holding a black-and-white print means color, and the RESTORE marketing clips
+// promise exactly that). Verified: ~7s warm, ~2.5min cold.
+const KONTEXT_RESTORE_VERSION = "da7613a13aac59a1a3231023f0f30cf27991695ee0fe7ef52959ec1e02311c25";
+// piddnad/ddcolor — colorization fallback when the Kontext run fails.
 const DDCOLOR_VERSION = "ca494ba129e44e45f661d6ece83c4c98a9a7c774309beca01429b58fce8aa695";
 
-// Two chained model runs can exceed the default function window.
-export const maxDuration = 120;
+// A cold Kontext start alone can take ~2.5 minutes.
+export const maxDuration = 300;
 
 type Prediction = { status?: string; output?: unknown; error?: unknown; urls?: { get?: string } };
 
@@ -83,10 +86,12 @@ async function detectMonochrome(imageUrl: string): Promise<boolean> {
         sumX += Math.cos(rad); sumY += Math.sin(rad);
       }
     }
-    if (saturated / px < 0.04) return true; // true grayscale
+    if (saturated / px < 0.10) return true; // (near-)grayscale, incl. chroma-noisy scans
     const concentration = Math.sqrt(sumX * sumX + sumY * sumY) / saturated;
-    return concentration > 0.96; // one uniform tint (sepia)
-  } catch {
+    return concentration > 0.85; // one dominant tint (sepia / color-cast scan)
+  } catch (err) {
+    // Logged, not swallowed: a silent false here quietly disables colorization.
+    console.error("[ai-enhance] monochrome detection failed:", err);
     return false;
   }
 }
@@ -175,29 +180,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "quota_exceeded", quota }, { status: 429 });
   }
 
-  // Call Replicate. Prefer:wait returns synchronously (up to ~60s); poll as a fallback.
-  // The monochrome check runs concurrently with the GFPGAN restore — it decides
-  // whether a DDColor colorize pass follows, never whether the restore runs.
+  // Model routing:
+  //  - B&W/sepia → Kontext restore-image (restore + colorize in ONE pass, and
+  //    visibly better overall quality than GFPGAN on old prints). If Kontext
+  //    fails (e.g. safety filter), fall back to GFPGAN + a DDColor pass.
+  //  - Color photo → GFPGAN (fast, cheap, 2× upscale — no colorization needed).
   const token = process.env.REPLICATE_API_TOKEN;
-  const monoPromise = detectMonochrome(imageUrl);
+  const isMono = await detectMonochrome(imageUrl);
   let restoredUrl = "";
   let colorized = false;
   try {
-    const gfpgan = await runPrediction(token, MODEL_VERSION, { img: imageUrl, version: "v1.4", scale: 2 });
-    if (!gfpgan.ok) {
-      return NextResponse.json({ error: "Restore service error", detail: gfpgan.prediction?.error || null }, { status: 502 });
-    }
-    restoredUrl = predictionOutputUrl(gfpgan.prediction);
-    if (!restoredUrl) {
-      return NextResponse.json({ error: "Restore failed", detail: gfpgan.prediction?.error || null }, { status: 502 });
+    if (isMono) {
+      const kx = await runPrediction(token, KONTEXT_RESTORE_VERSION, { input_image: imageUrl, output_format: "jpg" });
+      const kxUrl = kx.ok ? predictionOutputUrl(kx.prediction) : "";
+      if (kxUrl) { restoredUrl = kxUrl; colorized = true; }
+      else console.error("[ai-enhance] kontext restore failed, falling back to GFPGAN:", kx.prediction?.error || null);
     }
 
-    // B&W or sepia → colorize the restored result. A DDColor failure never
-    // fails the request: the user still gets the uncolorized restore.
-    if (await monoPromise) {
-      const dd = await runPrediction(token, DDCOLOR_VERSION, { image: restoredUrl, model_size: "large" });
-      const colorUrl = dd.ok ? predictionOutputUrl(dd.prediction) : "";
-      if (colorUrl) { restoredUrl = colorUrl; colorized = true; }
+    if (!restoredUrl) {
+      const gfpgan = await runPrediction(token, MODEL_VERSION, { img: imageUrl, version: "v1.4", scale: 2 });
+      if (!gfpgan.ok) {
+        return NextResponse.json({ error: "Restore service error", detail: gfpgan.prediction?.error || null }, { status: 502 });
+      }
+      restoredUrl = predictionOutputUrl(gfpgan.prediction);
+      if (!restoredUrl) {
+        return NextResponse.json({ error: "Restore failed", detail: gfpgan.prediction?.error || null }, { status: 502 });
+      }
+
+      // Fallback colorize for the monochrome case when Kontext bailed out. A
+      // DDColor failure never fails the request: the user still gets the
+      // uncolorized restore.
+      if (isMono) {
+        const dd = await runPrediction(token, DDCOLOR_VERSION, { image: restoredUrl, model_size: "large" });
+        const colorUrl = dd.ok ? predictionOutputUrl(dd.prediction) : "";
+        if (colorUrl) { restoredUrl = colorUrl; colorized = true; }
+      }
     }
   } catch {
     return NextResponse.json({ error: "Restore service unreachable" }, { status: 502 });
