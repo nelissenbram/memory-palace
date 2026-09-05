@@ -24,7 +24,9 @@ if (!existsSync(OUT)) mkdirSync(OUT, { recursive: true });
 const [, , outName = 'staging-room.png', query = '', waitMsRaw = '12000', wRaw = '900', hRaw = '1400', dsfRaw = '2'] = process.argv;
 const waitMs = Number(waitMsRaw), W = Number(wRaw), H = Number(hRaw), DSF = Number(dsfRaw);
 const PORT = process.env.PORT || '3001';
-const URL = `http://localhost:${PORT}/staging/room${query ? `?${query}` : ''}`;
+// ROUTE lets the same headful capture serve any /staging viewer (room, corridor).
+const ROUTE = process.env.ROUTE || '/staging/room';
+const URL = `http://localhost:${PORT}${ROUTE}${query ? `?${query}` : ''}`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
