@@ -6,8 +6,12 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { initAnalytics, optOutAnalytics } from "@/lib/analytics";
 
-const F = T.font;
 const C = T.color;
+// Use the next/font CSS variables (set on <html> in layout.tsx) rather than
+// T.font's literal family names: next/font registers hashed @font-face names,
+// so literals like 'Fraunces' silently fall back to Georgia/system fonts.
+const FONT_DISPLAY = "var(--font-display, Georgia, serif)";
+const FONT_BODY = "var(--font-body, sans-serif)";
 const STORAGE_KEY = "mp_cookie_consent";
 
 type ConsentState = "undecided" | "accepted" | "rejected";
@@ -59,7 +63,7 @@ export default function CookieConsent() {
           border: `1px solid ${C.sandstone}`,
           borderRadius: "0.5rem",
           padding: "0.375rem 0.75rem",
-          fontFamily: F.body,
+          fontFamily: FONT_BODY,
           fontSize: "0.6875rem",
           color: C.muted,
           cursor: "pointer",
@@ -132,7 +136,7 @@ export default function CookieConsent() {
           >
             <p
               style={{
-                fontFamily: F.body,
+                fontFamily: FONT_BODY,
                 fontSize: "0.875rem",
                 color: C.inkSoft,
                 lineHeight: 1.5,
@@ -156,7 +160,7 @@ export default function CookieConsent() {
               <button
                 onClick={() => setShowManage(true)}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 500,
                   color: C.walnut,
@@ -176,7 +180,7 @@ export default function CookieConsent() {
               <button
                 onClick={handleReject}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: C.charcoal,
@@ -194,7 +198,7 @@ export default function CookieConsent() {
               <button
                 onClick={handleAccept}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: C.white,
@@ -217,7 +221,7 @@ export default function CookieConsent() {
           <div>
             <h3
               style={{
-                fontFamily: F.display,
+                fontFamily: FONT_DISPLAY,
                 fontSize: "1.25rem",
                 fontWeight: 500,
                 color: C.charcoal,
@@ -240,7 +244,7 @@ export default function CookieConsent() {
               <div>
                 <p
                   style={{
-                    fontFamily: F.body,
+                    fontFamily: FONT_BODY,
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     color: C.charcoal,
@@ -249,13 +253,13 @@ export default function CookieConsent() {
                 >
                   {t("essentialTitle")}
                 </p>
-                <p style={{ fontFamily: F.body, fontSize: "0.75rem", color: C.muted, margin: 0 }}>
+                <p style={{ fontFamily: FONT_BODY, fontSize: "0.75rem", color: C.muted, margin: 0 }}>
                   {t("essentialDesc")}
                 </p>
               </div>
               <span
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.75rem",
                   color: C.muted,
                   fontStyle: "italic",
@@ -277,7 +281,7 @@ export default function CookieConsent() {
               <div>
                 <p
                   style={{
-                    fontFamily: F.body,
+                    fontFamily: FONT_BODY,
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     color: C.charcoal,
@@ -286,13 +290,13 @@ export default function CookieConsent() {
                 >
                   {t("preferenceTitle")}
                 </p>
-                <p style={{ fontFamily: F.body, fontSize: "0.75rem", color: C.muted, margin: 0 }}>
+                <p style={{ fontFamily: FONT_BODY, fontSize: "0.75rem", color: C.muted, margin: 0 }}>
                   {t("preferenceDesc")}
                 </p>
               </div>
               <span
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.75rem",
                   color: C.muted,
                   fontStyle: "italic",
@@ -314,7 +318,7 @@ export default function CookieConsent() {
               <button
                 onClick={() => setShowManage(false)}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   color: C.muted,
                   background: "transparent",
@@ -328,7 +332,7 @@ export default function CookieConsent() {
               <button
                 onClick={handleReject}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: C.charcoal,
@@ -345,7 +349,7 @@ export default function CookieConsent() {
               <button
                 onClick={handleAccept}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: C.white,
