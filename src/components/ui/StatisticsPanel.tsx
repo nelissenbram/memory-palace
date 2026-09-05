@@ -6,6 +6,7 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -466,6 +467,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
       side="right"
       maxWidth="40rem"
       background={CREAM /* Atrium token: cream shell (canon bg); linen reserved for recessed trays/tracks */}
+      icon={<RelayIcons.insights />}
       title={
         <div className="sp-stats-root">
           <h2

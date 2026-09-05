@@ -6,6 +6,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard from "@/components/ui/TuscanCard";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { ANIM, EASE } from "@/components/ui/TuscanStyles";
 
 const C = T.color;
@@ -159,6 +160,8 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
       open
       onClose={onClose}
       title={t("navTitle")}
+      icon={<RelayIcons.whatsapp />}
+      iconTint="terracotta"
       side="right"
       maxWidth="30rem"
       background={TRAY}

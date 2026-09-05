@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import { getAcceptedShares } from "@/lib/auth/invite-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { WingIcon, RoomIcon, GenericRoomIcon, resolveRoomIconId } from "@/components/ui/WingRoomIcons";
 
 interface WingSubRoom {
@@ -99,7 +100,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
   }, {});
 
   return (
-    <Sheet open onClose={onClose} title={t("title")} side="right" maxWidth="30rem">
+    <Sheet open onClose={onClose} title={t("title")} icon={<RelayIcons.shared />} iconTint="sage" side="right" maxWidth="30rem">
       <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */, margin: "-0.5rem 0 1.5rem" }}>
         {shares.length > 0 ? t("roomCount", { count: String(shares.length) }) : t("noRooms")}
       </p>

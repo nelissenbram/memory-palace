@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { T } from "@/lib/theme";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { TRACKS } from "@/lib/constants/tracks";
 import { GOAL_TRACK_PRIORITY } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
@@ -94,6 +95,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
       onClose={onClose}
       side="right"
       maxWidth="30rem"
+      icon={<RelayIcons.journeys />}
       title={
         <div className="tracksPanelHead" style={{ minWidth: 0 }}>
           <h2 style={{

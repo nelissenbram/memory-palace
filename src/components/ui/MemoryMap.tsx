@@ -5,6 +5,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { WINGS } from "@/lib/constants/wings";
 import { getAllDemoMems } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
@@ -721,16 +722,16 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
       side="right"
       maxWidth="min(56rem, 96vw)"
       background={`linear-gradient(145deg, ${T.color.linen}, ${T.color.warmStone})`}
+      fullBleed
       contentStyle={{
         display: "flex",
         flexDirection: "column",
-        padding: 0,
-        paddingTop: `max(1rem, ${T.safe.top})`,
       }}
+      icon={<RelayIcons.map />}
       title={
         <div>
           <h2 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, lineHeight: 1.15, color: INK, margin: 0 }}>
-            <GlobeIcon size={22} color={INK} /> {t("title")}
+            {t("title")}
           </h2>
           <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: MUTED, margin: "0.25rem 0 0" }}>
             {t("memoriesAcross", { memCount: String(allLocMems.length), locCount: String(uniqueLocations) })}

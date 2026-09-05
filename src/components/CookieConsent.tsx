@@ -7,8 +7,12 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { initAnalytics, optOutAnalytics } from "@/lib/analytics";
 import { identifyCurrentUser } from "@/components/PostHogProvider";
 
-const F = T.font;
 const C = T.color;
+// Use the next/font CSS variables (set on <html> in layout.tsx) rather than
+// T.font's literal family names: next/font registers hashed @font-face names,
+// so literals like 'Fraunces' silently fall back to Georgia/system fonts.
+const FONT_DISPLAY = "var(--font-display, Georgia, serif)";
+const FONT_BODY = "var(--font-body, sans-serif)";
 const STORAGE_KEY = "mp_cookie_consent";
 
 type ConsentState = "undecided" | "accepted" | "rejected";
@@ -60,7 +64,7 @@ export default function CookieConsent() {
           border: `1px solid ${C.sandstone}`,
           borderRadius: "0.5rem",
           padding: "0.375rem 0.75rem",
-          fontFamily: F.body,
+          fontFamily: FONT_BODY,
           fontSize: "0.6875rem",
           color: C.muted,
           cursor: "pointer",
@@ -101,22 +105,25 @@ export default function CookieConsent() {
     <div
       style={{
         position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: "calc(1rem + env(safe-area-inset-bottom, 0px))",
+        left: "1rem",
+        right: "1rem",
         zIndex: 9997,
-        background: C.charcoal,
-        borderTop: `1px solid ${C.sandstone}30`,
-        padding: "0 clamp(1rem, 4vw, 2.5rem)",
-        paddingBottom: "calc(3.75rem + env(safe-area-inset-bottom, 0px))",
-        boxShadow: "0 -0.25rem 1.5rem rgba(0,0,0,0.15)",
+        display: "flex",
+        justifyContent: "center",
+        pointerEvents: "none",
       }}
     >
       <div
         style={{
-          maxWidth: "68.75rem",
-          margin: "0 auto",
-          padding: showManage ? "1.25rem 0 1.5rem" : "1rem 0",
+          pointerEvents: "auto",
+          width: "100%",
+          maxWidth: "46rem",
+          background: C.cream,
+          border: `1px solid ${C.sandstone}66`,
+          borderRadius: "1rem",
+          boxShadow: "0 0.75rem 2.5rem rgba(44,44,42,0.16), 0 0.125rem 0.5rem rgba(44,44,42,0.06)",
+          padding: showManage ? "1.5rem 1.5rem 1.25rem" : "1rem 1.25rem",
         }}
       >
         {!showManage ? (
@@ -132,11 +139,12 @@ export default function CookieConsent() {
           >
             <p
               style={{
+                fontFamily: FONT_BODY,
                 fontSize: "0.875rem",
-                color: C.cream,
+                color: C.inkSoft,
                 lineHeight: 1.5,
                 margin: 0,
-                flex: "1 1 25rem",
+                flex: "1 1 20rem",
               }}
             >
               {t("message")}{" "}
@@ -155,17 +163,19 @@ export default function CookieConsent() {
               <button
                 onClick={() => setShowManage(true)}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 500,
-                  color: C.cream,
+                  color: C.walnut,
                   background: "transparent",
-                  border: `1px solid ${C.sandstone}60`,
-                  borderRadius: "0.5rem",
-                  padding: "0.5rem 1rem",
+                  border: "none",
+                  borderRadius: "0.625rem",
+                  padding: "0.5rem 0.75rem",
                   minHeight: "2.75rem",
                   cursor: "pointer",
-                  transition: "border-color 0.2s",
+                  textDecoration: "underline",
+                  textUnderlineOffset: "0.1875rem",
+                  transition: "color 0.2s",
                 }}
               >
                 {t("manage")}
@@ -173,17 +183,17 @@ export default function CookieConsent() {
               <button
                 onClick={handleReject}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
-                  color: C.white,
+                  color: C.charcoal,
                   background: "transparent",
-                  border: `1px solid ${C.sandstone}80`,
-                  borderRadius: "0.5rem",
+                  border: `1px solid ${C.sandstone}`,
+                  borderRadius: "0.625rem",
                   padding: "0.5rem 1.25rem",
                   minHeight: "2.75rem",
                   cursor: "pointer",
-                  transition: "opacity 0.2s",
+                  transition: "border-color 0.2s",
                 }}
               >
                 {t("reject")}
@@ -191,16 +201,17 @@ export default function CookieConsent() {
               <button
                 onClick={handleAccept}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: C.white,
                   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
                   border: "none",
-                  borderRadius: "0.5rem",
+                  borderRadius: "0.625rem",
                   padding: "0.5rem 1.25rem",
                   minHeight: "2.75rem",
                   cursor: "pointer",
+                  boxShadow: "0 0.125rem 0.5rem rgba(198,107,61,0.2)",
                   transition: "opacity 0.2s",
                 }}
               >
@@ -213,11 +224,11 @@ export default function CookieConsent() {
           <div>
             <h3
               style={{
-                fontFamily: F.display,
-                fontSize: "1.125rem",
+                fontFamily: FONT_DISPLAY,
+                fontSize: "1.25rem",
                 fontWeight: 500,
-                color: C.linen,
-                marginBottom: "1rem",
+                color: C.charcoal,
+                margin: "0 0 1rem",
               }}
             >
               {t("preferencesTitle")}
@@ -230,26 +241,28 @@ export default function CookieConsent() {
                 justifyContent: "space-between",
                 alignItems: "center",
                 padding: "0.75rem 0",
-                borderBottom: `1px solid ${C.sandstone}20`,
+                borderBottom: `1px solid ${C.lineFaint}`,
               }}
             >
               <div>
                 <p
                   style={{
+                    fontFamily: FONT_BODY,
                     fontSize: "0.875rem",
                     fontWeight: 600,
-                    color: C.cream,
+                    color: C.charcoal,
                     margin: "0 0 0.125rem",
                   }}
                 >
                   {t("essentialTitle")}
                 </p>
-                <p style={{ fontSize: "0.75rem", color: C.muted, margin: 0 }}>
+                <p style={{ fontFamily: FONT_BODY, fontSize: "0.75rem", color: C.muted, margin: 0 }}>
                   {t("essentialDesc")}
                 </p>
               </div>
               <span
                 style={{
+                  fontFamily: FONT_BODY,
                   fontSize: "0.75rem",
                   color: C.muted,
                   fontStyle: "italic",
@@ -271,20 +284,22 @@ export default function CookieConsent() {
               <div>
                 <p
                   style={{
+                    fontFamily: FONT_BODY,
                     fontSize: "0.875rem",
                     fontWeight: 600,
-                    color: C.cream,
+                    color: C.charcoal,
                     margin: "0 0 0.125rem",
                   }}
                 >
                   {t("preferenceTitle")}
                 </p>
-                <p style={{ fontSize: "0.75rem", color: C.muted, margin: 0 }}>
+                <p style={{ fontFamily: FONT_BODY, fontSize: "0.75rem", color: C.muted, margin: 0 }}>
                   {t("preferenceDesc")}
                 </p>
               </div>
               <span
                 style={{
+                  fontFamily: FONT_BODY,
                   fontSize: "0.75rem",
                   color: C.muted,
                   fontStyle: "italic",
@@ -306,7 +321,7 @@ export default function CookieConsent() {
               <button
                 onClick={() => setShowManage(false)}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   color: C.muted,
                   background: "transparent",
@@ -320,14 +335,15 @@ export default function CookieConsent() {
               <button
                 onClick={handleReject}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
-                  color: C.white,
+                  color: C.charcoal,
                   background: "transparent",
-                  border: `1px solid ${C.sandstone}80`,
-                  borderRadius: "0.5rem",
+                  border: `1px solid ${C.sandstone}`,
+                  borderRadius: "0.625rem",
                   padding: "0.5rem 1.25rem",
+                  minHeight: "2.75rem",
                   cursor: "pointer",
                 }}
               >
@@ -336,15 +352,17 @@ export default function CookieConsent() {
               <button
                 onClick={handleAccept}
                 style={{
-                  fontFamily: F.body,
+                  fontFamily: FONT_BODY,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: C.white,
                   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
                   border: "none",
-                  borderRadius: "0.5rem",
+                  borderRadius: "0.625rem",
                   padding: "0.5rem 1.25rem",
+                  minHeight: "2.75rem",
                   cursor: "pointer",
+                  boxShadow: "0 0.125rem 0.5rem rgba(198,107,61,0.2)",
                 }}
               >
                 {t("acceptAll")}

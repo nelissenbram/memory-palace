@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import RestorePhotoModal from "@/components/ui/RestorePhotoModal";
@@ -151,7 +152,7 @@ export default function RestorePhotoPicker({ photos, uploadRoomId, onClose }: Re
   // side="right": the Atrium's unified right-anchored side sheet (phones get
   // the bottom sheet automatically), matching every other Atrium tile panel.
   return (
-    <Sheet open onClose={onClose} title={t("restorePickerTitle")} side="right" maxWidth="30rem">
+    <Sheet open onClose={onClose} title={t("restorePickerTitle")} icon={<RelayIcons.restore />} iconTint="terracotta" side="right" maxWidth="30rem">
       <style>{`
         @keyframes mp-restorepick-spin { to { transform: rotate(360deg); } }
         @media (prefers-reduced-motion: reduce) { .mp-restorepick-spin { animation: none !important; } }

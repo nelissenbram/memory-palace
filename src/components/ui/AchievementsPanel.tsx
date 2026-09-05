@@ -11,6 +11,7 @@ function prefersReducedMotion(): boolean {
     : false;
 }
 import { Sheet } from "@/components/ui/Sheet";
+import RelayIcons from "@/components/ui/RelayIcons";
 import { useAchievementStore, ACHIEVEMENTS, type Achievement } from "@/lib/stores/achievementStore";
 import { AchievementIcon } from "./AtriumWidgets";
 import { shareAchievement } from "@/lib/native/share";
@@ -36,28 +37,6 @@ async function shareAchievementWithMethod(name: string, text: string): Promise<S
   const ok = await shareAchievement(name, text);
   if (!ok) return { ok: false, method: null };
   return { ok: true, method: clipboardIsOnlyPath ? "clipboard" : "sheet" };
-}
-
-/** Roman laurel wreath trophy icon for the panel header */
-function TrophyIcon({ size = 28 }: { size?: number }) {
-  const gold = "#8A6410"; // Atrium token: browned gold-lane glyph (true gilt reserved for the palace itself)
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-      {/* Cup body */}
-      <path d="M8 5h12v8c0 3.5-2.5 6-6 6s-6-2.5-6-6V5z" stroke={gold} strokeWidth="1.5" fill={`${gold}20`} />
-      {/* Left handle */}
-      <path d="M8 7c-2 0-4 1-4 4s2 4 4 4" stroke={gold} strokeWidth="1.3" strokeLinecap="round" fill="none" />
-      {/* Right handle */}
-      <path d="M20 7c2 0 4 1 4 4s-2 4-4 4" stroke={gold} strokeWidth="1.3" strokeLinecap="round" fill="none" />
-      {/* Stem */}
-      <line x1="14" y1="19" x2="14" y2="22" stroke={gold} strokeWidth="1.3" />
-      {/* Base */}
-      <path d="M10 22h8" stroke={gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M9 24h10" stroke={gold} strokeWidth="1.3" strokeLinecap="round" />
-      {/* Star accent */}
-      <path d="M14 9l1 2.5 2.5.2-2 1.7.6 2.4L14 14.5l-2.1 1.3.6-2.4-2-1.7 2.5-.2L14 9z" fill={gold} stroke="none" opacity="0.6" />
-    </svg>
-  );
 }
 
 /** Roman padlock icon for locked achievements */
@@ -128,24 +107,15 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
       side="right"
       maxWidth="40rem"
       background="linear-gradient(160deg, #F2EDE4 0%, #FCFAF5 78%)"
+      icon={<RelayIcons.milestones />}
       title={
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <div style={{
-            width: "3rem", height: "3rem", borderRadius: "0.85rem",
-            background: "rgba(169,116,27,0.18)", // Atrium: gold-lane medallion tint, header focal (stronger than the 0.14 card wells)
-            border: "0.0625rem solid #E9DCBE", // Atrium token: gold-lane hairline ring — sets the header apart from the flat card wells
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.10)", // Atrium: S1 lifted for clear focal hierarchy
-          }}><TrophyIcon size={28} /></div>
-
-          <div>
-            {/* Canonical Sheet title tokens (matches Sheet.tsx built-in title) */}
-            <div style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, fontWeight: 400, color: T.color.charcoal }}>
-              {t("title")}
-            </div>
-            <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.125rem" }}>
-              {t("unlocked", { earned: String(earned), total: String(total) })}
-            </div>
+        <div>
+          {/* Canonical Sheet title tokens (matches Sheet.tsx built-in title) */}
+          <div style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, fontWeight: 400, color: T.color.charcoal }}>
+            {t("title")}
+          </div>
+          <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.125rem" }}>
+            {t("unlocked", { earned: String(earned), total: String(total) })}
           </div>
         </div>
       }
