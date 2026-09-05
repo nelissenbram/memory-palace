@@ -96,16 +96,38 @@ export async function GET(request: Request) {
           }
         }
 
+        const { data: profile, error: profileErr } = await supabase
+          .from("profiles")
+          .select("onboarded, preferred_locale, welcome_email_sent_at, age_confirmed_at, created_at")
+          .eq("id", user.id)
+          .single<{ onboarded: boolean; preferred_locale: string | null; welcome_email_sent_at: string | null; age_confirmed_at: string | null; created_at: string | null }>();
+
+        // LEG-015: one-time age attestation gate for accounts created without
+        // the registration checkbox (first Google/Apple OAuth sign-in). Only
+        // accounts created on/after the migration date are gated — existing
+        // users are never blocked (their age_confirmed_at is legitimately
+        // NULL and stays that way). Email sign-ups get the timestamp stamped
+        // at creation by the handle_new_user trigger, so they pass through.
+        const AGE_GATE_CUTOFF = Date.parse("2026-09-05T00:00:00Z");
+        if (
+          !profileErr &&
+          profile &&
+          !profile.age_confirmed_at &&
+          profile.created_at &&
+          new Date(profile.created_at).getTime() >= AGE_GATE_CUTOFF
+        ) {
+          const target = redirectTo && redirectTo.startsWith("/invite/")
+            ? `${origin}/auth/confirm-age?redirect=${encodeURIComponent(redirectTo)}`
+            : `${origin}/auth/confirm-age`;
+          const gated = NextResponse.redirect(target);
+          gated.headers.set("Cache-Control", "no-store, must-revalidate");
+          return gated;
+        }
+
         // If there's a pending redirect (e.g., from invite flow), go there
         if (redirectTo && redirectTo.startsWith("/invite/")) {
           return NextResponse.redirect(`${origin}${redirectTo}`);
         }
-
-        const { data: profile, error: profileErr } = await supabase
-          .from("profiles")
-          .select("onboarded, preferred_locale, welcome_email_sent_at")
-          .eq("id", user.id)
-          .single<{ onboarded: boolean; preferred_locale: string | null; welcome_email_sent_at: string | null }>();
 
         // Send the welcome email EXACTLY ONCE per account, gated on an idempotent
         // marker — never on the onboarded flag (which re-fires on every not-yet-

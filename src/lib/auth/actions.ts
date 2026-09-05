@@ -57,7 +57,14 @@ export async function signUp(formData: FormData) {
     email,
     password,
     options: {
-      data: { display_name: displayName },
+      data: {
+        display_name: displayName,
+        // LEG-015: authoritative server-side attestation timestamp. The
+        // handle_new_user trigger copies this into profiles.age_confirmed_at
+        // (migration 20260905120000_age_confirmed_at.sql). Set server-side —
+        // the client only submits the boolean checkbox validated above.
+        age_confirmed_at: new Date().toISOString(),
+      },
       emailRedirectTo: callbackUrl,
     },
   });
@@ -81,6 +88,44 @@ export async function signUp(formData: FormData) {
       // (owner-keuze 2026-09-05, LEG-012: alleen display_name, geen e-mail).
       ...(displayName ? { $set: { name: displayName } } : {}),
     });
+  }
+
+  return { success: true };
+}
+
+/**
+ * LEG-015: one-time age attestation for OAuth accounts (Google/Apple) that were
+ * created without the registration checkbox. Called from /auth/confirm-age.
+ * Stamps profiles.age_confirmed_at exactly once (never overwrites an existing
+ * attestation) for the currently authenticated user.
+ */
+export async function confirmAge(formData: FormData) {
+  const supabase = await createClient();
+  const t = await serverError();
+
+  if (formData.get("ageConfirmed") !== "true") {
+    return { error: t("somethingWentWrong") };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: t("somethingWentWrong") };
+  }
+
+  // Admin client: profiles RLS may not grant UPDATE on this column; the action
+  // itself is the authorization (authenticated user attesting for own row).
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ age_confirmed_at: new Date().toISOString() } as never)
+    .eq("id", user.id)
+    .is("age_confirmed_at", null);
+
+  if (error) {
+    console.error("[auth] confirmAge update error:", error.message);
+    return { error: t("somethingWentWrong") };
   }
 
   return { success: true };
