@@ -63,6 +63,23 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved, si
   const [errorKind, setErrorKind] = useState<"generic" | "notConfigured" | "quota" | "service" | "notPhoto">("generic");
   const [sliderPct, setSliderPct] = useState(50);
   const startedRef = useRef(false);
+  // Loader theatre for the (possibly minutes-long) restore wait: rotating step
+  // copy + an asymptotic progress bar that keeps creeping (never "stuck"),
+  // reaching ~90% around the 2-minute cold-start mark and capping at 97%.
+  const [loaderStep, setLoaderStep] = useState(0);
+  const [loaderPct, setLoaderPct] = useState(0);
+  useEffect(() => {
+    if (phase !== "processing") return;
+    const t0 = Date.now();
+    setLoaderStep(0);
+    setLoaderPct(0);
+    const stepTimer = setInterval(() => setLoaderStep((s) => s + 1), 6000);
+    const pctTimer = setInterval(() => {
+      const elapsed = (Date.now() - t0) / 1000;
+      setLoaderPct(Math.min(97, Math.round(100 * (1 - Math.exp(-elapsed / 52)))));
+    }, 500);
+    return () => { clearInterval(stepTimer); clearInterval(pctTimer); };
+  }, [phase]);
 
   // Whether we may show a paid upgrade hint at all (iOS free/IAP seal).
   const showUpgradeHint = !(isIOS() && !IAP_ENABLED);
@@ -179,8 +196,10 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved, si
       <style>{`
         @keyframes mp-restore-spin { to { transform: rotate(360deg); } }
         @keyframes mp-restore-pulse { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+        @keyframes mp-restore-sweep { 0% { transform: translateX(-100%); } 55%, 100% { transform: translateX(100%); } }
         @media (prefers-reduced-motion: reduce) {
-          .mp-restore-spin, .mp-restore-pulse { animation: none !important; }
+          .mp-restore-spin, .mp-restore-pulse, .mp-restore-sweep { animation: none !important; }
+          .mp-restore-sweep { display: none; }
         }
       `}</style>
 
@@ -200,26 +219,58 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved, si
         </div>
       )}
 
-      {/* ── PROCESSING ── */}
-      {phase === "processing" && (
-        <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
-          <div
-            className="mp-restore-spin"
-            aria-hidden
-            style={{
-              width: "2.75rem", height: "2.75rem", margin: "0 auto 1.25rem",
-              border: `0.1875rem solid ${T.color.hairline}`, borderTopColor: T.color.ember,
-              borderRadius: "50%", animation: "mp-restore-spin 0.9s linear infinite",
-            }}
-          />
-          <p style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, color: T.color.ink, margin: "0 0 0.5rem" }}>
-            {t("restoreProcessingTitle")}
-          </p>
-          <p className="mp-restore-pulse" style={{ fontFamily: T.font.body, fontSize: T.fontSize.base, color: T.color.inkMuted, margin: 0, animation: "mp-restore-pulse 2s ease-in-out infinite" }}>
-            {t("restoreProcessingBody")}
-          </p>
-        </div>
-      )}
+      {/* ── PROCESSING (loader theatre: the photo itself under a sweeping light,
+             rotating step copy, and a slowly filling progress bar) ── */}
+      {phase === "processing" && (() => {
+        const loaderMsgs = [
+          t("restoreLoaderStep1"), t("restoreLoaderStep2"),
+          t("restoreLoaderStep3"), t("restoreLoaderStep4"),
+        ];
+        return (
+          <div style={{ textAlign: "center", padding: "1.5rem 1rem 2rem" }}>
+            {originalUrl ? (
+              <div style={{ position: "relative", width: "min(15rem, 75%)", aspectRatio: "1 / 1", margin: "0 auto 1.5rem", borderRadius: T.radius.md, overflow: "hidden", background: T.color.warmStone, boxShadow: T.shadow[1] }}>
+                <img src={originalUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: "sepia(0.2) contrast(0.95)" }} />
+                <div
+                  className="mp-restore-sweep"
+                  aria-hidden
+                  style={{
+                    position: "absolute", inset: 0,
+                    background: "linear-gradient(105deg, transparent 38%, rgba(255,243,214,0.6) 50%, transparent 62%)",
+                    animation: "mp-restore-sweep 2.6s ease-in-out infinite",
+                  }}
+                />
+              </div>
+            ) : (
+              <div
+                className="mp-restore-spin"
+                aria-hidden
+                style={{
+                  width: "2.75rem", height: "2.75rem", margin: "0 auto 1.25rem",
+                  border: `0.1875rem solid ${T.color.hairline}`, borderTopColor: T.color.ember,
+                  borderRadius: "50%", animation: "mp-restore-spin 0.9s linear infinite",
+                }}
+              />
+            )}
+            <p style={{ fontFamily: T.font.display, fontSize: T.fontSize.lg, color: T.color.ink, margin: "0 0 0.375rem" }}>
+              {t("restoreProcessingTitle")}
+            </p>
+            <p
+              className="mp-restore-pulse"
+              aria-live="polite"
+              style={{ fontFamily: T.font.body, fontSize: T.fontSize.base, color: T.color.inkMuted, margin: 0, animation: "mp-restore-pulse 2s ease-in-out infinite" }}
+            >
+              {loaderMsgs[loaderStep % loaderMsgs.length]}
+            </p>
+            <div style={{ height: "0.375rem", maxWidth: "15rem", margin: "1.25rem auto 0", borderRadius: "0.1875rem", background: T.color.hairline, overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${loaderPct}%`, background: T.color.ember, borderRadius: "0.1875rem", transition: "width 0.5s ease" }} />
+            </div>
+            <p style={{ fontFamily: T.font.body, fontSize: T.fontSize.xs, color: T.color.inkMuted, margin: "0.5rem 0 0" }}>
+              {t("restoreProcessingBody")}
+            </p>
+          </div>
+        );
+      })()}
 
       {/* ── COMPARE (before / after) ── */}
       {(phase === "compare" || phase === "saving") && (
