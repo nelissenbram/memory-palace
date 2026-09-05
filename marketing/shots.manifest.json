@@ -270,9 +270,126 @@
       ],
       "out": "public/video/walkthrough-tour.mp4",
       "note": "The ONLY hero video that is a 3D product render. All 7 segments (s0..s6) are declared inside build-tour.mjs and re-recorded through one shared grade; the old chain's grading step existed nowhere in the repo. Poster is derived from the closing mantel beat. Remember to bump VideoObject uploadDate/duration."
+    },
+    {
+      "id": "landing-shot-1",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "app-screenshot",
+      "requiresAuth": true,
+      "renderer": "scripts/capture-all-screenshots.mjs",
+      "scenes": [
+        "exterior"
+      ],
+      "out": "public/landing/shots/shot-1.webp",
+      "note": "exterior. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session."
+    },
+    {
+      "id": "landing-shot-2",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "app-screenshot",
+      "requiresAuth": true,
+      "renderer": "scripts/capture-all-screenshots.mjs",
+      "scenes": [
+        "corridor"
+      ],
+      "out": "public/landing/shots/shot-2.webp",
+      "note": "corridor. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session. Stale: shows the pre-overhaul scene."
+    },
+    {
+      "id": "landing-shot-3",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "app-screenshot",
+      "requiresAuth": true,
+      "renderer": "scripts/capture-all-screenshots.mjs",
+      "scenes": [
+        "room"
+      ],
+      "out": "public/landing/shots/shot-3.webp",
+      "note": "room. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session. Stale: shows the pre-overhaul scene."
+    },
+    {
+      "id": "landing-shot-4",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "app-screenshot",
+      "requiresAuth": true,
+      "renderer": "scripts/capture-all-screenshots.mjs",
+      "scenes": [],
+      "out": "public/landing/shots/shot-4.webp",
+      "note": "library 2D UI. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session."
+    },
+    {
+      "id": "landing-shot-5",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "app-screenshot",
+      "requiresAuth": true,
+      "renderer": "scripts/capture-all-screenshots.mjs",
+      "scenes": [],
+      "out": "public/landing/shots/shot-5.webp",
+      "note": "legal/onboarding 2D UI. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session."
+    },
+    {
+      "id": "landing-shot-6",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "app-screenshot",
+      "requiresAuth": true,
+      "renderer": "scripts/capture-all-screenshots.mjs",
+      "scenes": [],
+      "out": "public/landing/shots/shot-6.webp",
+      "note": "atrium 2D UI. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session."
+    },
+    {
+      "id": "landing-shot-7",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "app-screenshot",
+      "requiresAuth": true,
+      "renderer": "scripts/capture-all-screenshots.mjs",
+      "scenes": [],
+      "out": "public/landing/shots/shot-7.webp",
+      "note": "activity 2D UI. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session."
     }
   ],
   "notes": {
     "$note_not_product_renders": "hero-ob.mp4, hero-v2.mp4 and hero-bg.mp4 were REMOVED from this manifest on 2026-09-05. Inspecting their frames showed they are cinematic stock/AI footage (a woman walking a sunlit corridor; a Tuscan landscape through an arch; a cypress avenue to a villa) — they contain no product geometry, so a 3D overhaul cannot make them stale. They were originally ranked top priority purely on file date and exposure, which was wrong. Leave them alone; replacing them with 3D renders would be a creative decision, not a staleness fix."
+  },
+  "unmanaged": {
+    "public/video/hero-ob.mp4": "Cinematic stock/AI footage — contains no product geometry, so a 3D overhaul cannot make it stale. Verified by inspecting frames on 2026-09-05.",
+    "public/video/hero-v2.mp4": "Cinematic stock/AI footage — contains no product geometry, so a 3D overhaul cannot make it stale. Verified by inspecting frames on 2026-09-05.",
+    "public/video/hero-bg.mp4": "Cinematic stock/AI footage — contains no product geometry, so a 3D overhaul cannot make it stale. Verified by inspecting frames on 2026-09-05.",
+    "public/video/hero-ob-poster.jpg": "Poster for stock footage.",
+    "public/video/hero-poster.jpg": "Poster for stock footage.",
+    "public/video/why-approach.jpg": "Photographic still, not a render.",
+    "public/video/why-poster.jpg": "Photographic still, not a render.",
+    "public/video/demo/piano-recital.mp4": "In-app demo media, not marketing.",
+    "public/video/demo/piano-recital-thumb.jpg": "In-app demo media, not marketing.",
+    "public/video/demo/song-of-summer-thumb.jpg": "In-app demo media, not marketing.",
+    "public/landing/demo-graduation.jpg": "Photograph used in USP cards, not a render.",
+    "public/landing/demo-hands.jpg": "Photograph used in USP cards, not a render.",
+    "public/landing/demo-morning.jpg": "Photograph used in USP cards, not a render.",
+    "public/press/app-icon-512.png": "Brand asset.",
+    "public/press/app-icon-1024.png": "Brand asset.",
+    "public/press/logo-palace-gold.png": "Brand asset.",
+    "public/press/logo-palace-ember.png": "Brand asset.",
+    "public/press/still-blossom-gate.jpg": "Exterior/garden — unaffected by the room+corridor passes.",
+    "public/press/still-coastal-camper.jpg": "Exterior — unaffected.",
+    "public/press/still-garden-atelier.jpg": "Exterior — unaffected.",
+    "public/press/still-wood-workshop.jpg": "Interior prop scene — unaffected.",
+    "public/press/still-hall-doors.jpg": "Entrance hall — unaffected by the room+corridor passes.",
+    "public/press/still-villa-goldenhour.jpg": "Exterior — unaffected.",
+    "public/video/tour-poster.jpg": "Side output of the walkthrough-tour entry (build-tour.mjs regenerates it).",
+    "public/video/walkthrough-poster-v2.jpg": "Side output of the walkthrough-tour entry (build-tour.mjs regenerates it)."
   }
 }

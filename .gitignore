@@ -90,3 +90,6 @@ public/demo/*-portrait.png
 # versioned — their absence is what let the asset library silently rot.
 socials-kit/
 *.stamp.json
+
+# Review contact sheets — throwaway triage artefacts
+store-assets/review/

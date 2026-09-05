@@ -33,14 +33,20 @@ const ASSEMBLE_ONLY = args.includes("--assemble");
  * section, its poster and the JSON-LD duration stay valid.
  * `xfadeIn` = crossfade INTO this segment (0.5 s at the two structural joins).
  */
+// ⚠️ Windows matter as much as the takes. The first cut sampled `walk=right` at
+// 5-9 s — by then the camera is deep in a BARE stretch of corridor, past every
+// plant, bench and statue, so the rebuilt corridor read as the old empty one.
+// The room cuts had the mirror problem: sliced from the slow START of a 13 s
+// eased dolly, so the push-in never arrived at the chimneypiece. Corridor cuts
+// now sit early (furniture in frame), room cuts late (the payoff).
 const SEGMENTS = [
   { id: "s0", query: "scene=exterior",                        record: 11, from: 1.0, dur: 6.5, xfadeIn: 0 },
   { id: "s1", query: "scene=hall",                            record: 9,  from: 1.0, dur: 5.5, xfadeIn: 0.3 },
   { id: "s2", query: "scene=corridor&walk=1&wing=roots",      record: 13, from: 0.5, dur: 7.0, xfadeIn: 0.5 },
-  { id: "s3", query: "scene=corridor&walk=left&wing=roots",   record: 13, from: 3.0, dur: 2.5, xfadeIn: 0.2 },
-  { id: "s4", query: "scene=corridor&walk=right&wing=roots",  record: 13, from: 5.0, dur: 4.0, xfadeIn: 0.5 },
-  { id: "s5", query: "scene=room&fill=max&rmove=reveal",      record: 13, from: 2.0, dur: 4.0, xfadeIn: 0.2 },
-  { id: "s6", query: "scene=room&fill=max&rmove=hearth",      record: 13, from: 4.0, dur: 3.5, xfadeIn: 0.2 },
+  { id: "s3", query: "scene=corridor&walk=left&wing=roots",   record: 13, from: 0.6, dur: 2.5, xfadeIn: 0.2 },
+  { id: "s4", query: "scene=corridor&walk=right&wing=roots",  record: 13, from: 0.8, dur: 4.0, xfadeIn: 0.5 },
+  { id: "s5", query: "scene=room&fill=max&rmove=reveal",      record: 13, from: 6.0, dur: 4.0, xfadeIn: 0.2 },
+  { id: "s6", query: "scene=room&fill=max&rmove=hearth",      record: 13, from: 8.8, dur: 3.5, xfadeIn: 0.2 },
 ];
 
 const ff = (cmd) => execSync(`ffmpeg -y -v error ${cmd}`, { stdio: "inherit" });
@@ -58,41 +64,39 @@ if (!ASSEMBLE_ONLY) {
   }
 }
 
-// ── 2. trim each take to its cut window ──────────────────────────────────────
-console.log("\n● trimming");
-const cuts = [];
-for (const s of SEGMENTS) {
+// ── 2+3. trim AND crossfade in ONE pass ──────────────────────────────────────
+// ⚠️ This used to trim each take (encode #2), then chain them pairwise, with every
+// xfade re-encoding the whole accumulated chain again. By the last join s0 had
+// been through SEVEN generations of lossy encoding and the tour looked soft.
+// Input seeking (-ss/-t before -i) does the trimming for free, and one
+// filter_complex does all six crossfades, so the whole assembly is a single
+// encode. Generations: webm capture -> segment mp4 -> this. That's it.
+console.log("\n● trim + chain (single pass)");
+const inputs = SEGMENTS.map((s) => {
   const src = resolve(SEG, `${s.id}.mp4`);
   if (!existsSync(src)) throw new Error(`missing take: ${src} (run without --assemble)`);
-  const cut = resolve(SEG, `cut_${s.id}.mp4`);
-  // re-encode (not stream copy) so every cut starts on a keyframe — xfade needs it
-  ff(`-ss ${s.from} -i "${src}" -t ${s.dur} -c:v libx264 -crf 18 -preset slow -pix_fmt yuv420p -r 30 -an "${cut}"`);
-  cuts.push({ ...s, file: cut });
   console.log(`   ${s.id}  ${s.from}s +${s.dur}s`);
+  return `-ss ${s.from} -t ${s.dur} -i "${src}"`;
+}).join(" ");
+
+// offset_i = (timeline length so far) - (this crossfade's duration)
+let running = SEGMENTS[0].dur;
+const steps = [];
+let label = "0:v";
+for (let i = 1; i < SEGMENTS.length; i++) {
+  const d = SEGMENTS[i].xfadeIn;
+  const offset = (running - d).toFixed(3);
+  const out = i === SEGMENTS.length - 1 ? "vout" : `v${i}`;
+  steps.push(`[${label}][${i}:v]xfade=transition=fade:duration=${d}:offset=${offset}[${out}]`);
+  running = running + SEGMENTS[i].dur - d;
+  label = out;
 }
 
-// ── 3. chain with xfades ─────────────────────────────────────────────────────
-console.log("\n● chaining");
-let cur = cuts[0].file;
-for (let i = 1; i < cuts.length; i++) {
-  const d = cuts[i].xfadeIn;
-  const off = dur(cur) - d;
-  const out = resolve(SEG, `chain_${i}.mp4`);
-  ff(`-i "${cur}" -i "${cuts[i].file}" -filter_complex ` +
-     `"[0:v][1:v]xfade=transition=fade:duration=${d}:offset=${off}" ` +
-     `-c:v libx264 -crf 18 -preset slow -pix_fmt yuv420p -r 30 -an "${out}"`);
-  cur = out;
-  console.log(`   + ${cuts[i].id} (xfade ${d}s)`);
-}
-
-// ── 4. publish ───────────────────────────────────────────────────────────────
 const final = resolve(SEG, "walkthrough-tour.mp4");
-// CRF 27 + a hard bitrate ceiling: this is a landing-page video, and the whole
-// point is that visitors actually see it. An earlier pass shipped CRF 20, which
-// looked identical in a still but tripled the file to 30 MB against the 9 MB the
-// page used to carry. Intermediate chains stay at CRF 18 so only the final
-// encode is lossy-for-delivery.
-ff(`-i "${cur}" -c:v libx264 -crf 27 -maxrate 3M -bufsize 6M -preset slow ` +
+// CRF 23 with a 6M ceiling. CRF 27 was too aggressive once it was the ONLY lossy
+// step; an earlier CRF 20 pass produced 30 MB against the 9 MB the page carried.
+ff(`${inputs} -filter_complex "${steps.join(";")}" -map "[vout]" ` +
+   `-c:v libx264 -crf 23 -maxrate 6M -bufsize 12M -preset slow -r 30 ` +
    `-pix_fmt yuv420p -movflags +faststart -an "${final}"`);
 const target = resolve(paths.video, "walkthrough-tour.mp4");
 copyFileSync(final, target);
