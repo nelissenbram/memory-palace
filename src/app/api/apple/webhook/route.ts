@@ -10,6 +10,7 @@ import {
   APP_APPLE_ID,
   APP_BUNDLE_ID,
 } from "@/lib/apple/root-certs";
+import { captureServer } from "@/lib/analytics-server";
 
 /**
  * Apple App Store Server Notifications V2.
@@ -256,6 +257,15 @@ export async function POST(req: NextRequest) {
   if (error) {
     console.error("[Apple Webhook] DB update failed:", error.message);
     return NextResponse.json({ error: "DB error" }, { status: 500 });
+  }
+
+  // Funnel: purchase completed (iOS IAP). SUBSCRIBED only = first activation
+  // (incl. resubscribe after a lapse) — DID_RENEW and the other ACTIVATING
+  // types are renewals/extensions and must not re-fire the purchase milestone.
+  // Fire-and-forget after the successful entitlement write; minimal, non-PII
+  // props by design.
+  if (type === NotificationTypeV2.SUBSCRIBED) {
+    void captureServer(row.user_id, "purchase_completed", { plan, platform: "ios" });
   }
 
   console.log(
