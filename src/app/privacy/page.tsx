@@ -371,6 +371,10 @@ export default function PrivacyPolicyPage() {
               <strong>{t("whoWeShareItem13Label")}</strong>
               {t("whoWeShareItem13Text")}
             </Li>
+            <Li>
+              <strong>{t("whoWeShareItem14Label")}</strong>
+              {t("whoWeShareItem14Text")}
+            </Li>
           </Ul>
           <P>
             {t("whoWeShareOutro")}

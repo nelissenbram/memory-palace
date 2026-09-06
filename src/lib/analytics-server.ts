@@ -84,3 +84,45 @@ export async function captureServer(
     // swallow — analytics is best-effort and must not affect the product path
   }
 }
+
+/**
+ * LEG-012: best-effort deletion of the PostHog person profile (including the
+ * display-name person property, and the person's events) when a user deletes
+ * their account. Uses PostHog's private API on eu.posthog.com with a personal
+ * API key — NOT the public capture key above.
+ *
+ * Missing envs or an API failure must NEVER block account deletion: this
+ * function only console.warns and returns. The GDPR erasure of the actual
+ * account (Supabase) does not depend on it.
+ */
+export async function deletePersonServer(distinctId: string): Promise<void> {
+  const apiKey = process.env.POSTHOG_PERSONAL_API_KEY;
+  const projectId = process.env.POSTHOG_PROJECT_ID;
+  if (!apiKey || !projectId) {
+    console.warn(
+      "PostHog person delete skipped: POSTHOG_PERSONAL_API_KEY / POSTHOG_PROJECT_ID not configured",
+    );
+    return;
+  }
+  try {
+    const res = await fetch(
+      `https://eu.posthog.com/api/projects/${projectId}/persons/bulk_delete/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        // delete_events wipes the person's event history too (the events are
+        // keyed by the same uid) — full erasure, not just the profile row.
+        body: JSON.stringify({ distinct_ids: [distinctId], delete_events: true }),
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+    if (!res.ok) {
+      console.warn(`PostHog person delete failed: HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.warn("PostHog person delete failed:", err);
+  }
+}
