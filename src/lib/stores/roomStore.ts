@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { syncSettingsToServer } from "@/lib/stores/settingsSync";
+import { track } from "@/lib/analytics";
 
 // Max rooms per wing (corridor can grow but keep it sensible)
 export const MAX_ROOMS_PER_WING = 8;
@@ -238,6 +239,11 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     set({ customRooms });
     debouncedSaveRooms(customRooms);
 
+    // Feature taxonomy: all wing-creation UIs funnel through this store method.
+    // Fires only on success (limit checks passed). track() is consent-gated and
+    // a no-op in the native shell; no PII props (never the wing name).
+    track("feature_used", { feature: "wing_created" });
+
     return id;
   },
 
@@ -291,6 +297,10 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     const customRooms = { ...get().customRooms, [wingId]: rooms };
     set({ customRooms });
     debouncedSaveRooms(customRooms);
+
+    // Feature taxonomy: all room-creation UIs funnel through this store method.
+    // Fires only on success (room limit passed); no PII props (never the room name).
+    track("feature_used", { feature: "room_created" });
   },
 
   deleteRoom: (wingId, roomId) => {

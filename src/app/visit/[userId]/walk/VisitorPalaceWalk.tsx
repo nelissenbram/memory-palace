@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { mountAmbientMusic } from "@/lib/3d/ambientAudio";
+import { track } from "@/lib/analytics";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -55,6 +56,12 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
   // unmount so the music carries across scene transitions.
   useEffect(() => {
     mountAmbientMusic();
+  }, []);
+
+  // Feature taxonomy: a visitor-mode walk (3D flythrough of a shared palace)
+  // actually started. Once per mount; no PII props (never the owner id/name).
+  useEffect(() => {
+    track("feature_used", { feature: "flythrough" });
   }, []);
 
   // W2 (WS7-15, decision 7): the hall's Ancestral Wall for guests — the server

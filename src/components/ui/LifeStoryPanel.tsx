@@ -11,6 +11,7 @@ import { useRoomStore } from "@/lib/stores/roomStore";
 import { translateWingName, translateRoomName, type Wing, type WingRoom } from "@/lib/constants/wings";
 import type { InterviewTemplate } from "@/lib/constants/interviews";
 import { CREAM, TRAY, HAIRLINE, INK, MUTED, EMBER, SAGE, GOLD } from "@/lib/libraryTokens";
+import { track } from "@/lib/analytics";
 
 // Full-screen interview dialog, loaded only when a chapter interview starts.
 const InterviewPanel = lazy(() => import("@/components/ui/InterviewPanel"));
@@ -277,6 +278,9 @@ function ChapterCard({
       if (typeof data.content === "string" && data.content.length > 0) {
         setDraft(data.content); // server already persisted it
         patchLocal(chapter.id, { content: data.content });
+        // Feature taxonomy: success moment = a chapter was actually generated.
+        // No PII props (no chapter titles or content).
+        track("feature_used", { feature: "life_story" });
       } else {
         setGenError(t("errorGeneric"));
       }

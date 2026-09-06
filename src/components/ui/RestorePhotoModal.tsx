@@ -7,6 +7,7 @@ import RelayIcons from "@/components/ui/RelayIcons";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
+import { track } from "@/lib/analytics";
 import { isIOS } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import type { Mem } from "@/lib/constants/defaults";
@@ -162,6 +163,9 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved, si
       });
 
       setPhase("done");
+      // Feature taxonomy (one event, `feature` breakdown): fires on the SUCCESS
+      // moment (restored photo saved), not on opening the modal. No PII props.
+      track("feature_used", { feature: "restore" });
       onSaved?.();
     } catch {
       setErrorKind("service");

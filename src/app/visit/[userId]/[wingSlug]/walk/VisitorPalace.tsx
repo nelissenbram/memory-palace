@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { mountAmbientMusic } from "@/lib/3d/ambientAudio";
+import { track } from "@/lib/analytics";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { ANIM } from "@/components/ui/TuscanStyles";
@@ -37,6 +38,12 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
   // unmount so the music carries across scene transitions.
   useEffect(() => {
     mountAmbientMusic();
+  }, []);
+
+  // Feature taxonomy: a visitor-mode walk (3D flythrough of a shared wing)
+  // actually started. Once per mount; no PII props (never the owner id/name).
+  useEffect(() => {
+    track("feature_used", { feature: "flythrough" });
   }, []);
 
   // Transform data to 3D-compatible formats

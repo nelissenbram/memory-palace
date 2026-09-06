@@ -14,6 +14,7 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import { InterviewIcon } from "@/components/ui/InterviewLibraryPanel";
 import { CREAM, INK, MUTED, HAIRLINE, TRAY, EMBER, EMBER_GLYPH, SAGE, SHADOW } from "@/lib/libraryTokens";
+import { track } from "@/lib/analytics";
 import enMessages from "@/messages/en.json";
 
 /** Interview palette — the cream Atrium canon, shared with the History & Library
@@ -432,6 +433,9 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       source: "ai",
     };
     onCreateMemory(mem, currentTemplate.wingId);
+    // Feature taxonomy: success moment = the interview narrative became a
+    // memory. No PII props (no titles or narrative content).
+    track("feature_used", { feature: "interview" });
     onClose();
   };
 
