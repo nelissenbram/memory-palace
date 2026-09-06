@@ -2174,8 +2174,8 @@ export default function MemoryPalace(){
                 {tPalace("viewPlans")}
               </button>}
               <button onClick={()=>setShowUpgradePrompt(false)}
-                style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:500,padding:"0.5rem",border:"none",
-                  background:"none",color:T.color.muted,cursor:"pointer"}}>
+                style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:500,padding:"0.75rem 1rem",border:"none",
+                  background:"none",color:T.color.muted,cursor:"pointer",minHeight:"2.75rem",minWidth:"2.75rem"}}>
                 {tPalace("gotIt")}
               </button>
             </div>
