@@ -156,6 +156,10 @@ const SIZES = [
 
 // iOS sizes — rendered WITHOUT text overlay (Apple Guideline 2.3.3)
 const IOS_SIZES = [
+  // 6.9" is what App Store Connect asks for on current iPhones. The set only had
+  // 6.5", which is why "6.9-inch screenshots" stayed an open backlog item.
+  // Listed first so it is the primary phone size from here on.
+  { suffix: '-ios69',      w: 1320, h: 2868, dir: IOS_OUT },  // iOS iPhone 6.9"
   { suffix: '-ios65',      w: 1284, h: 2778, dir: IOS_OUT },  // iOS iPhone 6.5"
   { suffix: '-ipad13',     w: 2064, h: 2752, dir: IOS_OUT },  // iOS iPad 13"
 ];
