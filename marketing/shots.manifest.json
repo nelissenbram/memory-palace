@@ -272,48 +272,6 @@
       "note": "The ONLY hero video that is a 3D product render. All 7 segments (s0..s6) are declared inside build-tour.mjs and re-recorded through one shared grade; the old chain's grading step existed nowhere in the repo. Poster is derived from the closing mantel beat. Remember to bump VideoObject uploadDate/duration."
     },
     {
-      "id": "landing-shot-1",
-      "phase": 2,
-      "surface": "landing 'Explore all the Views' carousel",
-      "prominence": "medium",
-      "kind": "app-screenshot",
-      "requiresAuth": true,
-      "renderer": "scripts/capture-all-screenshots.mjs",
-      "scenes": [
-        "exterior"
-      ],
-      "out": "public/landing/shots/shot-1.webp",
-      "note": "exterior. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session."
-    },
-    {
-      "id": "landing-shot-2",
-      "phase": 2,
-      "surface": "landing 'Explore all the Views' carousel",
-      "prominence": "medium",
-      "kind": "app-screenshot",
-      "requiresAuth": true,
-      "renderer": "scripts/capture-all-screenshots.mjs",
-      "scenes": [
-        "corridor"
-      ],
-      "out": "public/landing/shots/shot-2.webp",
-      "note": "corridor. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session. Stale: shows the pre-overhaul scene."
-    },
-    {
-      "id": "landing-shot-3",
-      "phase": 2,
-      "surface": "landing 'Explore all the Views' carousel",
-      "prominence": "medium",
-      "kind": "app-screenshot",
-      "requiresAuth": true,
-      "renderer": "scripts/capture-all-screenshots.mjs",
-      "scenes": [
-        "room"
-      ],
-      "out": "public/landing/shots/shot-3.webp",
-      "note": "room. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session. Stale: shows the pre-overhaul scene."
-    },
-    {
       "id": "landing-shot-4",
       "phase": 2,
       "surface": "landing 'Explore all the Views' carousel",
@@ -360,6 +318,72 @@
       "scenes": [],
       "out": "public/landing/shots/shot-7.webp",
       "note": "activity 2D UI. In-app screenshot WITH UI chrome, so it cannot come from the /staging viewers — needs an authenticated capture session."
+    },
+    {
+      "id": "landing-shot-1",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/exterior",
+      "params": {
+        "chrome": "1",
+        "ecam": "hero"
+      },
+      "viewport": [
+        430,
+        758
+      ],
+      "dsf": 3,
+      "scenes": [
+        "exterior"
+      ],
+      "out": "public/landing/shots/shot-1.webp",
+      "note": "Palace exterior WITH the dome. The previous shot-1 was missing it — captured before the dome GLB loaded. Rendered from the login-free /staging viewers. /flythrough paints its recorder UI over the canvas; driving the logged-in app proved unreliable and needless. Viewport keeps the carousel's 820:1446 aspect ratio — the <Image> hardcodes those dimensions, so an off-ratio file renders squashed."
+    },
+    {
+      "id": "landing-shot-2",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/corridor",
+      "params": {
+        "wing": "roots",
+        "chrome": "1"
+      },
+      "viewport": [
+        430,
+        758
+      ],
+      "dsf": 3,
+      "scenes": [
+        "corridor"
+      ],
+      "out": "public/landing/shots/shot-2.webp",
+      "note": "Roots corridor, post-overhaul planting and statues. Rendered from the login-free /staging viewers. /flythrough paints its recorder UI over the canvas; driving the logged-in app proved unreliable and needless. Viewport keeps the carousel's 820:1446 aspect ratio — the <Image> hardcodes those dimensions, so an off-ratio file renders squashed."
+    },
+    {
+      "id": "landing-shot-3",
+      "phase": 2,
+      "surface": "landing 'Explore all the Views' carousel",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/room",
+      "params": {
+        "rcam": "hearth",
+        "chrome": "1"
+      },
+      "viewport": [
+        430,
+        758
+      ],
+      "dsf": 3,
+      "scenes": [
+        "room"
+      ],
+      "out": "public/landing/shots/shot-3.webp",
+      "note": "Room on the fp19 chimneypiece. Rendered from the login-free /staging viewers. /flythrough paints its recorder UI over the canvas; driving the logged-in app proved unreliable and needless. Viewport keeps the carousel's 820:1446 aspect ratio — the <Image> hardcodes those dimensions, so an off-ratio file renders squashed."
     }
   ],
   "notes": {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import StagingChrome from "../StagingChrome";
 
 // Lazy-load the real corridor scene (no SSR — Three.js).
 const CorridorScene = dynamic(() => import("@/components/3d/CorridorScene"), { ssr: false });
@@ -30,9 +31,11 @@ const WING_IDS = ["roots", "nest", "craft", "travel", "passions"];
 
 export default function StagingCorridorClient() {
   const [mounted, setMounted] = useState(false);
+  const [chrome, setChrome] = useState(false);
   const [wingId, setWingId] = useState("roots");
   useEffect(() => {
     setMounted(true);
+    setChrome(new URLSearchParams(window.location.search).get("chrome") === "1");
     // ?wing= picks which wing's corridor (and therefore which centrepiece
     // statue) renders — read after mount so SSR and client markup agree.
     const w = new URLSearchParams(window.location.search).get("wing");
@@ -58,6 +61,7 @@ export default function StagingCorridorClient() {
           />
         </div>
       )}
+      {mounted && chrome && <StagingChrome wing={wingId.toUpperCase()}  />}
       <div
         id="staging-dev-panel"
         style={{

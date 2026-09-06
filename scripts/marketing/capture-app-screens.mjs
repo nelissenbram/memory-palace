@@ -121,51 +121,47 @@ await sleep(3000);
 ensureDir(OUT);
 const saved = [];
 
+/** Click the first visible button/link whose text contains one of `words`. */
+const clickText = (words) => page.evaluate((ws) => {
+  const vis = [...document.querySelectorAll("button,a")].filter((b) => b.offsetParent !== null && !b.disabled);
+  for (const w of ws) {
+    const hit = vis.find((b) => (b.textContent || "").trim().toLowerCase().includes(w));
+    if (hit) { hit.click(); return hit.textContent.trim().slice(0, 40); }
+  }
+  return null;
+}, words);
+
+// Navigation, measured rather than assumed (an earlier version clicked the centre
+// of the canvas and bounced straight back to the Atrium):
+//   /palace redirects to /atrium, which ALSO has a canvas — hence the guard below
+//   checks more than "a canvas exists". "Enter Your Palace" opens the 3D view,
+//   which greets you with a multi-step tutorial. Once dismissed, the top compass
+//   bar ("Palace › Wing › Room") opens a picker for jumping to any wing or room.
+await page.goto(`${BASE}/palace`, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
+await sleep(8000);
+for (let i = 0; i < 10; i++) {
+  const c = await clickText(["i'll explore on my own", "skip intro", "accept"]);
+  if (!c) break;
+  console.log(`   dismissed: "${c}"`);
+  await sleep(2200);
+}
+console.log(`   enter -> ${await clickText(["enter your palace"])}`);
+await sleep(4000);
+for (let i = 0; i < 8; i++) {                        // the tutorial has several cards
+  const c = await clickText(["skip tutorial"]);
+  if (!c) break;
+  await sleep(1800);
+}
+
 for (const t of TARGETS) {
   console.log(`● ${t.id}`);
-  if (t.id === "exterior") {
-    // /palace — NOT the `/?view=palace` the older capture script used. That URL
-    // no longer routes to the app (next.config rewrites /atrium, /library and /me
-    // onto /palace), so it silently served the public landing page instead.
-    await page.goto(`${BASE}/palace`, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
-  } else {
-    // Advance through the palace by clicking the canvas, then any skip/continue.
-    await page.evaluate(() => {
-      const c = document.querySelector("canvas");
-      if (c) { const r = c.getBoundingClientRect();
-        c.dispatchEvent(new MouseEvent("click", { clientX: r.width / 2, clientY: r.height * 0.6, bubbles: true })); }
-      for (const b of document.querySelectorAll("button")) {
-        const s = (b.textContent || "").toLowerCase();
-        if (/skip|continue|overslaan|enter/.test(s)) b.click();
-      }
-    }).catch(() => {});
-    await sleep(6000);
-  }
-
-  // Clear everything standing between login and the 3D scene. On a fresh browser
-  // profile that is: the cookie banner, the reading-comfort onboarding wizard
-  // ("Let's make this comfortable to read"), and the full-screen intro video.
-  // Earlier attempts photographed the intro video and the landing page because
-  // none of this was handled. Ordered most-specific first so we take the clean
-  // exit ("I'll explore on my own") rather than walking the whole wizard.
-  const ESCAPES = [
-    "i'll explore on my own", "explore on my own",
-    "skip intro", "skip", "overslaan",
-    "accept", "continue",
-  ];
-  for (let i = 0; i < 12; i++) {
-    if (await page.$("canvas")) break;
-    const clicked = await page.evaluate((words) => {
-      const vis = [...document.querySelectorAll("button")].filter((b) => b.offsetParent !== null && !b.disabled);
-      for (const w of words) {
-        const hit = vis.find((b) => (b.textContent || "").trim().toLowerCase().startsWith(w));
-        if (hit) { hit.click(); return hit.textContent.trim(); }
-      }
-      return null;
-    }, ESCAPES).catch(() => null);
-    if (!clicked) break;
-    console.log(`   dismissed: "${clicked}"`);
+  if (t.id !== "exterior") {
+    // Open the compass picker and jump straight to the wing (corridor) or room.
+    console.log(`   compass -> ${await clickText(["palace ›", "palace >", "palace"])}`);
     await sleep(2500);
+    const dest = t.id === "corridor" ? ["roots"] : ["me, over time", "sunday", "roots"];
+    console.log(`   pick -> ${await clickText(dest)}`);
+    await sleep(5000);
   }
 
   const waited = await waitForScene(page, { settleMs: 3500, capMs: 60000 });
@@ -180,6 +176,9 @@ for (const t of TARGETS) {
     const body = document.body?.innerText || "";
     if (/Create Your Palace|Turn a lifetime of memories/i.test(body)) return "landing page";
     if (document.querySelector("video") && !document.querySelector("canvas")) return "intro video";
+    // The Atrium dashboard ALSO renders a canvas, so "has canvas" is not enough —
+    // that is exactly how two App Store screenshots got overwritten with it.
+    if (/Kept warm|Suggested for you|Enter Your Palace|journeys/i.test(body)) return "atrium dashboard";
     if (!document.querySelector("canvas")) return "no 3D canvas";
     return null;
   }).catch(() => null);

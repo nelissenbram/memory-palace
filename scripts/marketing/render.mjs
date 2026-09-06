@@ -18,9 +18,10 @@
  *    recorder command to run (those drive multi-step flows; see 'renderer').
  *  - Requires a dev server for THIS worktree:  npx next dev -p 3002
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { dirname, resolve, extname } from "node:path";
 import puppeteer from "puppeteer";
+import { execSync } from "node:child_process";
 import {
   REPO, BASE, paths, ensureDir, stamp, sceneCommit,
   assertStagingServer, GPU_ARGS, EDGE, ASSEMBLY_WAIT_MS, waitForScene,
@@ -72,6 +73,12 @@ async function renderStill(page, shot, args) {
   // Hide dev chrome + any fixed consent overlay so it never lands in a deliverable.
   await page.evaluate(() => {
     document.getElementById("staging-dev-panel")?.style.setProperty("display", "none", "important");
+    // Next.js dev-tools badge — an "N" circle bottom-left. It lives in a
+    // <nextjs-portal> web component, so a normal selector sweep misses it and it
+    // silently ended up in every shot.
+    for (const el of document.querySelectorAll("nextjs-portal,[data-nextjs-toast],[data-next-badge-root],#__next-build-watcher")) {
+      el.remove();
+    }
     for (const el of document.querySelectorAll("div,section,aside")) {
       const t = el.textContent || "";
       if (/cookies?|Privacy Policy|Accept|Reject/i.test(t) && t.length < 400
@@ -82,8 +89,22 @@ async function renderStill(page, shot, args) {
   }).catch(() => {});
   await new Promise((r) => setTimeout(r, 400));
 
-  const type = extname(out).toLowerCase() === ".jpg" ? "jpeg" : "png";
-  await page.screenshot({ path: out, type, ...(type === "jpeg" ? { quality: 92 } : {}) });
+  // ⚠️ Encode by EXTENSION. This used to map .jpg -> jpeg and everything else to
+  // png, then write to whatever path was asked for — so shot-*.webp were PNGs
+  // wearing a .webp name. Puppeteer cannot emit WebP, so shoot PNG and transcode.
+  const ext = extname(out).toLowerCase();
+  if (ext === ".webp") {
+    const tmp = `${out}.tmp.png`;
+    await page.screenshot({ path: tmp, type: "png" });
+    // q95, not lossless. Lossless ran 1.4-2 MB per image — on a landing-page
+    // carousel that is a real cost. At 1:1 on the compass-bar text q95 is
+    // indistinguishable from lossless at roughly a fifth of the size.
+    execSync(`ffmpeg -y -v error -i "${tmp}" -quality 95 "${out}"`, { stdio: "inherit" });
+    rmSync(tmp, { force: true });
+  } else {
+    const type = ext === ".jpg" ? "jpeg" : "png";
+    await page.screenshot({ path: out, type, ...(type === "jpeg" ? { quality: 92 } : {}) });
+  }
   stamp(out, { shotId: shot.id, url, viewport: [w, h], dsf: shot.dsf || 2, scenes: shot.scenes });
   return out;
 }
