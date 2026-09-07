@@ -23,7 +23,8 @@ const [, , outName, query = "", secsRaw = "13", wRaw = "1920", hRaw = "1080"] = 
 if (!outName) { console.error("usage: record-segment.mjs <outName> \"<query>\" [secs] [w] [h]"); process.exitCode = 1; }
 
 const SECS = Number(secsRaw), W = Number(wRaw), H = Number(hRaw);
-const OUT_DIR = ensureDir(resolve(REPO, "scripts/hero_rec2/seg3"));
+// MP_SEG_OUT lets callers (build-footage-bank) redirect the output.
+const OUT_DIR = ensureDir(process.env.MP_SEG_OUT || resolve(REPO, "scripts/hero_rec2/seg3"));
 const webm = resolve(OUT_DIR, `${outName}.webm`);
 const mp4 = resolve(OUT_DIR, `${outName}.mp4`);
 
@@ -39,7 +40,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   await assertStagingServer();
-  const url = `${BASE}/flythrough?${query}`;
+  // ROUTE lets the same recorder drive the /staging viewers, which render the
+  // scene without /flythrough's recorder chrome — needed for social footage.
+  const route = process.env.ROUTE || "/flythrough";
+  const url = `${BASE}${route}${query ? `?${query}` : ""}`;
   console.log(`[${outName}] ${url}  (${SECS}s @ ${W}x${H})`);
 
   const browser = await puppeteer.launch({

@@ -93,3 +93,6 @@ socials-kit/
 
 # Review contact sheets — throwaway triage artefacts
 store-assets/review/
+
+# Social footage bank (large renders, regenerate with build-footage-bank.mjs)
+socials-kit/footage/
