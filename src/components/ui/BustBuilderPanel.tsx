@@ -760,11 +760,28 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             }}>
               {t("bustReady")}
             </h2>
-            <div ref={previewCanvasRef} style={{
+            <div ref={previewCanvasRef} data-ai-generated="true" style={{
               width: "min(13.75rem, calc(100% - 2rem))", height: "16.25rem", margin: "0 auto 1rem",
               borderRadius: "0.875rem", overflow: "hidden",
               background: `linear-gradient(180deg, ${T.color.warmStone}40, ${T.color.linen})`,
             }} />
+            {/* LEG-003b (AI Act art. 50 / 50(2)): the 3D bust is AI-generated —
+                subtle provenance chip in the MemoryDetail badge idiom, with a
+                machine-readable data-ai-generated marker. */}
+            <div data-ai-generated="true" style={{
+              display: "inline-flex", alignItems: "center", gap: "0.3125rem",
+              padding: "0.1875rem 0.5625rem", borderRadius: "0.75rem",
+              border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              background: T.color.white, color: "#716A5E", /* Atrium muted */
+              fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              marginBottom: "0.75rem",
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2l2.09 6.26L20 10l-4.91 3.74L17.18 20 12 16.27 6.82 20l2.09-6.26L4 10l5.91-1.74z" />
+              </svg>
+              {t("aiBadge")}
+            </div>
             <p style={{
               fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
               marginBottom: saveWarning ? "0.5rem" : "1rem",

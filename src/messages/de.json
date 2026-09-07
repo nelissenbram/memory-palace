@@ -2222,6 +2222,7 @@
     "qrLabel": "QR"
   },
   "bustBuilder": {
+    "aiBadge": "KI-generiert",
     "failedToProcess": "Foto konnte nicht verarbeitet werden. Bitte versuche ein anderes Bild.",
     "preparingPortrait": "Portraitfoto wird vorbereitet...",
     "savingToPalace": "Wird in deinem Palast gespeichert...",

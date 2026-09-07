@@ -2222,6 +2222,7 @@
     "qrLabel": "QR"
   },
   "bustBuilder": {
+    "aiBadge": "Generado con IA",
     "failedToProcess": "Error al procesar la foto. Por favor, prueba con otra imagen.",
     "preparingPortrait": "Preparando retrato facial...",
     "savingToPalace": "Guardando en tu palacio...",

@@ -711,9 +711,11 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
           {/* ═══ SECTION 2: STORY & DETAILS ═══ */}
           <div style={{ padding: "1.25rem 1.5rem 2rem" }}>
 
-            {/* ── LEG-003 (AI Act art. 50): subtle AI-provenance badge ── */}
+            {/* ── LEG-003 (AI Act art. 50): subtle AI-provenance badge.
+                LEG-003b (art. 50(2)): data-ai-generated makes the marking
+                machine-readable. ── */}
             {mem.source === "ai" && (
-              <div style={{
+              <div data-ai-generated="true" style={{
                 display: "inline-flex", alignItems: "center", gap: "0.3125rem",
                 padding: "0.1875rem 0.5625rem", borderRadius: "0.75rem",
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
@@ -879,6 +881,9 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 <div
                   onClick={() => setEditingDesc(true)}
                   title={t("clickToEdit")}
+                  // LEG-003b (AI Act art. 50(2)): machine-readable marker on the
+                  // content container of AI-originated memories.
+                  data-ai-generated={mem.source === "ai" ? "true" : undefined}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.9375rem",
                     color: (mem.desc || desc) ? "#403B36" : "#716A5E",

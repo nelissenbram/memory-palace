@@ -689,6 +689,8 @@ function ChapterCard({
           afterwards do not remove the AI-origin marker. */}
       {hasContent && (
         <div
+          // LEG-003b (AI Act art. 50(2)): machine-readable AI marking.
+          data-ai-generated="true"
           style={{
             display: "inline-flex", alignItems: "center", gap: "0.3125rem",
             marginTop: "0.75rem", padding: "0.1875rem 0.5625rem",
@@ -706,6 +708,9 @@ function ChapterCard({
       )}
       {hasContent && (
         <textarea
+          // LEG-003b (AI Act art. 50(2)): the chapter prose is AI-woven —
+          // machine-readable marker on the content container.
+          data-ai-generated="true"
           ref={(el) => { textareaRef.current = el; if (el) { el.style.height = "auto"; el.style.height = `${Math.max(el.scrollHeight, 128)}px`; } }}
           value={draft ?? chapter.content ?? ""}
           onChange={(e) => { setDraft(e.target.value); autogrow(); }}

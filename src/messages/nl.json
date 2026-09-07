@@ -2222,6 +2222,7 @@
     "qrLabel": "QR"
   },
   "bustBuilder": {
+    "aiBadge": "AI-gegenereerd",
     "failedToProcess": "Foto verwerken mislukt. Probeer een andere afbeelding.",
     "preparingPortrait": "Portret voorbereiden...",
     "savingToPalace": "Opslaan in je paleis...",

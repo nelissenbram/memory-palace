@@ -288,7 +288,9 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved, si
             <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1", borderRadius: T.radius.md, overflow: "hidden", background: T.color.warmStone }}>
               <img src={originalUrl} alt={t("restoreBeforeLabel")} style={{ position: "absolute", inset: 0, ...imgStyle }} />
               <div style={{ position: "absolute", inset: 0, width: `${sliderPct}%`, overflow: "hidden" }}>
-                <img src={restoredUrl} alt={t("restoreAfterLabel")} style={{ ...imgStyle, position: "absolute", inset: 0, width: `${sliderPct > 0 ? 10000 / sliderPct : 100}%`, maxWidth: "none" }} />
+                {/* LEG-003b (AI Act art. 50(2)): machine-readable marking of the
+                    AI-restored rendition (IPTC DigitalSourceType vocabulary). */}
+                <img src={restoredUrl} alt={t("restoreAfterLabel")} data-ai-generated="true" data-ai-source="trainedAlgorithmicMedia" style={{ ...imgStyle, position: "absolute", inset: 0, width: `${sliderPct > 0 ? 10000 / sliderPct : 100}%`, maxWidth: "none" }} />
               </div>
               {/* Divider handle */}
               <div style={{ position: "absolute", top: 0, bottom: 0, left: `${sliderPct}%`, width: "0.125rem", background: T.color.cream, boxShadow: T.shadow[1], transform: "translateX(-50%)", pointerEvents: "none" }} />
@@ -312,7 +314,8 @@ export default function RestorePhotoModal({ memory, roomId, onClose, onSaved, si
               </div>
               <div>
                 <div style={{ aspectRatio: "1 / 1", borderRadius: T.radius.md, overflow: "hidden", background: T.color.warmStone, outline: `0.125rem solid ${T.color.ember}`, outlineOffset: "-0.125rem" }}>
-                  <img src={restoredUrl} alt={t("restoreAfterLabel")} style={imgStyle} />
+                  {/* LEG-003b (AI Act art. 50(2)): machine-readable AI marking. */}
+                  <img src={restoredUrl} alt={t("restoreAfterLabel")} data-ai-generated="true" data-ai-source="trainedAlgorithmicMedia" style={imgStyle} />
                 </div>
                 <div style={{ ...captionStyle, color: T.color.ember }}>{t("restoreAfterLabel")}</div>
               </div>
