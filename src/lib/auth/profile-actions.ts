@@ -4,6 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { serverError } from "@/lib/i18n/server-errors";
 import { revokeProviderToken } from "@/lib/integrations/helpers";
 import { r2Remove, r2List, isR2Configured } from "@/lib/storage/r2";
+import { deletePersonServer } from "@/lib/analytics-server";
 
 const DEFAULT_WINGS = [
   { slug: "roots", accent_color: "#C66B3D" },
@@ -415,6 +416,11 @@ export async function deleteAccount() {
     console.error("Admin client error during account deletion:", err);
     return { error: "We could not fully delete your account. Please try again or contact support@thememorypalace.ai." };
   }
+
+  // 3b. LEG-012: wipe the PostHog person profile (uid + display name + events).
+  // Strictly best-effort — the helper only console.warns on missing envs or
+  // API failure and must never block the (already completed) account deletion.
+  await deletePersonServer(user.id);
 
   // 4. Sign out the current session
   await supabase.auth.signOut();

@@ -96,3 +96,6 @@ socials-kit/
 
 # Business docs in repo-root (autonomy charters expect them here; not source code)
 /*.docx
+
+# Review contact sheets — throwaway triage artefacts
+store-assets/review/

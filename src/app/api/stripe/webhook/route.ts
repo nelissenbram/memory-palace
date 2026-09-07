@@ -88,6 +88,12 @@ export async function POST(req: NextRequest) {
             updated_at: new Date().toISOString(),
           }, { onConflict: "user_id" });
 
+        // Funnel: purchase completed (web/Stripe). First activation only —
+        // checkout.session.completed fires once per checkout; renewals arrive
+        // as invoice/subscription events and never reach this branch. Minimal,
+        // non-PII props by design.
+        await captureServer(userId, "purchase_completed", { plan, platform: "web" });
+
         break;
       }
 

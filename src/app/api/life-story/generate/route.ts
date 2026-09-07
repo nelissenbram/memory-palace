@@ -260,11 +260,21 @@ Please write this chapter of my life story now.`;
     }
 
     // 9. Persist — owner-scoped update, then return the woven chapter.
-    const { error: updateError } = await supabase
+    // LEG-003 (AI Act art. 50): AI-woven prose → source:'ai'. If the provenance
+    // migration (20260905130000) isn't applied yet, retry without the column so
+    // generation never fails over the flag.
+    let { error: updateError } = await supabase
       .from("life_story_chapters")
-      .update({ content, updated_at: new Date().toISOString() })
+      .update({ content, source: "ai", updated_at: new Date().toISOString() })
       .eq("id", chapter.id)
       .eq("user_id", user.id);
+    if (updateError && /source/i.test(updateError.message)) {
+      ({ error: updateError } = await supabase
+        .from("life_story_chapters")
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq("id", chapter.id)
+        .eq("user_id", user.id));
+    }
     if (updateError) {
       console.error("[life-story] Failed to save chapter content:", updateError.message);
       return NextResponse.json({ error: "generation_failed" }, { status: 502 });

@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { sendResetEmail } from "@/lib/email/send-reset";
 import { serverError } from "@/lib/i18n/server-errors";
-import { captureServer } from "@/lib/analytics-server";
+import { captureServer, detectRequestPlatform } from "@/lib/analytics-server";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
@@ -57,7 +57,14 @@ export async function signUp(formData: FormData) {
     email,
     password,
     options: {
-      data: { display_name: displayName },
+      data: {
+        display_name: displayName,
+        // LEG-015: authoritative server-side attestation timestamp. The
+        // handle_new_user trigger copies this into profiles.age_confirmed_at
+        // (migration 20260905120000_age_confirmed_at.sql). Set server-side —
+        // the client only submits the boolean checkbox validated above.
+        age_confirmed_at: new Date().toISOString(),
+      },
       emailRedirectTo: callbackUrl,
     },
   });
@@ -70,12 +77,55 @@ export async function signUp(formData: FormData) {
   // disabled). An already-registered email returns an obfuscated user with no
   // identities — skip those so re-registrations aren't counted as signups.
   if (data.user && (data.user.identities?.length ?? 0) > 0) {
+    // OPS-010: platform + provider props for the signup funnel.
+    const platform = await detectRequestPlatform();
     await captureServer(data.user.id, "user_signed_up", {
       method: "email",
+      provider: "email",
+      signup_method: "email",
+      ...(platform ? { platform } : {}),
       // Person-property zodat de owner in PostHog namen ziet i.p.v. kale uids
       // (owner-keuze 2026-09-05, LEG-012: alleen display_name, geen e-mail).
       ...(displayName ? { $set: { name: displayName } } : {}),
     });
+  }
+
+  return { success: true };
+}
+
+/**
+ * LEG-015: one-time age attestation for OAuth accounts (Google/Apple) that were
+ * created without the registration checkbox. Called from /auth/confirm-age.
+ * Stamps profiles.age_confirmed_at exactly once (never overwrites an existing
+ * attestation) for the currently authenticated user.
+ */
+export async function confirmAge(formData: FormData) {
+  const supabase = await createClient();
+  const t = await serverError();
+
+  if (formData.get("ageConfirmed") !== "true") {
+    return { error: t("somethingWentWrong") };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: t("somethingWentWrong") };
+  }
+
+  // Admin client: profiles RLS may not grant UPDATE on this column; the action
+  // itself is the authorization (authenticated user attesting for own row).
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ age_confirmed_at: new Date().toISOString() } as never)
+    .eq("id", user.id)
+    .is("age_confirmed_at", null);
+
+  if (error) {
+    console.error("[auth] confirmAge update error:", error.message);
+    return { error: t("somethingWentWrong") };
   }
 
   return { success: true };

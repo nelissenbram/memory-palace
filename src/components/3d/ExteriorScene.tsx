@@ -69,7 +69,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
   const onCinematicPauseRef = useRef(onCinematicPause);
   useEffect(() => { onCinematicPauseRef.current = onCinematicPause; }, [onCinematicPause]);
   // Camera starts at waypoint 1 of the cinematic trajectory
-  const camO=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camOT=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camD=useRef(220);
+  // ?ecam=hero — dev-only framing preset for the marketing carousel (see the
+  // lookAt below). phi slightly larger = camera lower/more level, so less
+  // ground fills the frame; pulled back a little so the dome sits clear.
+  const _ecam=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("ecam"):null;
+  const _PHI=_ecam==="hero"?Math.PI*0.4620:Math.PI*0.4387, _DIST=_ecam==="hero"?248:220;
+  const camO=useRef({theta:Math.PI*1.4987,phi:_PHI}),camOT=useRef({theta:Math.PI*1.4987,phi:_PHI}),camD=useRef(_DIST);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);
@@ -6231,7 +6236,11 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // silhouette bekroont the frame at every distance. ITEM 3: the onboarding
       // gate approach overrides the height (obLookY, dome crown → portal arch)
       // so the final meters read as looking THROUGH the door; null every other frame.
-      camera.lookAt(0,obLookY!==null?obLookY:HILL_Y+(W2?13:8),0);
+      // ?ecam=hero — marketing framing for the landing carousel. The default pose
+      // puts a slab of near foreground across the bottom of a 9:16 crop, which
+      // read as a flat brown patch. Tilting the look target up lifts the palace
+      // and pushes that near ground out of frame; the dome still crowns the shot.
+      camera.lookAt(0,obLookY!==null?obLookY:HILL_Y+(W2?13:8)+(_ecam==="hero"?11:0),0);
 
       // ── Camera debug overlay (activated via ?cam=debug) ──
       if(camDebugRef.current){

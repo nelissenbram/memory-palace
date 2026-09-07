@@ -64,12 +64,16 @@ export async function POST() {
         process.env.STRIPE_KEEPER_MONTHLY_PRICE_ID,
         process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID,
         process.env.NEXT_PUBLIC_STRIPE_KEEPER_MONTHLY_PRICE_ID,
+        process.env.NEXT_PUBLIC_STRIPE_KEEPER_ANNUAL49_PRICE_ID,
+        process.env.NEXT_PUBLIC_STRIPE_KEEPER_MONTHLY999_PRICE_ID,
       ].filter(Boolean);
       const guardianPrices = [
         process.env.STRIPE_GUARDIAN_PRICE_ID,
         process.env.STRIPE_GUARDIAN_MONTHLY_PRICE_ID,
         process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID,
         process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_MONTHLY_PRICE_ID,
+        process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_ANNUAL79_PRICE_ID,
+        process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_MONTHLY1499_PRICE_ID,
       ].filter(Boolean);
 
       let plan = "free";

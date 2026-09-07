@@ -9,5 +9,6 @@ Allow: /blog
 Disallow: /api/
 Disallow: /settings/
 Disallow: /palace/
+Disallow: /go/
 
-Sitemap: https://thememorypalace.ai/sitemap.xml
+Sitemap: https://www.thememorypalace.ai/sitemap.xml

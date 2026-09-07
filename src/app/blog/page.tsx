@@ -17,6 +17,7 @@ const UI: Record<BlogLocale, { title: string; subtitle: string; readMore: string
 };
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/blog" },
   title: "Blog",
   description:
     "Stories about memory, family, and legacy. Tips and insights on preserving what matters most.",

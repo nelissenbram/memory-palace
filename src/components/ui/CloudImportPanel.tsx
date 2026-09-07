@@ -9,6 +9,7 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { createClient } from "@/lib/supabase/client";
 import { isIOS } from "@/lib/native/platform";
 import { IAP_ENABLED } from "@/lib/native/iap-flags";
+import { track } from "@/lib/analytics";
 import Image from "next/image";
 
 // ── Types ──
@@ -412,6 +413,15 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
           failed: data.summary.failed,
           results: data.results,
         });
+        // Feature taxonomy: success moment = the import run finished with at
+        // least one item imported. Provider is a fixed enum, no PII props
+        // (no file names / counts of personal content beyond the provider).
+        if ((data.summary?.succeeded ?? 0) > 0) {
+          track("feature_used", {
+            feature: "cloud_import",
+            provider: activeProvider === "google_photos" ? "google" : activeProvider,
+          });
+        }
       } else {
         setImportProgress((prev) => prev ? {
           ...prev,

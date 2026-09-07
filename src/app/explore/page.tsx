@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/explore" },
   title: "Explore Palaces | Memory Palace",
   description: "Discover and explore published Memory Palaces from creators around the world.",
   openGraph: {

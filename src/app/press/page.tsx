@@ -12,11 +12,11 @@ export const metadata: Metadata = {
   title: "Press Kit | The Memory Palace",
   description:
     "Press kit for The Memory Palace — where memories become a place your loved ones can visit. Logos, screenshots, blurbs, founder story and contact.",
-  alternates: { canonical: "https://thememorypalace.ai/press" },
+  alternates: { canonical: "https://www.thememorypalace.ai/press" },
   openGraph: {
     title: "The Memory Palace — Press Kit",
     description: "Memories become a place your loved ones can visit. Logos, imagery, blurbs and founder contact.",
-    url: "https://thememorypalace.ai/press",
+    url: "https://www.thememorypalace.ai/press",
     images: [{ url: "/api/og?title=Press%20Kit&subtitle=Logos%2C%20imagery%2C%20blurbs%20and%20founder%20contact", width: 1200, height: 630 }],
   },
 };
@@ -129,7 +129,7 @@ export default function PressPage() {
 
         <h2 style={sectionTitle}>Contact</h2>
         <p style={body}>
-          <a href="mailto:bram@elyphont.com" style={{ color: walnut }}>bram@elyphont.com</a> — direct
+          <a href="mailto:privacy@thememorypalace.ai" style={{ color: walnut }}>privacy@thememorypalace.ai</a> — direct
           line to the founder. Interviews, demo walkthroughs and review accounts on request.
         </p>
         <p style={{ ...body, fontSize: "0.875rem", color: "#9b9188" }}>

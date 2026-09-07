@@ -74,10 +74,10 @@ export default function LegacyView({ data }: { data: LegacyData }) {
               {t("linkNotFoundDesc")}
             </p>
             <div style={styles.actionLinks}>
-              <a href="https://thememorypalace.ai" style={styles.actionLink}>
+              <a href="https://www.thememorypalace.ai" style={styles.actionLink}>
                 {t("linkNotFoundHome")}
               </a>
-              <a href="https://thememorypalace.ai/about" style={styles.actionLinkSecondary}>
+              <a href="https://www.thememorypalace.ai/about" style={styles.actionLinkSecondary}>
                 {t("linkNotFoundAction")}
               </a>
             </div>
@@ -107,10 +107,10 @@ export default function LegacyView({ data }: { data: LegacyData }) {
               {t("linkExpiredDesc")}
             </p>
             <div style={styles.actionLinks}>
-              <a href="https://thememorypalace.ai" style={styles.actionLink}>
+              <a href="https://www.thememorypalace.ai" style={styles.actionLink}>
                 {t("linkExpiredHome")}
               </a>
-              <a href="https://thememorypalace.ai/about" style={styles.actionLinkSecondary}>
+              <a href="https://www.thememorypalace.ai/about" style={styles.actionLinkSecondary}>
                 {t("linkExpiredAction")}
               </a>
             </div>

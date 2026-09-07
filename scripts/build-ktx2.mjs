@@ -18,8 +18,12 @@
  * half-built asset states. Requires the `canvas` devDependency (already in
  * package.json) for 512px downscales and JPG→PNG decode for toktx.
  *
- * Usage:  npm run build:ktx2 [-- --force]
- *   --force  re-encode even when the .ktx2 is newer than its source
+ * Usage:  npm run build:ktx2 [-- --force] [-- --dir=<name>[,<name>...]]
+ *   --force       re-encode even when the .ktx2 is newer than its source
+ *   --dir=<name>  only process these material directories (batch mode).
+ *                 Batch runs do NOT write the manifest — run once without
+ *                 --dir at the end (already-encoded files are skipped) to
+ *                 produce the complete manifest.
  */
 
 import { spawnSync } from "node:child_process";
@@ -34,6 +38,10 @@ const PBR_ROOT = path.join(__dirname, "..", "public", "textures", "pbr");
 const MANIFEST_PATH = path.join(PBR_ROOT, "ktx2-manifest.json");
 const PUBLIC_PREFIX = "/textures/pbr"; // manifest entries are public URL paths
 const FORCE = process.argv.includes("--force");
+const DIR_FILTER = process.argv
+  .filter((a) => a.startsWith("--dir="))
+  .flatMap((a) => a.slice("--dir=".length).split(","))
+  .filter(Boolean);
 
 // ── 1. Locate toktx (all-or-nothing gate) ────────────────────────────────
 function findToktx() {
@@ -56,15 +64,28 @@ function findToktx() {
 }
 
 const TOKTX = findToktx();
+
+// ── 1b. WASM fallback encoder (ktx2-encoder devDependency) ──────────────
+// When toktx is not installed, fall back to the Basis Universal WASM encoder
+// bundled in the `ktx2-encoder` devDependency. Same encoding policy (ETC1S
+// for diff/rough/ao, UASTC for normals, full mip chains); no global installs
+// needed. The all-or-nothing gate still holds: if NEITHER encoder is
+// available, nothing is generated and the runtime stays on JPG.
+let wasmEncodeToKTX2 = null;
 if (!TOKTX) {
-  console.error(`
-[build-ktx2] toktx (KTX-Software) is NOT installed on this machine.
+  try {
+    ({ encodeToKTX2: wasmEncodeToKTX2 } = await import("ktx2-encoder"));
+    console.log("[build-ktx2] toktx not found — using WASM encoder (ktx2-encoder devDependency)");
+  } catch {
+    console.error(`
+[build-ktx2] toktx (KTX-Software) is NOT installed, and the \`ktx2-encoder\`
+devDependency is missing (run \`npm install\`).
 
 Nothing was generated — this script is all-or-nothing by design (WS2-5):
 no half-built .ktx2 sets, no manifest, so the runtime stays on the JPG
 pipeline (WS2-6 routing only activates when ktx2-manifest.json exists).
 
-To install on Windows (pick one):
+To use the native encoder instead, install KTX-Software (Windows):
   winget install KhronosGroup.KTXSoftware
   — or download the installer from:
   https://github.com/KhronosGroup/KTX-Software/releases (KTX-Software-*-Windows-x64.exe)
@@ -72,9 +93,11 @@ To install on Windows (pick one):
 Then re-run:  npm run build:ktx2
 (If installed to a custom location, set KTX_HOME or add its bin/ to PATH.)
 `);
-  process.exit(1);
+    process.exit(1);
+  }
+} else {
+  console.log(`[build-ktx2] using toktx: ${TOKTX}`);
 }
-console.log(`[build-ktx2] using toktx: ${TOKTX}`);
 
 // ── 2. canvas (bundled devDependency) for 512 downscales + JPG→PNG decode ─
 let Canvas;
@@ -95,9 +118,18 @@ if (!fs.existsSync(PBR_ROOT)) {
   console.error(`[build-ktx2] PBR root not found: ${PBR_ROOT}`);
   process.exit(1);
 }
-const dirs = fs.readdirSync(PBR_ROOT, { withFileTypes: true })
+let dirs = fs.readdirSync(PBR_ROOT, { withFileTypes: true })
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
+if (DIR_FILTER.length > 0) {
+  const unknown = DIR_FILTER.filter((d) => !dirs.includes(d));
+  if (unknown.length > 0) {
+    console.error(`[build-ktx2] --dir names not found under ${PBR_ROOT}: ${unknown.join(", ")}`);
+    process.exit(1);
+  }
+  dirs = dirs.filter((d) => DIR_FILTER.includes(d));
+  console.log(`[build-ktx2] batch mode: only [${dirs.join(", ")}] — manifest will NOT be written`);
+}
 
 /** @type {{dir: string, file: string, prefix: string, kind: string, res: string}[]} */
 const sources = [];
@@ -140,6 +172,31 @@ function toktxArgs(kind) {
   return [...base, "--encode", "etc1s", "--clevel", "2", "--qlevel", "128", "--assign_oetf", "linear"];
 }
 
+/** WASM-encoder options mirroring toktxArgs() exactly (WS2-5 policy). */
+function wasmOptions(kind) {
+  const base = { isKTX2File: true, generateMipmap: true, isYFlip: false };
+  if (kind === "nor_gl") {
+    // Normals: UASTC + zstd supercompression (≈ --encode uastc --uastc_quality 2 --zcmp 18)
+    return { ...base, isUASTC: true, uastcLDRQualityLevel: 2, needSupercompression: true, isPerceptual: false, isSetKTX2SRGBTransferFunc: false };
+  }
+  if (kind === "diff") {
+    // ≈ --encode etc1s --clevel 2 --qlevel 224 --assign_oetf srgb
+    return { ...base, isUASTC: false, qualityLevel: 224, compressionLevel: 2, isPerceptual: true, isSetKTX2SRGBTransferFunc: true };
+  }
+  // rough / ao ≈ --encode etc1s --clevel 2 --qlevel 128 --assign_oetf linear
+  return { ...base, isUASTC: false, qualityLevel: 128, compressionLevel: 2, isPerceptual: false, isSetKTX2SRGBTransferFunc: false };
+}
+
+/** Node-side JPG → raw RGBA decode for the WASM encoder (uses `canvas`). */
+async function wasmImageDecoder(buffer) {
+  const img = await loadImage(Buffer.from(buffer));
+  const cv = createCanvas(img.width, img.height);
+  const ctx = cv.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const d = ctx.getImageData(0, 0, cv.width, cv.height);
+  return { width: cv.width, height: cv.height, data: new Uint8Array(d.data.buffer, d.data.byteOffset, d.data.byteLength) };
+}
+
 async function encodeAll() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "mp-ktx2-"));
   let encoded = 0, skipped = 0, failed = 0;
@@ -154,23 +211,41 @@ async function encodeAll() {
         skipped++;
         continue;
       }
-      // Decode JPG → temp PNG (toktx PNG input support is universal across versions)
-      const img = await loadImage(srcPath);
-      const cv = createCanvas(img.width, img.height);
-      cv.getContext("2d").drawImage(img, 0, 0);
-      const tmpPng = path.join(tmpDir, `${s.dir}__${s.file.replace(/\.jpg$/, ".png")}`);
-      fs.writeFileSync(tmpPng, cv.toBuffer("image/png"));
 
-      const r = spawnSync(TOKTX, [...toktxArgs(s.kind), outPath, tmpPng], { encoding: "utf8" });
-      fs.rmSync(tmpPng, { force: true });
-      if (r.status === 0 && fs.existsSync(outPath)) {
+      let ok = false;
+      let errMsg = "";
+      if (TOKTX) {
+        // Decode JPG → temp PNG (toktx PNG input support is universal across versions)
+        const img = await loadImage(srcPath);
+        const cv = createCanvas(img.width, img.height);
+        cv.getContext("2d").drawImage(img, 0, 0);
+        const tmpPng = path.join(tmpDir, `${s.dir}__${s.file.replace(/\.jpg$/, ".png")}`);
+        fs.writeFileSync(tmpPng, cv.toBuffer("image/png"));
+        const r = spawnSync(TOKTX, [...toktxArgs(s.kind), outPath, tmpPng], { encoding: "utf8" });
+        fs.rmSync(tmpPng, { force: true });
+        ok = r.status === 0 && fs.existsSync(outPath);
+        if (!ok) errMsg = `toktx exit ${r.status}\n${(r.stderr || "").trim()}`;
+      } else {
+        try {
+          const ktx2 = await wasmEncodeToKTX2(new Uint8Array(fs.readFileSync(srcPath)), {
+            ...wasmOptions(s.kind),
+            imageDecoder: wasmImageDecoder,
+          });
+          fs.writeFileSync(outPath, ktx2);
+          ok = true;
+        } catch (err) {
+          errMsg = `wasm encode failed: ${err?.message || err}`;
+        }
+      }
+
+      if (ok) {
         manifest.push(urlPath);
         encoded++;
         const kb = (fs.statSync(outPath).size / 1024).toFixed(0);
         console.log(`  ✓ ${s.dir}/${path.basename(outPath)} (${kb} KB, ${s.kind === "nor_gl" ? "UASTC" : "ETC1S"})`);
       } else {
         failed++;
-        console.error(`  ✗ ${s.dir}/${s.file}: toktx exit ${r.status}\n${(r.stderr || "").trim()}`);
+        console.error(`  ✗ ${s.dir}/${s.file}: ${errMsg}`);
       }
     }
   } finally {
@@ -187,8 +262,12 @@ if (failed > 0 && encoded === 0 && skipped === 0) {
   console.error("[build-ktx2] every encode failed — NOT writing a manifest (runtime stays on JPG).");
   process.exit(1);
 }
-manifest.sort();
-fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n");
 console.log(`[build-ktx2] done: ${encoded} encoded, ${skipped} up-to-date, ${failed} failed`);
-console.log(`[build-ktx2] manifest: ${MANIFEST_PATH} (${manifest.length} entries) — WS2-6 runtime routing is now active for these files`);
+if (DIR_FILTER.length > 0) {
+  console.log("[build-ktx2] batch mode (--dir): manifest NOT written — run without --dir for the full manifest.");
+} else {
+  manifest.sort();
+  fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n");
+  console.log(`[build-ktx2] manifest: ${MANIFEST_PATH} (${manifest.length} entries) — WS2-6 runtime routing is now active for these files`);
+}
 if (failed > 0) process.exitCode = 1;

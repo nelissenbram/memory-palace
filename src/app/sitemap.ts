@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { createAdminOrAnonClient } from "@/lib/supabase/server";
 import { getAllPosts } from "@/lib/blog/posts";
 
-const BASE_URL = "https://thememorypalace.ai";
+const BASE_URL = "https://www.thememorypalace.ai";
 
 // Re-generate at most once a day; public-profile churn is slow.
 export const revalidate = 86400;

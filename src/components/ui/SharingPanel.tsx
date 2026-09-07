@@ -11,6 +11,7 @@ import { fetchPublicShare, togglePublicShare } from "@/lib/auth/public-share-act
 import { updateShareDownloadPermission, updateRoomPublicVisibility, updateSharePermission, fetchRoomPrivacy } from "@/lib/auth/family-actions";
 import { generateInviteLink } from "@/lib/sharing/generate-link";
 import { hapticLight } from "@/lib/native/haptics";
+import { track } from "@/lib/analytics";
 import QRShareModal from "@/components/social/QRShareModal";
 
 interface Share {
@@ -145,6 +146,9 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
       onUpdate({sharedWith:sharing.sharedWith.filter(e=>e!==tempEmail)});
     }else if(result.share){
       setShares(prev=>[...prev,result.share]);
+      // Feature taxonomy: success moment = the share/invite row was created.
+      // No PII props (never the invitee email).
+      track("feature_used",{feature:"share"});
       setSuccess(t("invitationSent", { email: tempEmail }));
       setTimeout(()=>setSuccess(null),4000);
       // Auto-send email
@@ -275,6 +279,11 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             </div>
           )}
         </div>
+
+        {/* LEG-006: light sensitivity notice for public sharing / granting access */}
+        <p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:"#716A5E",lineHeight:1.6,margin:"-0.625rem 0 1.25rem"}}>
+          {t("sensitiveShareNotice")}
+        </p>
 
         {/* Invite section */}
         {sharing.shared&&<>

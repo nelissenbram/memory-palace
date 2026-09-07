@@ -1,5 +1,12 @@
 import { cookies, headers } from "next/headers";
+import type { Metadata } from "next";
 import LandingV2Client from "./LandingV2Client";
+
+/** SEO: query-varianten van de homepage (o.a. /go/* utm-links) canonicaliseren
+ *  naar de schone root-URL (GSC "dubbele pagina zonder canonieke versie"). */
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 import enMessages from "@/messages/en.json";
 import type { Locale } from "@/i18n/config";
 import { locales } from "@/i18n/config";

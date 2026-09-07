@@ -711,6 +711,26 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
           {/* ═══ SECTION 2: STORY & DETAILS ═══ */}
           <div style={{ padding: "1.25rem 1.5rem 2rem" }}>
 
+            {/* ── LEG-003 (AI Act art. 50): subtle AI-provenance badge.
+                LEG-003b (art. 50(2)): data-ai-generated makes the marking
+                machine-readable. ── */}
+            {mem.source === "ai" && (
+              <div data-ai-generated="true" style={{
+                display: "inline-flex", alignItems: "center", gap: "0.3125rem",
+                padding: "0.1875rem 0.5625rem", borderRadius: "0.75rem",
+                border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                background: T.color.white, color: "#716A5E", /* Atrium muted */
+                fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                marginBottom: "0.75rem",
+              }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 2l2.09 6.26L20 10l-4.91 3.74L17.18 20 12 16.27 6.82 20l2.09-6.26L4 10l5.91-1.74z" />
+                </svg>
+                {t("aiBadge")}
+              </div>
+            )}
+
             {/* ── Locked capsule info ── */}
             {isLocked && (
               <div style={{
@@ -861,6 +881,9 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 <div
                   onClick={() => setEditingDesc(true)}
                   title={t("clickToEdit")}
+                  // LEG-003b (AI Act art. 50(2)): machine-readable marker on the
+                  // content container of AI-originated memories.
+                  data-ai-generated={mem.source === "ai" ? "true" : undefined}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.9375rem",
                     color: (mem.desc || desc) ? "#403B36" : "#716A5E",
@@ -1187,7 +1210,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                           <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36", lineHeight: 1.5, margin: "0 0 0.5rem" }}>{aiLabelResult}</p>
                           <button
                             onClick={() => {
-                              onUpdate(mem.id, { desc: (desc ? desc + "\n\n" : "") + aiLabelResult });
+                              // LEG-003: AI labels merged into desc → mark provenance
+                              onUpdate(mem.id, { desc: (desc ? desc + "\n\n" : "") + aiLabelResult, source: "ai" });
                               setDesc((prev) => (prev ? prev + "\n\n" : "") + aiLabelResult);
                               setAiLabelResult(null);
                             }}

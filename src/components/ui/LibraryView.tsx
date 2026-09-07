@@ -3608,7 +3608,8 @@ export default function LibraryView() {
           const rid = memRoomMap.get(memId)?.roomId || selectedRoom;
           if (!rid) return;
           // Only show the checkmark once the server actually persisted it
-          const ok = await updateMemory(rid, memId, { desc: description + tagSuffix });
+          // (LEG-003: AI labels merged into desc → mark provenance)
+          const ok = await updateMemory(rid, memId, { desc: description + tagSuffix, source: "ai" });
           if (!ok) { setAiLabelError(t("aiLabelFailed", { count: "1" })); return; }
           setAiLabelResults(prev => ({ ...prev, [memId]: { ...prev[memId], saved: true } }));
         };

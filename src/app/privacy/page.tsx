@@ -178,6 +178,16 @@ export default function PrivacyPolicyPage() {
               privacy@thememorypalace.ai
             </a>
           </P>
+          {/* LEG-001: controller block — name + contact only (explicit owner choice:
+              no postal address, no company number, no legal entity). */}
+          <P>
+            <strong>{t("controllerLabel")}</strong>
+            {t("controllerText")}
+            <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+              privacy@thememorypalace.ai
+            </a>
+          </P>
+          <P>{t("dpoText")}</P>
         </Section>
 
         <Section title={t("whatWeCollectTitle")}>
@@ -197,7 +207,29 @@ export default function PrivacyPolicyPage() {
               <strong>{t("whatWeCollectItem3Label")}</strong>
               {t("whatWeCollectItem3Text")}
             </Li>
+            {/* LEG-014: subscription/billing data category — plan, status,
+                Apple/Stripe payment references; never card details. */}
+            <Li>
+              <strong>{t("whatWeCollectItem4Label")}</strong>
+              {t("whatWeCollectItem4Text")}
+            </Li>
           </Ul>
+          {/* LEG-006: Art. 9 special-categories clause — explicit consent basis,
+              withdrawn by deleting the content. */}
+          <h3
+            style={{
+              fontFamily: F.display,
+              fontSize: "1.125rem",
+              fontWeight: 500,
+              color: C.ink,
+              marginBottom: "0.5rem",
+              marginTop: "1.5rem",
+              lineHeight: 1.3,
+            }}
+          >
+            {t("specialCategoriesTitle")}
+          </h3>
+          <P>{t("specialCategoriesText")}</P>
         </Section>
 
         <Section title={t("howWeUseTitle")}>
@@ -339,6 +371,18 @@ export default function PrivacyPolicyPage() {
               <strong>{t("whoWeShareItem13Label")}</strong>
               {t("whoWeShareItem13Text")}
             </Li>
+            <Li>
+              <strong>{t("whoWeShareItem14Label")}</strong>
+              {t("whoWeShareItem14Text")}
+            </Li>
+            <Li>
+              <strong>{t("whoWeShareItem15Label")}</strong>
+              {t("whoWeShareItem15Text")}
+            </Li>
+            <Li>
+              <strong>{t("whoWeShareItem16Label")}</strong>
+              {t("whoWeShareItem16Text")}
+            </Li>
           </Ul>
           <P>
             {t("whoWeShareOutro")}
@@ -454,6 +498,12 @@ export default function PrivacyPolicyPage() {
             <Li>
               <strong>{t("retentionItem4Label")}</strong>
               {t("retentionItem4Text")}
+            </Li>
+            {/* LEG-014: billing records — subscription duration + 7y statutory
+                accounting retention. */}
+            <Li>
+              <strong>{t("retentionItem5Label")}</strong>
+              {t("retentionItem5Text")}
             </Li>
           </Ul>
         </Section>

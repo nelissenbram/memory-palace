@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import StagingChrome from "../StagingChrome";
 import type { Mem } from "@/lib/constants/defaults";
 
 // Lazy-load the real room scene (no SSR — Three.js).
@@ -34,7 +35,12 @@ const SAMPLE_MEMORIES: Mem[] = [
 
 export default function StagingRoomClient() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [chrome, setChrome] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    // ?chrome=1 overlays the app UI so the shot reads as a screenshot, not a render.
+    setChrome(new URLSearchParams(window.location.search).get("chrome") === "1");
+  }, []);
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#0b0b0d", overflow: "hidden" }}>
@@ -52,6 +58,7 @@ export default function StagingRoomClient() {
           />
         </div>
       )}
+      {mounted && chrome && <StagingChrome wing="ROOTS" room="ME, OVER TIME"  />}
       <div
         id="staging-dev-panel"
         style={{

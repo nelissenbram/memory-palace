@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { mountAmbientMusic } from "@/lib/3d/ambientAudio";
+import { track } from "@/lib/analytics";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -55,6 +56,12 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
   // unmount so the music carries across scene transitions.
   useEffect(() => {
     mountAmbientMusic();
+  }, []);
+
+  // Feature taxonomy: a visitor-mode walk (3D flythrough of a shared palace)
+  // actually started. Once per mount; no PII props (never the owner id/name).
+  useEffect(() => {
+    track("feature_used", { feature: "flythrough" });
   }, []);
 
   // W2 (WS7-15, decision 7): the hall's Ancestral Wall for guests — the server
@@ -399,7 +406,8 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           display: "flex",
           alignItems: "center",
           gap: "0.5rem",
-          padding: "0.625rem 1.25rem",
+          padding: "0.75rem 1.25rem",
+          minHeight: "2.75rem",
           borderRadius: "2rem",
           background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
           border: `1px solid ${T.color.gold}55`,
@@ -437,7 +445,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           gap: "0.375rem",
           minWidth: "2.75rem",
           minHeight: "2.75rem",
-          padding: isMobile ? "0.625rem" : "0.625rem 1rem",
+          padding: isMobile ? "0.625rem" : "0.75rem 1rem",
           borderRadius: isMobile ? "50%" : "2rem",
           background: `${T.color.linen}ee`,
           backdropFilter: "blur(0.5rem)",
@@ -1014,7 +1022,8 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
             onClick={handleSend}
             disabled={!body.trim() || sending}
             style={{
-              padding: "0.625rem 1rem",
+              padding: "0.75rem 1rem",
+              minHeight: "2.75rem",
               borderRadius: "0.625rem",
               border: "none",
               background: body.trim() && !sending
@@ -1029,7 +1038,7 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
               flexShrink: 0,
             }}
           >
-            {sending ? "..." : t("guestbookSend")}
+            {sending ? t("sending") : t("guestbookSend")}
           </button>
         </div>
 

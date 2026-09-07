@@ -10,6 +10,7 @@ import {
   APP_APPLE_ID,
   APP_BUNDLE_ID,
 } from "@/lib/apple/root-certs";
+import { captureServer } from "@/lib/analytics-server";
 
 /**
  * Apple App Store Server Notifications V2.
@@ -156,9 +157,9 @@ export async function POST(req: NextRequest) {
   const admin = adminClient();
   const { data: row } = await admin
     .from("subscriptions")
-    .select("user_id")
+    .select("user_id, current_period_end")
     .eq("apple_original_transaction_id", originalTransactionId)
-    .maybeSingle();
+    .maybeSingle<{ user_id: string; current_period_end: string | null }>();
 
   if (!row) {
     // No linked user yet — verify-receipt hasn't run for this transaction (or the
@@ -206,6 +207,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // ── Staleness guard (OPS-012) ──
+  // Apple notifications can arrive late or be re-delivered out of order. Applying
+  // a delayed/replayed EXPIRED that was emitted BEFORE a DID_RENEW would downgrade
+  // a paying user. Only apply (de)activating events whose period end (falling back
+  // to the signed transaction date) is >= the current_period_end already on file.
+  // Equality must still apply: a legit EXPIRED carries exactly the stored period
+  // end. Events without a comparable date, or rows without a stored period end,
+  // pass through unchanged. Verification/idempotency logic above is untouched.
+  if (TERMINATING.has(type) || ACTIVATING.has(type)) {
+    const eventMs = tx.expiresDate ?? tx.signedDate ?? null;
+    const storedMs = row.current_period_end ? new Date(row.current_period_end).getTime() : null;
+    if (eventMs != null && storedMs != null && !Number.isNaN(storedMs) && eventMs < storedMs) {
+      console.warn(
+        `[Apple Webhook] STALE ${type}/${subtype} ignored for user ${row.user_id}: ` +
+          `event date ${new Date(eventMs).toISOString()} < stored current_period_end ${row.current_period_end}`
+      );
+      return NextResponse.json({ ok: true });
+    }
+  }
+
   // ── Decide the new entitlement from the VERIFIED notification type ──
   let update: { plan: string; status: string; current_period_end: string | null } | null = null;
   if (TERMINATING.has(type)) {
@@ -236,6 +257,15 @@ export async function POST(req: NextRequest) {
   if (error) {
     console.error("[Apple Webhook] DB update failed:", error.message);
     return NextResponse.json({ error: "DB error" }, { status: 500 });
+  }
+
+  // Funnel: purchase completed (iOS IAP). SUBSCRIBED only = first activation
+  // (incl. resubscribe after a lapse) — DID_RENEW and the other ACTIVATING
+  // types are renewals/extensions and must not re-fire the purchase milestone.
+  // Fire-and-forget after the successful entitlement write; minimal, non-PII
+  // props by design.
+  if (type === NotificationTypeV2.SUBSCRIBED) {
+    void captureServer(row.user_id, "purchase_completed", { plan, platform: "ios" });
   }
 
   console.log(

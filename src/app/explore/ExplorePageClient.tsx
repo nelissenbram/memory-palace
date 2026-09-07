@@ -833,6 +833,25 @@ const PalaceGrid = React.memo(function PalaceGrid({
 
 /* ── Palace Card (Atrium secondary-tile anatomy) ───── */
 
+/**
+ * OPS-017 — avatars are stored as full-resolution Supabase public-storage URLs
+ * but render in a 3.25rem (52px) slot. Rewrite the stored URL to the Supabase
+ * image-transform endpoint (`/render/image/public/`) so the server delivers a
+ * small cover-cropped rendition (96px ≈ 2x for retina). Non-Supabase-storage
+ * URLs pass through untouched; if the transform endpoint fails the card falls
+ * back to the original URL (see PalaceCard onError chain).
+ */
+function smallAvatarUrl(url: string): string {
+  const marker = "/storage/v1/object/public/";
+  const i = url.indexOf(marker);
+  if (i === -1) return url;
+  const rest = url.slice(i + marker.length);
+  const qIdx = rest.indexOf("?");
+  const path = qIdx === -1 ? rest : rest.slice(0, qIdx);
+  const origQuery = qIdx === -1 ? "" : `&${rest.slice(qIdx + 1)}`;
+  return `${url.slice(0, i)}/storage/v1/render/image/public/${path}?width=96&height=96&resize=cover&quality=70${origQuery}`;
+}
+
 const PalaceCard = React.memo(function PalaceCard({
   palace,
   i18n,
@@ -846,6 +865,9 @@ const PalaceCard = React.memo(function PalaceCard({
 }) {
   const { t, locale } = i18n;
   const [imgFailed, setImgFailed] = useState(false);
+  // OPS-017: try the small server-side rendition first; on error fall back to
+  // the original full-size URL before giving up on the image entirely.
+  const [transformFailed, setTransformFailed] = useState(false);
   const sage = accent === "sage";
 
   // One destination per card: the public profile (SafetyMenu / follow live there).
@@ -914,11 +936,22 @@ const PalaceCard = React.memo(function PalaceCard({
         {/* Avatar — real <img> so it lazy-loads; initial-letter fallback */}
         {showImg ? (
           <img
-            src={palace.avatar_url as string}
+            src={transformFailed
+              ? (palace.avatar_url as string)
+              : smallAvatarUrl(palace.avatar_url as string)}
             alt=""
             loading="lazy"
             decoding="async"
-            onError={() => setImgFailed(true)}
+            width={52}
+            height={52}
+            sizes="52px"
+            onError={() => {
+              if (!transformFailed && smallAvatarUrl(palace.avatar_url as string) !== palace.avatar_url) {
+                setTransformFailed(true);
+              } else {
+                setImgFailed(true);
+              }
+            }}
             style={{
               width: "3.25rem", height: "3.25rem", borderRadius: "50%",
               objectFit: "cover", flexShrink: 0,
