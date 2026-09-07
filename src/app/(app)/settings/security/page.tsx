@@ -680,8 +680,10 @@ export default function SecuritySettingsPage() {
         )}
       </div>
 
-      {/* ── 7. Danger Zone — last (GDPR Art. 17, terracotta register, never gold) ── */}
-      <section role="region" aria-labelledby="danger-zone-heading">
+      {/* ── 7. Danger Zone — last (GDPR Art. 17, terracotta register, never gold).
+             id="delete-account" is the anchor target for the quiet deep-link on
+             /me (LEG-009) — keep it stable. ── */}
+      <section role="region" aria-labelledby="danger-zone-heading" id="delete-account" style={{ scrollMarginTop: "4.5rem" }}>
       {/* Section overline — Danger zone (danger register — the one non-ember overline) */}
       <div style={{
         display: "flex", alignItems: "center", gap: "0.5rem",

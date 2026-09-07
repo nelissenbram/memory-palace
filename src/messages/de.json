@@ -570,6 +570,7 @@
     "sectionFamilyAccess": "Zugang für Familie & Freunde",
     "meStatsVisits": "Besuche",
     "meAvatarAlt": "Porträt von {name}",
+    "meDeleteAccountLink": "Mein Konto löschen",
     "loading": "Wird geladen…",
     "loadError": "Deine Freigabeeinstellungen konnten nicht geladen werden. Bitte versuche es erneut.",
     "publishError": "Einige Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",

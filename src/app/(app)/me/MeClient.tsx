@@ -445,6 +445,26 @@ export default function MeClient({ profile, stats, isNativeIOS = false }: MeClie
                 </span>
               </button>
             </div>
+
+            {/* LEG-009: quiet deep-link straight to account deletion (Security →
+                Danger zone). No new flow — just a discoverable door to the
+                existing GDPR Art. 17 surface, kept deliberately understated. */}
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <Link
+                href="/settings/security#delete-account"
+                className="mp-me-door"
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  minHeight: "2.75rem", padding: "0.5rem 0.875rem",
+                  borderRadius: "0.5rem",
+                  fontFamily: T.font.body, fontSize: RT.meta, fontWeight: 500,
+                  color: MUTED, textDecoration: "underline",
+                  textUnderlineOffset: "0.1875rem",
+                }}
+              >
+                {tf("meDeleteAccountLink", "Delete my account")}
+              </Link>
+            </div>
           </div>
         </div>
 

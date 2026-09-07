@@ -570,6 +570,7 @@
     "sectionFamilyAccess": "Accès famille et amis",
     "meStatsVisits": "Visites",
     "meAvatarAlt": "Portrait de {name}",
+    "meDeleteAccountLink": "Supprimer mon compte",
     "loading": "Chargement…",
     "loadError": "Impossible de charger vos paramètres de partage. Veuillez réessayer.",
     "publishError": "Certaines modifications n'ont pas pu être enregistrées. Veuillez réessayer.",

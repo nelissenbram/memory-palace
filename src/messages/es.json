@@ -570,6 +570,7 @@
     "sectionFamilyAccess": "Acceso de familia y amigos",
     "meStatsVisits": "Visitas",
     "meAvatarAlt": "Retrato de {name}",
+    "meDeleteAccountLink": "Eliminar mi cuenta",
     "loading": "Cargando…",
     "loadError": "No se pudieron cargar tus ajustes de uso compartido. Inténtalo de nuevo.",
     "publishError": "Algunos cambios no se pudieron guardar. Inténtalo de nuevo.",

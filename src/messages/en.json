@@ -570,6 +570,7 @@
     "sectionFamilyAccess": "Family & friends access",
     "meStatsVisits": "Visits",
     "meAvatarAlt": "Portrait of {name}",
+    "meDeleteAccountLink": "Delete my account",
     "loading": "Loading…",
     "loadError": "Could not load your sharing settings. Please try again.",
     "publishError": "Some changes could not be saved. Please try again.",
