@@ -207,7 +207,8 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
             display: "flex",
             alignItems: "center",
             gap: "0.375rem",
-            padding: "0.5rem 0.875rem",
+            padding: "0.625rem 1rem",
+            minHeight: "2.75rem",
             borderRadius: "2rem",
             background: "rgba(255,255,255,0.15)",
             backdropFilter: "blur(0.5rem)",
@@ -278,7 +279,10 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
             onClick={() => { if (view !== "corridor") fade(() => { setActiveRoomId(null); setView("corridor"); }); }}
             style={{
               pointerEvents: "auto",
-              padding: "0.375rem 0.75rem",
+              padding: "0.5rem 0.875rem",
+              minHeight: "2.75rem",
+              display: "inline-flex",
+              alignItems: "center",
               borderRadius: "1.5rem",
               border: "none",
               background: view === "corridor" ? "rgba(255,255,255,0.25)" : "transparent",
@@ -299,7 +303,10 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
               onClick={() => handleRoomNav(room.id)}
               style={{
                 pointerEvents: "auto",
-                padding: "0.375rem 0.75rem",
+                padding: "0.5rem 0.875rem",
+                minHeight: "2.75rem",
+                display: "inline-flex",
+                alignItems: "center",
                 borderRadius: "1.5rem",
                 border: "none",
                 background: activeRoomId === room.id ? "rgba(255,255,255,0.25)" : "transparent",
