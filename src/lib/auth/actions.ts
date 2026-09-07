@@ -311,7 +311,26 @@ export async function updatePassword(formData: FormData) {
 
   const { error } = await supabase.auth.updateUser({ password });
   if (error) {
-    return { error: error.message };
+    // Never surface Supabase's raw English auth strings to the user. Map the
+    // known failures onto our localised copy; fall back to somethingWentWrong.
+    const code = (error as { code?: string }).code;
+    const msg = (error.message || "").toLowerCase();
+    if (code === "same_password" || msg.includes("different from the old")) {
+      return { error: t("passwordSameAsOld") };
+    }
+    if (
+      code === "session_not_found" ||
+      msg.includes("session missing") ||
+      msg.includes("session expired") ||
+      msg.includes("session_not_found")
+    ) {
+      return { error: t("resetLinkExpired") };
+    }
+    if (code === "weak_password" || msg.includes("at least")) {
+      return { error: t("passwordTooShort") };
+    }
+    console.error("[auth] updatePassword error:", code ?? error.status, error.message);
+    return { error: t("somethingWentWrong") };
   }
 
   redirect("/atrium");

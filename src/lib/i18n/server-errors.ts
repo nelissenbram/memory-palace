@@ -41,6 +41,22 @@ const errors: Record<string, Record<Locale, string>> = {
     fr: "Le mot de passe doit contenir au moins 8 caract\u00e8res.",
   },
 
+  passwordSameAsOld: {
+    en: "Please choose a password that's different from your current one.",
+    nl: "Kies een wachtwoord dat verschilt van je huidige wachtwoord.",
+    de: "Bitte wähle ein Passwort, das sich von deinem aktuellen unterscheidet.",
+    es: "Elige una contraseña distinta de la actual.",
+    fr: "Veuillez choisir un mot de passe différent de l'actuel.",
+  },
+
+  resetLinkExpired: {
+    en: "Your reset link has expired. Please request a new one.",
+    nl: "Je resetlink is verlopen. Vraag een nieuwe aan.",
+    de: "Dein Link ist abgelaufen. Bitte fordere einen neuen an.",
+    es: "Tu enlace ha caducado. Solicita uno nuevo.",
+    fr: "Votre lien a expiré. Veuillez en demander un nouveau.",
+  },
+
   // ── Sharing (sharing-actions.ts) ──
   notAuthenticated: {
     en: "Not authenticated",
