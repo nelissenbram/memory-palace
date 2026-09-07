@@ -212,12 +212,16 @@ jobs:
       - name: Bump build number
         run: |
           PLIST="ios/App/App/Info.plist"
-          # Marketing version must match the App Store version being submitted (1.4.0 —
-          # first release with Apple In-App Purchase subscriptions); build number
-          # auto-increments from the run number.
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.4.0" $PLIST
+          # Marketing version MUST match the App Store version being submitted, or the
+          # build arrives in App Store Connect unattached to the version you are editing
+          # and cannot be selected. 1.4.1 — the version open in ASC (1.4.0 was the first
+          # with Apple IAP). Build number auto-increments from the run number.
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.4.1" $PLIST
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" $PLIST
-          echo "Version: 1.4.0 (${{ github.run_number }})"
+          # Export compliance: only HTTPS/TLS and the encryption built into iOS, which is
+          # exempt. Declaring it stops ASC asking for documentation on every build.
+          /usr/libexec/PlistBuddy -c "Set :ITSAppUsesNonExemptEncryption false" $PLIST 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" $PLIST
+          echo "Version: 1.4.1 (${{ github.run_number }})"
 
       - name: Copy app icons
         run: cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/
