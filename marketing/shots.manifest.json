@@ -384,6 +384,138 @@
       ],
       "out": "public/landing/shots/shot-3.webp",
       "note": "Room on the fp19 chimneypiece. Rendered from the login-free /staging viewers. /flythrough paints its recorder UI over the canvas; driving the logged-in app proved unreliable and needless. Viewport keeps the carousel's 820:1446 aspect ratio — the <Image> hardcodes those dimensions, so an off-ratio file renders squashed."
+    },
+    {
+      "id": "ios69-exterior",
+      "phase": 2,
+      "surface": "App Store 6.9\" iPhone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/exterior",
+      "params": {
+        "chrome": "1",
+        "ecam": "hero"
+      },
+      "viewport": [
+        440,
+        956
+      ],
+      "dsf": 3,
+      "scenes": [
+        "exterior"
+      ],
+      "out": "store-assets/ios69/1-exterior.png",
+      "note": "Rendered natively at 1320x2868 rather than upscaled from the carousel shots, which use the 820:1446 carousel ratio and would letterbox."
+    },
+    {
+      "id": "ios69-corridor",
+      "phase": 2,
+      "surface": "App Store 6.9\" iPhone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/corridor",
+      "params": {
+        "chrome": "1",
+        "wing": "roots"
+      },
+      "viewport": [
+        440,
+        956
+      ],
+      "dsf": 3,
+      "scenes": [
+        "corridor"
+      ],
+      "out": "store-assets/ios69/2-corridor.png",
+      "note": "Rendered natively at 1320x2868 rather than upscaled from the carousel shots, which use the 820:1446 carousel ratio and would letterbox."
+    },
+    {
+      "id": "ios69-room",
+      "phase": 2,
+      "surface": "App Store 6.9\" iPhone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/room",
+      "params": {
+        "chrome": "1",
+        "rcam": "hearth"
+      },
+      "viewport": [
+        440,
+        956
+      ],
+      "dsf": 3,
+      "scenes": [
+        "room"
+      ],
+      "out": "store-assets/ios69/3-room.png",
+      "note": "Rendered natively at 1320x2868 rather than upscaled from the carousel shots, which use the 820:1446 carousel ratio and would letterbox."
+    },
+    {
+      "id": "ipad13-exterior",
+      "phase": 2,
+      "surface": "App Store 13\" iPad",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/exterior",
+      "params": {
+        "chrome": "1",
+        "ecam": "hero"
+      },
+      "viewport": [
+        1032,
+        1376
+      ],
+      "dsf": 2,
+      "scenes": [
+        "exterior"
+      ],
+      "out": "store-assets/ipad13/1-exterior.png",
+      "note": "Native 2064x2752. The whole previous iPad set dated from 2026-07-16, so its 3D screens showed the pre-overhaul palace."
+    },
+    {
+      "id": "ipad13-corridor",
+      "phase": 2,
+      "surface": "App Store 13\" iPad",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/corridor",
+      "params": {
+        "chrome": "1",
+        "wing": "roots"
+      },
+      "viewport": [
+        1032,
+        1376
+      ],
+      "dsf": 2,
+      "scenes": [
+        "corridor"
+      ],
+      "out": "store-assets/ipad13/2-corridor.png",
+      "note": "Native 2064x2752. The whole previous iPad set dated from 2026-07-16, so its 3D screens showed the pre-overhaul palace."
+    },
+    {
+      "id": "ipad13-room",
+      "phase": 2,
+      "surface": "App Store 13\" iPad",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/room",
+      "params": {
+        "chrome": "1",
+        "rcam": "hearth"
+      },
+      "viewport": [
+        1032,
+        1376
+      ],
+      "dsf": 2,
+      "scenes": [
+        "room"
+      ],
+      "out": "store-assets/ipad13/3-room.png",
+      "note": "Native 2064x2752. The whole previous iPad set dated from 2026-07-16, so its 3D screens showed the pre-overhaul palace."
     }
   ],
   "notes": {
