@@ -582,6 +582,72 @@
       ],
       "out": "store-assets/ios65/3-room.png",
       "note": "1284x2778. ASC rejected the 6.9\" set in this slot: the 6.5\" slot only accepts 1242x2688 or 1284x2778."
+    },
+    {
+      "id": "play-exterior",
+      "phase": 2,
+      "surface": "Google Play phone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/exterior",
+      "params": {
+        "chrome": "1",
+        "ecam": "hero"
+      },
+      "viewport": [
+        540,
+        960
+      ],
+      "dsf": 2,
+      "scenes": [
+        "exterior"
+      ],
+      "out": "store-assets/play/1-exterior.png",
+      "note": "1080x1920 (9:16). The previous Play set dated entirely from 2026-07-16."
+    },
+    {
+      "id": "play-corridor",
+      "phase": 2,
+      "surface": "Google Play phone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/corridor",
+      "params": {
+        "chrome": "1",
+        "wing": "roots"
+      },
+      "viewport": [
+        540,
+        960
+      ],
+      "dsf": 2,
+      "scenes": [
+        "corridor"
+      ],
+      "out": "store-assets/play/2-corridor.png",
+      "note": "1080x1920 (9:16). The previous Play set dated entirely from 2026-07-16."
+    },
+    {
+      "id": "play-room",
+      "phase": 2,
+      "surface": "Google Play phone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/room",
+      "params": {
+        "chrome": "1",
+        "rcam": "hearth"
+      },
+      "viewport": [
+        540,
+        960
+      ],
+      "dsf": 2,
+      "scenes": [
+        "room"
+      ],
+      "out": "store-assets/play/3-room.png",
+      "note": "1080x1920 (9:16). The previous Play set dated entirely from 2026-07-16."
     }
   ],
   "notes": {

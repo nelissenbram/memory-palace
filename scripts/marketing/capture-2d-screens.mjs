@@ -39,6 +39,7 @@ console.log(`Signing in as ${EMAIL}`);
 const DEVICES = [
   { id: "ios69", w: 440, h: 956, dsf: 3, out: "store-assets/ios69" },     // 1320x2868
   { id: "ios65", w: 428, h: 926, dsf: 3, out: "store-assets/ios65" },     // 1284x2778
+  { id: "play", w: 540, h: 960, dsf: 2, out: "store-assets/play" },       // 1080x1920
   { id: "ipad13", w: 1032, h: 1376, dsf: 2, out: "store-assets/ipad13" }, // 2064x2752
 ].filter((d) => which === "both" || which === d.id);
 
