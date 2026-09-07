@@ -215,7 +215,7 @@ export default function DataDeletionPage() {
         <ol style={{ lineHeight: 1.8, paddingLeft: isMobile ? "1.25rem" : "1.5rem", marginBottom: "1rem", color: C.ink, fontSize: isMobile ? "1rem" : "0.9375rem" }}>
           <li>
             {t("option1Step1Pre")}
-            <a href="https://thememorypalace.ai/login" style={linkStyle}>
+            <a href="https://www.thememorypalace.ai/login" style={linkStyle}>
               thememorypalace.ai
             </a>
           </li>

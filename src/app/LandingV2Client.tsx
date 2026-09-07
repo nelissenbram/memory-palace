@@ -964,14 +964,14 @@ export default function LandingV2Client({
               {
                 "@type": "WebSite",
                 name: "The Memory Palace",
-                url: "https://thememorypalace.ai",
+                url: "https://www.thememorypalace.ai",
                 description: heroSub,
               },
               {
                 "@type": "Organization",
                 name: "The Memory Palace",
-                url: "https://thememorypalace.ai",
-                logo: "https://thememorypalace.ai/brand/alt-social-512.png",
+                url: "https://www.thememorypalace.ai",
+                logo: "https://www.thememorypalace.ai/brand/alt-social-512.png",
               },
               {
                 "@type": "FAQPage",
@@ -985,8 +985,8 @@ export default function LandingV2Client({
                 "@type": "VideoObject",
                 name: v2.showcase.h2,
                 description: v2.showcase.sub,
-                thumbnailUrl: "https://thememorypalace.ai/video/tour-poster.jpg",
-                contentUrl: "https://thememorypalace.ai/video/walkthrough-tour.mp4",
+                thumbnailUrl: "https://www.thememorypalace.ai/video/tour-poster.jpg",
+                contentUrl: "https://www.thememorypalace.ai/video/walkthrough-tour.mp4",
                 // Search Console: uploadDate must be ISO 8601 WITH a timezone.
                 // Bumped when the tour was rebuilt from the post-overhaul scenes
                 // (scripts/marketing/build-tour.mjs). Keep in step with the video.

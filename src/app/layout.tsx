@@ -59,7 +59,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "The Memory Palace",
     description: "Your memories, given a home.",
-    url: "https://thememorypalace.ai",
+    url: "https://www.thememorypalace.ai",
     siteName: "The Memory Palace",
     images: [
       { url: "/brand/alt-social-512.png", width: 512, height: 512, alt: "Memory Palace" },
@@ -75,11 +75,11 @@ export const metadata: Metadata = {
   },
   alternates: {
     languages: {
-      en: "https://thememorypalace.ai",
-      nl: "https://thememorypalace.ai?lang=nl",
-      de: "https://thememorypalace.ai?lang=de",
-      es: "https://thememorypalace.ai?lang=es",
-      fr: "https://thememorypalace.ai?lang=fr",
+      en: "https://www.thememorypalace.ai",
+      nl: "https://www.thememorypalace.ai?lang=nl",
+      de: "https://www.thememorypalace.ai?lang=de",
+      es: "https://www.thememorypalace.ai?lang=es",
+      fr: "https://www.thememorypalace.ai?lang=fr",
     },
   },
   appleWebApp: {
@@ -227,14 +227,14 @@ export default async function RootLayout({
             {
               "@type": "Organization",
               "name": "The Memory Palace",
-              "url": "https://thememorypalace.ai",
-              "logo": "https://thememorypalace.ai/brand/alt-social-512.png",
+              "url": "https://www.thememorypalace.ai",
+              "logo": "https://www.thememorypalace.ai/brand/alt-social-512.png",
               "sameAs": [],
             },
             {
               "@type": "WebApplication",
               "name": "The Memory Palace",
-              "url": "https://thememorypalace.ai",
+              "url": "https://www.thememorypalace.ai",
               "applicationCategory": "LifestyleApplication",
               "operatingSystem": "Web, Android, iOS",
               "description": "A 3D virtual memory palace where families preserve photos, videos, stories, and legacy for future generations.",

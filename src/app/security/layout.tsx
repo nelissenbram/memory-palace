@@ -6,11 +6,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Security - The Memory Palace",
     description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, AES-256 encryption at rest, TLS in transit, and GDPR compliance.",
-    url: "https://thememorypalace.ai/security",
+    url: "https://www.thememorypalace.ai/security",
     siteName: "The Memory Palace",
     images: [
       {
-        url: "https://thememorypalace.ai/palace-hero.jpg",
+        url: "https://www.thememorypalace.ai/palace-hero.jpg",
         width: 1200,
         height: 630,
         alt: "The Memory Palace — a 3D palace for your life story",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Security - The Memory Palace",
     description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, AES-256 encryption at rest, TLS in transit, and GDPR compliance.",
-    images: ["https://thememorypalace.ai/palace-hero.jpg"],
+    images: ["https://www.thememorypalace.ai/palace-hero.jpg"],
   },
 };
 

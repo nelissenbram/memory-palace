@@ -172,7 +172,7 @@ export default function ReferralSection({ overlineStyle }: {
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           <button
             onClick={() => {
-              const link = `https://thememorypalace.ai/register?ref=${referralCode}`;
+              const link = `https://www.thememorypalace.ai/register?ref=${referralCode}`;
               navigator.clipboard.writeText(link).then(() => {
                 showToast(t("referralCopied"), "success");
               });
@@ -202,7 +202,7 @@ export default function ReferralSection({ overlineStyle }: {
             <button
               className="mp-refer-primary"
               onClick={() => {
-                const link = `https://thememorypalace.ai/register?ref=${referralCode}`;
+                const link = `https://www.thememorypalace.ai/register?ref=${referralCode}`;
                 navigator.share({
                   title: "The Memory Palace",
                   text: t("referralDesc"),
@@ -254,7 +254,7 @@ export default function ReferralSection({ overlineStyle }: {
         {showInviteFlow && referralCode && (
           <InviteFlow
             referralCode={referralCode}
-            targetUrl="https://thememorypalace.ai/register"
+            targetUrl="https://www.thememorypalace.ai/register"
             onClose={() => setShowInviteFlow(false)}
           />
         )}

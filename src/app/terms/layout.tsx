@@ -6,11 +6,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Terms of Service - The Memory Palace",
     description: "Terms of Service for The Memory Palace. Understand your rights and responsibilities when using our memory preservation platform.",
-    url: "https://thememorypalace.ai/terms",
+    url: "https://www.thememorypalace.ai/terms",
     siteName: "The Memory Palace",
     images: [
       {
-        url: "https://thememorypalace.ai/palace-hero.jpg",
+        url: "https://www.thememorypalace.ai/palace-hero.jpg",
         width: 1200,
         height: 630,
         alt: "The Memory Palace — a 3D palace for your life story",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Terms of Service - The Memory Palace",
     description: "Terms of Service for The Memory Palace. Understand your rights and responsibilities when using our memory preservation platform.",
-    images: ["https://thememorypalace.ai/palace-hero.jpg"],
+    images: ["https://www.thememorypalace.ai/palace-hero.jpg"],
   },
 };
 

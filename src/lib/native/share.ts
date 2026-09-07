@@ -4,7 +4,7 @@ export async function shareAchievement(title: string, text: string): Promise<boo
   const shareData = {
     title,
     text,
-    url: "https://thememorypalace.ai",
+    url: "https://www.thememorypalace.ai",
   };
 
   // Try native share first (Capacitor)

@@ -24,13 +24,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     alternates: {
       canonical: profile.username
-        ? `https://thememorypalace.ai/u/${encodeURIComponent(profile.username)}`
-        : `https://thememorypalace.ai/visit/${userId}`,
+        ? `https://www.thememorypalace.ai/u/${encodeURIComponent(profile.username)}`
+        : `https://www.thememorypalace.ai/visit/${userId}`,
     },
     openGraph: {
       title: `${name}'s Memory Palace`,
       description,
-      url: `https://thememorypalace.ai/visit/${userId}`,
+      url: `https://www.thememorypalace.ai/visit/${userId}`,
       images: [{ url: `/api/og?title=${encodeURIComponent(name)}&type=palace&subtitle=${encodeURIComponent((profile.bio || "").slice(0, 120))}`, width: 1200, height: 630 }],
     },
     twitter: { card: "summary_large_image" },

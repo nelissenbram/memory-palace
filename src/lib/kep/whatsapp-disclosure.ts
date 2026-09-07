@@ -6,7 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://thememorypalace.ai";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://www.thememorypalace.ai";
 
 // ── Core send helpers ────────────────────────────────────────
 

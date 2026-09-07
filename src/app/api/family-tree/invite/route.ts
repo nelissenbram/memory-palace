@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   // Send the invite email via the email API (reuse existing infrastructure)
   try {
     const { sendInviteEmail } = await import("@/lib/email/send-invite");
-    const treeUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://thememorypalace.ai"}/family-tree/shared/${shareToken}`;
+    const treeUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://www.thememorypalace.ai"}/family-tree/shared/${shareToken}`;
 
     const result = await sendInviteEmail({
       inviterName,

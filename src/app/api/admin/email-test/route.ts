@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
     template: "reset",
     ...(await sendResetEmail({
       recipientEmail: to,
-      resetLink: "https://thememorypalace.ai/reset-password?token=preview",
+      resetLink: "https://www.thememorypalace.ai/reset-password?token=preview",
     })),
   });
 

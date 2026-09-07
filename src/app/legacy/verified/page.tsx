@@ -103,7 +103,7 @@ function VerifiedContent() {
           </p>
         )}
         <a
-          href="https://thememorypalace.ai"
+          href="https://www.thememorypalace.ai"
           style={{
             display: "inline-block",
             marginTop: "1rem",
