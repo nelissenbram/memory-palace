@@ -15,7 +15,7 @@
  */
 import puppeteer from "puppeteer";
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { REPO, ensureDir, GPU_ARGS, EDGE } from "./kit.mjs";
 
@@ -48,10 +48,17 @@ const SCREENS = [
   // wing-intro card. They will SKIP until that account has finished (or been
   // opted out of) the walkthrough — deliberately, rather than shipping the
   // intro card labelled as the Library.
-  { id: "atrium",        path: "/atrium",   usp: ["palace", "organise"],
+  // Entered via /library, which REWRITES to /atrium. Same page — but going in
+  // through /atrium directly trips the 3D wing-intro card on this account and
+  // never settles, while the rewrite lands straight on the atrium. Verified by
+  // running both: /atrium skipped every time, /library came through every time.
+  { id: "atrium",        path: "/library",  usp: ["palace", "organise"],
     expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
-  { id: "library-grid",  path: "/library",  usp: ["upload", "organise", "memory"],
-    expect: /Your Library|All Memories|Add memories|Upload/i },
+  // DROPPED: there is no /library route at all — no such directory under
+  // src/app. It was rewritten to /atrium, so this entry spent months quietly
+  // producing atrium screenshots filed as "the Library" and captioned "every
+  // photo in one place". Second dead path in this list after /legacy; both were
+  // invisible because a wrong-but-plausible screenshot looks like a working one.
   { id: "explore",       path: "/explore",  usp: ["discover", "share"],
     expect: /Explore Palaces/i },
   { id: "me",            path: "/me",       usp: ["progress", "family"],
@@ -178,6 +185,13 @@ const clearOverlays = async () => {
   return hits;
 };
 
+/**
+ * The App Review login's display name, and what to show instead. Kept here
+ * rather than inline so a future account rename is a one-line change.
+ */
+const DEMO_NAME_FROM = "Apple Review";
+const DEMO_NAME_TO = "Elena Marchetti";
+
 const manifest = [];
 for (const s of todo) {
   await page.goto(`${BASE}${s.path}`, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
@@ -283,12 +297,45 @@ for (const s of todo) {
     await sleep(1200);
   }
 
+  /**
+   * Swap the demo account's display name for a neutral one, in the DOM only.
+   *
+   * The atrium greets you with "Good afternoon, Apple Review" and the wing intro
+   * reads "Apple Review's Roots Wing" — the literal name of the App Review demo
+   * login, which is not something to publish in an advert. Renaming the account
+   * itself is the wrong fix: Apple signs into it, so its profile should stay as
+   * the review notes describe.
+   *
+   * This rewrites text nodes just before the shutter, so nothing is written to
+   * the account and the screenshot shows a plausible name instead. Store
+   * screenshots are staged data by convention; this only makes that explicit.
+   */
+  const renamed = await page.evaluate((from, to) => {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let n, hits = 0;
+    const re = new RegExp(from, "g");
+    while ((n = w.nextNode())) {
+      if (n.nodeValue && re.test(n.nodeValue)) { n.nodeValue = n.nodeValue.replace(re, to); hits++; }
+    }
+    // Placeholders and aria labels are rendered too (and get screenshotted).
+    for (const el of document.querySelectorAll("input,textarea,[aria-label],[alt]")) {
+      for (const a of ["placeholder", "value", "aria-label", "alt"]) {
+        const v = el.getAttribute?.(a);
+        if (v && v.includes(from)) { el.setAttribute(a, v.split(from).join(to)); hits++; }
+      }
+    }
+    return hits;
+  }, DEMO_NAME_FROM, DEMO_NAME_TO).catch(() => 0);
+  if (renamed) console.log(`      renamed demo account in ${renamed} place(s)`);
+
   const png = resolve(OUT, `${s.id}.png`);
   await page.screenshot({ path: png, type: "png" });
   manifest.push({ id: s.id, usp: s.usp, file: `${s.id}.png` });
   console.log(`   ${s.id}  [${s.usp.join(",")}]`);
 }
 await browser.close();
+
+const captured = manifest.length;
 
 // Imported screens: scale to fill 1080x1920 and crop with the configured bias.
 for (const im of IMPORTED) {
@@ -311,8 +358,29 @@ if (!only) {
     if (!keep.has(f)) { unlinkSync(resolve(OUT, f)); console.log(`   swept stale ${f}`); }
   }
 }
-writeFileSync(resolve(OUT, "screens.json"), JSON.stringify(manifest, null, 2));
-console.log(`\n${manifest.length}/${todo.length} captured -> ${OUT.replace(REPO, ".")}`);
+/**
+ * ⚠️ A FILTERED run must not clobber the manifest. Capturing one screen
+ * (`build-screen-library.mjs palace`) used to rewrite screens.json with that
+ * single entry, so the library still had 13 PNGs on disk but the manifest
+ * claimed one — and build-inlay, which reads the manifest, died trying to build
+ * a carousel from it. Partial runs merge; only a full run is authoritative.
+ */
+let merged = manifest;
+if (only) {
+  let prev = [];
+  try { prev = JSON.parse(readFileSync(resolve(OUT, "screens.json"), "utf8")); } catch { /* first run */ }
+  const fresh = new Set(manifest.map((m) => m.id));
+  merged = [...prev.filter((m) => !fresh.has(m.id)), ...manifest]
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+writeFileSync(resolve(OUT, "screens.json"), JSON.stringify(merged, null, 2));
+// Imported screens sit in the manifest but not in `todo`, so count them apart
+// rather than reporting "13/12 captured".
+const imported = manifest.length - captured;
+console.log(`
+${captured}/${todo.length} captured`
+  + (imported ? ` + ${imported} imported` : "")
+  + ` -> ${OUT.replace(REPO, ".")}`);
 
 /**
  * ⚠️ Fail LOUDLY on duplicates — PERCEPTUALLY, not byte-wise.

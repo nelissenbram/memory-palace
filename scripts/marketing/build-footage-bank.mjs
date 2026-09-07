@@ -41,7 +41,7 @@ const BEATS = [
   ...WINGS.map((w) => ({ group: "statue", id: `statue-${w}`, route: "/staging/corridor", q: `wing=${w}&cam=statue`, secs: 8 })),
   // ── room: the money shots
   { group: "room", id: "hearth-push", route: "/staging/room", q: "rmove=hearth", secs: 14 },
-  { group: "room", id: "room-walkin", route: "/staging/room", q: "rmove=walkin", secs: 15 },
+  { group: "room", id: "room-walkin", route: "/staging/room", q: "rmove=walkin", secs: 14 },  // ~5.6 m at ROOM_PACE 0.45 = ~10 s move; headroom to cut from
   { group: "room", id: "room-reveal", route: "/staging/room", q: "rmove=reveal", secs: 14 },
   { group: "room", id: "hearth-hold", route: "/staging/room", q: "rcam=hearth", secs: 8 },
   { group: "room", id: "velario", route: "/staging/room", q: "rmove=ceiling", secs: 13 },

@@ -3377,20 +3377,60 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
           // below the frame while the camera is still behind it. As it advances
           // the look drifts down, so by the time the sofa would enter shot the
           // camera is already past it and the mantel owns the frame.
-          // Starts as far back as the room allows (capped so it cannot end up
-          // outside the entry wall in a small tier), which gives the walk-in
-          // enough travel to run at MOVE_SPEED for the whole recorded take
-          // instead of arriving early and holding on a static frame.
-          walkin:[[0,2.45,Math.min(-L/2+15.5,L/2-2.5)],[0,rH-0.7,-L/2+2.0],[0,2.02,-L/2+3.4],[0,2.05,-L/2]],
+          // ⚠️ Travel is SHORT on purpose. At ROOM_PACE the camera covers about
+          // 0.56 m/s, so the old 12 m start needed 21 s — three times the beat
+          // that gets cut, meaning any usable window showed a third of the
+          // journey and never reached the mantel. 9.0 leaves ~5.6 m, which runs
+          // in roughly 10 s: slow enough to match the corridor, short enough to
+          // arrive. It still begins BEHIND the chesterfield (z=-L/2+5.6) and
+          // looking up, so the sofa stays under the frame until the camera is
+          // past it — the trick the original long version relied on.
+          // ⚠️ The LOOK swing, not the travel, is what made this beat feel fast.
+          // Halving the ground speed barely moved the measurement, because the
+          // camera's rotation rate depends on the move's duration and not on how
+          // far it goes. Starting the look at 2.75 instead of rH-0.7 (~4.8) cuts
+          // the vertical sweep from ~2.75 m to ~0.7 m: still a glance up at the
+          // velario on the way in, without whipping down to the mantel.
+          walkin:[[0,2.45,Math.min(-L/2+7.0,L/2-2.5)],[0,2.75,-L/2+2.0],[0,2.02,-L/2+3.4],[0,2.05,-L/2]],
           // entry → mid-room: reveals the velario ceiling and the far hearth
           reveal:[[0,1.75,L/2-1.2],[0,1.70,-L/2],[0,1.88,-L/2+9.5],[0,2.00,-L/2]],
         };
         const m=MOVES[_rmove]||MOVES.hearth;
-        // Same distance-derived timing as the corridor walk, off the same shared
-        // MOVE_SPEED, so cutting exterior -> corridor -> room does not change the
-        // apparent pace of the camera.
+        /**
+         * Distance-derived timing off the shared MOVE_SPEED — but scaled DOWN
+         * in here, and that scale is the whole point.
+         *
+         * Matching metres per second across scenes does not match apparent pace:
+         * a room's walls are a couple of metres from the lens where a corridor's
+         * vanishing point is tens of metres away, so the same ground speed
+         * sweeps far more of the frame indoors. Measuring motion per unit of
+         * scene detail across the cut beats gave exterior 0.265, corridor 0.238,
+         * room 0.354 — the room still visibly quicker, which is what the owner
+         * kept seeing after the first "sync" pass fixed only the m/s.
+         *
+         * ⚠️ Two earlier values were tuned against bad numbers. 0.70 was measured
+         * on a window that ran PAST the end of the move, so seconds of stillness
+         * averaged in and flattered it to 0.354. 0.45 was then measured across
+         * the accelerating middle of a shorter move, which reads the ease peak
+         * rather than the average. What the eye notices is that peak.
+         *
+         * The corridor covers twice the ground speed and still measures half the
+         * apparent motion, because a hall is deep and a room is not — its walls
+         * are metres from the lens. Matching therefore needs the room at roughly
+         * a quarter of the shared pace, not three quarters.
+         *
+         * (historical, for the record)
+         * The window measured then ran past the end of the move, so seconds of
+         * stillness averaged into it and flattered the result to 0.354. Measured
+         * strictly while moving, the room sat near 0.52 even at 0.70. 0.45 is
+         * what actually lands it beside the exterior and corridor.
+         *
+         * It is a calibration constant: check it by measuring, not by eye — see
+         * the note on the beat windows in scripts/marketing/build-clips.mjs.
+         */
+        const ROOM_PACE=0.25;
         const _d=Math.hypot(m[2][0]-m[0][0],m[2][2]-m[0][2])||6;
-        const t=Math.min(1,(performance.now()-rmoveT0)/(_d/MOVE_SPEED*1000)),e=easeInOutCubic(t);
+        const t=Math.min(1,(performance.now()-rmoveT0)/(_d/(MOVE_SPEED*ROOM_PACE)*1000)),e=easeInOutCubic(t);
         const lerp=(a:number[],b:number[])=>[a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e,a[2]+(b[2]-a[2])*e];
         const p=lerp(m[0],m[2]),lk=lerp(m[1],m[3]);
         camera.position.set(p[0],p[1],p[2]);camera.lookAt(lk[0],lk[1],lk[2]);

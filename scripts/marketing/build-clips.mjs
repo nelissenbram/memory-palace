@@ -69,10 +69,38 @@ const FILMIC_SOFT = [
 const ff = (a) => execSync(`ffmpeg -y -v error ${a}`, { stdio: "inherit" });
 const dur = (f) => Number(execSync(`ffprobe -v error -show_entries format=duration -of csv=p=0 "${f}"`).toString().trim());
 
-/** A still card held for `secs`, fading in and (optionally) out. */
-function card(png, out, secs, fadeOut = true) {
-  const vf = `fade=t=in:st=0:d=0.35${fadeOut ? `,fade=t=out:st=${(secs - 0.4).toFixed(2)}:d=0.4` : ""}`;
-  ff(`-loop 1 -framerate 30 -t ${secs} -i "${png}" -vf "${vf},format=yuv420p" ${ENC} "${out}"`);
+/**
+ * A still card held for `secs`, fading in and (optionally) out.
+ *
+ * With `sheen`, the card stops being a freeze-frame: a very slow push-in plus a
+ * single soft band of light that travels across it once, the way afternoon sun
+ * crosses a marble wall. Deliberately understated — the end card is the last
+ * thing on screen and should feel like a room settling, not like an animation.
+ *
+ * The band is a Gaussian in (x + 1.6y), so it lies on a shallow diagonal, and it
+ * is screen-blended at low opacity: that lifts the highlights and leaves the
+ * blacks alone, where a straight brightness bump would grey the whole card.
+ */
+function card(png, out, secs, fadeOut = true, sheen = false) {
+  const fade = `fade=t=in:st=0:d=0.35${fadeOut ? `,fade=t=out:st=${(secs - 0.4).toFixed(2)}:d=0.4` : ""}`;
+  if (!sheen) {
+    ff(`-loop 1 -framerate 30 -t ${secs} -i "${png}" -vf "${fade},format=yuv420p" ${ENC} "${out}"`);
+    return;
+  }
+  const W = 1080, H = 1920, F = Math.round(secs * 30);
+  const SPAN = W + 1.6 * H;                       // diagonal extent the band crosses
+  // Travels from just off one corner to just past the other across the hold.
+  const pos = `${SPAN.toFixed(0)}*(-0.20+1.40*T/${secs})`;
+  ff(
+    `-loop 1 -framerate 30 -t ${secs} -i "${png}" ` +
+    `-f lavfi -t ${secs} -i "color=c=black:s=${W}x${H}:r=30" ` +
+    `-filter_complex "` +
+    // 1.05 over the whole hold — a push you feel rather than see.
+    `[0:v]scale=${W}:${H},zoompan=z='1+0.05*on/${F}':d=${F}:s=${W}x${H}:fps=30,format=gbrp[base];` +
+    `[1:v]format=gray,geq=lum='255*exp(-pow((X+1.6*Y-(${pos}))/330,2))',format=gbrp[band];` +
+    `[base][band]blend=all_mode=screen:all_opacity=0.11,${fade},format=yuv420p[v]" ` +
+    `-map "[v]" -t ${secs} ${ENC} "${out}"`,
+  );
 }
 
 /**
@@ -162,7 +190,14 @@ const CLIPS = [
     // (motion per unit of scene detail, so a dark corridor is not scored as
     // "slow" merely for being dark) gave, on the windows that were in use:
     //   exterior 0.265 · corridor 0.118 · room 0.646  — a 5.5x spread.
-    // Re-cut to these windows it is 0.265 / 0.238 / 0.354, inside 1.5x.
+    //
+    // ⚠️ Re-cutting alone was NOT enough. The 0.354 an earlier pass settled for
+    // was measured across a window running PAST the end of the move, so seconds
+    // of stillness averaged in and flattered it. Measured strictly while moving,
+    // the room was ~0.50 — and halving its ground speed barely moved that,
+    // because the dominant term is the camera's ROTATION, whose rate depends on
+    // the move's DURATION and not on how far it travels. Gentling the look swing
+    // is what closed the gap. Now 0.265 / 0.238 / 0.275.
     beats: [
       { kind: "card", png: C("bat-WONDER-01a-hook"), secs: 3 },
       // from:2 — the orbit is under way by then, so the clip opens on movement
@@ -173,14 +208,16 @@ const CLIPS = [
       // ONE room move, not two. velario + hearth-push read as separate shots of
       // the same room; walkin enters wide (ceiling in frame), advances, and
       // settles on the mantel in a single take. Soft grade — the room went murky
-      // under the full pass. from:4.5 catches the second half of the move and its
-      // settle; opening at 1.5 caught the accelerating middle, which was the
-      // single biggest tempo break in the clip.
-      { kind: "beat", f: "room-walkin", secs: 7.5, from: 4.5, grade: "soft", xf: 0.5 },
+      // under the full pass. Back to from:1.5 — skipping ahead had been a
+      // workaround for a beat that moved too fast, and the pace is now fixed in
+      // the SCENE, so the window can open at the start and keep the wide entry.
+      { kind: "beat", f: "room-walkin", secs: 7.5, from: 1.5, grade: "soft", xf: 0.5 },
       // The inlay is UI: dissolving into it slowly would smear the screenshots,
       // so this join is short and clean.
       { kind: "beat", f: "inlay-upload", secs: 6.6, from: 0.0, raw: true, xf: 0.3 },
-      { kind: "card", png: ENDCARD, secs: 3, xf: 0.45 },
+      // sheen: the end card holds for three seconds and was a dead freeze —
+      // a slow light sweep across it lets the clip settle instead of stopping.
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
   },
 ];
@@ -208,7 +245,7 @@ for (const c of todo) {
       if (!existsSync(b.png)) throw new Error(`missing card: ${b.png}`);
       // No fade-to-black on a card a crossfade follows: the join would dip to
       // black and THEN dissolve, which reads as a stutter rather than a cut.
-      card(b.png, out, b.secs, i === c.beats.length - 1);
+      card(b.png, out, b.secs, i === c.beats.length - 1, !!b.sheen);
     } else {
       const src = F(b.f);
       if (!existsSync(src)) throw new Error(`missing footage: ${src} — run build-footage-bank.mjs`);
