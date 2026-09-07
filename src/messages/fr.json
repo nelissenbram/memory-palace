@@ -5517,6 +5517,7 @@
     "roomGuestbook": "Livre d'or de {name}",
     "roomGuestbookHint": "Laissez un mot sur cette pièce",
     "guestbookSend": "Envoyer",
+    "sending": "Envoi…",
     "guestbookPlaceholder": "Écrire un message...",
     "guestbookEmpty": "Pas encore de messages. Soyez le premier !",
     "guestbookSent": "Message envoyé !",

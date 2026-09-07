@@ -5517,6 +5517,7 @@
     "roomGuestbook": "Libro de visitas de {name}",
     "roomGuestbookHint": "Deja una nota sobre esta habitación",
     "guestbookSend": "Enviar",
+    "sending": "Enviando…",
     "guestbookPlaceholder": "Escribe un mensaje...",
     "guestbookEmpty": "Aún no hay mensajes. ¡Sé el primero!",
     "guestbookSent": "¡Mensaje enviado!",

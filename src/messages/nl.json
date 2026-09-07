@@ -5519,6 +5519,7 @@
     "roomGuestbook": "{name} Gastenboek",
     "roomGuestbookHint": "Laat een bericht achter over deze kamer",
     "guestbookSend": "Versturen",
+    "sending": "Versturen…",
     "guestbookPlaceholder": "Schrijf een bericht...",
     "guestbookEmpty": "Nog geen berichten. Wees de eerste!",
     "guestbookSent": "Bericht verzonden!",

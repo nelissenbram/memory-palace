@@ -5517,6 +5517,7 @@
     "roomGuestbook": "{name} Gästebuch",
     "roomGuestbookHint": "Hinterlasse eine Nachricht über dieses Zimmer",
     "guestbookSend": "Senden",
+    "sending": "Wird gesendet…",
     "guestbookPlaceholder": "Schreibe eine Nachricht...",
     "guestbookEmpty": "Noch keine Nachrichten. Sei der Erste!",
     "guestbookSent": "Nachricht gesendet!",

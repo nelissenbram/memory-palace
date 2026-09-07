@@ -445,7 +445,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
           gap: "0.375rem",
           minWidth: "2.75rem",
           minHeight: "2.75rem",
-          padding: isMobile ? "0.625rem" : "0.625rem 1rem",
+          padding: isMobile ? "0.625rem" : "0.75rem 1rem",
           borderRadius: isMobile ? "50%" : "2rem",
           background: `${T.color.linen}ee`,
           backdropFilter: "blur(0.5rem)",
@@ -1022,7 +1022,8 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
             onClick={handleSend}
             disabled={!body.trim() || sending}
             style={{
-              padding: "0.625rem 1rem",
+              padding: "0.75rem 1rem",
+              minHeight: "2.75rem",
               borderRadius: "0.625rem",
               border: "none",
               background: body.trim() && !sending
@@ -1037,7 +1038,7 @@ function GuestbookPanel({ target, ownerName, onClose, isMobile }: {
               flexShrink: 0,
             }}
           >
-            {sending ? "..." : t("guestbookSend")}
+            {sending ? t("sending") : t("guestbookSend")}
           </button>
         </div>
 
