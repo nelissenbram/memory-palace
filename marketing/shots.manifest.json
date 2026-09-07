@@ -648,6 +648,159 @@
       ],
       "out": "store-assets/play/3-room.png",
       "note": "1080x1920 (9:16). The previous Play set dated entirely from 2026-07-16."
+    },
+    {
+      "id": "play-feature-bg",
+      "phase": 2,
+      "surface": "Google Play feature graphic (background plate)",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/exterior",
+      "params": {
+        "ecam": "hero"
+      },
+      "viewport": [
+        1280,
+        625
+      ],
+      "dsf": 2,
+      "scenes": [
+        "exterior"
+      ],
+      "out": "store-assets/play/_feature-bg.png",
+      "note": "The old feature graphic used Screenshot_20260614_193746_Edge.jpg — a browser screenshot of the LANDING PAGE — as its background, so the page's own headline showed through under the overlaid tagline as a second layer of text. No ?chrome here: app UI has no place behind a marketing banner."
+    },
+    {
+      "id": "play7-exterior",
+      "phase": 2,
+      "surface": "Google Play 1200x1920 (7\" tablet)",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/exterior",
+      "params": {
+        "chrome": "1",
+        "ecam": "hero"
+      },
+      "viewport": [
+        600,
+        960
+      ],
+      "dsf": 2,
+      "scenes": [
+        "exterior"
+      ],
+      "out": "store-assets/play-7inch/1-exterior.png",
+      "note": "1200x1920 (7\" tablet). Previous tablet set dated from 2026-07-16."
+    },
+    {
+      "id": "play7-corridor",
+      "phase": 2,
+      "surface": "Google Play 1200x1920 (7\" tablet)",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/corridor",
+      "params": {
+        "chrome": "1",
+        "wing": "roots"
+      },
+      "viewport": [
+        600,
+        960
+      ],
+      "dsf": 2,
+      "scenes": [
+        "corridor"
+      ],
+      "out": "store-assets/play-7inch/2-corridor.png",
+      "note": "1200x1920 (7\" tablet). Previous tablet set dated from 2026-07-16."
+    },
+    {
+      "id": "play7-room",
+      "phase": 2,
+      "surface": "Google Play 1200x1920 (7\" tablet)",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/room",
+      "params": {
+        "chrome": "1",
+        "rcam": "hearth"
+      },
+      "viewport": [
+        600,
+        960
+      ],
+      "dsf": 2,
+      "scenes": [
+        "room"
+      ],
+      "out": "store-assets/play-7inch/3-room.png",
+      "note": "1200x1920 (7\" tablet). Previous tablet set dated from 2026-07-16."
+    },
+    {
+      "id": "play10-exterior",
+      "phase": 2,
+      "surface": "Google Play 1600x2560 (10\" tablet)",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/exterior",
+      "params": {
+        "chrome": "1",
+        "ecam": "hero"
+      },
+      "viewport": [
+        800,
+        1280
+      ],
+      "dsf": 2,
+      "scenes": [
+        "exterior"
+      ],
+      "out": "store-assets/play-10inch/1-exterior.png",
+      "note": "1600x2560 (10\" tablet). Previous tablet set dated from 2026-07-16."
+    },
+    {
+      "id": "play10-corridor",
+      "phase": 2,
+      "surface": "Google Play 1600x2560 (10\" tablet)",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/corridor",
+      "params": {
+        "chrome": "1",
+        "wing": "roots"
+      },
+      "viewport": [
+        800,
+        1280
+      ],
+      "dsf": 2,
+      "scenes": [
+        "corridor"
+      ],
+      "out": "store-assets/play-10inch/2-corridor.png",
+      "note": "1600x2560 (10\" tablet). Previous tablet set dated from 2026-07-16."
+    },
+    {
+      "id": "play10-room",
+      "phase": 2,
+      "surface": "Google Play 1600x2560 (10\" tablet)",
+      "prominence": "medium",
+      "kind": "still",
+      "route": "/staging/room",
+      "params": {
+        "chrome": "1",
+        "rcam": "hearth"
+      },
+      "viewport": [
+        800,
+        1280
+      ],
+      "dsf": 2,
+      "scenes": [
+        "room"
+      ],
+      "out": "store-assets/play-10inch/3-room.png",
+      "note": "1600x2560 (10\" tablet). Previous tablet set dated from 2026-07-16."
     }
   ],
   "notes": {
