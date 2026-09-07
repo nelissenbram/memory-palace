@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/privacy" },
   title: "Privacy Policy - The Memory Palace",
   description: "Learn how The Memory Palace protects your personal data and memories. GDPR-compliant privacy practices with full transparency.",
   openGraph: {

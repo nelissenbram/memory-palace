@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/security" },
   title: "Security - The Memory Palace",
   description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, AES-256 encryption at rest, TLS in transit, and GDPR compliance.",
   openGraph: {

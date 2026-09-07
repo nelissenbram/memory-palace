@@ -36,6 +36,7 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.thememorypalace.ai"),
   verification: {
     google: "SRGU5yT_g8__HK3W0meqAi-4eX3XPN7NpehWPLlk9f8",
   },
