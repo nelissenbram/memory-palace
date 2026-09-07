@@ -41,17 +41,22 @@ const BEATS = [
   ...WINGS.map((w) => ({ group: "statue", id: `statue-${w}`, route: "/staging/corridor", q: `wing=${w}&cam=statue`, secs: 8 })),
   // ── room: the money shots
   { group: "room", id: "hearth-push", route: "/staging/room", q: "rmove=hearth", secs: 14 },
+  { group: "room", id: "room-walkin", route: "/staging/room", q: "rmove=walkin", secs: 15 },
   { group: "room", id: "room-reveal", route: "/staging/room", q: "rmove=reveal", secs: 14 },
   { group: "room", id: "hearth-hold", route: "/staging/room", q: "rcam=hearth", secs: 8 },
-  { group: "room", id: "velario", route: "/staging/room", q: "rcam=velario", secs: 8 },
+  { group: "room", id: "velario", route: "/staging/room", q: "rmove=ceiling", secs: 13 },
   // ── exterior: NATIVE portrait, replacing the cropped-and-upscaled landscape beat
-  { group: "exterior", id: "exterior-hero", route: "/staging/exterior", q: "ecam=hero", secs: 12 },
+  { group: "exterior", id: "exterior-hero", route: "/staging/exterior", q: "ecam=orbit", secs: 14 },
   { group: "exterior", id: "exterior-wide", route: "/staging/exterior", q: "", secs: 12 },
 ];
 
-const todo = BEATS.filter((b) => !only || b.group === only);
+// Match a GROUP or a single BEAT ID. Re-rendering a whole group to refresh one
+// beat costs ~10 takes of 14 s each, which is why a scene tweak used to mean
+// either a long wait or a stale bank.
+const todo = BEATS.filter((b) => !only || b.group === only || b.id === only);
 if (!todo.length) {
   console.error(`No beats for "${only}". Groups: corridor, statue, room, exterior`);
+  console.error(`Or pass a beat id, e.g. room-walkin.`);
   process.exit(1);
 }
 

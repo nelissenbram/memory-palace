@@ -12,7 +12,7 @@ import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, GOLDEN, PLASTER_RAMP, CLEAR_COLOR, GOLD, EMBER, INK, TRAVERTINE_GROUT } from "@/lib/3d/canon";
 import { flag3d } from "@/lib/3d/flags3d";
 import { mountAmbientMusic } from "@/lib/3d/ambientAudio";
-import { MAX_YAW_DEG_S } from "@/lib/3d/cameraComfort";
+import { MAX_YAW_DEG_S, ORBIT_SPEED } from "@/lib/3d/cameraComfort";
 import { prefersReducedMotion } from "@/lib/3d/reducedMotion";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadSandstoneTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
@@ -73,7 +73,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
   // lookAt below). phi slightly larger = camera lower/more level, so less
   // ground fills the frame; pulled back a little so the dome sits clear.
   const _ecam=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("ecam"):null;
-  const _PHI=_ecam==="hero"?Math.PI*0.4620:Math.PI*0.4387, _DIST=_ecam==="hero"?248:220;
+  const _heroFrame=_ecam==="hero"||_ecam==="orbit";
+  const _PHI=_heroFrame?Math.PI*0.4620:Math.PI*0.4387, _DIST=_heroFrame?248:220;
   const camO=useRef({theta:Math.PI*1.4987,phi:_PHI}),camOT=useRef({theta:Math.PI*1.4987,phi:_PHI}),camD=useRef(_DIST);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
@@ -6229,6 +6230,26 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       }
       camO.current.theta+=_dTh;
       camO.current.phi+=_dPh;
+      // ?ecam=orbit — slow continuous drift for social footage. A held still of
+      // the exterior reads as a photograph in a video; a drifting camera reads as
+      // a place. Deliberately slow (~1.6°/s) so a 12 s beat travels a gentle arc
+      // rather than swinging past the facade.
+      if(_ecam==="orbit"){
+        // Two axes, not one. theta alone swings the palace past the lens like a
+        // turntable; adding a phi move makes the camera climb as it circles,
+        // which reads as a drone shot.
+        //
+        // ⚠️ phi DECREASES to climb: y = r*cos(phi), so a larger phi lowers the
+        // camera. Two earlier passes incremented it and wondered why nothing rose
+        // — and a clamp at 1.52, barely above the 1.451 start, capped the whole
+        // move at about 4 degrees either way. Now it descends from 1.451 toward
+        // 1.09 over a 14 s take: roughly 21 degrees of genuine lift.
+        // theta is slowed to match the corridor and room walking pace (~1.4 m/s
+        // at this radius) so cuts between the three do not change tempo.
+        camO.current.theta+=ORBIT_SPEED*dt;
+        camO.current.phi=Math.max(1.06,camO.current.phi-0.026*dt);
+        camOT.current.theta=camO.current.theta;camOT.current.phi=camO.current.phi;
+      }
       const r=camD.current;
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
       // W2 grandeur (owner review #1): look target rises with the now much higher
@@ -6240,7 +6261,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // puts a slab of near foreground across the bottom of a 9:16 crop, which
       // read as a flat brown patch. Tilting the look target up lifts the palace
       // and pushes that near ground out of frame; the dome still crowns the shot.
-      camera.lookAt(0,obLookY!==null?obLookY:HILL_Y+(W2?13:8)+(_ecam==="hero"?11:0),0);
+      camera.lookAt(0,obLookY!==null?obLookY:HILL_Y+(W2?13:8)+(_heroFrame?11:0),0);
 
       // ── Camera debug overlay (activated via ?cam=debug) ──
       if(camDebugRef.current){

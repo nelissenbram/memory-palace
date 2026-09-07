@@ -17,20 +17,57 @@ const DEMO_PHOTOS = [
   "/demo/edge-of-water.jpg",
   "/demo/pexels-alexander-mass-748453803-28107011.jpg",
 ];
-const dm = (i: number, extra: Partial<Mem>): Mem => ({
-  id: `demo-${extra.type || "photo"}-${i}`,
-  title: `Memory ${i + 1}`,
-  hue: 24 + (i * 29) % 60, s: 42, l: 58,
-  type: "photo",
-  dataUrl: DEMO_PHOTOS[i % DEMO_PHOTOS.length],
-  displayed: true,
-  createdAt: `2026-${String(1 + (i % 9)).padStart(2, "0")}-${String(1 + (i % 27)).padStart(2, "0")}`,
-  ...extra,
-} as Mem);
+// ⚠️ Titles are keyed to THEIR PHOTO, not to a running index. A first pass drew
+// from a flat title list while images cycled separately, so "Last Harvest" landed
+// on a beach at sunset — plausible words, wrong picture. Each photo now carries
+// its own variants, and the plaque under the mantel is legible in every clip, so
+// the wording is written to carry feeling rather than to label a file.
+const PHOTO_STORIES: { src: string; takes: [string, string][] }[] = [
+  { src: "/demo/graduation.jpg", takes: [            // caps thrown against the sky
+    ["The Day She Made It", "1998"],
+    ["First in the Family", "1998"],
+    ["We Threw Our Hats", "2001"],
+  ] },
+  { src: "/demo/quiet-morning.jpg", takes: [         // coffee and flowers on a table
+    ["Her Kitchen Table", "1987"],
+    ["The Cup She Always Used", "1991"],
+    ["Sunday, Before Anyone Woke", "1987"],
+  ] },
+  { src: "/demo/between-two-hands.jpg", takes: [     // sepia, a man and his horse
+    ["Grandpa and the Mare", "1961"],
+    ["Before the Farm Was Sold", "1958"],
+    ["He Named Her Bella", "1961"],
+  ] },
+  { src: "/demo/edge-of-water.jpg", takes: [         // a figure at the water at dusk
+    ["The Summer We Almost Stayed", "1994"],
+    ["Watching the Tide Come In", "1994"],
+    ["Her Last Evening by the Sea", "1996"],
+  ] },
+  { src: "/demo/pexels-alexander-mass-748453803-28107011.jpg", takes: [ // two walking a field
+    ["Walking Home Together", "1972"],
+    ["Fifty Years Next June", "1972"],
+    ["They Still Held Hands", "1975"],
+  ] },
+];
+
+const dm = (i: number, extra: Partial<Mem>): Mem => {
+  const ph = PHOTO_STORIES[i % PHOTO_STORIES.length];
+  const [title, year] = ph.takes[Math.floor(i / PHOTO_STORIES.length) % ph.takes.length];
+  return {
+    id: `demo-${extra.type || "photo"}-${i}`,
+    title,
+    hue: 24 + (i * 29) % 60, s: 42, l: 58,
+    type: "photo",
+    dataUrl: ph.src,
+    displayed: true,
+    createdAt: `${year}-${String(1 + (i % 9)).padStart(2, "0")}-${String(1 + (i % 27)).padStart(2, "0")}`,
+    ...extra,
+  } as Mem;
+};
 
 const SAMPLE_MEMORIES: Mem[] = [
   ...Array.from({ length: 14 }, (_, i) => dm(i, {})),
-  ...Array.from({ length: 4 }, (_, i) => dm(100 + i, { type: "photo", displayUnit: "vitrine", title: `Keepsake ${i + 1}` })),
+  ...Array.from({ length: 4 }, (_, i) => dm(i + 3, { displayUnit: "vitrine" })),
 ];
 
 export default function StagingRoomClient() {

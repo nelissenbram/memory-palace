@@ -1318,7 +1318,12 @@ function PasscodeSection({ scale, wings, wingsLoading }: {
         fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: MUTED,
         margin: "0 0 1.25rem", lineHeight: 1.4,
       }}>
-        {t("passcodeDesc") || "Create temporary visiting codes so others can access your palace without publishing."}
+        {/* ⚠️ Was t("passcodeDesc"), a key present in NO locale file, so this
+            rendered the literal string "passcodeDesc" to users in all five
+            languages. The `|| "…"` fallback never fired: t() returns the KEY on
+            a miss, which is truthy. passcodeSubtitle already carries this exact
+            sentence, translated — reuse beats adding a sixth near-copy. */}
+        {t("passcodeSubtitle")}
       </p>
 
       {loading || wingsLoading ? (

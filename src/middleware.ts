@@ -46,7 +46,10 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/go/") ||
     // Dev-only staging viewers (e.g. /staging/room) — prod-disabled at the page
     // level via notFound(), so exempting them from auth here is dev-only too.
-    (process.env.NODE_ENV !== "production" && path.startsWith("/staging/")) ||
+    // /api/staging/ is the same deal: it backs those viewers (the screen-library
+    // contact sheet reads PNGs from outside public/) and 404s in production.
+    (process.env.NODE_ENV !== "production"
+      && (path.startsWith("/staging/") || path.startsWith("/api/staging/"))) ||
     path.startsWith("/.well-known/") ||
     path.startsWith("/video/") ||
     path.startsWith("/api/cron/") ||

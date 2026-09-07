@@ -14,6 +14,26 @@ export const EYE_HEIGHT = 2.0;
 export const MAX_WALK_SPEED = 2.2;
 
 /**
+ * Pace for SCRIPTED camera moves — the ?walk / ?rmove / ?ecam=orbit takes the
+ * marketing clips are cut from. Deliberately below MAX_WALK_SPEED: nobody
+ * strides through a room they are showing you.
+ *
+ * It exists because each scene used to hard-code a 13 s move duration, which
+ * makes speed a function of DISTANCE — a long corridor sprinted, a short room
+ * crawled — so a clip cutting exterior -> corridor -> room changed tempo at
+ * every cut. Scenes now derive duration = distance / MOVE_SPEED.
+ */
+export const MOVE_SPEED = 1.25;
+
+/**
+ * Angular rate for the exterior orbit, rad/s. Not derived from MOVE_SPEED: at
+ * the 248 m hero radius, matching linear speed would be a crawl, because
+ * apparent motion is a screen-space quantity and the palace is far away. This
+ * is tuned by eye against the corridor walk instead.
+ */
+export const ORBIT_SPEED = 0.0095;
+
+/**
  * Sprint speed in m/s (Shift held). Owner decision 2026-08-06: the speed
  * function returns — the plan's sprint-deletion is overruled; sprint is an
  * explicit, visible modifier (no hidden zones), still well under the legacy

@@ -13,7 +13,7 @@ import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, GOLDEN, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD, EMBER } from "@/lib/3d/canon";
 import { makeArtwork } from "@/lib/3d/makeArtwork";
-import { MAX_WALK_SPEED, MAX_YAW_DEG_S, SPRINT_SPEED, easeInOutCubic, EYE_HEIGHT } from "@/lib/3d/cameraComfort";
+import { MAX_WALK_SPEED, MAX_YAW_DEG_S, SPRINT_SPEED, MOVE_SPEED, easeInOutCubic, EYE_HEIGHT } from "@/lib/3d/cameraComfort";
 import { createFocusMode, computeFocusPose, type FocusTarget, type FocusMode } from "@/lib/3d/focusMode";
 import { computeSalonHang, mountSalonHang, makeSalonEmptyEasel, type SalonMemoryRef, type SalonHangMount } from "@/lib/3d/salonHang";
 import { makeVideoArtwork, type VideoArtwork } from "@/lib/3d/videoArtwork";
@@ -3352,16 +3352,45 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
         // recorder sets window.__walkReset once the reveal-veil lifts, so the
         // move starts on-camera rather than behind the veil.
         if(!rmoveT0||(typeof window!=="undefined"&&(window as unknown as {__walkReset?:boolean}).__walkReset)){rmoveT0=performance.now();if(typeof window!=="undefined")(window as unknown as {__walkReset?:boolean}).__walkReset=false;}
-        const t=Math.min(1,(performance.now()-rmoveT0)/13000),e=easeInOutCubic(t);
         const L=rWRef.l;
         // [fromPos, fromLook, toPos, toLook]
         const MOVES:Record<string,[number[],number[],number[],number[]]>={
           // slow push-in onto the chimneypiece — the hero shot of the product
-          hearth:[[0,1.95,-L/2+11.5],[0,2.05,-L/2],[0,1.95,-L/2+5.4],[0,2.05,-L/2]],
+          // Starts HIGH and settles: at eye height the sofa back cuts a dark slab
+          // across the bottom of a 9:16 crop for the first seconds. Beginning at
+          // 2.55 clears it and the descent to 2.05 gives the move a second axis,
+          // so it reads as a camera rather than a slide.
+          // ⚠️ Starts IN FRONT of the chesterfield. sofaZ = -rL/2+5.6 (see the seating
+          // block), and three earlier attempts began at 11.5, 8.2 and 6.8 — all
+          // behind it, so the sofa back sat as a dark slab across the bottom of a
+          // 9:16 crop. Anything under 5.6 is clear of it.
+          hearth:[[0,2.10,-L/2+5.0],[0,2.06,-L/2],[0,2.00,-L/2+3.2],[0,2.05,-L/2]],
+          // ceiling: a tilt UP from the mantel to the glazed velario. Replaces the
+          // static ?rcam=velario pose, which framed from the entry end and so put
+          // the chesterfield across the bottom of the frame — a held still with a
+          // dark slab under it. Standing in front of the sofa and tilting also
+          // gives the reveal a direction.
+          ceiling:[[0,2.00,-L/2+4.6],[0,2.05,-L/2],[0,1.90,-L/2+5.2],[0,rH-0.9,-L/2+1.5]],
+          // walkin: ONE continuous move that replaces the old velario+hearth pair.
+          // Starts far back and looking UP — that reads as stepping into the room,
+          // shows the glazed ceiling, and keeps the chesterfield (z=-rL/2+5.6)
+          // below the frame while the camera is still behind it. As it advances
+          // the look drifts down, so by the time the sofa would enter shot the
+          // camera is already past it and the mantel owns the frame.
+          // Starts as far back as the room allows (capped so it cannot end up
+          // outside the entry wall in a small tier), which gives the walk-in
+          // enough travel to run at MOVE_SPEED for the whole recorded take
+          // instead of arriving early and holding on a static frame.
+          walkin:[[0,2.45,Math.min(-L/2+15.5,L/2-2.5)],[0,rH-0.7,-L/2+2.0],[0,2.02,-L/2+3.4],[0,2.05,-L/2]],
           // entry → mid-room: reveals the velario ceiling and the far hearth
           reveal:[[0,1.75,L/2-1.2],[0,1.70,-L/2],[0,1.88,-L/2+9.5],[0,2.00,-L/2]],
         };
         const m=MOVES[_rmove]||MOVES.hearth;
+        // Same distance-derived timing as the corridor walk, off the same shared
+        // MOVE_SPEED, so cutting exterior -> corridor -> room does not change the
+        // apparent pace of the camera.
+        const _d=Math.hypot(m[2][0]-m[0][0],m[2][2]-m[0][2])||6;
+        const t=Math.min(1,(performance.now()-rmoveT0)/(_d/MOVE_SPEED*1000)),e=easeInOutCubic(t);
         const lerp=(a:number[],b:number[])=>[a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e,a[2]+(b[2]-a[2])*e];
         const p=lerp(m[0],m[2]),lk=lerp(m[1],m[3]);
         camera.position.set(p[0],p[1],p[2]);camera.lookAt(lk[0],lk[1],lk[2]);

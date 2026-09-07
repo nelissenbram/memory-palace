@@ -10,7 +10,7 @@ import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { EXPOSURE, PLASTER, PLASTER_RAMP, TRAVERTINE_GROUT, INK, GOLD, EMBER } from "@/lib/3d/canon";
 import { flag3d } from "@/lib/3d/flags3d";
-import { EYE_HEIGHT, MAX_WALK_SPEED, SPRINT_SPEED, MAX_YAW_DEG_S, easeInOutCubic } from "@/lib/3d/cameraComfort";
+import { EYE_HEIGHT, MAX_WALK_SPEED, SPRINT_SPEED, MAX_YAW_DEG_S, MOVE_SPEED, easeInOutCubic } from "@/lib/3d/cameraComfort";
 import { computeSalonHang, mountSalonHang, type SalonHangMount, type SalonMemoryRef } from "@/lib/3d/salonHang";
 import { createFocusMode, type FocusMode, type FocusTarget } from "@/lib/3d/focusMode";
 import { makeFrauncesLabel } from "@/lib/3d/frauncesLabel";
@@ -294,7 +294,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         floorPat:"marble_strip",ceilStyle:"vaulted_beams",wallStyle:"map_alcoves"},
       nest:{cW:10,cH:7,sp:9, rugC:"#B0856A",rugB:"#E8C868",accent:"#B8926A",
         floorPat:"checkerboard",ceilStyle:"painted",wallStyle:"playful"},
-      craft:{cW:8,cH:9,sp:8, rugC:"#1A1A28",rugB:"#808080",accent:"#8B7355",
+      // rugC was #1A1A28 — near black. The fabric weave is a diffuse map, and a
+      // map multiplied by a near-black base returns near black, so the craft
+      // runner rendered as a flat void where every other wing shows its weave.
+      // #3B3A48 keeps the cool, sober slate the wing wants, with enough value
+      // left for the texture to read. (Muted, not bright — house canon.)
+      craft:{cW:8,cH:9,sp:8, rugC:"#3B3A48",rugB:"#808080",accent:"#8B7355",
         floorPat:"dark_parquet",ceilStyle:"grid",wallStyle:"modern"},
       passions:{cW:9.5,cH:7.8,sp:8.5, rugC:"#3A1848",rugB:"#D0A040",accent:"#9B6B8E",
         floorPat:"mosaic",ceilStyle:"exposed_beams",wallStyle:"gallery"},
@@ -337,9 +342,26 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const marbleTex=loadMarbleTextures([4,4]);
     const woodTex=loadDarkWoodTextures([3,4]);
     const wallStoneTex=loadPlasterWallTextures([3,3]);
+    /**
+     * ⚠️ Repeats are derived from METRES, not fixed counts.
+     *
+     * These were [3,3] and [2,2] — the same numbers the room uses, where they
+     * work because a room is roughly square. The corridor is not: it is cW x cL,
+     * about 8 x 46 m for a four-room wing. A flat [3,3] stretched every parquet
+     * tile to 2.7 x 15.3 m and the runner's weave to one repeat per 20 m, so the
+     * floor rendered as blank cream and the runner as a flat dark void — it read
+     * as a hole in the floor rather than as carpet.
+     *
+     * Dividing by a target size keeps texel density constant however long the
+     * wing gets, so a wing with eight rooms does not smear twice as badly.
+     * loadPBRSet's cache key includes the repeat, so per-surface values are safe.
+     */
+    const rep=(w:number,l:number,size:number):[number,number]=>
+      [Math.max(1,Math.round(w/size)),Math.max(1,Math.round(l/size))];
+    const floorRep=rep(cW,cL,2.2);            // parquet tile ~2.2 m
     // Use herringbone for herringbone/parquet wings, floor tiles for others
-    const floorTileTex=(C.floorPat==="herringbone"||C.floorPat==="dark_parquet")?loadHerringboneTextures([3,3]):loadFloorTileTextures([3,3]);
-    const rugFabricTex=loadFabricTextures([2,2]);
+    const floorTileTex=(C.floorPat==="herringbone"||C.floorPat==="dark_parquet")?loadHerringboneTextures(floorRep):loadFloorTileTextures(floorRep);
+    const rugFabricTex=loadFabricTextures(rep(2,cL-5,0.9)); // woven runner ~0.9 m
     const velvetTex=loadVelvetTextures([2,2]);
     const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallStoneTex,floorTileTex,rugFabricTex,velvetTex];
     // Reveal gate: the eager PBR sets visibly RETEXTURE the biggest surfaces
@@ -402,7 +424,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       wallD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.shade:wing.floor,roughness:.8,...(W3C?{map:wallStoneTex.map,roughnessMap:wallStoneTex.roughnessMap}:{}),normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
       floor:new THREE.MeshStandardMaterial({color:W1?TRAVERTINE_GROUT:wing.floor,roughness:.7,metalness:.02,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.7,envMapIntensity:.15}),
       floorL:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#D0C0A0",roughness:.5,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
-      floorD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#8A7858",roughness:.5,metalness:.08,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
+      // ⚠️ floorD carries the FULL map set, not just a normal. It is used as a
+      // full-corridor slab by the dark_parquet wing, and with only a normalMap
+      // that slab rendered as flat colour — covering the properly mapped floor
+      // underneath it. The craft corridor therefore had a completely textureless
+      // floor while roots, on the same texture, showed clean parquet.
+      floorD:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.dark:"#8A7858",roughness:.5,metalness:.08,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.6}),
       ceil:new THREE.MeshStandardMaterial({color:W1?PLASTER_RAMP.light:"#F0EAE0",roughness:.92}),
       trim:new THREE.MeshStandardMaterial({color:W1?INK:"#D0C4B0",roughness:.5,metalness:.12,envMapIntensity:.6}),
       gold:mkPhys(THREE,{color:W1?GOLD:"#C8A858",roughness:.18,metalness:.85,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
@@ -506,8 +533,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       for(let fz=-cL/2+1;fz<cL/2;fz+=1.2)for(let fx=-cW/2+1;fx<cW/2;fx+=1.2)
         if((Math.floor(fx+50)+Math.floor(fz+50))%2===0)scene.add(mk(new THREE.BoxGeometry(1.1,.003,1.1),MS.floorL,fx,.01,fz));
     }else if(C.floorPat==="dark_parquet"){
+      // ONE slab, not two. The second (MS.floorL, cW-2 x cL-3) sat on top of the
+      // first and covered nearly the whole corridor in flat pale colour — the
+      // same mistake the herringbone branch above was emptied for: don't stack
+      // untextured quads over an already-mapped floor. floorD now carries the
+      // parquet maps, so this slab is what makes the wing read "dark parquet".
       scene.add(mk(new THREE.BoxGeometry(cW-1,.004,cL-2),MS.floorD,0,.01,0));
-      scene.add(mk(new THREE.BoxGeometry(cW-2,.005,cL-3),MS.floorL,0,.015,0));
     }else{
       // Pre-generate a shared palette of mosaic tile materials instead of one per tile
       // (W1 WS5-2: the hsl() drift dies — travertine value ramp only)
@@ -3034,8 +3065,19 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         // recorder sets window.__walkReset once the reveal-veil lifts so the walk
         // starts on-camera, not behind the veil.
         if(!walkT0||(typeof window!=="undefined"&&(window as unknown as {__walkReset?:boolean}).__walkReset)){walkT0=performance.now();if(typeof window!=="undefined")(window as unknown as {__walkReset?:boolean}).__walkReset=false;}
-        const t=Math.min(1,(performance.now()-walkT0)/13000);const e=easeInOutCubic(t);
-        const z=(cL/2-2)+e*(-(cL)+6); // near-entrance -> near-terminus
+        // ⚠️ Duration is DERIVED FROM DISTANCE, not fixed. A hard 13 s made the
+        // walking pace a function of how many rooms a wing has — a 4-room
+        // corridor strolled, an 8-room one sprinted — and made the cut from the
+        // exterior orbit into this walk change tempo mid-clip. MOVE_SPEED is
+        // shared with InteriorScene's rmove and the exterior orbit.
+        const _dist=Math.abs((cL/2-2)-3.2);
+        const t=Math.min(1,(performance.now()-walkT0)/(_dist/MOVE_SPEED*1000));const e=easeInOutCubic(t);
+        // ⚠️ STOPS SHORT of the centrepiece. The old path ran the full length of
+        // the hall, and the statue stands at z=0 — so the camera flew straight
+        // through it. Ending at +3.2 leaves the pedestal filling the far end,
+        // which is the shot you want anyway. The shorter travel over the same
+        // 13 s also halves the walking speed, which read as a jog.
+        const z=(cL/2-2)+e*(3.2-(cL/2-2));
         const lat=walkMode==="left"?-cW*0.22:walkMode==="right"?cW*0.22:0;
         camera.position.set(lat,2.0,z);camera.lookAt(lat*0.4,1.9,z-6);
       } else if(camDebug){
