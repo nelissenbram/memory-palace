@@ -70,7 +70,7 @@ export async function getUserPlan(userId?: string): Promise<UserSubscription> {
     .from("subscriptions")
     .select("*")
     .eq("user_id", uid)
-    .single();
+    .maybeSingle();
 
   if (!data) {
     return {
