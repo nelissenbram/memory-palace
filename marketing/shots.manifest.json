@@ -516,6 +516,72 @@
       ],
       "out": "store-assets/ipad13/3-room.png",
       "note": "Native 2064x2752. The whole previous iPad set dated from 2026-07-16, so its 3D screens showed the pre-overhaul palace."
+    },
+    {
+      "id": "ios65-exterior",
+      "phase": 2,
+      "surface": "App Store 6.5\" iPhone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/exterior",
+      "params": {
+        "chrome": "1",
+        "ecam": "hero"
+      },
+      "viewport": [
+        428,
+        926
+      ],
+      "dsf": 3,
+      "scenes": [
+        "exterior"
+      ],
+      "out": "store-assets/ios65/1-exterior.png",
+      "note": "1284x2778. ASC rejected the 6.9\" set in this slot: the 6.5\" slot only accepts 1242x2688 or 1284x2778."
+    },
+    {
+      "id": "ios65-corridor",
+      "phase": 2,
+      "surface": "App Store 6.5\" iPhone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/corridor",
+      "params": {
+        "chrome": "1",
+        "wing": "roots"
+      },
+      "viewport": [
+        428,
+        926
+      ],
+      "dsf": 3,
+      "scenes": [
+        "corridor"
+      ],
+      "out": "store-assets/ios65/2-corridor.png",
+      "note": "1284x2778. ASC rejected the 6.9\" set in this slot: the 6.5\" slot only accepts 1242x2688 or 1284x2778."
+    },
+    {
+      "id": "ios65-room",
+      "phase": 2,
+      "surface": "App Store 6.5\" iPhone",
+      "prominence": "high",
+      "kind": "still",
+      "route": "/staging/room",
+      "params": {
+        "chrome": "1",
+        "rcam": "hearth"
+      },
+      "viewport": [
+        428,
+        926
+      ],
+      "dsf": 3,
+      "scenes": [
+        "room"
+      ],
+      "out": "store-assets/ios65/3-room.png",
+      "note": "1284x2778. ASC rejected the 6.9\" set in this slot: the 6.5\" slot only accepts 1242x2688 or 1284x2778."
     }
   ],
   "notes": {
