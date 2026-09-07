@@ -90,7 +90,34 @@ export async function POST(request: NextRequest) {
   const path = `${user.id}/${Date.now()}_${randomUUID().slice(0, 8)}.${safeExt}`;
 
   let storageBackend: "r2" | "supabase";
-  const buffer = new Uint8Array(await file.arrayBuffer());
+  let buffer = new Uint8Array(await file.arrayBuffer());
+
+  // LEG-003b (AI Act art. 50(2)): when the caller marks the upload as
+  // AI-generated imagery (currently the photo-restore save flow via
+  // memoryStore.addMemory), embed IPTC-standard provenance in the file itself
+  // as XMP (DigitalSourceType = trainedAlgorithmicMedia) via sharp. Best-effort:
+  // any failure stores the original bytes untouched. Note: sharp re-encodes on
+  // toBuffer(), so this is gated to the explicit AI flag only — regular user
+  // uploads are never re-encoded.
+  const XMP_STAMPABLE = new Set(["image/jpeg", "image/png", "image/webp", "image/tiff"]);
+  if (
+    formData.get("aiSource") === "trainedAlgorithmicMedia" &&
+    bucket === "memories" &&
+    XMP_STAMPABLE.has(contentType)
+  ) {
+    try {
+      const sharp = (await import("sharp")).default;
+      const xmp =
+        `<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>` +
+        `<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">` +
+        `<rdf:Description rdf:about="" xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/">` +
+        `<Iptc4xmpExt:DigitalSourceType>http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia</Iptc4xmpExt:DigitalSourceType>` +
+        `</rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>`;
+      buffer = new Uint8Array(await sharp(Buffer.from(buffer)).withXmp(xmp).toBuffer());
+    } catch (err) {
+      console.error("[upload] XMP AI-provenance stamp failed (storing original):", err);
+    }
+  }
 
   // Week-4 resurface repair (SUCCESS_PLAYBOOK Pillar 1 §8): best-effort EXIF
   // taken-date for new photo uploads — the buffer is already in memory, so scan

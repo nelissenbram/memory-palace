@@ -237,6 +237,12 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         const formData = new FormData();
         formData.append("file", new File([blob], `memory.${ext}`, { type: mime }));
         formData.append("bucket", "memories");
+        // LEG-003b (AI Act art. 50(2)): flag AI-generated imagery (e.g. the
+        // photo-restore save flow) so /api/upload embeds IPTC/XMP provenance
+        // (DigitalSourceType = trainedAlgorithmicMedia) in the stored file.
+        if (mem.source === "ai" && mime.startsWith("image/")) {
+          formData.append("aiSource", "trainedAlgorithmicMedia");
+        }
         const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
