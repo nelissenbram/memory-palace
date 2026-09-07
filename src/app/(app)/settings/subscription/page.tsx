@@ -153,12 +153,14 @@ export default function SubscriptionPage() {
           }
         }
 
-        // iOS is free-tier only (Apple Guideline 3.1.1): never surface a plan
-        // purchased outside the app. This page reads the subscriptions table
-        // directly (bypassing the server-side getUserPlan coercion), so force
-        // the displayed plan to free here too — no paid status, billing date,
+        // iOS (LEG-013): with IAP live the entitlement lives in the same
+        // subscriptions table (written server-side after StoreKit purchase), so
+        // a paying IAP subscriber must see their real plan — plus Manage,
+        // Restore and the auto-renew notice (Apple 3.1.2 / 2.1). Only while
+        // IAP_ENABLED is off is the app cleanly free on iOS (Apple 3.1.1) and
+        // the displayed plan forced to free, so no paid status, billing date,
         // manage/cancel or restore UI can render.
-        if (isApple) {
+        if (isApple && !IAP_ENABLED) {
           setSub({ plan: "free", status: "active", current_period_end: null, stripe_customer_id: null });
         } else if (subData) {
           setSub(subData);
@@ -727,9 +729,10 @@ export default function SubscriptionPage() {
           </div>
         )}
 
-        {/* On iOS the app is free-tier only — state it plainly so the free
-            state reads as intentional (Apple Guideline 3.1.1). */}
-        {isApple && (
+        {/* Only while IAP is disabled is iOS free-tier only — state it plainly
+            so the free state reads as intentional (Apple Guideline 3.1.1).
+            With IAP live this claim would be misleading (Apple 2.3.1). */}
+        {isApple && !IAP_ENABLED && (
           <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.875rem" : "0.8125rem", color: MUTED, lineHeight: 1.6, margin: "0.5rem 0 0" }}>
             {tf("iosFreeNote", "The Memory Palace is free to use on iPhone and iPad, with all core features included.")}
           </p>
