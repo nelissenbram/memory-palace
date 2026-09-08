@@ -67,7 +67,23 @@ const GROUP = {
  * the FAQ in the middle of three, next to the atrium. Settings pages are the
  * same problem one step down.
  */
-const NEVER_LEAD = new Set(["help", "pricing", "settings-subscription"]);
+const NEVER_LEAD = new Set([
+  // text lists: correct pages, useless adverts
+  "help", "pricing", "settings-subscription",
+  /**
+   * ⚠️ EMPTY STATES. These three render perfectly and contain nothing: `legacy`
+   * says "No legacy contacts yet", `family-tree` is grey avatars with no faces
+   * or names, and `interview` shows the graceful empty-chapter prose — lovely
+   * writing about having no memories attached.
+   *
+   * Every check in this pipeline asked whether a screen had LOADED, and they all
+   * had. None asked whether it had DATA, so three empty screens led carousels in
+   * shipped clips. They stay in the strip as texture; they may not lead until
+   * the review account is seeded with a family group, two legacy contacts and a
+   * chapter with memories attached. That is demo-data work, not engineering.
+   */
+  "legacy", "family-tree", "interview", "settings-family",
+]);
 const leads = [];
 const seenGroup = new Set();
 for (const s of [...tagged, ...rest]) {
