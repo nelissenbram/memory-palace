@@ -67,6 +67,22 @@ const PAGES = [
   // "it asks. you answer. it writes." across the top while a question sat at the
   // bottom of the same frame. A scroll that is the subject should not also
   // annotate itself.
+  /**
+   * ⚠️ DOES NOT WORK YET, kept so the next attempt starts informed.
+   *
+   * LEGACY-08 should walk the interview OPTIONS — type or speak, and a
+   * Literary / Balanced / Factual voice — because scrolling one woven chapter
+   * shows the OUTPUT of the feature and hides the feature itself.
+   *
+   * The two clicks land (both log "opened via"), but the captured scroll
+   * contains only chapter prose: expanding the panel to its full height appears
+   * to close the recorder, so the options are gone by the time the screenshot
+   * is taken. Needs the recorder captured at viewport height instead, without
+   * the expand-and-pan trick.
+   */
+  { id: "interview-options", path: "/atrium", expect: /Palace Visitors|Enter Your Palace|Your Atrium/i,
+    open: [["life story", "record your story"], ["record an interview"]],
+    panel: "Life Story", secs: 15, label: null },
   { id: "lifestory-bare", path: "/atrium", expect: /Palace Visitors|Enter Your Palace|Your Atrium/i,
     open: ["life story", "record your story"], panel: "Life Story", secs: 15, label: null },
   { id: "explore", path: "/explore", expect: /Explore Palaces/i,
@@ -175,11 +191,21 @@ for (const p of todo) {
   await clearOverlays();
   await sleep(1200);
 
-  // Click into a view that has no route of its own, then let it settle.
+  /**
+   * Click into a view that has no route of its own. `open` may be a list of
+   * words (one click) or a list of lists (a sequence) — the interview options
+   * live two presses deep: Life Story, then Record an interview.
+   */
   if (p.open) {
-    const hit = await clickText(p.open);
-    if (hit) { console.log(`   opened via "${hit}"`); await sleep(2600); }
-    else { console.log(`   no button matching ${JSON.stringify(p.open)} — SKIPPED`); continue; }
+    const steps = Array.isArray(p.open[0]) ? p.open : [p.open];
+    let failed = null;
+    for (const step of steps) {
+      const hit = await clickText(step);
+      if (!hit) { failed = step; break; }
+      console.log(`   opened via "${hit}"`);
+      await sleep(2800);
+    }
+    if (failed) { console.log(`   no button matching ${JSON.stringify(failed)} — SKIPPED`); continue; }
     await clearOverlays();
     await sleep(900);
   }

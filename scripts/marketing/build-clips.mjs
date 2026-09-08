@@ -489,16 +489,26 @@ const CLIPS = [
       // One beat of stark text before any footage: the hook is a question aimed
       // at the viewer, and it needs a moment of nothing to land in.
       { kind: "card", png: G("LEGACY-02-hook"), secs: 3.2 },
-      // Three questions over ONE unbroken drift — cutting between them would
-      // make them a list; held together they read as one thought.
-      { kind: "beat", f: "walk-roots-wall", secs: 3.4, from: 3.0, grade: "soft", xf: 0.6,
-        cap: G("LEGACY-02-cap1"), capIn: 0.5, capOut: 2.8 },
-      { kind: "beat", f: "walk-roots-wall", secs: 3.4, from: 6.4, grade: "soft", xf: 0.3,
-        cap: G("LEGACY-02-cap2"), capIn: 0.4, capOut: 2.8 },
-      { kind: "beat", f: "walk-nest-wall", secs: 3.4, from: 5.0, grade: "soft", xf: 0.3,
-        cap: G("LEGACY-02-cap3"), capIn: 0.4, capOut: 2.8 },
-      // the answer, hanging: the payoff has to be a specific photograph
-      { kind: "beat", f: "room-pullback-h2", secs: 6.0, from: 0.6, grade: "soft", xf: 0.7,
+      /**
+       * ⚠️ THE PHOTOGRAPH FIRST, then the same photograph on a wall.
+       *
+       * This clip used to walk past the salon hang while asking its questions,
+       * and the owner was right that it earned nothing: a corridor of pictures
+       * you cannot see properly says nothing about a question you never asked.
+       *
+       * kb-mantel holds the three images that hang over the fireplace, and they
+       * are byte-identical to the room's hero files. So the questions play over
+       * the actual photograph, and the answer beat cuts to THAT photograph,
+       * hung, lit, with its plaque. The match is real, not a lookalike.
+       */
+      { kind: "beat", f: "kb-mantel", secs: 2.8, from: 0.2, grade: "soft", xf: 0.6,
+        cap: G("LEGACY-02-cap1"), capIn: 0.4, capOut: 2.3 },
+      { kind: "beat", f: "kb-mantel", secs: 2.6, from: 3.0, grade: "soft", xf: 0.25,
+        cap: G("LEGACY-02-cap2"), capIn: 0.3, capOut: 2.1 },
+      { kind: "beat", f: "kb-mantel", secs: 2.6, from: 5.6, grade: "soft", xf: 0.25,
+        cap: G("LEGACY-02-cap3"), capIn: 0.3, capOut: 2.1 },
+      // the same picture, hanging: the pullback opens flush on it
+      { kind: "beat", f: "room-pullback-h2", secs: 6.0, from: 0.4, grade: "soft", xf: 0.5,
         cap: G("LEGACY-02-cap4"), capIn: 2.6 },
       { kind: "beat", f: "hearth-hold-h3", secs: 3.0, from: 1.2, grade: "soft", xf: 0.5,
         cap: G("LEGACY-02-cap5"), capIn: 0.6 },

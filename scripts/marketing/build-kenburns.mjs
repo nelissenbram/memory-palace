@@ -55,6 +55,21 @@ const SETS = {
       { f: "rosa-baila/nest-r0-m0.jpg", z: 0.93, pan: [+0.03, 0] },
     ],
   },
+  /**
+   * The three photographs that hang over the mantel, in the order the room's
+   * hero rotation uses them. Byte-identical to public/demo — verified, not
+   * assumed — so a clip can open on the photograph in the hand and cut to the
+   * SAME photograph on the wall. That match is the whole argument of LEGACY-02,
+   * and it only works because these are one file, not a lookalike.
+   */
+  "kb-mantel": {
+    secs: 3.0,
+    shots: [
+      { f: "eleanor-remembers/nest-r0-m1.jpg", z: 1.08, pan: [0, +0.02] },   // the wedding, 1961
+      { f: "eleanor-remembers/nest-r0-m0.jpg", z: 1.10, pan: [+0.02, 0] },   // still dancing, 1974
+      { f: "beatrice-provence/nest-r0-m0.jpg", z: 0.94, pan: [-0.02, 0] },   // the long walk, 1996
+    ],
+  },
 };
 
 const args = process.argv.slice(2);
