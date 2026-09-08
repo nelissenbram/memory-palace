@@ -238,6 +238,15 @@ const clearOverlays = async () => {
  */
 const DEMO_NAME_FROM = "Apple Review";
 const DEMO_NAME_TO = "Elena Marchetti";
+/**
+ * ⚠️ The ADDRESS too, not just the display name. Seeding a family group made the
+ * members list render, and the owner row shows the login in full —
+ * apple-review@thememorypalace.ai, sitting in a screenshot meant for an advert.
+ * The name substitution had been in place for weeks and quietly did not cover
+ * this, because until there was a group there was no members list to expose it.
+ */
+const DEMO_MAIL_FROM = /apple-?review@thememorypalace\.ai/gi;
+const DEMO_MAIL_TO = "elena@example.com";
 
 const manifest = [];
 for (const s of todo) {
@@ -426,8 +435,11 @@ for (const s of todo) {
     const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let n, hits = 0;
     const re = new RegExp(from, "g");
+    const mailRe = /apple-?review@thememorypalace\.ai/gi;
     while ((n = w.nextNode())) {
-      if (n.nodeValue && re.test(n.nodeValue)) { n.nodeValue = n.nodeValue.replace(re, to); hits++; }
+      if (!n.nodeValue) continue;
+      if (re.test(n.nodeValue)) { n.nodeValue = n.nodeValue.replace(re, to); hits++; }
+      if (mailRe.test(n.nodeValue)) { n.nodeValue = n.nodeValue.replace(mailRe, "elena@example.com"); hits++; }
     }
     // Placeholders and aria labels are rendered too (and get screenshotted).
     for (const el of document.querySelectorAll("input,textarea,[aria-label],[alt]")) {

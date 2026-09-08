@@ -47,34 +47,45 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 await page.setViewport({ width: 540, height: 960, deviceScaleFactor: 2 });
 
-/** Same fixed-position-safe visibility test the capture scripts use. */
-const shown = `(e) => {
-  const r = e.getBoundingClientRect();
-  if (r.width < 4 || r.height < 4) return false;
-  const st = getComputedStyle(e);
-  return st.display !== "none" && st.visibility !== "hidden" && Number(st.opacity) > 0.1;
-}`;
-
-const clickText = (words) => page.evaluate((ws, shownSrc) => {
-  const vis = eval(shownSrc);
+/**
+ * ⚠️ No eval(). The first version passed the visibility test in as a string and
+ * called eval() inside the page — and the app ships
+ * `script-src 'self' 'unsafe-inline'` with no 'unsafe-eval', so every call threw
+ * silently and the script reported "no button" for buttons that were plainly
+ * there ("Create Group", "+ Add your first contact"). The helper is inlined in
+ * each evaluate instead.
+ */
+const clickText = (words) => page.evaluate((ws) => {
+  const vis = (e) => {
+    const r = e.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) return false;
+    const s = getComputedStyle(e);
+    return s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0.1;
+  };
   const norm = (s) => (s || "").replace(/[‘’]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
   const hit = [...document.querySelectorAll("button,a[role=button]")]
     .filter((b) => vis(b) && !b.disabled)
     .find((b) => norm(b.textContent) !== "skip to content" && ws.some((w) => norm(b.textContent).includes(w)));
   if (hit) { hit.click(); return hit.textContent.trim().slice(0, 40); }
   return null;
-}, words, shown);
+}, words);
 
-const fill = (selector, value) => page.evaluate((sel, val, shownSrc) => {
-  const vis = eval(shownSrc);
+const fill = (selector, value) => page.evaluate((sel, val) => {
+  const vis = (e) => {
+    const r = e.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) return false;
+    const s = getComputedStyle(e);
+    return s.display !== "none" && s.visibility !== "hidden";
+  };
   const el = [...document.querySelectorAll(sel)].filter(vis)[0];
   if (!el) return false;
+  // React tracks its own value; a plain assignment is ignored on submit.
   const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
   setter.call(el, val);
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
   return true;
-}, selector, value, shown);
+}, selector, value);
 
 const goto = async (path) => {
   // ?onboarding=off — every non-production host force-shows the walkthrough,

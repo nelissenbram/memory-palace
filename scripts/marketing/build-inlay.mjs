@@ -82,7 +82,15 @@ const NEVER_LEAD = new Set([
    * the review account is seeded with a family group, two legacy contacts and a
    * chapter with memories attached. That is demo-data work, not engineering.
    */
-  "legacy", "family-tree", "interview", "settings-family",
+  /**
+   * legacy and settings-family came OFF this list once the review account was
+   * seeded — the first now lists two contacts with access levels, the second
+   * shows a real group. Two remain:
+   *   family-tree  still grey avatars; seeding a group does not add people
+   *   interview    still the empty-chapter prose; needs memories attached to a
+   *                Life Story chapter, which is a different write
+   */
+  "family-tree", "interview",
 ]);
 const leads = [];
 const seenGroup = new Set();
