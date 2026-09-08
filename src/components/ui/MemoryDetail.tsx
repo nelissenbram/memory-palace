@@ -1004,7 +1004,24 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   >
                     {historicalContext ? (
                       <div>
-                        <p style={{
+                        {/* ── LEG-003b restpunt (b) (AI Act art. 50(2)): historicalContext is
+                            AI-generated prose — visible badge + machine-readable marker,
+                            same idiom as the mem.source==="ai" badge above. ── */}
+                        <div data-ai-generated="true" style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.3125rem",
+                          padding: "0.1875rem 0.5625rem", borderRadius: "0.75rem",
+                          border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+                          background: T.color.white, color: "#716A5E", /* Atrium muted */
+                          fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
+                          letterSpacing: "0.08em", textTransform: "uppercase",
+                          marginBottom: "0.5rem",
+                        }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <path d="M12 2l2.09 6.26L20 10l-4.91 3.74L17.18 20 12 16.27 6.82 20l2.09-6.26L4 10l5.91-1.74z" />
+                          </svg>
+                          {t("aiBadge")}
+                        </div>
+                        <p data-ai-generated="true" style={{
                           fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
                           lineHeight: 1.7, margin: "0 0 0.625rem 0", whiteSpace: "pre-wrap",
                         }}>
