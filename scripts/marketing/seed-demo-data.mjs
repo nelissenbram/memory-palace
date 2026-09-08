@@ -223,31 +223,74 @@ for (const person of PEOPLE) {
 
 // -- 4. life-story chapter --------------------------------------------------
 /**
- * ⚠️ NOT AUTOMATED, deliberately, after an attempt that lied.
+ * Attaching is THREE accordions deep, which is why an earlier attempt found
+ * nothing and then reported success anyway. LifeStoryPanel renders
+ * "Attach memories" as an expander; inside it a tree of wings; inside those,
+ * rooms; and only inside a room are the memories, as checkboxes in labels whose
+ * onChange calls toggleMemory(id). Clicking the expander alone reveals no
+ * checkbox at all, so the first version hunted for "cards with an image", found
+ * four in the ATRIUM BEHIND the panel and logged "attached 4 memories" while the
+ * screen still read "No memories attached yet".
  *
- * "Attach memories" is not a button that opens a picker — it is an inline
- * accordion whose label already reads "Attach memoriesNo memories attached yet".
- * Clicking it expands a section; it does not present a chooser. The first
- * version of this step then hunted for "cards with an image" and found four in
- * the ATRIUM BEHIND the panel, clicked those, and reported
- * "attached 4 memories". Nothing was attached. The screenshot still said "No
- * memories attached yet" while the log claimed success.
- *
- * Rather than guess at another selector, this step now states what it needs.
- * Everything above it is verified by reading the page back after the write.
+ * Expand everything, then tick. Verified by reading the panel back.
  */
 if (DRY) {
-  report.push("life story: NOT automated - see the note in this file");
+  report.push("WOULD attach memories to a Life Story chapter");
 } else {
   await goto("/atrium");
   const opened = await clickText(["life story", "record your story"]);
-  await sleep(3000);
-  const already = await page.evaluate(() =>
-    !/No memories attached yet/i.test(document.body.innerText || ""));
-  report.push(already
-    ? "life story: chapter already has memories attached"
-    : `life story: STILL EMPTY - attach is an inline accordion, not a picker; `
-      + `do it by hand once (panel opened=${!!opened})`);
+  await sleep(3600);
+  if (!opened) {
+    report.push("FAILED life story: panel would not open");
+  } else {
+    await clickText(["attach memories"]);
+    await sleep(2200);
+    // Open every collapsed level until checkboxes exist. Bounded, because a
+    // tree that never yields them should fail rather than spin.
+    let boxes = 0;
+    for (let round = 0; round < 6 && boxes === 0; round++) {
+      await page.evaluate(() => {
+        const vis = (e) => {
+          const r = e.getBoundingClientRect();
+          if (r.width < 20 || r.height < 10) return false;
+          const s = getComputedStyle(e);
+          return s.display !== "none" && s.visibility !== "hidden";
+        };
+        // Wing and room rows are buttons carrying a ▸/▾ affordance; the panel's
+        // own controls (Weave, Record, Delete) are not, so match on the marker.
+        for (const b of [...document.querySelectorAll("button")].filter(vis)) {
+          const txt = (b.textContent || "");
+          if (/[▸▾▴▹]/.test(txt) && b.getAttribute("aria-expanded") !== "true") b.click();
+        }
+      }).catch(() => {});
+      await sleep(1200);
+      boxes = await page.evaluate(() => document.querySelectorAll('input[type="checkbox"]').length).catch(() => 0);
+    }
+
+    let ticked = 0;
+    if (boxes) {
+      ticked = await page.evaluate((want) => {
+        const all = [...document.querySelectorAll('input[type="checkbox"]')].filter((c) => !c.checked);
+        let n = 0;
+        for (const c of all.slice(0, want)) { c.click(); n++; }
+        return n;
+      }, 5).catch(() => 0);
+      await sleep(3000);
+    }
+    /**
+     * ⚠️ Verify by looking for "N memories attached", NOT for the ABSENCE of
+     * "No memories attached yet". The panel lists every chapter, so the empty
+     * phrase is still on screen for the chapters we did not fill — the previous
+     * check read that and reported failure while twenty memories were in fact
+     * attached to the first chapter.
+     */
+    const got = await page.evaluate(() =>
+      (document.body.innerText || "").match(/(\d+)\s*memor\w*\s*attached/i)?.[1] || null,
+    ).catch(() => null);
+    report.push(got
+      ? `life story: chapter now has ${got} memories attached (ticked ${ticked} this run)`
+      : `FAILED life story: ${boxes} checkbox(es) found, ${ticked} ticked, none stuck`);
+  }
 }
 
 await browser.close();
