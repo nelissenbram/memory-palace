@@ -215,8 +215,17 @@ for (const person of PEOPLE) {
   await fillByPlaceholder("1850 or", person.born);
   await sleep(400);
   const saved = await clickExact(["add", "save", "create"]);
-  await sleep(2600);
-  const there = await page.evaluate((n) => (document.body.innerText || "").includes(n), full);
+  /**
+   * ⚠️ POLL, do not peek once. This read the page 2.6 s after saving, found no
+   * name and reported FAILED for four people who had in fact been written — the
+   * tree holds twelve. A commit message even claimed this was fixed while the
+   * single check was still here, which is worse than the bug.
+   */
+  let there = false;
+  for (let i = 0; i < 12 && !there; i++) {
+    await sleep(1400);
+    there = await page.evaluate((n) => (document.body.innerText || "").includes(n), full);
+  }
   report.push(there ? `tree: added ${full}`
     : `FAILED ${full} (first=${okFirst}, last=${okLast}, save=${saved})`);
 }
@@ -237,8 +246,18 @@ for (const person of PEOPLE) {
 if (DRY) {
   report.push("WOULD attach memories to a Life Story chapter");
 } else {
-  await goto("/atrium");
-  const opened = await clickText(["life story", "record your story"]);
+  /**
+   * The atrium is intercepted by the walkthrough on maybe a third of loads even
+   * with ?onboarding=off, so opening the panel gets three goes rather than one.
+   * A single attempt is why this step reported "panel would not open" on a run
+   * where everything else succeeded.
+   */
+  let opened = null;
+  for (let attempt = 0; attempt < 3 && !opened; attempt++) {
+    await goto("/atrium");
+    opened = await clickText(["life story", "record your story"]);
+    if (!opened) await sleep(1500);
+  }
   await sleep(3600);
   if (!opened) {
     report.push("FAILED life story: panel would not open");
