@@ -134,6 +134,34 @@ export const CARDS = {
            "what were you proud of that nobody noticed?",
            "her answers are becoming rooms."],
   },
+  // ── Family: RESTORE (RS) — borrowed demand. The payoff is the reveal itself,
+  // so these carry the fewest words in the library: a hook, then silence.
+  "RESTORE-01": {
+    hook: "Watch her come back.",
+    caps: ["before", "today"],
+  },
+  "RESTORE-03": {
+    hook: "Restoring it was\nthe easy part.",
+    caps: ["then it got a wall.",
+           "a photo in a folder is filed. a photo on a wall is visited."],
+  },
+  "RESTORE-05": {
+    hook: "There is something in this\nphotograph you cannot see yet.",
+    caps: ["there.", "restoration isn't cosmetic. it's evidence."],
+  },
+  "RESTORE-07": {
+    hook: "This is what seventy years\ndoes to a photograph.",
+    caps: ["1954", "1980", "today", "unless someone stops it."],
+  },
+  // Replaces the founder-cam cell, which needs footage the owner is not going to
+  // shoot. Tests RECOGNITION as the hook — the viewer seeing their own behaviour
+  // — instead of parasocial trust, so it is a different mechanism and carries a
+  // different code rather than pretending to be LG-03.
+  "LEGACY-03b": {
+    hook: "Everyone has this folder.\nNobody has opened it twice.",
+    caps: ["12,431 photos.", "no names. no dates. no order.",
+           "the same pictures, given a room.", "you don't sort it. you walk it."],
+  },
   "WONDER-08": {
     hook: "The quietest place\non the internet.",
     caps: ["some rooms are just for remembering."],
@@ -164,8 +192,10 @@ body{background:transparent;position:relative}
 .t{font-size:40px;line-height:1.25}
 </style><div class="wrap"><div class="pill"><div class="t">${text}</div></div></div>`;
 
-const only = (process.argv[2] || "").toUpperCase();
-const todo = Object.entries(CARDS).filter(([code]) => !only || code === only);
+// Case-insensitive: clip codes carry a hook-variant letter (LEGACY-03b), and
+// uppercasing the argument made those impossible to select.
+const only = (process.argv[2] || "").toLowerCase();
+const todo = Object.entries(CARDS).filter(([code]) => !only || code.toLowerCase() === only);
 if (!todo.length) {
   console.error(`No cards for "${only}". Known: ${Object.keys(CARDS).join(", ")}`);
   process.exit(1);

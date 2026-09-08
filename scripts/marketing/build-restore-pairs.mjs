@@ -63,6 +63,10 @@ const SETS = {
   "rp-couple": { src: "rosa-baila/nest-r0-m0.jpg", secs: 7.0 },      // SAT 37.0
   "rp-wedding": { src: "eleanor-remembers/nest-r0-m1.jpg", secs: 7.0 }, // SAT 28.1
   "rp-lane": { src: "beatrice-provence/nest-r0-m0.jpg", secs: 7.0 },   // SAT 15.1
+  // Reversed: opens on the pristine photograph and lets it decay. RESTORE-07
+  // inverts the family's grammar to test loss-framing against gain-framing, so
+  // the footage has to invert too — the same wipe, run the other way.
+  "rp-fade": { src: "rosa-baila/nest-r0-m0.jpg", secs: 7.0, reverse: true },
 };
 
 /**
@@ -125,7 +129,11 @@ for (const [id, set] of todo) {
    */
   const t0 = (set.secs * wipeStart).toFixed(2);
   const dur = (set.secs * (wipeEnd - wipeStart)).toFixed(2);
-  const wipe = `if(lte(X\,W*(T-${t0})/${dur})\,B\,A)`;
+  // A = the aged copy, B = the repaired one. Swapping which side of the wipe
+  // front gets which is the whole of "reverse": no second render path.
+  const wipe = set.reverse
+    ? `if(lte(X\,W*(T-${t0})/${dur})\,A\,B)`
+    : `if(lte(X\,W*(T-${t0})/${dur})\,B\,A)`;
 
   execSync(
     `ffmpeg -y -v error -loop 1 -framerate ${FPS} -t ${set.secs} -i "${src}" `
