@@ -460,6 +460,84 @@ const CLIPS = [
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.5, sheen: true },
     ],
   },
+
+  // ══ Family: LEGACY (LG) — memoirist ICP. Mortality salience handled dryly:
+  // the catalogue is explicit that this family must not become grief-bait, so
+  // every hook here is a question or a fact, never a bereavement. Frame follows
+  // the owner's 2026-09-07 USP decision — private, visitable, yours — and no
+  // clip headlines "permanent" or "forever".
+  //
+  // RESTORE was the obvious next family and is BLOCKED: every clip in it needs a
+  // GFPGAN before/after pair, and none exist in the repo. GRAVE opens on a
+  // cluttered camera roll we equally cannot produce (the same gap that hollowed
+  // out WONDER-04). LEGACY needs only corridor, room and door footage.
+  {
+    code: "LEGACY-02", family: "LEGACY", slug: "the-question-you-never-asked",
+    music: "light-in-dark-places.mp3", offset: 30, vol: 0.95,
+    beats: [
+      // One beat of stark text before any footage: the hook is a question aimed
+      // at the viewer, and it needs a moment of nothing to land in.
+      { kind: "card", png: G("LEGACY-02-hook"), secs: 3.2 },
+      // Three questions over ONE unbroken drift — cutting between them would
+      // make them a list; held together they read as one thought.
+      { kind: "beat", f: "walk-roots-wall", secs: 3.4, from: 3.0, grade: "soft", xf: 0.6,
+        cap: G("LEGACY-02-cap1"), capIn: 0.5, capOut: 2.8 },
+      { kind: "beat", f: "walk-roots-wall", secs: 3.4, from: 6.4, grade: "soft", xf: 0.3,
+        cap: G("LEGACY-02-cap2"), capIn: 0.4, capOut: 2.8 },
+      { kind: "beat", f: "walk-nest-wall", secs: 3.4, from: 5.0, grade: "soft", xf: 0.3,
+        cap: G("LEGACY-02-cap3"), capIn: 0.4, capOut: 2.8 },
+      // the answer, hanging: the payoff has to be a specific photograph
+      { kind: "beat", f: "room-pullback-h2", secs: 6.0, from: 0.6, grade: "soft", xf: 0.7,
+        cap: G("LEGACY-02-cap4"), capIn: 2.6 },
+      { kind: "beat", f: "hearth-hold-h3", secs: 3.0, from: 1.2, grade: "soft", xf: 0.5,
+        cap: G("LEGACY-02-cap5"), capIn: 0.6 },
+      { kind: "beat", f: "inlay-interview", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "LEGACY-04", family: "LEGACY", slug: "three-generations",
+    music: "light-in-dark-places.mp3", offset: 54, vol: 0.95,
+    beats: [
+      { kind: "card", png: G("LEGACY-04-hook"), secs: 3.4 },
+      { kind: "beat", f: "walk-roots-wall", secs: 3.6, from: 4.5, grade: "soft", xf: 0.6,
+        cap: G("LEGACY-04-cap1"), capIn: 0.5, capOut: 3.0 },
+      { kind: "beat", f: "walk-roots-wall", secs: 3.6, from: 8.0, grade: "soft", xf: 0.3,
+        cap: G("LEGACY-04-cap2"), capIn: 0.4, capOut: 3.0 },
+      // "a place to live" — said over the room, not over a slogan card
+      { kind: "beat", f: "room-walkin-h1", secs: 5.6, from: 1.5, grade: "soft", xf: 0.7,
+        cap: G("LEGACY-04-cap3"), capIn: 2.0 },
+      // named doors close it: a hall of chapters that outlasts the person
+      { kind: "beat", f: "corridor-door3", secs: 3.0, from: 1.6, grade: "soft", xf: 0.5,
+        cap: G("LEGACY-04-cap4"), capIn: 0.6 },
+      { kind: "beat", f: "scroll-library", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "LEGACY-08", family: "LEGACY", slug: "twelve-questions",
+    music: "light-in-dark-places.mp3", offset: 78, vol: 0.9,
+    // Save-optimised: the catalogue wants this one judged on saves, not holds,
+    // so it is 90% typography over ONE continuous drift with no cuts to break a
+    // screenshot. Five questions, not twelve — twelve at readable pace runs past
+    // 40 s, and the hook's promise survives a representative handful.
+    beats: [
+      { kind: "card", png: G("LEGACY-08-hook"), secs: 3.4 },
+      { kind: "beat", f: "room-walkin-h4", secs: 3.2, from: 1.5, grade: "soft", xf: 0.6,
+        cap: G("LEGACY-08-cap1"), capIn: 0.4, capOut: 2.6 },
+      { kind: "beat", f: "room-walkin-h4", secs: 3.2, from: 4.7, grade: "soft", xf: 0.25,
+        cap: G("LEGACY-08-cap2"), capIn: 0.3, capOut: 2.6 },
+      { kind: "beat", f: "room-walkin-h4", secs: 3.2, from: 7.9, grade: "soft", xf: 0.25,
+        cap: G("LEGACY-08-cap3"), capIn: 0.3, capOut: 2.6 },
+      { kind: "beat", f: "room-pullback-h1", secs: 3.2, from: 2.0, grade: "soft", xf: 0.25,
+        cap: G("LEGACY-08-cap4"), capIn: 0.3, capOut: 2.6 },
+      { kind: "beat", f: "room-pullback-h1", secs: 3.2, from: 5.2, grade: "soft", xf: 0.25,
+        cap: G("LEGACY-08-cap5"), capIn: 0.3, capOut: 2.6 },
+      { kind: "beat", f: "corridor-door1", secs: 3.0, from: 1.6, grade: "soft", xf: 0.5,
+        cap: G("LEGACY-08-cap6"), capIn: 0.6 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
 ];
 
 // ── driver ──────────────────────────────────────────────────────────────────

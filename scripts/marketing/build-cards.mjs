@@ -80,6 +80,34 @@ export const CARDS = {
     hook: "Every photo here\nhas a name and a year.",
     caps: ["not a filename. a title, and when it happened."],
   },
+  // ── Family: LEGACY (LG) — memoirist ICP, mortality-salience without grief-bait.
+  // Chosen over RESTORE because RESTORE needs GFPGAN before/after pairs that do
+  // not exist yet, and over GRAVE because that family opens on a cluttered
+  // camera roll we also cannot produce. These three are shootable today.
+  // Owner USP decision 2026-09-07: the frame is private + visitable + yours;
+  // "permanent/forever" may support but never headline. None of these do.
+  "LEGACY-02": {
+    hook: "What's the one question\nyou never asked your father?",
+    caps: ["how did you meet mum?", "what were you afraid of at 30?",
+           "what do you want us to keep?", "he answered. it hangs here now.",
+           "ask it this week."],
+  },
+  "LEGACY-04": {
+    hook: "A family story survives about\nthree generations. Then it's gone.",
+    caps: ["you know your grandparents' names.",
+           "can you tell one story about their parents?",
+           "unless someone builds it a place to live.",
+           "yours could outlast you."],
+  },
+  "LEGACY-08": {
+    hook: "12 questions I'm asking my\nmother this year. Screenshot this.",
+    caps: ["what did your bedroom look like at 10?",
+           "what's a smell that takes you back?",
+           "what did you almost do instead?",
+           "who did you write letters to?",
+           "what were you proud of that nobody noticed?",
+           "her answers are becoming rooms."],
+  },
   "WONDER-08": {
     hook: "The quietest place\non the internet.",
     caps: ["some rooms are just for remembering."],
