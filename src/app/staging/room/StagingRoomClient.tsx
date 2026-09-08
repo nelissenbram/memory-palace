@@ -50,8 +50,23 @@ const PHOTO_STORIES: { src: string; takes: [string, string][] }[] = [
   ] },
 ];
 
-const dm = (i: number, extra: Partial<Mem>): Mem => {
-  const ph = PHOTO_STORIES[i % PHOTO_STORIES.length];
+/**
+ * ?hero=N rotates which photo leads the set, and so which one hangs over the
+ * mantel. Every room beat in the clip library was shot from the same default
+ * set, so five different clips all ended on the same photograph of the same two
+ * people — the palace looked like it contained one memory. (The dev panel has
+ * long advertised ?heroUrl= for this; that was never implemented here, only in
+ * /flythrough. This rotates the deck instead, which keeps each photo paired with
+ * its own titles — the reason PHOTO_STORIES exists.)
+ */
+const heroOffset = (): number => {
+  if (typeof window === "undefined") return 0;
+  const n = parseInt(new URLSearchParams(window.location.search).get("hero") || "", 10);
+  return Number.isFinite(n) ? ((n % PHOTO_STORIES.length) + PHOTO_STORIES.length) % PHOTO_STORIES.length : 0;
+};
+
+const dm = (i: number, extra: Partial<Mem>, offset = 0): Mem => {
+  const ph = PHOTO_STORIES[(i + offset) % PHOTO_STORIES.length];
   const [title, year] = ph.takes[Math.floor(i / PHOTO_STORIES.length) % ph.takes.length];
   return {
     id: `demo-${extra.type || "photo"}-${i}`,
@@ -65,18 +80,33 @@ const dm = (i: number, extra: Partial<Mem>): Mem => {
   } as Mem;
 };
 
-const SAMPLE_MEMORIES: Mem[] = [
-  ...Array.from({ length: 14 }, (_, i) => dm(i, {})),
-  ...Array.from({ length: 4 }, (_, i) => dm(i + 3, { displayUnit: "vitrine" })),
+/**
+ * ⚠️ Built per MOUNT, not at module load. As a module-level const this was
+ * evaluated before the component ever read the URL, so ?hero=N silently did
+ * nothing — five "different" takes came back with the same photograph over the
+ * mantel. The mantel picks wallMems[0] (InteriorScene heroSel), so rotating the
+ * deck is what changes it.
+ */
+const buildMemories = (offset: number): Mem[] => [
+  // ⚠️ The mantel is chosen by FLAG, not by order. InteriorScene's heroSel is
+  // `wallMems.find(m => m.hero === true) || wallMems[0]`, and wallMems comes out
+  // date-sorted — so with no flag the oldest photo always wins, and that is the
+  // 1961 one. Rotating the deck therefore changed the salon walls while the
+  // mantel kept the same picture through every "variant" take. Flagging the
+  // lead memory is what actually moves it.
+  ...Array.from({ length: 14 }, (_, i) => dm(i, i === 0 ? { hero: true } as Partial<Mem> : {}, offset)),
+  ...Array.from({ length: 4 }, (_, i) => dm(i + 3, { displayUnit: "vitrine" }, offset)),
 ];
 
 export default function StagingRoomClient() {
   const [mounted, setMounted] = useState(false);
   const [chrome, setChrome] = useState(false);
+  const [memories, setMemories] = useState<Mem[]>(() => buildMemories(0));
   useEffect(() => {
     setMounted(true);
     // ?chrome=1 overlays the app UI so the shot reads as a screenshot, not a render.
     setChrome(new URLSearchParams(window.location.search).get("chrome") === "1");
+    setMemories(buildMemories(heroOffset()));
   }, []);
 
   return (
@@ -86,7 +116,7 @@ export default function StagingRoomClient() {
           <InteriorScene
             roomId="roots"
             actualRoomId="ro1"
-            memories={SAMPLE_MEMORIES}
+            memories={memories}
             onMemoryClick={() => {}}
             styleEra="roman"
             // Warm-grade parity with the app look (the async HDRI swap drops the

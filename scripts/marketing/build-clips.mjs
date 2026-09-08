@@ -168,7 +168,27 @@ function mux(silent, music, out, { offset = 0, vol = 1.0 }) {
 const F = (n) => `${FOOT}/${n}.mp4`;
 const C = (n) => `${SRC}/${n}.png`;
 const ENDCARD = C("endcard-clean");
+// Generated cards (build-cards.mjs) live in the staging tree; the hand-made
+// WONDER-01a set still comes from the old kit via C().
+const G = (n) => `${resolve(REPO, "socials-kit/cards")}/${n}.png`;
 
+/**
+ * ⚠️ Two things vary DELIBERATELY across the family, and both were wrong first:
+ *
+ * The mantel photo. Every room beat came from the same default deck, so clip
+ * after clip ended on the same photograph — the palace looked like it held one
+ * memory. Each room beat now uses its own ?hero= variant.
+ *
+ * The phone carousel. WONDER-01a had one and none of its siblings did, so the
+ * family read as nine art films and one advert. Six clips now carry one, each
+ * showing a DIFFERENT part of the app, so a viewer who sees two clips does not
+ * see the same three screens twice.
+ *
+ * Three clips deliberately have no carousel: WONDER-02 exists to test whether
+ * wonder alone converts, with zero product explanation; WONDER-08 is the quiet
+ * one; WONDER-10 is a single strange object. A phone in any of them would break
+ * the thing being measured.
+ */
 const CLIPS = [
   {
     code: "WONDER-01a", family: "WONDER", slug: "your-photos-as-a-house",
@@ -218,6 +238,226 @@ const CLIPS = [
       // sheen: the end card holds for three seconds and was a dead freeze —
       // a slow light sweep across it lets the clip settle instead of stopping.
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+
+  {
+    code: "WONDER-04", family: "WONDER", slug: "zero-folders",
+    music: "light-in-dark-places.mp3", offset: 24, vol: 1.0,
+    // Catalogue PW-04. The spec opens on a 1s flash of a cluttered phone gallery
+    // for contrast; there is no such asset in the library and faking one from an
+    // app screen would be a different claim, so this opens on the hook alone and
+    // lets the empty corridor carry the "zero folders" idea instead.
+    beats: [
+      { kind: "card", png: G("WONDER-04-hook"), secs: 2.6 },
+      // ⚠️ KNOWN GAP, left visible rather than papered over. The hook claims
+      // 4,000 photos and this clip shows none of them; the catalogue's mechanism
+      // was a 1 s flash of a cluttered camera roll, and no such asset exists in
+      // the library. A photo-dense room was tried here and cut again: from the
+      // wide ?rcam=plan pose the salon-hung pictures are too small to read as
+      // "4,000 photos", so it added a shot without adding the argument.
+      // The corridor walk below does show photographs hung in sequence, which
+      // carries "zero folders" — but the before/after contrast the concept is
+      // built on needs a camera-roll asset that has to be shot first.
+      // Three captions in rhythm over one unbroken walk — the beat of the line
+      // ("just walls / just rooms / just light") does the cutting, so the footage
+      // must NOT cut with it.
+      // ⚠️ ?walk=wall, not the forward walk. left/right only shift the camera
+      // sideways — they still look down the hall, so the salon hang sat in the
+      // far periphery and this clip argued "zero folders" over an empty
+      // corridor. Angled at the wall, the photographs and their plaquettes are
+      // the subject: you see the photos, and you see there are no folders.
+      { kind: "beat", f: "walk-roots-wall", secs: 4.0, from: 3.0, grade: "soft", xf: 0.5,
+        cap: G("WONDER-04-cap1"), capIn: 0.5, capOut: 3.4 },
+      { kind: "beat", f: "walk-roots-wall", secs: 3.6, from: 7.4, grade: "soft", xf: 0.35,
+        cap: G("WONDER-04-cap2"), capIn: 0.4, capOut: 3.0 },
+      { kind: "beat", f: "walk-nest-wall", secs: 3.6, from: 5.5, grade: "soft", xf: 0.35,
+        cap: G("WONDER-04-cap3"), capIn: 0.4, capOut: 3.0 },
+      // ⚠️ The wing centrepiece used to close this clip and it earned nothing —
+      // a slow zoom onto a potted tree says nothing about photographs or
+      // folders. Ending INSIDE a room does: the corridor showed the hang, the
+      // room shows the same idea at arm's length.
+      { kind: "beat", f: "room-walkin-h2", secs: 4.6, from: 2.0, grade: "soft", xf: 0.6 },
+      { kind: "beat", f: "inlay-organise", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "WONDER-05", family: "WONDER", slug: "the-room-that-grew",
+    music: "light-in-dark-places.mp3", offset: 48, vol: 1.0,
+    // Catalogue PW-05. The four tier takes share one camera pose, so they are
+    // MATCH CUTS: the room jumps a size while nothing else moves. Crossfading
+    // them would dissolve exactly the jump the clip is about, so xf is floored
+    // at the assemble minimum rather than given room to breathe.
+    beats: [
+      { kind: "card", png: G("WONDER-05-hook"), secs: 2.6 },
+      { kind: "beat", f: "room-tier1", secs: 1.3, from: 1.6, grade: "soft", xf: 0.5 },
+      { kind: "beat", f: "room-tier2", secs: 1.1, from: 1.6, grade: "soft", xf: 0.05 },
+      { kind: "beat", f: "room-tier3", secs: 1.1, from: 1.6, grade: "soft", xf: 0.05 },
+      { kind: "beat", f: "room-tier4", secs: 1.6, from: 1.6, grade: "soft", xf: 0.05 },
+      // then let the grown room breathe, and name what happened
+      { kind: "beat", f: "room-walkin-h1", secs: 6.4, from: 1.5, grade: "soft", xf: 0.6,
+        cap: G("WONDER-05-cap1"), capIn: 1.6 },
+      // The library grid, not stills: this clip is about a room filling with
+      // memories, so the outro that matches it is hundreds of them scrolling
+      // past. (WONDER-01a already carries the upload carousel; repeating three
+      // screens across two clips teaches a viewer nothing new.)
+      { kind: "beat", f: "scroll-library", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "WONDER-06", family: "WONDER", slug: "it-hangs-somewhere",
+    music: "light-in-dark-places.mp3", offset: 12, vol: 1.0,
+    // Catalogue PW-06: photo first, palace second. The reverse dolly is the whole
+    // clip — it opens flush on one hung photograph and retreats until the room
+    // assembles around it, so it gets the longest single beat in the family.
+    beats: [
+      { kind: "card", png: G("WONDER-06-hook"), secs: 2.8 },
+      { kind: "beat", f: "room-pullback-h2", secs: 9.5, from: 0.6, grade: "soft", xf: 0.5,
+        cap: G("WONDER-06-cap1"), capIn: 6.2 },
+      // keep retreating: out of the room and down the hall
+      { kind: "beat", f: "walk-roots-left", secs: 4.0, from: 6.0, grade: "soft", xf: 0.7 },
+      { kind: "beat", f: "inlay-memory", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "WONDER-08", family: "WONDER", slug: "the-quietest-place",
+    // Catalogue PW-08 asks for room tone and no soundtrack. There is no room-tone
+    // stem in the kit, so the bed stays but drops to 0.45 — quiet enough to read
+    // as atmosphere rather than as a track.
+    music: "light-in-dark-places.mp3", offset: 96, vol: 0.45,
+    beats: [
+      { kind: "card", png: G("WONDER-08-hook"), secs: 2.8 },
+      { kind: "beat", f: "hearth-hold-h3", secs: 3.6, from: 1.0, grade: "soft", xf: 0.5 },
+      { kind: "beat", f: "room-walkin-h3", secs: 6.0, from: 2.0, grade: "soft", xf: 0.8 },
+      { kind: "beat", f: "room-library", secs: 5.0, from: 1.2, grade: "soft", xf: 0.8,
+        cap: G("WONDER-08-cap1"), capIn: 1.4 },
+      // Owner overruled the "quiet clip, no product" call. A scroll keeps the
+      // register: slow, one continuous movement, nothing flashing.
+      { kind: "beat", f: "scroll-keps", secs: 6.6, from: 0.0, raw: true, xf: 0.5 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+
+  {
+    code: "WONDER-02", family: "WONDER", slug: "look-up",
+    music: "light-in-dark-places.mp3", offset: 72, vol: 0.9,
+    // Catalogue PW-02 asks for a floor-to-oculus tilt in the entrance hall.
+    // Re-scoped to the ROOM's glazed velario, which is the same shot — one slow
+    // tilt ending on a skylight — in a space that has a camera we can drive. The
+    // hypothesis is untouched: a two-word command and one money-shot, no product
+    // explanation at all. Deliberately ONE beat; adding a second would answer a
+    // question the clip is built not to answer.
+    beats: [
+      // ⚠️ Shot from OUTSIDE now. The interior velario tilt ended on ceiling
+      // beams: a correct shot that said nothing about how big the place is.
+      // Craning up the facade from the approach road makes the scale the
+      // subject, which is the only thing this clip has to sell.
+      { kind: "card", png: G("WONDER-02-hook"), secs: 2.4 },
+      { kind: "beat", f: "exterior-lookup", secs: 13.0, from: 1.0, xf: 0.6,
+        cap: G("WONDER-02-cap1"), capIn: 9.0 },
+      // Owner overruled the "no product, by design" call here. A SCROLL rather
+      // than a carousel: the clip has been one unhurried move, and three sliding
+      // stills would break that rhythm where a page travelling under a thumb
+      // does not. The atrium scroll also answers "where is the rest of it" —
+      // it travels past import, restore, capture, timeline, family tree, legacy.
+      { kind: "beat", f: "scroll-atrium", secs: 6.6, from: 0.0, raw: true, xf: 0.5 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.5, sheen: true },
+    ],
+  },
+  {
+    code: "WONDER-03", family: "WONDER", slug: "the-named-doors",
+    music: "light-in-dark-places.mp3", offset: 36, vol: 1.0,
+    // PW-03 wanted the entrance hall's ring of doors. The CORRIDOR's doors carry
+    // the same metaphor and carry it better: they are already named, with bronze
+    // plaquettes you can read, and they open onto the actual rooms. Opening on
+    // one plaque states the premise before the walk pays it off.
+    beats: [
+      { kind: "card", png: G("WONDER-03-hook"), secs: 3.0 },
+      // ⚠️ SHOW the doors, do not assert them. The first cut of this clip tagged
+      // three room names over walking footage — and at walking distance no
+      // plaquette is legible, so it was naming things the viewer could not read.
+      // These two poses sit at the doors, where the bronze plates are the subject.
+      { kind: "beat", f: "corridor-door1", secs: 2.8, from: 1.6, grade: "soft", xf: 0.5,
+        cap: G("WONDER-03-cap1"), capIn: 0.5, capOut: 2.2 },
+      { kind: "beat", f: "corridor-door3", secs: 2.8, from: 1.6, grade: "soft", xf: 0.45,
+        cap: G("WONDER-03-cap2"), capIn: 0.5, capOut: 2.2 },
+      // now the hall they belong to, then through into a room
+      { kind: "beat", f: "walk-roots", secs: 4.0, from: 4.5, grade: "soft", xf: 0.6 },
+      { kind: "beat", f: "room-walkin-h4", secs: 5.4, from: 1.5, grade: "soft", xf: 0.7,
+        cap: G("WONDER-03-cap3"), capIn: 2.0 },
+      { kind: "beat", f: "inlay-family", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "WONDER-07", family: "WONDER", slug: "a-life-assembling",
+    music: "light-in-dark-places.mp3", offset: 60, vol: 1.0,
+    // PW-07 wanted the onboarding assemble sequence. That is a phase machine, not
+    // a scene with a camera, so it cannot be driven frame by frame. The corridor
+    // gives the same idea in architecture: its length is a function of how many
+    // rooms exist, so adding rooms literally builds more hall. Same camera each
+    // take, so the growth is the only thing that moves.
+    //
+    // NOT the same clip as WONDER-05: that one deepens a single room seen from
+    // above; this one extends a corridor seen head-on, and it is cut as process
+    // (even steps, no captions until the end) rather than as before/after.
+    beats: [
+      { kind: "card", png: G("WONDER-07-hook"), secs: 2.6 },
+      { kind: "beat", f: "corridor-grow1", secs: 1.3, from: 1.6, grade: "soft", xf: 0.5 },
+      { kind: "beat", f: "corridor-grow2", secs: 1.2, from: 1.6, grade: "soft", xf: 0.05 },
+      { kind: "beat", f: "corridor-grow3", secs: 1.2, from: 1.6, grade: "soft", xf: 0.05 },
+      { kind: "beat", f: "corridor-grow4", secs: 1.8, from: 1.6, grade: "soft", xf: 0.05 },
+      // then walk the hall the clip just built
+      // ⚠️ The forward walk ends at the centrepiece, so this clip also closed on
+      // the potted tree. ?walk=wall ends on the salon hang instead: the last
+      // thing you see is a photograph on a wall, which is what was assembled.
+      // Deliberately not the mantel — that is every other clip's closing image.
+      { kind: "beat", f: "walk-roots-wall", secs: 5.0, from: 5.5, grade: "soft", xf: 0.6,
+        cap: G("WONDER-07-cap1"), capIn: 2.2 },
+      { kind: "beat", f: "inlay-capture", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "WONDER-09", family: "WONDER", slug: "no-tricks",
+    music: "light-in-dark-places.mp3", offset: 8, vol: 0.95,
+    // PW-09's claim is "no cuts", and the original route to it — one continuous
+    // take across four scenes — is not shootable: they are separate routes, so
+    // any such take would in fact be spliced, which is the one thing this clip
+    // must not be. A single unbroken exterior orbit makes the same claim and
+    // makes it truthfully. ONE footage beat, no internal edits.
+    beats: [
+      { kind: "card", png: G("WONDER-09-hook"), secs: 3.0 },
+      { kind: "beat", f: "exterior-long", secs: 15.0, from: 2.0, xf: 0.6,
+        cap: G("WONDER-09-cap1"), capIn: 11.4 },
+      // ⚠️ The carousel is back at the owner's call — and the HOOK changed with
+      // it, from "No cuts. No CGI renders." to just the second half. A clip that
+      // cuts to a phone cannot open by claiming it does not cut. Fixing the
+      // sentence was the honest way to keep both.
+      { kind: "beat", f: "inlay-discover", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.5, sheen: true },
+    ],
+  },
+  {
+    code: "WONDER-10", family: "WONDER", slug: "a-name-and-a-year",
+    music: "light-in-dark-places.mp3", offset: 84, vol: 0.9,
+    // PW-10 tests whether ONE specific image out-hooks a grand tour. A first cut
+    // used the bronze nest: specific, certainly, but it said nothing — the hook
+    // pointed at an odd object and the clip had no second thought. A plaquette
+    // is just as particular and it carries the product's actual promise, so the
+    // hypothesis is tested by an image that also means something.
+    beats: [
+      { kind: "card", png: G("WONDER-10-hook"), secs: 2.8 },
+      // The pullback opens flush on a hung photograph with its bronze plaquette
+      // legible — "Grandpa and the Mare, 1961" — then retreats. That IS the
+      // argument: a title and a year, attached to the picture, on the wall.
+      { kind: "beat", f: "room-pullback-h1", secs: 7.0, from: 0.4, grade: "soft", xf: 0.6,
+        cap: G("WONDER-10-cap1"), capIn: 3.4 },
+      { kind: "beat", f: "inlay-memory", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.5, sheen: true },
     ],
   },
 ];

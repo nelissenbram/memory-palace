@@ -26,6 +26,14 @@ import { resolve } from "node:path";
 import { REPO, ensureDir, GPU_ARGS, EDGE } from "./kit.mjs";
 
 const [, , usp = "upload", outName = `inlay-${process.argv[2] || "upload"}`] = process.argv;
+/**
+ * --screens a,b,c pins the lead trio explicitly, for clips where the USP tag
+ * picks a defensible set that is still wrong FOR THAT CLIP.
+ */
+const pinned = (() => {
+  const i = process.argv.indexOf("--screens");
+  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1].split(",").map((s) => s.trim()) : null;
+})();
 const SCREENS = resolve(REPO, "socials-kit/screens");
 const OUT = ensureDir(resolve(REPO, "socials-kit/footage"));
 const WORK = ensureDir(resolve(REPO, "socials-kit/clipwork"));
@@ -45,17 +53,38 @@ const GROUP = {
   "settings-family": "sharing", "settings-sharing": "sharing", "settings-connections": "import",
   "settings-subscription": "plan", pricing: "plan",
   "library-grid": "library", pending: "library",
-  atrium: "palace", explore: "discover", me: "progress",
+  atrium: "palace", explore: "discover",
+  // ⚠️ /me is NOT progress. It carries a stats strip and then a settings list
+  // (Family & Friends, Sharing, Alerts, Legacy, Security, Subscription) — the
+  // carousel labelled it "your progress" and showed a menu. The milestones panel
+  // is the progress surface; /me is the account one.
+  me: "account", achievements: "progress",
   "family-tree": "family", help: "help",
 };
+/**
+ * Screens that may appear in the strip but must never LEAD. Help and pricing are
+ * lists of text: correct pages, useless adverts — the "organise" carousel put
+ * the FAQ in the middle of three, next to the atrium. Settings pages are the
+ * same problem one step down.
+ */
+const NEVER_LEAD = new Set(["help", "pricing", "settings-subscription"]);
 const leads = [];
 const seenGroup = new Set();
 for (const s of [...tagged, ...rest]) {
+  if (NEVER_LEAD.has(s.id)) continue;
   const g = GROUP[s.id] || s.id;
   if (seenGroup.has(g)) continue;
   seenGroup.add(g);
   leads.push(s);
   if (leads.length === 3) break;
+}
+if (pinned) {
+  leads.length = 0;
+  for (const id of pinned) {
+    const s = lib.find((x) => x.id === id);
+    if (!s) { console.error(`--screens: no screen "${id}"`); process.exit(1); }
+    leads.push(s);
+  }
 }
 const strip = [...leads, ...[...tagged, ...rest].filter((s) => !leads.includes(s))];
 console.log(`usp="${usp}" leads with: ${strip.slice(0, 3).map((c) => c.id).join(", ")}`);
@@ -68,7 +97,8 @@ const LABELS = {
   pending: "sort them later",
   atrium: "your palace at a glance",
   explore: "visit other palaces",
-  me: "your progress",
+  me: "your account",
+  achievements: "6 of 25 unlocked",
   "family-tree": "build the family tree",
   "settings-family": "invite the family",
   "settings-connections": "import from the cloud",

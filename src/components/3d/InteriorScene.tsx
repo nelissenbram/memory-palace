@@ -3394,6 +3394,11 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
           walkin:[[0,2.45,Math.min(-L/2+7.0,L/2-2.5)],[0,2.75,-L/2+2.0],[0,2.02,-L/2+3.4],[0,2.05,-L/2]],
           // entry → mid-room: reveals the velario ceiling and the far hearth
           reveal:[[0,1.75,L/2-1.2],[0,1.70,-L/2],[0,1.88,-L/2+9.5],[0,2.00,-L/2]],
+          // pullback: the reverse of walkin — opens flush against the hung photo
+          // above the mantel and retreats, so the frame, then the wall, then the
+          // whole room assemble around one picture. Keeps the look locked on the
+          // mantel throughout: the retreat is the reveal, a pan would fight it.
+          pullback:[[0,2.00,-L/2+2.4],[0,2.05,-L/2],[0,2.30,-L/2+11.5],[0,2.05,-L/2]],
         };
         const m=MOVES[_rmove]||MOVES.hearth;
         /**
@@ -3428,7 +3433,12 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
          * It is a calibration constant: check it by measuring, not by eye — see
          * the note on the beat windows in scripts/marketing/build-clips.mjs.
          */
-        const ROOM_PACE=0.25;
+        // Per-move, because they are not the same shot. walkin advances toward a
+        // wall a few metres off and needs the quarter pace; pullback retreats,
+        // so its subject shrinks rather than looms and it can run nearly twice
+        // as fast for the same felt speed.
+        const PACE:Record<string,number>={walkin:0.25,pullback:0.45};
+        const ROOM_PACE=PACE[_rmove]??0.35;
         const _d=Math.hypot(m[2][0]-m[0][0],m[2][2]-m[0][2])||6;
         const t=Math.min(1,(performance.now()-rmoveT0)/(_d/(MOVE_SPEED*ROOM_PACE)*1000)),e=easeInOutCubic(t);
         const lerp=(a:number[],b:number[])=>[a[0]+(b[0]-a[0])*e,a[1]+(b[1]-a[1])*e,a[2]+(b[2]-a[2])*e];

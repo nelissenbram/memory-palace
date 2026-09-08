@@ -74,8 +74,18 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
   // ground fills the frame; pulled back a little so the dome sits clear.
   const _ecam=(typeof window!=="undefined")?new URLSearchParams(window.location.search).get("ecam"):null;
   const _heroFrame=_ecam==="hero"||_ecam==="orbit";
-  const _PHI=_heroFrame?Math.PI*0.4620:Math.PI*0.4387, _DIST=_heroFrame?248:220;
+  // ?ecam=lookup — the "Look up." beat, shot from OUTSIDE. The interior velario
+  // tilt it replaces ended on ceiling beams: correct, but flat, and it could not
+  // say anything about how big the place is. Standing close under the facade and
+  // craning up the dome does both — the scale IS the subject.
+  const _lookup=_ecam==="lookup";
+  // lookup starts LOW (phi just under a right angle puts the eye near ground
+  // level, since y = r*cos(phi)+5) and CLOSE, so the building fills the frame.
+  const _PHI=_lookup?Math.PI*0.4930:(_heroFrame?Math.PI*0.4620:Math.PI*0.4387);
+  // Starts far out on the approach road, not already under the walls.
+  const _DIST=_lookup?190:(_heroFrame?248:220);
   const camO=useRef({theta:Math.PI*1.4987,phi:_PHI}),camOT=useRef({theta:Math.PI*1.4987,phi:_PHI}),camD=useRef(_DIST);
+  const lookupT0=useRef(0),lookupRamp=useRef(0);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);
@@ -6250,6 +6260,29 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         camO.current.phi=Math.max(1.06,camO.current.phi-0.026*dt);
         camOT.current.theta=camO.current.theta;camOT.current.phi=camO.current.phi;
       }
+      // ?ecam=lookup — one slow crane: walk in a little and tilt the gaze from
+      // the doorway up to the lantern. Tracked as a 0..1 ramp over 13 s so the
+      // distance and the look height move together; a tilt alone would read as a
+      // camera turning, not as a person looking up.
+      if(_lookup){
+        // ⚠️ Reset on the recorder's cue, not on the first animation frame. The
+        // scene mounts, then the reveal veil sits there for several seconds — so
+        // a clock started at mount had already burned most of its 13 s before
+        // capture began, and the take came back as four near-identical frames of
+        // a dome. Same __walkReset handshake the corridor and room moves use.
+        if(!lookupT0.current||(typeof window!=="undefined"&&(window as unknown as {__walkReset?:boolean}).__walkReset)){
+          lookupT0.current=performance.now();
+          if(typeof window!=="undefined")(window as unknown as {__walkReset?:boolean}).__walkReset=false;
+        }
+        // 22 s, not 13: the owner asked for much slower, and a crane that shows
+        // scale has to be slow enough that the eye can travel with it.
+        const u=Math.min(1,(performance.now()-lookupT0.current)/22000);
+        const e=u<0.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2;   // easeInOutCubic
+        camD.current=190-95*e;                           // 190 -> 95 m: come in off the road
+        camO.current.phi=Math.PI*0.4930+0.055*e;         // dip lower still
+        camOT.current.theta=camO.current.theta;camOT.current.phi=camO.current.phi;
+        lookupRamp.current=e;
+      }
       const r=camD.current;
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
       // W2 grandeur (owner review #1): look target rises with the now much higher
@@ -6261,7 +6294,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // puts a slab of near foreground across the bottom of a 9:16 crop, which
       // read as a flat brown patch. Tilting the look target up lifts the palace
       // and pushes that near ground out of frame; the dome still crowns the shot.
-      camera.lookAt(0,obLookY!==null?obLookY:HILL_Y+(W2?13:8)+(_heroFrame?11:0),0);
+      // lookup rides the look target from the portal (~8) to the lantern finial
+      // (~43): that climb is the shot.
+      const _lookY=_lookup
+        ? HILL_Y+8+35*lookupRamp.current
+        : HILL_Y+(W2?13:8)+(_heroFrame?11:0);
+      camera.lookAt(0,obLookY!==null?obLookY:_lookY,0);
 
       // ── Camera debug overlay (activated via ?cam=debug) ──
       if(camDebugRef.current){

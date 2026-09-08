@@ -3078,11 +3078,26 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         // which is the shot you want anyway. The shorter travel over the same
         // 13 s also halves the walking speed, which read as a jog.
         const z=(cL/2-2)+e*(3.2-(cL/2-2));
-        const lat=walkMode==="left"?-cW*0.22:walkMode==="right"?cW*0.22:0;
-        camera.position.set(lat,2.0,z);camera.lookAt(lat*0.4,1.9,z-6);
+        // ⚠️ left/right only shift the camera SIDEWAYS — they still look straight
+        // down the hall, so "walk-left" never actually showed the wall. `wall`
+        // angles the gaze at the salon hang, so the paintings and their bronze
+        // plaquettes sweep past instead of sitting in the far periphery.
+        const lat=walkMode==="left"?-cW*0.22:walkMode==="right"?cW*0.22:walkMode==="wall"?-cW*0.14:0;
+        camera.position.set(lat,2.0,z);
+        if(walkMode==="wall")camera.lookAt(-cW/2,2.05,z-4.5);
+        else camera.lookAt(lat*0.4,1.9,z-6);
       } else if(camDebug){
         if(camDebug==="portal"){camera.position.set(0,2.0,cL/2-6.5);camera.lookAt(0,cH*0.55,cL/2-1);}
-        else if(camDebug==="door"){const dz=cL/2-5.5;camera.position.set(-cW/2+2.7,1.7,dz);camera.lookAt(-cW/2,1.95,dz);}
+        // ?cam=door&door=N steps along the hall, one door per room slot, so a clip
+        // can show SEVERAL named plaquettes instead of the same one. Without this
+        // the "named doors" clip could only assert its door names in captions —
+        // at walking distance the plaquettes are unreadable, so it was claiming
+        // something the viewer had no way to see.
+        else if(camDebug==="door"){
+          const _di=(()=>{const v=parseInt(new URLSearchParams(window.location.search).get("door")||"",10);return Number.isFinite(v)?v:0;})();
+          const dz=cL/2-5.5-_di*C.sp;
+          camera.position.set(-cW/2+2.7,1.7,dz);camera.lookAt(-cW/2,1.95,dz);
+        }
         else if(camDebug==="terminus"){camera.position.set(0,2.0,cL/2-9);camera.lookAt(0,cH*0.5,-cL/2+1);}
         else if(camDebug==="statue"){camera.position.set(0,1.82,2.7);camera.lookAt(0,1.62,0);} // close on the central statue (z=0)
         // close-up on the first bay's potted plant — checks soil/leaf detail at

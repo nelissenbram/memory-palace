@@ -29,17 +29,36 @@ const DEMO_CORRIDOR_PAINTINGS: Record<string, { url?: string; title?: string; si
 
 const WING_IDS = ["roots", "nest", "craft", "travel", "passions"];
 
+/**
+ * More rooms than the four demo ones, for the corridor-growth takes: the hall's
+ * length is totalSlots * spacing + 14, so adding rooms literally extends the
+ * architecture. ?rooms=N slices or extends this list.
+ */
+const EXTRA_ROOMS = [
+  { id: "ro5", name: "The Allotment", icon: "🌿", shared: false, sharedWith: [], coverHue: 26 },
+  { id: "ro6", name: "Nonna's Kitchen", icon: "🥖", shared: false, sharedWith: [], coverHue: 36 },
+  { id: "ro7", name: "Summers at the Lake", icon: "⛵", shared: false, sharedWith: [], coverHue: 22 },
+  { id: "ro8", name: "The Long Drive Home", icon: "🚗", shared: false, sharedWith: [], coverHue: 44 },
+];
+
 export default function StagingCorridorClient() {
   const [mounted, setMounted] = useState(false);
   const [chrome, setChrome] = useState(false);
   const [wingId, setWingId] = useState("roots");
+  const [rooms, setRooms] = useState(DEMO_CORRIDOR_ROOMS);
   useEffect(() => {
     setMounted(true);
     setChrome(new URLSearchParams(window.location.search).get("chrome") === "1");
     // ?wing= picks which wing's corridor (and therefore which centrepiece
     // statue) renders — read after mount so SSR and client markup agree.
-    const w = new URLSearchParams(window.location.search).get("wing");
+    const q = new URLSearchParams(window.location.search);
+    const w = q.get("wing");
     if (w && WING_IDS.includes(w)) setWingId(w);
+    // ?rooms=N — how many doors the hall has, and so how long it is.
+    const n = parseInt(q.get("rooms") || "", 10);
+    if (Number.isFinite(n) && n >= 1) {
+      setRooms([...DEMO_CORRIDOR_ROOMS, ...EXTRA_ROOMS].slice(0, Math.min(n, 8)));
+    }
   }, []);
 
   return (
@@ -47,9 +66,9 @@ export default function StagingCorridorClient() {
       {mounted && (
         <div style={{ position: "absolute", inset: 0 }}>
           <CorridorScene
-            key={wingId}
+            key={`${wingId}:${rooms.length}`}
             wingId={wingId}
-            rooms={DEMO_CORRIDOR_ROOMS as never}
+            rooms={rooms as never}
             corridorPaintings={DEMO_CORRIDOR_PAINTINGS}
             onDoorHover={noop}
             onDoorClick={noop}

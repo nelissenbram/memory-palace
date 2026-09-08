@@ -52,13 +52,57 @@ const SCREENS = [
   // through /atrium directly trips the 3D wing-intro card on this account and
   // never settles, while the rewrite lands straight on the atrium. Verified by
   // running both: /atrium skipped every time, /library came through every time.
-  { id: "atrium",        path: "/library",  usp: ["palace", "organise"],
+  { id: "atrium",        path: "/atrium",   usp: ["palace", "organise"],
     expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
   // DROPPED: there is no /library route at all — no such directory under
   // src/app. It was rewritten to /atrium, so this entry spent months quietly
   // producing atrium screenshots filed as "the Library" and captioned "every
   // photo in one place". Second dead path in this list after /legacy; both were
   // invisible because a wrong-but-plausible screenshot looks like a working one.
+  // Achievements is a MODAL inside the atrium, not a route — no URL opens it, so
+  // the capture clicks its way in (see `open` below). Added because the carousel
+  // labelled /me "your progress" while that page is mostly a settings list; the
+  // milestones panel is what actually shows progress.
+  { id: "achievements", path: "/atrium", usp: ["progress"],
+    open: ["milestones"], expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
+  /**
+   * The atrium's feature rows. Each opens a surface with no URL of its own, so
+   * they are clicked into like the milestones panel. Added because the carousel
+   * kept cycling the same handful of pages: these are the parts of the product a
+   * viewer has never heard of — restore, timeline, memory map, life story.
+   * A row that does not open, or opens onto something unrecognisable, SKIPS —
+   * better a smaller library than one padded with wrong screens.
+   */
+  { id: "restore", path: "/atrium", usp: ["restore", "upload"],
+    open: ["restore a photo"], expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
+  { id: "timeline", path: "/atrium", usp: ["organise", "memory"],
+    open: ["timeline"], expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
+  { id: "memory-map", path: "/atrium", usp: ["organise", "discover"],
+    open: ["memory map"], expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
+  // Dropped: its panel animates in slower than the others, so the shot landed on
+  // a DIMMED atrium — the backdrop faded, the panel not yet drawn. A half-open
+  // modal is worse than no screen, and the fix (waiting on this one panel's own
+  // content) is not worth a bespoke rule for a screen the carousel can do
+  // without. Re-add with a proper readiness check if it earns a slot.
+
+  // ⚠️ The "time capsule" row was dropped. Its click matched a container whose
+  // text also held a "Library →" link, so the capture navigated to the library
+  // grid and filed it as a time capsule — a real screen under a wrong name,
+  // exactly the failure this library keeps producing. Its accidental output was
+  // useful though: the grid is a screen we never had, so it is claimed here
+  // properly, via the same reliable card the scroll capture uses.
+  { id: "library-grid", path: "/atrium", usp: ["upload", "organise", "memory"],
+    open: ["enter your library"], expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
+  { id: "highlights", path: "/atrium", usp: ["discover", "memory"],
+    open: ["highlights"], expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
+  // AI interviews — owner: still one of the strongest USPs, and the carousel had
+  // never shown it. Two entries because the feature has two faces: the prompt
+  // that asks you something, and the list of what you have already recorded.
+  { id: "interview", path: "/atrium", usp: ["interview", "memory"],
+    // "Life Story" is the atrium's label for the AI interview; "Record your
+    // story" and "Start interview" live INSIDE that panel, not on the row, so
+    // matching them found nothing and the capture kept the plain atrium.
+    open: ["life story", "record your story"], expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
   { id: "explore",       path: "/explore",  usp: ["discover", "share"],
     expect: /Explore Palaces/i },
   { id: "me",            path: "/me",       usp: ["progress", "family"],
@@ -194,7 +238,16 @@ const DEMO_NAME_TO = "Elena Marchetti";
 
 const manifest = [];
 for (const s of todo) {
-  await page.goto(`${BASE}${s.path}`, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
+  /**
+   * ⚠️ ?onboarding=off. MemoryPalace forces the walkthrough on every login
+   * for any non-production host — deliberately, so onboarding can be
+   * reviewed on previews — and localhost is a non-production host. That is
+   * why the atrium intercepted captures at random and why clicking into its
+   * panels produced the same picture under three different names. The escape
+   * hatch was documented in a comment beside the flag the whole time.
+   */
+  const url = `${BASE}${s.path}` + (s.path.includes("?") ? "&" : "?") + "onboarding=off";
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 }).catch(() => {});
   const clicked = await clearOverlays();
   /**
    * Wait for the page to actually BE the page.
@@ -211,6 +264,31 @@ for (const s of todo) {
    *   - no onboarding modal over the top.
    *   - real content present.
    */
+  /**
+   * `ready: true` screens live behind /staging/atrium, which signals when the
+   * panel it was asked for has actually opened. Waiting on that beats matching
+   * a fingerprint: the fingerprint could only ever prove the page UNDERNEATH
+   * was right, which is how `interview` shipped as a plain copy of `atrium`.
+   */
+  if (s.ready) {
+    let state = "loading";
+    const w0 = Date.now();
+    while (Date.now() - w0 < 45000) {
+      state = await page.evaluate(() =>
+        document.querySelector("[data-mp-ready]")?.getAttribute("data-mp-ready") || "loading",
+      ).catch(() => "loading");
+      if (state !== "loading") break;
+      await sleep(600);
+    }
+    if (state !== "ready") { console.log(`   ${s.id}: panel never opened (${state}) — SKIPPED`); continue; }
+    await sleep(1400);
+    const png0 = resolve(OUT, `${s.id}.png`);
+    await page.screenshot({ path: png0, type: "png" });
+    manifest.push({ id: s.id, usp: s.usp, file: `${s.id}.png` });
+    console.log(`   ${s.id}  [${s.usp.join(",")}]  (panel)`);
+    continue;
+  }
+
   const t0 = Date.now();
   let ready = false, last = null;
   while (Date.now() - t0 < 40000) {
@@ -259,6 +337,17 @@ for (const s of todo) {
     continue;
   }
   await sleep(900);
+  // Optional: click into a surface that has no URL of its own (a modal). The
+  // fingerprint check above already passed on the page BEHIND it, so this runs
+  // after, and the shot is verified by eye in /staging/screens.
+  if (s.open) {
+    const hit = await clickText(s.open);
+    // 3.6 s, not 2. These panels animate in — a bottom sheet still sliding up
+    // photographs as a sliver over a dimmed atrium, which is how `life-story`
+    // and `interview` both came back looking like a greyed-out home screen.
+    if (hit) { console.log(`      opened via "${hit}"`); await sleep(3600); }
+    else console.log(`      ⚠ no button matching ${JSON.stringify(s.open)}`);
+  }
   await page.evaluate(() => {
     for (const el of document.querySelectorAll("nextjs-portal,[data-nextjs-toast],[data-next-badge-root]")) el.remove();
     for (const el of document.querySelectorAll("div,section,aside")) {
@@ -353,9 +442,19 @@ for (const im of IMPORTED) {
 // DIRECTORY, so a dropped entry would otherwise sit there looking current —
 // which is how the retired kep-landing and family-tree shots kept showing up.
 if (!only) {
-  const keep = new Set(manifest.map((m) => m.file));
+  /**
+   * ⚠️ Sweep what was REMOVED FROM THE LIST, not what failed to capture today.
+   *
+   * This used to keep only the files this run produced — so a screen that got
+   * skipped because the atrium walkthrough intercepted it (which happens on
+   * maybe a third of runs) had its previously good PNG deleted, and the next
+   * run had one fewer screen than the last. A flaky capture must not be able to
+   * shrink the library; only editing SCREENS should.
+   */
+  const declared = new Set([...SCREENS.map((s) => `${s.id}.png`), ...IMPORTED.map((i) => `${i.id}.png`)]);
+  const keep = new Set([...manifest.map((m) => m.file), ...declared]);
   for (const f of readdirSync(OUT).filter((f) => f.endsWith(".png"))) {
-    if (!keep.has(f)) { unlinkSync(resolve(OUT, f)); console.log(`   swept stale ${f}`); }
+    if (!keep.has(f)) { unlinkSync(resolve(OUT, f)); console.log(`   swept retired ${f}`); }
   }
 }
 /**
@@ -365,23 +464,29 @@ if (!only) {
  * claimed one — and build-inlay, which reads the manifest, died trying to build
  * a carousel from it. Partial runs merge; only a full run is authoritative.
  */
-let merged = manifest;
-if (only) {
-  let prev = [];
-  try { prev = JSON.parse(readFileSync(resolve(OUT, "screens.json"), "utf8")); } catch { /* first run */ }
-  const fresh = new Set(manifest.map((m) => m.id));
-  merged = [...prev.filter((m) => !fresh.has(m.id)), ...manifest]
-    .sort((a, b) => a.id.localeCompare(b.id));
-}
+/**
+ * ⚠️ Carry forward screens that exist on disk but were skipped THIS run.
+ *
+ * Two versions of this were wrong. First a filtered run overwrote the manifest
+ * with its single entry. Then a full run, having skipped four screens to the
+ * flaky atrium walkthrough, wrote a manifest of 15 while 17 PNGs sat in the
+ * directory — so build-inlay could not use two perfectly good screens, and the
+ * viewer (which lists the directory) disagreed with the manifest about what the
+ * library contained.
+ *
+ * A capture that fails must leave the library exactly as it was, never smaller.
+ * Only editing SCREENS removes anything.
+ */
+let prev = [];
+try { prev = JSON.parse(readFileSync(resolve(OUT, "screens.json"), "utf8")); } catch { /* first run */ }
+const fresh = new Set(manifest.map((m) => m.id));
+const carried = prev.filter((m) => !fresh.has(m.id) && existsSync(resolve(OUT, m.file)));
+if (carried.length) console.log(`   kept ${carried.length} earlier screen(s): ${carried.map((m) => m.id).join(", ")}`);
+const merged = [...carried, ...manifest].sort((a, b) => a.id.localeCompare(b.id));
 writeFileSync(resolve(OUT, "screens.json"), JSON.stringify(merged, null, 2));
 // Imported screens sit in the manifest but not in `todo`, so count them apart
 // rather than reporting "13/12 captured".
 const imported = manifest.length - captured;
-console.log(`
-${captured}/${todo.length} captured`
-  + (imported ? ` + ${imported} imported` : "")
-  + ` -> ${OUT.replace(REPO, ".")}`);
-
 /**
  * ⚠️ Fail LOUDLY on duplicates — PERCEPTUALLY, not byte-wise.
  *
@@ -400,7 +505,13 @@ ${captured}/${todo.length} captured`
 // and "Manage Published Content" the same picture. The fingerprint check above
 // now proves each page's identity, which leaves this as a backstop against
 // genuinely identical frames — the atrium/library pair differed by about one.
-const HAMMING_MAX = 3;
+// 1, not 3. The atrium panels (milestones, timeline, insights) share a card
+// layout and a dimmed atrium header, so at 8x8 three genuinely different
+// screens sat 2 apart and were flagged as the same picture — verified by eye.
+// Identity is now proven upstream by the fingerprint and the row-open check, so
+// this is a backstop against frames that really are identical: atrium and
+// interview came in at distance 0 when a row failed to open.
+const HAMMING_MAX = 1;
 const aHash = (file) => {
   const raw = execSync(
     `ffmpeg -v error -i "${file}" -vf scale=8:8,format=gray -f rawvideo -`,
@@ -412,7 +523,13 @@ const aHash = (file) => {
 };
 const hamming = (a, b) => a.reduce((n, v, i) => n + (v !== b[i] ? 1 : 0), 0);
 
-const hashes = manifest.map((m) => ({ id: m.id, h: aHash(resolve(OUT, m.file)) }));
+// ⚠️ Hash the MERGED set, not just this run's captures. Carried-forward screens
+// were excluded from the comparison, so a fresh capture that duplicated one of
+// them passed as "distinct": `interview` came back as a plain copy of `atrium`
+// (the fingerprint matched the page underneath, the click into the panel never
+// landed) and nothing objected. A duplicate check that only sees half the
+// library is a duplicate check that misses half the duplicates.
+const hashes = merged.map((m) => ({ id: m.id, h: aHash(resolve(OUT, m.file)) }));
 const pairs = [];
 for (let i = 0; i < hashes.length; i++) {
   for (let j = i + 1; j < hashes.length; j++) {
@@ -428,4 +545,11 @@ if (pairs.length) {
   console.error("  route that redirects onto another one. Review /staging/screens.");
   process.exit(1);
 }
-console.log(`✓ all ${manifest.length} screens visually distinct`);
+console.log(`✓ all ${merged.length} screens visually distinct`);
+
+console.log(`
+${captured}/${todo.length} captured`
+  + (imported ? ` + ${imported} imported` : "")
+  + ` -> ${OUT.replace(REPO, ".")}`);
+
+
