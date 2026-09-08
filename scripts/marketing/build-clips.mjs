@@ -577,14 +577,23 @@ const CLIPS = [
     beats: [
       { kind: "card", png: G("LEGACY-01-hook"), secs: 3.0 },
       { kind: "beat", f: "exterior-lookup", secs: 3.4, from: 1.0, xf: 0.5 },
-      { kind: "beat", f: "room-tier1", secs: 2.6, from: 1.4, grade: "soft", xf: 0.5,
-        cap: G("LEGACY-01-cap1"), capIn: 0.3, capOut: 2.1 },
-      { kind: "beat", f: "room-walkin-h1", secs: 2.8, from: 2.0, grade: "soft", xf: 0.3,
-        cap: G("LEGACY-01-cap2"), capIn: 0.3, capOut: 2.3 },
-      { kind: "beat", f: "room-tier3", secs: 2.6, from: 1.4, grade: "soft", xf: 0.3,
-        cap: G("LEGACY-01-cap3"), capIn: 0.3, capOut: 2.1 },
-      { kind: "beat", f: "room-walkin-h2", secs: 2.8, from: 2.0, grade: "soft", xf: 0.3,
-        cap: G("LEGACY-01-cap4"), capIn: 0.3, capOut: 2.3 },
+      /**
+       * ⚠️ One beat per PHOTOGRAPH, each caption naming the plaque beneath it.
+       *
+       * This used to alternate hero shots with plan-view tier shots, which did
+       * two things wrong: the wide room added nothing (owner), and it hung a
+       * DIFFERENT photograph over the mantel from the one the caption was
+       * describing. Four heroes, four captions, in order.
+       */
+      { kind: "beat", f: "room-walkin", secs: 3.0, from: 5.0, grade: "soft", xf: 0.5,
+        cap: G("LEGACY-01-cap1"), capIn: 0.3, capOut: 2.5 },
+      { kind: "beat", f: "room-walkin-h1", secs: 3.0, from: 5.0, grade: "soft", xf: 0.3,
+        cap: G("LEGACY-01-cap2"), capIn: 0.3, capOut: 2.5 },
+      { kind: "beat", f: "room-walkin-h2", secs: 3.0, from: 5.0, grade: "soft", xf: 0.3,
+        cap: G("LEGACY-01-cap3"), capIn: 0.3, capOut: 2.5 },
+      { kind: "beat", f: "room-walkin-h3", secs: 3.0, from: 5.0, grade: "soft", xf: 0.3,
+        cap: G("LEGACY-01-cap4"), capIn: 0.3, capOut: 2.5 },
+      // pull back down the hall: all those rooms at once
       { kind: "beat", f: "corridor-grow4", secs: 3.2, from: 1.4, grade: "soft", xf: 0.6,
         cap: G("LEGACY-01-cap5"), capIn: 0.8 },
       { kind: "beat", f: "scroll-library", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },

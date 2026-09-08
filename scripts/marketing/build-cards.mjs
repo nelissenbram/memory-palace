@@ -87,9 +87,16 @@ export const CARDS = {
   // Owner USP decision 2026-09-07: the frame is private + visitable + yours;
   // "permanent/forever" may support but never headline. None of these do.
   "LEGACY-01": {
-    hook: "She was born in 1938.\nThis is her whole life, in nine rooms.",
-    caps: ["1943. the kitchen with the radio.", "1962. he asked her at the tram stop.",
-           "1971. the first house.", "1989. grandchildren.", "nine rooms. one life."],
+    // ⚠️ Captions ALIGNED to the plaques actually on screen. The catalogue's
+    // years (1943 the kitchen, 1962 the tram stop, 1971 the first house) were
+    // invented for a life the footage does not show, so every beat had a caption
+    // saying one thing while the bronze plate under the photograph said another.
+    // These are the four hero photographs in the order the clip cuts them, with
+    // their own titles and years.
+    hook: "She was born in 1938.\nThis is her whole life, on four walls.",
+    caps: ["1961. the day they married.", "1974. still dancing.",
+           "1996. the walk they always took.", "1998. the day she made it.",
+           "four photographs. one life."],
   },
   "LEGACY-05": {
     hook: "Call your mother tonight.\nAsk her about 1974.",
