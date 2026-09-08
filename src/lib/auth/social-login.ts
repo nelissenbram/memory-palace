@@ -93,7 +93,7 @@ export async function signInWithGoogle(opts?: OAuthOpts): Promise<{ error?: stri
     if (error || !data.url) {
       console.error("[OAuth] Google error:", error);
       pendingReset = null;
-      return { error: error?.message || "Could not start Google sign-in. Please try again." };
+      return { error: "Could not start Google sign-in. Please try again." };
     }
     await openOAuthInApp(data.url);
     return {};
@@ -129,7 +129,7 @@ export async function signInWithApple(opts?: OAuthOpts): Promise<{ error?: strin
     if (error || !data.url) {
       console.error("[OAuth] Apple error:", error);
       pendingReset = null;
-      return { error: error?.message || "Could not start Apple sign-in. Please try again." };
+      return { error: "Could not start Apple sign-in. Please try again." };
     }
     await openOAuthInApp(data.url);
     return {};

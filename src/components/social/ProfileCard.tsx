@@ -3,6 +3,7 @@
 import React, { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
+import { smallAvatarUrl } from "@/lib/images/avatar-url";
 import TuscanCard from "@/components/ui/TuscanCard";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsCompact } from "@/lib/hooks/useIsMobile";
@@ -198,7 +199,7 @@ export default function ProfileCard({
         >
           {showAvatarImage ? (
             <img
-              src={profile.avatar_url as string}
+              src={smallAvatarUrl(profile.avatar_url as string, 128)}
               alt=""
               // On a broken/expired avatar URL, fall back to the ember-tint
               // initial rather than a torn image glyph.
