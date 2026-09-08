@@ -286,8 +286,19 @@ if (DRY) {
       boxes = await page.evaluate(() => document.querySelectorAll('input[type="checkbox"]').length).catch(() => 0);
     }
 
+      /**
+     * ⚠️ Stop once the chapter has enough. Each run ticked five MORE — the count
+     * went 20, then 32 — because "already seeded" was never checked. A demo
+     * chapter with thirty-two attachments is not more convincing than one with
+     * eight, and the runs were quietly accumulating.
+     */
+    const alreadyHas = Number(await page.evaluate(() =>
+      (document.body.innerText || "").match(/(\d+)\s*memor\w*\s*attached/i)?.[1] || 0,
+    ).catch(() => 0));
     let ticked = 0;
-    if (boxes) {
+    if (alreadyHas >= 8) {
+      report.push(`life story: chapter already has ${alreadyHas} memories — not adding more`);
+    } else if (boxes) {
       ticked = await page.evaluate((want) => {
         const all = [...document.querySelectorAll('input[type="checkbox"]')].filter((c) => !c.checked);
         let n = 0;
@@ -309,6 +320,42 @@ if (DRY) {
     report.push(got
       ? `life story: chapter now has ${got} memories attached (ticked ${ticked} this run)`
       : `FAILED life story: ${boxes} checkbox(es) found, ${ticked} ticked, none stuck`);
+
+    /**
+     * ⚠️ Re-weave, or the prose stays wrong — and this block has been lost once
+     * already: it was written, then silently overwritten when the surrounding
+     * life-story section was replaced, so a run reported 32 memories attached
+     * and said nothing about weaving because the code was no longer there.
+     *
+     * Attaching does not rewrite a chapter. The panel keeps its empty-chapter
+     * text ("I have not yet gathered the memories...") until Weave runs again:
+     * lovely writing, and exactly the wrong writing for an advert.
+     *
+     * This SPENDS a model call on the owner's key. One chapter, once.
+     */
+    const stale = await page.evaluate(() =>
+      /not yet gathered the memories/i.test(document.body.innerText || ""),
+    ).catch(() => false);
+    if (!stale) {
+      report.push("life story: prose already reflects the attached memories");
+    } else {
+      const wove = await clickText(["weave again", "weave this chapter"]);
+      if (!wove) {
+        report.push("FAILED life story: no weave button");
+      } else {
+        // Poll rather than guess: a model call takes as long as it takes.
+        let done = false;
+        for (let i = 0; i < 30 && !done; i++) {
+          await sleep(2500);
+          done = await page.evaluate(() =>
+            !/not yet gathered the memories/i.test(document.body.innerText || ""),
+          ).catch(() => false);
+        }
+        report.push(done
+          ? "life story: chapter re-woven from the attached memories"
+          : "FAILED life story: weave clicked, empty-chapter prose still showing after 75s");
+      }
+    }
   }
 }
 
