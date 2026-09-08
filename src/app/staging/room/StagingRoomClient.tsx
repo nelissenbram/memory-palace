@@ -23,33 +23,57 @@ const DEMO_PHOTOS = [
 // its own variants, and the plaque under the mantel is legible in every clip, so
 // the wording is written to carry feeling rather than to label a file.
 const PHOTO_STORIES: { src: string; takes: [string, string][] }[] = [
-  { src: "/demo/graduation.jpg", takes: [            // caps thrown against the sky
+  // ⚠️ Rewritten twice over. The first pass drew titles from a flat list while
+  // images cycled separately, so "Last Harvest" landed on a beach. The second
+  // kept the pairing but the wording aged badly — "Grandpa and the Mare" is
+  // museum-label English nobody says aloud, and the owner said so.
+  //
+  // These three lead now, and they are one couple's arc: the wedding, dancing
+  // years later, and a lane walked together decades after that. A clip that asks
+  // what you never got round to asking needs people on the wall, not scenery.
+  // Sourced from scripts/populate/media (1586 photos across 42 personas) — the
+  // library was there all along while five stock images were being recycled.
+  { src: "/demo/the-wedding.jpg", takes: [
+    ["The Day They Married", "1961"],
+    ["Everyone Came", "1961"],
+    ["Before Any of Us", "1961"],
+  ] },
+  { src: "/demo/still-dancing.jpg", takes: [
+    ["Still Dancing", "1974"],
+    ["He Always Led", "1974"],
+    ["Their Song Came On", "1978"],
+  ] },
+  { src: "/demo/the-long-walk.jpg", takes: [
+    ["The Walk They Always Took", "1996"],
+    ["Same Lane, Fifty Years", "1996"],
+    ["Neither of Them Talked Much", "1999"],
+  ] },
+  { src: "/demo/graduation.jpg", takes: [
     ["The Day She Made It", "1998"],
     ["First in the Family", "1998"],
     ["We Threw Our Hats", "2001"],
   ] },
-  { src: "/demo/quiet-morning.jpg", takes: [         // coffee and flowers on a table
+  { src: "/demo/quiet-morning.jpg", takes: [
     ["Her Kitchen Table", "1987"],
     ["The Cup She Always Used", "1991"],
     ["Sunday, Before Anyone Woke", "1987"],
   ] },
-  { src: "/demo/between-two-hands.jpg", takes: [     // sepia, a man and his horse
-    ["Grandpa and the Mare", "1961"],
+  { src: "/demo/between-two-hands.jpg", takes: [
+    ["Him and the Horse", "1961"],
     ["Before the Farm Was Sold", "1958"],
     ["He Named Her Bella", "1961"],
   ] },
-  { src: "/demo/edge-of-water.jpg", takes: [         // a figure at the water at dusk
+  { src: "/demo/edge-of-water.jpg", takes: [
     ["The Summer We Almost Stayed", "1994"],
     ["Watching the Tide Come In", "1994"],
     ["Her Last Evening by the Sea", "1996"],
   ] },
-  { src: "/demo/pexels-alexander-mass-748453803-28107011.jpg", takes: [ // two walking a field
-    ["Walking Home Together", "1972"],
-    ["Fifty Years Next June", "1972"],
-    ["They Still Held Hands", "1975"],
-  ] },
 ];
-
+// ⚠️ Titles are keyed to THEIR PHOTO, not to a running index. A first pass drew
+// from a flat title list while images cycled separately, so "Last Harvest" landed
+// on a beach at sunset — plausible words, wrong picture. Each photo now carries
+// its own variants, and the plaque under the mantel is legible in every clip, so
+// the wording is written to carry feeling rather than to label a file.
 /**
  * ?hero=N rotates which photo leads the set, and so which one hangs over the
  * mantel. Every room beat in the clip library was shot from the same default

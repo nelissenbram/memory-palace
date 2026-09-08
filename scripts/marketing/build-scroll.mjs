@@ -53,6 +53,22 @@ const PAGES = [
   // that proves it is yours. A still frame shows one half and hides the point.
   { id: "security", path: "/settings/security", expect: /Danger Zone|Export Your Data/i,
     label: "take it all with you" },
+  // The AI interview, scrolled through its chapters and the prose it writes back.
+  // Owner on LEGACY-08: the clip must travel through the QUESTIONS AND ANSWERS,
+  // not sit on a still of the panel — the feature's whole argument is that it
+  // keeps asking and keeps writing.
+  { id: "lifestory", path: "/atrium", expect: /Palace Visitors|Enter Your Palace|Your Atrium/i,
+    // 15 s, not the usual 6.6: LEGACY-08 is built ON this scroll rather than
+    // ending with it, and five questions need room to be read.
+    open: ["life story", "record your story"], panel: "Life Story", secs: 15,
+    label: "it asks. you answer. it writes." },
+  // ⚠️ Label-less twin. When a scroll is a clip's BODY rather than its outro the
+  // built-in caption collides with the clip's own captions — LEGACY-08 carried
+  // "it asks. you answer. it writes." across the top while a question sat at the
+  // bottom of the same frame. A scroll that is the subject should not also
+  // annotate itself.
+  { id: "lifestory-bare", path: "/atrium", expect: /Palace Visitors|Enter Your Palace|Your Atrium/i,
+    open: ["life story", "record your story"], panel: "Life Story", secs: 15, label: null },
   { id: "explore", path: "/explore", expect: /Explore Palaces/i,
     label: "visit other palaces" },
   { id: "keps", path: "/palace/keps", expect: /Meet Kep|Kep Capture/i,
@@ -65,7 +81,7 @@ const DEMO_NAME_FROM = "Apple Review";
 const DEMO_NAME_TO = "Elena Marchetti";
 
 const S = { x: 232, y: 430, w: 616, h: 1096, r: 46 };
-const TOTAL = 6.6;
+const DEFAULT_TOTAL = 6.6;
 
 /**
  * Caption plate + arrow, matching the carousel's.
@@ -194,10 +210,56 @@ for (const p of todo) {
    * own clientHeight), then let it grow to its full height and unpin whatever is
    * clamping the page, so one screenshot contains the whole thing.
    */
-  const pageH = await page.evaluate(() => {
-    const all = [...document.querySelectorAll("*")];
+  const pageH = await page.evaluate((panelText) => {
+    /**
+     * When a PANEL is open, scroll the panel — not the page behind it.
+     *
+     * The scroller was chosen as the tallest scrollable element in the document,
+     * and the atrium underneath a modal is always taller than the modal. So the
+     * life-story capture panned through the atrium's action list while carrying
+     * the caption "it asks. you answer. it writes." — right label, wrong
+     * content, the exact failure this pipeline keeps having to unlearn.
+     *
+     * A modal is position:fixed, so scope the search inside the innermost fixed
+     * container that actually holds text (the outermost is the dimming backdrop).
+     */
+    const all = [...document.body.querySelectorAll("*")];
     let best = null, bestOver = 0;
-    for (const el of all) {
+    /**
+     * ⚠️ Pick the scroller by CONTENT, not by height, when a panel is open.
+     *
+     * The Life Story panel is a div.mp-scroll of about 1550 px sitting over an
+     * atrium of about 3300 px — and it is position:relative, not fixed, so a
+     * "find the modal" heuristic missed it twice. Choosing the tallest scroller
+     * panned through the atrium's action list under the caption "it asks. you
+     * answer. it writes.": the right label over the wrong content, which is the
+     * failure this pipeline exists to prevent.
+     *
+     * With `panel` set, only a scroller whose own text carries that marker is
+     * eligible. No marker, no capture — better absent than wrong.
+     */
+    if (panelText) {
+      // Smallest match that is still substantial. The panel's own text also
+      // appears in the atrium wrapper behind it (the panel is a descendant), so
+      // "largest match" returns the page again; "smallest match" returns a
+      // 120 px fragment of the heading. The floor separates the two.
+      const MIN = 400;
+      for (const el of all) {
+        if (el.scrollHeight - el.clientHeight <= 8) continue;
+        if (el.scrollHeight < MIN) continue;
+        if (!(el.innerText || "").includes(panelText)) continue;
+        if (!best || el.scrollHeight < best.scrollHeight) best = el;
+      }
+      if (!best) return -1;
+      bestOver = best.scrollHeight;
+      // Tag it so the screenshot can target the ELEMENT. Measuring the panel and
+      // then capturing the page was the last version of this bug: the numbers
+      // said 1551 px of Life Story while the image was the atrium, because a
+      // fullPage shot starts at the top of the document and the panel is not
+      // there.
+      best.setAttribute("data-mp-scroll", "1");
+    }
+    for (const el of best ? [] : all) {
       const over = el.scrollHeight - el.clientHeight;
       // ⚠️ Rank by CONTENT HEIGHT, not by overflow, and drop the clientHeight
       // floor. On /settings/security the tallest overflow belonged to a 40 px
@@ -246,10 +308,13 @@ for (const p of todo) {
       return Math.min(full, Math.ceil(bottom) + 24);
     }
     return document.documentElement.scrollHeight;
-  }).catch(() => 0);
+  }, p.panel || null).catch(() => 0);
+  if (pageH === -1) { console.log(`   panel "${p.panel}" not found as a scroller — SKIPPED`); continue; }
   await sleep(900);
   const tall = resolve(WORK, `scroll-${p.id}.png`);
-  await page.screenshot({ path: tall, type: "png", fullPage: true });
+  const target = p.panel ? await page.$('[data-mp-scroll="1"]') : null;
+  if (target) await target.screenshot({ path: tall, type: "png" });
+  else await page.screenshot({ path: tall, type: "png", fullPage: true });
   console.log(`   scrollable content: ${pageH}px`);
   let h = Number(execSync(`ffprobe -v error -select_streams v -show_entries stream=height -of csv=p=0 "${tall}"`).toString().trim());
   // The screenshot is at deviceScaleFactor 2, so page px are half image px.
@@ -261,6 +326,7 @@ for (const p of todo) {
   // crop taller than the source is a hard ffmpeg error rather than a no-op.
   const srcH = Math.floor(h * (S.w / 1080));
   if (srcH <= S.h + 8) { console.log(`   only ${srcH}px after scaling — nothing to scroll, SKIPPED`); continue; }
+  const TOTAL = p.secs || DEFAULT_TOTAL;
   const travel = Math.max(0, srcH - S.h);
   const yExpr = travel > 0
     ? `(${travel})*(0.5-0.5*cos(PI*min(1\\,t/${(TOTAL - 0.8).toFixed(2)})))`
@@ -271,6 +337,20 @@ for (const p of todo) {
   const frame = resolve(WORK, "phone-frame.png");
   if (!existsSync(frame)) {
     console.log("   phone-frame.png missing — run build-inlay.mjs once first");
+    continue;
+  }
+  if (!p.label) {
+    execSync(
+      `ffmpeg -y -v error -loop 1 -framerate 30 -t ${TOTAL} -i "${tall}" `
+      + `-loop 1 -framerate 30 -t ${TOTAL} -i "${frame}" `
+      + `-filter_complex "[0:v]crop=iw:${h}:0:0,scale=${S.w}:-1,crop=${S.w}:${S.h}:0:'${yExpr}',format=yuv420p[scr];`
+      + `color=c=#1B1613:s=1080x1920:d=${TOTAL},format=yuv420p[bg];`
+      + `[bg][scr]overlay=${S.x}:${S.y}:shortest=1[base];`
+      + `[base][1:v]overlay=0:0,format=yuv420p[v]" -map "[v]" -t ${TOTAL} `
+      + `-c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p -r 30 -an "${resolve(OUT, `scroll-${p.id}.mp4`)}"`,
+      { stdio: "inherit" },
+    );
+    console.log(`   page ${h}px -> scroll-${p.id}.mp4 (no label)`);
     continue;
   }
   const cap = resolve(WORK, `scroll-cap-${p.id}.png`);

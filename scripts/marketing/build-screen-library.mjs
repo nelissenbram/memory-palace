@@ -314,10 +314,22 @@ for (const s of todo) {
       // gives you nothing to fix.
       const skelEls = [...document.querySelectorAll('[class*="shimmer" i],[class*="skeleton" i],[class*="spinner" i],[role="progressbar"]')].filter(vis);
       const skelWhy = skelEls.map((e) => `${e.tagName}.${String(e.className).slice(0, 30)}`).slice(0, 3);
-      const loadingHit = (/Loading[^.!?]{0,40}[.…]/i.exec(document.body.innerText || "") || [])[0] || null;
-      if (loadingHit) skelWhy.push(`text:"${loadingHit}"`);
-      const skel = skelEls.length
-        + (/\bLoading\b[^.!?]{0,40}[.…]/i.test(document.body.innerText || "") ? 1 : 0);
+      /**
+       * ONE regex, and no literal ellipsis in this file.
+       *
+       * There were two copies here, one for the count and one for the reason,
+       * and they had drifted apart: the count fired while the reason came back
+       * empty, which is why /settings/security looked permanently unready.
+       * The ellipsis an earlier edit wrote here had also been mangled into a
+       * replacement character, leaving a class that matched what it liked.
+       *
+       * Anchored to the start of a line too: a page is loading when a line
+       * BEGINS with it, not when the word appears anywhere on it.
+       */
+      const LOADING = new RegExp('^\s*Loading\b[^.!?\n]{0,40}(\.{2,}|\u2026)', 'im');
+      const loadingHit = (LOADING.exec(document.body.innerText || '') || [])[0] || null;
+      if (loadingHit) skelWhy.push(`text:"${loadingHit.trim()}"`);
+      const skel = skelEls.length + (loadingHit ? 1 : 0);
       const t = (document.body.innerText || "").replace(/\s+/g, " ").trim();
       // ⚠️ A fingerprint proves the right page is UNDERNEATH — not that nothing
       // is on top of it. /explore matched "Explore Palaces" while a tutorial

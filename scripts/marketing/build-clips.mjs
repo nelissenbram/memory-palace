@@ -535,19 +535,25 @@ const CLIPS = [
     // screenshot. Five questions, not twelve — twelve at readable pace runs past
     // 40 s, and the hook's promise survives a representative handful.
     beats: [
-      { kind: "card", png: G("LEGACY-08-hook"), secs: 3.4 },
-      { kind: "beat", f: "room-walkin-h4", secs: 3.2, from: 1.5, grade: "soft", xf: 0.6,
-        cap: G("LEGACY-08-cap1"), capIn: 0.4, capOut: 2.6 },
-      { kind: "beat", f: "room-walkin-h4", secs: 3.2, from: 4.7, grade: "soft", xf: 0.25,
-        cap: G("LEGACY-08-cap2"), capIn: 0.3, capOut: 2.6 },
-      { kind: "beat", f: "room-walkin-h4", secs: 3.2, from: 7.9, grade: "soft", xf: 0.25,
-        cap: G("LEGACY-08-cap3"), capIn: 0.3, capOut: 2.6 },
-      { kind: "beat", f: "room-pullback-h1", secs: 3.2, from: 2.0, grade: "soft", xf: 0.25,
-        cap: G("LEGACY-08-cap4"), capIn: 0.3, capOut: 2.6 },
-      { kind: "beat", f: "room-pullback-h1", secs: 3.2, from: 5.2, grade: "soft", xf: 0.25,
-        cap: G("LEGACY-08-cap5"), capIn: 0.3, capOut: 2.6 },
-      { kind: "beat", f: "corridor-door1", secs: 3.0, from: 1.6, grade: "soft", xf: 0.5,
-        cap: G("LEGACY-08-cap6"), capIn: 0.6 },
+      { kind: "card", png: G("LEGACY-08-hook"), secs: 3.2 },
+      // ⚠️ The AI-interview scroll IS the clip, not its outro (owner). An earlier
+      // cut ran the questions over room footage and buried the feature in a
+      // carousel at the end — but the hook promises questions being asked, so
+      // the thing doing the asking has to be on screen while they are asked.
+      // One continuous 15 s scroll through the Life Story panel, sliced so each
+      // question gets a caption without ever cutting the movement.
+      { kind: "beat", f: "scroll-lifestory-bare", secs: 3.0, from: 0.2, raw: true, xf: 0.5,
+        cap: G("LEGACY-08-cap1"), capIn: 0.3, capOut: 2.4 },
+      { kind: "beat", f: "scroll-lifestory-bare", secs: 2.9, from: 3.2, raw: true, xf: 0.2,
+        cap: G("LEGACY-08-cap2"), capIn: 0.2, capOut: 2.3 },
+      { kind: "beat", f: "scroll-lifestory-bare", secs: 2.9, from: 6.1, raw: true, xf: 0.2,
+        cap: G("LEGACY-08-cap3"), capIn: 0.2, capOut: 2.3 },
+      { kind: "beat", f: "scroll-lifestory-bare", secs: 2.9, from: 9.0, raw: true, xf: 0.2,
+        cap: G("LEGACY-08-cap4"), capIn: 0.2, capOut: 2.3 },
+      { kind: "beat", f: "scroll-lifestory-bare", secs: 3.2, from: 11.9, raw: true, xf: 0.2,
+        cap: G("LEGACY-08-cap5"), capIn: 0.2, capOut: 2.6 },
+      { kind: "beat", f: "room-pullback-h1", secs: 5.0, from: 1.0, grade: "soft", xf: 0.6,
+        cap: G("LEGACY-08-cap6"), capIn: 1.8 },
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
   },
