@@ -34,6 +34,18 @@ const DRY = process.argv.includes("--dry");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const GROUP_NAME = "The Marchetti Family";
+
+/**
+ * Family-tree people. Three generations, because a tree only reads as a tree
+ * once it has more than one node — a single box looks worse than the empty
+ * state it replaced.
+ */
+const PEOPLE = [
+  { first: "Elena", last: "Marchetti", born: "1954" },
+  { first: "Giulia", last: "Marchetti", born: "1981" },
+  { first: "Tomas", last: "Marchetti", born: "1984" },
+  { first: "Rosa", last: "Marchetti", born: "1928" },
+];
 const CONTACTS = [
   { name: "Giulia Marchetti", email: "giulia@example.com", relationship: "Daughter" },
   { name: "Tomas Marchetti", email: "tomas@example.com", relationship: "Son" },
@@ -70,6 +82,29 @@ const clickText = (words) => page.evaluate((ws) => {
   return null;
 }, words);
 
+/**
+ * ⚠️ EXACT match, for buttons whose label is a prefix of another button's.
+ *
+ * The add-person dialog saves with a button labelled just "Add", while the
+ * toolbar above it carries "+ Add Person". A substring match finds the toolbar
+ * one first and reopens the form instead of saving it — every person came back
+ * as "save=+ Add Person" and nothing was written.
+ */
+const clickExact = (words) => page.evaluate((ws) => {
+  const vis = (e) => {
+    const r = e.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) return false;
+    const s = getComputedStyle(e);
+    return s.display !== "none" && s.visibility !== "hidden" && Number(s.opacity) > 0.1;
+  };
+  const norm = (s) => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
+  const hit = [...document.querySelectorAll("button,a[role=button]")]
+    .filter((b) => vis(b) && !b.disabled)
+    .find((b) => ws.includes(norm(b.textContent)));
+  if (hit) { hit.click(); return hit.textContent.trim().slice(0, 40); }
+  return null;
+}, words);
+
 const fill = (selector, value) => page.evaluate((sel, val) => {
   const vis = (e) => {
     const r = e.getBoundingClientRect();
@@ -97,7 +132,10 @@ const goto = async (path) => {
     if (!c) break;
     await sleep(1200);
   }
-  await sleep(2500);
+  // 5 s, not 2.5: the settings and tree pages hydrate slowly enough that the
+  // first run found no form at all and reported "no button" for a page that was
+  // simply not finished.
+  await sleep(5000);
 };
 
 const report = [];
@@ -138,6 +176,78 @@ for (const c of CONTACTS) {
   const there = await page.evaluate((n) => (document.body.innerText || "").includes(n), c.name);
   report.push(there ? `added legacy contact ${c.name}`
     : `FAILED ${c.name} (name=${okName}, email=${okMail}, save=${saved})`);
+}
+
+/**
+ * Fill by PLACEHOLDER, not by position. The add-person form has six text inputs
+ * in a row (names, two dates, two places) and indexing into them would silently
+ * put a surname in a birthplace the moment the form gains a field.
+ */
+const fillByPlaceholder = (ph, value) => page.evaluate((phText, val) => {
+  const vis = (e) => {
+    const r = e.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) return false;
+    const s = getComputedStyle(e);
+    return s.display !== "none" && s.visibility !== "hidden";
+  };
+  const el = [...document.querySelectorAll("input")].filter(vis)
+    .find((i) => (i.placeholder || "").toLowerCase().includes(phText.toLowerCase()));
+  if (!el) return false;
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+  setter.call(el, val);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  el.dispatchEvent(new Event("change", { bubbles: true }));
+  return true;
+}, ph, value);
+
+// -- 3. family tree ---------------------------------------------------------
+for (const person of PEOPLE) {
+  await goto("/family-tree");
+  const full = `${person.first} ${person.last}`;
+  const exists = await page.evaluate((n) => (document.body.innerText || "").includes(n), full);
+  if (exists) { report.push(`tree: ${full} already there - skipped`); continue; }
+  if (DRY) { report.push(`WOULD add ${full} to the family tree`); continue; }
+
+  if (!(await clickText(["add person"]))) { report.push(`FAILED ${full}: no add-person button`); continue; }
+  await sleep(2200);
+  const okFirst = await fillByPlaceholder("first name", person.first);
+  const okLast = await fillByPlaceholder("last name", person.last);
+  await fillByPlaceholder("1850 or", person.born);
+  await sleep(400);
+  const saved = await clickExact(["add", "save", "create"]);
+  await sleep(2600);
+  const there = await page.evaluate((n) => (document.body.innerText || "").includes(n), full);
+  report.push(there ? `tree: added ${full}`
+    : `FAILED ${full} (first=${okFirst}, last=${okLast}, save=${saved})`);
+}
+
+// -- 4. life-story chapter --------------------------------------------------
+/**
+ * ⚠️ NOT AUTOMATED, deliberately, after an attempt that lied.
+ *
+ * "Attach memories" is not a button that opens a picker — it is an inline
+ * accordion whose label already reads "Attach memoriesNo memories attached yet".
+ * Clicking it expands a section; it does not present a chooser. The first
+ * version of this step then hunted for "cards with an image" and found four in
+ * the ATRIUM BEHIND the panel, clicked those, and reported
+ * "attached 4 memories". Nothing was attached. The screenshot still said "No
+ * memories attached yet" while the log claimed success.
+ *
+ * Rather than guess at another selector, this step now states what it needs.
+ * Everything above it is verified by reading the page back after the write.
+ */
+if (DRY) {
+  report.push("life story: NOT automated - see the note in this file");
+} else {
+  await goto("/atrium");
+  const opened = await clickText(["life story", "record your story"]);
+  await sleep(3000);
+  const already = await page.evaluate(() =>
+    !/No memories attached yet/i.test(document.body.innerText || ""));
+  report.push(already
+    ? "life story: chapter already has memories attached"
+    : `life story: STILL EMPTY - attach is an inline accordion, not a picker; `
+      + `do it by hand once (panel opened=${!!opened})`);
 }
 
 await browser.close();
