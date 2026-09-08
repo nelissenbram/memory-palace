@@ -49,6 +49,10 @@ const PAGES = [
   // with somewhere to go.
   { id: "interview", path: "/atrium",  expect: /Palace Visitors|Enter Your Palace|Your Atrium/i,
     open: ["record your story", "start interview"], label: "it asks, you answer" },
+  // Scrolled, because the argument is the WHOLE page: export, then the delete
+  // that proves it is yours. A still frame shows one half and hides the point.
+  { id: "security", path: "/settings/security", expect: /Danger Zone|Export Your Data/i,
+    label: "take it all with you" },
   { id: "explore", path: "/explore", expect: /Explore Palaces/i,
     label: "visit other palaces" },
   { id: "keps", path: "/palace/keps", expect: /Meet Kep|Kep Capture/i,
@@ -195,7 +199,12 @@ for (const p of todo) {
     let best = null, bestOver = 0;
     for (const el of all) {
       const over = el.scrollHeight - el.clientHeight;
-      if (over > bestOver && el.clientHeight > 300) { best = el; bestOver = over; }
+      // ⚠️ Rank by CONTENT HEIGHT, not by overflow, and drop the clientHeight
+      // floor. On /settings/security the tallest overflow belonged to a 40 px
+      // strip, so the pan had nothing to travel and the page was reported as
+      // unscrollable while its export and danger-zone sections sat below the
+      // fold. What matters is which element holds the most content.
+      if (over > 8 && el.scrollHeight > bestOver) { best = el; bestOver = el.scrollHeight; }
     }
     for (const el of [document.documentElement, document.body]) {
       el.style.setProperty("height", "auto", "important");

@@ -1,4 +1,4 @@
-import { createReadStream, readdirSync, statSync } from "node:fs";
+import { createReadStream, readdirSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { NextResponse } from "next/server";
 import type { ReadableOptions } from "node:stream";
@@ -70,6 +70,18 @@ export async function GET(req: Request) {
     return NextResponse.json({ dir: DIR, clips: [], error: "clips dir not found" });
   }
 
+  /**
+   * The brief for each clip comes from manifest.json, which build-clips writes
+   * next to the videos. The viewer used to hold its own copy and it drifted
+   * twice — warning about a problem one clip no longer had, and showing a whole
+   * family with no hypothesis because the second place went unedited.
+   */
+  let briefs: Record<string, { tests?: string; carousel?: string }> = {};
+  try {
+    const m = JSON.parse(readFileSync(resolve(DIR, "manifest.json"), "utf8"));
+    briefs = Object.fromEntries(m.map((x: { code: string }) => [x.code, x]));
+  } catch { /* a build has not run yet; cards simply show no brief */ }
+
   const clips = files.map((f) => {
     const st = statSync(resolve(DIR, f));
     // WONDER-04-zero-folders-9x16.mp4 -> code + slug
@@ -81,6 +93,8 @@ export async function GET(req: Request) {
       slug: m ? m[2].replace(/-/g, " ") : "",
       mb: +(st.size / 1048576).toFixed(1),
       built: st.mtime.toISOString(),
+      tests: m ? briefs[m[1]]?.tests ?? null : null,
+      carousel: m ? briefs[m[1]]?.carousel ?? null : null,
     };
   });
   // Sort by concept number, so 01a..10 reads in catalogue order rather than

@@ -103,6 +103,9 @@ const SCREENS = [
     // story" and "Start interview" live INSIDE that panel, not on the row, so
     // matching them found nothing and the capture kept the plain atrium.
     open: ["life story", "record your story"], expect: /Palace Visitors|Enter Your Palace|Your Atrium/i },
+  // OWNED family: the export + danger zone are the evidence those clips need.
+  { id: "security",      path: "/settings/security", usp: ["own", "share"],
+    expect: /Danger Zone|Export Your Data|Permanently Delete/i },
   { id: "explore",       path: "/explore",  usp: ["discover", "share"],
     expect: /Explore Palaces/i },
   { id: "me",            path: "/me",       usp: ["progress", "family"],
@@ -305,8 +308,16 @@ for (const s of todo) {
       // ⚠️ Spinners count too. settings/sharing was captured showing "Loading
       // wings…" twice: its loader is a spinner component, not a shimmer block,
       // so a class-name check alone waved it straight through.
-      const skel = [...document.querySelectorAll('[class*="shimmer" i],[class*="skeleton" i],[class*="spinner" i],[role="progressbar"]')].filter(vis).length
-        + (/Loading[.…]|Loading \w+[.…]/i.test(document.body.innerText || "") ? 1 : 0);
+      // Report WHAT was taken for a loader, not just how many. A broadened text
+      // rule plus a class rule turned /settings/security into a permanent
+      // "loading" page when it was in fact ready within 8 s, and a bare count
+      // gives you nothing to fix.
+      const skelEls = [...document.querySelectorAll('[class*="shimmer" i],[class*="skeleton" i],[class*="spinner" i],[role="progressbar"]')].filter(vis);
+      const skelWhy = skelEls.map((e) => `${e.tagName}.${String(e.className).slice(0, 30)}`).slice(0, 3);
+      const loadingHit = (/Loading[^.!?]{0,40}[.…]/i.exec(document.body.innerText || "") || [])[0] || null;
+      if (loadingHit) skelWhy.push(`text:"${loadingHit}"`);
+      const skel = skelEls.length
+        + (/\bLoading\b[^.!?]{0,40}[.…]/i.test(document.body.innerText || "") ? 1 : 0);
       const t = (document.body.innerText || "").replace(/\s+/g, " ").trim();
       // ⚠️ A fingerprint proves the right page is UNDERNEATH — not that nothing
       // is on top of it. /explore matched "Explore Palaces" while a tutorial
@@ -317,7 +328,7 @@ for (const s of todo) {
         .filter(vis)
         .map((b) => norm(b.textContent))
         .filter((x) => x !== "skip to content" && dv.some((w) => x.includes(w)));
-      return { skel, tour, hit: new RegExp(src.slice(1, src.lastIndexOf("/")), "i").test(t), head: t.slice(0, 90) };
+      return { skel, skelWhy, tour, hit: new RegExp(src.slice(1, src.lastIndexOf("/")), "i").test(t), head: t.slice(0, 90) };
     }, String(s.expect), DISMISS).catch(() => null);
     if (st) last = st;
     if (st && !st.skel && st.hit && !st.tour.length) { ready = true; break; }
@@ -331,7 +342,7 @@ for (const s of todo) {
     console.log(`   ${s.id}: SKIPPED — never showed ${s.expect} (at ${at})`);
     if (last) {
       console.log(`      saw: "${last.head}"`
-        + (last.skel ? ` + ${last.skel} loader(s)` : "")
+        + (last.skel ? ` + ${last.skel} loader(s): ${(last.skelWhy || []).join(", ")}` : "")
         + (last.tour?.length ? ` + overlay button(s): ${last.tour.join(", ")}` : ""));
     }
     continue;

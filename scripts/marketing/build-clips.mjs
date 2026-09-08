@@ -192,6 +192,7 @@ const G = (n) => `${resolve(REPO, "socials-kit/cards")}/${n}.png`;
 const CLIPS = [
   {
     code: "WONDER-01a", family: "WONDER", slug: "your-photos-as-a-house",
+    tests: 'Baseline: a plain question hook + exterior-to-interior arc.', carousel: 'upload',
     music: "light-in-dark-places.mp3", offset: 60, vol: 1.1,
     // Old shape: hook -> exterior -> one corridor walk -> phone inlay -> endcard.
     // The arc now travels outside -> hallway -> ceiling -> hearth, so the clip
@@ -243,6 +244,7 @@ const CLIPS = [
 
   {
     code: "WONDER-04", family: "WONDER", slug: "zero-folders",
+    tests: 'A stat hook inside a wonder clip. Walks ALONG the salon hang, then into a room.', carousel: 'organise',
     music: "light-in-dark-places.mp3", offset: 24, vol: 1.0,
     // Catalogue PW-04. The spec opens on a 1s flash of a cluttered phone gallery
     // for contrast; there is no such asset in the library and faking one from an
@@ -284,6 +286,7 @@ const CLIPS = [
   },
   {
     code: "WONDER-05", family: "WONDER", slug: "the-room-that-grew",
+    tests: 'The growth mechanic as the wonder — four match cuts from one camera pose.', carousel: 'scroll: library',
     music: "light-in-dark-places.mp3", offset: 48, vol: 1.0,
     // Catalogue PW-05. The four tier takes share one camera pose, so they are
     // MATCH CUTS: the room jumps a size while nothing else moves. Crossfading
@@ -308,6 +311,7 @@ const CLIPS = [
   },
   {
     code: "WONDER-06", family: "WONDER", slug: "it-hangs-somewhere",
+    tests: 'Confession hook + reverse reveal: photo first, palace second.', carousel: 'memory',
     music: "light-in-dark-places.mp3", offset: 12, vol: 1.0,
     // Catalogue PW-06: photo first, palace second. The reverse dolly is the whole
     // clip — it opens flush on one hung photograph and retreats until the room
@@ -324,6 +328,7 @@ const CLIPS = [
   },
   {
     code: "WONDER-08", family: "WONDER", slug: "the-quietest-place",
+    tests: 'Hushed sanctuary vs spectacle — can low stimulation hold attention?', carousel: 'scroll: keps',
     // Catalogue PW-08 asks for room tone and no soundtrack. There is no room-tone
     // stem in the kit, so the bed stays but drops to 0.45 — quiet enough to read
     // as atmosphere rather than as a track.
@@ -343,6 +348,7 @@ const CLIPS = [
 
   {
     code: "WONDER-02", family: "WONDER", slug: "look-up",
+    tests: 'Two words, one shot. Crane up the facade from the approach road: the scale is the subject.', carousel: 'scroll: atrium',
     music: "light-in-dark-places.mp3", offset: 72, vol: 0.9,
     // Catalogue PW-02 asks for a floor-to-oculus tilt in the entrance hall.
     // Re-scoped to the ROOM's glazed velario, which is the same shot — one slow
@@ -369,6 +375,7 @@ const CLIPS = [
   },
   {
     code: "WONDER-03", family: "WONDER", slug: "the-named-doors",
+    tests: 'Doors = chapters. Opens on two readable plaquettes rather than naming rooms you cannot read.', carousel: 'family',
     music: "light-in-dark-places.mp3", offset: 36, vol: 1.0,
     // PW-03 wanted the entrance hall's ring of doors. The CORRIDOR's doors carry
     // the same metaphor and carry it better: they are already named, with bronze
@@ -394,6 +401,7 @@ const CLIPS = [
   },
   {
     code: "WONDER-07", family: "WONDER", slug: "a-life-assembling",
+    tests: 'Process vs finished-space footage. The corridor lengthens as rooms are added.', carousel: 'capture',
     music: "light-in-dark-places.mp3", offset: 60, vol: 1.0,
     // PW-07 wanted the onboarding assemble sequence. That is a phase machine, not
     // a scene with a camera, so it cannot be driven frame by frame. The corridor
@@ -423,6 +431,7 @@ const CLIPS = [
   },
   {
     code: "WONDER-09", family: "WONDER", slug: "no-tricks",
+    tests: "Tech-flex: one unbroken palace take. Hook no longer claims 'no cuts' — the clip now has one.", carousel: 'discover',
     music: "light-in-dark-places.mp3", offset: 8, vol: 0.95,
     // PW-09's claim is "no cuts", and the original route to it — one continuous
     // take across four scenes — is not shootable: they are separate routes, so
@@ -443,6 +452,7 @@ const CLIPS = [
   },
   {
     code: "WONDER-10", family: "WONDER", slug: "a-name-and-a-year",
+    tests: 'One specific image as the whole clip — a plaquette: every photo carries a title and a year.', carousel: 'memory',
     music: "light-in-dark-places.mp3", offset: 84, vol: 0.9,
     // PW-10 tests whether ONE specific image out-hooks a grand tour. A first cut
     // used the bronze nest: specific, certainly, but it said nothing — the hook
@@ -473,6 +483,7 @@ const CLIPS = [
   // out WONDER-04). LEGACY needs only corridor, room and door footage.
   {
     code: "LEGACY-02", family: "LEGACY", slug: "the-question-you-never-asked",
+    tests: 'Direct question aimed at the viewer. Near-actionless by design; judged on comments and profile taps.', carousel: 'interview',
     music: "light-in-dark-places.mp3", offset: 30, vol: 0.95,
     beats: [
       // One beat of stark text before any footage: the hook is a question aimed
@@ -497,6 +508,7 @@ const CLIPS = [
   },
   {
     code: "LEGACY-04", family: "LEGACY", slug: "three-generations",
+    tests: "Stat hook, kept dry and factual — does an intellectual 'huh, true' hold better than an emotional one?", carousel: 'scroll: library',
     music: "light-in-dark-places.mp3", offset: 54, vol: 0.95,
     beats: [
       { kind: "card", png: G("LEGACY-04-hook"), secs: 3.4 },
@@ -516,6 +528,7 @@ const CLIPS = [
   },
   {
     code: "LEGACY-08", family: "LEGACY", slug: "twelve-questions",
+    tests: 'Save-optimised list, 90% typography over one unbroken drift. ⚠ Hook promises twelve questions; the clip shows five.', carousel: 'none',
     music: "light-in-dark-places.mp3", offset: 78, vol: 0.9,
     // Save-optimised: the catalogue wants this one judged on saves, not holds,
     // so it is 90% typography over ONE continuous drift with no cuts to break a
@@ -581,3 +594,21 @@ for (const c of todo) {
   rmSync(silent, { force: true });
   console.log(`   -> ${final.replace(REPO, ".")}  ${dur(final).toFixed(1)}s`);
 }
+
+/**
+ * Emit a manifest beside the videos so the review viewer cannot drift from the
+ * clips it is describing.
+ *
+ * /staging/clips used to carry a hardcoded map of what each clip tests. It went
+ * stale twice: it warned about a problem WONDER-04 no longer had, and the whole
+ * LEGACY family appeared with no hypothesis at all because nobody remembered to
+ * add it in a second place. The brief belongs next to the beats it explains.
+ *
+ * Written for every clip in CLIPS, not only the ones just built, so a partial
+ * build cannot shrink the manifest — the same rule the screen library needed.
+ */
+writeFileSync(resolve(OUT, "manifest.json"), JSON.stringify(
+  CLIPS.map((c) => ({
+    code: c.code, family: c.family, slug: c.slug,
+    tests: c.tests || null, carousel: c.carousel || null,
+  })), null, 2));

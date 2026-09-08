@@ -4,26 +4,16 @@ import { useEffect, useRef, useState } from "react";
 
 type Clip = {
   file: string; code: string; family: string; slug: string; mb: number; built: string;
+  tests: string | null; carousel: string | null;
 };
 
 /**
- * What each clip is testing, from docs/CLIP_CATALOG.md. Shown next to the video
- * because "does the message land?" is not answerable without knowing what the
- * message was meant to be — the catalogue's hypothesis is the acceptance
- * criterion, not the prettiness of the footage.
+ * The brief now travels WITH the clip: build-clips writes it into
+ * clips-v2/manifest.json and the API serves it. This file used to hold its own
+ * copy, which drifted twice — it kept warning about a problem WONDER-04 had
+ * already had fixed, and the entire LEGACY family showed up blank because the
+ * second place went unedited.
  */
-const NOTES: Record<string, { tests: string; carousel: string }> = {
-  "WONDER-01a": { tests: "Baseline: a plain question hook + exterior-to-interior arc.", carousel: "upload" },
-  "WONDER-02": { tests: "Two words, one shot. Crane up the facade from the approach road: the scale is the subject.", carousel: "scroll: atrium" },
-  "WONDER-03": { tests: "Architecture as metaphor: doors = chapters. Opens on two readable plaquettes rather than naming rooms you cannot read.", carousel: "family tree · legacy · milestones" },
-  "WONDER-04": { tests: "A stat hook inside a wonder clip. Walks ALONG the salon hang, then into a room, so the photographs are visible before 'zero folders' is claimed.", carousel: "organise" },
-  "WONDER-05": { tests: "The growth mechanic as the wonder — transformation, not a tour. Four match cuts from one camera pose.", carousel: "scroll: library" },
-  "WONDER-06": { tests: "Confession hook + reverse reveal: photo first, palace second.", carousel: "memory" },
-  "WONDER-07": { tests: "Process vs finished-space footage. The corridor lengthens as rooms are added, and closes on a hung photograph.", carousel: "capture" },
-  "WONDER-08": { tests: "Hushed sanctuary vs spectacle — can low stimulation hold attention?", carousel: "scroll: keps" },
-  "WONDER-09": { tests: "Tech-flex: one unbroken palace take, 'no signup'. The hook no longer claims 'no cuts' — the clip now has one.", carousel: "discover" },
-  "WONDER-10": { tests: "One specific image as the whole clip — a plaquette: every photo carries a title and a year. Replaced the bronze nest, which was specific but said nothing.", carousel: "memory" },
-};
 
 export default function StagingClipsClient() {
   const [clips, setClips] = useState<Clip[] | null>(null);
@@ -81,8 +71,7 @@ export default function StagingClipsClient() {
         gridTemplateColumns: "repeat(auto-fill, minmax(268px, 1fr))",
       }}>
         {(clips || []).map((c) => {
-          const n = NOTES[c.code];
-          const warn = n?.tests.startsWith("⚠") || n?.tests.includes("⚠");
+          const warn = !!c.tests?.includes("⚠");
           return (
             <div key={c.file} style={{
               background: "#17140F", borderRadius: 14, overflow: "hidden",
@@ -101,11 +90,11 @@ export default function StagingClipsClient() {
                 <div style={{ color: "#EAE2D4", fontWeight: 600 }}>
                   {c.code} <span style={{ color: "#8C8477", fontWeight: 400 }}>· {c.slug}</span>
                 </div>
-                {n && (
-                  <div style={{ color: warn ? "#E3B85C" : "#9A9184", marginTop: 6 }}>{n.tests}</div>
+                {c.tests && (
+                  <div style={{ color: warn ? "#E3B85C" : "#9A9184", marginTop: 6 }}>{c.tests}</div>
                 )}
                 <div style={{ color: "#6B6459", marginTop: 6, fontSize: 11 }}>
-                  {c.mb} MB{n ? ` · carousel: ${n.carousel}` : ""}
+                  {c.mb} MB{c.carousel ? ` · carousel: ${c.carousel}` : ""}
                 </div>
                 {/* Build time, shown because this whole project lost days to
                     assets that looked current and were not. If a clip did not
