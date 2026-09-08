@@ -86,7 +86,13 @@ for (const [id, set] of todo) {
     const yExpr = `ih/2-(ih/zoom/2)+${(s.pan[1] * 400).toFixed(0)}*on/${frames}`;
     execSync(
       `ffmpeg -y -v error -loop 1 -framerate ${FPS} -t ${set.secs} -i "${src}" `
-      + `-vf "scale=${W * 4}:-1,`
+      // ⚠️ COVER, then crop, before zoompan. Scaling to width alone and letting
+      // zoompan output 1080x1920 squashes the frame into the target shape: a
+      // 1152x896 landscape source came out with everyone stretched tall. Cover
+      // the 9:16 box at 4x and crop to it, so the only thing zoompan changes is
+      // which part of an already-correct frame you are looking at.
+      + `-vf "scale=${W * 4}:${H * 4}:force_original_aspect_ratio=increase,`
+      + `crop=${W * 4}:${H * 4},`
       + `zoompan=z='${zExpr}':x='${xExpr}':y='${yExpr}':d=${frames}:s=${W}x${H}:fps=${FPS},`
       + `format=yuv420p" -t ${set.secs} `
       + `-c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p -r ${FPS} -an "${out}"`,

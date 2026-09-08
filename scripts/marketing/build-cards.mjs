@@ -137,7 +137,10 @@ export const CARDS = {
   // ── Family: RESTORE (RS) — borrowed demand. The payoff is the reveal itself,
   // so these carry the fewest words in the library: a hook, then silence.
   "RESTORE-01": {
-    hook: "Watch her come back.",
+    // ⚠️ "them", not "her". The catalogue hook was written for a single
+    // woman's portrait; the footage shows a man and then a couple, so the clip
+    // spent its opening line describing someone who never appears.
+    hook: "Watch them come back.",
     caps: ["before", "today"],
   },
   "RESTORE-03": {

@@ -3071,7 +3071,15 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         // exterior orbit into this walk change tempo mid-clip. MOVE_SPEED is
         // shared with InteriorScene's rmove and the exterior orbit.
         const _dist=Math.abs((cL/2-2)-3.2);
-        const t=Math.min(1,(performance.now()-walkT0)/(_dist/MOVE_SPEED*1000));const e=easeInOutCubic(t);
+        /**
+         * ⚠️ The WALL walk runs slower. Looking down a hall, the vanishing point
+         * barely moves; angled at the salon hang, the wall is about four metres
+         * off and sweeps past at the same ground speed — which reads as shaky
+         * rather than as walking. Same measured lesson as the room: apparent
+         * speed depends on how close the subject is, not on metres per second.
+         */
+        const _pace=walkMode==="wall"?MOVE_SPEED*0.55:MOVE_SPEED;
+        const t=Math.min(1,(performance.now()-walkT0)/(_dist/_pace*1000));const e=easeInOutCubic(t);
         // ⚠️ STOPS SHORT of the centrepiece. The old path ran the full length of
         // the hall, and the statue stands at z=0 — so the camera flew straight
         // through it. Ending at +3.2 leaves the pedestal filling the far end,

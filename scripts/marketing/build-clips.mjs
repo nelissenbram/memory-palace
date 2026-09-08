@@ -519,10 +519,12 @@ const CLIPS = [
       // "a place to live" — said over the room, not over a slogan card
       { kind: "beat", f: "room-walkin-h1", secs: 5.6, from: 1.5, grade: "soft", xf: 0.7,
         cap: G("LEGACY-04-cap3"), capIn: 2.0 },
-      // named doors close it: a hall of chapters that outlasts the person
-      { kind: "beat", f: "corridor-door3", secs: 3.0, from: 1.6, grade: "soft", xf: 0.5,
-        cap: G("LEGACY-04-cap4"), capIn: 0.6 },
-      { kind: "beat", f: "scroll-library", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      // ⚠️ The door close-up is gone (owner: "ECHT te lelijk"). A flat-on shot of
+      // a wooden door with a plaque is a product photograph of a door; the
+      // library, with its rooms, actually shows the chapters the line claims.
+      { kind: "beat", f: "scroll-library", secs: 3.4, from: 0.2, raw: true, xf: 0.5,
+        cap: G("LEGACY-04-cap4"), capIn: 0.6, capOut: 2.8 },
+      { kind: "beat", f: "scroll-library", secs: 4.6, from: 3.6, raw: true, xf: 0.2 },
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
   },
@@ -595,7 +597,11 @@ const CLIPS = [
         cap: G("LEGACY-05-cap2"), capIn: 0.2, capOut: 1.9 },
       { kind: "beat", f: "kb-seventies", secs: 2.4, from: 5.0, grade: "soft", xf: 0.25,
         cap: G("LEGACY-05-cap3"), capIn: 0.2, capOut: 1.9 },
-      { kind: "beat", f: "room-pullback-h2", secs: 5.4, from: 0.8, grade: "soft", xf: 0.7,
+      // ⚠️ h1, not h2. The captions count 1974 / 1977 / 1981 and then cut to the
+      // mantel — h2 hangs "The Walk They Always Took, 1996" there, so the clip
+      // said 1981 while the wall said 1996. h1 hangs "Still Dancing, 1974",
+      // which is the era the captions just established.
+      { kind: "beat", f: "room-pullback-h1", secs: 5.4, from: 0.8, grade: "soft", xf: 0.7,
         cap: G("LEGACY-05-cap4"), capIn: 2.2 },
       { kind: "beat", f: "hearth-hold-h3", secs: 3.0, from: 1.2, grade: "soft", xf: 0.5,
         cap: G("LEGACY-05-cap5"), capIn: 0.5 },
@@ -632,8 +638,10 @@ const CLIPS = [
       { kind: "card", png: G("LEGACY-09-hook"), secs: 3.4 },
       // Unbroken first person. A carousel would put a phone in the hand of
       // someone who is supposed to be standing in 2076, so this clip has none.
-      { kind: "beat", f: "corridor-door1", secs: 2.6, from: 1.6, grade: "soft", xf: 0.5,
-        cap: G("LEGACY-09-cap1"), capIn: 0.4, capOut: 2.1 },
+      // Opens in motion, not on a door. The POV breaks the moment the clip
+      // stops to photograph a fixture — you are supposed to be walking.
+      { kind: "beat", f: "walk-roots", secs: 3.0, from: 5.0, grade: "soft", xf: 0.5,
+        cap: G("LEGACY-09-cap1"), capIn: 0.4, capOut: 2.4 },
       { kind: "beat", f: "walk-roots-wall", secs: 3.6, from: 3.0, grade: "soft", xf: 0.4,
         cap: G("LEGACY-09-cap2"), capIn: 0.3, capOut: 3.0 },
       { kind: "beat", f: "walk-nest-wall", secs: 3.6, from: 6.0, grade: "soft", xf: 0.3,
@@ -675,7 +683,7 @@ const CLIPS = [
   // output — a best-case depiction of a real capability. Never caption these as
   // actual output.
   {
-    code: "RESTORE-01", family: "RESTORE", slug: "watch-her-come-back",
+    code: "RESTORE-01", family: "RESTORE", slug: "watch-them-come-back",
     tests: 'Command hook + a near-silent single reveal. Tests whether restraint holds attention better than the busy Remini grammar.',
     carousel: 'restore',
     music: "light-in-dark-places.mp3", offset: 12, vol: 0.75,

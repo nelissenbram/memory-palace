@@ -38,7 +38,7 @@ const BEATS = [
   ...WINGS.map((w) => ({ group: "corridor", id: `walk-${w}`, route: "/staging/corridor", q: `wing=${w}&walk=1`, secs: 14 })),
   ...WINGS.map((w) => ({ group: "corridor", id: `walk-${w}-left`, route: "/staging/corridor", q: `wing=${w}&walk=left`, secs: 14 })),
   // walking the salon hang, camera angled at the wall (not merely offset)
-  ...["roots","nest"].map((w) => ({ group: "corridor", id: `walk-${w}-wall`, route: "/staging/corridor", q: `wing=${w}&walk=wall`, secs: 14 })),
+  ...["roots","nest"].map((w) => ({ group: "corridor", id: `walk-${w}-wall`, route: "/staging/corridor", q: `wing=${w}&walk=wall`, secs: 22 })),
   // ── corridor: the themed centrepiece of each wing, held still
   ...WINGS.map((w) => ({ group: "statue", id: `statue-${w}`, route: "/staging/corridor", q: `wing=${w}&cam=statue`, secs: 8 })),
   // ── room: the money shots
