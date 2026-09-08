@@ -52,7 +52,10 @@ const SETS = {
     shots: [
       { f: "giovanni-del-mare/roots-r0-m0.jpg", z: 1.09, pan: [0, +0.02] },
       { f: "eleanor-remembers/nest-r0-m1.jpg", z: 1.11, pan: [-0.02, 0] },
-      { f: "rosa-baila/nest-r0-m0.jpg", z: 0.93, pan: [+0.03, 0] },
+      // ⚠️ Was rosa-baila/nest-r0-m0 — a man at a bar, under a caption reading
+      // "month 12: the grandchildren's wing". Not merely the wrong style, the
+      // wrong subject: no child appeared in the beat that claimed one.
+      { f: "chidi-okafor/nest-r0-m0.jpg", z: 0.93, pan: [+0.03, 0] },
     ],
   },
   /**

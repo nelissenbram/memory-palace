@@ -74,6 +74,13 @@ const BEATS = [
   { group: "corridor", id: "corridor-portal", route: "/staging/corridor", q: "wing=roots&cam=portal", secs: 8 },
   // ── room: the reverse dolly (one photo -> the whole room) and the library nook
   { group: "room", id: "room-pullback", route: "/staging/room", q: "rmove=pullback", secs: 17 },
+  // ⚠️ Empty vs full seen FROM INSIDE. The tier beats show the same contrast
+  // from a plan view near the ceiling, which reads as a floorplan rather than a
+  // room — the owner's "de room zoom-out draagt niet bij". Same walk-in camera,
+  // one sparse tier and one full, so the cut lands on walls rather than on a
+  // diagram.
+  { group: "room", id: "room-sparse", route: "/staging/room", q: "rmove=walkin&wallcount=3", secs: 14 },
+  { group: "room", id: "room-full", route: "/staging/room", q: "rmove=walkin&wallcount=40", secs: 14 },
   { group: "room", id: "room-library", route: "/staging/room", q: "rcam=libshelf", secs: 8 },
   // ── room tiers, IDENTICAL camera per take so they match-cut cleanly. This is
   // the whole point of WONDER-05: the room widens, the lens does not move.
