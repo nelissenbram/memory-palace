@@ -90,7 +90,7 @@ export default function ProfilePageClient({
 
         {/* OPS-023 — gold keyboard focus ring, matching the Explore-cluster idiom */}
         <style>{`
-          .mp-uprofile-back:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
+          .mp-uprofile-back:focus-visible, .mp-uprofile-enter:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
         `}</style>
 
         {/* ── Back Button ──────────────────────────────── */}
@@ -161,6 +161,7 @@ export default function ProfilePageClient({
             animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.07s both`),
           }}>
             <button
+              className="mp-uprofile-enter"
               onClick={() =>
                 // Route to the palace-level entry (an overview across ALL published
                 // wings) rather than assuming publishedWings[0] — which is merely the
