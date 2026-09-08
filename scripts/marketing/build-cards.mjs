@@ -86,6 +86,32 @@ export const CARDS = {
   // camera roll we also cannot produce. These three are shootable today.
   // Owner USP decision 2026-09-07: the frame is private + visitable + yours;
   // "permanent/forever" may support but never headline. None of these do.
+  "LEGACY-01": {
+    hook: "She was born in 1938.\nThis is her whole life, in nine rooms.",
+    caps: ["1943. the kitchen with the radio.", "1962. he asked her at the tram stop.",
+           "1971. the first house.", "1989. grandchildren.", "nine rooms. one life."],
+  },
+  "LEGACY-05": {
+    hook: "Call your mother tonight.\nAsk her about 1974.",
+    caps: ["1974", "1977", "1981", "then give the answer somewhere to live.", "one call. one room."],
+  },
+  "LEGACY-06": {
+    hook: "Her daughter gave her this for\nher 70th. It took a year to fill.",
+    caps: ["not a photo book. a house.", "month 2: her childhood.",
+           "month 6: the wedding.", "month 12: the grandchildren's wing.",
+           "a year of sunday phone calls, hanging on walls."],
+  },
+  "LEGACY-09": {
+    hook: "POV: it's 2076 and you're walking\nthrough your grandmother's memories.",
+    caps: ["her handwriting.", "her voice on this one.",
+           "the kitchen, exactly as she told it.", "she built it in 2026."],
+  },
+  "LEGACY-10": {
+    hook: "You've been going to write it\nall down for ten years.",
+    caps: ["the book never happens. that's fine.",
+           "a memoir isn't a manuscript. it's rooms.",
+           "one memory at a time. no blank page."],
+  },
   "LEGACY-02": {
     hook: "What's the one question\nyou never asked your father?",
     caps: ["how did you meet mum?", "what were you afraid of at 30?",
