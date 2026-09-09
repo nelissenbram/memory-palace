@@ -230,7 +230,13 @@ export const CARDS = {
     // ⚠️ Hook matches the question the atrium ACTUALLY shows today ("the bravest
     // thing you've ever done"); the card rotates, so it is quoted, not invented.
     hook: "It never asks 'tell me about your life.'\nToday it asked the bravest thing I've ever done.",
-    caps: ["one question. most days.", "a year of small answers is a door."],
+    // The question written out large, in the product's own words — the tight
+    // screenshot snip read as weak; the quote card carries it.
+    quote: {
+      text: "What's the bravest thing you've ever done?",
+      source: "Suggested for you · a minute, kept forever",
+    },
+    caps: ["one question. most days.", "your answers become a chapter you can read."],
   },
   "CHAPTER-03": {
     hook: "There's a button in here that rewrites\nyour life in a different voice.",

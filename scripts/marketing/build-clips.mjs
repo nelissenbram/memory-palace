@@ -927,9 +927,12 @@ const CLIPS = [
       { kind: "beat", f: "walk-nest-wall", secs: 4.4, from: 4.0, grade: "soft", xf: 0.6,
         cap: G("KIN-03-cap1"), capIn: 1.2, capOut: 3.8 },
       // you don't have to carry it alone: the hall long and populated
-      { kind: "beat", f: "corridor-grow4", secs: 3.4, from: 1.4, grade: "soft", xf: 0.5,
+      { kind: "beat", f: "corridor-grow4", secs: 3.8, from: 1.4, grade: "soft", xf: 0.5,
         cap: G("KIN-03-cap2"), capIn: 0.8 },
-      { kind: "beat", f: "walk-roots", secs: 3.4, from: 5.0, grade: "soft", xf: 0.4 },
+      // ⚠️ Was a second corridor walk (walk-roots), which just repeated the move
+      // faster and added nothing after the growing hall. A warm room instead —
+      // what the shared archive becomes — leads into the handover carousel.
+      { kind: "beat", f: "room-walkin-h1", secs: 4.6, from: 1.5, grade: "soft", xf: 0.6 },
       { kind: "beat", f: "inlay-kin", secs: 6.6, from: 0.0, raw: true, xf: 0.5 },
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
@@ -953,12 +956,15 @@ const CLIPS = [
     beats: [
       { kind: "card", png: G("CHAPTER-02-hook"), secs: 3.0 },
       // the real daily question, large and legible
-      { kind: "beat", f: "kb-suggested", secs: 5.0, from: 0.3, raw: true, xf: 0.5,
-        cap: G("CHAPTER-02-cap1"), capIn: 2.6 },
-      // a year of small answers is a door: two named plaquettes
-      { kind: "beat", f: "corridor-door1", secs: 3.0, from: 1.6, grade: "soft", xf: 0.6,
-        cap: G("CHAPTER-02-cap2"), capIn: 0.6, capOut: 2.5 },
-      { kind: "beat", f: "corridor-door3", secs: 3.0, from: 1.6, grade: "soft", xf: 0.4 },
+      { kind: "beat", f: "kb-suggested", secs: 4.4, from: 0.3, raw: true, xf: 0.5,
+        cap: G("CHAPTER-02-cap1"), capIn: 2.4 },
+      // the exact question, written out — the snip read weak on its own
+      { kind: "card", png: G("CHAPTER-02-quote"), secs: 3.6, xf: 0.5 },
+      // ⚠️ the ANSWER, not doors. The two plaquettes added nothing to "small
+      // question, then a chapter" — the payoff of this family is READING what
+      // the answer becomes, so it scrolls the woven chapter instead.
+      { kind: "beat", f: "scroll-lifestory-bare", secs: 6.6, from: 0.0, raw: true, xf: 0.5,
+        cap: G("CHAPTER-02-cap2"), capIn: 0.8 },
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
   },
