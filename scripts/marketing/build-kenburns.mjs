@@ -46,16 +46,20 @@ const SETS = {
     ],
   },
   // LEGACY-06 — one gift, filled over a year: childhood, the wedding, the
-  // grandchildren. Three photos that read as three decades.
+  // grandchildren.
+  // ⚠️ ALL THREE FROM ONE PERSONA (eleanor-remembers), so they read as one
+  // family across a life rather than three strangers. The first cut mixed
+  // giovanni, eleanor and chidi — three different-looking families under a
+  // single "her childhood / wedding / grandchildren" story — and the childhood
+  // shot (giovanni, Y=63) and its replacement (eleanor roots-r0-m0, Y=58) were
+  // both too dark. These three are Y=142 / 114 / 143, and progress sepia →
+  // colour → recent.
   "kb-ayear": {
     secs: 2.8,
     shots: [
-      { f: "giovanni-del-mare/roots-r0-m0.jpg", z: 1.09, pan: [0, +0.02] },
-      { f: "eleanor-remembers/nest-r0-m1.jpg", z: 1.11, pan: [-0.02, 0] },
-      // ⚠️ Was rosa-baila/nest-r0-m0 — a man at a bar, under a caption reading
-      // "month 12: the grandchildren's wing". Not merely the wrong style, the
-      // wrong subject: no child appeared in the beat that claimed one.
-      { f: "chidi-okafor/nest-r0-m0.jpg", z: 0.93, pan: [+0.03, 0] },
+      { f: "eleanor-remembers/roots-r0-m1.jpg", z: 1.09, pan: [0, +0.02] },  // childhood, sepia
+      { f: "eleanor-remembers/nest-r0-m1.jpg", z: 1.11, pan: [-0.02, 0] },   // the wedding, colour
+      { f: "eleanor-remembers/craft-r1-m0.jpg", z: 0.93, pan: [+0.03, 0] },  // reading to the grandchildren
     ],
   },
   /**
