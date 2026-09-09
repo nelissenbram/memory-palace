@@ -706,6 +706,67 @@ const CLIPS = [
     ],
   },
 
+  // ══ Family: OWNED (OW) — custody threat, then a demonstrable act of ownership.
+  // Sceptic ICP. The palace appears only as the RELIEF beat: if any of these
+  // still works with the palace removed it is on-mechanism, and if it collapses
+  // it has drifted into WONDER. Frame is YOURS + PRIVATE; no clip headlines
+  // "permanent" (2026-09-07 USP decision — permanence is the consequence of
+  // ownership, not the pitch).
+  {
+    code: "OWNED-01", family: "OWNED", slug: "take-it-all-with-you",
+    tests: 'Tests whether PORTABILITY stops a scroll at all. If a settings-page scroll holds like GRAVE doom-scroll, the YOURS pillar has a visual language; if not, it is a landing-page argument, learned cheaply.',
+    carousel: 'scroll: security',
+    music: "light-in-dark-places.mp3", offset: 12, vol: 0.9,
+    beats: [
+      { kind: "card", png: G("OWNED-01-hook"), secs: 3.4 },
+      // the exit, in full: export tree, photo count, download — a real page
+      { kind: "beat", f: "scroll-security", secs: 6.6, from: 0.0, raw: true, xf: 0.5,
+        cap: G("OWNED-01-cap1"), capIn: 0.6 },
+      // and it still is not a folder: the same memories, hanging
+      { kind: "beat", f: "room-walkin-h2", secs: 5.4, from: 1.5, grade: "soft", xf: 0.6,
+        cap: G("OWNED-01-cap2"), capIn: 2.0 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "OWNED-02", family: "OWNED", slug: "type-the-word",
+    tests: 'Counter-intuitive: shows the DESTRUCTION affordance, not the preservation one. If the delete beat out-holds OW-01 export, the mechanism is permission (I may leave) over portability (I may copy).',
+    carousel: 'none - the point is the exit, not the app',
+    music: "light-in-dark-places.mp3", offset: 36, vol: 0.85,
+    beats: [
+      { kind: "card", png: G("OWNED-02-hook"), secs: 3.0 },
+      /**
+       * ⚠️ A DEPICTION, not a screen-rec. dangerzone.mp4 rebuilds the delete
+       * panel from the app's real strings and animates the word being typed and
+       * the button waking — because recording the live danger zone means driving
+       * a browser over the review account's actual delete flow, one stray click
+       * from erasing the demo data just seeded. Faithful to the feature; not a
+       * capture of it. The button is never pressed because there is no button.
+       */
+      { kind: "beat", f: "dangerzone", secs: 6.0, from: 0.3, raw: true, xf: 0.5,
+        cap: G("OWNED-02-cap1"), capIn: 3.4 },
+      // the villa, whole and unbothered — which is exactly why you won't use it
+      { kind: "beat", f: "exterior-hero", secs: 5.0, from: 2.0, xf: 0.6,
+        cap: G("OWNED-02-cap2"), capIn: 1.6 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.5, sheen: true },
+    ],
+  },
+  {
+    code: "OWNED-03", family: "OWNED", slug: "the-small-print",
+    tests: 'Documentary evidence as the hook — no authored claim, just the product own small print, which is a stronger promise than any slogan. Counter-tests the assumption that copy must be written.',
+    carousel: 'none - the small print is the argument',
+    music: "light-in-dark-places.mp3", offset: 60, vol: 0.85,
+    beats: [
+      { kind: "card", png: G("OWNED-03-hook"), secs: 3.0 },
+      // push the six-point privacy note up to legible; let the viewer read it
+      { kind: "beat", f: "kb-privacy-note", secs: 7.5, from: 0.3, raw: true, xf: 0.5 },
+      // nothing came in that you did not carry in: photographs on a wall
+      { kind: "beat", f: "walk-roots-wall", secs: 5.0, from: 4.0, grade: "soft", xf: 0.6,
+        cap: G("OWNED-03-cap1"), capIn: 1.6 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+
 ];
 
 // ── driver ──────────────────────────────────────────────────────────────────

@@ -75,6 +75,43 @@ const SETS = {
   },
 };
 
+/**
+ * A single-shot push into a SCREENSHOT, for OWNED-03: open on the whole settings
+ * page with the privacy note illegibly small, end filling the frame with that
+ * paragraph, legible. `crop` is the region to end on in source pixels
+ * [w,h,x,y]; the move eases from the full frame to it. crop's own eval=frame is
+ * absent in this ffmpeg build, so the pan is expressed through zoompan's x/y.
+ */
+const PUSHES = {
+  "kb-privacy-note": {
+    file: "socials-kit/screens/settings-connections.png",
+    secs: 8.0, crop: [1040, 300, 20, 1200],
+  },
+};
+for (const [id, s] of Object.entries(PUSHES)) {
+  if (process.argv[2] && process.argv[2] !== id) continue;
+  const src = resolve(REPO, s.file);
+  if (!existsSync(src)) { console.log(`   missing ${s.file} — skipped`); continue; }
+  const [W2, H2] = [1080, 1920];
+  const frames = Math.round(s.secs * FPS);
+  const [cw, ch, cx, cy] = s.crop;
+  const endZoom = Math.min(W2 / cw, H2 / ch);
+  const cxCenter = cx + cw / 2, cyCenter = cy + ch / 2;
+  const zExpr = `1+(${(endZoom - 1).toFixed(4)})*(0.5-0.5*cos(PI*on/${frames}))`;
+  const xExpr = `(${cxCenter}-iw/2)*(0.5-0.5*cos(PI*on/${frames}))+iw/2-(iw/zoom/2)`;
+  const yExpr = `(${cyCenter}-ih/2)*(0.5-0.5*cos(PI*on/${frames}))+ih/2-(ih/zoom/2)`;
+  execSync(
+    `ffmpeg -y -v error -loop 1 -framerate ${FPS} -t ${s.secs} -i "${src}" `
+    + `-vf "scale=${W2}:${H2}:force_original_aspect_ratio=increase,crop=${W2}:${H2},`
+    + `zoompan=z='${zExpr}':x='${xExpr}':y='${yExpr}':d=${frames}:s=${W2}x${H2}:fps=${FPS},`
+    + `format=yuv420p" -t ${s.secs} `
+    + `-c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p -r ${FPS} -an "${resolve(OUT, id + ".mp4")}"`,
+    { stdio: "inherit" },
+  );
+  console.log(`   ${id}  ${s.secs}s  -> ${resolve(OUT, id + ".mp4").replace(REPO, ".")}`);
+  if (process.argv[2] === id) process.exit(0);
+}
+
 const args = process.argv.slice(2);
 if (args.includes("--list")) {
   for (const [k, v] of Object.entries(SETS)) console.log(`${k.padEnd(16)}${v.shots.length} shots`);

@@ -171,6 +171,27 @@ export const CARDS = {
     caps: ["12,431 photos.", "no names. no dates. no order.",
            "the same pictures, given a room.", "you don't sort it. you walk it."],
   },
+  // ── Family: OWNED (OW) — custody threat, then a demonstrable act of ownership.
+  // Sceptic ICP. The palace appears only as the RELIEF beat, never the subject:
+  // if an OW clip still works with the palace footage removed it is on-mechanism,
+  // and if it collapses it has drifted into WONDER. The frame is YOURS + PRIVATE;
+  // "permanent/forever" appears in none of them, per the 2026-09-07 USP decision
+  // — permanence is now the consequence of ownership, not the pitch.
+  "OWNED-01": {
+    hook: "Every app keeps your memories.\nAlmost none will hand them back.",
+    caps: ["take all of it, any day.", "and it still isn't a folder."],
+  },
+  "OWNED-02": {
+    hook: "Most apps bury this screen.\nOurs makes you type a word first.",
+    caps: ["the exit is not hidden.", "which is exactly why you won't use it."],
+  },
+  "OWNED-03": {
+    // The hook and the footage are the SAME sentence — the clip pushes into the
+    // product's own six-point privacy note until it is legible, and lets that be
+    // the argument. No authored claim over it.
+    hook: "The most important sentence in this app\nis in six-point grey.",
+    caps: ["nothing came in here that you didn't carry in."],
+  },
   "WONDER-08": {
     hook: "The quietest place\non the internet.",
     caps: ["some rooms are just for remembering."],

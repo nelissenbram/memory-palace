@@ -305,6 +305,11 @@ for (const p of todo) {
     }
     if (best) {
       const full = best.scrollHeight;
+      // Tag it so the shot targets the ELEMENT. A fullPage screenshot only ever
+      // captures the document height, and an inner scroller (settings pages, the
+      // panels) leaves its overflow outside that — so security came back one
+      // viewport tall even after the content was unclamped.
+      best.setAttribute("data-mp-scroll", "1");
       best.style.setProperty("height", `${full}px`, "important");
       best.style.setProperty("max-height", "none", "important");
       best.style.setProperty("overflow", "visible", "important");
@@ -319,9 +324,14 @@ for (const p of todo) {
         el.style.setProperty("overflow", "visible", "important");
         if (getComputedStyle(el).position === "fixed") el.style.setProperty("position", "static", "important");
       }
-      // Fixed chrome (bottom nav, headers) would smear down a panned capture.
+      // Fixed chrome (bottom nav, headers) would smear down a panned capture —
+      // but ⚠️ NOT an ancestor of the scroller. On /settings the whole page lives
+      // inside a position:fixed app shell; hiding every fixed element blanked the
+      // page and it reported 40 px of content. Skip anything that contains best.
       for (const el of document.querySelectorAll("*")) {
-        if (getComputedStyle(el).position === "fixed") el.style.setProperty("display", "none", "important");
+        if (getComputedStyle(el).position !== "fixed") continue;
+        if (el === best || el.contains(best)) continue;
+        el.style.setProperty("display", "none", "important");
       }
       // ⚠️ Report where the CONTENT ends, not how tall the box now is. Forcing a
       // container to its scrollHeight can leave blank space below the last real
@@ -342,7 +352,9 @@ for (const p of todo) {
   if (pageH === -1) { console.log(`   panel "${p.panel}" not found as a scroller — SKIPPED`); continue; }
   await sleep(900);
   const tall = resolve(WORK, `scroll-${p.id}.png`);
-  const target = p.panel ? await page.$('[data-mp-scroll="1"]') : null;
+  // Whatever pageH tagged as the scroller — panel or inner div — is what we
+  // shoot; fullPage is only the fallback when nothing was tagged.
+  const target = await page.$('[data-mp-scroll="1"]');
   if (target) await target.screenshot({ path: tall, type: "png" });
   else await page.screenshot({ path: tall, type: "png", fullPage: true });
   console.log(`   scrollable content: ${pageH}px`);
