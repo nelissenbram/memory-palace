@@ -540,32 +540,31 @@ const CLIPS = [
   },
   {
     code: "LEGACY-08", family: "LEGACY", slug: "twelve-questions",
-    tests: 'Save-optimised list, 90% typography over one unbroken drift. ⚠ Hook promises twelve questions; the clip shows five.', carousel: 'none',
+    tests: 'Save-optimised: scrolls the real Interviews list — dozens of grouped question sets — rather than the extract of one woven chapter. The feature is the asking.', carousel: 'none - the interview list is the body',
     music: "light-in-dark-places.mp3", offset: 78, vol: 0.9,
-    // Save-optimised: the catalogue wants this one judged on saves, not holds,
-    // so it is 90% typography over ONE continuous drift with no cuts to break a
-    // screenshot. Five questions, not twelve — twelve at readable pace runs past
-    // 40 s, and the hook's promise survives a representative handful.
+    // Save-optimised: judged on saves, not holds. The clip scrolls the atrium's
+    // Interviews list — the real, grouped question sets — so a viewer sees the
+    // feature keeps asking, not a single answer. The slug still says
+    // "twelve-questions" from the catalogue; the clip no longer promises a
+    // count it cannot show.
     beats: [
       { kind: "card", png: G("LEGACY-08-hook"), secs: 3.2 },
-      // ⚠️ The AI-interview scroll IS the clip, not its outro (owner). An earlier
-      // cut ran the questions over room footage and buried the feature in a
-      // carousel at the end — but the hook promises questions being asked, so
-      // the thing doing the asking has to be on screen while they are asked.
-      // One continuous 15 s scroll through the Life Story panel, sliced so each
-      // question gets a caption without ever cutting the movement.
-      { kind: "beat", f: "scroll-lifestory-bare", secs: 3.0, from: 0.2, raw: true, xf: 0.5,
-        cap: G("LEGACY-08-cap1"), capIn: 0.3, capOut: 2.4 },
-      { kind: "beat", f: "scroll-lifestory-bare", secs: 2.9, from: 3.2, raw: true, xf: 0.2,
-        cap: G("LEGACY-08-cap2"), capIn: 0.2, capOut: 2.3 },
-      { kind: "beat", f: "scroll-lifestory-bare", secs: 2.9, from: 6.1, raw: true, xf: 0.2,
-        cap: G("LEGACY-08-cap3"), capIn: 0.2, capOut: 2.3 },
-      { kind: "beat", f: "scroll-lifestory-bare", secs: 2.9, from: 9.0, raw: true, xf: 0.2,
-        cap: G("LEGACY-08-cap4"), capIn: 0.2, capOut: 2.3 },
-      { kind: "beat", f: "scroll-lifestory-bare", secs: 3.2, from: 11.9, raw: true, xf: 0.2,
-        cap: G("LEGACY-08-cap5"), capIn: 0.2, capOut: 2.6 },
-      { kind: "beat", f: "room-pullback-h1", secs: 5.0, from: 1.0, grade: "soft", xf: 0.6,
-        cap: G("LEGACY-08-cap6"), capIn: 1.8 },
+      /**
+       * ⚠️ Built on the Interviews LIST, not one woven chapter. The owner: walk
+       * the different interview options, do not sit on the extract of one. The
+       * atrium's "Interviews — tell your story aloud" card opens a scrollable
+       * list of grouped question sets, which is the feature itself; scroll it
+       * slowly and let a handful of captions name what passes.
+       */
+      { kind: "beat", f: "scroll-interview-options", secs: 3.4, from: 0.4, raw: true, xf: 0.5,
+        cap: G("LEGACY-08-cap1"), capIn: 0.4, capOut: 2.9 },
+      { kind: "beat", f: "scroll-interview-options", secs: 3.4, from: 3.8, raw: true, xf: 0.2,
+        cap: G("LEGACY-08-cap2"), capIn: 0.3, capOut: 2.9 },
+      { kind: "beat", f: "scroll-interview-options", secs: 3.4, from: 7.2, raw: true, xf: 0.2,
+        cap: G("LEGACY-08-cap3"), capIn: 0.3, capOut: 2.9 },
+      // the answers become a place — pay it off in the room, then name it
+      { kind: "beat", f: "room-pullback-h1", secs: 5.2, from: 1.0, grade: "soft", xf: 0.6,
+        cap: G("LEGACY-08-cap4"), capIn: 1.8 },
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
   },

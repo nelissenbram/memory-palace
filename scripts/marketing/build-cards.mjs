@@ -133,13 +133,12 @@ export const CARDS = {
            "yours could outlast you."],
   },
   "LEGACY-08": {
-    hook: "12 questions I'm asking my\nmother this year. Screenshot this.",
-    caps: ["what did your bedroom look like at 10?",
-           "what's a smell that takes you back?",
-           "what did you almost do instead?",
-           "who did you write letters to?",
-           "what were you proud of that nobody noticed?",
-           "her answers are becoming rooms."],
+    // ⚠️ Rebuilt on the Interviews list. The captions no longer INVENT twelve
+    // questions over room footage — the app already has dozens, grouped, and the
+    // clip scrolls the real ones. These few name what is passing under them.
+    hook: "The app has 40 questions to ask\nyou. Screenshot the ones that land.",
+    caps: ["family traditions.", "the love story.",
+           "the turning points.", "and then it writes them into rooms."],
   },
   // ── Family: RESTORE (RS) — borrowed demand. The payoff is the reveal itself,
   // so these carry the fewest words in the library: a hook, then silence.

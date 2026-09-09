@@ -80,9 +80,13 @@ const PAGES = [
    * is taken. Needs the recorder captured at viewport height instead, without
    * the expand-and-pan trick.
    */
+  // ⚠️ The atrium's "Interviews — tell your story aloud" card, NOT the Life
+  // Story panel. The owner pointed here: click Interviews and the questions
+  // stand in a list you can scroll. Earlier tries opened Life Story (the woven
+  // OUTPUT) and then the recorder inside it, which collapses when expanded —
+  // this is a different surface entirely.
   { id: "interview-options", path: "/atrium", expect: /Palace Visitors|Enter Your Palace|Your Atrium/i,
-    open: [["life story", "record your story"], ["record an interview"]],
-    panel: "Life Story", secs: 15, label: null },
+    open: ["interviews"], panel: "Life Interviews", secs: 15, label: null },
   { id: "lifestory-bare", path: "/atrium", expect: /Palace Visitors|Enter Your Palace|Your Atrium/i,
     open: ["life story", "record your story"], panel: "Life Story", secs: 15, label: null },
   { id: "explore", path: "/explore", expect: /Explore Palaces/i,
