@@ -19,21 +19,35 @@ foreach ($d in @($runDir, $opsRun, $legalRun, $cosRun)) { New-Item -ItemType Dir
 $log = Join-Path $runDir "run.log"
 "[$(Get-Date -Format o)] driver start" | Add-Content $log
 
-# Dev-server op :3000 (alleen starten als hij nog niet draait) — social + ops gebruiken hem
+# Dev-server (canon :3000) — social + ops gebruiken hem. Fix 2026-09-07 (Livia's
+# lockconflict-notitie): een al-draaiende MP-dev-server op een ANDERE poort (bv. een
+# eerdere run die naar :3002 uitweek) wordt HERGEBRUIKT i.p.v. dat er een tweede
+# instance op dezelfde .next-map wordt gestart (dat botst en levert HTTP 000 op).
+# De actieve poort staat in runs/<vandaag>/DEV-PORT.txt — de chiefs lezen die.
 $devStarted = $false
-$portOpen = Test-NetConnection -ComputerName localhost -Port 3000 -InformationLevel Quiet -WarningAction SilentlyContinue
-if (-not $portOpen) {
+$devPort = 0
+foreach ($p in @(3000, 3001, 3002, 3003)) {
+    try {
+        $r = Invoke-WebRequest -Uri "http://localhost:$p/flythrough" -UseBasicParsing -TimeoutSec 4
+        if ($r.StatusCode -eq 200) { $devPort = $p; "reusing running dev server on :$p" | Add-Content $log; break }
+    } catch {}
+}
+if ($devPort -eq 0) {
     "starting dev server" | Add-Content $log
     $dev = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npm run dev" -WorkingDirectory $staging -PassThru -WindowStyle Hidden
     $devStarted = $true
     $tries = 0
     while ($tries -lt 60) {
         Start-Sleep -Seconds 2
-        try { $r = Invoke-WebRequest -Uri "http://localhost:3000/flythrough" -UseBasicParsing -TimeoutSec 5; if ($r.StatusCode -eq 200) { break } } catch {}
+        foreach ($p in @(3000, 3001, 3002)) {
+            try { $r = Invoke-WebRequest -Uri "http://localhost:$p/flythrough" -UseBasicParsing -TimeoutSec 5; if ($r.StatusCode -eq 200) { $devPort = $p; break } } catch {}
+        }
+        if ($devPort -ne 0) { break }
         $tries++
     }
-    "dev server ready after $tries tries" | Add-Content $log
+    "dev server ready on :$devPort after $tries tries" | Add-Content $log
 }
+Set-Content -Path (Join-Path $runDir "DEV-PORT.txt") -Value $devPort -Encoding ascii
 
 # Domein-chiefs parallel headless (elk eigen proces + eigen log; budget zit in hun prompt)
 $runner = Join-Path $autonomy "run-chief.ps1"
@@ -99,6 +113,24 @@ if ((Test-Path $daily) -and (Test-Path $dagmailMd)) {
         $bdocx = Join-Path $briefDir ($bmd.BaseName + ".docx")
         & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $autonomy "md2docx.ps1") -Md $bmd.FullName -Docx $bdocx 2>&1 | Add-Content $log
         if (Test-Path $bdocx) { $atts += $bdocx }
+    }
+    # Chief-rapporten + dashboards mee als bijlage (owner-eis 09-09: chiefs mailen
+    # niet meer zelf — alles reist in Julia's ene dagmail; kopie onder unieke naam
+    # zodat drie EXEC-SUMMARY.docx's elkaar niet overschrijven in de mail)
+    $mpRoot = "C:\Users\nelis\memory-palace"
+    $chiefAtts = @(
+        @{ Src = Join-Path $mpRoot "socials-kit\autonomy\runs\$today\EXEC-SUMMARY.docx"; Name = "SOCIAL-RAPPORT.docx" },
+        @{ Src = Join-Path $mpRoot "ops-autonomy\runs\$today\EXEC-SUMMARY.docx";         Name = "OPS-RAPPORT.docx" },
+        @{ Src = Join-Path $mpRoot "legal-autonomy\runs\$today\EXEC-SUMMARY.docx";       Name = "LEGAL-RAPPORT.docx" },
+        @{ Src = Join-Path $mpRoot "ops-autonomy\dashboard\ops-dashboard.png";           Name = "OPS-DASHBOARD.png" },
+        @{ Src = Join-Path $mpRoot "legal-autonomy\dashboard\legal-dashboard.png";       Name = "LEGAL-DASHBOARD.png" }
+    )
+    foreach ($ca in $chiefAtts) {
+        if (Test-Path $ca.Src) {
+            $dst = Join-Path $cosRun $ca.Name
+            Copy-Item $ca.Src $dst -Force
+            $atts += $dst
+        }
     }
     $htmlArg = if (Test-Path $dagmailHtml) { $dagmailHtml } else { "" }
     & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $autonomy "send-mail.ps1") `

@@ -28,6 +28,9 @@ Werkmap: C:\Users\nelis\memory-palace\cos-autonomy
 5. Agenda: probeer de Google-agenda (claude.ai MCP) alleen als die bereikbaar is;
    in deze headless run is dat meestal NIET zo. Dan lever je het voorgestelde
    dagblok-schema in de mail (9-17u, weekdagen, nooit over reis-/OOO-events).
+   Elk event MOET `nelissen_bram@hotmail.com` als genodigde krijgen (invite =
+   transport naar Outlook). Owner accepteert nooit ("voorlopig" is normaal) en
+   ziet de invite-mail niet — alle context dus in de event-beschrijving zelf.
 6. Schrijf twee bestanden in `runs/<vandaag>/`:
    - `daily.json` — EXACT hetzelfde schema als `runs/2026-09-01/daily.json`
      (date, greeting, personalActions[], chiefs[] met id/name/role/accent/
