@@ -934,6 +934,64 @@ const CLIPS = [
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
   },
+  // ══ Family: CHAPTER (CH) — the interview that writes back. Memoirist ICP,
+  // reading as the payoff. The product asks a small question and later returns
+  // prose you did not write. Frame is PRIVATE (the interview is yours,
+  // exportable). No death — the emotion is being SEEN.
+  //
+  // ⚠️ CH-01 and CH-03 depend on a chapter with WOVEN prose. The seeded chapter
+  // has 32 memories attached but its text is still the graceful empty-state
+  // ("I have not yet gathered the memories…") because Weave has not been run —
+  // it needs a model call the automation could not verify. They are declared but
+  // will read wrong until the chapter is re-woven; CH-02 needs none of that.
+  {
+    code: "CHAPTER-02", family: "CHAPTER", slug: "a-minute-kept-forever",
+    tests: 'Isolates QUESTION QUALITY against HT-02/03, which hand the same insight to the viewer as advice. Here the product performs it. If it beats them on go-clicks (not saves, where a list wins), "it asks so you do not have to remember to" is the real product claim.',
+    carousel: 'none - the question is the argument',
+    music: "light-in-dark-places.mp3", offset: 36, vol: 0.85,
+    beats: [
+      { kind: "card", png: G("CHAPTER-02-hook"), secs: 3.0 },
+      // the real daily question, large and legible
+      { kind: "beat", f: "kb-suggested", secs: 5.0, from: 0.3, raw: true, xf: 0.5,
+        cap: G("CHAPTER-02-cap1"), capIn: 2.6 },
+      // a year of small answers is a door: two named plaquettes
+      { kind: "beat", f: "corridor-door1", secs: 3.0, from: 1.6, grade: "soft", xf: 0.6,
+        cap: G("CHAPTER-02-cap2"), capIn: 0.6, capOut: 2.5 },
+      { kind: "beat", f: "corridor-door3", secs: 3.0, from: 1.6, grade: "soft", xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "CHAPTER-01", family: "CHAPTER", slug: "it-wrote-the-part",
+    tests: 'Family baseline: can TEXT output be a short-form payoff at all — a scroll of prose against the catalogue grammar of wipes and walks? Judged on completion and saves, not 3s-hold, since reading is slow-intent. ⚠️ BLOCKED: the chapter is not yet re-woven, so the prose still reads as the empty state.',
+    carousel: 'none - the prose is the payoff',
+    music: "light-in-dark-places.mp3", offset: 12, vol: 0.85,
+    beats: [
+      { kind: "card", png: G("CHAPTER-01-hook"), secs: 3.0 },
+      // scroll the woven chapter (label-less: the prose is the subject)
+      { kind: "beat", f: "scroll-lifestory-bare", secs: 6.6, from: 0.0, raw: true, xf: 0.5,
+        cap: G("CHAPTER-01-cap1"), capIn: 0.6 },
+      // then the chapter gets a room
+      { kind: "beat", f: "room-walkin-h3", secs: 5.0, from: 1.5, grade: "soft", xf: 0.6,
+        cap: G("CHAPTER-01-cap2"), capIn: 2.0 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "CHAPTER-03", family: "CHAPTER", slug: "weave-again",
+    tests: 'The dopamine cell: imports RESTORE before/after grammar but applies it to TEXT — tests whether the reveal mechanism is modality-independent. ⚠️ BLOCKED: needs a live re-weave (empty prose -> woven prose), which the chapter has not had.',
+    carousel: 'none - the reweave is the reveal',
+    music: "light-in-dark-places.mp3", offset: 60, vol: 0.85,
+    beats: [
+      { kind: "card", png: G("CHAPTER-03-hook"), secs: 3.0 },
+      // placeholder body until the re-weave recording exists: the chapter scroll
+      { kind: "beat", f: "scroll-lifestory-bare", secs: 5.6, from: 0.0, raw: true, xf: 0.5,
+        cap: G("CHAPTER-03-cap1"), capIn: 2.4 },
+      { kind: "beat", f: "room-pullback-h1", secs: 5.0, from: 1.0, grade: "soft", xf: 0.6,
+        cap: G("CHAPTER-03-cap2"), capIn: 1.6 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
 
 ];
 

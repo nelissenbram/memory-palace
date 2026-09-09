@@ -98,6 +98,13 @@ const PUSHES = {
     file: "socials-kit/screens/settings-sharing.png",
     secs: 8.0, crop: [1040, 1500, 20, 380],
   },
+  // CHAPTER-02: push INTO the atrium's Suggested-For-You question card, so the
+  // question is the whole frame — "one question, most days". The card sits near
+  // the top of the atrium (y~300, ~340 tall, full width).
+  "kb-suggested": {
+    file: "socials-kit/screens/atrium.png",
+    secs: 7.0, crop: [1040, 340, 20, 300],
+  },
 };
 for (const [id, s] of Object.entries(PUSHES)) {
   if (process.argv[2] && process.argv[2] !== id) continue;

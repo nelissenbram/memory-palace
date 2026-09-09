@@ -217,6 +217,25 @@ export const CARDS = {
     caps: ["nobody appointed you. it just happened.",
            "you don't have to be the only one carrying it."],
   },
+  // ── Family: CHAPTER (CH) — the interview that writes back. Memoirist ICP.
+  // Payoff modality is READING: the product asks a small question and later
+  // returns prose you did not write about a life you did not think was a story.
+  // Frame is PRIVATE (the interview is yours, exportable). No death in it — the
+  // emotion is being SEEN, not being lost.
+  "CHAPTER-01": {
+    hook: "I gave it four photographs.\nIt gave me back a paragraph about my twenties.",
+    caps: ["it asks, you answer.", "then the chapter gets a room."],
+  },
+  "CHAPTER-02": {
+    // ⚠️ Hook matches the question the atrium ACTUALLY shows today ("the bravest
+    // thing you've ever done"); the card rotates, so it is quoted, not invented.
+    hook: "It never asks 'tell me about your life.'\nToday it asked the bravest thing I've ever done.",
+    caps: ["one question. most days.", "a year of small answers is a door."],
+  },
+  "CHAPTER-03": {
+    hook: "There's a button in here that rewrites\nyour life in a different voice.",
+    caps: ["same memories. different telling.", "the memories don't change. only the words do."],
+  },
   "WONDER-08": {
     hook: "The quietest place\non the internet.",
     caps: ["some rooms are just for remembering."],
