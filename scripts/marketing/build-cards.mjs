@@ -190,6 +190,13 @@ export const CARDS = {
     // product's own six-point privacy note until it is legible, and lets that be
     // the argument. No authored claim over it.
     hook: "The most important sentence in this app\nis in six-point grey.",
+    // The EXACT settings-page text, re-typeset large. Owner: the push into the
+    // real six-point note leaves it too small to read — so the clip shows the
+    // real page (tiny, in context) and then blows the words up to legible here.
+    quote: {
+      text: "Memory Palace only accesses your files when you explicitly choose to import them. We never scan, index, or store your cloud files without your direct action.",
+      source: "Settings · Connections · the actual text",
+    },
     caps: ["nothing came in here that you didn't carry in."],
   },
   "WONDER-08": {
@@ -247,15 +254,36 @@ const shot = async (html, file, transparent) => {
   await page.screenshot({ path: file, type: "png", omitBackground: transparent });
 };
 
+/**
+ * A `quote` card: a clip's own real product text, re-typeset large and legible,
+ * with a source line under it. Built for OWNED-03 — the point of "the small
+ * print" is that it is TINY and important, so after the real (tiny) settings
+ * page the clip enlarges the EXACT words to where they can actually be read,
+ * rather than just pushing into the six-point original, which stays small.
+ */
+const quoteHtml = (text, source) => `<!DOCTYPE html><meta charset="utf-8"><style>${BASE}
+body{background:#1B1613;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 120px}
+.mark{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;font-size:180px;color:#C8A868;
+  line-height:0.6;opacity:.5;margin-bottom:20px}
+.q{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;
+  font-size:56px;line-height:1.34;text-align:center;color:#F0E7D4}
+.src{margin-top:44px;font-family:'Source Sans 3',sans-serif;font-weight:300;
+  font-size:26px;letter-spacing:.14em;text-transform:uppercase;color:#8C8477}
+</style><div class="mark">&ldquo;</div><div class="q">${text}</div><div class="src">${source}</div>`;
+
 let n = 0;
 for (const [code, def] of todo) {
   await shot(hookHtml(def.hook), resolve(OUT, `${code}-hook.png`), false);
   n++;
+  if (def.quote) {
+    await shot(quoteHtml(def.quote.text, def.quote.source), resolve(OUT, `${code}-quote.png`), false);
+    n++;
+  }
   for (let i = 0; i < (def.caps || []).length; i++) {
     await shot(capHtml(def.caps[i]), resolve(OUT, `${code}-cap${i + 1}.png`), true);
     n++;
   }
-  console.log(`   ${code}  hook + ${def.caps?.length || 0} caption(s)`);
+  console.log(`   ${code}  hook${def.quote ? " + quote" : ""} + ${def.caps?.length || 0} caption(s)`);
 }
 await browser.close();
 console.log(`\n${n} card(s) -> ${OUT.replace(REPO, ".")}`);

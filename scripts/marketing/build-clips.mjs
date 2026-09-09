@@ -763,8 +763,13 @@ const CLIPS = [
     music: "light-in-dark-places.mp3", offset: 60, vol: 0.85,
     beats: [
       { kind: "card", png: G("OWNED-03-hook"), secs: 3.0 },
-      // push the six-point privacy note up to legible; let the viewer read it
-      { kind: "beat", f: "kb-privacy-note", secs: 7.5, from: 0.3, raw: true, xf: 0.5 },
+      // ⚠️ Two stages: the note as it really is (tiny, on the page), then the
+      // note made legible. The owner found the push-into-the-six-point original
+      // still too small to read — because it IS six-point. So this establishes
+      // the real page briefly, then hands the viewer the exact words at size.
+      { kind: "beat", f: "kb-privacy-note", secs: 4.0, from: 0.3, raw: true, xf: 0.5 },
+      // the same sentence, re-typeset large — the product's own promise, legible
+      { kind: "card", png: G("OWNED-03-quote"), secs: 5.5, xf: 0.5, sheen: true },
       // nothing came in that you did not carry in: photographs on a wall
       { kind: "beat", f: "walk-roots-wall", secs: 5.0, from: 4.0, grade: "soft", xf: 0.6,
         cap: G("OWNED-03-cap1"), capIn: 1.6 },
