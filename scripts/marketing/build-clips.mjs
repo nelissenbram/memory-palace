@@ -939,11 +939,12 @@ const CLIPS = [
   // prose you did not write. Frame is PRIVATE (the interview is yours,
   // exportable). No death — the emotion is being SEEN.
   //
-  // ⚠️ CH-01 and CH-03 depend on a chapter with WOVEN prose. The seeded chapter
-  // has 32 memories attached but its text is still the graceful empty-state
-  // ("I have not yet gathered the memories…") because Weave has not been run —
-  // it needs a model call the automation could not verify. They are declared but
-  // will read wrong until the chapter is re-woven; CH-02 needs none of that.
+  // ⚠️ CH-01 and CH-03 depend on a chapter with WOVEN prose. That is now done:
+  // weave-chapter.mjs ran Weave on the seeded chapter (32 memories attached), and
+  // the scroll shows real memoir text ("Looking back on those years between 1988
+  // and 2000…") drawn from those memories rather than the empty-state placeholder.
+  // The re-weave was verified by pixel diff, since the prose does not surface in
+  // the DOM text API — which is why every text-based check had reported it wrong.
   {
     code: "CHAPTER-02", family: "CHAPTER", slug: "a-minute-kept-forever",
     tests: 'Isolates QUESTION QUALITY against HT-02/03, which hand the same insight to the viewer as advice. Here the product performs it. If it beats them on go-clicks (not saves, where a list wins), "it asks so you do not have to remember to" is the real product claim.',
@@ -963,7 +964,7 @@ const CLIPS = [
   },
   {
     code: "CHAPTER-01", family: "CHAPTER", slug: "it-wrote-the-part",
-    tests: 'Family baseline: can TEXT output be a short-form payoff at all — a scroll of prose against the catalogue grammar of wipes and walks? Judged on completion and saves, not 3s-hold, since reading is slow-intent. ⚠️ BLOCKED: the chapter is not yet re-woven, so the prose still reads as the empty state.',
+    tests: 'Family baseline: can TEXT output be a short-form payoff at all — a scroll of prose against the catalogue grammar of wipes and walks? Judged on completion and saves, not 3s-hold, since reading is slow-intent. The chapter is now re-woven, so the scroll shows real memoir prose drawn from the attached memories.',
     carousel: 'none - the prose is the payoff',
     music: "light-in-dark-places.mp3", offset: 12, vol: 0.85,
     beats: [
@@ -979,12 +980,12 @@ const CLIPS = [
   },
   {
     code: "CHAPTER-03", family: "CHAPTER", slug: "weave-again",
-    tests: 'The dopamine cell: imports RESTORE before/after grammar but applies it to TEXT — tests whether the reveal mechanism is modality-independent. ⚠️ BLOCKED: needs a live re-weave (empty prose -> woven prose), which the chapter has not had.',
+    tests: 'The dopamine cell: imports RESTORE before/after grammar but applies it to TEXT — tests whether the reveal mechanism is modality-independent. Now buildable: the chapter has been re-woven from attached memories.',
     carousel: 'none - the reweave is the reveal',
     music: "light-in-dark-places.mp3", offset: 60, vol: 0.85,
     beats: [
       { kind: "card", png: G("CHAPTER-03-hook"), secs: 3.0 },
-      // placeholder body until the re-weave recording exists: the chapter scroll
+      // the woven chapter, scrolled — the re-weave's output
       { kind: "beat", f: "scroll-lifestory-bare", secs: 5.6, from: 0.0, raw: true, xf: 0.5,
         cap: G("CHAPTER-03-cap1"), capIn: 2.4 },
       { kind: "beat", f: "room-pullback-h1", secs: 5.0, from: 1.0, grade: "soft", xf: 0.6,
