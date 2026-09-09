@@ -49,7 +49,7 @@ export async function completeOnboarding(data: {
     );
 
   if (profileError) {
-    return { error: profileError.message };
+    { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   }
 
   // Seed default wings (idempotent — skip if already exist)
@@ -158,13 +158,7 @@ export async function updateProfile(data: {
   bio?: string;
   avatarUrl?: string;
   styleEra?: string;
-  bustTextureUrl?: string;
-  bustModelUrl?: string;
-  bustName?: string;
-  bustGender?: string;
-  bustPedestals?: Record<number, { faceUrl: string; name: string; gender: string }>;
   aiConsent?: boolean;
-  aiBiometricConsent?: boolean;
   whatsappPhone?: string | null;
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -184,7 +178,7 @@ export async function updateProfile(data: {
   const { moderateText } = await import("@/lib/social/moderate-text");
   if ((data.displayName !== undefined && !moderateText(data.displayName).ok) ||
       (data.bio !== undefined && !moderateText(data.bio).ok)) {
-    return { error: "This text violates our content policy." };
+    { const t = await serverError(); return { error: t("contentPolicyViolation") }; }
   }
 
   const updates: Record<string, unknown> = {};
@@ -193,13 +187,7 @@ export async function updateProfile(data: {
   if (data.bio !== undefined) updates.bio = data.bio;
   if (data.avatarUrl !== undefined) updates.avatar_url = data.avatarUrl;
   if (data.styleEra !== undefined) updates.style_era = data.styleEra;
-  if (data.bustTextureUrl !== undefined) updates.bust_texture_url = data.bustTextureUrl;
-  if (data.bustModelUrl !== undefined) updates.bust_model_url = data.bustModelUrl;
-  if (data.bustName !== undefined) updates.bust_name = data.bustName;
-  if (data.bustGender !== undefined) updates.bust_gender = data.bustGender;
-  if (data.bustPedestals !== undefined) updates.bust_pedestals = JSON.stringify(data.bustPedestals);
   if (data.aiConsent !== undefined) updates.ai_consent = data.aiConsent;
-  if (data.aiBiometricConsent !== undefined) updates.ai_biometric_consent = data.aiBiometricConsent;
   if (data.whatsappPhone !== undefined) updates.whatsapp_phone = data.whatsappPhone || null;
 
   if (Object.keys(updates).length === 0) {
@@ -212,7 +200,7 @@ export async function updateProfile(data: {
     .eq("id", user.id);
 
   if (error) {
-    return { error: error.message };
+    { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   }
 
   return { success: true };
@@ -222,12 +210,12 @@ export async function updateProfile(data: {
 export async function uploadAvatar(formData: FormData): Promise<{ url?: string; error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const file = formData.get("file") as File;
-  if (!file || !(file instanceof File)) return { error: "No file provided" };
-  if (!file.type.startsWith("image/")) return { error: "Invalid file type" };
-  if (file.size > 5 * 1024 * 1024) return { error: "File too large (max 5MB)" };
+  if (!file || !(file instanceof File)) { const t = await serverError(); return { error: t("noFileProvided") }; }
+  if (!file.type.startsWith("image/")) { const t = await serverError(); return { error: t("invalidFileType") }; }
+  if (file.size > 5 * 1024 * 1024) { const t = await serverError(); return { error: t("fileTooLarge") }; }
 
   const admin = createAdminClient();
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
@@ -245,9 +233,9 @@ export async function uploadAvatar(formData: FormData): Promise<{ url?: string; 
       const { error: retryError } = await admin.storage
         .from("profile-photos")
         .upload(path, buffer, { upsert: true, contentType: file.type });
-      if (retryError) return { error: retryError.message };
+      if (retryError) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
     } else {
-      return { error: uploadError.message };
+      { const t = await serverError(); return { error: t("somethingWentWrong") }; }
     }
   }
 
@@ -401,7 +389,7 @@ export async function deleteAccount() {
   // This is the authoritative deletion step: if it fails, the identity can still
   // log back in — so we must NOT report success (Apple Guideline 5.1.1(v)).
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { error: "Account deletion is temporarily unavailable. Please contact support@thememorypalace.ai." };
+    { const t = await serverError(); return { error: t("accountDeletionUnavailable") }; }
   }
   try {
     const adminClient = createAdminClient();
@@ -410,11 +398,11 @@ export async function deleteAccount() {
     );
     if (deleteAuthError) {
       console.error("Failed to delete auth user:", deleteAuthError.message);
-      return { error: "We could not fully delete your account. Please try again or contact support@thememorypalace.ai." };
+      { const t = await serverError(); return { error: t("accountDeletionFailed") }; }
     }
   } catch (err) {
     console.error("Admin client error during account deletion:", err);
-    return { error: "We could not fully delete your account. Please try again or contact support@thememorypalace.ai." };
+    { const t = await serverError(); return { error: t("accountDeletionFailed") }; }
   }
 
   // 3b. LEG-012: wipe the PostHog person profile (uid + display name + events).

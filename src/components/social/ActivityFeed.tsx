@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useTransition } from "react";
 import { T } from "@/lib/theme";
+import { smallAvatarUrl } from "@/lib/images/avatar-url";
 import TuscanCard from "@/components/ui/TuscanCard";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { FeedItem } from "@/lib/social/feed-actions";
@@ -124,7 +125,7 @@ export default function ActivityFeed({
                 height: "2.25rem",
                 borderRadius: "50%",
                 background: item.actor_avatar
-                  ? `url(${item.actor_avatar}) center/cover`
+                  ? `url(${smallAvatarUrl(item.actor_avatar, 72)}) center/cover`
                   : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
                 border: `1.5px solid ${T.color.goldLight}`,
                 flexShrink: 0,

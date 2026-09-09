@@ -12,6 +12,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import { track } from "@/lib/analytics";
+import { getPlatform } from "@/lib/native/platform";
 import { useAccessibility, type ScaleLevel } from "@/components/providers/AccessibilityProvider";
 import { CREAM, INK, MUTED, HAIRLINE, EMBER, EMBER_GLYPH, GOLD, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 import WalkCinematicCaption, { WalkCaptionPill, WalkCtaButton } from "@/components/ui/OnboardingWalkCaption";
@@ -694,7 +695,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     }
     try { localStorage.setItem(WALK_DONE_KEY, "true"); } catch {}
     cleanupStorage();
-    track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current, memoriesUploaded: capturedMemsRef.current.length });
+    track("onboarding_completed", { platform: getPlatform(), memoryUploaded: memoryUploadedRef.current, memoriesUploaded: capturedMemsRef.current.length });
     // Same-document navigation to /pricing (new tab would orphan purchase intent on
     // web; a detached nav would race the WKWebView on iOS). window.location.href
     // stays in the current tab on web AND inside the WKWebView on native.
@@ -718,7 +719,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // ── Done ──
   useEffect(() => {
     if (phase === "done") {
-      track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current, memoriesUploaded: capturedMemsRef.current.length });
+      track("onboarding_completed", { platform: getPlatform(), memoryUploaded: memoryUploadedRef.current, memoriesUploaded: capturedMemsRef.current.length });
       try { localStorage.setItem(WALK_DONE_KEY, "true"); } catch {}
       cleanupStorage();
       onFinish(memoryUploadedRef.current);

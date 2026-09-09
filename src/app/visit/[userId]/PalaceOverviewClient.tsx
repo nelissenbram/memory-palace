@@ -3,6 +3,7 @@
 import React, { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
+import { smallAvatarUrl } from "@/lib/images/avatar-url";
 import { EMBER, INK, SHADOW, HOVER_SHADOW, HOVER_LIFT, GOLD } from "@/lib/libraryTokens";
 import { ANIM } from "@/components/ui/TuscanStyles";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -327,7 +328,7 @@ export default function PalaceOverviewClient({
                     height: "3.5rem",
                     borderRadius: "50%",
                     background: owner.avatarUrl
-                      ? `url(${owner.avatarUrl}) center/cover`
+                      ? `url(${smallAvatarUrl(owner.avatarUrl, 120)}) center/cover`
                       : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
                     border: `2px solid ${T.color.goldLight}`,
                     flexShrink: 0,

@@ -10,6 +10,7 @@ import type { DirectoryPalace, FollowingPalace } from "@/lib/social/directory-ac
 import { createClient } from "@/lib/supabase/client";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
+import { smallAvatarUrl } from "@/lib/images/avatar-url";
 // Note: do NOT import usePalaceStore — Explore is outside the (app) layout group
 import NudgeProvider from "@/components/ui/NudgeTooltip";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -832,25 +833,6 @@ const PalaceGrid = React.memo(function PalaceGrid({
 });
 
 /* ── Palace Card (Atrium secondary-tile anatomy) ───── */
-
-/**
- * OPS-017 — avatars are stored as full-resolution Supabase public-storage URLs
- * but render in a 3.25rem (52px) slot. Rewrite the stored URL to the Supabase
- * image-transform endpoint (`/render/image/public/`) so the server delivers a
- * small cover-cropped rendition (96px ≈ 2x for retina). Non-Supabase-storage
- * URLs pass through untouched; if the transform endpoint fails the card falls
- * back to the original URL (see PalaceCard onError chain).
- */
-function smallAvatarUrl(url: string): string {
-  const marker = "/storage/v1/object/public/";
-  const i = url.indexOf(marker);
-  if (i === -1) return url;
-  const rest = url.slice(i + marker.length);
-  const qIdx = rest.indexOf("?");
-  const path = qIdx === -1 ? rest : rest.slice(0, qIdx);
-  const origQuery = qIdx === -1 ? "" : `&${rest.slice(qIdx + 1)}`;
-  return `${url.slice(0, i)}/storage/v1/render/image/public/${path}?width=96&height=96&resize=cover&quality=70${origQuery}`;
-}
 
 const PalaceCard = React.memo(function PalaceCard({
   palace,

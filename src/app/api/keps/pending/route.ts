@@ -87,7 +87,7 @@ export async function PATCH(request: Request) {
       if (!capture) continue;
 
       // Create memory
-      const { data: memory } = await supabase
+      const { data: memory, error: memoryError } = await supabase
         .from("memories")
         .insert({
           user_id: user.id,
@@ -104,26 +104,38 @@ export async function PATCH(request: Request) {
         .select("id")
         .single();
 
-      if (memory) {
-        // Milestone: activation signal (server-side). Fire-and-forget.
-        void detectRequestPlatform().then((platform) =>
-          captureServer(user.id, "memory_created", { source: "kep", ...(platform ? { platform } : {}) })
-        );
-        await supabase
-          .from("kep_captures")
-          .update({ status: "routed", memory_id: memory.id })
-          .eq("id", captureId);
-        results.push({ id: captureId, status: "routed" });
+      // OPS-026: a failed insert used to be swallowed silently (capture vanished
+      // from the response with no error signal) — surface it per capture instead.
+      if (memoryError || !memory) {
+        console.error(`[KEP route] memory insert failed for capture ${captureId}:`, memoryError?.message);
+        results.push({ id: captureId, status: "failed" });
+        continue;
       }
+
+      // Milestone: activation signal (server-side). Fire-and-forget.
+      void detectRequestPlatform().then((platform) =>
+        captureServer(user.id, "memory_created", { source: "kep", ...(platform ? { platform } : {}) })
+      );
+      await supabase
+        .from("kep_captures")
+        .update({ status: "routed", memory_id: memory.id })
+        .eq("id", captureId);
+      results.push({ id: captureId, status: "routed" });
     }
 
     return NextResponse.json({ results });
   } else if (body.action === "reject") {
-    await supabase
+    const { error: rejectError } = await supabase
       .from("kep_captures")
       .update({ status: "rejected", rejection_reason: body.reason || null })
       .in("id", body.capture_ids)
       .eq("user_id", user.id);
+
+    // OPS-026: an unchecked batch reject reported success even when it failed.
+    if (rejectError) {
+      console.error(`[KEP route] batch reject failed:`, rejectError.message);
+      return NextResponse.json({ error: "Could not reject captures. Please try again." }, { status: 500 });
+    }
 
     return NextResponse.json({ results: body.capture_ids.map((id) => ({ id, status: "rejected" })) });
   }

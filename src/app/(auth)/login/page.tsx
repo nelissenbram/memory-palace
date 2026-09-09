@@ -60,7 +60,8 @@ function LoginContent() {
       const { error: oauthErr } = await fn({ onDismiss: clear, redirect });
       if (oauthErr) {
         clear();
-        setError(oauthErr);
+        // OPS-031: the helper returns a translation code, never raw provider text.
+        setError(oauthErr === "oauthStartFailed" ? tc("oauthStartFailed") : oauthErr);
       }
       // On success we intentionally keep the spinner: the browser sheet is open
       // (native) or the page is redirecting (web). safety + visibility reset below
