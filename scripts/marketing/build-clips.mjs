@@ -269,12 +269,17 @@ const CLIPS = [
       // far periphery and this clip argued "zero folders" over an empty
       // corridor. Angled at the wall, the photographs and their plaquettes are
       // the subject: you see the photos, and you see there are no folders.
+      // ⚠️ Three DIFFERENT shots, not three wall-walks. The captions are
+      // "just walls / just rooms / just light", and the first cut ran all three
+      // over near-identical salon-hang pans (owner: too repetitive). Now each
+      // line gets footage that means it: the wall, the doored corridor, the
+      // glazed ceiling.
       { kind: "beat", f: "walk-roots-wall", secs: 4.0, from: 3.0, grade: "soft", xf: 0.5,
-        cap: G("WONDER-04-cap1"), capIn: 0.5, capOut: 3.4 },
-      { kind: "beat", f: "walk-roots-wall", secs: 3.6, from: 7.4, grade: "soft", xf: 0.35,
-        cap: G("WONDER-04-cap2"), capIn: 0.4, capOut: 3.0 },
-      { kind: "beat", f: "walk-nest-wall", secs: 3.6, from: 5.5, grade: "soft", xf: 0.35,
-        cap: G("WONDER-04-cap3"), capIn: 0.4, capOut: 3.0 },
+        cap: G("WONDER-04-cap1"), capIn: 0.5, capOut: 3.4 },   // just walls — the hang
+      { kind: "beat", f: "walk-craft", secs: 3.6, from: 4.5, grade: "soft", xf: 0.5,
+        cap: G("WONDER-04-cap2"), capIn: 0.4, capOut: 3.0 },   // just rooms — doors passing
+      { kind: "beat", f: "velario", secs: 3.6, from: 2.0, grade: "soft", xf: 0.5,
+        cap: G("WONDER-04-cap3"), capIn: 0.4, capOut: 3.0 },   // just light — the velario
       // ⚠️ The wing centrepiece used to close this clip and it earned nothing —
       // a slow zoom onto a potted tree says nothing about photographs or
       // folders. Ending INSIDE a room does: the corridor showed the hang, the

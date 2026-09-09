@@ -3104,7 +3104,13 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         else if(camDebug==="door"){
           const _di=(()=>{const v=parseInt(new URLSearchParams(window.location.search).get("door")||"",10);return Number.isFinite(v)?v:0;})();
           const dz=cL/2-5.5-_di*C.sp;
-          camera.position.set(-cW/2+2.7,1.7,dz);camera.lookAt(-cW/2,1.95,dz);
+          // ⚠️ A THREE-QUARTER view of the WHOLE door, not a flat crop of its
+          // middle. The close pose (2.7 m, dead-on, level) cut the door off top
+          // and bottom and read as a product shot of a plaque. This stands back
+          // 4.4 m and 2.4 m down-corridor, looks at the door centre from an
+          // angle, so the frame, the panels and the plate all sit in the wall.
+          camera.position.set(-cW/2+4.4,1.95,dz+2.4);
+          camera.lookAt(-cW/2+0.2,1.55,dz);
         }
         else if(camDebug==="terminus"){camera.position.set(0,2.0,cL/2-9);camera.lookAt(0,cH*0.5,-cL/2+1);}
         else if(camDebug==="statue"){camera.position.set(0,1.82,2.7);camera.lookAt(0,1.62,0);} // close on the central statue (z=0)
