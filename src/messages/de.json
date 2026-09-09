@@ -2,6 +2,7 @@
   "common": {
     "backToMe": "Ich",
     "somethingWentWrong": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "oauthStartFailed": "Die Anmeldung konnte nicht gestartet werden. Bitte versuche es erneut.",
     "back": "Zurück",
     "continue": "Weiter",
     "save": "Speichern",

@@ -2,6 +2,7 @@
   "common": {
     "backToMe": "Ik",
     "somethingWentWrong": "Er is iets misgegaan. Probeer het opnieuw.",
+    "oauthStartFailed": "We konden het inloggen niet starten. Probeer het opnieuw.",
     "back": "Terug",
     "continue": "Doorgaan",
     "save": "Opslaan",

@@ -90,7 +90,7 @@ export default function ProfilePageClient({
 
         {/* OPS-023 — gold keyboard focus ring, matching the Explore-cluster idiom */}
         <style>{`
-          .mp-uprofile-back:focus-visible, .mp-uprofile-enter:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
+          .mp-uprofile-back:focus-visible, .mp-uprofile-enter:focus-visible, .mp-uprofile-edit:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
         `}</style>
 
         {/* ── Back Button ──────────────────────────────── */}
@@ -132,6 +132,7 @@ export default function ProfilePageClient({
             {profile.is_own && (
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.875rem" }}>
                 <button
+                  className="mp-uprofile-edit"
                   onClick={() => router.push("/settings/profile")}
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center",

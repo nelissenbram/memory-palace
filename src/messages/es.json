@@ -2,6 +2,7 @@
   "common": {
     "backToMe": "Yo",
     "somethingWentWrong": "Algo salió mal. Inténtalo de nuevo.",
+    "oauthStartFailed": "No pudimos iniciar el inicio de sesión. Inténtalo de nuevo.",
     "back": "Atrás",
     "continue": "Continuar",
     "save": "Guardar",

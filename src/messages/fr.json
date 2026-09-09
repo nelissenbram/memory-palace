@@ -2,6 +2,7 @@
   "common": {
     "backToMe": "Moi",
     "somethingWentWrong": "Une erreur s'est produite. Veuillez réessayer.",
+    "oauthStartFailed": "Impossible de démarrer la connexion. Veuillez réessayer.",
     "back": "Retour",
     "continue": "Continuer",
     "save": "Enregistrer",

@@ -93,7 +93,8 @@ export async function signInWithGoogle(opts?: OAuthOpts): Promise<{ error?: stri
     if (error || !data.url) {
       console.error("[OAuth] Google error:", error);
       pendingReset = null;
-      return { error: "Could not start Google sign-in. Please try again." };
+      // OPS-031: return a translation code — the calling component localizes it.
+      return { error: "oauthStartFailed" };
     }
     await openOAuthInApp(data.url);
     return {};
@@ -129,7 +130,8 @@ export async function signInWithApple(opts?: OAuthOpts): Promise<{ error?: strin
     if (error || !data.url) {
       console.error("[OAuth] Apple error:", error);
       pendingReset = null;
-      return { error: "Could not start Apple sign-in. Please try again." };
+      // OPS-031: return a translation code — the calling component localizes it.
+      return { error: "oauthStartFailed" };
     }
     await openOAuthInApp(data.url);
     return {};

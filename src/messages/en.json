@@ -2,6 +2,7 @@
   "common": {
     "backToMe": "Me",
     "somethingWentWrong": "Something went wrong. Please try again.",
+    "oauthStartFailed": "We couldn't start the sign-in. Please try again.",
     "back": "Back",
     "continue": "Continue",
     "save": "Save",
