@@ -766,6 +766,106 @@ const CLIPS = [
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
   },
+  // ══ Family: RESTORE (RS) — borrowed demand, and the fewest words in the
+  // library: the reveal is the payoff, so captions get out of its way.
+  //
+  // Footage is build-restore-pairs: a colour original aged into a damaged
+  // monochrome print, revealed by a blend wipe. /api/ai-enhance really does
+  // restore AND colourise a monochrome input in one pass (Kontext, falling back
+  // to GFPGAN + DDColor), so the transformation shown is the product's own.
+  // ⚠️ The "after" is the untouched original rather than a captured model
+  // output — a best-case depiction of a real capability. Never caption these as
+  // actual output.
+  {
+    code: "RESTORE-01", family: "RESTORE", slug: "watch-them-come-back",
+    tests: 'Command hook + a near-silent single reveal. Tests whether restraint holds attention better than the busy Remini grammar.',
+    carousel: 'restore',
+    music: "light-in-dark-places.mp3", offset: 12, vol: 0.75,
+    beats: [
+      { kind: "card", png: G("RESTORE-01-hook"), secs: 2.6 },
+      // One unbroken take. No captions across the wipe: the face is the event.
+      { kind: "beat", f: "rp-couple", secs: 6.8, from: 0.1, grade: "soft", xf: 0.5,
+        cap: G("RESTORE-01-cap1"), capIn: 0.4, capOut: 2.6 },
+      { kind: "beat", f: "rp-lane", secs: 4.0, from: 3.0, grade: "soft", xf: 0.5,
+        cap: G("RESTORE-01-cap2"), capIn: 1.2 },
+      { kind: "beat", f: "inlay-restore", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "RESTORE-03", family: "RESTORE", slug: "restored-then-hung",
+    tests: 'The bridge clip: delivers the restore payoff fast, then argues that repairing a photo is not the same as giving it somewhere to live.',
+    carousel: 'scroll: library',
+    music: "light-in-dark-places.mp3", offset: 36, vol: 0.9,
+    beats: [
+      { kind: "card", png: G("RESTORE-03-hook"), secs: 2.6 },
+      { kind: "beat", f: "rp-wedding", secs: 5.6, from: 0.6, grade: "soft", xf: 0.5 },
+      // hard turn into the palace — the point of the clip is the second half
+      { kind: "beat", f: "room-pullback-h1", secs: 6.0, from: 0.8, grade: "soft", xf: 0.7,
+        cap: G("RESTORE-03-cap1"), capIn: 1.6, capOut: 5.2 },
+      { kind: "beat", f: "walk-roots-wall", secs: 4.0, from: 4.5, grade: "soft", xf: 0.5,
+        cap: G("RESTORE-03-cap2"), capIn: 0.8 },
+      { kind: "beat", f: "scroll-library", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "RESTORE-05", family: "RESTORE", slug: "the-detail-you-missed",
+    tests: 'Curiosity gap: names a detail before showing it. Tests whether a delayed, promised payoff lifts completion over an immediate reveal.',
+    carousel: 'restore',
+    music: "light-in-dark-places.mp3", offset: 60, vol: 0.85,
+    beats: [
+      { kind: "card", png: G("RESTORE-05-hook"), secs: 3.0 },
+      // damage held long enough for the eye to hunt before the wipe answers
+      { kind: "beat", f: "rp-couple", secs: 3.2, from: 0.1, grade: "soft", xf: 0.5 },
+      { kind: "beat", f: "rp-couple", secs: 4.4, from: 3.0, grade: "soft", xf: 0.25,
+        cap: G("RESTORE-05-cap1"), capIn: 1.8, capOut: 3.9 },
+      { kind: "beat", f: "rp-wedding", secs: 4.2, from: 3.4, grade: "soft", xf: 0.5,
+        cap: G("RESTORE-05-cap2"), capIn: 1.2 },
+      { kind: "beat", f: "inlay-restore", secs: 6.6, from: 0.0, raw: true, xf: 0.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "RESTORE-07", family: "RESTORE", slug: "watch-it-fade",
+    tests: 'Loss-framing: the reveal runs backwards and the photograph decays. Tests whether inverting the direction beats the standard wipe.',
+    carousel: 'restore',
+    music: "light-in-dark-places.mp3", offset: 84, vol: 0.85,
+    beats: [
+      { kind: "card", png: G("RESTORE-07-hook"), secs: 2.8 },
+      // opens PRISTINE — the audience assumes this is the "after"
+      { kind: "beat", f: "rp-fade", secs: 3.0, from: 0.2, grade: "soft", xf: 0.5,
+        cap: G("RESTORE-07-cap1"), capIn: 0.3, capOut: 2.4 },
+      { kind: "beat", f: "rp-fade", secs: 2.6, from: 3.2, grade: "soft", xf: 0.2,
+        cap: G("RESTORE-07-cap2"), capIn: 0.2, capOut: 2.1 },
+      { kind: "beat", f: "rp-fade", secs: 2.8, from: 5.8, grade: "soft", xf: 0.2,
+        cap: G("RESTORE-07-cap3"), capIn: 0.2, capOut: 2.3 },
+      // snap forward: the repair is the answer to the decay
+      { kind: "beat", f: "rp-couple", secs: 4.6, from: 3.4, grade: "soft", xf: 0.12,
+        cap: G("RESTORE-07-cap4"), capIn: 1.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "LEGACY-03b", family: "LEGACY", slug: "the-folder-nobody-opens",
+    tests: 'Replaces the founder-cam cell. Tests RECOGNITION as the hook — the viewer seeing their own behaviour — rather than parasocial trust, so it is a different mechanism under a different code.',
+    carousel: 'scroll: library',
+    music: "light-in-dark-places.mp3", offset: 102, vol: 0.95,
+    beats: [
+      { kind: "card", png: G("LEGACY-03b-hook"), secs: 3.2 },
+      // the folder itself: a grid that keeps going and means nothing
+      { kind: "beat", f: "scroll-library", secs: 3.4, from: 0.2, raw: true, xf: 0.5,
+        cap: G("LEGACY-03b-cap1"), capIn: 0.4, capOut: 2.8 },
+      { kind: "beat", f: "scroll-library", secs: 3.0, from: 3.6, raw: true, xf: 0.2,
+        cap: G("LEGACY-03b-cap2"), capIn: 0.3, capOut: 2.5 },
+      // the same pictures, somewhere
+      { kind: "beat", f: "room-walkin-h2", secs: 5.4, from: 1.5, grade: "soft", xf: 0.7,
+        cap: G("LEGACY-03b-cap3"), capIn: 2.0 },
+      { kind: "beat", f: "walk-roots-wall", secs: 4.0, from: 5.0, grade: "soft", xf: 0.5,
+        cap: G("LEGACY-03b-cap4"), capIn: 1.2 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
 
 ];
 
