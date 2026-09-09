@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useTransition } from "react";
 import { T } from "@/lib/theme";
+import { smallAvatarUrl } from "@/lib/images/avatar-url";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { getBlockedUsers, unblockUser } from "@/lib/social/safety-actions";
 
@@ -123,7 +124,7 @@ export default function BlockedAccountsPanel() {
                 borderRadius: "50%",
                 flexShrink: 0,
                 background: u.avatar_url
-                  ? `url(${u.avatar_url}) center/cover`
+                  ? `url(${smallAvatarUrl(u.avatar_url, 72)}) center/cover`
                   : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
               }}
             />

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { serverError } from "@/lib/i18n/server-errors";
 
 export interface Comment {
   id: string;
@@ -59,7 +60,8 @@ export async function addComment(input: {
   // Proactive objectionable-content filter for public UGC (Apple 1.1/1.2).
   const { moderateText } = await import("@/lib/social/moderate-text");
   if (!moderateText(body).ok) {
-    return { ok: false, error: "This comment violates our content policy." };
+    const t = await serverError();
+    return { ok: false, error: t("contentPolicyViolation") };
   }
 
   const { data, error } = await supabase

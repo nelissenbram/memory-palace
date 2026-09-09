@@ -41,6 +41,22 @@ const errors: Record<string, Record<Locale, string>> = {
     fr: "Le mot de passe doit contenir au moins 8 caract\u00e8res.",
   },
 
+  passwordSameAsOld: {
+    en: "Please choose a password that's different from your current one.",
+    nl: "Kies een wachtwoord dat verschilt van je huidige wachtwoord.",
+    de: "Bitte wähle ein Passwort, das sich von deinem aktuellen unterscheidet.",
+    es: "Elige una contraseña distinta de la actual.",
+    fr: "Veuillez choisir un mot de passe différent de l'actuel.",
+  },
+
+  resetLinkExpired: {
+    en: "Your reset link has expired. Please request a new one.",
+    nl: "Je resetlink is verlopen. Vraag een nieuwe aan.",
+    de: "Dein Link ist abgelaufen. Bitte fordere einen neuen an.",
+    es: "Tu enlace ha caducado. Solicita uno nuevo.",
+    fr: "Votre lien a expiré. Veuillez en demander un nouveau.",
+  },
+
   // ── Sharing (sharing-actions.ts) ──
   notAuthenticated: {
     en: "Not authenticated",
@@ -511,6 +527,50 @@ const errors: Record<string, Record<Locale, string>> = {
     de: "Inaktivit\u00e4tszeitraum muss zwischen 1 und 60 Monaten liegen",
     es: "El per\u00edodo de inactividad debe ser entre 1 y 60 meses",
     fr: "La p\u00e9riode d'inactivit\u00e9 doit \u00eatre entre 1 et 60 mois",
+  },
+
+  // \u2500\u2500 Profile / avatar / account deletion (profile-actions.ts \u2014 OPS-018-fase-2) \u2500\u2500
+  contentPolicyViolation: {
+    en: "We can't publish this text. Please adjust your name or bio and try again.",
+    nl: "Deze tekst kunnen we niet plaatsen. Pas je naam of bio even aan en probeer opnieuw.",
+    de: "Diesen Text k\u00f6nnen wir nicht ver\u00f6ffentlichen. Bitte passe deinen Namen oder deine Bio an.",
+    es: "No podemos publicar este texto. Ajusta tu nombre o biograf\u00eda e int\u00e9ntalo de nuevo.",
+    fr: "Nous ne pouvons pas publier ce texte. Modifiez votre nom ou votre bio, puis r\u00e9essayez.",
+  },
+  noFileProvided: {
+    en: "No file was selected. Please choose an image and try again.",
+    nl: "Er is geen bestand gekozen. Kies een afbeelding en probeer opnieuw.",
+    de: "Es wurde keine Datei ausgew\u00e4hlt. Bitte w\u00e4hle ein Bild und versuche es erneut.",
+    es: "No se seleccion\u00f3 ning\u00fan archivo. Elige una imagen e int\u00e9ntalo de nuevo.",
+    fr: "Aucun fichier s\u00e9lectionn\u00e9. Choisissez une image, puis r\u00e9essayez.",
+  },
+  invalidFileType: {
+    en: "That file isn't an image. Please choose a photo (JPG or PNG).",
+    nl: "Dat bestand is geen afbeelding. Kies een foto (JPG of PNG).",
+    de: "Diese Datei ist kein Bild. Bitte w\u00e4hle ein Foto (JPG oder PNG).",
+    es: "Ese archivo no es una imagen. Elige una foto (JPG o PNG).",
+    fr: "Ce fichier n'est pas une image. Choisissez une photo (JPG ou PNG).",
+  },
+  fileTooLarge: {
+    en: "That image is too large. Please choose one under 5 MB.",
+    nl: "Die afbeelding is te groot. Kies er een van minder dan 5 MB.",
+    de: "Dieses Bild ist zu gro\u00df. Bitte w\u00e4hle eines unter 5 MB.",
+    es: "Esa imagen es demasiado grande. Elige una de menos de 5 MB.",
+    fr: "Cette image est trop volumineuse. Choisissez-en une de moins de 5 Mo.",
+  },
+  accountDeletionUnavailable: {
+    en: "Account deletion is temporarily unavailable. Please contact support@thememorypalace.ai.",
+    nl: "Account verwijderen is tijdelijk niet mogelijk. Neem contact op met support@thememorypalace.ai.",
+    de: "Das L\u00f6schen des Kontos ist vor\u00fcbergehend nicht m\u00f6glich. Bitte wende dich an support@thememorypalace.ai.",
+    es: "La eliminaci\u00f3n de la cuenta no est\u00e1 disponible temporalmente. Escribe a support@thememorypalace.ai.",
+    fr: "La suppression du compte est momentan\u00e9ment indisponible. Contactez support@thememorypalace.ai.",
+  },
+  accountDeletionFailed: {
+    en: "We could not fully delete your account. Please try again or contact support@thememorypalace.ai.",
+    nl: "We konden je account niet volledig verwijderen. Probeer het opnieuw of neem contact op met support@thememorypalace.ai.",
+    de: "Wir konnten dein Konto nicht vollst\u00e4ndig l\u00f6schen. Bitte versuche es erneut oder wende dich an support@thememorypalace.ai.",
+    es: "No pudimos eliminar tu cuenta por completo. Int\u00e9ntalo de nuevo o escribe a support@thememorypalace.ai.",
+    fr: "Nous n'avons pas pu supprimer compl\u00e8tement votre compte. R\u00e9essayez ou contactez support@thememorypalace.ai.",
   },
 };
 

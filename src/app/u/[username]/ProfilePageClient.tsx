@@ -48,7 +48,7 @@ export default function ProfilePageClient({
   publishedWings,
   isAuthenticated = false,
 }: ProfilePageClientProps) {
-  const { t } = useTranslation("social");
+  const { t, locale } = useTranslation("social");
   const router = useRouter();
   const isMobile = useIsMobile();
   const isCompact = useIsCompact();
@@ -88,18 +88,26 @@ export default function ProfilePageClient({
 
       <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "0 1rem" }}>
 
+        {/* OPS-023 — gold keyboard focus ring, matching the Explore-cluster idiom */}
+        <style>{`
+          .mp-uprofile-back:focus-visible, .mp-uprofile-enter:focus-visible, .mp-uprofile-edit:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
+        `}</style>
+
         {/* ── Back Button ──────────────────────────────── */}
         <div style={{
           padding: isMobile ? "1rem 0 0.75rem" : "1.5rem 0 1rem",
           animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out both`),
         }}>
           <button
+            className="mp-uprofile-back"
             onClick={() => router.push("/explore")}
             style={{
               display: "inline-flex", alignItems: "center", gap: "0.375rem",
+              // OPS-023 — 44px minimum touch target (WCAG 2.5.8 / Apple HIG)
+              minHeight: "2.75rem", minWidth: "2.75rem",
               fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
               color: T.color.walnut, background: "none", border: "none",
-              cursor: "pointer", padding: "0.375rem 0.75rem 0.375rem 0.25rem",
+              cursor: "pointer", padding: "0.5rem 0.75rem 0.5rem 0.25rem",
               borderRadius: "0.5rem",
               transition: `background 0.2s ${EASE}`,
             }}
@@ -124,6 +132,7 @@ export default function ProfilePageClient({
             {profile.is_own && (
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0.875rem" }}>
                 <button
+                  className="mp-uprofile-edit"
                   onClick={() => router.push("/settings/profile")}
                   style={{
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -153,6 +162,7 @@ export default function ProfilePageClient({
             animation: entry(`${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.07s both`),
           }}>
             <button
+              className="mp-uprofile-enter"
               onClick={() =>
                 // Route to the palace-level entry (an overview across ALL published
                 // wings) rather than assuming publishedWings[0] — which is merely the
@@ -195,7 +205,7 @@ export default function ProfilePageClient({
           ].map((stat) => (
             <div key={stat.label} style={{ textAlign: "center", minWidth: "4rem" }}>
               <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.inkSoft }}>
-                {stat.value}
+                {stat.value.toLocaleString(locale)}
               </div>
               <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                 {stat.label}
@@ -204,7 +214,7 @@ export default function ProfilePageClient({
           ))}
           <div style={{ textAlign: "center", minWidth: "4rem" }}>
             <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 700, color: T.color.inkSoft }}>
-              {new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+              {new Date(profile.created_at).toLocaleDateString(locale, { month: "short", year: "numeric" })}
             </div>
             <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               {t("memberSince")}

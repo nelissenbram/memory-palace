@@ -352,7 +352,8 @@ function RegisterContent() {
             const { error: oauthErr } = await fn({ onDismiss: clear, redirect });
             if (oauthErr) {
               clear();
-              setError(oauthErr);
+              // OPS-031: the helper returns a translation code, never raw provider text.
+              setError(oauthErr === "oauthStartFailed" ? tc("oauthStartFailed") : oauthErr);
             }
           } catch {
             clear();
