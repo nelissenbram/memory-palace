@@ -784,7 +784,7 @@ const CLIPS = [
     beats: [
       { kind: "card", png: G("RESTORE-01-hook"), secs: 2.6 },
       // One unbroken take. No captions across the wipe: the face is the event.
-      { kind: "beat", f: "rp-couple", secs: 6.8, from: 0.1, grade: "soft", xf: 0.5,
+      { kind: "beat", f: "rp-wedding", secs: 6.8, from: 0.1, grade: "soft", xf: 0.5,
         cap: G("RESTORE-01-cap1"), capIn: 0.4, capOut: 2.6 },
       { kind: "beat", f: "rp-lane", secs: 4.0, from: 3.0, grade: "soft", xf: 0.5,
         cap: G("RESTORE-01-cap2"), capIn: 1.2 },
@@ -800,8 +800,11 @@ const CLIPS = [
     beats: [
       { kind: "card", png: G("RESTORE-03-hook"), secs: 2.6 },
       { kind: "beat", f: "rp-wedding", secs: 5.6, from: 0.6, grade: "soft", xf: 0.5 },
-      // hard turn into the palace — the point of the clip is the second half
-      { kind: "beat", f: "room-pullback-h1", secs: 6.0, from: 0.8, grade: "soft", xf: 0.7,
+      // ⚠️ room-pullback (default), NOT h1. The restore beat colourises the
+      // WEDDING; room-pullback hangs the wedding (hero 0), while h1 hung a
+      // different photo (still-dancing) — so the wall showed a picture the clip
+      // never restored. Same image now: restored, then hung.
+      { kind: "beat", f: "room-pullback", secs: 6.0, from: 0.8, grade: "soft", xf: 0.7,
         cap: G("RESTORE-03-cap1"), capIn: 1.6, capOut: 5.2 },
       { kind: "beat", f: "walk-roots-wall", secs: 4.0, from: 4.5, grade: "soft", xf: 0.5,
         cap: G("RESTORE-03-cap2"), capIn: 0.8 },
@@ -817,8 +820,8 @@ const CLIPS = [
     beats: [
       { kind: "card", png: G("RESTORE-05-hook"), secs: 3.0 },
       // damage held long enough for the eye to hunt before the wipe answers
-      { kind: "beat", f: "rp-couple", secs: 3.2, from: 0.1, grade: "soft", xf: 0.5 },
-      { kind: "beat", f: "rp-couple", secs: 4.4, from: 3.0, grade: "soft", xf: 0.25,
+      { kind: "beat", f: "rp-lane", secs: 3.2, from: 0.1, grade: "soft", xf: 0.5 },
+      { kind: "beat", f: "rp-lane", secs: 4.4, from: 3.0, grade: "soft", xf: 0.25,
         cap: G("RESTORE-05-cap1"), capIn: 1.8, capOut: 3.9 },
       { kind: "beat", f: "rp-wedding", secs: 4.2, from: 3.4, grade: "soft", xf: 0.5,
         cap: G("RESTORE-05-cap2"), capIn: 1.2 },
@@ -841,7 +844,7 @@ const CLIPS = [
       { kind: "beat", f: "rp-fade", secs: 2.8, from: 5.8, grade: "soft", xf: 0.2,
         cap: G("RESTORE-07-cap3"), capIn: 0.2, capOut: 2.3 },
       // snap forward: the repair is the answer to the decay
-      { kind: "beat", f: "rp-couple", secs: 4.6, from: 3.4, grade: "soft", xf: 0.12,
+      { kind: "beat", f: "rp-wedding", secs: 4.6, from: 3.4, grade: "soft", xf: 0.12,
         cap: G("RESTORE-07-cap4"), capIn: 1.4 },
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],

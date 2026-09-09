@@ -60,13 +60,22 @@ const SETS = {
   // couple dancing that reads beautifully and scores 1.06 — it is already
   // monochrome, so ageing it changed nothing and the wipe revealed grey to grey.
   // A restore clip needs an original with colour to come back TO.
-  "rp-couple": { src: "rosa-baila/nest-r0-m0.jpg", secs: 7.0 },      // SAT 37.0
+  /**
+   * ⚠️ Sources are the MANTEL photographs, so the restore reveal and the wall it
+   * later hangs on are the same picture — not a lookalike. rosa-baila (a man at
+   * a bar in heavy amber) was dropped: it read as a fake "colourisation" and it
+   * matched nothing on any wall. rp-couple, which used it, is gone entirely.
+   *   rp-wedding = the-wedding  -> hangs at room-pullback (hero 0)
+   *   rp-lane    = the-long-walk -> hangs at room-pullback-h2 (hero 2)
+   * still-dancing is NOT here: it is already monochrome (SAT ~1), so there is no
+   * colour to restore it TO.
+   */
   "rp-wedding": { src: "eleanor-remembers/nest-r0-m1.jpg", secs: 7.0 }, // SAT 28.1
   "rp-lane": { src: "beatrice-provence/nest-r0-m0.jpg", secs: 7.0 },   // SAT 15.1
   // Reversed: opens on the pristine photograph and lets it decay. RESTORE-07
-  // inverts the family's grammar to test loss-framing against gain-framing, so
-  // the footage has to invert too — the same wipe, run the other way.
-  "rp-fade": { src: "rosa-baila/nest-r0-m0.jpg", secs: 7.0, reverse: true },
+  // inverts the family's grammar, so the footage inverts too — same wipe, run
+  // the other way. Uses the wedding, the most colourful of the set.
+  "rp-fade": { src: "eleanor-remembers/nest-r0-m1.jpg", secs: 7.0, reverse: true },
 };
 
 /**
