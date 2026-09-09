@@ -199,6 +199,24 @@ export const CARDS = {
     },
     caps: ["nothing came in here that you didn't carry in."],
   },
+  // ── Family: KIN (KN) — the family as co-authors. Organiser ICP. The pain is
+  // not personal disorder (that is GRAVE) but DISTRIBUTED ownership: the archive
+  // is in five houses and the job landed on one person. Relief is handover. The
+  // frame is PRIVATE (your family, your rules — a real checkbox tree) with
+  // VISITABLE as the payoff.
+  "KIN-01": {
+    hook: "Everyone in your family is holding\na photo nobody else has.",
+    caps: ["this wall was not filled by one person.", "invite them, then decide what they see."],
+  },
+  "KIN-02": {
+    hook: "Three checkboxes decide who ever\nsees your mother's kitchen.",
+    caps: ["per wing. per room. not per app.", "you decide which of these open."],
+  },
+  "KIN-03": {
+    hook: "In every family there's one person\nwho ended up with the box. It's you.",
+    caps: ["nobody appointed you. it just happened.",
+           "you don't have to be the only one carrying it."],
+  },
   "WONDER-08": {
     hook: "The quietest place\non the internet.",
     caps: ["some rooms are just for remembering."],

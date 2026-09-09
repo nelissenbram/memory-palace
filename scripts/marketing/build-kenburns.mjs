@@ -91,6 +91,13 @@ const PUSHES = {
     file: "socials-kit/screens/settings-connections.png",
     secs: 8.0, crop: [1040, 300, 20, 1200],
   },
+  // KIN-02: a slow pan DOWN the per-wing/per-room publish tree. Ends lower than
+  // it starts so the eye travels through Roots -> Nest -> Craft, each with its
+  // own PUBLISHED badge — the "per room, not per app" argument, shown.
+  "kb-sharing-tree": {
+    file: "socials-kit/screens/settings-sharing.png",
+    secs: 8.0, crop: [1040, 1500, 20, 380],
+  },
 };
 for (const [id, s] of Object.entries(PUSHES)) {
   if (process.argv[2] && process.argv[2] !== id) continue;

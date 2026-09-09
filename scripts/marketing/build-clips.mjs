@@ -879,6 +879,61 @@ const CLIPS = [
       { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
     ],
   },
+  // ══ Family: KIN (KN) — the family as co-authors. Organiser ICP. The pain is
+  // DISTRIBUTED: the archive is in five houses and the job landed on one person.
+  // Relief is handover. Frame is PRIVATE (your family, your rules — a real
+  // checkbox tree), VISITABLE the payoff. ⚠️ Boundary vs OWNED: OW is about
+  // institutions holding your things; KIN is about which cousin sees which room.
+  {
+    code: "KIN-01", family: "KIN", slug: "not-the-only-author",
+    tests: 'Distributed ownership as a hook — the missing photos are not lost, they are in someone else house. vs GRAVE (personal disorder): is "you cannot do this alone" a stronger opener than "you failed to organise this"? Judged on send-to-a-person shares.',
+    carousel: 'family: group + sharing + tree',
+    music: "light-in-dark-places.mp3", offset: 12, vol: 0.9,
+    beats: [
+      { kind: "card", png: G("KIN-01-hook"), secs: 3.0 },
+      // the hang, which one person did not fill
+      { kind: "beat", f: "walk-roots-wall", secs: 5.0, from: 3.0, grade: "soft", xf: 0.6,
+        cap: G("KIN-01-cap1"), capIn: 1.2 },
+      // invite them, then decide what they see: group, sharing, tree
+      { kind: "beat", f: "inlay-kin", secs: 6.6, from: 0.0, raw: true, xf: 0.5,
+        cap: G("KIN-01-cap2"), capIn: 0.6 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "KIN-02", family: "KIN", slug: "three-checkboxes",
+    tests: 'Granularity as reassurance. The competitor is a free vault that syncs to a shared PUBLIC archive; the answer is not promising privacy but showing its resolution — a per-wing/per-room publish tree. Highest-information clip in the proposal.',
+    carousel: 'none - the tree is the argument',
+    music: "light-in-dark-places.mp3", offset: 36, vol: 0.85,
+    beats: [
+      { kind: "card", png: G("KIN-02-hook"), secs: 3.0 },
+      // pull out over the real publish matrix: Roots/Nest/Craft, each a box
+      { kind: "beat", f: "kb-sharing-tree", secs: 7.5, from: 0.3, raw: true, xf: 0.5,
+        cap: G("KIN-02-cap1"), capIn: 4.6 },
+      // you decide which of these open: the double doors, closed then held
+      { kind: "beat", f: "corridor-portal", secs: 4.0, from: 1.2, grade: "soft", xf: 0.6,
+        cap: G("KIN-02-cap2"), capIn: 1.4 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
+  {
+    code: "KIN-03", family: "KIN", slug: "the-one-with-the-box",
+    tests: 'Role recognition as a hook — names the viewer unpaid family job rather than asking a question. ⚠️ KPI is deliberately saves and shares, NOT comments; if comments carry it, it has drifted into CURIOUS territory.',
+    carousel: 'family: group + sharing + tree',
+    music: "light-in-dark-places.mp3", offset: 60, vol: 0.9,
+    beats: [
+      { kind: "card", png: G("KIN-03-hook"), secs: 3.4 },
+      // nobody appointed you: the hang, moving
+      { kind: "beat", f: "walk-nest-wall", secs: 4.4, from: 4.0, grade: "soft", xf: 0.6,
+        cap: G("KIN-03-cap1"), capIn: 1.2, capOut: 3.8 },
+      // you don't have to carry it alone: the hall long and populated
+      { kind: "beat", f: "corridor-grow4", secs: 3.4, from: 1.4, grade: "soft", xf: 0.5,
+        cap: G("KIN-03-cap2"), capIn: 0.8 },
+      { kind: "beat", f: "walk-roots", secs: 3.4, from: 5.0, grade: "soft", xf: 0.4 },
+      { kind: "beat", f: "inlay-kin", secs: 6.6, from: 0.0, raw: true, xf: 0.5 },
+      { kind: "card", png: ENDCARD, secs: 3.4, xf: 0.45, sheen: true },
+    ],
+  },
 
 ];
 

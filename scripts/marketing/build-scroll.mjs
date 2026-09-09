@@ -53,6 +53,13 @@ const PAGES = [
   // that proves it is yours. A still frame shows one half and hides the point.
   { id: "security", path: "/settings/security", expect: /Danger Zone|Export Your Data/i,
     label: "take it all with you" },
+  // KIN-02: the per-wing / per-room publish tree. Scrolled, not panned — the
+  // matrix is near full-width, so zooming a screenshot cannot travel down it
+  // without cropping the room names. Same settings-page scroller as security.
+  // KIN-02 does NOT scroll live: expanding the scroller re-triggers the wing
+  // tree's "Loading wings" state, so the capture caught the spinner every time.
+  // It uses a pull-out over the loaded static screenshot instead (build-kenburns
+  // kb-sharing-tree). Kept out of the scroll list deliberately.
   // The AI interview, scrolled through its chapters and the prose it writes back.
   // Owner on LEGACY-08: the clip must travel through the QUESTIONS AND ANSWERS,
   // not sit on a still of the panel — the feature's whole argument is that it
