@@ -232,6 +232,11 @@ CAPTION: Faces without names are strangers in your own album. Which relative wou
 ICP: memoirist · HYPOTHESIS: Direct-question hook + group photo vs single-portrait siblings: does self-projection ('could YOU…') drive comment-rate (CI-mechanism inside RS), and do multi-face reveals hold attention differently than one-face intimacy?
 
 **RESTORE-09 · RS-10 It Cost Less Than a Stamp (stat/price hook) (6.87)**
+> ⛔ **LEG-023-POORT (owner-akkoord 10-09, HARD):** niet bouwen/publiceren met deze cijfers
+> zolang ze ongemeten zijn. "€0.002" en "31 seconds" alleen na een échte, gedocumenteerde
+> run (datum + log in `docs/legal-records/MARKETING-PROVENANCE-LICENTIES.md`); de
+> "€80 / three weeks"-studioclaim vergt een aanwijsbare bron of vervalt. Alternatief:
+> herformuleren zonder cijfers. Grondslag: UCPD 2005/29 (voor/na + prijsclaims).
 HOOK: "This restoration cost €0.002."
 BEATS: 1) 0–2s: hook in huge Fraunces numerals over the damaged portrait. 2) 2–6s: hold on damage, caption: 'A studio quotes €80 and three weeks for this.' 3) 6–10s: wipe reveal, timer overlay showing '31 seconds'. 4) 10–15s: restored face full-frame, caption: 'Which is why the first 10 are free.' 5) 15–17s: ember end card.
 FOOTAGE: One GFPGAN pair from the archive batch; timer + price overlays via clip-kit; optional 2s app-UI screen-rec insert of the restore button being tapped.
@@ -239,6 +244,10 @@ CAPTION: Restoration used to be a luxury. Now it's a default. 10 free — link i
 ICP: broad · HYPOTHESIS: Concrete-number/absurd-stat hook vs emotional siblings: does a rational value-anchor (price + speed) stop scroll as well as sentiment does, and does it attract higher-intent clickers (go-click→signup rate) or bargain-hunters who never activate (D7 ≥3-memories check)?
 
 **RESTORE-06 · RS-07 You Sent This One (community fulfillment) (6.33)**
+> ⛔ **LEG-023-POORT (owner-akkoord 10-09):** alleen bouwen/publiceren mét een vastgelegd
+> consent-record van de inzender (schriftelijk: naam/handle, datum, scope "gebruik in
+> marketingvideo", bewaard in `docs/legal-records/`) — "met toestemming" in de comments
+> is niet genoeg. Huisregel: nooit gebruikersgezichten in marketing zonder aparte consent.
 HOOK: "@____ dropped this in the comments yesterday. Here's what came back."
 BEATS: 1) 0–2s: screenshot-style frame of the (permissioned) comment with the damaged photo attached, hook overlaid, username handle slot templated. 2) 2–6s: the damaged photo fills the frame, hold on the worst damage. 3) 6–10s: wipe reveal of the restore. 4) 10–14s: side-by-side before/after, caption: 'Tomorrow I pick another one.' 5) 14–16s: ember end card.
 FOOTAGE: Fulfilled restore from the pinned-comment loop (§2c action 3: 'drop your damaged family photo') — commenter's submitted photo with permission, GFPGAN pair, comment-screenshot mock via clip-kit frame; fully templatable for the every-10th-restore cadence.
