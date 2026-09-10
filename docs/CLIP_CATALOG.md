@@ -200,8 +200,11 @@ ICP: memoirist · HYPOTHESIS: Curiosity-gap hook with a promised, delayed payoff
 HOOK: "I finally opened the box I'd been avoiding."
 BEATS: 1) 0–2s: [FOUNDER-CAM] Bram at his desk, worn shoebox in frame, confession hook as caption. 2) 2–7s: hands-only b-roll: lifting out a creased old family photo, turning it over to the handwriting on the back. 3) 7–13s: screen: the photo drops into the restore flow, wipe reveal of the repaired face. 4) 13–19s: back to founder, one quiet line to camera: 'She wrote the story on the back. Now both survive.' 5) 19–22s: ember end card.
 FOOTAGE: [FOUNDER-CAM] selfie + hands b-roll of a real family shoebox photo (owner's own, per §2c 'own family shoebox'); app UI screen-rec of the Library restore upload flow; GFPGAN pair of that photo; clip-kit overlays.
-CAPTION: I built this because of one box. I restore one stranger's photo free every day — drop yours below. #photorestoration #familyhistory #buildinpublic #oldphotos
-ICP: founder-audience · HYPOTHESIS: Confession hook + a real face vs the faceless siblings: does founder presence lift comment-rate and trust (photo drops in comments) enough to justify founder time, per the FB-family crossover question applied inside RS?
+CAPTION: I built this because of one box. Your first 10 restores are free — link in bio. #photorestoration #familyhistory #buildinpublic #oldphotos
+> ⚠️ Caption bijgesteld (owner-besluit 10-09, no-comment-fulfillment): de oude regel
+> beloofde "I restore one stranger's photo free every day — drop yours below" — die
+> belofte is verboden copy; verwijs naar het gratis account.
+ICP: founder-audience · HYPOTHESIS: Confession hook + a real face vs the faceless siblings: does founder presence lift comment-rate and trust enough to justify founder time, per the FB-family crossover question applied inside RS?
 
 **RESTORE-03 · RS-04 Restored, Then Hung (the palace bridge) (7.67)**
 HOOK: "Restoring it was the easy part."
@@ -244,12 +247,12 @@ CAPTION: Restoration used to be a luxury. Now it's a default. 10 free — link i
 ICP: broad · HYPOTHESIS: Concrete-number/absurd-stat hook vs emotional siblings: does a rational value-anchor (price + speed) stop scroll as well as sentiment does, and does it attract higher-intent clickers (go-click→signup rate) or bargain-hunters who never activate (D7 ≥3-memories check)?
 
 **RESTORE-06 · RS-07 You Sent This One (community fulfillment) (6.33)**
-> ⛔ **LEG-023-POORT (owner-akkoord 10-09):** alleen bouwen/publiceren mét een vastgelegd
-> consent-record van de inzender (schriftelijk: naam/handle, datum, scope "gebruik in
-> marketingvideo", bewaard in `docs/legal-records/`) — "met toestemming" in de comments
-> is niet genoeg. Huisregel: nooit gebruikersgezichten in marketing zonder aparte consent.
-> Template + werkwijze + register: `docs/legal-records/CONSENT-RESTORE-06.md` (DM-tekst
-> EN/NL, "I AGREE"-flow, screenshot-bewijs gitignored in `socials-kit/consents/`).
+> ⛔ **GESCHRAPT (owner-besluit 2026-09-10):** géén comment-fulfillment — wij herstellen
+> geen ingezonden foto's onder posts. Inzenders verwijzen naar een gratis Memory
+> Palace-account (10 free restores, in-app consent-flow). Niet bouwen, niet plannen;
+> het bijbehorende consent-template is vervallen. Elke "drop yours below"-belofte is
+> verboden copy. Zie `socials-kit/autonomy/OWNER-DECISION-NO-COMMENT-FULFILLMENT-2026-09-10.md`.
+> Entry blijft staan als record; hypothese vervalt.
 HOOK: "@____ dropped this in the comments yesterday. Here's what came back."
 BEATS: 1) 0–2s: screenshot-style frame of the (permissioned) comment with the damaged photo attached, hook overlaid, username handle slot templated. 2) 2–6s: the damaged photo fills the frame, hold on the worst damage. 3) 6–10s: wipe reveal of the restore. 4) 10–14s: side-by-side before/after, caption: 'Tomorrow I pick another one.' 5) 14–16s: ember end card.
 FOOTAGE: Fulfilled restore from the pinned-comment loop (§2c action 3: 'drop your damaged family photo') — commenter's submitted photo with permission, GFPGAN pair, comment-screenshot mock via clip-kit frame; fully templatable for the every-10th-restore cadence.

@@ -10,4 +10,3 @@ auditbaar in dezelfde tree leeft. Bij wijziging in de bron: kopie hier mee-updat
 - BREACH-DRAAIBOEK-72U.md - 72u-datalekdraaiboek (GBA/APD)
 - LIA-posthog-signup-analytics.md - belangenafweging PostHog-signup-analytics
 - MARKETING-PROVENANCE-LICENTIES.md - provenance & licenties marketing-media (LEG-023)
-- CONSENT-RESTORE-06.md - consent-template + register ingezonden foto's (RESTORE-06, concept voor raadsman)
