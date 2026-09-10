@@ -464,12 +464,39 @@ export interface PBRTextureSet {
   aoMap: THREE.Texture;
 }
 
+/** OPS-045: while a texture's image is still in flight, ANY
+ *  `needsUpdate = true` (scene code adjusting wrap/repeat/anisotropy, or a
+ *  loader callback) bumps the version and makes three upload image=undefined
+ *  → hard crash ("Cannot read properties of undefined (reading 'width')").
+ *  This installs a per-instance setter that queues the bump instead; the
+ *  queued bump is applied when the load completes (releaseUpdateGuard). */
+function deferUpdatesWhileLoading(tex: THREE.Texture): void {
+  let queued = false;
+  Object.defineProperty(tex, "needsUpdate", {
+    configurable: true,
+    set(value: boolean) {
+      if (value === true) queued = true;
+    },
+  });
+  (tex as unknown as { __mpReleaseGuard?: () => void }).__mpReleaseGuard = () => {
+    delete (tex as unknown as Record<string, unknown>).needsUpdate; // restore prototype setter
+    delete (tex as unknown as { __mpReleaseGuard?: () => void }).__mpReleaseGuard;
+    if (queued) tex.needsUpdate = true;
+  };
+}
+
+function releaseUpdateGuard(tex: THREE.Texture): void {
+  const release = (tex as unknown as { __mpReleaseGuard?: () => void }).__mpReleaseGuard;
+  if (release) release();
+}
+
 /** Base texture ready — clear the loading marker and flush clones created
  *  before the load finished. Because KTX2 payloads and 404-fallback swaps
  *  resolve AFTER clone() snapshotted mipmaps/format, the payload fields are
  *  re-copied onto each waiting clone before marking it for upload. */
 function finishBaseLoad(baseTex: THREE.Texture): void {
   (baseTex as { __mpLoading?: boolean }).__mpLoading = false;
+  releaseUpdateGuard(baseTex); // OPS-045: flush any queued bump now the image is real
   const waiting = pendingClones.get(baseTex);
   if (!waiting) return;
   for (const c of waiting) {
@@ -484,6 +511,7 @@ function finishBaseLoad(baseTex: THREE.Texture): void {
     c.flipY = baseTex.flipY;
     (c as unknown as { isCompressedTexture: boolean }).isCompressedTexture =
       (baseTex as unknown as { isCompressedTexture?: boolean }).isCompressedTexture === true;
+    releaseUpdateGuard(c); // OPS-045: payload is copied — safe to upload again
     c.needsUpdate = true;
   }
   pendingClones.delete(baseTex);
@@ -509,6 +537,7 @@ function loadJPGBase(url: string, fallbackUrl: string | null): THREE.Texture {
       : undefined
   );
   (tex as { __mpLoading?: boolean }).__mpLoading = true;
+  deferUpdatesWhileLoading(tex); // OPS-045
   return tex;
 }
 
@@ -519,6 +548,7 @@ function loadKTX2Base(url: string, jpgFallbackUrl: string): THREE.Texture {
   const tex = new THREE.CompressedTexture([], 1, 1);
   (tex as { __mpLoading?: boolean }).__mpLoading = true;
   tex.version = 0; // nothing to upload yet
+  deferUpdatesWhileLoading(tex); // OPS-045
   const renderer = getPooledRenderer();
   const loader = initKTX2Loader(renderer!); // pickKTX2Url guaranteed renderer non-null
   loader.load(
@@ -618,6 +648,7 @@ function loadPBRSet(
       // Image still loading — keep version at 0 so the renderer doesn't warn
       // about missing image data; finishBaseLoad marks us for upload.
       tex.version = 0;
+      deferUpdatesWhileLoading(tex); // OPS-045: scene code must not bump us early
       const waiting = pendingClones.get(baseTex);
       if (waiting) waiting.push(tex);
       else pendingClones.set(baseTex, [tex]);
