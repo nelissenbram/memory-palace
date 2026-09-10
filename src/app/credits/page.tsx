@@ -8,8 +8,11 @@ const F = T.font;
 
 /**
  * Credits / third-party acknowledgements. Lists the CC-licensed 3D assets used
- * in the exterior palace scene. CC-BY requires visible attribution (author,
- * title, source, licence); CC0 assets are credited as a courtesy.
+ * in the exterior palace scene and the music used in our promotional videos
+ * (LEG-023: the caption credit in each post is the primary CC-BY attribution;
+ * this page is the durable on-site counterpart). CC-BY requires visible
+ * attribution (author, title, source, licence); CC0 assets are credited as a
+ * courtesy.
  */
 type Asset = {
   title: string;
@@ -45,6 +48,16 @@ const CC_BY: Asset[] = [
     title: "Cypress Tree",
     author: "smaugthedeceiver",
     source: "https://sketchfab.com/3d-models/cypress-tree-a81126aa966b4664bb6185134e53415b",
+    licence: "CC BY 4.0",
+    licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+  },
+];
+
+const MUSIC: Asset[] = [
+  {
+    title: "Light in Dark Places",
+    author: "Scott Buckley",
+    source: "https://www.scottbuckley.com.au",
     licence: "CC BY 4.0",
     licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
   },
@@ -109,12 +122,19 @@ export default function CreditsPage() {
         </Link>
         <h1 style={{ fontFamily: F.display, fontSize: "2rem", margin: "1.5rem 0 0.5rem" }}>Credits</h1>
         <p style={{ opacity: 0.8, marginBottom: "2rem" }}>
-          The 3D palace exterior uses a handful of openly-licensed assets. With gratitude to their creators:
+          The 3D palace exterior and our promotional videos use a handful of openly-licensed works. With gratitude to their creators:
         </p>
 
         <h2 style={{ fontFamily: F.display, fontSize: "1.15rem", margin: "0 0 0.75rem" }}>3D models (CC BY)</h2>
         <ul style={{ listStyle: "none", padding: 0, margin: "0 0 2rem" }}>
           {CC_BY.map((a) => (
+            <AssetItem key={a.title} a={a} />
+          ))}
+        </ul>
+
+        <h2 style={{ fontFamily: F.display, fontSize: "1.15rem", margin: "0 0 0.75rem" }}>Music in our videos (CC BY)</h2>
+        <ul style={{ listStyle: "none", padding: 0, margin: "0 0 2rem" }}>
+          {MUSIC.map((a) => (
             <AssetItem key={a.title} a={a} />
           ))}
         </ul>
