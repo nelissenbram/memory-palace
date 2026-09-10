@@ -248,6 +248,8 @@ ICP: broad · HYPOTHESIS: Concrete-number/absurd-stat hook vs emotional siblings
 > consent-record van de inzender (schriftelijk: naam/handle, datum, scope "gebruik in
 > marketingvideo", bewaard in `docs/legal-records/`) — "met toestemming" in de comments
 > is niet genoeg. Huisregel: nooit gebruikersgezichten in marketing zonder aparte consent.
+> Template + werkwijze + register: `docs/legal-records/CONSENT-RESTORE-06.md` (DM-tekst
+> EN/NL, "I AGREE"-flow, screenshot-bewijs gitignored in `socials-kit/consents/`).
 HOOK: "@____ dropped this in the comments yesterday. Here's what came back."
 BEATS: 1) 0–2s: screenshot-style frame of the (permissioned) comment with the damaged photo attached, hook overlaid, username handle slot templated. 2) 2–6s: the damaged photo fills the frame, hold on the worst damage. 3) 6–10s: wipe reveal of the restore. 4) 10–14s: side-by-side before/after, caption: 'Tomorrow I pick another one.' 5) 14–16s: ember end card.
 FOOTAGE: Fulfilled restore from the pinned-comment loop (§2c action 3: 'drop your damaged family photo') — commenter's submitted photo with permission, GFPGAN pair, comment-screenshot mock via clip-kit frame; fully templatable for the every-10th-restore cadence.
