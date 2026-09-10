@@ -499,7 +499,11 @@ function InteriorScene({roomId,actualRoomId,memories,onMemoryClick,onMemoryUpdat
       const aniso=Math.min(isMobileGPU()?4:8,maxAniso);
       for(const set of [marbleTex,woodTex,wallTex,stoneTex]){
         for(const tx of [set.map,set.normalMap]){
-          if(tx&&tx.anisotropy!==aniso){tx.anisotropy=aniso;tx.needsUpdate=true;}
+          // needsUpdate on a texture whose image is still in flight (WS2-7 404→1k
+          // fallback window) makes three upload an empty texture → hard crash
+          // ("reading 'width'"). The aniso value set here is picked up by the
+          // texture's own first upload once its load completes.
+          if(tx&&tx.anisotropy!==aniso){tx.anisotropy=aniso;const img=tx.image as {complete?:boolean}|null;if(img&&img.complete!==false&&(tx as {__mpLoading?:boolean}).__mpLoading!==true)tx.needsUpdate=true;}
         }
       }
     }
