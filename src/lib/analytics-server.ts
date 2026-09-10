@@ -86,6 +86,36 @@ export async function captureServer(
 }
 
 /**
+ * OPS-010 v2: server-side first-memory milestone. Call AFTER a successful
+ * memory insert; fires `first_photo_saved` exactly when this was the user's
+ * FIRST memory (count == 1). Server-side because the client version could
+ * structurally never fire: track() is a no-op in the native shell (Apple
+ * 5.1.2i) and web first-saves happen during onboarding, before the cookie
+ * banner is answered — so 9 real first photos produced 0 events. Same
+ * first-party basis as memory_created/user_signed_up (uid only, no device
+ * data). Best-effort: any failure (e.g. no service-role key on previews)
+ * skips the milestone, never the save.
+ */
+export async function captureFirstMemoryMilestone(
+  distinctId: string,
+  properties: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    if (!KEY || !distinctId || process.env.POSTHOG_SERVER_CAPTURE === "0") return;
+    const { createAdminClient } = await import("@/lib/supabase/server");
+    const admin = createAdminClient();
+    const { count, error } = await admin
+      .from("memories")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", distinctId);
+    if (error || count !== 1) return;
+    await captureServer(distinctId, "first_photo_saved", properties);
+  } catch {
+    // swallow — analytics is best-effort and must not affect the product path
+  }
+}
+
+/**
  * LEG-012: best-effort deletion of the PostHog person profile (including the
  * display-name person property, and the person's events) when a user deletes
  * their account. Uses PostHog's private API on eu.posthog.com with a personal

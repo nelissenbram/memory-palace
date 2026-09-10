@@ -13,7 +13,7 @@ import {
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/google-photos";
-import { captureServer, detectRequestPlatform } from "@/lib/analytics-server";
+import { captureServer, captureFirstMemoryMilestone, detectRequestPlatform } from "@/lib/analytics-server";
 import { createClient } from "@/lib/supabase/server";
 import { checkLimit } from "@/lib/auth/plan-limits";
 import { r2Upload, r2Remove, isR2Configured } from "@/lib/storage/r2";
@@ -310,6 +310,7 @@ export async function POST(request: NextRequest) {
           void detectRequestPlatform().then((platform) =>
             captureServer(user.id, "memory_created", { source: "import", provider: "google_photos", ...(platform ? { platform } : {}) })
           );
+          void captureFirstMemoryMilestone(user.id, { source: "import", provider: "google_photos" });
           results.push({ id: photoId, success: true, memoryId: memory.id });
         }
       } catch (err: unknown) {

@@ -13,7 +13,7 @@ import {
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/dropbox";
-import { captureServer, detectRequestPlatform } from "@/lib/analytics-server";
+import { captureServer, captureFirstMemoryMilestone, detectRequestPlatform } from "@/lib/analytics-server";
 import { createClient } from "@/lib/supabase/server";
 import { checkLimit, getUserPlan } from "@/lib/auth/plan-limits";
 import { r2Upload, r2Remove, isR2Configured } from "@/lib/storage/r2";
@@ -235,6 +235,7 @@ export async function POST(request: NextRequest) {
           void detectRequestPlatform().then((platform) =>
             captureServer(user.id, "memory_created", { source: "import", provider: "dropbox", ...(platform ? { platform } : {}) })
           );
+          void captureFirstMemoryMilestone(user.id, { source: "import", provider: "dropbox" });
           results.push({ id: filePath, success: true, memoryId: memory.id });
         }
       } catch (err: unknown) {
