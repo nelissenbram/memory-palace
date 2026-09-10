@@ -632,6 +632,7 @@
     "sendTest": "Enviar actividades de prueba",
     "sentTest": "Actividades de prueba enviadas — ¡abre la campana!",
     "sendTestFailed": "No se pudieron enviar las actividades de prueba",
+    "pushEnableFailed": "No se pudieron activar las notificaciones. Revisa la configuración de tu navegador e inténtalo de nuevo.",
     "pushErrorNoApi": "Sin API de notificaciones (¿PWA/HTTPS?)",
     "pushErrorNoServiceWorker": "Sin soporte de service worker",
     "pushErrorNoVapid": "Falta NEXT_PUBLIC_VAPID_PUBLIC_KEY",

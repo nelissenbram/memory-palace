@@ -117,10 +117,23 @@ export async function PATCH(request: Request) {
         void captureServer(user.id, "memory_created", { source: "kep", ...(platform ? { platform } : {}) });
         void captureFirstMemoryMilestone(user.id, { source: "kep", ...(platform ? { platform } : {}) });
       });
-      await supabase
+      // OPS-039: the capture status-update used to be unchecked. If it failed,
+      // the memory was created but the capture stayed pending/processed — it
+      // reappeared in the pending list and a re-route created a DUPLICATE
+      // memory. Check the update; on failure, roll back the orphan memory so a
+      // retry stays at-most-once and report the capture as failed.
+      const { error: statusError } = await supabase
         .from("kep_captures")
         .update({ status: "routed", memory_id: memory.id })
         .eq("id", captureId);
+
+      if (statusError) {
+        console.error(`[KEP route] status update failed for capture ${captureId}, rolling back memory ${memory.id}:`, statusError.message);
+        await supabase.from("memories").delete().eq("id", memory.id).eq("user_id", user.id);
+        results.push({ id: captureId, status: "failed" });
+        continue;
+      }
+
       results.push({ id: captureId, status: "routed" });
     }
 

@@ -632,6 +632,7 @@
     "sendTest": "Envoyer des activites de test",
     "sentTest": "Activites de test envoyees — ouvrez la cloche !",
     "sendTestFailed": "Impossible d'envoyer les activites de test",
+    "pushEnableFailed": "Impossible d'activer les notifications. Vérifiez les réglages de votre navigateur et réessayez.",
     "pushErrorNoApi": "Pas d'API Notification (PWA/HTTPS ?)",
     "pushErrorNoServiceWorker": "Pas de support service worker",
     "pushErrorNoVapid": "NEXT_PUBLIC_VAPID_PUBLIC_KEY manquant",

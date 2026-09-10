@@ -123,7 +123,7 @@ export async function addPerson(data: {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("somethingWentWrong") };
   return { person: person as FamilyTreePerson };
 }
 
@@ -169,7 +169,7 @@ export async function updatePerson(id: string, updates: {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("somethingWentWrong") };
   return { person: person as FamilyTreePerson };
 }
 
@@ -199,7 +199,7 @@ export async function deletePerson(id: string) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { success: true };
 }
 
@@ -258,7 +258,7 @@ export async function addRelationship(
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("somethingWentWrong") };
 
   // Insert the reverse relationship (upsert-style: check if it already exists first)
   const reverseType = getReverseType(type);
@@ -312,7 +312,7 @@ export async function removeRelationship(id: string) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
 
   // Delete the reverse relationship if the original was found
   if (rel) {
@@ -402,7 +402,7 @@ export async function addSource(data: {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: tSrc("somethingWentWrong") };
   return { source: source as FamilyTreeSource };
 }
 
@@ -438,7 +438,7 @@ export async function updateSource(id: string, updates: {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: tUpd("somethingWentWrong") };
   return { source: source as FamilyTreeSource };
 }
 
@@ -456,7 +456,7 @@ export async function removeSource(id: string) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { success: true };
 }
 
@@ -507,7 +507,7 @@ export async function addSourceLink(data: {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { link: link as FamilyTreeSourceLink };
 }
 
@@ -525,7 +525,7 @@ export async function removeSourceLink(id: string) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { success: true };
 }
 
@@ -601,7 +601,7 @@ export async function addEvent(personId: string, data: {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { event: event as FamilyTreeEvent };
 }
 
@@ -634,7 +634,7 @@ export async function updateEvent(id: string, updates: {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { event: event as FamilyTreeEvent };
 }
 
@@ -778,7 +778,7 @@ export async function mergePersons(keepId: string, removeId: string) {
     .eq("id", removeId)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: tMerge("somethingWentWrong") };
   return { success: true };
 }
 
@@ -803,7 +803,7 @@ export async function markAsSelf(personId: string) {
     .eq("id", personId)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { success: true };
 }
 
@@ -821,7 +821,7 @@ export async function removeEvent(id: string) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { success: true };
 }
 
@@ -882,7 +882,7 @@ export async function createShareLink(): Promise<{ share?: FamilyTreeShare; erro
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { share: share as FamilyTreeShare };
 }
 
@@ -901,7 +901,7 @@ export async function deactivateShareLink(id: string): Promise<{ success?: boole
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) { const t = await serverError(); return { error: t("somethingWentWrong") }; }
   return { success: true };
 }
 

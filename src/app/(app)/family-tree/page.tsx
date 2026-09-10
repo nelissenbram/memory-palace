@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
@@ -22,10 +23,8 @@ import type {
 } from "@/lib/auth/family-tree-actions";
 import { hierarchy, tree as d3tree } from "d3-hierarchy";
 import PersonPanel from "./PersonPanel";
-import FanChart from "./FanChart";
 
 /* ── Extracted modules ── */
-import { exportGedcom, parseGedcom } from "./gedcom";
 import { buildForest, buildDescendancyTree, remToPx, NODE_W, NODE_H, SPOUSE_GAP, COUPLE_W, VERTICAL_GAP, HORIZONTAL_GAP } from "./tree-layout";
 import type { TreeNode } from "./tree-layout";
 import { PersonCard, CoupleNode, TreeBranchIcon, CloseIcon } from "./PersonCard";
@@ -35,8 +34,11 @@ import { TreeSearch } from "./TreeSearch";
 import { FocusBanner, filterToFocus } from "./FocusBanner";
 import { PersonList } from "./PersonList";
 import { TreeErrorBoundary } from "./TreeErrorBoundary";
-import { OnboardingWizard } from "./OnboardingWizard";
-import DuplicateDetector, { findDuplicates } from "./DuplicateDetector";
+
+/* ── Lazy: conditioneel gerenderd, niet in first-load JS (OPS-034) ── */
+const FanChart = dynamic(() => import("./FanChart"), { ssr: false });
+const DuplicateDetector = dynamic(() => import("./DuplicateDetector"), { ssr: false });
+const OnboardingWizard = dynamic(() => import("./OnboardingWizard").then((m) => m.OnboardingWizard), { ssr: false });
 
 const ONBOARDING_DISMISSED_KEY = "family-tree-onboarding-dismissed";
 
@@ -778,7 +780,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
   }, [pan, zoom]);
 
   // GEDCOM export
-  const handleExport = () => {
+  const handleExport = async () => {
+    const { exportGedcom } = await import("./gedcom");
     const content = exportGedcom(persons, relationships);
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -941,6 +944,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
     let errorCount = 0;
     try {
       const text = await file.text();
+      const { parseGedcom } = await import("./gedcom");
       const { indis, fams, errors } = parseGedcom(text);
       errorCount += errors.length;
 
@@ -1021,6 +1025,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
 
       // Auto-show duplicate detector after import if duplicates exist
       const { persons: freshPersons } = await getPersons();
+      const { findDuplicates } = await import("./DuplicateDetector");
       if (findDuplicates(freshPersons).length > 0) {
         setToast({
           message: t("duplicatesAfterImport"),

@@ -632,6 +632,7 @@
     "sendTest": "Send test activities",
     "sentTest": "Test activities sent — open the bell!",
     "sendTestFailed": "Could not send test activities",
+    "pushEnableFailed": "Couldn't turn on notifications. Check your browser settings and try again.",
     "pushErrorNoApi": "No Notification API (PWA/HTTPS?)",
     "pushErrorNoServiceWorker": "No service worker support",
     "pushErrorNoVapid": "NEXT_PUBLIC_VAPID_PUBLIC_KEY missing",

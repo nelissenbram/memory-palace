@@ -302,20 +302,24 @@ export default function NotificationsPage() {
     try {
       stage = "requestPermission";
       if (typeof Notification === "undefined") {
-        setToast({ message: t("pushErrorNoApi"), type: "error" });
+        // OPS-038: technical detail belongs in the console, the toast stays warm.
+        console.error("[push] no Notification API (PWA/HTTPS?)");
+        setToast({ message: t("pushEnableFailed"), type: "error" });
         return;
       }
       const perm = await Notification.requestPermission();
       setPermission(perm);
 
       if (perm !== "granted") {
-        setToast({ message: t("pushErrorPermission", { perm }), type: "error" });
+        console.error(`[push] permission not granted: ${perm}`);
+        setToast({ message: t("pushEnableFailed"), type: "error" });
         return;
       }
 
       stage = "serviceWorker.ready";
       if (!("serviceWorker" in navigator)) {
-        setToast({ message: t("pushErrorNoServiceWorker"), type: "error" });
+        console.error("[push] no service worker support");
+        setToast({ message: t("pushEnableFailed"), type: "error" });
         return;
       }
       const reg = await navigator.serviceWorker.ready;
@@ -323,7 +327,8 @@ export default function NotificationsPage() {
       stage = "vapidKey";
       const vapidKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "").replace(/[\r\n]/g, "").replace("\\n", "").trim() || undefined;
       if (!vapidKey) {
-        setToast({ message: t("pushErrorNoVapid"), type: "error" });
+        console.error("[push] NEXT_PUBLIC_VAPID_PUBLIC_KEY missing");
+        setToast({ message: t("pushEnableFailed"), type: "error" });
         return;
       }
 
@@ -361,9 +366,9 @@ export default function NotificationsPage() {
       setPrefs({ pushEnabled: true });
       setToast({ message: t("pushSubscribed"), type: "success" });
     } catch (err) {
-      console.error("Failed to subscribe:", err);
       const msg = (err as Error).message || String(err);
-      setToast({ message: t("pushErrorStage", { stage, msg: msg.slice(0, 180) }), type: "error" });
+      console.error(`[push] subscribe failed at ${stage}: ${msg}`);
+      setToast({ message: t("pushEnableFailed"), type: "error" });
     } finally {
       subscribingRef.current = false;
       setSubscribing(false);

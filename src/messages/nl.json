@@ -632,6 +632,7 @@
     "sendTest": "Stuur testactiviteiten",
     "sentTest": "Testactiviteiten verstuurd — open de bel!",
     "sendTestFailed": "Kon testactiviteiten niet versturen",
+    "pushEnableFailed": "Meldingen aanzetten lukte niet. Controleer je browserinstellingen en probeer het opnieuw.",
     "pushErrorNoApi": "Geen Notification API (PWA/HTTPS?)",
     "pushErrorNoServiceWorker": "Geen service worker ondersteuning",
     "pushErrorNoVapid": "NEXT_PUBLIC_VAPID_PUBLIC_KEY ontbreekt",

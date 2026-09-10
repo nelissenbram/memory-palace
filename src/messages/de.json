@@ -632,6 +632,7 @@
     "sendTest": "Testaktivitäten senden",
     "sentTest": "Testaktivitäten gesendet – öffne die Glocke!",
     "sendTestFailed": "Testaktivitäten konnten nicht gesendet werden",
+    "pushEnableFailed": "Benachrichtigungen konnten nicht aktiviert werden. Prüfen Sie Ihre Browsereinstellungen und versuchen Sie es erneut.",
     "pushErrorNoApi": "Keine Notification API (PWA/HTTPS?)",
     "pushErrorNoServiceWorker": "Keine Service-Worker-Unterstützung",
     "pushErrorNoVapid": "NEXT_PUBLIC_VAPID_PUBLIC_KEY fehlt",

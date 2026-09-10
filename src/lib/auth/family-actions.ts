@@ -301,19 +301,31 @@ export async function removeFamilyMember(groupId: string, userId: string) {
     .filter((id): id is string => !!id);
 
   if (remainingUserIds.length > 0) {
+    // OPS-040 (owner-besluit 10-09: harde fout): these deletes were unchecked —
+    // a partial failure left the removed member with stale wing access while the
+    // UI reported success. Surface the failure instead; the member row is already
+    // gone, so a retry only re-runs this cleanup (idempotent).
     // Delete shares where removed user owned a wing shared with remaining group members
-    await supabase
+    const { error: ownedSharesError } = await supabase
       .from("wing_shares")
       .delete()
       .eq("owner_id", userId)
       .in("shared_with_id", remainingUserIds);
 
     // Delete shares where remaining group members shared a wing with the removed user
-    await supabase
+    const { error: receivedSharesError } = await supabase
       .from("wing_shares")
       .delete()
       .eq("shared_with_id", userId)
       .in("owner_id", remainingUserIds);
+
+    if (ownedSharesError || receivedSharesError) {
+      console.error(
+        `[family] wing_shares cleanup failed for removed member ${userId} in group ${groupId}:`,
+        ownedSharesError?.message || receivedSharesError?.message
+      );
+      return { error: t("somethingWentWrong") };
+    }
   }
 
   return { success: true };
