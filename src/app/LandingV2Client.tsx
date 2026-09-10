@@ -1350,6 +1350,43 @@ export default function LandingV2Client({
               <span style={{ fontFamily: FONT_BODY, fontSize: "0.875rem", color: "rgba(252,250,245,0.75)" }}>
                 {heroMicro}
               </span>
+              {/* Store badges (web only): the FAQ promises iOS/Android, so the
+                  hero must carry a working download path — bio-link traffic on
+                  mobile otherwise dead-ends at /register. Hidden inside the iOS
+                  app: no store cross-links in the sealed webview. */}
+              {!isIosApp && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", justifyContent: "center", marginTop: "0.25rem" }}>
+                  {[
+                    { href: "https://apps.apple.com/app/id6766101576", brand: "App Store", label: v2.hero.storeIos },
+                    { href: "https://play.google.com/store/apps/details?id=ai.thememorypalace.app", brand: "Google Play", label: v2.hero.storeAndroid },
+                  ].map((s) => (
+                    <a
+                      key={s.brand}
+                      href={s.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="lv2-navlink"
+                      style={{
+                        display: "inline-flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        justifyContent: "center",
+                        minHeight: "3rem",
+                        padding: "0.375rem 1rem",
+                        borderRadius: "0.625rem",
+                        border: "1px solid rgba(252,250,245,0.35)",
+                        background: "rgba(23,20,15,0.35)",
+                        color: T.color.cream,
+                        textDecoration: "none",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      <span style={{ fontFamily: FONT_BODY, fontSize: "0.6875rem", opacity: 0.8 }}>{s.label}</span>
+                      <span style={{ fontFamily: FONT_BODY, fontSize: "1rem", fontWeight: 600 }}>{s.brand}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
               <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? "0.5rem" : "1.25rem", justifyContent: "center", marginTop: isMobile ? "0.625rem" : "1.25rem" }}>
                 {[v2.hero.chipGdpr, v2.hero.chipEncrypted, v2.hero.chipEu].map((chip) => (
                   <Link
