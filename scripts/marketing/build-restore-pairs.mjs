@@ -154,6 +154,13 @@ for (const [id, set] of todo) {
     + `[b]${FRESH},format=gbrp[new];`
     + `[old][new]blend=all_expr='${wipe}',format=yuv420p[mix]" `
     + `-map "[mix]" -t ${set.secs} `
+    // LEG-023 (owner-akkoord 10-09): every simulated before/after carries a
+    // machine-readable label in the container. The caption rule ("Simulated
+    // demo" in elke post die dit beeld gebruikt) staat in socials-kit config
+    // guardrails + docs/legal-records/MARKETING-PROVENANCE-LICENTIES.md.
+    + `-movflags use_metadata_tags `
+    + `-metadata comment="SIMULATED DEMO - staged before/after (ffmpeg ageing of a public-domain original); best-case depiction, not captured product output. Source/licence: socials-kit/restore-src/SOURCES.json" `
+    + `-metadata digital_source_type="compositeSynthetic" `
     + `-c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p -r ${FPS} -an "${out}"`,
     { stdio: "inherit" },
   );
