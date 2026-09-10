@@ -54,14 +54,17 @@ const CC_BY: Asset[] = [
 ];
 
 const MUSIC: Asset[] = [
-  {
-    title: "Light in Dark Places",
-    author: "Scott Buckley",
-    source: "https://www.scottbuckley.com.au",
-    licence: "CC BY 4.0",
-    licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
-  },
-];
+  "Light in Dark Places",
+  "Amberlight",
+  "Penumbra",
+  "This Too Shall Pass",
+].map((title) => ({
+  title,
+  author: "Scott Buckley",
+  source: "https://www.scottbuckley.com.au",
+  licence: "CC BY 4.0",
+  licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+}));
 
 const CC0: Asset[] = [
   {

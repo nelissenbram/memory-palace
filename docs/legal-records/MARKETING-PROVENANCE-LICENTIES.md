@@ -8,7 +8,18 @@ _Vastgesteld 2026-09-10 (owner-akkoord a+b+c). Bron-registers leven in `socials-
 
 | Werk | Maker | Licentie | Gebruik | Creditplicht |
 |------|-------|----------|---------|--------------|
-| "Light in Dark Places" (`light-in-dark-places.mp3`) | Scott Buckley (scottbuckley.com.au) | **CC BY 4.0** | ingebakken in alle 32 clips-v2-video's | credit-regel verplicht in élke caption: `Music: 'Light in Dark Places' by Scott Buckley (scottbuckley.com.au), CC BY 4.0` (zit in alle geplande captions; Metricool-CSV voegt hem automatisch toe) |
+| "Light in Dark Places" | Scott Buckley (scottbuckley.com.au) | **CC BY 4.0** | GRAVE-01a/08a, LEGACY-02a e.a. (4 van 20 geplande rijen) | credit-regel verplicht in élke caption (`Music: '<titel>' by Scott Buckley (scottbuckley.com.au), CC BY 4.0`); Metricool-CSV draagt hem per rij |
+| "Amberlight" | Scott Buckley | **CC BY 4.0** | RESTORE-03a, PARENT-05a e.a. (5 van 20) | idem |
+| "Penumbra" | Scott Buckley | **CC BY 4.0** | NATIVE-04a e.a. (3 van 20) | idem |
+| "This Too Shall Pass" | Scott Buckley | **CC BY 4.0** | GRAVE-04a/05a e.a. (3 van 20) | idem |
+
+Reserves gedownload, zelfde licentie, nog niet in gebruik: Frozen Star, Strength of
+the Titans, Ibn Al-Noor, Heroic Age. Bron/ID3 geverifieerd: alle tracks artist=Scott
+Buckley (CC-BY 4.0, hele library). Onderlaag alle clips: eigen in-app paleis-ambience.
+Alle vier de gebruikte titels staan vermeld op **thememorypalace.ai/credits**.
+_Correctie 2026-09-10 (nacheck): eerdere versie van dit record noemde alleen "Light
+in Dark Places"; het per-clip-register (`socials-kit/clips/music/MUSIC-CREDITS.txt`)
+is leidend._
 
 Geen andere muziek of SFX in gebruik. Canonregel (config `musicPolicy`): alleen
 reeds-gecleared CC-BY met credits; geen nieuwe downloads zonder licentiecheck.
