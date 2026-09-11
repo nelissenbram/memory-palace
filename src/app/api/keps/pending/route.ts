@@ -92,10 +92,9 @@ export async function PATCH(request: Request) {
         .insert({
           user_id: user.id,
           room_id: body.room_id,
-          wing_id: body.wing_id || null,
           title: (capture.payload_preview as Record<string, unknown>)?.text as string || capture.transcription || `${capture.media_type || "Memory"} capture`,
           type: capture.media_type === "image" ? "photo" : capture.media_type === "video" ? "video" : capture.media_type === "audio" ? "audio" : "note",
-          data_url: capture.media_url,
+          file_url: capture.media_url,
           description: capture.transcription || null,
           source_kep_id: capture.kep_id,
           source_type: "whatsapp",

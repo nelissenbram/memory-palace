@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ADMIN_EMAILS } from "@/lib/auth/is-admin";
 import { listPendingReports, moderateReport } from "@/lib/social/moderation-actions";
 import { T } from "@/lib/theme";
+import ConfirmButton from "./ConfirmButton";
 
 export const dynamic = "force-dynamic";
 
@@ -80,14 +81,24 @@ export default async function AdminReportsPage() {
                       <input type="hidden" name="reportId" value={r.id} />
                       <input type="hidden" name="targetType" value={r.target_type} />
                       <input type="hidden" name="targetId" value={r.target_id} />
-                      <button type="submit" style={btn(T.color.error)}>Delete content</button>
+                      <ConfirmButton
+                        confirmText="Permanently delete this reported content? This cannot be undone."
+                        style={btn(T.color.error)}
+                      >
+                        Delete content
+                      </ConfirmButton>
                     </form>
                     {r.target_user_id && (
                       <form action={moderateReport}>
                         <input type="hidden" name="op" value="hideOwner" />
                         <input type="hidden" name="reportId" value={r.id} />
                         <input type="hidden" name="targetUserId" value={r.target_user_id} />
-                        <button type="submit" style={btn(T.color.walnut)}>Eject user</button>
+                        <ConfirmButton
+                          confirmText="Eject this user from all public surfaces? Their public palace is hidden immediately."
+                          style={btn(T.color.walnut)}
+                        >
+                          Eject user
+                        </ConfirmButton>
                       </form>
                     )}
                     <form action={moderateReport}>

@@ -282,7 +282,7 @@ export async function acceptInvite(shareId: string, placedInWingId?: string) {
     .update(updatePayload)
     .eq("id", shareId);
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("somethingWentWrong") };
   return { success: true };
 }
 
@@ -328,7 +328,7 @@ export async function acceptWingInvite(shareId: string) {
     })
     .eq("id", shareId);
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("somethingWentWrong") };
   return { success: true };
 }
 
@@ -369,7 +369,7 @@ export async function declineInvite(shareId: string) {
     })
     .eq("id", shareId);
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("somethingWentWrong") };
   return { success: true };
 }
 
@@ -410,7 +410,7 @@ export async function declineWingInvite(shareId: string) {
     })
     .eq("id", shareId);
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("somethingWentWrong") };
   return { success: true };
 }
 
@@ -486,22 +486,49 @@ export async function getPendingInvites() {
   }
 
   // Enrich room invites
-  const enrichedRooms = await Promise.all(
-    (roomShares || []).map(async (share) => {
-      const { data: room } = await admin
-        .from("rooms")
-        .select("name, icon, wing_id")
-        .eq("id", share.room_id)
-        .single();
+  // Bulk-fetch the referenced rooms (and their wings) in two queries instead
+  // of 2 round-trips per invite — mirrors the profiles `.in()` lookup above.
+  const roomIdsToFetch = Array.from(
+    new Set((roomShares || []).map((s) => s.room_id).filter(Boolean))
+  );
+  const roomRowById: Record<string, { name: string; icon: string | null; wing_id: string | null }> = {};
+  if (roomIdsToFetch.length > 0) {
+    const { data: roomRows } = await admin
+      .from("rooms")
+      .select("id, name, icon, wing_id")
+      .in("id", roomIdsToFetch);
+    (roomRows || []).forEach((r: { id: string; name: string; icon: string | null; wing_id: string | null }) => {
+      roomRowById[r.id] = { name: r.name, icon: r.icon, wing_id: r.wing_id };
+    });
+  }
+  const wingIdsToFetch = Array.from(
+    new Set(Object.values(roomRowById).map((r) => r.wing_id).filter((w): w is string => !!w))
+  );
+  const wingRowById: Record<string, { slug: string; custom_name: string | null }> = {};
+  if (wingIdsToFetch.length > 0) {
+    const { data: wingRows } = await admin
+      .from("wings")
+      .select("id, slug, custom_name")
+      .in("id", wingIdsToFetch);
+    (wingRows || []).forEach((w: { id: string; slug: string; custom_name: string | null }) => {
+      wingRowById[w.id] = { slug: w.slug, custom_name: w.custom_name };
+    });
+  }
+
+  const enrichedRooms = (roomShares || []).map((share) => {
+      const room = roomRowById[share.room_id] || null;
 
       let wingName = "";
       let wingIcon = "";
       let wingSlug = "";
       if (room?.wing_id) {
-        const wingDisplay = await getWingDisplayForRoom(admin, room.wing_id, mapsFor(share.owner_id));
-        wingName = wingDisplay.name;
-        wingIcon = wingDisplay.icon;
-        wingSlug = wingDisplay.slug;
+        const wing = wingRowById[room.wing_id];
+        if (wing) {
+          const wd = resolveWingDisplayName(mapsFor(share.owner_id), wing.slug, wing.custom_name);
+          wingName = wd.name;
+          wingIcon = wd.icon;
+          wingSlug = wing.slug;
+        }
       }
 
       const inviter = nameMap[share.owner_id] || { name: serverT("someone", loc), avatar: null };
@@ -523,8 +550,7 @@ export async function getPendingInvites() {
         wingName,
         wingIcon,
       };
-    })
-  );
+  });
 
   // Enrich wing invites
   const enrichedWings = (wingShares || []).map((share) => {
