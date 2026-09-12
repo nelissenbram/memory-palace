@@ -1357,8 +1357,11 @@ export default function LandingV2Client({
               {!isIosApp && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", justifyContent: "center", marginTop: "0.25rem" }}>
                   {[
-                    { href: "https://apps.apple.com/app/id6766101576", brand: "App Store", label: v2.hero.storeIos },
-                    { href: "https://play.google.com/store/apps/details?id=ai.thememorypalace.app", brand: "Google Play", label: v2.hero.storeAndroid },
+                    // Campagne-parameters (12-09): store-clicks verlieten de go-rail-UTM
+                    // (Aurelia's meetgat) — Apple's ct-token en Play's utm maken de
+                    // hero-badge-clicks zichtbaar in App Analytics / Play Console.
+                    { href: "https://apps.apple.com/app/id6766101576?ct=landing-hero", brand: "App Store", label: v2.hero.storeIos },
+                    { href: "https://play.google.com/store/apps/details?id=ai.thememorypalace.app&utm_source=landing&utm_medium=hero_badge", brand: "Google Play", label: v2.hero.storeAndroid },
                   ].map((s) => (
                     <a
                       key={s.brand}

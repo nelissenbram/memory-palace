@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { serverError } from "@/lib/i18n/server-errors";
 import { revokeProviderToken } from "@/lib/integrations/helpers";
 import { r2Remove, r2List, isR2Configured } from "@/lib/storage/r2";
-import { deletePersonServer } from "@/lib/analytics-server";
+import { deletePersonServer, captureServer, detectRequestPlatform } from "@/lib/analytics-server";
 
 const DEFAULT_WINGS = [
   { slug: "roots", accent_color: "#C66B3D" },
@@ -69,9 +69,23 @@ export async function completeOnboarding(data: {
     );
 
     if (wingsError) {
-      return { error: wingsError.message };
+      // OPS-049-klasse: geen rauwe Supabase-string naar de UI.
+      console.error("[onboarding] wings seed failed:", wingsError.message);
+      { const t = await serverError(); return { error: t("somethingWentWrong") }; }
     }
   }
+
+  // OPS-055 (12-09): onboarding_completed vuurde alléén client-side en sneuvelde
+  // op de consent-latch (zelfde klasse als first_photo_saved vóór OPS-019) —
+  // sinds 07-09 daardoor 0×. Server-side vuren maakt de middelste funnelstap
+  // weer zichtbaar; awaited zodat de serverless-invocation hem niet laat vallen.
+  const platform = await detectRequestPlatform();
+  await captureServer(user.id, "onboarding_completed", {
+    source: "server",
+    goal: data.goal,
+    firstWing: data.firstWing,
+    ...(platform ? { platform } : {}),
+  });
 
   return { success: true };
 }

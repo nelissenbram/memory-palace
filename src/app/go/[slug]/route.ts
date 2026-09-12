@@ -56,10 +56,15 @@ export async function GET(
   const ua = req.headers.get("user-agent") || "";
   const device = /Mobi|Android|iPhone|iPad|iPod/i.test(ua) ? "mobile" : "desktop";
 
+  // Bot-filter (12-09, owner-sessie): link-checkers en platform-crawlers volgen
+  // elke bio-link en vervuilden de launch-telling (5 rails binnen één minuut).
+  // Bots krijgen gewoon hun 302 (previews blijven werken) maar tellen niet mee.
+  const isBot = /bot|crawl|spider|preview|facebookexternalhit|whatsapp|slack|telegram|discord|embedly|quora|pinterest|vkshare|curl|wget|python-requests|httpx|axios|headlesschrome|lighthouse|metainspector|linkcheck/i.test(ua);
+
   // Awaited (captureServer never throws, 2.5s hard timeout): a fire-and-forget
   // here can be dropped when the serverless invocation ends at the redirect,
   // and lost hits defeat the whole point of the rail.
-  await captureServer(`go-${slug}`, "go_link_hit", { slug, ua: device, code });
+  if (!isBot) await captureServer(`go-${slug}`, "go_link_hit", { slug, ua: device, code });
 
   return NextResponse.redirect(target, 302);
 }
