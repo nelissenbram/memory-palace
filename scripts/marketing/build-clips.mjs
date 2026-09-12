@@ -156,11 +156,24 @@ function assemble(parts, xfs, silent) {
   ff(`${ins} -filter_complex "${chain}" -map "[x${parts.length - 1}]" ${ENC} "${silent}"`);
 }
 
-function mux(silent, music, out, { offset = 0, vol = 1.0 }) {
+function mux(silent, music, out, { offset = 0, vol = 1.0, aiFaces = false, simulated = false }) {
   const total = dur(silent);
+  // LEG-023 (owner-akkoord 10/12-09): machine-leesbare markering in de container,
+  // gezet op het laatste export-punt zodat geen enkele publicatie-kopie hem mist.
+  //   aiFaces: true   -> clip toont Flux-persona's of AI-restored portretten
+  //                      (AI-Act art. 50(2): trainedAlgorithmicMedia)
+  //   simulated: true -> gesimuleerde before/after (UCPD: compositeSynthetic;
+  //                      caption draagt daarnaast zichtbaar "Simulated demo")
+  // De zichtbare end-card-vermelding ("Faces AI-generated") is een aparte
+  // card-taak — zie OWNER-BRIEFING-CLIP-FLOW (AI-badge-sectie).
+  const marks = aiFaces
+    ? `-movflags use_metadata_tags -metadata digital_source_type="trainedAlgorithmicMedia" -metadata comment="AI-generated persona / AI-restored portrait - AI-Act art.50(2). Provenance: docs/legal-records/MARKETING-SOURCES-RESTORE.json" `
+    : simulated
+      ? `-movflags use_metadata_tags -metadata digital_source_type="compositeSynthetic" -metadata comment="SIMULATED DEMO - staged before/after; best-case depiction, not captured product output" `
+      : "";
   ff(`-i "${silent}" -ss ${offset} -i "${MUSIC}/${music}" ` +
      `-filter_complex "[1:a]volume=${vol},afade=t=in:st=0:d=1.2,afade=t=out:st=${(total - 1.5).toFixed(2)}:d=1.5[a]" ` +
-     `-map 0:v -map "[a]" -c:v copy -c:a aac -b:a 160k -shortest -t ${total} "${out}"`);
+     `-map 0:v -map "[a]" -c:v copy -c:a aac -b:a 160k -shortest -t ${total} ${marks}"${out}"`);
 }
 
 // ── the library ─────────────────────────────────────────────────────────────
@@ -1038,6 +1051,11 @@ for (const c of todo) {
   const silent = resolve(WORK, `${c.code}-silent.mp4`);
   assemble(parts, c.beats.map((b) => b.xf), silent);
   const final = resolve(OUT, `${c.code}-${c.slug}-9x16.mp4`);
+  // LEG-023-poort: RESTORE/PARENT-clips tonen per definitie AI- of sim-beeld —
+  // bouwen zonder markeringsvlag is vrijwel zeker een vergeten declaratie.
+  if (/^(RESTORE|PARENT)-/.test(c.code) && !c.aiFaces && !c.simulated) {
+    console.warn(`   ⚠️  LEG-023: ${c.code} draagt geen aiFaces/simulated-vlag — zet er een, of documenteer waarom niet (zie OWNER-BRIEFING-CLIP-FLOW).`);
+  }
   mux(silent, c.music, final, c);
   for (const p of parts) rmSync(p, { force: true });
   rmSync(silent, { force: true });
